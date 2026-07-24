@@ -2,6 +2,7 @@ import { FieldRoles } from './data/detectFields';
 import { FlowRenderMode } from './data/buildFlows';
 import { SavedMapConfig } from './data/mapConfig';
 import { TimeSyncMode } from './panel/timeSync';
+import { VariableMapping } from './panel/variableSync';
 
 /** Built-in MapLibre base maps kepler ships, all served by Carto without a token. */
 export type BasemapChoice = 'auto' | 'dark-matter' | 'positron' | 'voyager' | 'custom';
@@ -53,4 +54,11 @@ export interface KeplerPanelOptions {
 
   /** How auto-created flow layers draw their lines. Defaults to `straight`. */
   flowRenderMode?: FlowRenderMode;
+
+  /**
+   * Ties kepler filters to dashboard variables: setting a select/text filter on
+   * the map writes its value to the named variable, cross-filtering the rest of
+   * the dashboard.
+   */
+  variableMappings?: VariableMapping[];
 }

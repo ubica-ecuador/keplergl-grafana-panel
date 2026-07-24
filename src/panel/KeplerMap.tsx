@@ -15,7 +15,9 @@ import { captureMapConfig, loadDatasets, refreshDatasets, setBasemap, setSidePan
 import { decideLoadAction } from './loadDecision';
 import { useTimeRangeSync } from './useTimeRangeSync';
 import { useFlowLayers } from './useFlowLayers';
+import { useVariableSync } from './useVariableSync';
 import type { TimeRangeMs, TimeSyncMode } from './timeSync';
+import type { VariableMapping } from './variableSync';
 
 // Must run before any kepler component mounts. Lives here rather than in
 // module.ts so it is part of the deferred chunk.
@@ -40,6 +42,8 @@ export interface KeplerMapProps {
   grafanaRange: TimeRangeMs;
   /** Moves the dashboard time range; used only in bidirectional sync. */
   onChangeGrafanaRange?: (range: TimeRangeMs) => void;
+  /** kepler filter -> dashboard variable bindings. */
+  variableMappings: VariableMapping[];
 }
 
 /**
@@ -72,6 +76,7 @@ export function KeplerMap({
   timeSync,
   grafanaRange,
   onChangeGrafanaRange,
+  variableMappings,
 }: KeplerMapProps) {
   const store = useMemo(() => createKeplerStore(), []);
   const [styleTarget, setStyleTarget] = useState<HTMLElement | null>(null);
@@ -151,6 +156,8 @@ export function KeplerMap({
 
   // Auto-add flow layers only on a fresh map; a saved config owns its layers.
   useFlowLayers({ store, isReady, datasets, enabled: !mapConfig });
+
+  useVariableSync({ store, isReady, mappings: variableMappings });
 
   return (
     <div ref={setStyleTarget} style={{ width, height, position: 'relative', overflow: 'hidden' }}>

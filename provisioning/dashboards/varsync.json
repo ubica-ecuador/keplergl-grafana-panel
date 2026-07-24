@@ -1,0 +1,51 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "id": 4,
+  "links": [],
+  "templating": {
+    "list": [
+      {
+        "name": "category",
+        "type": "custom",
+        "label": "Category",
+        "query": "parks,roads,schools",
+        "current": { "text": "All", "value": "$__all" },
+        "includeAll": true,
+        "multi": true,
+        "options": []
+      }
+    ]
+  },
+  "panels": [
+    {
+      "datasource": { "type": "grafana-testdata-datasource", "uid": "trlxrdZVk" },
+      "gridPos": { "h": 16, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "variableMappings": [{ "field": "category", "variable": "category" }]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-testdata-datasource", "uid": "trlxrdZVk" },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"latitude\",\"type\":\"number\"},{\"name\":\"longitude\",\"type\":\"number\"},{\"name\":\"category\",\"type\":\"string\"},{\"name\":\"value\",\"type\":\"number\"}]},\"data\":{\"values\":[[-2.9,-2.895,-2.89,-2.885,-2.88,-2.9,-2.895,-2.89,-2.885,-2.88,-2.9,-2.895,-2.89,-2.885,-2.88],[-79.02,-79.02,-79.02,-79.02,-79.02,-79.012,-79.012,-79.012,-79.012,-79.012,-79.00399999999999,-79.00399999999999,-79.00399999999999,-79.00399999999999,-79.00399999999999],[\"parks\",\"parks\",\"parks\",\"parks\",\"parks\",\"roads\",\"roads\",\"roads\",\"roads\",\"roads\",\"schools\",\"schools\",\"schools\",\"schools\",\"schools\"],[10,13,16,19,22,25,28,31,34,37,40,43,46,49,52]]}}]"
+        }
+      ],
+      "title": "Kepler.gl — cross-filter",
+      "type": "ubica-keplergl-panel"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": [],
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "",
+  "title": "Kepler.gl cross-filter",
+  "uid": "d1e2f3a4-0000-4000-8000-000000000003",
+  "version": 1,
+  "weekStart": ""
+}

@@ -1,6 +1,6 @@
 {
   "name": "ubica-keplergl-panel",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Interactive kepler.gl maps for Grafana dashboards — spatio-temporal mobility data from any data source.",
   "scripts": {
     "build": "webpack -c ./webpack.config.ts --env production",

@@ -7,7 +7,7 @@ An open source alternative to the Foursquare Studio panel, which renders its map
 `studio.foursquare.com` and therefore needs a Foursquare account. This one runs kepler.gl inside the
 panel: no external service, no account, no Mapbox token.
 
-> **Status: v0.2.** Usable, and pinned to a kepler.gl pre-release because the Flow layer exists
+> **Status: v0.3.** Usable, and pinned to a kepler.gl pre-release because the Flow layer exists
 > nowhere else. Not yet in the Grafana catalog — see [Roadmap](#roadmap).
 
 ## What it does today
@@ -21,6 +21,10 @@ panel: no external service, no account, no Mapbox token.
   Trip layer with a playback timeline, no manual layer setup. See [Trajectories](#trajectories).
 - **Dashboard time range synced with the map**, one-way or both ways — the time picker drives the
   map's time filter, and optionally the map's time slider drives the dashboard back.
+- **Origin-destination flow layers**, automatic — an OD query becomes an animated flow map, no
+  manual layer setup. See [Origin-destination flows](#origin-destination-flows).
+- **Map filters drive dashboard variables** — a select or text filter on the map cross-filters the
+  rest of the dashboard. See [Cross-filtering](#cross-filtering).
 - **Your layer configuration survives a refresh.** Data is swapped underneath the layers rather than
   the datasets being torn down and rebuilt.
 - **Saved map configuration** stored with the dashboard, and configs pasted from kepler.gl,
@@ -126,7 +130,9 @@ column names are not recognised.
 
 ### Origin-destination flows
 
-The flow layer takes a flat OD table:
+A flat OD table becomes an animated **flow layer** automatically — the plugin detects the
+origin/destination columns and builds the layer (kepler does not auto-detect flows the way it does
+points or trips), then frames the map on it.
 
 ```sql
 SELECT o.lat AS origin_lat, o.lon AS origin_lon,
@@ -138,16 +144,27 @@ JOIN zones d ON d.id = t.dest_zone
 GROUP BY 1, 2, 3, 4;
 ```
 
+H3 hexagons work too — map **Origin H3** / **Destination H3** instead of the coordinate pairs. Choose
+the line style (straight, curved, animated) under **Flow line style**.
+
+### Cross-filtering
+
+A select, multi-select or text filter set on the map can drive a **dashboard variable**, so filtering
+on the map filters every other panel. Add a template variable, then map a filtered column to it under
+**Cross-filtering**. Clicking a category on the map writes `var-<name>` and the dashboard re-queries.
+
 ## Panel options
 
-| Option | Notes |
-|---|---|
-| **Field mapping** | Per query. Autodetected values appear as placeholders; set one to override. |
-| **Show side panel** | kepler's layer and filter panel. Worth hiding on small tiles. |
-| **Follow dashboard theme** | Off leaves kepler with its own styling. |
-| **Time range sync** | Dashboard drives the map's time filter (default), both directions, or off. Needs a time column. |
-| **Base map** | Carto Dark Matter / Positron / Voyager, or a self-hosted `style.json`. |
-| **Map configuration** | Save the current layers and filters with the dashboard, or paste one in. |
+| Option                     | Notes                                                                                           |
+| -------------------------- | ----------------------------------------------------------------------------------------------- |
+| **Field mapping**          | Per query. Autodetected values appear as placeholders; set one to override.                     |
+| **Show side panel**        | kepler's layer and filter panel. Worth hiding on small tiles.                                   |
+| **Follow dashboard theme** | Off leaves kepler with its own styling.                                                         |
+| **Time range sync**        | Dashboard drives the map's time filter (default), both directions, or off. Needs a time column. |
+| **Flow line style**        | Straight, curved or animated lines for origin-destination flow layers.                          |
+| **Cross-filtering**        | Map a kepler filter to a dashboard variable to cross-filter other panels.                       |
+| **Base map**               | Carto Dark Matter / Positron / Voyager, or a self-hosted `style.json`.                          |
+| **Map configuration**      | Save the current layers and filters with the dashboard, or paste one in.                        |
 
 Saving is explicit rather than automatic: the configuration is a sizeable blob that lands in the
 dashboard JSON, and rewriting it on every pan would churn the dashboard for nothing.
@@ -198,9 +215,9 @@ reached the map — useful when a change breaks rendering without breaking a tes
 
 ## Roadmap
 
-- **v0.2** *(done)* — automatic trip layers; dashboard time range synced with kepler's timeline,
+- **v0.2** _(done)_ — automatic trip layers; dashboard time range synced with kepler's timeline,
   one-way or both ways.
-- **v0.3** — origin-destination flow layer; map filters driving dashboard variables.
+- **v0.3** _(done)_ — origin-destination flow layers; map filters driving dashboard variables.
 - **v1.0** — move to kepler.gl 3.3.0 stable, sign, and submit to the Grafana catalog.
 
 Design notes and the findings from the feasibility spike are in [`docs/`](docs/).

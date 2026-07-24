@@ -5,6 +5,7 @@ import { KeplerPanel } from './panel/KeplerPanel';
 import { SaveMapConfigEditor } from './editors/SaveMapConfigEditor';
 import { MapConfigEditor } from './editors/MapConfigEditor';
 import { FieldMappingEditor } from './editors/FieldMappingEditor';
+import { VariableSyncEditor } from './editors/VariableSyncEditor';
 
 export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelOptions((builder) =>
   builder
@@ -80,6 +81,14 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       category: ['Map'],
       settings: { placeholder: 'https://tiles.internal/style.json' },
       showIf: (config) => config.basemap === 'custom',
+    })
+    .addCustomEditor({
+      id: 'variableMappings',
+      path: 'variableMappings',
+      name: '',
+      description: 'Write a kepler filter into a dashboard variable to cross-filter other panels.',
+      category: ['Cross-filtering'],
+      editor: VariableSyncEditor,
     })
     .addCustomEditor({
       id: 'saveRequest',

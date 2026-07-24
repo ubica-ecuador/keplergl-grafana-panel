@@ -119,9 +119,21 @@ export function refreshDatasets(dispatch: Dispatch, datasets: PanelDataset[]): v
 
 /** Minimal view of the kepler vis-state these helpers read. */
 interface VisStateLike {
-  filters: Array<{ id: string; type?: string; value?: unknown }>;
+  filters: Array<{ id: string; type?: string; value?: unknown; name?: string[] | string }>;
   datasets: Record<string, { fields: Array<{ name: string; type?: string }> }>;
   layers: Array<{ id: string; config?: { dataId?: string }; meta?: { bounds?: number[] } }>;
+}
+
+/** A kepler filter, as the variable sync reads it. */
+export interface KeplerFilter {
+  name?: string[] | string;
+  type?: string;
+  value?: unknown;
+}
+
+/** The map's current filters, for driving dashboard variables. */
+export function readFilters(store: Store): KeplerFilter[] {
+  return getVisState(store)?.filters ?? [];
 }
 
 /** A map bounding box in kepler's `[minLng, minLat, maxLng, maxLat]` order. */
