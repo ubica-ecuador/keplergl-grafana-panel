@@ -60,6 +60,19 @@ FROM read_parquet('s3://bucket/zones/*.parquet');
 Under the hood kepler.gl itself only renders GeoJSON and WKT; WKB decoding happens in the plugin
 (`src/data/wkbToGeoJson.ts`), which is what makes the raw-geometry path work.
 
+### GeoJSON from a URL
+
+The [Infinity data source](https://grafana.com/grafana/plugins/yesoreyeram-infinity-datasource/)
+(signed, in the catalog) fetches a `.geojson` from any URL and flattens it into rows the panel reads:
+
+- **Type** JSON, **Source** URL, **Parser** Backend, **URL** your `.geojson`
+- **Rows/Root** selector: `features`
+- **Columns**: `geometry` aliased to `geojson` (type **String**), plus `properties.name`, etc.
+
+Infinity serialises the nested `geometry` object to a GeoJSON string when the column type is String —
+no JSONata needed — and the panel autodetects a column named `geojson` as the geometry. Verified
+end-to-end against a served FeatureCollection.
+
 ### GeoParquet on S3 via DuckDB
 
 The [DuckDB data source](https://github.com/motherduckdb/grafana-duckdb-datasource) reads GeoParquet
