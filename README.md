@@ -1,117 +1,149 @@
-# Grafana panel plugin template
+# Kepler.gl panel for Grafana
 
-This template is a starting point for building a panel plugin for Grafana.
+Interactive [kepler.gl](https://kepler.gl) maps inside Grafana dashboards, fed by any Grafana data
+source. Built for spatio-temporal mobility data — points, trajectories and origin-destination flows.
 
-## What are Grafana panel plugins?
+An open source alternative to the Foursquare Studio panel, which renders its map in an iframe against
+`studio.foursquare.com` and therefore needs a Foursquare account. This one runs kepler.gl inside the
+panel: no external service, no account, no Mapbox token.
 
-Panel plugins allow you to add new types of visualizations to your dashboard, such as maps, clocks, pie charts, lists, and more.
+> **Status: v0.1.** Usable, and pinned to a kepler.gl pre-release because the Flow layer exists
+> nowhere else. Not yet in the Grafana catalog — see [Roadmap](#roadmap).
 
-Use panel plugins when you want to do things like visualize data returned by data source queries, navigate between dashboards, or control external systems (such as smart home devices).
+## What it does today
 
-## Getting started
+- **Any data source.** Each query becomes a kepler dataset, so a single panel can overlay several.
+- **Column autodetection**, overridable per query — lat/lng, time, trip id, geometry, H3 and
+  origin/destination pairs.
+- **PostGIS geometry works out of the box**, including raw `EWKB` hex. `ST_AsGeoJSON` is optional,
+  not required.
+- **Your layer configuration survives a refresh.** Data is swapped underneath the layers rather than
+  the datasets being torn down and rebuilt.
+- **Saved map configuration** stored with the dashboard, and configs pasted from kepler.gl,
+  Foursquare Studio or Dekart are accepted.
+- **Follows the dashboard theme**, base map included.
+- **No outbound calls to any vendor.** Base maps come from Carto and can be swapped for a
+  self-hosted `style.json`; kepler's icon library ships with the plugin.
 
-### Frontend
+## Queries
 
-1. Install dependencies
+Nothing special is required — the plugin reads the columns your query already returns. Name them
+recognisably and it configures itself; otherwise map them by hand under **Field mapping**.
 
-   ```bash
-   npm install
-   ```
+### Points
 
-2. Build plugin in development mode and run in watch mode
+```sql
+SELECT lat AS latitude,
+       lon AS longitude,
+       recorded_at,          -- any time column is detected by type
+       speed_kmh             -- extra columns become tooltips and colour scales
+FROM gps_readings;
+```
 
-   ```bash
-   npm run dev
-   ```
+### PostGIS geometry
 
-3. Build plugin in production mode
+The Postgres data source returns geometry as EWKB hex, which the plugin normalises for you:
 
-   ```bash
-   npm run build
-   ```
+```sql
+SELECT geom, name, category    -- no ST_AsGeoJSON needed
+FROM neighbourhoods;
+```
 
-4. Run the tests (using Jest)
+`ST_AsGeoJSON(geom)` and WKT work equally well if you prefer them.
 
-   ```bash
-   # Runs the tests and watches for changes, requires git init first
-   npm run test
+### Trajectories
 
-   # Exits after running all the tests
-   npm run test:ci
-   ```
+Give each trajectory an id and a time, and map the **Trip ID** role:
 
-5. Spin up a Grafana instance and run the plugin inside it (using Docker)
+```sql
+SELECT vehicle_id AS trip_id,
+       ST_Y(geom) AS latitude,
+       ST_X(geom) AS longitude,
+       ts AS time
+FROM vehicle_positions
+ORDER BY vehicle_id, ts;
+```
 
-   ```bash
-   npm run server
-   ```
+### Origin-destination flows
 
-6. Run the E2E tests (using Playwright)
+The flow layer takes a flat OD table:
 
-   ```bash
-   # Spins up a Grafana instance first that we tests against
-   npm run server
+```sql
+SELECT o.lat AS origin_lat, o.lon AS origin_lon,
+       d.lat AS dest_lat,   d.lon AS dest_lon,
+       COUNT(*) AS trips
+FROM trips t
+JOIN zones o ON o.id = t.origin_zone
+JOIN zones d ON d.id = t.dest_zone
+GROUP BY 1, 2, 3, 4;
+```
 
-   # If you wish to start a certain Grafana version. If not specified will use latest by default
-   GRAFANA_VERSION=11.3.0 npm run server
+## Panel options
 
-   # Starts the tests
-   npm run e2e
-   ```
+| Option | Notes |
+|---|---|
+| **Field mapping** | Per query. Autodetected values appear as placeholders; set one to override. |
+| **Show side panel** | kepler's layer and filter panel. Worth hiding on small tiles. |
+| **Follow dashboard theme** | Off leaves kepler with its own styling. |
+| **Base map** | Carto Dark Matter / Positron / Voyager, or a self-hosted `style.json`. |
+| **Map configuration** | Save the current layers and filters with the dashboard, or paste one in. |
 
-7. Run the linter
+Saving is explicit rather than automatic: the configuration is a sizeable blob that lands in the
+dashboard JSON, and rewriting it on every pan would churn the dashboard for nothing.
 
-   ```bash
-   npm run lint
+## Installing
 
-   # or
+Requires **Grafana `>=12.0.10 <12.1 || >=12.1.7 <12.2 || >=12.2.5`**. Those floors are not arbitrary:
+Grafana only added `react/jsx-runtime` to its module import map in those patches, and the plugin
+fails to load below them.
 
-   npm run lint:fix
-   ```
+The plugin is unsigned while it is pre-1.0, so allow it explicitly:
 
-# Distributing your plugin
+```ini
+[plugins]
+allow_loading_unsigned_plugins = ubica-keplergl-panel
+```
 
-When distributing a Grafana plugin either within the community or privately the plugin must be signed so the Grafana application can verify its authenticity. This can be done with the `@grafana/sign-plugin` package.
+### Hardened Grafana
 
-_Note: It's not necessary to sign a plugin during development. The docker development environment that is scaffolded with `@grafana/create-plugin` caters for running the plugin without a signature._
+With `content_security_policy = true` the map loads and its Web Workers start, but `connect-src`
+blocks the base map. MapLibre fetches styles, sprites, glyphs and tiles over XHR, so they all fall
+under that directive:
 
-## Initial steps
+```ini
+content_security_policy_template = """...connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com ...;"""
+```
 
-Before signing a plugin please read the Grafana [plugin publishing and signing criteria](https://grafana.com/legal/plugins/#plugin-publishing-and-signing-criteria) documentation carefully.
+Or point **Base map** at a `style.json` on your own network and skip this entirely.
 
-`@grafana/create-plugin` has added the necessary commands and workflows to make signing and distributing a plugin via the grafana plugins catalog as straightforward as possible.
+## Development
 
-Before signing a plugin for the first time please consult the Grafana [plugin signature levels](https://grafana.com/legal/plugins/#what-are-the-different-classifications-of-plugins) documentation to understand the differences between the types of signature level.
+```bash
+npm install
+npm run dev          # watch build
+npm run server       # Grafana 12.0.10 on :3000, plus a strict-CSP one on :3001
+npm run test:ci      # unit tests
+npm run e2e          # end-to-end against the running Grafana
+```
 
-1. Create a [Grafana Cloud account](https://grafana.com/signup).
-2. Make sure that the first part of the plugin ID matches the slug of your Grafana Cloud account.
-   - _You can find the plugin ID in the `plugin.json` file inside your plugin directory. For example, if your account slug is `acmecorp`, you need to prefix the plugin ID with `acmecorp-`._
-3. Create a Grafana Cloud API key with the `PluginPublisher` role.
-4. Keep a record of this API key as it will be required for signing a plugin
+Requires Node 22+. If you have changed your dev Grafana's admin password, pass it through:
+`GRAFANA_ADMIN_PASSWORD=… npm run e2e`.
 
-## Signing a plugin
+`npm run verify:spike` drives a browser against the provisioned dashboard and reports what actually
+reached the map — useful when a change breaks rendering without breaking a test.
 
-### Using Github actions release workflow
+> Do not `rm -rf dist` while the dev containers are running: `dist` is bind-mounted, and deleting it
+> leaves the containers serving a stale inode. `npm run build` cleans it correctly.
 
-If the plugin is using the github actions supplied with `@grafana/create-plugin` signing a plugin is included out of the box. The [release workflow](./.github/workflows/release.yml) can prepare everything to make submitting your plugin to Grafana as easy as possible. Before being able to sign the plugin however a secret needs adding to the Github repository.
+## Roadmap
 
-1. Please navigate to "settings > secrets > actions" within your repo to create secrets.
-2. Click "New repository secret"
-3. Name the secret "GRAFANA_API_KEY"
-4. Paste your Grafana Cloud API key in the Secret field
-5. Click "Add secret"
+- **v0.2** — dashboard time range synced both ways with kepler's timeline; automatic trip layers.
+- **v0.3** — origin-destination flow layer; map filters driving dashboard variables.
+- **v1.0** — move to kepler.gl 3.3.0 stable, sign, and submit to the Grafana catalog.
 
-#### Push a version tag
+Design notes and the findings from the feasibility spike are in [`docs/`](docs/).
 
-To trigger the workflow we need to push a version tag to github. This can be achieved with the following steps:
+## Licence
 
-1. Run `npm version <major|minor|patch>`
-2. Run `git push origin main --follow-tags`
-
-## Learn more
-
-Below you can find source code for existing app plugins and other related documentation.
-
-- [Basic panel plugin example](https://github.com/grafana/grafana-plugin-examples/tree/master/examples/panel-basic#readme)
-- [`plugin.json` documentation](https://grafana.com/developers/plugin-tools/reference/plugin-json)
-- [How to sign a plugin?](https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin)
+Apache-2.0. Bundles [kepler.gl](https://github.com/keplergl/kepler.gl) (MIT) and
+[flowmap.gl](https://github.com/visgl/flowmap.gl) (Apache-2.0).
