@@ -1,4 +1,5 @@
 import { FieldRoles } from './data/detectFields';
+import { FlowRenderMode } from './data/buildFlows';
 import { SavedMapConfig } from './data/mapConfig';
 import { TimeSyncMode } from './panel/timeSync';
 
@@ -49,4 +50,7 @@ export interface KeplerPanelOptions {
    * lets the map's time slider move the dashboard; `off` decouples them.
    */
   timeSync?: TimeSyncMode;
+
+  /** How auto-created flow layers draw their lines. Defaults to `straight`. */
+  flowRenderMode?: FlowRenderMode;
 }

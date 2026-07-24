@@ -14,7 +14,7 @@ export type KeplerRow = Record<string, unknown>;
  * `_geojson` is kepler's convention for a geometry column; `lat0`/`lng0`/
  * `lat1`/`lng1`/`count` are what the flow layer requires.
  */
-const KEPLER_COLUMN: Record<keyof FieldRoles, string> = {
+export const KEPLER_COLUMN: Record<keyof FieldRoles, string> = {
   latitude: 'latitude',
   longitude: 'longitude',
   time: 'time',
@@ -58,10 +58,7 @@ export function toKeplerRows(frame: DataFrame, roles: FieldRoles): KeplerRow[] {
       // A geometry column may hold WKB hex (raw PostGIS/DuckDB), GeoJSON or WKT.
       // Decode WKB to GeoJSON so it renders; leave GeoJSON/WKT untouched — kepler
       // parses those directly, and wkbToGeoJson returns null for them.
-      row[name] =
-        field.name === geometrySource && typeof value === 'string'
-          ? wkbToGeoJson(value) ?? value
-          : value;
+      row[name] = field.name === geometrySource && typeof value === 'string' ? (wkbToGeoJson(value) ?? value) : value;
     }
     rows.push(row);
   }

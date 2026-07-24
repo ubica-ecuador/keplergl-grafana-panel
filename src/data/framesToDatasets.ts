@@ -1,5 +1,6 @@
 import { DataFrame } from '@grafana/data';
 
+import { buildFlows, FlowLayerConfig, FlowRenderMode } from './buildFlows';
 import { buildTrips } from './buildTrips';
 import { detectFields, FieldRoles } from './detectFields';
 import { KeplerRow, toKeplerRows } from './toKeplerDataset';
@@ -9,6 +10,11 @@ export interface PanelDataset {
   id: string;
   label: string;
   rows: KeplerRow[];
+  /**
+   * A flow layer to add for this dataset, when the query is origin-destination.
+   * kepler does not auto-detect flow layers, so the panel adds it explicitly.
+   */
+  flowLayer?: FlowLayerConfig;
 }
 
 /**
@@ -21,15 +27,27 @@ export interface PanelDataset {
  * `overrides` carries the panel's saved field mapping, keyed by refId; anything
  * not overridden falls back to autodetection.
  */
-export function framesToDatasets(frames: DataFrame[], overrides: Record<string, FieldRoles> = {}): PanelDataset[] {
+export function framesToDatasets(
+  frames: DataFrame[],
+  overrides: Record<string, FieldRoles> = {},
+  opts: { flowRenderMode?: FlowRenderMode } = {}
+): PanelDataset[] {
   return frames.map((frame, index) => {
     const refId = frame.refId ?? `${index}`;
     const roles = { ...detectFields(frame), ...(overrides[refId] ?? {}) };
+    const id = datasetId(refId);
+
+    // Trips replace the rows entirely; everything else stays tabular and may
+    // additionally carry a flow layer when the columns describe OD movement.
+    if (isTripFrame(roles)) {
+      return { id, label: frame.name ?? `Query ${refId}`, rows: buildTrips(frame, roles) };
+    }
 
     return {
-      id: datasetId(refId),
+      id,
       label: frame.name ?? `Query ${refId}`,
-      rows: isTripFrame(roles) ? buildTrips(frame, roles) : toKeplerRows(frame, roles),
+      rows: toKeplerRows(frame, roles),
+      flowLayer: buildFlows(roles, id, { renderingMode: opts.flowRenderMode }) ?? undefined,
     };
   });
 }

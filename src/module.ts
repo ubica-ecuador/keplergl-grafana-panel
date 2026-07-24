@@ -44,6 +44,20 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       },
     })
     .addSelect({
+      path: 'flowRenderMode',
+      name: 'Flow line style',
+      description: 'How origin-destination flow layers draw their lines.',
+      category: ['Map'],
+      defaultValue: 'straight',
+      settings: {
+        options: [
+          { value: 'straight', label: 'Straight' },
+          { value: 'curved', label: 'Curved' },
+          { value: 'animated-straight', label: 'Animated' },
+        ],
+      },
+    })
+    .addSelect({
       path: 'basemap',
       name: 'Base map',
       description: 'Carto base maps, served without a Mapbox token.',

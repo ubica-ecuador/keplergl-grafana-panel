@@ -31,6 +31,29 @@ const config = async (env: Env): Promise<Configuration> => {
          */
         assert: path.resolve(process.cwd(), 'node_modules', 'assert'),
       },
+      /*
+       * Force a single instance of each deck.gl / luma.gl core package.
+       *
+       * These packages ship both an ESM (`module`) and a CommonJS (`main`)
+       * build. kepler and @flowmap.gl resolve them through different entry
+       * points, so webpack bundles both builds and deck.gl ends up with TWO
+       * shader-hook registries: hooks registered against one instance are
+       * invisible to the other. The flow layer's shaders then fail to compile
+       * with `DECKGL_FILTER_COLOR: no matching overloaded function found`, and
+       * the flow layer renders nothing. Pinning each package to its ESM entry
+       * collapses it to one instance and one registry. See visgl/deck.gl FAQ,
+       * "duplicate deck.gl bundles".
+       */
+      alias: Object.fromEntries(
+        [
+          '@deck.gl/core',
+          '@luma.gl/core',
+          '@luma.gl/engine',
+          '@luma.gl/shadertools',
+          '@luma.gl/webgl',
+          '@luma.gl/constants',
+        ].map((pkg) => [`${pkg}$`, path.resolve(process.cwd(), 'node_modules', pkg, 'dist/index.js')])
+      ),
     },
     module: {
       rules: [

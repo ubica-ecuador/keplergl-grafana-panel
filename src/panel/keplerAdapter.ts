@@ -1,6 +1,8 @@
 import {
   addDataToMap,
+  addLayer,
   createOrUpdateFilter,
+  fitBounds,
   mapStyleChange,
   toggleSidePanel,
   updateVisData,
@@ -11,6 +13,7 @@ import KeplerGlSchema from '@kepler.gl/schemas';
 import type { Dispatch, Store } from 'redux';
 
 import type { PanelDataset } from '../data/framesToDatasets';
+import type { FlowLayerConfig } from '../data/buildFlows';
 import type { SavedMapConfig } from '../data/mapConfig';
 import { findTimeFieldName, readTimeFilterValue, TIME_FILTER_TYPE, type TimeRangeMs } from './timeSync';
 import { KEPLER_INSTANCE_ID } from './constants';
@@ -114,11 +117,15 @@ export function refreshDatasets(dispatch: Dispatch, datasets: PanelDataset[]): v
   );
 }
 
-/** Minimal view of the kepler vis-state these time-filter helpers read. */
+/** Minimal view of the kepler vis-state these helpers read. */
 interface VisStateLike {
   filters: Array<{ id: string; type?: string; value?: unknown }>;
   datasets: Record<string, { fields: Array<{ name: string; type?: string }> }>;
+  layers: Array<{ id: string; config?: { dataId?: string }; meta?: { bounds?: number[] } }>;
 }
+
+/** A map bounding box in kepler's `[minLng, minLat, maxLng, maxLat]` order. */
+export type MapBounds = [number, number, number, number];
 
 function getVisState(store: Store): VisStateLike | null {
   const state = store.getState() as { keplerGl?: Record<string, { visState?: VisStateLike }> };
@@ -163,6 +170,51 @@ export function pushTimeRange(store: Store, dispatch: Dispatch, range: TimeRange
   }
 
   return false;
+}
+
+/** Whether the map is ready for a flow layer to be added for `dataId`. */
+export function flowLayerStatus(
+  store: Store,
+  dataId: string,
+  layerId: string
+): { datasetLoaded: boolean; layerExists: boolean } {
+  const visState = getVisState(store);
+  if (!visState) {
+    return { datasetLoaded: false, layerExists: false };
+  }
+  return {
+    datasetLoaded: Boolean(visState.datasets[dataId]),
+    layerExists: (visState.layers ?? []).some((l) => l.id === layerId),
+  };
+}
+
+/**
+ * Adds a flow layer for an origin-destination dataset and returns the bounds
+ * kepler computed for it, or null.
+ *
+ * kepler auto-creates default layers for points, geometry and trips but not for
+ * flows, so an OD dataset would otherwise render nothing. The layer config comes
+ * from `buildFlows`; kepler parses it because it carries `visualChannels`. kepler
+ * computes the layer's data bounds while adding it (synchronously), which the
+ * caller uses to frame the map — `addDataToMap` could not, having had no flow
+ * layer to measure.
+ */
+export function addFlowLayer(
+  store: Store,
+  dispatch: Dispatch,
+  layer: FlowLayerConfig,
+  dataId: string
+): MapBounds | null {
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, addLayer(layer, dataId)));
+
+  const added = getVisState(store)?.layers.find((l) => l.id === layer.id);
+  const bounds = added?.meta?.bounds;
+  return Array.isArray(bounds) && bounds.length === 4 ? (bounds as MapBounds) : null;
+}
+
+/** Frames the map on a bounding box. */
+export function fitMapToBounds(dispatch: Dispatch, bounds: MapBounds): void {
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, fitBounds(bounds)));
 }
 
 /** Switches the base map to one of kepler's registered styles. */

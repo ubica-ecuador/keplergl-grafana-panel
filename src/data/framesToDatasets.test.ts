@@ -44,6 +44,39 @@ describe('framesToDatasets', () => {
     ]);
   });
 
+  it('attaches a flow layer to an origin-destination query', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'origin_lat', type: FieldType.number, values: [1] },
+        { name: 'origin_lon', type: FieldType.number, values: [2] },
+        { name: 'dest_lat', type: FieldType.number, values: [3] },
+        { name: 'dest_lon', type: FieldType.number, values: [4] },
+        { name: 'trips', type: FieldType.number, values: [42] },
+      ],
+    });
+
+    const [dataset] = framesToDatasets([frame], {}, { flowRenderMode: 'curved' });
+
+    // Rows carry the flow column names, and a flow layer rides along.
+    expect(dataset.rows[0]).toEqual({ lat0: 1, lng0: 2, lat1: 3, lng1: 4, count: 42 });
+    expect(dataset.flowLayer?.type).toBe('flow');
+    expect(dataset.flowLayer?.config.dataId).toBe('grafana-A');
+    expect(dataset.flowLayer?.config.visConfig.flowLinesRenderingMode).toBe('curved');
+  });
+
+  it('leaves a plain point query without a flow layer', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'latitude', type: FieldType.number, values: [1] },
+        { name: 'longitude', type: FieldType.number, values: [2] },
+      ],
+    });
+
+    expect(framesToDatasets([frame])[0].flowLayer).toBeUndefined();
+  });
+
   it('lets an override turn a query into trips even when names are unrecognised', () => {
     const frame = toDataFrame({
       refId: 'A',

@@ -22,8 +22,8 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
   const grafanaTheme = useTheme2();
 
   const datasets = useMemo(
-    () => framesToDatasets(data.series, options.fieldMappings),
-    [data.series, options.fieldMappings]
+    () => framesToDatasets(data.series, options.fieldMappings, { flowRenderMode: options.flowRenderMode }),
+    [data.series, options.fieldMappings, options.flowRenderMode]
   );
 
   // kepler and the sync hook work in epoch ms; Grafana hands DateTime objects.

@@ -14,6 +14,7 @@ import { createKeplerStore } from './keplerStore';
 import { captureMapConfig, loadDatasets, refreshDatasets, setBasemap, setSidePanel } from './keplerAdapter';
 import { decideLoadAction } from './loadDecision';
 import { useTimeRangeSync } from './useTimeRangeSync';
+import { useFlowLayers } from './useFlowLayers';
 import type { TimeRangeMs, TimeSyncMode } from './timeSync';
 
 // Must run before any kepler component mounts. Lives here rather than in
@@ -147,6 +148,9 @@ export function KeplerMap({
     datasets,
     onChangeGrafanaRange,
   });
+
+  // Auto-add flow layers only on a fresh map; a saved config owns its layers.
+  useFlowLayers({ store, isReady, datasets, enabled: !mapConfig });
 
   return (
     <div ref={setStyleTarget} style={{ width, height, position: 'relative', overflow: 'hidden' }}>
