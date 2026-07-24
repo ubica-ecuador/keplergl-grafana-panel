@@ -5,12 +5,58 @@ import { KeplerPanel } from './panel/KeplerPanel';
 import { configureKepler } from './panel/keplerConfig';
 import { SaveMapConfigEditor } from './editors/SaveMapConfigEditor';
 import { MapConfigEditor } from './editors/MapConfigEditor';
+import { FieldMappingEditor } from './editors/FieldMappingEditor';
 
 // Must run before any kepler component mounts.
 configureKepler();
 
 export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelOptions((builder) =>
   builder
+    .addCustomEditor({
+      id: 'fieldMappings',
+      path: 'fieldMappings',
+      name: '',
+      description: 'Columns are detected automatically; override them here when the guess is wrong.',
+      category: ['Field mapping'],
+      editor: FieldMappingEditor,
+    })
+    .addBooleanSwitch({
+      path: 'showSidePanel',
+      name: 'Show side panel',
+      description: "kepler's layer and filter panel. Worth hiding on small tiles.",
+      category: ['Map'],
+      defaultValue: true,
+    })
+    .addBooleanSwitch({
+      path: 'followGrafanaTheme',
+      name: 'Follow dashboard theme',
+      category: ['Map'],
+      defaultValue: true,
+    })
+    .addSelect({
+      path: 'basemap',
+      name: 'Base map',
+      description: 'Carto base maps, served without a Mapbox token.',
+      category: ['Map'],
+      defaultValue: 'auto',
+      settings: {
+        options: [
+          { value: 'auto', label: 'Match theme' },
+          { value: 'dark-matter', label: 'Dark Matter' },
+          { value: 'positron', label: 'Positron' },
+          { value: 'voyager', label: 'Voyager' },
+          { value: 'custom', label: 'Self-hosted style.json' },
+        ],
+      },
+    })
+    .addTextInput({
+      path: 'customBasemapUrl',
+      name: 'Style URL',
+      description: 'MapLibre style.json served from your own network — required for air-gapped installs.',
+      category: ['Map'],
+      settings: { placeholder: 'https://tiles.internal/style.json' },
+      showIf: (config) => config.basemap === 'custom',
+    })
     .addCustomEditor({
       id: 'saveRequest',
       path: 'saveRequest',

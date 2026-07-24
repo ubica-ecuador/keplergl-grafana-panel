@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Provider } from 'react-redux';
 import { StyleSheetManager } from 'styled-components';
 import KeplerGl from '@kepler.gl/components';
@@ -6,12 +6,17 @@ import type { Store } from 'redux';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 
+import { KeplerThemeOverride } from '../data/keplerTheme';
 import { KEPLER_INSTANCE_ID } from './keplerStore';
+
+export const CUSTOM_BASEMAP_ID = 'grafana-custom-basemap';
 
 interface Props {
   store: Store;
   width: number;
   height: number;
+  theme?: KeplerThemeOverride;
+  customBasemapUrl?: string;
   /**
    * Fired once kepler has registered its instance in the store. Dispatching
    * data before this point silently does nothing: the actions are addressed to
@@ -32,8 +37,15 @@ interface Props {
  *    instance, so this Provider overrides the context here — no `@grafana/ui`
  *    component may be rendered below this point.
  */
-export function KeplerMap({ store, width, height, onReady }: Props) {
+export function KeplerMap({ store, width, height, theme, customBasemapUrl, onReady }: Props) {
   const [styleTarget, setStyleTarget] = useState<HTMLElement | null>(null);
+
+  // Registering a self-hosted style.json makes the panel usable in air-gapped
+  // installs, where the Carto base maps are unreachable.
+  const mapStyles = useMemo(
+    () => (customBasemapUrl ? [{ id: CUSTOM_BASEMAP_ID, label: 'Custom', url: customBasemapUrl }] : undefined),
+    [customBasemapUrl]
+  );
 
   return (
     <div ref={setStyleTarget} style={{ width, height, position: 'relative', overflow: 'hidden' }}>
@@ -48,6 +60,8 @@ export function KeplerMap({ store, width, height, onReady }: Props) {
                  required by the type but unused unless a Mapbox style is picked. */
               mapboxApiAccessToken=""
               appName="Grafana"
+              theme={theme}
+              mapStyles={mapStyles}
               onKeplerGlInitialized={onReady}
             />
           </Provider>

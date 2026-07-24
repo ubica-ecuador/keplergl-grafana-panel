@@ -1,6 +1,9 @@
 import { FieldRoles } from './data/detectFields';
 import { SavedMapConfig } from './data/mapConfig';
 
+/** Built-in MapLibre base maps kepler ships, all served by Carto without a token. */
+export type BasemapChoice = 'auto' | 'dark-matter' | 'positron' | 'voyager' | 'custom';
+
 export interface KeplerPanelOptions {
   /**
    * Field mapping overrides, keyed by query refId. Anything absent falls back
@@ -23,4 +26,19 @@ export interface KeplerPanelOptions {
    * counter rather than a boolean so repeated saves always register.
    */
   saveRequest?: number;
+
+  /** kepler's layer/filter side panel. Worth hiding on small dashboard tiles. */
+  showSidePanel?: boolean;
+
+  /** `auto` follows the Grafana theme: dark-matter in dark mode, positron in light. */
+  basemap?: BasemapChoice;
+
+  /**
+   * A self-hosted MapLibre `style.json`. The Carto base maps need outbound
+   * internet, which air-gapped Grafana installs do not have.
+   */
+  customBasemapUrl?: string;
+
+  /** Follow the dashboard theme. Off leaves kepler with its own dark styling. */
+  followGrafanaTheme?: boolean;
 }

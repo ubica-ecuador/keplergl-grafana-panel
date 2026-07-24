@@ -1,4 +1,4 @@
-import { addDataToMap, updateVisData, wrapTo } from '@kepler.gl/actions';
+import { addDataToMap, mapStyleChange, toggleSidePanel, updateVisData, wrapTo } from '@kepler.gl/actions';
 import { processRowObject } from '@kepler.gl/processors';
 import KeplerGlSchema from '@kepler.gl/schemas';
 import type { Dispatch, Store } from 'redux';
@@ -104,4 +104,19 @@ export function refreshDatasets(dispatch: Dispatch, datasets: PanelDataset[]): v
       })
     )
   );
+}
+
+/** Switches the base map to one of kepler's registered styles. */
+export function setBasemap(dispatch: Dispatch, styleId: string): void {
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, mapStyleChange(styleId)));
+}
+
+/**
+ * Shows or hides kepler's layer/filter side panel.
+ *
+ * kepler models this as "which panel is open", so hiding means selecting no
+ * panel at all rather than a visibility flag.
+ */
+export function setSidePanel(dispatch: Dispatch, visible: boolean): void {
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, toggleSidePanel(visible ? 'layer' : null)));
 }

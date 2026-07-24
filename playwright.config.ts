@@ -28,6 +28,16 @@ export default defineConfig<PluginOptions>({
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: process.env.GRAFANA_URL || 'http://localhost:3000',
 
+    /*
+     * plugin-e2e logs in as admin/admin by default, which breaks the moment
+     * anyone changes the password on their dev instance. Override with
+     * GRAFANA_ADMIN_USER / GRAFANA_ADMIN_PASSWORD.
+     */
+    user: {
+      user: process.env.GRAFANA_ADMIN_USER || 'admin',
+      password: process.env.GRAFANA_ADMIN_PASSWORD || 'admin',
+    },
+
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
   },
