@@ -18,9 +18,13 @@
       "flows",
       "geojson",
       "h3",
-      "postgis"
+      "postgis",
+      "spatial",
+      "temporal",
+      "spatio-temporal",
+      "geoparquet"
     ],
-    "description": "Interactive kepler.gl maps for Grafana dashboards — spatio-temporal mobility data from any data source.",
+    "description": "Interactive kepler.gl maps for Grafana dashboards — spatio-temporal data from any data source.",
     "author": {
       "name": "Ubica"
     },
