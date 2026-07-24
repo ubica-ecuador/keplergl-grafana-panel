@@ -1,8 +1,10 @@
 import { addDataToMap, updateVisData, wrapTo } from '@kepler.gl/actions';
 import { processRowObject } from '@kepler.gl/processors';
-import type { Dispatch } from 'redux';
+import KeplerGlSchema from '@kepler.gl/schemas';
+import type { Dispatch, Store } from 'redux';
 
 import type { PanelDataset } from '../data/framesToDatasets';
+import type { SavedMapConfig } from '../data/mapConfig';
 import { KEPLER_INSTANCE_ID } from './keplerStore';
 
 /**
@@ -44,18 +46,43 @@ export function loadDatasets(
   dispatch: Dispatch,
   datasets: PanelDataset[],
   options: { centerMap?: boolean } = {},
-  config?: object
+  savedConfig?: SavedMapConfig | null
 ): void {
+  // parseSavedConfig returns null for a config it cannot migrate — for example
+  // one exported by an older kepler. Falling back to no config beats refusing
+  // to render the map at all.
+  const config = savedConfig ? KeplerGlSchema.parseSavedConfig(savedConfig) : null;
+
+  // A saved config already positions the map; re-framing it around the data
+  // would throw away the viewport the user deliberately saved.
+  const centerMap = options.centerMap ?? !config;
+
   dispatch(
     wrapTo(
       KEPLER_INSTANCE_ID,
       addDataToMap({
         datasets: toKeplerDatasets(datasets),
-        options: { centerMap: options.centerMap ?? true },
+        options: { centerMap },
         ...(config ? { config } : {}),
       })
     )
   );
+}
+
+/**
+ * Snapshots the current map configuration — layers, filters, interactions, base
+ * map — so it can be stored in the panel options.
+ *
+ * Returns null before kepler has registered its instance, which is what happens
+ * if the user hits save on a panel whose map has not finished mounting.
+ */
+export function captureMapConfig(store: Store): SavedMapConfig | null {
+  const state = store.getState() as { keplerGl?: Record<string, unknown> };
+  const instance = state.keplerGl?.[KEPLER_INSTANCE_ID];
+  if (!instance) {
+    return null;
+  }
+  return KeplerGlSchema.getConfigToSave(instance) as unknown as SavedMapConfig;
 }
 
 /**
