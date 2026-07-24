@@ -73,6 +73,11 @@ Infinity serialises the nested `geometry` object to a GeoJSON string when the co
 no JSONata needed — and the panel autodetects a column named `geojson` as the geometry. Verified
 end-to-end against a served FeatureCollection.
 
+A **WFS** endpoint that speaks GeoJSON (`outputFormat=application/json`) is just such a URL and works
+the same way — but **request WGS84 explicitly** with `&srsName=EPSG:4326`. GeoServer otherwise
+returns coordinates in the layer's native CRS (often projected metres, e.g. UTM), which the map
+cannot place. The plugin renders WGS84 lon/lat only; it does not reproject.
+
 ### GeoParquet on S3 via DuckDB
 
 The [DuckDB data source](https://github.com/motherduckdb/grafana-duckdb-datasource) reads GeoParquet
