@@ -1,5 +1,6 @@
 import { FieldRoles } from './data/detectFields';
 import { SavedMapConfig } from './data/mapConfig';
+import { TimeSyncMode } from './panel/timeSync';
 
 /** Built-in MapLibre base maps kepler ships, all served by Carto without a token. */
 export type BasemapChoice = 'auto' | 'dark-matter' | 'positron' | 'voyager' | 'custom';
@@ -41,4 +42,11 @@ export interface KeplerPanelOptions {
 
   /** Follow the dashboard theme. Off leaves kepler with its own dark styling. */
   followGrafanaTheme?: boolean;
+
+  /**
+   * Couples the dashboard time range with the map's time filter. `toMap` (the
+   * default) drives the map from the dashboard one way; `bidirectional` also
+   * lets the map's time slider move the dashboard; `off` decouples them.
+   */
+  timeSync?: TimeSyncMode;
 }

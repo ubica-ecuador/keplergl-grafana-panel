@@ -18,13 +18,16 @@ interface Props extends PanelProps<KeplerPanelOptions> {}
  * dynamic import in LazyKeplerMap, so a dashboard that merely has the plugin
  * installed does not pay for deck.gl and MapLibre.
  */
-export function KeplerPanel({ options, onOptionsChange, data, width, height }: Props) {
+export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChangeTimeRange, width, height }: Props) {
   const grafanaTheme = useTheme2();
 
   const datasets = useMemo(
     () => framesToDatasets(data.series, options.fieldMappings),
     [data.series, options.fieldMappings]
   );
+
+  // kepler and the sync hook work in epoch ms; Grafana hands DateTime objects.
+  const grafanaRange = useMemo(() => ({ from: timeRange.from.valueOf(), to: timeRange.to.valueOf() }), [timeRange]);
 
   const keplerTheme = useMemo(() => toKeplerTheme(grafanaTheme), [grafanaTheme]);
   const followTheme = options.followGrafanaTheme ?? true;
@@ -60,6 +63,9 @@ export function KeplerPanel({ options, onOptionsChange, data, width, height }: P
         showSidePanel={options.showSidePanel ?? true}
         saveRequest={options.saveRequest ?? 0}
         onMapConfigCaptured={handleMapConfigCaptured}
+        timeSync={options.timeSync ?? 'toMap'}
+        grafanaRange={grafanaRange}
+        onChangeGrafanaRange={onChangeTimeRange}
       />
     </div>
   );

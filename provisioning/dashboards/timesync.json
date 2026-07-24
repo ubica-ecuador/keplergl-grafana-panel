@@ -1,0 +1,35 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "id": 2,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "grafana-testdata-datasource", "uid": "trlxrdZVk" },
+      "gridPos": { "h": 20, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "timeSync": "bidirectional", "showSidePanel": true },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-testdata-datasource", "uid": "trlxrdZVk" },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"time\",\"type\":\"time\"},{\"name\":\"latitude\",\"type\":\"number\"},{\"name\":\"longitude\",\"type\":\"number\"},{\"name\":\"value\",\"type\":\"number\"}]},\"data\":{\"values\":[[1753257600000,1753257900000,1753258200000,1753258500000,1753258800000,1753259100000,1753259400000,1753259700000,1753260000000,1753260300000,1753260600000,1753260900000,1753261200000,1753261500000,1753261800000],[-2.9,-2.894,-2.888,-2.882,-2.876,-2.9,-2.894,-2.888,-2.882,-2.876,-2.9,-2.894,-2.888,-2.882,-2.876],[-79.02,-79.02,-79.02,-79.02,-79.02,-79.00999999999999,-79.00999999999999,-79.00999999999999,-79.00999999999999,-79.00999999999999,-79,-79,-79,-79,-79],[10,17,24,31,38,45,12,19,26,33,40,47,14,21,28]]}}]"
+        }
+      ],
+      "title": "Kepler.gl — points + time",
+      "type": "ubica-keplergl-panel"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": [],
+  "templating": { "list": [] },
+  "time": { "from": "2025-07-23T07:00:00.000Z", "to": "2025-07-23T10:20:00.000Z" },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Kepler.gl time sync",
+  "uid": "b1c2d3e4-0000-4000-8000-000000000001",
+  "version": 1,
+  "weekStart": ""
+}

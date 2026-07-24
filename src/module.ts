@@ -30,6 +30,20 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       defaultValue: true,
     })
     .addSelect({
+      path: 'timeSync',
+      name: 'Time range sync',
+      description: "Couple the dashboard time range with the map's time filter.",
+      category: ['Map'],
+      defaultValue: 'toMap',
+      settings: {
+        options: [
+          { value: 'toMap', label: 'Dashboard drives map' },
+          { value: 'bidirectional', label: 'Both directions' },
+          { value: 'off', label: 'Off' },
+        ],
+      },
+    })
+    .addSelect({
       path: 'basemap',
       name: 'Base map',
       description: 'Carto base maps, served without a Mapbox token.',

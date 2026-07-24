@@ -1,10 +1,18 @@
-import { addDataToMap, mapStyleChange, toggleSidePanel, updateVisData, wrapTo } from '@kepler.gl/actions';
+import {
+  addDataToMap,
+  createOrUpdateFilter,
+  mapStyleChange,
+  toggleSidePanel,
+  updateVisData,
+  wrapTo,
+} from '@kepler.gl/actions';
 import { processRowObject } from '@kepler.gl/processors';
 import KeplerGlSchema from '@kepler.gl/schemas';
 import type { Dispatch, Store } from 'redux';
 
 import type { PanelDataset } from '../data/framesToDatasets';
 import type { SavedMapConfig } from '../data/mapConfig';
+import { findTimeFieldName, readTimeFilterValue, TIME_FILTER_TYPE, type TimeRangeMs } from './timeSync';
 import { KEPLER_INSTANCE_ID } from './constants';
 
 /**
@@ -104,6 +112,57 @@ export function refreshDatasets(dispatch: Dispatch, datasets: PanelDataset[]): v
       })
     )
   );
+}
+
+/** Minimal view of the kepler vis-state these time-filter helpers read. */
+interface VisStateLike {
+  filters: Array<{ id: string; type?: string; value?: unknown }>;
+  datasets: Record<string, { fields: Array<{ name: string; type?: string }> }>;
+}
+
+function getVisState(store: Store): VisStateLike | null {
+  const state = store.getState() as { keplerGl?: Record<string, { visState?: VisStateLike }> };
+  return state.keplerGl?.[KEPLER_INSTANCE_ID]?.visState ?? null;
+}
+
+/** The map's current time-filter window, or null if it has no time filter. */
+export function readTimeRange(store: Store): TimeRangeMs | null {
+  const visState = getVisState(store);
+  return visState ? readTimeFilterValue(visState.filters) : null;
+}
+
+/**
+ * Reflects a Grafana time range on the map's time filter.
+ *
+ * Updates the existing time filter when there is one, otherwise creates one on
+ * the first dataset that has a timestamp field. kepler clamps the window to the
+ * data's own time domain. Returns false — a no-op — when no dataset has a time
+ * field to filter on, e.g. a pure geometry or trip map, which lets the caller
+ * retry once data with a time column arrives.
+ */
+export function pushTimeRange(store: Store, dispatch: Dispatch, range: TimeRangeMs): boolean {
+  const visState = getVisState(store);
+  if (!visState) {
+    return false;
+  }
+
+  const value: [number, number] = [range.from, range.to];
+
+  const existing = visState.filters.find((f) => f.type === TIME_FILTER_TYPE);
+  if (existing) {
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(existing.id, undefined, undefined, value)));
+    return true;
+  }
+
+  for (const [dataId, dataset] of Object.entries(visState.datasets)) {
+    const timeField = findTimeFieldName(dataset.fields);
+    if (timeField) {
+      dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(undefined, dataId, timeField, value)));
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /** Switches the base map to one of kepler's registered styles. */

@@ -7,7 +7,7 @@ An open source alternative to the Foursquare Studio panel, which renders its map
 `studio.foursquare.com` and therefore needs a Foursquare account. This one runs kepler.gl inside the
 panel: no external service, no account, no Mapbox token.
 
-> **Status: v0.1.** Usable, and pinned to a kepler.gl pre-release because the Flow layer exists
+> **Status: v0.2.** Usable, and pinned to a kepler.gl pre-release because the Flow layer exists
 > nowhere else. Not yet in the Grafana catalog — see [Roadmap](#roadmap).
 
 ## What it does today
@@ -17,6 +17,10 @@ panel: no external service, no account, no Mapbox token.
   origin/destination pairs.
 - **Geometry from any spatial source** — GeoJSON, WKT, or raw WKB/EWKB hex, so a plain
   `SELECT geom` from PostGIS works with no `ST_AsGeoJSON`. See [Geometry](#geometry).
+- **Automatic trip animation** — a query with a trip id and a time becomes an animated kepler
+  Trip layer with a playback timeline, no manual layer setup. See [Trajectories](#trajectories).
+- **Dashboard time range synced with the map**, one-way or both ways — the time picker drives the
+  map's time filter, and optionally the map's time slider drives the dashboard back.
 - **Your layer configuration survives a refresh.** Data is swapped underneath the layers rather than
   the datasets being torn down and rebuilt.
 - **Saved map configuration** stored with the dashboard, and configs pasted from kepler.gl,
@@ -103,7 +107,10 @@ directly from S3. Two things to know:
 
 ### Trajectories
 
-Give each trajectory an id and a time, and map the **Trip ID** role:
+Give each row a trip id, a time and a position, and the plugin groups the points into paths and
+builds an **animated Trip layer** — one LineString per trip, ordered by time, with a playback
+timeline. No manual layer configuration: a query with a trip id, a time and lat/lng is detected as
+trips automatically. Map an optional **Altitude** column for 3D paths.
 
 ```sql
 SELECT vehicle_id AS trip_id,
@@ -113,6 +120,9 @@ SELECT vehicle_id AS trip_id,
 FROM vehicle_positions
 ORDER BY vehicle_id, ts;
 ```
+
+The trip id, time, lat/lng and altitude are all overridable under **Field mapping** when the
+column names are not recognised.
 
 ### Origin-destination flows
 
@@ -135,6 +145,7 @@ GROUP BY 1, 2, 3, 4;
 | **Field mapping** | Per query. Autodetected values appear as placeholders; set one to override. |
 | **Show side panel** | kepler's layer and filter panel. Worth hiding on small tiles. |
 | **Follow dashboard theme** | Off leaves kepler with its own styling. |
+| **Time range sync** | Dashboard drives the map's time filter (default), both directions, or off. Needs a time column. |
 | **Base map** | Carto Dark Matter / Positron / Voyager, or a self-hosted `style.json`. |
 | **Map configuration** | Save the current layers and filters with the dashboard, or paste one in. |
 
@@ -187,7 +198,8 @@ reached the map — useful when a change breaks rendering without breaking a tes
 
 ## Roadmap
 
-- **v0.2** — dashboard time range synced both ways with kepler's timeline; automatic trip layers.
+- **v0.2** *(done)* — automatic trip layers; dashboard time range synced with kepler's timeline,
+  one-way or both ways.
 - **v0.3** — origin-destination flow layer; map filters driving dashboard variables.
 - **v1.0** — move to kepler.gl 3.3.0 stable, sign, and submit to the Grafana catalog.
 

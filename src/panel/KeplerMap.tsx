@@ -13,6 +13,8 @@ import { configureKepler } from './keplerConfig';
 import { createKeplerStore } from './keplerStore';
 import { captureMapConfig, loadDatasets, refreshDatasets, setBasemap, setSidePanel } from './keplerAdapter';
 import { decideLoadAction } from './loadDecision';
+import { useTimeRangeSync } from './useTimeRangeSync';
+import type { TimeRangeMs, TimeSyncMode } from './timeSync';
 
 // Must run before any kepler component mounts. Lives here rather than in
 // module.ts so it is part of the deferred chunk.
@@ -31,6 +33,12 @@ export interface KeplerMapProps {
   /** Bumped by the options editor to request a configuration snapshot. */
   saveRequest: number;
   onMapConfigCaptured: (config: SavedMapConfig) => void;
+  /** How the dashboard time range couples to the map's time filter. */
+  timeSync: TimeSyncMode;
+  /** The dashboard time range, in epoch ms. */
+  grafanaRange: TimeRangeMs;
+  /** Moves the dashboard time range; used only in bidirectional sync. */
+  onChangeGrafanaRange?: (range: TimeRangeMs) => void;
 }
 
 /**
@@ -60,6 +68,9 @@ export function KeplerMap({
   showSidePanel,
   saveRequest,
   onMapConfigCaptured,
+  timeSync,
+  grafanaRange,
+  onChangeGrafanaRange,
 }: KeplerMapProps) {
   const store = useMemo(() => createKeplerStore(), []);
   const [styleTarget, setStyleTarget] = useState<HTMLElement | null>(null);
@@ -125,6 +136,17 @@ export function KeplerMap({
       onMapConfigCaptured(captured);
     }
   }, [saveRequest, store, onMapConfigCaptured]);
+
+  // Declared after the load effect so its own effects register later and run
+  // once the datasets are already in the store.
+  useTimeRangeSync({
+    store,
+    isReady,
+    mode: timeSync,
+    grafanaRange,
+    datasets,
+    onChangeGrafanaRange,
+  });
 
   return (
     <div ref={setStyleTarget} style={{ width, height, position: 'relative', overflow: 'hidden' }}>
