@@ -1,7 +1,7 @@
 import { DataFrame } from '@grafana/data';
 
 import { FieldRoles } from './detectFields';
-import { normalizeEwkb } from './normalizeEwkb';
+import { wkbToGeoJson } from './wkbToGeoJson';
 
 /** A row handed to kepler, keyed by kepler's own column names. */
 export type KeplerRow = Record<string, unknown>;
@@ -54,7 +54,13 @@ export function toKeplerRows(frame: DataFrame, roles: FieldRoles): KeplerRow[] {
     for (const field of frame.fields) {
       const name = renames.get(field.name) ?? field.name;
       const value = field.values[i];
-      row[name] = field.name === geometrySource && typeof value === 'string' ? normalizeEwkb(value) : value;
+      // A geometry column may hold WKB hex (raw PostGIS/DuckDB), GeoJSON or WKT.
+      // Decode WKB to GeoJSON so it renders; leave GeoJSON/WKT untouched — kepler
+      // parses those directly, and wkbToGeoJson returns null for them.
+      row[name] =
+        field.name === geometrySource && typeof value === 'string'
+          ? wkbToGeoJson(value) ?? value
+          : value;
     }
     rows.push(row);
   }

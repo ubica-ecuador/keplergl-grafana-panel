@@ -48,6 +48,33 @@
       ],
       "title": "Kepler.gl \u2014 mobility",
       "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "id": 2,
+      "options": {},
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\": {\"fields\": [{\"name\": \"geom\", \"type\": \"string\"}, {\"name\": \"name\", \"type\": \"string\"}]}, \"data\": {\"values\": [[\"0101000020E6100000A59BC420B0BE53C08638D6C56D3407C0\", \"0101000020E61000006ECA0501E7BE53C0728A8EE4F21F07C0\", \"0101000020E6100000726891ED7CBF53C0DC5698D6F41007C0\", \"0101000020E61000003F355EBA49C053C05DDC4603780B07C0\", \"0101000020E61000000C022B8716C153C0DC5698D6F41007C0\", \"0101000020E610000010A0B673ACC153C0728A8EE4F21F07C0\", \"0101000020E6100000D9CEF753E3C153C08638D6C56D3407C0\", \"0101000020E610000010A0B673ACC153C09AE61DA7E84807C0\", \"0101000020E61000000C022B8716C153C0301A14B5E65707C0\", \"0101000020E61000003F355EBA49C053C0AF946588635D07C0\", \"0101000020E6100000726891ED7CBF53C0301A14B5E65707C0\", \"0101000020E61000006ECA0501E7BE53C09AE61DA7E84807C0\"], [\"unidad-0\", \"unidad-1\", \"unidad-2\", \"unidad-3\", \"unidad-4\", \"unidad-5\", \"unidad-6\", \"unidad-7\", \"unidad-8\", \"unidad-9\", \"unidad-10\", \"unidad-11\"]]}}]"
+        }
+      ],
+      "title": "EWKB geometry",
+      "type": "ubica-keplergl-panel"
     }
   ],
   "refresh": "",

@@ -15,8 +15,8 @@ panel: no external service, no account, no Mapbox token.
 - **Any data source.** Each query becomes a kepler dataset, so a single panel can overlay several.
 - **Column autodetection**, overridable per query — lat/lng, time, trip id, geometry, H3 and
   origin/destination pairs.
-- **PostGIS geometry works out of the box**, including raw `EWKB` hex. `ST_AsGeoJSON` is optional,
-  not required.
+- **Geometry from any spatial source** — GeoJSON, WKT, or raw WKB/EWKB hex, so a plain
+  `SELECT geom` from PostGIS works with no `ST_AsGeoJSON`. See [Geometry](#geometry).
 - **Your layer configuration survives a refresh.** Data is swapped underneath the layers rather than
   the datasets being torn down and rebuilt.
 - **Saved map configuration** stored with the dashboard, and configs pasted from kepler.gl,
@@ -40,16 +40,34 @@ SELECT lat AS latitude,
 FROM gps_readings;
 ```
 
-### PostGIS geometry
+### Geometry
 
-The Postgres data source returns geometry as EWKB hex, which the plugin normalises for you:
+A geometry column can hold **GeoJSON, WKT, or raw WKB/EWKB hex** — the plugin decodes WKB to GeoJSON
+for you, so all of these render:
 
 ```sql
-SELECT geom, name, category    -- no ST_AsGeoJSON needed
-FROM neighbourhoods;
+-- PostGIS: raw geometry, no conversion function
+SELECT geom, name FROM neighbourhoods;
+
+-- or projected explicitly, if you prefer
+SELECT ST_AsGeoJSON(geom) AS geojson, name FROM neighbourhoods;
+
+-- DuckDB over GeoParquet on S3
+SELECT CAST(ST_AsGeoJSON(geometry) AS VARCHAR) AS geojson, name
+FROM read_parquet('s3://bucket/zones/*.parquet');
 ```
 
-`ST_AsGeoJSON(geom)` and WKT work equally well if you prefer them.
+Under the hood kepler.gl itself only renders GeoJSON and WKT; WKB decoding happens in the plugin
+(`src/data/wkbToGeoJson.ts`), which is what makes the raw-geometry path work.
+
+### GeoParquet on S3 via DuckDB
+
+The [DuckDB data source](https://github.com/motherduckdb/grafana-duckdb-datasource) reads GeoParquet
+directly from S3. Two things to know:
+
+- Load the spatial extension inside the query: `INSTALL spatial; LOAD spatial; SELECT …`.
+- Cast `ST_AsGeoJSON(...)` to `VARCHAR` — the data source cannot marshal DuckDB's JSON type.
+- That data source needs glibc (Ubuntu/Debian Grafana image); it does **not** run on Alpine.
 
 ### Trajectories
 

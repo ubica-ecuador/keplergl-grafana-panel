@@ -44,13 +44,14 @@ describe('toKeplerRows', () => {
     ]);
   });
 
-  it('normalises a PostGIS EWKB geometry column into the kepler geometry column', () => {
+  it('decodes a PostGIS EWKB geometry column into GeoJSON, which kepler renders', () => {
+    // POINT (1 2), SRID=4326 — raw EWKB hex, as `SELECT geom` returns it.
     const frame = toDataFrame({
       fields: [{ name: 'geom', type: FieldType.string, values: ['0101000020E6100000000000000000F03F0000000000000040'] }],
     });
 
     expect(toKeplerRows(frame, { geometry: 'geom' })).toEqual([
-      { _geojson: '0101000000000000000000F03F0000000000000040' },
+      { _geojson: '{"type":"Point","coordinates":[1,2]}' },
     ]);
   });
 
