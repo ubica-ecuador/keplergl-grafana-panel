@@ -1,32 +1,44 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Provider } from 'react-redux';
 import { StyleSheetManager } from 'styled-components';
 import KeplerGl from '@kepler.gl/components';
-import type { Store } from 'redux';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import { KeplerThemeOverride } from '../data/keplerTheme';
-import { KEPLER_INSTANCE_ID } from './keplerStore';
+import type { PanelDataset } from '../data/framesToDatasets';
+import type { SavedMapConfig } from '../data/mapConfig';
+import type { KeplerThemeOverride } from '../data/keplerTheme';
+import { CUSTOM_BASEMAP_ID, KEPLER_INSTANCE_ID } from './constants';
+import { configureKepler } from './keplerConfig';
+import { createKeplerStore } from './keplerStore';
+import { captureMapConfig, loadDatasets, refreshDatasets, setBasemap, setSidePanel } from './keplerAdapter';
+import { decideLoadAction } from './loadDecision';
 
-export const CUSTOM_BASEMAP_ID = 'grafana-custom-basemap';
+// Must run before any kepler component mounts. Lives here rather than in
+// module.ts so it is part of the deferred chunk.
+configureKepler();
 
-interface Props {
-  store: Store;
+export interface KeplerMapProps {
   width: number;
   height: number;
+  datasets: PanelDataset[];
+  mapConfig?: SavedMapConfig | null;
   theme?: KeplerThemeOverride;
+  /** Resolved base map style id, or null to leave kepler's default alone. */
+  basemapId?: string | null;
   customBasemapUrl?: string;
-  /**
-   * Fired once kepler has registered its instance in the store. Dispatching
-   * data before this point silently does nothing: the actions are addressed to
-   * an instance id that does not exist yet and kepler drops them.
-   */
-  onReady?: () => void;
+  showSidePanel: boolean;
+  /** Bumped by the options editor to request a configuration snapshot. */
+  saveRequest: number;
+  onMapConfigCaptured: (config: SavedMapConfig) => void;
 }
 
 /**
- * Mounts kepler.gl inside the panel.
+ * Owns everything kepler.
+ *
+ * All kepler, deck.gl and MapLibre imports are confined to this module so the
+ * dynamic import that loads it actually defers them. The panel above stays a
+ * plain Grafana component that knows nothing about kepler's API.
  *
  * Two containment decisions worth keeping:
  *
@@ -37,8 +49,25 @@ interface Props {
  *    instance, so this Provider overrides the context here — no `@grafana/ui`
  *    component may be rendered below this point.
  */
-export function KeplerMap({ store, width, height, theme, customBasemapUrl, onReady }: Props) {
+export function KeplerMap({
+  width,
+  height,
+  datasets,
+  mapConfig,
+  theme,
+  basemapId,
+  customBasemapUrl,
+  showSidePanel,
+  saveRequest,
+  onMapConfigCaptured,
+}: KeplerMapProps) {
+  const store = useMemo(() => createKeplerStore(), []);
   const [styleTarget, setStyleTarget] = useState<HTMLElement | null>(null);
+  const [isReady, setIsReady] = useState(false);
+
+  const hasLoaded = useRef(false);
+  const appliedConfig = useRef<SavedMapConfig | null | undefined>(undefined);
+  const handledSaveRequest = useRef(saveRequest);
 
   // Registering a self-hosted style.json makes the panel usable in air-gapped
   // installs, where the Carto base maps are unreachable.
@@ -46,6 +75,56 @@ export function KeplerMap({ store, width, height, theme, customBasemapUrl, onRea
     () => (customBasemapUrl ? [{ id: CUSTOM_BASEMAP_ID, label: 'Custom', url: customBasemapUrl }] : undefined),
     [customBasemapUrl]
   );
+
+  useEffect(() => {
+    if (!isReady || datasets.length === 0) {
+      return;
+    }
+
+    const action = decideLoadAction({
+      hasLoaded: hasLoaded.current,
+      appliedConfig: appliedConfig.current,
+      currentConfig: mapConfig,
+    });
+
+    if (action === 'rebuild') {
+      hasLoaded.current = true;
+      appliedConfig.current = mapConfig;
+      loadDatasets(store.dispatch, datasets, {}, mapConfig);
+    } else {
+      refreshDatasets(store.dispatch, datasets);
+    }
+  }, [isReady, datasets, mapConfig, store]);
+
+  // A saved config already names a base map, so it wins over the panel option.
+  useEffect(() => {
+    if (!isReady || mapConfig || !basemapId) {
+      return;
+    }
+    setBasemap(store.dispatch, basemapId);
+  }, [isReady, basemapId, mapConfig, store]);
+
+  useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+    setSidePanel(store.dispatch, showSidePanel);
+  }, [isReady, showSidePanel, store]);
+
+  useEffect(() => {
+    if (saveRequest === handledSaveRequest.current) {
+      return;
+    }
+    handledSaveRequest.current = saveRequest;
+
+    const captured = captureMapConfig(store);
+    if (captured) {
+      // Record it as applied so saving does not rebuild the map the user is
+      // currently looking at.
+      appliedConfig.current = captured;
+      onMapConfigCaptured(captured);
+    }
+  }, [saveRequest, store, onMapConfigCaptured]);
 
   return (
     <div ref={setStyleTarget} style={{ width, height, position: 'relative', overflow: 'hidden' }}>
@@ -62,7 +141,9 @@ export function KeplerMap({ store, width, height, theme, customBasemapUrl, onRea
               appName="Grafana"
               theme={theme}
               mapStyles={mapStyles}
-              onKeplerGlInitialized={onReady}
+              /* kepler renders one commit late and silently discards actions
+                 addressed to an instance that has not registered yet. */
+              onKeplerGlInitialized={() => setIsReady(true)}
             />
           </Provider>
         </StyleSheetManager>

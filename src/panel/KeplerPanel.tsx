@@ -1,111 +1,65 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { PanelProps } from '@grafana/data';
 import { useTheme2 } from '@grafana/ui';
 
 import { KeplerPanelOptions } from '../types';
 import { framesToDatasets } from '../data/framesToDatasets';
 import { toKeplerTheme } from '../data/keplerTheme';
-import { createKeplerStore } from './keplerStore';
-import { captureMapConfig, loadDatasets, refreshDatasets, setBasemap, setSidePanel } from './keplerAdapter';
-import { decideLoadAction } from './loadDecision';
-import { CUSTOM_BASEMAP_ID, KeplerMap } from './KeplerMap';
+import { SavedMapConfig } from '../data/mapConfig';
+import { CUSTOM_BASEMAP_ID } from './constants';
+import { LazyKeplerMap } from './LazyKeplerMap';
 
 interface Props extends PanelProps<KeplerPanelOptions> {}
 
+/**
+ * Translates Grafana concerns into props for the map.
+ *
+ * Deliberately free of kepler imports: everything kepler lives behind the
+ * dynamic import in LazyKeplerMap, so a dashboard that merely has the plugin
+ * installed does not pay for deck.gl and MapLibre.
+ */
 export function KeplerPanel({ options, onOptionsChange, data, width, height }: Props) {
-  const store = useMemo(() => createKeplerStore(), []);
   const grafanaTheme = useTheme2();
-
-  // State, not a ref: the base map and side panel effects have to re-run once
-  // the map registers, and a ref would not retrigger them.
-  const [isReady, setIsReady] = useState(false);
-
-  const hasLoaded = useRef(false);
-  const appliedConfig = useRef<KeplerPanelOptions['mapConfig']>(undefined);
-  const handledSaveRequest = useRef(options.saveRequest ?? 0);
 
   const datasets = useMemo(
     () => framesToDatasets(data.series, options.fieldMappings),
     [data.series, options.fieldMappings]
   );
 
-  const followTheme = options.followGrafanaTheme ?? true;
   const keplerTheme = useMemo(() => toKeplerTheme(grafanaTheme), [grafanaTheme]);
-  const mapConfig = options.mapConfig;
+  const followTheme = options.followGrafanaTheme ?? true;
 
-  // kepler renders one commit late (it waits for the styled-components target),
-  // and silently discards actions addressed to an instance that has not
-  // registered yet — so nothing is dispatched until it says it is ready.
-  const handleMapReady = useCallback(() => setIsReady(true), []);
-
-  useEffect(() => {
-    if (!isReady || datasets.length === 0) {
-      return;
-    }
-
-    const action = decideLoadAction({
-      hasLoaded: hasLoaded.current,
-      appliedConfig: appliedConfig.current,
-      currentConfig: mapConfig,
-    });
-
-    if (action === 'rebuild') {
-      hasLoaded.current = true;
-      appliedConfig.current = mapConfig;
-      loadDatasets(store.dispatch, datasets, {}, mapConfig);
-    } else {
-      refreshDatasets(store.dispatch, datasets);
-    }
-  }, [isReady, datasets, mapConfig, store]);
-
-  // Base map. `auto` tracks the dashboard theme so a light dashboard does not
-  // carry a black map. A saved config already names a style, so it wins.
-  useEffect(() => {
-    if (!isReady || mapConfig) {
-      return;
-    }
+  // `auto` tracks the dashboard theme so a light dashboard does not carry a
+  // black map. `custom` is ignored until a URL is actually supplied.
+  const basemapId = useMemo(() => {
     const choice = options.basemap ?? 'auto';
-    if (choice === 'custom' && !options.customBasemapUrl) {
-      return;
+    if (choice === 'auto') {
+      return keplerTheme.mapStyle;
     }
-    const styleId = choice === 'auto' ? keplerTheme.mapStyle : choice === 'custom' ? CUSTOM_BASEMAP_ID : choice;
-    setBasemap(store.dispatch, styleId);
-  }, [isReady, options.basemap, options.customBasemapUrl, keplerTheme.mapStyle, mapConfig, store]);
+    if (choice === 'custom') {
+      return options.customBasemapUrl ? CUSTOM_BASEMAP_ID : null;
+    }
+    return choice;
+  }, [options.basemap, options.customBasemapUrl, keplerTheme.mapStyle]);
 
-  useEffect(() => {
-    if (!isReady) {
-      return;
-    }
-    setSidePanel(store.dispatch, options.showSidePanel ?? true);
-  }, [isReady, options.showSidePanel, store]);
-
-  // The options editor has no channel to this component, so it bumps a counter
-  // and the panel — which can see its own store — performs the capture.
-  useEffect(() => {
-    const requested = options.saveRequest ?? 0;
-    if (requested === handledSaveRequest.current) {
-      return;
-    }
-    handledSaveRequest.current = requested;
-
-    const captured = captureMapConfig(store);
-    if (captured) {
-      // Record it as applied so saving does not rebuild the map the user is
-      // currently looking at.
-      appliedConfig.current = captured;
-      onOptionsChange({ ...options, mapConfig: captured });
-    }
-  }, [options, onOptionsChange, store]);
+  const handleMapConfigCaptured = useCallback(
+    (mapConfig: SavedMapConfig) => onOptionsChange({ ...options, mapConfig }),
+    [onOptionsChange, options]
+  );
 
   return (
     <div style={{ width, height, position: 'relative' }}>
-      <KeplerMap
-        store={store}
+      <LazyKeplerMap
         width={width}
         height={height}
+        datasets={datasets}
+        mapConfig={options.mapConfig}
         theme={followTheme ? keplerTheme : undefined}
+        basemapId={basemapId}
         customBasemapUrl={options.customBasemapUrl}
-        onReady={handleMapReady}
+        showSidePanel={options.showSidePanel ?? true}
+        saveRequest={options.saveRequest ?? 0}
+        onMapConfigCaptured={handleMapConfigCaptured}
       />
     </div>
   );

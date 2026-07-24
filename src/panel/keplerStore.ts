@@ -2,12 +2,6 @@ import { keplerGlReducer, enhanceReduxMiddleware } from '@kepler.gl/reducers';
 import { applyMiddleware, combineReducers, legacy_createStore, Store } from 'redux';
 
 /**
- * kepler.gl instance id. Actions are wrapped to this id so a panel only ever
- * talks to its own map, never to another panel's.
- */
-export const KEPLER_INSTANCE_ID = 'grafana';
-
-/**
  * Builds a Redux store dedicated to one panel instance.
  *
  * Grafana externalizes `redux` and `react-redux`, so this store is created from

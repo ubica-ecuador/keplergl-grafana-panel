@@ -5,7 +5,7 @@ import type { Dispatch, Store } from 'redux';
 
 import type { PanelDataset } from '../data/framesToDatasets';
 import type { SavedMapConfig } from '../data/mapConfig';
-import { KEPLER_INSTANCE_ID } from './keplerStore';
+import { KEPLER_INSTANCE_ID } from './constants';
 
 /**
  * The ONLY module that talks to the kepler.gl API.
