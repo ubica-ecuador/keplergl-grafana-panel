@@ -23,8 +23,8 @@ panel: no external service, no account, no Mapbox token.
   map's time filter, and optionally the map's time slider drives the dashboard back.
 - **Origin-destination flow layers**, automatic — an OD query becomes an animated flow map, no
   manual layer setup. See [Origin-destination flows](#origin-destination-flows).
-- **Map filters drive dashboard variables** — a select or text filter on the map cross-filters the
-  rest of the dashboard. See [Cross-filtering](#cross-filtering).
+- **Cross-filtering, both ways** — a filter set on the map drives a dashboard variable, and changing
+  that variable filters the map. See [Cross-filtering](#cross-filtering).
 - **Your layer configuration survives a refresh.** Data is swapped underneath the layers rather than
   the datasets being torn down and rebuilt.
 - **Saved map configuration** stored with the dashboard, and configs pasted from kepler.gl,
@@ -149,9 +149,13 @@ the line style (straight, curved, animated) under **Flow line style**.
 
 ### Cross-filtering
 
-A select, multi-select or text filter set on the map can drive a **dashboard variable**, so filtering
-on the map filters every other panel. Add a template variable, then map a filtered column to it under
-**Cross-filtering**. Clicking a category on the map writes `var-<name>` and the dashboard re-queries.
+The map and a **dashboard variable** stay in sync, both ways. A select, multi-select or text filter
+set on the map writes its value to the variable, so filtering on the map filters every other panel;
+and changing that variable — from its picker or another panel — applies the matching filter on the
+map. Add a template variable, then map a filtered column to it under **Cross-filtering**.
+
+The variable is read from the URL, which is what lets the map react even when its own query does not
+use the variable.
 
 ## Panel options
 

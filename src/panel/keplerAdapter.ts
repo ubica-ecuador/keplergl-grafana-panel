@@ -4,6 +4,7 @@ import {
   createOrUpdateFilter,
   fitBounds,
   mapStyleChange,
+  removeFilter,
   toggleSidePanel,
   updateVisData,
   wrapTo,
@@ -134,6 +135,47 @@ export interface KeplerFilter {
 /** The map's current filters, for driving dashboard variables. */
 export function readFilters(store: Store): KeplerFilter[] {
   return getVisState(store)?.filters ?? [];
+}
+
+function filterHasField(filter: { name?: string[] | string }, field: string): boolean {
+  return Array.isArray(filter.name) ? filter.name.includes(field) : filter.name === field;
+}
+
+/**
+ * Sets a multi-select filter on `field` to `values` (the variable → map
+ * direction of cross-filtering).
+ *
+ * Updates the existing filter on that column if there is one, otherwise creates
+ * one on the first dataset that has the column. A string column becomes a
+ * multiSelect filter, so the values are applied as its selection.
+ */
+export function applyFieldFilter(store: Store, dispatch: Dispatch, field: string, values: string[]): void {
+  const visState = getVisState(store);
+  if (!visState) {
+    return;
+  }
+
+  const existing = visState.filters.find((f) => filterHasField(f, field));
+  if (existing) {
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(existing.id, undefined, undefined, values)));
+    return;
+  }
+
+  for (const [dataId, dataset] of Object.entries(visState.datasets)) {
+    if (dataset.fields.some((f) => f.name === field)) {
+      dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(undefined, dataId, field, values)));
+      return;
+    }
+  }
+}
+
+/** Removes the filter on `field`, if any — clears a variable-driven selection. */
+export function removeFieldFilter(store: Store, dispatch: Dispatch, field: string): void {
+  const filters = getVisState(store)?.filters ?? [];
+  const idx = filters.findIndex((f) => filterHasField(f, field));
+  if (idx >= 0) {
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, removeFilter(idx)));
+  }
 }
 
 /** A map bounding box in kepler's `[minLng, minLat, maxLng, maxLat]` order. */

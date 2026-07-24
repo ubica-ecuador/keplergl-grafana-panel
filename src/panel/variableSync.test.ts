@@ -1,4 +1,4 @@
-import { filterVariableValues } from './variableSync';
+import { filterVariableValues, normalizeFilterKey, variableFilterValues } from './variableSync';
 
 const mappings = [
   { field: 'category', variable: 'cat' },
@@ -57,5 +57,56 @@ describe('filterVariableValues', () => {
 
   it('returns nothing when there are no mappings', () => {
     expect(filterVariableValues([{ name: ['category'], type: 'select', value: 'parks' }], [])).toEqual({});
+  });
+});
+
+describe('variableFilterValues', () => {
+  it('turns a single-value variable into a one-element filter, keyed by field', () => {
+    expect(variableFilterValues({ cat: 'parks' }, mappings)).toEqual({ category: ['parks'], city: null });
+  });
+
+  it('turns a multi-value variable into a multi-element filter', () => {
+    expect(variableFilterValues({ cat: ['roads', 'schools'] }, mappings)).toEqual({
+      category: ['roads', 'schools'],
+      city: null,
+    });
+  });
+
+  it('treats the Grafana "All" value as no filter (null = clear)', () => {
+    expect(variableFilterValues({ cat: '$__all' }, mappings).category).toBeNull();
+    expect(variableFilterValues({ cat: ['$__all'] }, mappings).category).toBeNull();
+  });
+
+  it('treats an absent or empty variable as no filter', () => {
+    expect(variableFilterValues({}, mappings).category).toBeNull();
+    expect(variableFilterValues({ cat: [] }, mappings).category).toBeNull();
+    expect(variableFilterValues({ cat: '' }, mappings).category).toBeNull();
+  });
+
+  it('strips the All sentinel out of a mixed value', () => {
+    expect(variableFilterValues({ cat: ['$__all', 'roads'] }, mappings).category).toEqual(['roads']);
+  });
+});
+
+describe('normalizeFilterKey', () => {
+  it('gives a single value and its one-element array the same key', () => {
+    expect(normalizeFilterKey('parks')).toBe(normalizeFilterKey(['parks']));
+  });
+
+  it('is order-independent for multi-values', () => {
+    expect(normalizeFilterKey(['roads', 'schools'])).toBe(normalizeFilterKey(['schools', 'roads']));
+  });
+
+  it('collapses every empty / All form to one key', () => {
+    const all = normalizeFilterKey(null);
+    expect(normalizeFilterKey([])).toBe(all);
+    expect(normalizeFilterKey('$__all')).toBe(all);
+    expect(normalizeFilterKey(['$__all'])).toBe(all);
+    expect(normalizeFilterKey(undefined)).toBe(all);
+  });
+
+  it('distinguishes different selections', () => {
+    expect(normalizeFilterKey(['parks'])).not.toBe(normalizeFilterKey(['roads']));
+    expect(normalizeFilterKey(['parks'])).not.toBe(normalizeFilterKey(null));
   });
 });

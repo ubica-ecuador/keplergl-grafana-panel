@@ -46,6 +46,47 @@ export function filterVariableValues(filters: FilterLike[], mappings: VariableMa
   return values;
 }
 
+/**
+ * The kepler filter each mapped field should hold, from the current variables.
+ *
+ * The inverse of {@link filterVariableValues}: a variable's value becomes the
+ * multi-select values for a filter on its field. A field always appears, with
+ * `null` meaning "clear the filter" — either the variable is unset or it is
+ * Grafana's `$__all`, both of which mean no restriction.
+ */
+export function variableFilterValues(
+  variableStates: Record<string, unknown>,
+  mappings: VariableMapping[]
+): Record<string, string[] | null> {
+  const values: Record<string, string[] | null> = {};
+  for (const { field, variable } of mappings) {
+    const selected = toStringValues(variableStates[variable]);
+    values[field] = selected.length ? selected : null;
+  }
+  return values;
+}
+
+/**
+ * A canonical key for a selection, shared by both sync directions so neither
+ * echoes the other.
+ *
+ * A scalar and its one-element array compare equal, order does not matter, and
+ * every empty / `$__all` form collapses to a single "no filter" key.
+ */
+export function normalizeFilterKey(value: unknown): string {
+  const values = toStringValues(value);
+  return values.length ? JSON.stringify([...values].sort()) : 'ALL';
+}
+
+/** Coerces any variable/filter value to a list of real selections. */
+function toStringValues(value: unknown): string[] {
+  const list = Array.isArray(value) ? value : value === null || value === undefined ? [] : [value];
+  return list.map(String).filter((v) => v !== '' && v !== ALL_VALUE);
+}
+
+/** Grafana's sentinel for a multi-value variable's "All" selection. */
+const ALL_VALUE = '$__all';
+
 function matchesField(filter: FilterLike, field: string): boolean {
   return Array.isArray(filter.name) ? filter.name.includes(field) : filter.name === field;
 }
