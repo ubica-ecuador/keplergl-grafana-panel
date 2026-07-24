@@ -19,6 +19,7 @@ const KEPLER_COLUMN: Record<keyof FieldRoles, string> = {
   longitude: 'longitude',
   time: 'time',
   tripId: 'trip_id',
+  altitude: 'altitude',
   geometry: '_geojson',
   h3: 'h3',
   originLat: 'lat0',

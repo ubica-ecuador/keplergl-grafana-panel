@@ -17,6 +17,14 @@ export default defineConfig<PluginOptions>({
   testDir: './tests',
   /* Run tests in files in parallel */
   fullyParallel: true,
+  /*
+   * Each test mounts a full kepler.gl WebGL map, rendered by swiftshader in
+   * headless Chromium — CPU-bound and memory-hungry. Left uncapped, Playwright
+   * spawns one worker per core and the maps starve each other, tipping the
+   * heaviest test (save → apply → remount) past its timeout. Cap the workers so
+   * every map has room to render.
+   */
+  workers: process.env.CI ? 2 : 4,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
@@ -60,5 +68,4 @@ export default defineConfig<PluginOptions>({
       dependencies: ['auth'],
     },
   ],
-
 });

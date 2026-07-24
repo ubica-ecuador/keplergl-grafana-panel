@@ -14,6 +14,7 @@ const ROLES: Array<{ key: keyof FieldRoles; label: string; help: string }> = [
   { key: 'longitude', label: 'Longitude', help: 'Point longitude' },
   { key: 'time', label: 'Time', help: 'Drives the timeline and trip animation' },
   { key: 'tripId', label: 'Trip ID', help: 'Groups points into trajectories' },
+  { key: 'altitude', label: 'Altitude', help: 'Optional height for trip paths; defaults to 0' },
   { key: 'geometry', label: 'Geometry', help: 'GeoJSON, WKT or PostGIS EWKB' },
   { key: 'h3', label: 'H3 index', help: 'Hexagon identifier' },
   { key: 'originLat', label: 'Origin lat', help: 'Flow layer' },

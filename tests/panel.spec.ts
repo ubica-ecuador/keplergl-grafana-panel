@@ -15,10 +15,12 @@ test('renders the kepler.gl map with the query results loaded', async ({
 
   await expect(page.locator('canvas').first()).toBeVisible({ timeout: 60_000 });
 
-  // One dataset per query, named after its refId, with every row loaded. If the
-  // data had not reached kepler it would show its empty-state modal instead.
+  // One dataset per query, named after its refId. The mobility query carries a
+  // trip id and a time, so the pipeline folds its 80 GPS pings into 2 trips —
+  // one dataset row per trip. If the data had not reached kepler it would show
+  // its empty-state modal instead.
   await expect(page.locator('.dataset-name')).toHaveText('Query A', { timeout: 60_000 });
-  await expect(page.locator('[class*="source-data-rows"]')).toHaveText('80 rows');
+  await expect(page.locator('[class*="source-data-rows"]')).toHaveText('2 rows');
   await expect(page.getByText('Drag & Drop Your File(s) Here')).toBeHidden();
 });
 

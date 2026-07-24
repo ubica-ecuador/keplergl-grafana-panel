@@ -1,5 +1,6 @@
 import { DataFrame } from '@grafana/data';
 
+import { buildTrips } from './buildTrips';
 import { detectFields, FieldRoles } from './detectFields';
 import { KeplerRow, toKeplerRows } from './toKeplerDataset';
 
@@ -20,10 +21,7 @@ export interface PanelDataset {
  * `overrides` carries the panel's saved field mapping, keyed by refId; anything
  * not overridden falls back to autodetection.
  */
-export function framesToDatasets(
-  frames: DataFrame[],
-  overrides: Record<string, FieldRoles> = {}
-): PanelDataset[] {
+export function framesToDatasets(frames: DataFrame[], overrides: Record<string, FieldRoles> = {}): PanelDataset[] {
   return frames.map((frame, index) => {
     const refId = frame.refId ?? `${index}`;
     const roles = { ...detectFields(frame), ...(overrides[refId] ?? {}) };
@@ -31,9 +29,19 @@ export function framesToDatasets(
     return {
       id: datasetId(refId),
       label: frame.name ?? `Query ${refId}`,
-      rows: toKeplerRows(frame, roles),
+      rows: isTripFrame(roles) ? buildTrips(frame, roles) : toKeplerRows(frame, roles),
     };
   });
+}
+
+/**
+ * A query describes trips when it has an id to group by, a time to order by, and
+ * point coordinates to trace. Those three together are what `buildTrips` needs
+ * to fold many GPS pings into one animated path; without any of them the query
+ * is treated as a plain point/geometry layer.
+ */
+function isTripFrame(roles: FieldRoles): boolean {
+  return Boolean(roles.tripId && roles.time && roles.latitude && roles.longitude);
 }
 
 export function datasetId(refId: string): string {

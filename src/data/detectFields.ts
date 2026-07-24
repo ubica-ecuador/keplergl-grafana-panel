@@ -11,6 +11,8 @@ export interface FieldRoles {
   longitude?: string;
   time?: string;
   tripId?: string;
+  /** Optional third dimension for trip paths; defaults to 0 when unmapped. */
+  altitude?: string;
   geometry?: string;
   h3?: string;
   /** Origin/destination pairs feeding the flow layer. */
@@ -34,6 +36,7 @@ const NAME_CANDIDATES: Record<string, string[]> = {
   latitude: ['latitude', 'lat', 'y'],
   longitude: ['longitude', 'lon', 'lng', 'long', 'x'],
   tripId: ['trip_id', 'tripid', 'track_id', 'trackid', 'trajectory_id', 'vehicle_id', 'journey_id'],
+  altitude: ['altitude', 'alt', 'elevation', 'z'],
   geometry: ['geom', 'geometry', 'the_geom', 'wkb_geometry', 'geojson', 'wkt', 'shape'],
   h3: ['h3', 'h3_index', 'hex_id', 'hexagon', 'h3index'],
   originLat: ['origin_lat', 'origin_latitude', 'from_lat', 'start_lat', 'source_lat', 'pickup_lat', 'lat0'],
