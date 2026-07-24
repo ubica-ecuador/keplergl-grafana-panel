@@ -1,8 +1,9 @@
-/**
- * Panel options.
- *
- * Phase 0 (feasibility spike) needs none — the dataset is hardcoded. The shape
- * is declared now so `PanelPlugin<KeplerPanelOptions>` is typed from the start;
- * Phase 1 fills it in with field mappings, basemap and saved map config.
- */
-export interface KeplerPanelOptions {}
+import { FieldRoles } from './data/detectFields';
+
+export interface KeplerPanelOptions {
+  /**
+   * Field mapping overrides, keyed by query refId. Anything absent falls back
+   * to autodetection, so the panel works with no configuration at all.
+   */
+  fieldMappings?: Record<string, FieldRoles>;
+}

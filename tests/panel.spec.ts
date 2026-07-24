@@ -1,13 +1,11 @@
 import { test, expect } from '@grafana/plugin-e2e';
 
 /**
- * Phase 0 coverage: the panel mounts kepler.gl and gets data into it.
- *
- * These assert on kepler's own DOM rather than on pixels — the map is WebGL and
- * screenshot comparison would be flaky across GPU/software-rendering setups.
+ * Assertions run against kepler's own DOM rather than pixels — the map is WebGL
+ * and screenshot comparison would be flaky across GPU/software-rendering setups.
  */
 
-test('renders the kepler.gl map with the panel dataset loaded', async ({
+test('renders the kepler.gl map with the query results loaded', async ({
   gotoDashboardPage,
   readProvisionedDashboard,
   page,
@@ -15,32 +13,47 @@ test('renders the kepler.gl map with the panel dataset loaded', async ({
   const dashboard = await readProvisionedDashboard({ fileName: 'dashboard.json' });
   await gotoDashboardPage(dashboard);
 
-  // kepler draws into WebGL canvases once it has mounted.
   await expect(page.locator('canvas').first()).toBeVisible({ timeout: 60_000 });
 
-  // The dataset reached kepler. If it had not, kepler would instead show its
-  // empty-state "Add Data" modal.
-  await expect(page.getByText('Spike data')).toBeVisible({ timeout: 60_000 });
+  // One dataset per query, named after its refId, with every row loaded. If the
+  // data had not reached kepler it would show its empty-state modal instead.
+  await expect(page.locator('.dataset-name')).toHaveText('Query A', { timeout: 60_000 });
+  await expect(page.locator('[class*="source-data-rows"]')).toHaveText('80 rows');
   await expect(page.getByText('Drag & Drop Your File(s) Here')).toBeHidden();
 });
 
-test('keeps a hand-configured layer across a data refresh', async ({
+test('offers the flow layer, which only exists in the pinned pre-release', async ({
   gotoDashboardPage,
   readProvisionedDashboard,
   page,
 }) => {
   const dashboard = await readProvisionedDashboard({ fileName: 'dashboard.json' });
   await gotoDashboardPage(dashboard);
-  await expect(page.getByText('Spike data')).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('.dataset-name')).toHaveText('Query A', { timeout: 60_000 });
 
-  // Rename the auto-created layer, then push new data through updateVisData.
-  const layerName = page.locator('[class*="layer-panel"] input').first();
-  await layerName.fill('KEEP-ME');
-  await layerName.press('Enter');
+  await page.getByText('Add Layer', { exact: true }).click();
+  await page.getByText('Select A Type', { exact: true }).click();
 
-  await page.getByTestId('spike-refresh').click();
+  await expect(page.locator('.layer-type-selector__item__label', { hasText: /^flow$/ })).toBeVisible();
+  await expect(page.locator('.layer-type-selector__item__label', { hasText: /^trip$/ })).toBeVisible();
+});
 
-  // The whole point of updateVisData + keepExistingConfig: the user's layer
-  // configuration survives. The Foursquare plugin loses it on every refresh.
-  await expect(layerName).toHaveValue('KEEP-ME');
+test('keeps kepler styles out of the surrounding Grafana UI', async ({
+  gotoDashboardPage,
+  readProvisionedDashboard,
+  page,
+}) => {
+  const dashboard = await readProvisionedDashboard({ fileName: 'dashboard.json' });
+  await gotoDashboardPage(dashboard);
+  await expect(page.locator('canvas').first()).toBeVisible({ timeout: 60_000 });
+
+  // StyleSheetManager targets a container inside the panel, so kepler's rules
+  // must not accumulate in <head> where they could restyle Grafana.
+  const counts = await page.evaluate(() => ({
+    inPanel: document.querySelectorAll('[class*="panel-content"] style, [data-panelid] style').length,
+    inHead: document.head.querySelectorAll('style').length,
+  }));
+
+  expect(counts.inPanel).toBeGreaterThan(counts.inHead);
+  await expect(page.locator('body')).toHaveCSS('font-family', /Inter/);
 });

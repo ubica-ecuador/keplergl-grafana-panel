@@ -2,6 +2,7 @@ import { addDataToMap, updateVisData, wrapTo } from '@kepler.gl/actions';
 import { processRowObject } from '@kepler.gl/processors';
 import type { Dispatch } from 'redux';
 
+import type { PanelDataset } from '../data/framesToDatasets';
 import { KEPLER_INSTANCE_ID } from './keplerStore';
 
 /**
@@ -17,13 +18,22 @@ export type KeplerDataset = {
   data: NonNullable<ReturnType<typeof processRowObject>>;
 };
 
-/** Builds a kepler dataset from plain row objects. Returns null for empty input. */
-export function rowsToDataset(id: string, label: string, rows: Array<Record<string, unknown>>): KeplerDataset | null {
-  const data = processRowObject(rows);
-  if (!data) {
-    return null;
+/**
+ * Turns panel datasets into kepler datasets.
+ *
+ * `processRowObject` is what infers each column's type and analyzer, which is
+ * how kepler decides what a column can be used for. Datasets it cannot process
+ * (empty results, for instance) are dropped rather than passed on as null.
+ */
+export function toKeplerDatasets(datasets: PanelDataset[]): KeplerDataset[] {
+  const out: KeplerDataset[] = [];
+  for (const { id, label, rows } of datasets) {
+    const data = processRowObject(rows);
+    if (data) {
+      out.push({ info: { id, label }, data });
+    }
   }
-  return { info: { id, label }, data };
+  return out;
 }
 
 /**
@@ -32,7 +42,7 @@ export function rowsToDataset(id: string, label: string, rows: Array<Record<stri
  */
 export function loadDatasets(
   dispatch: Dispatch,
-  datasets: KeplerDataset[],
+  datasets: PanelDataset[],
   options: { centerMap?: boolean } = {},
   config?: object
 ): void {
@@ -40,7 +50,7 @@ export function loadDatasets(
     wrapTo(
       KEPLER_INSTANCE_ID,
       addDataToMap({
-        datasets,
+        datasets: toKeplerDatasets(datasets),
         options: { centerMap: options.centerMap ?? true },
         ...(config ? { config } : {}),
       })
@@ -56,11 +66,11 @@ export function loadDatasets(
  * removeDataset + addDataset on every refresh and therefore discards the user's
  * layer configuration each time the query re-runs.
  */
-export function refreshDatasets(dispatch: Dispatch, datasets: KeplerDataset[]): void {
+export function refreshDatasets(dispatch: Dispatch, datasets: PanelDataset[]): void {
   dispatch(
     wrapTo(
       KEPLER_INSTANCE_ID,
-      updateVisData(datasets, {
+      updateVisData(toKeplerDatasets(datasets), {
         keepExistingConfig: true,
         // Re-framing the viewport on every refresh would fight the user panning.
         centerMap: false,
