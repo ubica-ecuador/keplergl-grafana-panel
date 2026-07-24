@@ -1,0 +1,221 @@
+{
+  "version": "v1",
+  "config": {
+    "visState": {
+      "filters": [
+        {
+          "dataId": "a5ybmwl2d",
+          "id": "9ca0l7p2a",
+          "name": "zip_area",
+          "type": "range",
+          "value": [
+            0,
+            21.8
+          ],
+          "enlarged": false
+        }
+      ],
+      "layers": [
+        {
+          "id": "8zr03we",
+          "type": "geojson",
+          "config": {
+            "dataId": "a5ybmwl2d",
+            "label": "extruded polygon",
+            "color": [
+              181,
+              18,
+              65
+            ],
+            "columns": {
+              "geojson": "simplified_shape_v2"
+            },
+            "isVisible": true,
+            "visConfig": {
+              "opacity": 0.8,
+              "thickness": 2,
+              "colorRange": {
+                "name": "ColorBrewer YlGnBu-9",
+                "type": "sequential",
+                "category": "ColorBrewer",
+                "colors": [
+                  "#081d58",
+                  "#253494",
+                  "#225ea8",
+                  "#1d91c0",
+                  "#41b6c4",
+                  "#7fcdbb",
+                  "#c7e9b4",
+                  "#edf8b1",
+                  "#ffffd9"
+                ],
+                "reversed": true
+              },
+              "radius": 10,
+              "sizeRange": [
+                0,
+                10
+              ],
+              "radiusRange": [
+                0,
+                50
+              ],
+              "heightRange": [
+                0,
+                500
+              ],
+              "elevationScale": 18,
+              "stroked": true,
+              "filled": true,
+              "enable3d": true,
+              "wireframe": false
+            }
+          },
+          "visualChannels": {
+            "colorField": {
+              "name": "c_m_r",
+              "type": "integer"
+            },
+            "colorScale": "quantize",
+            "sizeField": null,
+            "sizeScale": "linear",
+            "heightField": {
+              "name": "c_a_v",
+              "type": "real"
+            },
+            "heightScale": "linear",
+            "radiusField": null,
+            "radiusScale": "linear"
+          }
+        },
+        {
+          "id": "u7apppt",
+          "type": "geojson",
+          "config": {
+            "dataId": "a5ybmwl2d",
+            "label": "stroke by pop",
+            "color": [
+              221,
+              178,
+              124
+            ],
+            "columns": {
+              "geojson": "simplified_shape"
+            },
+            "isVisible": true,
+            "visConfig": {
+              "opacity": 0.8,
+              "thickness": 7.6,
+              "colorRange": {
+                "name": "Global Warming",
+                "type": "sequential",
+                "category": "Uber",
+                "colors": [
+                  "#5A1846",
+                  "#900C3F",
+                  "#C70039",
+                  "#E3611C",
+                  "#F1920E",
+                  "#FFC300"
+                ]
+              },
+              "radius": 10,
+              "sizeRange": [
+                18.9,
+                47.6
+              ],
+              "radiusRange": [
+                0,
+                50
+              ],
+              "heightRange": [
+                0,
+                500
+              ],
+              "elevationScale": 5,
+              "hi-precision": false,
+              "stroked": true,
+              "filled": false,
+              "enable3d": false,
+              "wireframe": false
+            }
+          },
+          "visualChannels": {
+            "colorField": null,
+            "colorScale": "quantile",
+            "sizeField": {
+              "name": "c_ta",
+              "type": "real"
+            },
+            "sizeScale": "linear",
+            "heightField": null,
+            "heightScale": "linear",
+            "radiusField": null,
+            "radiusScale": "linear"
+          }
+        }
+      ],
+      "interactionConfig": {
+        "tooltip": {
+          "fieldsToShow": {
+            "a5ybmwl2d": [
+              "a_zip",
+              "str_type",
+              "int_type"
+            ]
+          },
+          "enabled": false
+        },
+        "brush": {
+          "size": 1,
+          "enabled": false
+        }
+      },
+      "layerBlending": "normal"
+    },
+    "mapStyle": {
+      "styleType": "dark",
+      "topLayerGroups": {},
+      "visibleLayerGroups": {
+        "label": true,
+        "places": true,
+        "road": true,
+        "border": false,
+        "building": true,
+        "water": true,
+        "land": true
+      },
+      "buildingLayer": {
+        "isVisible": false,
+        "color": [
+          209,
+          206,
+          199
+        ],
+        "opacity": 0.7
+      }
+    },
+    "mapState": {
+      "bearing": 0,
+      "dragRotate": false,
+      "latitude": 37.75043,
+      "longitude": -122.34679,
+      "pitch": 0,
+      "zoom": 9
+    },
+    "queryStatus": {
+      "pastQueries": [
+        {
+          "id": "a5ybmwl2d",
+          "label": "geojson_as_string_small.csv",
+          "queryType": "file",
+          "queryOption": "csv",
+          "params": {
+            "file": null
+          },
+          "size": 67502
+        }
+      ]
+    }
+  }
+}
