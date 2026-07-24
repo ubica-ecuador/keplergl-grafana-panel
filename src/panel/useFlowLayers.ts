@@ -30,9 +30,12 @@ interface Params {
 export function useFlowLayers({ store, isReady, datasets, enabled }: Params): void {
   const added = useRef(new Set<string>());
   const datasetsRef = useRef(datasets);
-  datasetsRef.current = datasets;
   const enabledRef = useRef(enabled);
-  enabledRef.current = enabled;
+  // Updated in an effect, not during render: reconcile only runs on a microtask.
+  useEffect(() => {
+    datasetsRef.current = datasets;
+    enabledRef.current = enabled;
+  });
 
   const reconcile = useRef(() => {
     if (!enabledRef.current) {

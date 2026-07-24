@@ -41,13 +41,17 @@ export function useTimeRangeSync({ store, isReady, mode, grafanaRange, datasets,
   const guard = useRef(new TimeSyncGuard());
 
   // Refs so the reconcile closure always sees the latest values without being
-  // torn down and re-created on every render.
+  // torn down and re-created on every render. Updated in an effect rather than
+  // during render — reconcile only ever runs on a microtask, after effects, so
+  // the refs are always current by the time it reads them.
   const grafanaRangeRef = useRef(grafanaRange);
-  grafanaRangeRef.current = grafanaRange;
   const onChangeRef = useRef(onChangeGrafanaRange);
-  onChangeRef.current = onChangeGrafanaRange;
   const modeRef = useRef(mode);
-  modeRef.current = mode;
+  useEffect(() => {
+    grafanaRangeRef.current = grafanaRange;
+    onChangeRef.current = onChangeGrafanaRange;
+    modeRef.current = mode;
+  });
 
   const reconcile = useRef(() => {
     const currentMode = modeRef.current;

@@ -36,7 +36,10 @@ const ALL_KEY = normalizeFilterKey(null);
 export function useVariableSync({ store, isReady, mappings }: Params): void {
   const lastSynced = useRef<Record<string, string>>({});
   const mappingsRef = useRef(mappings);
-  mappingsRef.current = mappings;
+  // Updated in an effect, not during render: reconcile only runs on a microtask.
+  useEffect(() => {
+    mappingsRef.current = mappings;
+  });
 
   const reconcile = useRef(() => {
     const maps = mappingsRef.current;
