@@ -60,6 +60,20 @@ FROM read_parquet('s3://bucket/zones/*.parquet');
 Under the hood kepler.gl itself only renders GeoJSON and WKT; WKB decoding happens in the plugin
 (`src/data/wkbToGeoJson.ts`), which is what makes the raw-geometry path work.
 
+### CSV
+
+A CSV source (Infinity's CSV type, or any data source that returns a table) works like any other —
+each row becomes a feature. Column detection runs on two levels, so both naming schemes work:
+
+- The plugin's own roles (`latitude`/`lon`/`geom`/`h3`/origin-destination, overridable in **Field
+  mapping**).
+- kepler.gl's own conventions on top: a `<prefix>_lat` + `<prefix>_lng` pair makes a point layer, and
+  a column of WKT or GeoJSON strings makes a polygon layer — verified with `point_latitude` /
+  `point_longitude` and an embedded WKT column.
+
+With Infinity, set the lat/lng columns to type **Number** (its CSV parser defaults everything to
+string); geometry columns stay **String**.
+
 ### GeoJSON from a URL
 
 The [Infinity data source](https://grafana.com/grafana/plugins/yesoreyeram-infinity-datasource/)
