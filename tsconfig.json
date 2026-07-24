@@ -1,0 +1,10 @@
+{
+  "extends": "./.config/tsconfig.json",
+  "compilerOptions": {
+    // The kepler.gl tree pulls in deprecated stub packages (@types/classnames,
+    // @types/bson) that ship no index.d.ts. With the scaffold's typeRoots they
+    // get loaded as implicit type libraries and typecheck fails. Listing the
+    // globals we actually need keeps them out; explicit imports are unaffected.
+    "types": ["node", "jest"]
+  }
+}

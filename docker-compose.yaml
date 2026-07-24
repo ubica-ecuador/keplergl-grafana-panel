@@ -1,0 +1,58 @@
+services:
+  # Grafana 12.0.10 — the floor of the range declared in src/plugin.json.
+  #
+  # Not 12.0.0: Grafana only added `react/jsx-runtime` to its SystemJS import map
+  # in 12.0.10 / 12.1.7 / 12.2.5, and the scaffold externalizes it. On 12.0.0 the
+  # plugin fails to load outright with "404 Not Found, loading react/jsx-runtime".
+  # Developing against the floor catches accidental use of newer APIs.
+  grafana:
+    extends:
+      file: .config/docker-compose-base.yaml
+      service: grafana
+    build:
+      args:
+        grafana_version: ${GRAFANA_VERSION:-12.0.10}
+
+  # Same Grafana, strict Content-Security-Policy, on port 3001.
+  #
+  # maplibre-gl@4 spawns its Web Workers from blob: URLs. A hardened Grafana
+  # sets `worker-src` and can block them, which would break the map for any
+  # locked-down install. Exit criterion 3 of the Phase 0 spike is verified here,
+  # not discovered in production.
+  #
+  # Deliberately NOT using `extends`: Compose appends to sequences when merging,
+  # so an inherited `ports: [3000:3000]` cannot be overridden — both containers
+  # would fight for host port 3000.
+  grafana-csp:
+    user: root
+    container_name: 'ubica-keplergl-panel-csp'
+    build:
+      context: .config
+      args:
+        grafana_image: ${GRAFANA_IMAGE:-grafana-enterprise}
+        grafana_version: ${GRAFANA_VERSION:-12.0.10}
+        development: ${DEVELOPMENT:-false}
+        anonymous_auth_enabled: ${ANONYMOUS_AUTH_ENABLED:-true}
+    ports:
+      - '3001:3000/tcp'
+    volumes:
+      - ./dist:/var/lib/grafana/plugins/ubica-keplergl-panel
+      - ./provisioning:/etc/grafana/provisioning
+    environment:
+      NODE_ENV: development
+      GF_LOG_FILTERS: plugin.ubica-keplergl-panel:debug
+      GF_LOG_LEVEL: debug
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: ubica-keplergl-panel
+      GF_SECURITY_CONTENT_SECURITY_POLICY: 'true'
+      # Grafana's stock CSP template, plus the one delta this plugin needs:
+      # `connect-src` must allow the basemap host. maplibre fetches style.json,
+      # sprites, glyph .pbf files and vector tiles over XHR, so they all fall
+      # under connect-src rather than img-src/font-src.
+      #
+      # Verified with the stock template: the plugin still loads, the map still
+      # renders and Web Workers still start — only the basemap goes missing.
+      GF_SECURITY_CONTENT_SECURITY_POLICY_TEMPLATE: >-
+        script-src 'self' 'unsafe-eval' 'unsafe-inline' 'strict-dynamic' $$NONCE;object-src 'none';font-src
+        'self';style-src 'self' 'unsafe-inline' blob:;img-src * data:;base-uri 'self';connect-src 'self'
+        grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com ws://$$ROOT_PATH
+        wss://$$ROOT_PATH;manifest-src 'self';media-src 'none';form-action 'self';
