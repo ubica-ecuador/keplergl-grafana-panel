@@ -122,21 +122,17 @@ function viewportSettings(
   const metresPerDegreeLon = METRES_PER_DEGREE * Math.cos((centreLat * Math.PI) / 180);
   const metresAcross = (viewport.east - viewport.west) * metresPerDegreeLon;
 
-  // How much of the screen the data actually covers.
-  //
-  // Streamlines can only exist where there is a field, so seeding across the
-  // whole view crowds them into whatever part of it has data: dense zoomed out,
-  // where a country is a fraction of the screen, and sparse zoomed in, where it
-  // fills the view. That is what makes zooming appear to do nothing — the
-  // density follows the data's share of the screen instead of holding still.
-  // Scaling the count by the coverage is what fixes it.
-  const coverage = area(intersect(viewport, extent)) / area(viewport);
-
   const metresPerPixel = metresAcross / viewport.widthPx;
 
   return {
+    // Clipped to the data: a streamline can only exist where there is a field,
+    // so seeding beyond it only wastes attempts on empty space.
+    //
+    // The count is deliberately *not* scaled by how much of the view the data
+    // fills. Doing that holds the density constant per screen, which starves the
+    // map of lines exactly when the data is small in the view — and the data is
+    // what anyone is actually looking at.
     seedArea: intersect(expanded, extent),
-    coverage: Math.min(1, coverage),
     segmentMeters: metresPerPixel * segmentPixels,
     metresPerPixel,
   };
@@ -168,10 +164,9 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
   // one they fall back to the whole field and a fixed distance on the ground.
   const scaled = options.viewport
     ? viewportSettings(options.viewport, extent, base.segmentPixels, base.expandFactor)
-    : { seedArea: extent, coverage: 1, segmentMeters: base.segmentMeters, metresPerPixel: 0 };
+    : { seedArea: extent, segmentMeters: base.segmentMeters, metresPerPixel: 0 };
 
-  // `count` is lines per *full* screen, so only the covered share is drawn.
-  const wanted = Math.round(options.count * scaled.coverage);
+  const wanted = options.count;
   if (wanted < 1 || area(scaled.seedArea) <= 0) {
     return [];
   }

@@ -23,6 +23,9 @@ panel: no external service, no account, no Mapbox token.
   map's time filter, and optionally the map's time slider drives the dashboard back.
 - **Origin-destination flow layers**, automatic — an OD query becomes an animated flow map, no
   manual layer setup. See [Origin-destination flows](#origin-destination-flows).
+- **Animated wind and current fields** — a grid of velocities becomes a field of streamlines that
+  follows the view, keeping its density and line length steady as you zoom. Several levels can be
+  stacked in one map. See [Wind and other velocity fields](#wind-and-other-velocity-fields).
 - **Cross-filtering, both ways** — a filter set on the map drives a dashboard variable, and changing
   that variable filters the map. See [Cross-filtering](#cross-filtering).
 - **Your layer configuration survives a refresh.** Data is swapped underneath the layers rather than
@@ -146,6 +149,49 @@ GROUP BY 1, 2, 3, 4;
 
 H3 hexagons work too — map **Origin H3** / **Destination H3** instead of the coordinate pairs. Choose
 the line style (straight, curved, animated) under **Flow line style**.
+
+### Wind and other velocity fields
+
+A query that returns a **regular grid of velocities** becomes an animated field of streamlines —
+the paths a massless particle would take through it. Nothing to configure: give the plugin
+coordinates and a velocity and it builds the field, smooths it, traces the lines and hands them to
+kepler's own Trip layer.
+
+```sql
+SELECT ts AS "time", lat, lon, speed, direction
+FROM wind_grid
+WHERE level_hpa = 700
+ORDER BY lat, lon;
+```
+
+Velocity can arrive either way. **`speed` + `direction`** is what most sources give — Open-Meteo,
+GFS, national weather services — and `direction` is read as the meteorological convention, the
+bearing the wind blows *from*. **`u` + `v`** components work too, including the GRIB2 short names
+`ugrd`/`vgrd`, so a table converted straight from GFS needs no renaming.
+
+A `trip_id` column disqualifies the query: a GPS trace that happens to carry a `speed` column is a
+trajectory, not a field, and shredding it into streamlines would draw lines that mean nothing.
+
+Rows are one cell of the grid; the grid itself is inferred, so the query may return them in any
+order. When it spans several timesteps the earliest is used — select a single one to be explicit.
+Cells the query omits are treated as **holes**, not as calm air, and streamlines stop at their edge.
+That is how a level that runs below ground is excluded: omit those cells and the lines end at the
+mountains instead of drawing weather over rock.
+
+The lines follow the view. Density and on-screen length hold steady as you zoom, because the field
+is re-traced whenever the map settles — a fixed budget of lines per screen, each a fixed number of
+pixels long. Several velocity queries in one panel share that budget between them.
+
+**Several levels at once:** one query per level, in the same panel. Each becomes its own layer. To
+separate them in the vertical, return a height column and map it to **Altitude** under *Field
+mapping*, then tilt the camera with the 3D control. Height is opt-in on purpose — an `elevation`
+column mapped by accident lifts a layer kilometres into the air. Expect to exaggerate the height a
+long way: pressure levels a few kilometres apart are invisible over a country hundreds of kilometres
+wide.
+
+Colour, width and **Trail Length** live in kepler's own layer settings. A short trail reads as
+drifting particles, a long one as complete streamlines. Every line carries its mean `speed`, so
+*Color Based On → speed* works.
 
 ### Cross-filtering
 

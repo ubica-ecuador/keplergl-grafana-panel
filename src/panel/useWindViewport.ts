@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { Store } from 'redux';
 
-import { PanelDataset, traceWind } from '../data/framesToDatasets';
+import { PanelDataset, stackExaggeration, traceWind } from '../data/framesToDatasets';
 
 import { readMapState, replaceDatasetData } from './keplerAdapter';
 import { MapStateLike, sameMapState, viewportFromMapState } from './windViewport';
@@ -61,6 +61,12 @@ export function useWindViewport(store: Store | null, datasets: PanelDataset[], i
         return;
       }
 
+      // The exaggeration follows the view, so it has to be recomputed here as
+      // well; reusing the one baked into the first trace would flatten the stack
+      // on zooming in and blow it off the screen on zooming out.
+      const tallest = Math.max(...windDatasets.map((d) => d.wind!.rawAltitudeMeters));
+      const exaggeration = stackExaggeration(tallest, viewport);
+
       lastTraced.current = mapState;
 
       // `replaceDataInMap`, not `refreshDatasets`: `updateVisData` leaves the
@@ -68,7 +74,13 @@ export function useWindViewport(store: Store | null, datasets: PanelDataset[], i
       for (const dataset of windDatasets) {
         replaceDatasetData(store.dispatch, {
           ...dataset,
-          rows: traceWind(dataset.wind!.field, dataset.wind!.baseMs, viewport, dataset.wind!.share, dataset.wind!.altitudeMeters),
+          rows: traceWind(
+            dataset.wind!.field,
+            dataset.wind!.baseMs,
+            viewport,
+            dataset.wind!.share,
+            dataset.wind!.rawAltitudeMeters * exaggeration
+          ),
         });
       }
     };

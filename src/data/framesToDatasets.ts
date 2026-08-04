@@ -33,7 +33,7 @@ export interface PanelDataset {
    * lifecycle. `baseMs` travels with it so re-tracing does not shift the
    * animation clock under the playhead.
    */
-  wind?: { field: WindField; baseMs: number; share: number; altitudeMeters: number };
+  wind?: { field: WindField; baseMs: number; share: number; rawAltitudeMeters: number };
 }
 
 /**
@@ -66,7 +66,19 @@ export function framesToDatasets(
   // The line count is a budget for the screen, not for each query. Three levels
   // each drawing a full allowance put three times Esri's entire line count into
   // the same pixels, and the levels stop being tellable apart.
-  const windLayers = resolved.filter((r) => isWindFrame(r.roles)).length;
+  const windFrames = resolved.filter((r) => isWindFrame(r.roles));
+  const windLayers = windFrames.length;
+
+  // One exaggeration for the whole stack, derived from the view rather than
+  // fixed. A factor that separates pressure levels nicely over a country puts
+  // the top one off the screen over a city, and one that works over a city
+  // flattens the stack over a country. Tying it to the viewport keeps the stack
+  // at the same share of the view wherever the user is looking, and using a
+  // single factor keeps the levels in their real proportion to each other.
+  const exaggeration = verticalExaggeration(
+    windFrames.map(({ frame, roles }) => constantOf(frame, roles.altitude)),
+    opts.viewport
+  );
 
   return resolved.map(({ frame, refId, roles }) => {
     const id = datasetId(refId);
@@ -85,13 +97,13 @@ export function framesToDatasets(
       // The tracer produces its own geometry, so the altitude role has to be
       // handed to it as a value. Left out, every level sits on the ground and
       // stacking them reads as one flat layer.
-      const altitudeMeters = constantOf(frame, roles.altitude);
+      const rawAltitudeMeters = constantOf(frame, roles.altitude);
       return field
         ? {
             id,
             label,
-            rows: traceWind(field, baseMs, opts.viewport, share, altitudeMeters),
-            wind: { field, baseMs, share, altitudeMeters },
+            rows: traceWind(field, baseMs, opts.viewport, share, rawAltitudeMeters * exaggeration),
+            wind: { field, baseMs, share, rawAltitudeMeters },
           }
         : { id, label, rows: [] };
     }
@@ -135,6 +147,16 @@ function isTripFrame(roles: FieldRoles): boolean {
  * anything a 25 km model actually resolves.
  */
 const WIND_SMOOTHING_CELLS = 3;
+
+/**
+ * How much of the view's width the top of a stack of levels should rise to.
+ *
+ * Below about a tenth the levels sit on top of each other; much above a fifth
+ * the stack stops reading as a map and starts reading as a wall.
+ */
+const STACK_SHARE_OF_VIEW = 0.15;
+
+const METRES_PER_DEGREE = 111_320;
 
 /**
  * How the streamlines are drawn when nothing says otherwise.
@@ -214,6 +236,36 @@ export function traceWind(
     viewport,
     altitudeMeters,
   });
+}
+
+/**
+ * How much to stretch the vertical so a stack of levels reads on screen.
+ *
+ * Pressure levels a few kilometres apart are invisible over a country hundreds
+ * of kilometres wide — 1000 to 700 hPa is 2.9 km over ~650 km, four parts in a
+ * thousand — and a camera tilt compresses the vertical further still. The stack
+ * is scaled to a share of the view instead, which is the only way one number can
+ * serve every zoom.
+ *
+ * Returns 1 with no viewport or no heights, so nothing is invented when there is
+ * nothing to stack.
+ */
+function verticalExaggeration(altitudes: number[], viewport?: Viewport): number {
+  return stackExaggeration(Math.max(0, ...altitudes), viewport);
+}
+
+/** The same factor, for the viewport hook to recompute on every re-trace. */
+export function stackExaggeration(tallest: number, viewport?: Viewport): number {
+  if (!viewport || tallest <= 0) {
+    return 1;
+  }
+
+  const metresAcross =
+    (viewport.east - viewport.west) *
+    METRES_PER_DEGREE *
+    Math.cos((((viewport.south + viewport.north) / 2) * Math.PI) / 180);
+
+  return (metresAcross * STACK_SHARE_OF_VIEW) / tallest;
 }
 
 /**

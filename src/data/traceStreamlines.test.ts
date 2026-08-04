@@ -203,13 +203,13 @@ describe('traceStreamlines', () => {
     }
   });
 
-  it('keeps the number of lines per screen area steady as the data fills more of the view', () => {
-    // `count` is lines per *full screen*. When the data covers a quarter of the
-    // view, a quarter of them is the right answer — otherwise the same lines
-    // crowd into whatever part of the screen has data, and the map looks dense
-    // zoomed out and sparse zoomed in. This is what made zooming appear to do
-    // nothing: the density was following the data's share of the screen instead
-    // of staying put.
+  it('draws its whole allowance wherever the data is, however little of the view it fills', () => {
+    // Scaling the count by the data's share of the screen keeps the density
+    // constant per *screen*, but nobody looks at the screen — they look at the
+    // data. Zoomed out past a country, that rule starved the map of lines just
+    // when the country was small in the view. The budget is spent in full on
+    // whatever data is visible, and the seeding restriction is what keeps it
+    // from being wasted on empty space.
     const field = uniformField(10, 0); // cubre 20° × 20°
     const at = (halfSpan: number) =>
       traceStreamlines(field, {
@@ -226,11 +226,8 @@ describe('traceStreamlines', () => {
         },
       }).length;
 
-    const full = at(10); // el dato llena la vista
-    const quarter = at(20); // el dato ocupa un cuarto del área
-
-    expect(full).toBe(400);
-    expect(quarter / full).toBeCloseTo(0.25, 1);
+    expect(at(10)).toBe(400); // el dato llena la vista
+    expect(at(20)).toBe(400); // el dato ocupa un cuarto del área
   });
 
   it('runs every streamline over the same window, so the field never thins out', () => {

@@ -5,6 +5,24 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Animated wind and current fields.** A query returning a regular grid of velocities — `speed` +
+  meteorological `direction`, or `u`/`v` components including GRIB2's `ugrd`/`vgrd` — becomes a field
+  of streamlines with no layer setup. The grid is inferred from the rows in any order, smoothed, and
+  traced into paths that kepler's own Trip layer animates: no custom layer, no shaders. The tracing
+  is adapted from [Esri's `animated-flow-ts`](https://github.com/Esri/animated-flow-ts) (Apache-2.0).
+  A `trip_id` column disqualifies the query, so a GPS trace carrying a `speed` column is still drawn
+  as a trajectory. Cells the query omits are holes rather than calm air, which is what lets a level
+  running below ground be excluded by leaving it out: the lines stop at the mountains instead of
+  drawing weather over rock. Several velocity queries in one panel share one budget of lines per
+  screen, and stack in the vertical when an **Altitude** column is mapped.
+- **Streamlines follow the view.** Traced once in geographic space they thin out on zooming in and
+  mat together on zooming out, so the field is re-traced whenever the map settles — a fixed number of
+  lines per screen, each a fixed number of pixels long, seeded only where there is data. Replacing
+  the rows uses `replaceDataInMap` rather than `updateVisData`: for a dataset id kepler already
+  knows, `updateVisData` takes an incremental-batch path and the row count never changes, which is
+  why the map appeared not to react to zoom at all. Verified against the store rather than the
+  panel's row-count label.
+
 - **The time slider can cross-filter without eating its own data.** A new **Slider writes variables**
   choice under *Time range sync* publishes the slider's window to two dashboard variables — UTC ISO
   8601, so `WHERE t >= '$mapFrom'::timestamptz` needs no arithmetic — instead of moving the dashboard

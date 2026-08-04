@@ -388,3 +388,70 @@ describe('framesToDatasets — wind at altitude', () => {
     expect(coords.every((c) => c[2] === 37_500)).toBe(true);
   });
 });
+
+describe('framesToDatasets — stacked levels keep their separation at any zoom', () => {
+  const level = (refId: string, altitude: number) => {
+    const lat: number[] = [];
+    const lon: number[] = [];
+    for (let j = 0; j < 8; j++) {
+      for (let i = 0; i < 8; i++) {
+        lat.push(j);
+        lon.push(i);
+      }
+    }
+    return toDataFrame({
+      refId,
+      fields: [
+        { name: 'lat', type: FieldType.number, values: lat },
+        { name: 'lon', type: FieldType.number, values: lon },
+        { name: 'u', type: FieldType.number, values: lat.map(() => 12) },
+        { name: 'v', type: FieldType.number, values: lat.map(() => 0) },
+        { name: 'alt', type: FieldType.number, values: lat.map(() => altitude) },
+      ],
+    });
+  };
+
+  const mappings = { A: { altitude: 'alt' }, B: { altitude: 'alt' } };
+
+  const drawnHeightOfTop = (halfWidth: number) => {
+    const [, top] = framesToDatasets([level('A', 110), level('B', 3000)], mappings, {
+      windBaseMs: 0,
+      viewport: {
+        west: 4 - halfWidth,
+        east: 4 + halfWidth,
+        south: 4 - halfWidth,
+        north: 4 + halfWidth,
+        widthPx: 800,
+        heightPx: 800,
+      },
+    });
+    return JSON.parse(top.rows[0]._geojson as string).geometry.coordinates[0][2] as number;
+  };
+
+  it('scales the stack with the view, so it reads the same close up and far out', () => {
+    // A fixed exaggeration cannot serve every zoom: the height that separates the
+    // levels nicely over a country is half the screen over a city. Deriving it
+    // from the viewport keeps the stack at the same share of the view wherever
+    // the user is looking.
+    const wide = drawnHeightOfTop(4);
+    const close = drawnHeightOfTop(1);
+
+    expect(wide / close).toBeCloseTo(4, 1);
+  });
+
+  it('keeps the levels in proportion to each other', () => {
+    // The exaggeration is one factor for the whole stack, so 110 m and 3000 m
+    // stay in their real ratio — otherwise the levels would be evenly spaced
+    // regardless of how far apart they actually are.
+    const viewport = { west: 0, east: 8, south: 0, north: 8, widthPx: 800, heightPx: 800 };
+    const [bottom, top] = framesToDatasets([level('A', 110), level('B', 3000)], mappings, {
+      windBaseMs: 0,
+      viewport,
+    });
+
+    const heightOf = (d: (typeof bottom)) =>
+      JSON.parse(d.rows[0]._geojson as string).geometry.coordinates[0][2] as number;
+
+    expect(heightOf(top) / heightOf(bottom)).toBeCloseTo(3000 / 110, 1);
+  });
+});

@@ -244,3 +244,51 @@ describe('smoothWindField', () => {
     expect(nodeAt(smoothed, 2, 3)[0]).toBeCloseTo(4, 5);
   });
 });
+
+describe('buildWindField — scattered points are not a field', () => {
+  it('refuses a handful of stations instead of inventing a grid from them', () => {
+    // A few weather stations are not a velocity field. Left to infer a grid from
+    // them, the spacing comes out of whatever gap happens to be smallest and the
+    // rest of the rows land nowhere near it — so the map draws almost nothing
+    // and says nothing about why. Refusing is what lets the caller fall back to
+    // drawing them as the points they are.
+    const stations = toDataFrame({
+      fields: [
+        { name: 'lat', type: FieldType.number, values: [-0.18, -2.19, -3.99, -1.05, -2.9] },
+        { name: 'lon', type: FieldType.number, values: [-78.47, -79.89, -79.2, -80.45, -79.0] },
+        { name: 'speed', type: FieldType.number, values: [3, 5, 2, 6, 4] },
+        { name: 'direction', type: FieldType.number, values: [90, 120, 80, 100, 110] },
+      ],
+    });
+
+    expect(
+      buildWindField(stations, { latitude: 'lat', longitude: 'lon', speed: 'speed', direction: 'direction' })
+    ).toBeNull();
+  });
+
+  it('still accepts a grid with whole rows or columns missing', () => {
+    // Masking removes cells — over Ecuador it removes the entire cordillera — so
+    // the check has to tolerate gaps in the lattice without tolerating rows that
+    // never sat on one.
+    const lat: number[] = [];
+    const lon: number[] = [];
+    for (const y of [0, 1, 2, 3]) {
+      for (const x of [0, 1, 3]) {
+        // falta la columna x = 2
+        lat.push(y);
+        lon.push(x);
+      }
+    }
+
+    const masked = toDataFrame({
+      fields: [
+        { name: 'lat', type: FieldType.number, values: lat },
+        { name: 'lon', type: FieldType.number, values: lon },
+        { name: 'u', type: FieldType.number, values: lat.map(() => 5) },
+        { name: 'v', type: FieldType.number, values: lat.map(() => 0) },
+      ],
+    });
+
+    expect(buildWindField(masked, { latitude: 'lat', longitude: 'lon', u: 'u', v: 'v' })).not.toBeNull();
+  });
+});

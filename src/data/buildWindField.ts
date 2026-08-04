@@ -210,13 +210,53 @@ export function speedDirToUV(speed: number, directionFromDegrees: number): [numb
   return [-speed * Math.sin(theta), -speed * Math.cos(theta)];
 }
 
-/** The distinct, sorted values of one axis, and the spacing between them. */
+/**
+ * The regular lattice one axis sits on, or null if it does not sit on one.
+ *
+ * The spacing is the *smallest* gap between consecutive values, not the first,
+ * so a grid keeps its true step when whole rows or columns are missing — which
+ * is the normal case once cells are masked out. Every value then has to land on
+ * that lattice.
+ *
+ * That last check is what separates a field from a scattering of points. A
+ * handful of weather stations has gaps of no particular size; inferring a grid
+ * from them yields a step invented from whichever pair happened to be closest,
+ * with every other row landing between cells. The map then draws almost nothing
+ * and gives no hint why. Refusing lets the caller fall back to drawing them as
+ * the points they are.
+ */
 function axisOf(values: number[]): { min: number; step: number; count: number } | null {
   const distinct = [...new Set(values.map(Number))].sort((a, b) => a - b);
   if (distinct.length < 2) {
     return null;
   }
-  return { min: distinct[0], step: distinct[1] - distinct[0], count: distinct.length };
+
+  let step = Infinity;
+  for (let i = 1; i < distinct.length; i++) {
+    step = Math.min(step, distinct[i] - distinct[i - 1]);
+  }
+  if (!(step > 0)) {
+    return null;
+  }
+
+  const span = distinct[distinct.length - 1] - distinct[0];
+  const count = Math.round(span / step) + 1;
+
+  // A step that is tiny next to the span means the values are scattered, not
+  // spaced; the lattice it implies would be enormous and almost entirely empty.
+  if (count > 10_000) {
+    return null;
+  }
+
+  const tolerance = step * 0.05;
+  for (const value of distinct) {
+    const offset = (value - distinct[0]) / step;
+    if (Math.abs(offset - Math.round(offset)) * step > tolerance) {
+      return null;
+    }
+  }
+
+  return { min: distinct[0], step, count };
 }
 
 /**
