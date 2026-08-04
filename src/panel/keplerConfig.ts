@@ -18,7 +18,7 @@ import { initApplicationConfig } from '@kepler.gl/utils';
  * plugin assets from a sub-path or from a CDN, and the scaffold already
  * resolves that at runtime from the AMD module URI.
  */
-function assetBaseUrl(): string {
+export function assetBaseUrl(): string {
   const publicPath = typeof __webpack_public_path__ === 'string' ? __webpack_public_path__ : '';
   return publicPath.replace(/\/$/, '');
 }

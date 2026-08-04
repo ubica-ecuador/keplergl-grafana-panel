@@ -2,6 +2,9 @@ import { DEFAULT_LAYER_GROUPS } from '@kepler.gl/constants';
 
 import satelliteStyle from '../basemaps/satellite.json';
 
+import { registeredMapStyles } from './basemaps';
+import { CUSTOM_BASEMAP_ID, SATELLITE_BASEMAP_ID } from './constants';
+
 type LayerGroup = { slug: string; filter: (layer: { id: string; type?: string }) => unknown };
 
 /** The kepler layer groups a style layer with this id and type falls into. */
@@ -61,5 +64,40 @@ describe('the satellite style document', () => {
     // whatever the user flips.
     expect(groupsMatching('satellite', 'raster')).toEqual([]);
     expect(groupsMatching('background', 'background')).toEqual([]);
+  });
+});
+
+describe('registeredMapStyles', () => {
+  it('registers the satellite style whether or not a custom one is configured', () => {
+    expect(registeredMapStyles().map((s) => s.id)).toEqual([SATELLITE_BASEMAP_ID]);
+    expect(registeredMapStyles('https://tiles.internal/style.json').map((s) => s.id)).toEqual([
+      SATELLITE_BASEMAP_ID,
+      CUSTOM_BASEMAP_ID,
+    ]);
+  });
+
+  it('keeps the self-hosted style pointing at the URL it was given', () => {
+    const custom = registeredMapStyles('https://tiles.internal/style.json')[1];
+
+    expect(custom.url).toBe('https://tiles.internal/style.json');
+  });
+
+  it('does not claim the id of kepler\'s own satellite entry', () => {
+    // _loadMapStyle merges [...custom, ...defaults] into an object keyed by id
+    // and the defaults are written last, so taking `satellite` would hand the
+    // slot straight back to the mapbox:// style that needs a token.
+    expect(SATELLITE_BASEMAP_ID).not.toBe('satellite');
+    expect(registeredMapStyles()[0].id).toBe(SATELLITE_BASEMAP_ID);
+  });
+
+  it('serves the style from the plugin, not from a third party', () => {
+    // Air-gapped installs and Grafana's strict CSP both depend on the style
+    // document itself being same-origin; only the tiles reach outside.
+    expect(registeredMapStyles()[0].url).toMatch(/\/basemaps\/satellite\.json$/);
+    expect(registeredMapStyles()[0].url).not.toMatch(/^https?:\/\//);
+  });
+
+  it('carries exactly the two layer groups its overlays answer to', () => {
+    expect(registeredMapStyles()[0].layerGroups?.map((g) => g.slug)).toEqual(['label', 'road']);
   });
 });

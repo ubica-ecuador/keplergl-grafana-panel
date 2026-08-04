@@ -12,3 +12,13 @@ export const CUSTOM_BASEMAP_ID = 'grafana-custom-basemap';
  * talks to its own map, never to another panel's.
  */
 export const KEPLER_INSTANCE_ID = 'grafana';
+
+/**
+ * Id under which the plugin's own satellite style is registered.
+ *
+ * Deliberately not `satellite`. kepler's mapbox-hosted satellite already claims
+ * that id, and `_loadMapStyle` merges `[...custom, ...defaults]` into an object
+ * keyed by id — the defaults are written last, so a collision would silently
+ * hand the slot back to the style that cannot load without a Mapbox token.
+ */
+export const SATELLITE_BASEMAP_ID = 'grafana-satellite';
