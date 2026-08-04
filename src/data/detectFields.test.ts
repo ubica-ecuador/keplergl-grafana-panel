@@ -1,6 +1,25 @@
 import { FieldType, toDataFrame } from '@grafana/data';
 
-import { detectFields } from './detectFields';
+import { detectFields, resolveRoles } from './detectFields';
+
+describe('resolveRoles', () => {
+  it('falls back to autodetection for roles the user has not touched', () => {
+    expect(resolveRoles({ latitude: 'lat', longitude: 'lng' }, undefined)).toEqual({
+      latitude: 'lat',
+      longitude: 'lng',
+    });
+  });
+
+  it('lets an override replace a detected column', () => {
+    expect(resolveRoles({ latitude: 'lat' }, { latitude: 'y' })).toEqual({ latitude: 'y' });
+  });
+
+  it('drops a role the user has explicitly switched off', () => {
+    // `null` is the third state the editor needs: an absent key means "keep
+    // detecting", which is why clearing the field could never disable a role.
+    expect(resolveRoles({ latitude: 'lat', tripId: 'track_id' }, { tripId: null })).toEqual({ latitude: 'lat' });
+  });
+});
 
 describe('detectFields', () => {
   it('recognises latitude and longitude by name', () => {
@@ -83,6 +102,23 @@ describe('detectFields', () => {
       destLng: 'dest_lon',
       count: 'trips',
     });
+  });
+
+  it('leaves altitude unmapped even when the query carries an elevation column', () => {
+    // GPS traces routinely carry elevation above sea level. Feeding it to the
+    // trip layer draws the trail kilometres above the ground, where deck.gl's
+    // camera loses it as soon as the user zooms past that height — the trip
+    // simply vanishes. Height on a trip path has to be an explicit choice.
+    const frame = toDataFrame({
+      fields: [
+        { name: 'lat', type: FieldType.number, values: [-2.88] },
+        { name: 'lng', type: FieldType.number, values: [-79.01] },
+        { name: 'elevation', type: FieldType.number, values: [2650] },
+        { name: 'track_id', type: FieldType.string, values: ['a'] },
+      ],
+    });
+
+    expect(detectFields(frame).altitude).toBeUndefined();
   });
 
   it('claims no roles at all for a non-geospatial frame', () => {

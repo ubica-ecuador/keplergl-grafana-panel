@@ -42,6 +42,9 @@ ci/
 /playwright/.cache/
 /playwright/.auth/
 
+# Local secrets consumed by docker-compose (see .env.example)
+.env
+
 # Editor
 .idea
 

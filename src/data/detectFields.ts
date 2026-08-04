@@ -26,17 +26,56 @@ export interface FieldRoles {
 }
 
 /**
+ * A user's answer for a role: a column name, or `null` for "use no column".
+ *
+ * Three states matter, and only two of them fit in `FieldRoles`: a role can be
+ * autodetected (key absent), pointed at a column, or deliberately switched off.
+ * Without the third, a query carrying a trip id could never be drawn as points —
+ * clearing the field just handed the role back to autodetection.
+ */
+export type FieldRoleOverrides = Partial<Record<keyof FieldRoles, string | null>>;
+
+/**
+ * Applies a user's overrides to the autodetected roles.
+ *
+ * Roles switched off are removed outright, so everything downstream keeps
+ * working with plain `string | undefined` and no notion of a disabled role.
+ */
+export function resolveRoles(detected: FieldRoles, overrides: FieldRoleOverrides | undefined): FieldRoles {
+  const roles: FieldRoles = { ...detected };
+
+  for (const [role, column] of Object.entries(overrides ?? {})) {
+    const key = role as keyof FieldRoles;
+    if (column === null) {
+      delete roles[key];
+    } else if (column) {
+      roles[key] = column;
+    }
+  }
+
+  return roles;
+}
+
+/**
  * Candidate column names per role, matched case-insensitively and exactly.
  *
  * Exact matching is deliberate: substring matching would make `origin_lat`
  * satisfy `lat` and silently turn an origin/destination table into a plain
  * point layer.
+ *
+ * `altitude` has no candidates on purpose. GPS traces routinely carry an
+ * `elevation` column holding metres above sea level, and deck.gl reads the third
+ * coordinate as height above the ground: a trail through Cuenca at 2,650 m is
+ * drawn 2.65 km up, so it disappears the moment the camera descends below it —
+ * roughly zoom 15. The layer looks fine zoomed out and vanishes zoomed in, which
+ * reads as a rendering bug rather than as a mapping choice. Height on a trip
+ * path is therefore opt-in through the field mapping editor.
  */
 const NAME_CANDIDATES: Record<string, string[]> = {
   latitude: ['latitude', 'lat', 'y'],
   longitude: ['longitude', 'lon', 'lng', 'long', 'x'],
   tripId: ['trip_id', 'tripid', 'track_id', 'trackid', 'trajectory_id', 'vehicle_id', 'journey_id'],
-  altitude: ['altitude', 'alt', 'elevation', 'z'],
+  // `altitude` is deliberately absent: see the note below.
   geometry: ['geom', 'geometry', 'the_geom', 'wkb_geometry', 'geojson', 'wkt', 'shape'],
   h3: ['h3', 'h3_index', 'hex_id', 'hexagon', 'h3index'],
   originLat: ['origin_lat', 'origin_latitude', 'from_lat', 'start_lat', 'source_lat', 'pickup_lat', 'lat0'],

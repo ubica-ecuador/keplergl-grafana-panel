@@ -12,6 +12,15 @@ services:
     build:
       args:
         grafana_version: ${GRAFANA_VERSION:-12.0.10}
+    # The MobilityDB container lives in another Compose project, so its name is
+    # not resolvable from this network. It does publish 5432 on the host, and
+    # `host-gateway` maps to the host from inside the container — that is what
+    # provisioning/datasources/datasources.yml dials.
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    environment:
+      # Read from .env (gitignored) so the password stays out of version control.
+      MOBILITYDB_PASSWORD: ${MOBILITYDB_PASSWORD:-}
 
   # Same Grafana, strict Content-Security-Policy, on port 3001.
   #
@@ -38,7 +47,10 @@ services:
     volumes:
       - ./dist:/var/lib/grafana/plugins/ubica-keplergl-panel
       - ./provisioning:/etc/grafana/provisioning
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     environment:
+      MOBILITYDB_PASSWORD: ${MOBILITYDB_PASSWORD:-}
       NODE_ENV: development
       GF_LOG_FILTERS: plugin.ubica-keplergl-panel:debug
       GF_LOG_LEVEL: debug

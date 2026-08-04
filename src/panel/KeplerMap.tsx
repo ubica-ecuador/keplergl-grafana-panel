@@ -14,7 +14,8 @@ import { createKeplerStore } from './keplerStore';
 import { captureMapConfig, loadDatasets, refreshDatasets, setBasemap, setSidePanel } from './keplerAdapter';
 import { decideLoadAction } from './loadDecision';
 import { useTimeRangeSync } from './useTimeRangeSync';
-import { useFlowLayers } from './useFlowLayers';
+import { useAutoLayers } from './useAutoLayers';
+import { usePeerTimeSync } from './usePeerTimeSync';
 import { useVariableSync } from './useVariableSync';
 import type { TimeRangeMs, TimeSyncMode } from './timeSync';
 import type { VariableMapping } from './variableSync';
@@ -44,6 +45,8 @@ export interface KeplerMapProps {
   onChangeGrafanaRange?: (range: TimeRangeMs) => void;
   /** kepler filter -> dashboard variable bindings. */
   variableMappings: VariableMapping[];
+  /** Whether this map shares its clock with the other maps on the dashboard. */
+  peerTimeSync: boolean;
 }
 
 /**
@@ -77,6 +80,7 @@ export function KeplerMap({
   grafanaRange,
   onChangeGrafanaRange,
   variableMappings,
+  peerTimeSync,
 }: KeplerMapProps) {
   const store = useMemo(() => createKeplerStore(), []);
   const [styleTarget, setStyleTarget] = useState<HTMLElement | null>(null);
@@ -154,8 +158,13 @@ export function KeplerMap({
     onChangeGrafanaRange,
   });
 
-  // Auto-add flow layers only on a fresh map; a saved config owns its layers.
-  useFlowLayers({ store, isReady, datasets, enabled: !mapConfig });
+  // Auto-add trip and flow layers only on a fresh map; a saved config owns its
+  // layers.
+  useAutoLayers({ store, isReady, datasets, enabled: !mapConfig });
+
+  // Declared after the dashboard sync so the dashboard range wins on load and
+  // the maps only trade the clock between themselves afterwards.
+  usePeerTimeSync({ store, isReady, enabled: peerTimeSync });
 
   useVariableSync({ store, isReady, mappings: variableMappings });
 

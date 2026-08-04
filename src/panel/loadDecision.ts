@@ -28,5 +28,26 @@ export function decideLoadAction({ hasLoaded, appliedConfig, currentConfig }: Lo
   }
   // kepler will not accept a config once data is loaded, so a config change has
   // to rebuild rather than patch.
-  return appliedConfig === currentConfig ? 'refresh' : 'rebuild';
+  return isSameConfig(appliedConfig, currentConfig) ? 'refresh' : 'rebuild';
+}
+
+/**
+ * Compares two saved configs by value.
+ *
+ * Identity is not usable here: Grafana rebuilds the panel options object on
+ * every options change, so the very same saved config arrives as a new object
+ * each time. Treating that as a change rebuilt the map — discarding the viewport
+ * the user was looking at — which is precisely what happened when they clicked
+ * "Save current map configuration", since that click is itself an options
+ * change. Both configs come from the same serialisation, so their key order
+ * matches and a JSON comparison is sound.
+ */
+function isSameConfig(a: SavedMapConfig | null | undefined, b: SavedMapConfig | null | undefined): boolean {
+  if (a === b) {
+    return true;
+  }
+  if (!a || !b) {
+    return false;
+  }
+  return JSON.stringify(a) === JSON.stringify(b);
 }

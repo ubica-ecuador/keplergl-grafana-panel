@@ -1,5 +1,6 @@
-import { FieldRoles } from './data/detectFields';
+import { FieldRoleOverrides } from './data/detectFields';
 import { FlowRenderMode } from './data/buildFlows';
+import { TripLayerMode } from './data/buildTripLayer';
 import { SavedMapConfig } from './data/mapConfig';
 import { TimeSyncMode } from './panel/timeSync';
 import { VariableMapping } from './panel/variableSync';
@@ -10,9 +11,11 @@ export type BasemapChoice = 'auto' | 'dark-matter' | 'positron' | 'voyager' | 'c
 export interface KeplerPanelOptions {
   /**
    * Field mapping overrides, keyed by query refId. Anything absent falls back
-   * to autodetection, so the panel works with no configuration at all.
+   * to autodetection, so the panel works with no configuration at all; a role
+   * set to `null` is switched off, which is how a trajectory query is drawn as
+   * points rather than trips.
    */
-  fieldMappings?: Record<string, FieldRoles>;
+  fieldMappings?: Record<string, FieldRoleOverrides>;
 
   /**
    * The saved map configuration: layers, filters, interactions, base map.
@@ -52,8 +55,23 @@ export interface KeplerPanelOptions {
    */
   timeSync?: TimeSyncMode;
 
+  /**
+   * Shares the map's clock — time filter and trip playhead — with the other
+   * maps on the dashboard that also have this on, in the browser and without
+   * moving the dashboard time range. Off by default: it couples panels, which
+   * should be a deliberate choice.
+   */
+  peerTimeSync?: boolean;
+
   /** How auto-created flow layers draw their lines. Defaults to `straight`. */
   flowRenderMode?: FlowRenderMode;
+
+  /**
+   * Which of kepler's two Trip layer shapes a trajectory query loads as.
+   * Defaults to `table`, which keeps one row per point and with it every column
+   * the query returned.
+   */
+  tripLayerMode?: TripLayerMode;
 
   /**
    * Ties kepler filters to dashboard variables: setting a select/text filter on

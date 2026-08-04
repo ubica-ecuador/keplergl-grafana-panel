@@ -41,6 +41,25 @@ describe('decideLoadAction', () => {
     ).toBe('rebuild');
   });
 
+  it('refreshes when the same config arrives as a new object', () => {
+    // Grafana hands the panel a fresh options object on every options change,
+    // so the saved config is a structurally equal but non-identical copy.
+    // Comparing by identity made every options change — including the click on
+    // "Save current map configuration" itself — rebuild the map, which threw
+    // away the viewport the user had just set and re-saved the stored one.
+    const applied = { version: 'v1', config: { mapState: { zoom: 16 } } };
+    const current = { version: 'v1', config: { mapState: { zoom: 16 } } };
+
+    expect(decideLoadAction({ hasLoaded: true, appliedConfig: applied, currentConfig: current })).toBe('refresh');
+  });
+
+  it('rebuilds when the same object arrives with a different viewport', () => {
+    const applied = { version: 'v1', config: { mapState: { zoom: 16 } } };
+    const current = { version: 'v1', config: { mapState: { zoom: 11 } } };
+
+    expect(decideLoadAction({ hasLoaded: true, appliedConfig: applied, currentConfig: current })).toBe('rebuild');
+  });
+
   it('rebuilds when the user clears a saved config', () => {
     expect(
       decideLoadAction({ hasLoaded: true, appliedConfig: { version: 'v1', config: {} }, currentConfig: null })

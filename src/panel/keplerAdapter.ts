@@ -5,6 +5,8 @@ import {
   fitBounds,
   mapStyleChange,
   removeFilter,
+  removeLayer,
+  setLayerAnimationTime,
   toggleSidePanel,
   updateVisData,
   wrapTo,
@@ -15,8 +17,10 @@ import type { Dispatch, Store } from 'redux';
 
 import type { PanelDataset } from '../data/framesToDatasets';
 import type { FlowLayerConfig } from '../data/buildFlows';
+import type { TripLayerConfig } from '../data/buildTripLayer';
 import type { SavedMapConfig } from '../data/mapConfig';
 import { findTimeFieldName, readTimeFilterValue, TIME_FILTER_TYPE, type TimeRangeMs } from './timeSync';
+import { supersededTripLayerIds } from './autoLayers';
 import { KEPLER_INSTANCE_ID } from './constants';
 
 /**
@@ -122,7 +126,8 @@ export function refreshDatasets(dispatch: Dispatch, datasets: PanelDataset[]): v
 interface VisStateLike {
   filters: Array<{ id: string; type?: string; value?: unknown; name?: string[] | string }>;
   datasets: Record<string, { fields: Array<{ name: string; type?: string }> }>;
-  layers: Array<{ id: string; config?: { dataId?: string }; meta?: { bounds?: number[] } }>;
+  layers: Array<{ id: string; type?: string; config?: { dataId?: string }; meta?: { bounds?: number[] } }>;
+  animationConfig?: { currentTime?: number | null; domain?: number[] | null };
 }
 
 /** A kepler filter, as the variable sync reads it. */
@@ -193,6 +198,34 @@ export function readTimeRange(store: Store): TimeRangeMs | null {
 }
 
 /**
+ * The trip animation playhead, or null when the map has no trip animation.
+ *
+ * This is kepler's second clock, and it is not the time filter: a Trip layer
+ * plays along `animationConfig.currentTime` while filters have their own
+ * window. A map can have either, both or neither.
+ */
+export function readAnimationTime(store: Store): number | null {
+  const currentTime = getVisState(store)?.animationConfig?.currentTime;
+  return typeof currentTime === 'number' ? currentTime : null;
+}
+
+/**
+ * Moves the trip animation playhead.
+ *
+ * Returns false when the map has no animation to move — no trip layer, or one
+ * whose domain kepler has not computed yet — so the caller can retry once the
+ * data lands, the same way `pushTimeRange` does.
+ */
+export function pushAnimationTime(store: Store, dispatch: Dispatch, time: number): boolean {
+  const domain = getVisState(store)?.animationConfig?.domain;
+  if (!Array.isArray(domain) || domain.length < 2) {
+    return false;
+  }
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, setLayerAnimationTime(time)));
+  return true;
+}
+
+/**
  * Reflects a Grafana time range on the map's time filter.
  *
  * Updates the existing time filter when there is one, otherwise creates one on
@@ -226,8 +259,8 @@ export function pushTimeRange(store: Store, dispatch: Dispatch, range: TimeRange
   return false;
 }
 
-/** Whether the map is ready for a flow layer to be added for `dataId`. */
-export function flowLayerStatus(
+/** Whether the map is ready for an auto-added layer to be added for `dataId`. */
+export function autoLayerStatus(
   store: Store,
   dataId: string,
   layerId: string
@@ -243,23 +276,34 @@ export function flowLayerStatus(
 }
 
 /**
- * Adds a flow layer for an origin-destination dataset and returns the bounds
+ * Adds a layer kepler would not have created on its own, and returns the bounds
  * kepler computed for it, or null.
  *
- * kepler auto-creates default layers for points, geometry and trips but not for
- * flows, so an OD dataset would otherwise render nothing. The layer config comes
- * from `buildFlows`; kepler parses it because it carries `visualChannels`. kepler
- * computes the layer's data bounds while adding it (synchronously), which the
- * caller uses to frame the map — `addDataToMap` could not, having had no flow
- * layer to measure.
+ * kepler auto-creates default layers for points and geometry, but not for flows
+ * (it has no detection for them at all) and not for the panel's trips (its
+ * detection insists on a column named `id`). Both configs — from `buildFlows`
+ * and `buildTripLayer` — are parsed by kepler because they carry
+ * `visualChannels`. kepler computes the layer's data bounds while adding it,
+ * synchronously, which the caller uses to frame the map on an OD dataset:
+ * `addDataToMap` could not, having had no flow layer to measure.
  */
-export function addFlowLayer(
+export function addAutoLayer(
   store: Store,
   dispatch: Dispatch,
-  layer: FlowLayerConfig,
+  layer: FlowLayerConfig | TripLayerConfig,
   dataId: string
 ): MapBounds | null {
   dispatch(wrapTo(KEPLER_INSTANCE_ID, addLayer(layer, dataId)));
+
+  // kepler may have guessed a Trip layer of its own for this dataset; ours,
+  // built from the mapped trip id, replaces it.
+  for (const id of supersededTripLayerIds(getVisState(store)?.layers ?? [], {
+    id: layer.id,
+    type: layer.type,
+    dataId,
+  })) {
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, removeLayer(id)));
+  }
 
   const added = getVisState(store)?.layers.find((l) => l.id === layer.id);
   const bounds = added?.meta?.bounds;

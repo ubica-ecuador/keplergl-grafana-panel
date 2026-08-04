@@ -2,11 +2,17 @@ import React from 'react';
 import { DataFrame, StandardEditorProps } from '@grafana/data';
 import { Combobox, ComboboxOption, InlineField, InlineFieldRow, Stack, Text } from '@grafana/ui';
 
-import { detectFields, FieldRoles } from '../data/detectFields';
+import { detectFields, FieldRoleOverrides, FieldRoles } from '../data/detectFields';
 import { KeplerPanelOptions } from '../types';
 
-type Mappings = Record<string, FieldRoles>;
+type Mappings = Record<string, FieldRoleOverrides>;
 type Props = StandardEditorProps<Mappings | undefined, unknown, KeplerPanelOptions>;
+
+/**
+ * Stands in for `null` inside the combobox, which only carries string values.
+ * Prefixed so it cannot collide with a real column name.
+ */
+const NONE_VALUE = '__none__';
 
 /** Roles offered per query, in the order they matter for mobility data. */
 const ROLES: Array<{ key: keyof FieldRoles; label: string; help: string }> = [
@@ -43,14 +49,16 @@ export function FieldMappingEditor({ value, onChange, context }: Props) {
     );
   }
 
-  const setRole = (refId: string, role: keyof FieldRoles, column?: string) => {
+  // `undefined` clears the override and hands the role back to autodetection;
+  // `null` switches the role off, which autodetection cannot express.
+  const setRole = (refId: string, role: keyof FieldRoles, column: string | null | undefined) => {
     const next: Mappings = { ...(value ?? {}) };
-    const forQuery: FieldRoles = { ...(next[refId] ?? {}) };
+    const forQuery: FieldRoleOverrides = { ...(next[refId] ?? {}) };
 
-    if (column) {
-      forQuery[role] = column;
-    } else {
+    if (column === undefined) {
       delete forQuery[role];
+    } else {
+      forQuery[role] = column;
     }
 
     next[refId] = forQuery;
@@ -76,14 +84,20 @@ export function FieldMappingEditor({ value, onChange, context }: Props) {
 interface QueryMappingProps {
   frame: DataFrame;
   refId: string;
-  overrides: FieldRoles;
-  onSetRole: (refId: string, role: keyof FieldRoles, column?: string) => void;
+  overrides: FieldRoleOverrides;
+  onSetRole: (refId: string, role: keyof FieldRoles, column: string | null | undefined) => void;
   showHeading: boolean;
 }
 
 function QueryMapping({ frame, refId, overrides, onSetRole, showHeading }: QueryMappingProps) {
   const detected = detectFields(frame);
-  const columns: Array<ComboboxOption<string>> = frame.fields.map((f) => ({ label: f.name, value: f.name }));
+  const columns: Array<ComboboxOption<string>> = [
+    // Switching a role off is a real answer, not the absence of one: a query
+    // with a trip id is folded into trips, and only "None" gets it back to
+    // one row per point.
+    { label: 'None', value: NONE_VALUE, description: 'Ignore this role, whatever the columns are called' },
+    ...frame.fields.map((f) => ({ label: f.name, value: f.name })),
+  ];
 
   return (
     <Stack direction="column" gap={0.5}>
@@ -97,14 +111,16 @@ function QueryMapping({ frame, refId, overrides, onSetRole, showHeading }: Query
             <InlineField label={label} tooltip={help} labelWidth={16} grow>
               <Combobox
                 options={columns}
-                value={override ?? null}
+                value={override === null ? NONE_VALUE : (override ?? null)}
                 // Autodetected values live in the placeholder so the user can
                 // see what the plugin inferred without it looking like an
                 // explicit choice they made — and so clearing an override falls
                 // back to autodetection rather than to nothing.
                 placeholder={auto ? `${auto} (detected)` : 'Not set'}
                 isClearable
-                onChange={(option) => onSetRole(refId, key, option?.value)}
+                onChange={(option) =>
+                  onSetRole(refId, key, option === null ? undefined : option.value === NONE_VALUE ? null : option.value)
+                }
               />
             </InlineField>
           </InlineFieldRow>

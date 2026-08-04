@@ -44,6 +44,28 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
         ],
       },
     })
+    .addBooleanSwitch({
+      path: 'peerTimeSync',
+      name: 'Sync time with other maps',
+      description:
+        "Share this map's time filter and trip playhead with the other maps on the dashboard that have this on. Runs in the browser, so animating one map moves the rest without re-running any query.",
+      category: ['Map'],
+      defaultValue: false,
+    })
+    .addSelect({
+      path: 'tripLayerMode',
+      name: 'Trip layer',
+      description:
+        'Table columns keeps one row per point, so speed, mode and every other column stay available for colour, filters and tooltips. GeoJSON folds each trip into a single row: far less data, but only the path survives.',
+      category: ['Map'],
+      defaultValue: 'table',
+      settings: {
+        options: [
+          { value: 'table', label: 'Table columns' },
+          { value: 'geojson', label: 'GeoJSON' },
+        ],
+      },
+    })
     .addSelect({
       path: 'flowRenderMode',
       name: 'Flow line style',
