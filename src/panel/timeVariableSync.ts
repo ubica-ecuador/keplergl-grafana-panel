@@ -163,3 +163,21 @@ export function decideTimeSync(mapKey: string, varKey: string, lastKey: string |
 export function windowKey(range: TimeRangeMs | null): string {
   return range ? `${Math.round(range.from)}-${Math.round(range.to)}` : NO_WINDOW;
 }
+
+/**
+ * How long to keep waiting before publishing a window that keeps moving.
+ *
+ * A plain trailing debounce is the right shape for a drag — the brush comes to
+ * rest and one write leaves — but it is the wrong shape for playback, which
+ * never rests: every frame rearms the timer, so the window would not reach the
+ * dashboard until the animation stopped. Capping the total wait turns the same
+ * timer into a throttle for that case, without changing what a drag does.
+ *
+ * `rest` is the quiet the window must reach to be considered settled, `cap` the
+ * longest the caller is willing to sit on a change that never settles, measured
+ * from `pendingSince` — the first change of the current run, not the last. The
+ * result is the delay to arm the timer with, never negative.
+ */
+export function nextPublishDelay(now: number, pendingSince: number, rest: number, cap: number): number {
+  return Math.max(0, Math.min(rest, cap - (now - pendingSince)));
+}

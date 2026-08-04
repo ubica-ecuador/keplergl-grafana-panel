@@ -15,6 +15,7 @@ import { captureMapConfig, loadDatasets, refreshDatasets, setBasemap, setSidePan
 import { decideLoadAction } from './loadDecision';
 import { useTimeRangeSync } from './useTimeRangeSync';
 import { useAutoLayers } from './useAutoLayers';
+import { useWindViewport } from './useWindViewport';
 import { usePeerTimeSync } from './usePeerTimeSync';
 import { useVariableSync } from './useVariableSync';
 import { useTimeVariableSync } from './useTimeVariableSync';
@@ -52,6 +53,8 @@ export interface KeplerMapProps {
   variableMappings: VariableMapping[];
   /** The two variables the time slider's window is published to, if configured. */
   timeVariables?: TimeVariableMapping;
+  /** Whether playing the slider publishes as it runs, or only once it stops. */
+  publishWhilePlaying: boolean;
   /** Whether this map shares its clock with the other maps on the dashboard. */
   peerTimeSync: boolean;
 }
@@ -88,6 +91,7 @@ export function KeplerMap({
   onChangeGrafanaRange,
   variableMappings,
   timeVariables,
+  publishWhilePlaying,
   peerTimeSync,
 }: KeplerMapProps) {
   const store = useMemo(() => createKeplerStore(), []);
@@ -170,6 +174,10 @@ export function KeplerMap({
   // layers.
   useAutoLayers({ store, isReady, datasets, enabled: !mapConfig });
 
+  // Wind streamlines follow the view: traced once in geographic space they thin
+  // out on zooming in and mat together on zooming out.
+  useWindViewport(store, datasets, isReady);
+
   // Declared after the dashboard sync so the dashboard range wins on load and
   // the maps only trade the clock between themselves afterwards.
   usePeerTimeSync({ store, isReady, enabled: peerTimeSync });
@@ -183,6 +191,8 @@ export function KeplerMap({
     isReady,
     enabled: timeSync === 'variables',
     mapping: timeVariables ?? NO_TIME_VARIABLES,
+    whilePlaying: publishWhilePlaying,
+    peerSync: peerTimeSync,
   });
 
   return (

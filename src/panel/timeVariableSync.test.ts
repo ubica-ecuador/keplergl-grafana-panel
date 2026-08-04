@@ -1,6 +1,7 @@
 import {
   decideTimeSync,
   formatTimeValue,
+  nextPublishDelay,
   parseTimeValue,
   readWindowFromVariables,
   timeVariableWrites,
@@ -144,5 +145,35 @@ describe('windowKey', () => {
 
   it('ignores sub-millisecond noise so a clamped echo compares equal', () => {
     expect(windowKey({ from: 1.4, to: 2.6 })).toBe(windowKey({ from: 1, to: 3 }));
+  });
+});
+
+describe('nextPublishDelay', () => {
+  const REST = 300;
+  const MAX = 1500;
+
+  it('waits the full rest delay for a change that has just arrived', () => {
+    expect(nextPublishDelay(1000, 1000, REST, MAX)).toBe(REST);
+  });
+
+  it('keeps waiting the rest delay while the cap is still far off, so a drag collapses into one write', () => {
+    expect(nextPublishDelay(1200, 1000, REST, MAX)).toBe(REST);
+  });
+
+  it('shortens the wait so the cap is not overshot', () => {
+    expect(nextPublishDelay(2400, 1000, REST, MAX)).toBe(100);
+  });
+
+  it('publishes immediately once the cap is reached, which is what lets playback report as it runs', () => {
+    expect(nextPublishDelay(2500, 1000, REST, MAX)).toBe(0);
+  });
+
+  it('never asks for a negative delay when the cap is already past', () => {
+    expect(nextPublishDelay(9000, 1000, REST, MAX)).toBe(0);
+  });
+
+  it('is a plain trailing debounce without a cap, which is how a silent playback stays silent', () => {
+    expect(nextPublishDelay(1000, 1000, REST, Number.POSITIVE_INFINITY)).toBe(REST);
+    expect(nextPublishDelay(60_000, 1000, REST, Number.POSITIVE_INFINITY)).toBe(REST);
   });
 });

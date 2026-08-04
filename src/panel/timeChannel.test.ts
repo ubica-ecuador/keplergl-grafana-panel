@@ -62,3 +62,54 @@ describe('createTimeChannel', () => {
     expect(channel.nextId()).not.toBe(channel.nextId());
   });
 });
+
+/**
+ * The publishing map is not always the map being played: with peer sync on, one
+ * map's animation arrives at the others as an ordinary filter change, and their
+ * own `isAnimating` stays false. So whether the shared clock is running has to
+ * travel on the bus, or a follower cannot tell playback from a drag.
+ */
+describe('anyPlaying', () => {
+  it('is false on a channel nobody has joined', () => {
+    expect(createTimeChannel().anyPlaying()).toBe(false);
+  });
+
+  it('is false while the senders are only moving their clock by hand', () => {
+    const channel = createTimeChannel();
+    channel.subscribe('a', () => undefined);
+    channel.publish({ senderId: 'a', filter: { from: 1, to: 2 } });
+    expect(channel.anyPlaying()).toBe(false);
+  });
+
+  it('reports a sender that says it is playing', () => {
+    const channel = createTimeChannel();
+    channel.subscribe('a', () => undefined);
+    channel.publish({ senderId: 'a', playing: true, filter: { from: 1, to: 2 } });
+    expect(channel.anyPlaying()).toBe(true);
+  });
+
+  it('clears once that sender says it stopped', () => {
+    const channel = createTimeChannel();
+    channel.subscribe('a', () => undefined);
+    channel.publish({ senderId: 'a', playing: true });
+    channel.publish({ senderId: 'a', playing: false });
+    expect(channel.anyPlaying()).toBe(false);
+  });
+
+  it('stays true while any one sender is still playing', () => {
+    const channel = createTimeChannel();
+    channel.subscribe('a', () => undefined);
+    channel.subscribe('b', () => undefined);
+    channel.publish({ senderId: 'a', playing: true });
+    channel.publish({ senderId: 'b', playing: false });
+    expect(channel.anyPlaying()).toBe(true);
+  });
+
+  it('forgets a sender that leaves mid-animation, so its silence cannot outlive it', () => {
+    const channel = createTimeChannel();
+    const leave = channel.subscribe('a', () => undefined);
+    channel.publish({ senderId: 'a', playing: true });
+    leave();
+    expect(channel.anyPlaying()).toBe(false);
+  });
+});

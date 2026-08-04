@@ -7,6 +7,15 @@ import { wkbToGeoJson } from './wkbToGeoJson';
 export type KeplerRow = Record<string, unknown>;
 
 /**
+ * Roles whose column kepler reads by name.
+ *
+ * The wind roles are absent on purpose: a velocity field never reaches kepler as
+ * columns. It is consumed to trace streamlines, and what kepler receives is
+ * their geometry, so renaming `u`/`v` would be renaming something nobody looks at.
+ */
+type RenamedRole = Exclude<keyof FieldRoles, 'u' | 'v' | 'speed' | 'direction'>;
+
+/**
  * Column name kepler expects for each role.
  *
  * kepler creates its default layers by looking at column names, so a role is
@@ -14,7 +23,7 @@ export type KeplerRow = Record<string, unknown>;
  * `_geojson` is kepler's convention for a geometry column; `lat0`/`lng0`/
  * `lat1`/`lng1`/`count` are what the flow layer requires.
  */
-export const KEPLER_COLUMN: Record<keyof FieldRoles, string> = {
+export const KEPLER_COLUMN: Record<RenamedRole, string> = {
   latitude: 'latitude',
   longitude: 'longitude',
   time: 'time',
@@ -42,8 +51,10 @@ export const KEPLER_COLUMN: Record<keyof FieldRoles, string> = {
 export function toKeplerRows(frame: DataFrame, roles: FieldRoles): KeplerRow[] {
   const renames = new Map<string, string>();
   for (const [role, sourceName] of Object.entries(roles)) {
-    if (sourceName) {
-      renames.set(sourceName, KEPLER_COLUMN[role as keyof FieldRoles]);
+    const target = KEPLER_COLUMN[role as RenamedRole];
+    // A role with no kepler column — the wind ones — leaves its column alone.
+    if (sourceName && target) {
+      renames.set(sourceName, target);
     }
   }
 

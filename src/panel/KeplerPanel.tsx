@@ -21,17 +21,23 @@ interface Props extends PanelProps<KeplerPanelOptions> {}
 export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChangeTimeRange, width, height }: Props) {
   const grafanaTheme = useTheme2();
 
+  // kepler and the sync hook work in epoch ms; Grafana hands DateTime objects.
+  const grafanaRange = useMemo(() => ({ from: timeRange.from.valueOf(), to: timeRange.to.valueOf() }), [timeRange]);
+
   const datasets = useMemo(
     () =>
       framesToDatasets(data.series, options.fieldMappings, {
         flowRenderMode: options.flowRenderMode,
         tripLayerMode: options.tripLayerMode,
+        // Wind streamlines carry a synthetic clock. Starting it at the dashboard
+        // range means the animation lands inside the window the user is looking
+        // at; started at "now" it runs into the future, and the default time
+        // sync — which pushes that range onto the map as a filter — hides the
+        // whole layer.
+        windBaseMs: grafanaRange.from,
       }),
-    [data.series, options.fieldMappings, options.flowRenderMode, options.tripLayerMode]
+    [data.series, options.fieldMappings, options.flowRenderMode, options.tripLayerMode, grafanaRange.from]
   );
-
-  // kepler and the sync hook work in epoch ms; Grafana hands DateTime objects.
-  const grafanaRange = useMemo(() => ({ from: timeRange.from.valueOf(), to: timeRange.to.valueOf() }), [timeRange]);
 
   const keplerTheme = useMemo(() => toKeplerTheme(grafanaTheme), [grafanaTheme]);
   const followTheme = options.followGrafanaTheme ?? true;
@@ -72,6 +78,7 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
         onChangeGrafanaRange={onChangeTimeRange}
         variableMappings={options.variableMappings ?? []}
         timeVariables={options.timeVariables}
+        publishWhilePlaying={options.publishWhilePlaying ?? false}
         peerTimeSync={options.peerTimeSync ?? false}
       />
     </div>

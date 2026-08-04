@@ -15,6 +15,16 @@ export interface TimeMessage {
   filter?: TimeRangeMs | null;
   /** The trip animation playhead, in epoch milliseconds. */
   playhead?: number | null;
+  /**
+   * Whether the sender is playing its clock rather than being moved by hand.
+   *
+   * A follower cannot work this out for itself: an animation reaching it over
+   * this bus is an ordinary filter change, and its own `isAnimating` stays
+   * false. Anything that must treat playback differently from a drag — the
+   * variable sync, which would otherwise publish a window per step — needs the
+   * sender to say so.
+   */
+  playing?: boolean;
 }
 
 export type TimeListener = (message: TimeMessage) => void;
@@ -26,6 +36,15 @@ export interface TimeChannel {
   subscribe(id: string, listener: TimeListener): () => void;
   /** Tells the other maps where this one is. */
   publish(message: TimeMessage): void;
+  /**
+   * Whether any map on the bus is currently playing its clock.
+   *
+   * Includes the caller: a map that is animating locally already knows, and
+   * counting it costs nothing. A sender that leaves is forgotten, so a panel
+   * removed mid-animation cannot leave the others believing forever that
+   * something is still playing.
+   */
+  anyPlaying(): boolean;
 }
 
 /**
@@ -47,6 +66,8 @@ export interface TimeChannel {
  */
 export function createTimeChannel(): TimeChannel {
   const listeners = new Map<string, TimeListener>();
+  /** The last thing each sender said about whether its clock is running. */
+  const playing = new Map<string, boolean>();
   let seq = 0;
 
   return {
@@ -59,15 +80,29 @@ export function createTimeChannel(): TimeChannel {
       listeners.set(id, listener);
       return () => {
         listeners.delete(id);
+        playing.delete(id);
       };
     },
 
     publish(message) {
+      if (message.playing !== undefined) {
+        playing.set(message.senderId, message.playing);
+      }
       for (const [id, listener] of listeners) {
         if (id !== message.senderId) {
           listener(message);
         }
       }
+    },
+
+    anyPlaying() {
+      for (const [id, isPlaying] of playing) {
+        // A sender that never subscribed, or has left, does not count.
+        if (isPlaying && listeners.has(id)) {
+          return true;
+        }
+      }
+      return false;
     },
   };
 }

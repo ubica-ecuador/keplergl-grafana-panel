@@ -71,6 +71,17 @@ export interface KeplerPanelOptions {
   timeVariables?: TimeVariableMapping;
 
   /**
+   * Whether playing the time slider writes the window as it runs, rather than
+   * only once it stops.
+   *
+   * Off by default because it is not free: a write propagates a variable change
+   * through the whole dashboard, which re-runs the panels that read it and
+   * costs the animation frames. Worth turning on when watching the numbers
+   * move matters more than the playback being smooth.
+   */
+  publishWhilePlaying?: boolean;
+
+  /**
    * Shares the map's clock — time filter and trip playhead — with the other
    * maps on the dashboard that also have this on, in the browser and without
    * moving the dashboard time range. Off by default: it couples panels, which

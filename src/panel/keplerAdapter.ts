@@ -6,6 +6,7 @@ import {
   mapStyleChange,
   removeFilter,
   removeLayer,
+  replaceDataInMap,
   setLayerAnimationTime,
   toggleSidePanel,
   updateVisData,
@@ -19,6 +20,7 @@ import type { PanelDataset } from '../data/framesToDatasets';
 import type { FlowLayerConfig } from '../data/buildFlows';
 import type { TripLayerConfig } from '../data/buildTripLayer';
 import type { SavedMapConfig } from '../data/mapConfig';
+import type { MapStateLike } from './windViewport';
 import {
   findTimeFieldName,
   readTimeFilterDomain,
@@ -128,6 +130,40 @@ export function refreshDatasets(dispatch: Dispatch, datasets: PanelDataset[]): v
   );
 }
 
+/**
+ * Swaps the rows behind one dataset, keeping the layers built on it.
+ *
+ * `updateVisData` cannot do this. For an id it already knows, kepler takes the
+ * "update the data when loading data by batches incrementally" path in
+ * `createNewDataEntry`, which is meant for streaming a dataset in pieces — the
+ * row count simply does not change. Verified against the store, not the panel's
+ * label: after three zoom-out steps the dataset still reported every one of its
+ * original rows.
+ *
+ * `replaceDataInMap` is kepler's own answer, and it preserves what matters:
+ * internally it re-points the layers, filters and layer order at the new data
+ * rather than dropping them, so this is not the removeDataset + addDataset that
+ * costs the user their layer configuration.
+ */
+export function replaceDatasetData(dispatch: Dispatch, dataset: PanelDataset): void {
+  const [keplerDataset] = toKeplerDatasets([dataset]);
+  if (!keplerDataset) {
+    return;
+  }
+
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      replaceDataInMap({
+        datasetToReplaceId: dataset.id,
+        datasetToUse: keplerDataset,
+        // Re-framing on every pan would fight the gesture that triggered this.
+        options: { centerMap: false, keepExistingConfig: true },
+      })
+    )
+  );
+}
+
 /** Minimal view of the kepler vis-state these helpers read. */
 interface VisStateLike {
   filters: Array<{
@@ -222,6 +258,17 @@ function getVisState(store: Store): VisStateLike | null {
   return state.keplerGl?.[KEPLER_INSTANCE_ID]?.visState ?? null;
 }
 
+/**
+ * What the map is currently showing: centre, zoom and pixel size.
+ *
+ * Read raw rather than converted, so the Mercator arithmetic stays in a pure
+ * module that can be tested without a store — see `windViewport.ts`.
+ */
+export function readMapState(store: Store): MapStateLike | null {
+  const state = store.getState() as { keplerGl?: Record<string, { mapState?: MapStateLike }> };
+  return state.keplerGl?.[KEPLER_INSTANCE_ID]?.mapState ?? null;
+}
+
 /** The map's current time-filter window, or null if it has no time filter. */
 export function readTimeRange(store: Store): TimeRangeMs | null {
   const visState = getVisState(store);
@@ -237,9 +284,13 @@ export function readTimeDomain(store: Store): TimeRangeMs | null {
 /**
  * Whether kepler is currently playing the time filter across its domain.
  *
- * The play button moves the window roughly every frame. Publishing each of
- * those is what turns an animation into a stream of dashboard updates, so the
- * variable sync sits out the animation and writes once when it stops.
+ * The play button moves the window roughly every frame, and each of those is a
+ * fresh dashboard time range — which re-queries every panel and, worse, shrinks
+ * the dataset the widget is animating over. So the time *range* sync always
+ * sits the animation out and reports once it stops. The variable sync consults
+ * this only when its panel is set to stay quiet during playback, which is the
+ * default: publishing throughout is available, but it costs the animation
+ * frames, so it is the user's call rather than the code's.
  */
 export function isTimeFilterAnimating(store: Store): boolean {
   return Boolean(getVisState(store)?.filters.find((f) => f.type === TIME_FILTER_TYPE)?.isAnimating);

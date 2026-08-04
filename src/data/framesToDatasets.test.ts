@@ -162,3 +162,229 @@ describe('framesToDatasets', () => {
     expect(dataset.tripLayer?.config.columns.id).toBe('trip_id');
   });
 });
+
+describe('framesToDatasets — wind', () => {
+  /** A 4×4 grid at 1° spacing carrying a steady eastward wind. */
+  const windFrame = () => {
+    const lat: number[] = [];
+    const lon: number[] = [];
+    for (let j = 0; j < 4; j++) {
+      for (let i = 0; i < 4; i++) {
+        lat.push(j);
+        lon.push(i);
+      }
+    }
+    return toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'lat', type: FieldType.number, values: lat },
+        { name: 'lon', type: FieldType.number, values: lon },
+        { name: 'u', type: FieldType.number, values: lat.map(() => 12) },
+        { name: 'v', type: FieldType.number, values: lat.map(() => 0) },
+      ],
+    });
+  };
+
+  it('turns a wind grid into animated streamlines', () => {
+    const [dataset] = framesToDatasets([windFrame()], {}, { windBaseMs: 1_000_000 });
+
+    expect(dataset.rows.length).toBeGreaterThan(0);
+
+    // The rows are trip geometry, not the grid: kepler detects the Trip layer
+    // from `_geojson` on its own, so no layer config rides along.
+    expect(dataset.tripLayer).toBeUndefined();
+    expect(dataset.flowLayer).toBeUndefined();
+
+    const feature = JSON.parse(dataset.rows[0]._geojson as string);
+    expect(feature.geometry.type).toBe('LineString');
+    expect(feature.geometry.coordinates.every((c: number[]) => c.length === 4)).toBe(true);
+  });
+
+  it('leaves a trajectory that happens to carry speed alone', () => {
+    // A GPS trace with a `speed` column is not a velocity field. Without the
+    // trip id guard it would be shredded into streamlines that mean nothing.
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'trip_id', type: FieldType.string, values: ['a', 'a'] },
+        { name: 'lat', type: FieldType.number, values: [0, 1] },
+        { name: 'lon', type: FieldType.number, values: [0, 1] },
+        { name: 'time', type: FieldType.time, values: [1000, 2000] },
+        { name: 'speed', type: FieldType.number, values: [3, 4] },
+        { name: 'wind_direction', type: FieldType.number, values: [90, 90] },
+      ],
+    });
+
+    const [dataset] = framesToDatasets([frame], {}, {});
+
+    expect(dataset.rows).toHaveLength(2);
+    expect(dataset.tripLayer).toBeDefined();
+  });
+});
+
+describe('framesToDatasets — wind with several timesteps', () => {
+  it('uses the earliest timestep instead of mixing them', () => {
+    // A real wind table carries every hour of the forecast. Left alone, each
+    // cell would be overwritten by whichever row happened to come last, which
+    // silently draws the wrong hour — here, the wind reversed.
+    const lat: number[] = [];
+    const lon: number[] = [];
+    const time: number[] = [];
+    const u: number[] = [];
+
+    for (const [t, speed] of [
+      [1_000, 12],
+      [2_000, -12],
+    ] as Array<[number, number]>) {
+      for (let j = 0; j < 4; j++) {
+        for (let i = 0; i < 4; i++) {
+          lat.push(j);
+          lon.push(i);
+          time.push(t);
+          u.push(speed);
+        }
+      }
+    }
+
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'lat', type: FieldType.number, values: lat },
+        { name: 'lon', type: FieldType.number, values: lon },
+        { name: 'time', type: FieldType.time, values: time },
+        { name: 'u', type: FieldType.number, values: u },
+        { name: 'v', type: FieldType.number, values: u.map(() => 0) },
+      ],
+    });
+
+    const [dataset] = framesToDatasets([frame], {}, { windBaseMs: 0 });
+    const coordinates: number[][] = JSON.parse(dataset.rows[0]._geojson as string).geometry.coordinates;
+
+    // The earliest hour blows east, so longitude must increase along the line.
+    expect(coordinates[1][0]).toBeGreaterThan(coordinates[0][0]);
+  });
+});
+
+describe('framesToDatasets — re-tracing on viewport change', () => {
+  const windFrame = () => {
+    const lat: number[] = [];
+    const lon: number[] = [];
+    for (let j = 0; j < 8; j++) {
+      for (let i = 0; i < 8; i++) {
+        lat.push(j);
+        lon.push(i);
+      }
+    }
+    return toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'lat', type: FieldType.number, values: lat },
+        { name: 'lon', type: FieldType.number, values: lon },
+        { name: 'u', type: FieldType.number, values: lat.map(() => 12) },
+        { name: 'v', type: FieldType.number, values: lat.map(() => 0) },
+      ],
+    });
+  };
+
+  it('exposes the field and the clock so the viewport hook can re-trace', () => {
+    // Re-tracing must not need the DataFrame again: the viewport changes far
+    // more often than the query runs, and rebuilding from the frame each time
+    // would tie redraws to Grafana's query lifecycle.
+    const [dataset] = framesToDatasets([windFrame()], {}, { windBaseMs: 7_000 });
+
+    expect(dataset.wind?.field.columns).toBe(8);
+    expect(dataset.wind?.baseMs).toBe(7_000);
+  });
+
+  it('draws denser lines over a smaller viewport', () => {
+    // The point of the whole exercise: zooming in must not thin the lines out.
+    const frame = windFrame();
+    const at = (west: number, east: number) =>
+      framesToDatasets([frame], {}, {
+        windBaseMs: 0,
+        viewport: { west, south: 0, east, north: east - west, widthPx: 800, heightPx: 800 },
+      })[0];
+
+    const spanOf = (dataset: ReturnType<typeof at>) => {
+      const c: number[][] = JSON.parse(dataset.rows[0]._geojson as string).geometry.coordinates;
+      return Math.abs(c[c.length - 1][0] - c[0][0]);
+    };
+
+    expect(spanOf(at(0, 8)) / spanOf(at(0, 2))).toBeCloseTo(4, 1);
+  });
+});
+
+describe('framesToDatasets — several wind layers at once', () => {
+  const windFrame = (refId: string) => {
+    const lat: number[] = [];
+    const lon: number[] = [];
+    for (let j = 0; j < 8; j++) {
+      for (let i = 0; i < 8; i++) {
+        lat.push(j);
+        lon.push(i);
+      }
+    }
+    return toDataFrame({
+      refId,
+      fields: [
+        { name: 'lat', type: FieldType.number, values: lat },
+        { name: 'lon', type: FieldType.number, values: lon },
+        { name: 'u', type: FieldType.number, values: lat.map(() => 12) },
+        { name: 'v', type: FieldType.number, values: lat.map(() => 0) },
+      ],
+    });
+  };
+
+  it('shares the line budget between the wind layers on screen', () => {
+    // The count is a budget for the *screen*, not for each query. Three levels
+    // drawing a full allowance each put three times Esri's whole line count into
+    // the same pixels, and the levels become impossible to tell apart.
+    const [alone] = framesToDatasets([windFrame('A')], {}, { windBaseMs: 0 });
+    const three = framesToDatasets([windFrame('A'), windFrame('B'), windFrame('C')], {}, { windBaseMs: 0 });
+
+    expect(three).toHaveLength(3);
+    for (const dataset of three) {
+      expect(dataset.rows.length).toBeCloseTo(alone.rows.length / 3, -2);
+    }
+  });
+
+  it('leaves a lone wind layer its whole allowance', () => {
+    const [only] = framesToDatasets([windFrame('A'), toDataFrame({ refId: 'B', fields: [] })], {}, { windBaseMs: 0 });
+    const [alone] = framesToDatasets([windFrame('A')], {}, { windBaseMs: 0 });
+
+    expect(only.rows.length).toBe(alone.rows.length);
+  });
+});
+
+describe('framesToDatasets — wind at altitude', () => {
+  it('lifts the streamlines to the mapped altitude', () => {
+    // Stacking levels only reads as height if the geometry actually carries it.
+    // The tracer emits its own third coordinate, so the altitude role has to be
+    // handed to it — the column alone does nothing, and every level ends up
+    // coplanar on the ground.
+    const lat: number[] = [];
+    const lon: number[] = [];
+    for (let j = 0; j < 6; j++) {
+      for (let i = 0; i < 6; i++) {
+        lat.push(j);
+        lon.push(i);
+      }
+    }
+
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'lat', type: FieldType.number, values: lat },
+        { name: 'lon', type: FieldType.number, values: lon },
+        { name: 'u', type: FieldType.number, values: lat.map(() => 10) },
+        { name: 'v', type: FieldType.number, values: lat.map(() => 0) },
+        { name: 'alt', type: FieldType.number, values: lat.map(() => 37_500) },
+      ],
+    });
+
+    const [dataset] = framesToDatasets([frame], { A: { altitude: 'alt' } }, { windBaseMs: 0 });
+    const coords: number[][] = JSON.parse(dataset.rows[0]._geojson as string).geometry.coordinates;
+
+    expect(coords.every((c) => c[2] === 37_500)).toBe(true);
+  });
+});

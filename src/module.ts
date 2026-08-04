@@ -57,6 +57,15 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       showIf: (config) => config.timeSync === 'variables',
     })
     .addBooleanSwitch({
+      path: 'publishWhilePlaying',
+      name: 'Update variables while playing',
+      description:
+        'Write the window to the variables as the animation runs, not just when it stops. Every update re-runs the panels that read the variables, which costs the animation some smoothness.',
+      category: ['Map'],
+      defaultValue: false,
+      showIf: (config) => config.timeSync === 'variables',
+    })
+    .addBooleanSwitch({
       path: 'peerTimeSync',
       name: 'Sync time with other maps',
       description:

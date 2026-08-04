@@ -145,3 +145,36 @@ describe('detectFields', () => {
     expect(roles.destLat).toBeUndefined();
   });
 });
+
+describe('detectFields — wind', () => {
+  const grid = (extra: Array<{ name: string; values: number[] }>) =>
+    toDataFrame({
+      fields: [
+        { name: 'lat', type: FieldType.number, values: [0, 0, 1, 1] },
+        { name: 'lon', type: FieldType.number, values: [0, 1, 0, 1] },
+        ...extra.map((f) => ({ ...f, type: FieldType.number })),
+      ],
+    });
+
+  it('detects wind components by name', () => {
+    const roles = detectFields(
+      grid([
+        { name: 'u', values: [1, 2, 3, 4] },
+        { name: 'v', values: [1, 2, 3, 4] },
+      ])
+    );
+
+    expect(roles).toMatchObject({ latitude: 'lat', longitude: 'lon', u: 'u', v: 'v' });
+  });
+
+  it('detects wind speed and direction by name', () => {
+    const roles = detectFields(
+      grid([
+        { name: 'wind_speed_10m', values: [1, 2, 3, 4] },
+        { name: 'wind_direction_10m', values: [1, 2, 3, 4] },
+      ])
+    );
+
+    expect(roles).toMatchObject({ speed: 'wind_speed_10m', direction: 'wind_direction_10m' });
+  });
+});

@@ -1,7 +1,14 @@
 import { useEffect, useRef } from 'react';
 import type { Store } from 'redux';
 
-import { pushAnimationTime, pushTimeRange, readAnimationTime, readSyncSlices, readTimeRange } from './keplerAdapter';
+import {
+  isTimeFilterAnimating,
+  pushAnimationTime,
+  pushTimeRange,
+  readAnimationTime,
+  readSyncSlices,
+  readTimeRange,
+} from './keplerAdapter';
 import { SliceWatcher } from './sliceWatcher';
 import { timeChannel, type TimeMessage } from './timeChannel';
 import { rangesEqual, type TimeRangeMs } from './timeSync';
@@ -41,6 +48,7 @@ export function usePeerTimeSync({ store, isReady, enabled }: Params): void {
 
   const lastFilter = useRef<TimeRangeMs | null>(null);
   const lastPlayhead = useRef<number | null>(null);
+  const lastPlaying = useRef(false);
 
   const apply = useRef((message: TimeMessage) => {
     if (message.filter) {
@@ -57,16 +65,23 @@ export function usePeerTimeSync({ store, isReady, enabled }: Params): void {
   const broadcast = useRef(() => {
     const filter = readTimeRange(store);
     const playhead = readAnimationTime(store);
+    const playing = isTimeFilterAnimating(store);
     const filterMoved = !rangesEqual(filter, lastFilter.current);
     const playheadMoved = playhead !== lastPlayhead.current;
-    if (!filterMoved && !playheadMoved) {
+    // Stopping is a change worth sending on its own: the last frame already
+    // moved the clock, so by the time the animation ends neither clock differs
+    // and the followers would never hear that it is over.
+    const playingChanged = playing !== lastPlaying.current;
+    if (!filterMoved && !playheadMoved && !playingChanged) {
       return;
     }
 
     lastFilter.current = filter;
     lastPlayhead.current = playhead;
+    lastPlaying.current = playing;
     timeChannel.publish({
       senderId: idRef.current as string,
+      playing,
       ...(filterMoved ? { filter } : {}),
       ...(playheadMoved ? { playhead } : {}),
     });
@@ -106,6 +121,7 @@ export function usePeerTimeSync({ store, isReady, enabled }: Params): void {
     // announce a clock nobody moved.
     lastFilter.current = readTimeRange(store);
     lastPlayhead.current = readAnimationTime(store);
+    lastPlaying.current = isTimeFilterAnimating(store);
 
     const leave = timeChannel.subscribe(id, (message) => apply.current(message));
     const unsubscribe = store.subscribe(onStoreChange.current);

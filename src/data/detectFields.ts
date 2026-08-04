@@ -23,6 +23,15 @@ export interface FieldRoles {
   originH3?: string;
   destH3?: string;
   count?: string;
+  /**
+   * A velocity field, given either as components or as speed plus
+   * meteorological direction. Both pairs are all-or-nothing: half of one
+   * describes nothing.
+   */
+  u?: string;
+  v?: string;
+  speed?: string;
+  direction?: string;
 }
 
 /**
@@ -78,6 +87,12 @@ const NAME_CANDIDATES: Record<string, string[]> = {
   // `altitude` is deliberately absent: see the note below.
   geometry: ['geom', 'geometry', 'the_geom', 'wkb_geometry', 'geojson', 'wkt', 'shape'],
   h3: ['h3', 'h3_index', 'hex_id', 'hexagon', 'h3index'],
+  // Wind. `ugrd`/`vgrd` are the GRIB2 short names GFS ships, so a table loaded
+  // straight from a GRIB conversion is recognised without renaming anything.
+  u: ['u', 'u10', 'u_wind', 'wind_u', 'ugrd', 'u_component'],
+  v: ['v', 'v10', 'v_wind', 'wind_v', 'vgrd', 'v_component'],
+  speed: ['wind_speed', 'windspeed', 'wind_speed_10m', 'speed', 'ws'],
+  direction: ['wind_direction', 'winddirection', 'wind_direction_10m', 'direction', 'wind_dir', 'wd'],
   originLat: ['origin_lat', 'origin_latitude', 'from_lat', 'start_lat', 'source_lat', 'pickup_lat', 'lat0'],
   originLng: [
     'origin_lon',
