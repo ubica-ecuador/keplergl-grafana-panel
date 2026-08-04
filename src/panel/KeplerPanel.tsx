@@ -71,6 +71,7 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
         grafanaRange={grafanaRange}
         onChangeGrafanaRange={onChangeTimeRange}
         variableMappings={options.variableMappings ?? []}
+        timeVariables={options.timeVariables}
         peerTimeSync={options.peerTimeSync ?? false}
       />
     </div>

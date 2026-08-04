@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import type { Store } from 'redux';
 
-import { pushAnimationTime, pushTimeRange, readAnimationTime, readTimeRange } from './keplerAdapter';
+import { pushAnimationTime, pushTimeRange, readAnimationTime, readSyncSlices, readTimeRange } from './keplerAdapter';
+import { SliceWatcher } from './sliceWatcher';
 import { timeChannel, type TimeMessage } from './timeChannel';
 import { rangesEqual, type TimeRangeMs } from './timeSync';
 
@@ -85,6 +86,16 @@ export function usePeerTimeSync({ store, isReady, enabled }: Params): void {
     });
   });
 
+  // Only the slices that carry the two clocks are worth broadcasting about;
+  // panning the map is a stream of dispatches that touch none of them. See
+  // `readSyncSlices`.
+  const watcher = useRef(new SliceWatcher());
+  const onStoreChange = useRef(() => {
+    if (watcher.current.changed(readSyncSlices(store))) {
+      schedule.current();
+    }
+  });
+
   useEffect(() => {
     if (!isReady || !enabled) {
       return;
@@ -97,7 +108,7 @@ export function usePeerTimeSync({ store, isReady, enabled }: Params): void {
     lastPlayhead.current = readAnimationTime(store);
 
     const leave = timeChannel.subscribe(id, (message) => apply.current(message));
-    const unsubscribe = store.subscribe(schedule.current);
+    const unsubscribe = store.subscribe(onStoreChange.current);
     return () => {
       leave();
       unsubscribe();

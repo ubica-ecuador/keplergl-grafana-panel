@@ -3,6 +3,7 @@ import { FlowRenderMode } from './data/buildFlows';
 import { TripLayerMode } from './data/buildTripLayer';
 import { SavedMapConfig } from './data/mapConfig';
 import { TimeSyncMode } from './panel/timeSync';
+import { TimeVariableMapping } from './panel/timeVariableSync';
 import { VariableMapping } from './panel/variableSync';
 
 /** Built-in MapLibre base maps kepler ships, all served by Carto without a token. */
@@ -51,9 +52,23 @@ export interface KeplerPanelOptions {
   /**
    * Couples the dashboard time range with the map's time filter. `toMap` (the
    * default) drives the map from the dashboard one way; `bidirectional` also
-   * lets the map's time slider move the dashboard; `off` decouples them.
+   * lets the map's time slider move the dashboard; `variables` publishes the
+   * slider's window to a pair of dashboard variables instead of moving the
+   * range; `off` decouples them.
    */
   timeSync?: TimeSyncMode;
+
+  /**
+   * The two dashboard variables the time slider's window is published to in
+   * `variables` mode, as UTC ISO 8601 strings.
+   *
+   * Chosen over moving the dashboard time range because a range change re-runs
+   * this panel's own query, and the rows that fall outside then leave the
+   * browser — the histogram behind the slider rescales and the window cannot be
+   * widened again from the map. Variables cost only the panels that reference
+   * them, so the map keeps its whole dataset and the slider keeps its context.
+   */
+  timeVariables?: TimeVariableMapping;
 
   /**
    * Shares the map's clock — time filter and trip playhead — with the other

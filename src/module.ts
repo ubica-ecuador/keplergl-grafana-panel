@@ -6,6 +6,7 @@ import { SaveMapConfigEditor } from './editors/SaveMapConfigEditor';
 import { MapConfigEditor } from './editors/MapConfigEditor';
 import { FieldMappingEditor } from './editors/FieldMappingEditor';
 import { VariableSyncEditor } from './editors/VariableSyncEditor';
+import { TimeVariableEditor } from './editors/TimeVariableEditor';
 
 export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelOptions((builder) =>
   builder
@@ -40,9 +41,20 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
         options: [
           { value: 'toMap', label: 'Dashboard drives map' },
           { value: 'bidirectional', label: 'Both directions' },
+          { value: 'variables', label: 'Slider writes variables' },
           { value: 'off', label: 'Off' },
         ],
       },
+    })
+    .addCustomEditor({
+      id: 'timeVariables',
+      path: 'timeVariables',
+      name: 'Time window variables',
+      description:
+        "The time slider's window is published to these two variables instead of moving the dashboard time range, so the map keeps its whole dataset and the slider keeps showing it.",
+      category: ['Map'],
+      editor: TimeVariableEditor,
+      showIf: (config) => config.timeSync === 'variables',
     })
     .addBooleanSwitch({
       path: 'peerTimeSync',

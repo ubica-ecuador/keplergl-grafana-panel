@@ -17,8 +17,13 @@ import { useTimeRangeSync } from './useTimeRangeSync';
 import { useAutoLayers } from './useAutoLayers';
 import { usePeerTimeSync } from './usePeerTimeSync';
 import { useVariableSync } from './useVariableSync';
+import { useTimeVariableSync } from './useTimeVariableSync';
 import type { TimeRangeMs, TimeSyncMode } from './timeSync';
+import type { TimeVariableMapping } from './timeVariableSync';
 import type { VariableMapping } from './variableSync';
+
+/** Stable empty mapping, so an unconfigured panel does not re-run the effect. */
+const NO_TIME_VARIABLES: TimeVariableMapping = { from: '', to: '' };
 
 // Must run before any kepler component mounts. Lives here rather than in
 // module.ts so it is part of the deferred chunk.
@@ -45,6 +50,8 @@ export interface KeplerMapProps {
   onChangeGrafanaRange?: (range: TimeRangeMs) => void;
   /** kepler filter -> dashboard variable bindings. */
   variableMappings: VariableMapping[];
+  /** The two variables the time slider's window is published to, if configured. */
+  timeVariables?: TimeVariableMapping;
   /** Whether this map shares its clock with the other maps on the dashboard. */
   peerTimeSync: boolean;
 }
@@ -80,6 +87,7 @@ export function KeplerMap({
   grafanaRange,
   onChangeGrafanaRange,
   variableMappings,
+  timeVariables,
   peerTimeSync,
 }: KeplerMapProps) {
   const store = useMemo(() => createKeplerStore(), []);
@@ -167,6 +175,15 @@ export function KeplerMap({
   usePeerTimeSync({ store, isReady, enabled: peerTimeSync });
 
   useVariableSync({ store, isReady, mappings: variableMappings });
+
+  // Declared last so the dashboard-range sync has already had its say on load;
+  // in `variables` mode that sync stands down entirely and this owns the clock.
+  useTimeVariableSync({
+    store,
+    isReady,
+    enabled: timeSync === 'variables',
+    mapping: timeVariables ?? NO_TIME_VARIABLES,
+  });
 
   return (
     <div ref={setStyleTarget} style={{ width, height, position: 'relative', overflow: 'hidden' }}>

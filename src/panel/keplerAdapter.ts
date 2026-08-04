@@ -19,7 +19,13 @@ import type { PanelDataset } from '../data/framesToDatasets';
 import type { FlowLayerConfig } from '../data/buildFlows';
 import type { TripLayerConfig } from '../data/buildTripLayer';
 import type { SavedMapConfig } from '../data/mapConfig';
-import { findTimeFieldName, readTimeFilterValue, TIME_FILTER_TYPE, type TimeRangeMs } from './timeSync';
+import {
+  findTimeFieldName,
+  readTimeFilterDomain,
+  readTimeFilterValue,
+  TIME_FILTER_TYPE,
+  type TimeRangeMs,
+} from './timeSync';
 import { supersededTripLayerIds } from './autoLayers';
 import { KEPLER_INSTANCE_ID } from './constants';
 
@@ -124,7 +130,16 @@ export function refreshDatasets(dispatch: Dispatch, datasets: PanelDataset[]): v
 
 /** Minimal view of the kepler vis-state these helpers read. */
 interface VisStateLike {
-  filters: Array<{ id: string; type?: string; value?: unknown; name?: string[] | string }>;
+  filters: Array<{
+    id: string;
+    type?: string;
+    value?: unknown;
+    name?: string[] | string;
+    /** The data's own extent, which kepler keeps separate from `value`. */
+    domain?: unknown;
+    /** True while kepler is playing the filter window across the domain. */
+    isAnimating?: boolean;
+  }>;
   datasets: Record<string, { fields: Array<{ name: string; type?: string }> }>;
   layers: Array<{ id: string; type?: string; config?: { dataId?: string }; meta?: { bounds?: number[] } }>;
   animationConfig?: { currentTime?: number | null; domain?: number[] | null };
@@ -140,6 +155,22 @@ export interface KeplerFilter {
 /** The map's current filters, for driving dashboard variables. */
 export function readFilters(store: Store): KeplerFilter[] {
   return getVisState(store)?.filters ?? [];
+}
+
+/**
+ * The vis-state slices the sync hooks read, for deciding whether a store
+ * notification is worth reacting to at all.
+ *
+ * Filters carry the time window and the cross-filter selections, datasets say
+ * whether there is yet a time column to bind to, and the animation config holds
+ * the trip playhead — between them that is everything the four sync hooks look
+ * at. Panning the map, hovering a point and opening a panel touch none of the
+ * three, so their identity stays put and the reconcile is skipped. See
+ * {@link SliceWatcher}.
+ */
+export function readSyncSlices(store: Store): unknown[] {
+  const visState = getVisState(store);
+  return visState ? [visState.filters, visState.datasets, visState.animationConfig] : [];
 }
 
 function filterHasField(filter: { name?: string[] | string }, field: string): boolean {
@@ -195,6 +226,54 @@ function getVisState(store: Store): VisStateLike | null {
 export function readTimeRange(store: Store): TimeRangeMs | null {
   const visState = getVisState(store);
   return visState ? readTimeFilterValue(visState.filters) : null;
+}
+
+/** The full time extent of the data behind the map's time filter. */
+export function readTimeDomain(store: Store): TimeRangeMs | null {
+  const visState = getVisState(store);
+  return visState ? readTimeFilterDomain(visState.filters) : null;
+}
+
+/**
+ * Whether kepler is currently playing the time filter across its domain.
+ *
+ * The play button moves the window roughly every frame. Publishing each of
+ * those is what turns an animation into a stream of dashboard updates, so the
+ * variable sync sits out the animation and writes once when it stops.
+ */
+export function isTimeFilterAnimating(store: Store): boolean {
+  return Boolean(getVisState(store)?.filters.find((f) => f.type === TIME_FILTER_TYPE)?.isAnimating);
+}
+
+/**
+ * Makes sure the map has a time filter, without narrowing anything.
+ *
+ * Creating the filter with no value leaves kepler to seed it with the data's
+ * full domain, so the time widget appears showing the whole histogram with the
+ * brush wide open — the state the dashboard time range already describes. That
+ * is the point of variable mode: the window starts as context, not as a
+ * restriction, and every drag from there is a real narrowing.
+ *
+ * Returns false when no dataset has a timestamp field to bind to, so the caller
+ * can retry once data with a time column arrives.
+ */
+export function ensureTimeFilter(store: Store, dispatch: Dispatch): boolean {
+  const visState = getVisState(store);
+  if (!visState) {
+    return false;
+  }
+  if (visState.filters.some((f) => f.type === TIME_FILTER_TYPE)) {
+    return true;
+  }
+
+  for (const [dataId, dataset] of Object.entries(visState.datasets)) {
+    const timeField = findTimeFieldName(dataset.fields);
+    if (timeField) {
+      dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(undefined, dataId, timeField)));
+      return true;
+    }
+  }
+  return false;
 }
 
 /**

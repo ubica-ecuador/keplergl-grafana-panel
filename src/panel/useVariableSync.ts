@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react';
 import { locationService } from '@grafana/runtime';
 import type { Store } from 'redux';
 
-import { applyFieldFilter, readFilters, removeFieldFilter } from './keplerAdapter';
+import { applyFieldFilter, readFilters, readSyncSlices, removeFieldFilter } from './keplerAdapter';
+import { SliceWatcher } from './sliceWatcher';
 import { normalizeFilterKey, variableFilterValues, type VariableMapping } from './variableSync';
 
 interface Params {
@@ -108,13 +109,23 @@ export function useVariableSync({ store, isReady, mappings }: Params): void {
     });
   });
 
+  // kepler dispatches on every pointer move over the map; only changes to the
+  // slices this reads are worth a reconcile, which here also saves building a
+  // fresh URLSearchParams per event. See `readSyncSlices`.
+  const watcher = useRef(new SliceWatcher());
+  const onStoreChange = useRef(() => {
+    if (watcher.current.changed(readSyncSlices(store))) {
+      schedule.current();
+    }
+  });
+
   useEffect(() => {
     if (!isReady || mappings.length === 0) {
       return;
     }
     schedule.current();
     // Map → dashboard: react to kepler filter changes.
-    const unsubscribeStore = store.subscribe(schedule.current);
+    const unsubscribeStore = store.subscribe(onStoreChange.current);
     // Dashboard → map: react to variable changes, which land in the URL.
     const unlisten = locationService.getHistory().listen(schedule.current);
     return () => {

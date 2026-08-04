@@ -5,6 +5,46 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **The time slider can cross-filter without eating its own data.** A new **Slider writes variables**
+  choice under *Time range sync* publishes the slider's window to two dashboard variables — UTC ISO
+  8601, so `WHERE t >= '$mapFrom'::timestamptz` needs no arithmetic — instead of moving the dashboard
+  time range. This is the mode to use for cross-filtering: moving the range re-runs *this* panel's
+  query too, and the rows outside the new window then leave the browser, so the histogram behind the
+  slider rescales under the cursor and the window can never be widened again from the map. Writing
+  variables costs only the panels that reference them, and the map's own query stays on
+  `$__timeFilter`, so the dataset stays whole and the slider keeps showing all of it with the brush
+  as a mask over it — how kepler's time widget is meant to behave. The map's filter is seeded with
+  the data's own extent rather than the dashboard range, so the widget opens on the full histogram
+  with nothing yet narrowed. Both directions work: setting either variable moves the brush, so a
+  shared dashboard link restores the window. Writes are debounced, and suppressed entirely while the
+  slider is playing, so a drag or an animation is one dashboard update rather than one per frame.
+
+- **Bidirectional time sync no longer re-queries the dashboard on every frame of a drag.** kepler
+  updates the time filter on each pointer move, and each of those was a new dashboard range and so a
+  new round of queries on every panel. The window now reaches the dashboard once the slider comes to
+  rest, and playing the slider is sat out entirely — an animation reports where it stopped rather
+  than each frame it passed through. Debouncing exposed a second problem it also fixes: for as long
+  as a reported window is in flight, the dashboard range still reads what it did before, and pushing
+  that back at the map snapped the brush out from under the drag. That stale value is now ignored
+  until it moves — which is either the report landing or the user reaching for the time picker, and
+  neither is swallowed.
+
+- **Sync hooks no longer wake on every kepler action.** All four subscribe to the map's store, which
+  fires for anything kepler dispatches — panning the map is a stream of them — and each notification
+  cost a scheduled reconcile, for the variable syncs including a fresh parse of the URL. They now
+  compare the identity of the three vis-state slices they actually read (filters, datasets, the
+  animation config) and skip everything else, at the cost of three reference comparisons.
+
+- **Fixed** bidirectional time sync dragging the dashboard time picker down to the data's extent on
+  load, unasked. The echo guard held one value and recorded the range it *asked* kepler for, but
+  kepler clamps a window to the data's own domain — so with a dashboard window wider than the data,
+  which is the ordinary case, the clamped window came back looking like the user had dragged the
+  slider and was reported to Grafana, costing a second round of queries on every panel. What was
+  pushed and what kepler kept are now tracked separately. The guard also watches the data's time
+  domain, which stops the other half of the loop: once the dashboard range follows the map, the
+  narrower range re-runs the query and kepler re-clamps the window to the data that is left — a move
+  no user made, and previously reported as though one had.
+
 - **Maps on a dashboard can share a clock.** The new **Sync time with other maps** switch under *Map*
   puts a panel on an in-browser channel with every other panel that has it on: playing an animation
   on one moves the rest. Both of kepler's clocks travel — the time filter window and the trip
