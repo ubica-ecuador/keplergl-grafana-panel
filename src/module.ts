@@ -101,6 +101,15 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
         ],
       },
     })
+    .addSliderInput({
+      path: 'windDensity',
+      name: 'Wind line density',
+      description:
+        'Streamlines drawn across a full screen, shared between the velocity-field layers on it. Lower it when a field looks like a solid block; raise it when it looks sparse.',
+      category: ['Map'],
+      defaultValue: 9000,
+      settings: { min: 500, max: 20000, step: 500 },
+    })
     .addSelect({
       path: 'basemap',
       name: 'Base map',

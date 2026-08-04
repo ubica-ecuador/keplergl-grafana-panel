@@ -182,6 +182,11 @@ The lines follow the view. Density and on-screen length hold steady as you zoom,
 is re-traced whenever the map settles — a fixed budget of lines per screen, each a fixed number of
 pixels long. Several velocity queries in one panel share that budget between them.
 
+How large that budget is, **Wind line density** decides. There is no figure that suits every map: a
+country covering a third of the view wants more lines than a pair of three-kilometre patches around
+two weather stations, and a field of parallel arrows reads as a solid block at a density a swirling
+one reads well at. Lower it when the field looks matted, raise it when it looks sparse.
+
 **Several levels at once:** one query per level, in the same panel. Each becomes its own layer. To
 separate them in the vertical, return a height column and map it to **Altitude** under *Field
 mapping*, then tilt the camera with the 3D control. Height is opt-in on purpose — an `elevation`

@@ -33,6 +33,12 @@ export interface StreamlineOptions {
    */
   cycleMs?: number;
   /**
+   * What fraction of the cycle one streamline lives for. Below 1 the births are
+   * spread through the cycle, so trails appear and fade continuously instead of
+   * every line restarting together when the animation loops.
+   */
+  lifeFraction?: number;
+  /**
    * Rescale times so the median streamline lasts this long. Omit to keep
    * physical time.
    */
@@ -127,12 +133,12 @@ function viewportSettings(
   return {
     // Clipped to the data: a streamline can only exist where there is a field,
     // so seeding beyond it only wastes attempts on empty space.
-    //
-    // The count is deliberately *not* scaled by how much of the view the data
-    // fills. Doing that holds the density constant per screen, which starves the
-    // map of lines exactly when the data is small in the view — and the data is
-    // what anyone is actually looking at.
     seedArea: intersect(expanded, extent),
+    // And the count follows the share of the screen the data actually fills, so
+    // the density on screen stays put whether that data is a country or two
+    // three-kilometre patches around a pair of weather stations. Spending the
+    // whole budget on whatever is visible packs those patches solid.
+    coverage: Math.min(1, area(intersect(viewport, extent)) / area(viewport)),
     segmentMeters: metresPerPixel * segmentPixels,
     metresPerPixel,
   };
@@ -164,9 +170,9 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
   // one they fall back to the whole field and a fixed distance on the ground.
   const scaled = options.viewport
     ? viewportSettings(options.viewport, extent, base.segmentPixels, base.expandFactor)
-    : { seedArea: extent, segmentMeters: base.segmentMeters, metresPerPixel: 0 };
+    : { seedArea: extent, coverage: 1, segmentMeters: base.segmentMeters, metresPerPixel: 0 };
 
-  const wanted = options.count;
+  const wanted = Math.round(options.count * scaled.coverage);
   if (wanted < 1 || area(scaled.seedArea) <= 0) {
     return [];
   }
@@ -177,7 +183,13 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
       : {
           kind: 'time',
           seconds: options.cycleMs / 1000 / (base.maxVertices - 1),
-          speedScale: speedScaleFor(field, scaled.seedArea, options.cycleMs, base.travelPixels, scaled.metresPerPixel),
+          speedScale: speedScaleFor(
+            field,
+            scaled.seedArea,
+            options.cycleMs,
+            travelPixelsFor(scaled.seedArea, base.travelPixels, scaled.metresPerPixel),
+            scaled.metresPerPixel
+          ),
         };
 
   const settings = { ...base, step };
@@ -217,7 +229,7 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
      */
     const timeAt =
       options.cycleMs !== undefined && total > 0
-        ? (p: Vertex) => options.baseMs + Math.round((p.seconds / total) * options.cycleMs!)
+        ? cycleClock(options.baseMs, options.cycleMs, options.lifeFraction, total, random)
         : (p: Vertex) => options.baseMs + offsetFor(id) + Math.round(p.seconds * 1000 * scale);
 
     return {
@@ -233,6 +245,29 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
       }),
     };
   });
+
+  /**
+   * Maps a streamline's own elapsed seconds onto the shared animation cycle.
+   *
+   * With no life fraction the line fills the cycle exactly, which keeps the
+   * whole field on screen but makes every trail restart together when kepler
+   * loops — a visible blink. A fraction below 1 shortens each line's window and
+   * scatters its birth through the cycle, so trails come and go continuously,
+   * the way a patch that is genuinely simulating flow should look. Births are
+   * clamped so nothing runs past the end of the cycle, which would stretch
+   * kepler's animation domain past the loop point.
+   */
+  function cycleClock(
+    baseMs: number,
+    cycleMs: number,
+    lifeFraction: number | undefined,
+    totalSeconds: number,
+    nextRandom: () => number
+  ): (p: Vertex) => number {
+    const life = Math.min(1, Math.max(0.05, lifeFraction ?? 1)) * cycleMs;
+    const birth = lifeFraction === undefined ? 0 : Math.round(nextRandom() * (cycleMs - life));
+    return (p: Vertex) => baseMs + birth + Math.round((p.seconds / totalSeconds) * life);
+  }
 
   function offsetFor(_id: number): number {
     return options.staggerMs === undefined ? 0 : Math.round(random() * options.staggerMs);
@@ -322,6 +357,24 @@ function trace(
 
   // A line needs two points; kepler forms no geometry from one.
   return vertices.length >= 2 ? vertices : null;
+}
+
+/**
+ * How far a particle should travel in one cycle, in screen pixels.
+ *
+ * The nominal distance reads well across a country. Inside a patch a few
+ * kilometres wide it is most of the patch, so particles sweep straight out of it
+ * and the whole thing looks like a blob drifting rather than a flow looping in
+ * place. Capping the travel to a share of the patch's size on screen keeps the
+ * motion where the data is, at whatever scale the data happens to be.
+ */
+function travelPixelsFor(seedArea: Box, nominal: number, metresPerPixel: number): number {
+  if (metresPerPixel <= 0) {
+    return nominal;
+  }
+
+  const widthPx = ((seedArea.east - seedArea.west) * METRES_PER_DEGREE) / metresPerPixel;
+  return Math.min(nominal, Math.max(8, widthPx * 0.25));
 }
 
 /**

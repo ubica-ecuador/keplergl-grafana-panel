@@ -33,7 +33,7 @@ export interface PanelDataset {
    * lifecycle. `baseMs` travels with it so re-tracing does not shift the
    * animation clock under the playhead.
    */
-  wind?: { field: WindField; baseMs: number; share: number; rawAltitudeMeters: number };
+  wind?: { field: WindField; baseMs: number; share: number; rawAltitudeMeters: number; density?: number };
 }
 
 /**
@@ -56,6 +56,8 @@ export function framesToDatasets(
     windBaseMs?: number;
     /** What the map is showing, so the streamlines follow the screen. */
     viewport?: Viewport;
+    /** Streamlines per full screen, shared between the wind layers on it. */
+    windDensity?: number;
   } = {}
 ): PanelDataset[] {
   const resolved = frames.map((frame, index) => {
@@ -102,8 +104,8 @@ export function framesToDatasets(
         ? {
             id,
             label,
-            rows: traceWind(field, baseMs, opts.viewport, share, rawAltitudeMeters * exaggeration),
-            wind: { field, baseMs, share, rawAltitudeMeters },
+            rows: traceWind(field, baseMs, opts.viewport, share, rawAltitudeMeters * exaggeration, opts.windDensity),
+            wind: { field, baseMs, share, rawAltitudeMeters, density: opts.windDensity },
           }
         : { id, label, rows: [] };
     }
@@ -186,6 +188,14 @@ const WIND_DEFAULTS = {
    * drawing whole streamlines at once.
    */
   cycleMs: 60_000,
+  /**
+   * How much of the cycle one streamline lives for.
+   *
+   * Below 1 the births scatter through the cycle, so trails appear and fade
+   * continuously — a patch that looks like it is simulating flow, rather than
+   * one whose every line restarts together each time the animation loops.
+   */
+  lifeFraction: 0.55,
 };
 
 /**
@@ -227,11 +237,12 @@ export function traceWind(
   baseMs: number,
   viewport?: Viewport,
   share = 1,
-  altitudeMeters = 0
+  altitudeMeters = 0,
+  density?: number
 ): KeplerRow[] {
   return traceStreamlines(field, {
     ...WIND_DEFAULTS,
-    count: Math.round(WIND_DEFAULTS.count / share),
+    count: Math.round((density ?? WIND_DEFAULTS.count) / share),
     baseMs,
     viewport,
     altitudeMeters,

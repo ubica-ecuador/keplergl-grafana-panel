@@ -6,6 +6,7 @@ import {
   mapStyleChange,
   removeFilter,
   removeLayer,
+  toggleLayerAnimation,
   replaceDataInMap,
   setLayerAnimationTime,
   toggleSidePanel,
@@ -178,7 +179,12 @@ interface VisStateLike {
   }>;
   datasets: Record<string, { fields: Array<{ name: string; type?: string }> }>;
   layers: Array<{ id: string; type?: string; config?: { dataId?: string }; meta?: { bounds?: number[] } }>;
-  animationConfig?: { currentTime?: number | null; domain?: number[] | null };
+  animationConfig?: {
+    currentTime?: number | null;
+    domain?: number[] | null;
+    /** True while the trip playback is running. */
+    isAnimating?: boolean;
+  };
 }
 
 /** A kepler filter, as the variable sync reads it. */
@@ -353,6 +359,25 @@ export function pushAnimationTime(store: Store, dispatch: Dispatch, time: number
   }
   dispatch(wrapTo(KEPLER_INSTANCE_ID, setLayerAnimationTime(time)));
   return true;
+}
+
+/** Whether the trip animation is currently playing. */
+export function readIsAnimating(store: Store): boolean {
+  return Boolean(getVisState(store)?.animationConfig?.isAnimating);
+}
+
+/**
+ * Puts the trip animation back into play, if it is not already.
+ *
+ * Replacing a dataset stops it: while the swap is in flight there is a moment
+ * with no animatable layer, and `updateAnimationDomain` sets `isAnimating: false`
+ * whenever it finds none (`vis-state-updaters.js:3243-3255`). Without this, every
+ * pan or zoom during playback would silently leave the map paused.
+ */
+export function resumeAnimation(store: Store, dispatch: Dispatch): void {
+  if (!readIsAnimating(store)) {
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, toggleLayerAnimation()));
+  }
 }
 
 /**

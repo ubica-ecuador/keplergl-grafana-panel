@@ -21,7 +21,15 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   the rows uses `replaceDataInMap` rather than `updateVisData`: for a dataset id kepler already
   knows, `updateVisData` takes an incremental-batch path and the row count never changes, which is
   why the map appeared not to react to zoom at all. Verified against the store rather than the
-  panel's row-count label.
+  panel's row-count label. Playback survives the swap: `updateAnimationDomain` clears `isAnimating`
+  while the layers are momentarily gone, so the playhead and the running state are captured before
+  the replacement and restored after it — otherwise every pan silently stopped the animation.
+
+- **Wind line density is a panel option.** The budget of streamlines per screen was a constant, and
+  no constant fits: a country covering a third of the view wants more lines than a pair of
+  three-kilometre patches around two weather stations, and a field of parallel arrows mats into a
+  solid block at a density a swirling one reads well at. Layers still share whatever the option is
+  set to, rather than each spending it in full.
 
 - **The time slider can cross-filter without eating its own data.** A new **Slider writes variables**
   choice under *Time range sync* publishes the slider's window to two dashboard variables — UTC ISO

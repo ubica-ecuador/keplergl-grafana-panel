@@ -3,7 +3,14 @@ import type { Store } from 'redux';
 
 import { PanelDataset, stackExaggeration, traceWind } from '../data/framesToDatasets';
 
-import { readMapState, replaceDatasetData } from './keplerAdapter';
+import {
+  readAnimationTime,
+  readIsAnimating,
+  pushAnimationTime,
+  readMapState,
+  replaceDatasetData,
+  resumeAnimation,
+} from './keplerAdapter';
 import { MapStateLike, sameMapState, viewportFromMapState } from './windViewport';
 
 /**
@@ -29,7 +36,10 @@ const SETTLE_MS = 250;
  */
 export function useWindViewport(store: Store | null, datasets: PanelDataset[], isReady: boolean): void {
   const datasetsRef = useRef(datasets);
+  /** The view the streamlines currently on the map were traced for. */
   const lastTraced = useRef<MapStateLike | null>(null);
+  /** The view as of the last store notification, for spotting that it moved. */
+  const lastSeen = useRef<MapStateLike | null>(null);
 
   // Kept in a ref rather than closed over: the subscription is set up once, and
   // a stale closure would keep re-tracing the datasets from the first render.
@@ -69,6 +79,11 @@ export function useWindViewport(store: Store | null, datasets: PanelDataset[], i
 
       lastTraced.current = mapState;
 
+      // Replacing a dataset stops the playback and resets the playhead, so both
+      // are captured first and put back once the swap has landed.
+      const wasAnimating = readIsAnimating(store);
+      const playhead = readAnimationTime(store);
+
       // `replaceDataInMap`, not `refreshDatasets`: `updateVisData` leaves the
       // row count untouched for an id kepler already knows. See the adapter.
       for (const dataset of windDatasets) {
@@ -79,17 +94,43 @@ export function useWindViewport(store: Store | null, datasets: PanelDataset[], i
             dataset.wind!.baseMs,
             viewport,
             dataset.wind!.share,
-            dataset.wind!.rawAltitudeMeters * exaggeration
+            dataset.wind!.rawAltitudeMeters * exaggeration,
+            dataset.wind!.density
           ),
         });
+      }
+
+      // Put the clock back. The swap completes through a react-palm task, so the
+      // restore waits a tick rather than reading the store straight back.
+      if (wasAnimating || playhead !== null) {
+        setTimeout(() => {
+          if (playhead !== null) {
+            pushAnimationTime(store, store.dispatch, playhead);
+          }
+          if (wasAnimating) {
+            resumeAnimation(store, store.dispatch);
+          }
+        }, 0);
       }
     };
 
     const onChange = () => {
-      // Restarting the timer on every change is the settle detection: it only
-      // fires once the view has been still for `SETTLE_MS`. It also keeps the
-      // dispatch out of the subscription callback, which would otherwise
-      // re-enter kepler's reducer.
+      // Only a change to the *view* restarts the settle timer.
+      //
+      // Restarting it on any store notification looks equivalent and is not:
+      // while the animation plays, kepler advances the playhead on every frame,
+      // so the store changes sixty times a second and a timer that resets on
+      // each one never fires. Panning with the animation running would then
+      // never re-trace at all.
+      const mapState = readMapState(store);
+      if (sameMapState(mapState, lastSeen.current)) {
+        return;
+      }
+      lastSeen.current = mapState;
+
+      // The delay is the settle detection proper: it fires once the view has
+      // held still for `SETTLE_MS`. It also keeps the dispatch out of the
+      // subscription callback, which would otherwise re-enter kepler's reducer.
       if (timer) {
         clearTimeout(timer);
       }

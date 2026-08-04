@@ -35,8 +35,16 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
         // sync — which pushes that range onto the map as a filter — hides the
         // whole layer.
         windBaseMs: grafanaRange.from,
+        windDensity: options.windDensity,
       }),
-    [data.series, options.fieldMappings, options.flowRenderMode, options.tripLayerMode, grafanaRange.from]
+    [
+      data.series,
+      options.fieldMappings,
+      options.flowRenderMode,
+      options.tripLayerMode,
+      options.windDensity,
+      grafanaRange.from,
+    ]
   );
 
   const keplerTheme = useMemo(() => toKeplerTheme(grafanaTheme), [grafanaTheme]);

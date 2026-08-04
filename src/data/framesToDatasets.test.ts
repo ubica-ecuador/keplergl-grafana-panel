@@ -354,6 +354,19 @@ describe('framesToDatasets — several wind layers at once', () => {
 
     expect(only.rows.length).toBe(alone.rows.length);
   });
+
+  it('takes the budget from the panel option, still shared between the layers', () => {
+    // There is no density that suits every map, so it belongs in the UI rather
+    // than in a constant here — a country and a three-kilometre patch around a
+    // weather station want very different counts. Sharing has to survive it:
+    // an option read per layer would put the whole budget on each level.
+    const two = framesToDatasets([windFrame('A'), windFrame('B')], {}, { windBaseMs: 0, windDensity: 1200 });
+
+    expect(two).toHaveLength(2);
+    for (const dataset of two) {
+      expect(dataset.rows.length).toBeCloseTo(600, -2);
+    }
+  });
 });
 
 describe('framesToDatasets — wind at altitude', () => {

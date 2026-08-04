@@ -203,13 +203,12 @@ describe('traceStreamlines', () => {
     }
   });
 
-  it('draws its whole allowance wherever the data is, however little of the view it fills', () => {
-    // Scaling the count by the data's share of the screen keeps the density
-    // constant per *screen*, but nobody looks at the screen — they look at the
-    // data. Zoomed out past a country, that rule starved the map of lines just
-    // when the country was small in the view. The budget is spent in full on
-    // whatever data is visible, and the seeding restriction is what keeps it
-    // from being wasted on empty space.
+  it('spends the budget in proportion to the screen the data fills', () => {
+    // Holding the density constant per screen is what keeps two three-kilometre
+    // patches from being packed solid with a country's worth of lines. The
+    // budget itself has to be generous enough that a country covering a third of
+    // the view still gets plenty — that was the real cause of an earlier round of
+    // "there are fewer points", not this rule.
     const field = uniformField(10, 0); // cubre 20° × 20°
     const at = (halfSpan: number) =>
       traceStreamlines(field, {
@@ -227,7 +226,7 @@ describe('traceStreamlines', () => {
       }).length;
 
     expect(at(10)).toBe(400); // el dato llena la vista
-    expect(at(20)).toBe(400); // el dato ocupa un cuarto del área
+    expect(at(20)).toBeCloseTo(100, -2); // ocupa un cuarto del área, un cuarto de las líneas
   });
 
   it('runs every streamline over the same window, so the field never thins out', () => {
@@ -302,5 +301,91 @@ describe('traceStreamlines', () => {
     // todas las líneas vivas durante el mismo ciclo.
     const times = coords.map((c) => c[3]);
     expect(times[1] - times[0]).toBe(times[times.length - 1] - times[times.length - 2]);
+  });
+});
+
+describe('traceStreamlines — continuous respawn', () => {
+  it('spreads births through the cycle instead of restarting every line at once', () => {
+    // With every line spanning the whole cycle they all reach the end together
+    // and the layer blinks as kepler loops. Staggering the births within the
+    // cycle makes the patch look like it is continuously simulating: some trails
+    // fading out while others appear.
+    const rows = traceStreamlines(uniformField(10, 2), {
+      count: 60,
+      seed: 21,
+      baseMs: 0,
+      cycleMs: 60_000,
+      lifeFraction: 0.5,
+    });
+
+    const starts = rows.map((r) => geojson(r).geometry.coordinates[0][3] as number);
+    const ends = rows.map((r) => {
+      const c = geojson(r).geometry.coordinates as number[][];
+      return c[c.length - 1][3] as number;
+    });
+
+    // Nacen repartidas, no todas en el instante cero.
+    expect(new Set(starts).size).toBeGreaterThan(20);
+    expect(Math.max(...starts)).toBeGreaterThan(20_000);
+
+    // Y ninguna se sale del ciclo, que es el dominio de animación.
+    expect(Math.min(...starts)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...ends)).toBeLessThanOrEqual(60_000);
+  });
+
+  it('still fills the cycle when no life fraction is given', () => {
+    const rows = traceStreamlines(uniformField(10, 2), { count: 10, seed: 3, baseMs: 0, cycleMs: 60_000 });
+
+    for (const row of rows) {
+      const c = geojson(row).geometry.coordinates as number[][];
+      expect(c[0][3]).toBe(0);
+      expect(c[c.length - 1][3]).toBe(60_000);
+    }
+  });
+});
+
+describe('traceStreamlines — travel stays inside small patches', () => {
+  it('shortens the travel when the data covers only a small patch of screen', () => {
+    // 130 px of travel per cycle reads well across a country. Inside a patch a
+    // few kilometres wide it is most of the patch, so the particles visibly
+    // sweep out of it and the whole blob looks like it is drifting rather than
+    // flowing in place. Capping the travel to a fraction of the patch's size on
+    // screen keeps the loop where the data is.
+    const spanOf = (west: number, east: number) => {
+      const columns = Math.round((east - west) / 0.01) + 1;
+      const data = new Float32Array(columns * 2 * 2);
+      for (let i = 0; i < columns * 2; i++) {
+        data[2 * i] = 6;
+        data[2 * i + 1] = 0;
+      }
+      const field: WindField = {
+        data,
+        columns,
+        rows: 2,
+        west,
+        south: 0,
+        stepLon: 0.01,
+        stepLat: east - west,
+      };
+
+      // Generoso a propósito: el recuento se escala por la cobertura, y un
+      // parche diminuto con un presupuesto de una línea redondea a ninguna.
+      const [row] = traceStreamlines(field, {
+        count: 2000,
+        seed: 4,
+        baseMs: 0,
+        cycleMs: 60_000,
+        // Misma vista en ambos casos: sólo cambia cuánto de ella ocupa el dato.
+        viewport: { west: -1, east: 1, south: -0.5, north: 1.5, widthPx: 1000, heightPx: 1000 },
+      });
+
+      const c: number[][] = JSON.parse(row._geojson as string).geometry.coordinates;
+      return Math.abs(c[c.length - 1][0] - c[0][0]);
+    };
+
+    const parcheGrande = spanOf(-0.8, 0.8);
+    const parchePequeno = spanOf(-0.04, 0.04);
+
+    expect(parchePequeno).toBeLessThan(parcheGrande / 3);
   });
 });
