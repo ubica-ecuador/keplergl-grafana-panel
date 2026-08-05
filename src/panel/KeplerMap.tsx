@@ -8,7 +8,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import type { PanelDataset } from '../data/framesToDatasets';
 import type { SavedMapConfig } from '../data/mapConfig';
 import type { KeplerThemeOverride } from '../data/keplerTheme';
-import { CUSTOM_BASEMAP_ID, KEPLER_INSTANCE_ID } from './constants';
+import { KEPLER_INSTANCE_ID } from './constants';
+import { registeredMapStyles } from './basemaps';
 import { configureKepler } from './keplerConfig';
 import { createKeplerStore } from './keplerStore';
 import { captureMapConfig, loadDatasets, refreshDatasets, setBasemap, setSidePanel } from './keplerAdapter';
@@ -102,12 +103,11 @@ export function KeplerMap({
   const appliedConfig = useRef<SavedMapConfig | null | undefined>(undefined);
   const handledSaveRequest = useRef(saveRequest);
 
-  // Registering a self-hosted style.json makes the panel usable in air-gapped
-  // installs, where the Carto base maps are unreachable.
-  const mapStyles = useMemo(
-    () => (customBasemapUrl ? [{ id: CUSTOM_BASEMAP_ID, label: 'Custom', url: customBasemapUrl }] : undefined),
-    [customBasemapUrl]
-  );
+  // Registering the plugin's own styles: satellite imagery that needs no Mapbox
+  // account, plus a self-hosted style.json when one is configured, which is
+  // what makes the panel usable in air-gapped installs where the Carto base
+  // maps are unreachable.
+  const mapStyles = useMemo(() => registeredMapStyles(customBasemapUrl), [customBasemapUrl]);
 
   useEffect(() => {
     if (!isReady || datasets.length === 0) {
