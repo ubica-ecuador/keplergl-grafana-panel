@@ -16,6 +16,14 @@ services:
     # not resolvable from this network. It does publish 5432 on the host, and
     # `host-gateway` maps to the host from inside the container — that is what
     # provisioning/datasources/datasources.yml dials.
+    # Grafana keeps its SQLite database — dashboards, users, preferences — under
+    # /var/lib/grafana. Without this it lives in the container's writable layer,
+    # so a plain `docker compose down` takes every dashboard that was not
+    # provisioned from ./provisioning with it. Compose appends to sequences when
+    # merging, so this is added to the base file's mounts rather than replacing
+    # them; the nested plugin bind still wins on its own deeper path.
+    volumes:
+      - grafana-data:/var/lib/grafana
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     environment:
@@ -47,6 +55,11 @@ services:
     volumes:
       - ./dist:/var/lib/grafana/plugins/ubica-keplergl-panel
       - ./provisioning:/etc/grafana/provisioning
+      # Its own database, deliberately not shared with the `grafana` service:
+      # two Grafanas provisioning into one SQLite file race each other and the
+      # loser dies at startup with "Datasource provisioning error: database is
+      # locked".
+      - grafana-csp-data:/var/lib/grafana
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     environment:
@@ -70,3 +83,7 @@ services:
         grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com
         https://services.arcgisonline.com ws://$$ROOT_PATH
         wss://$$ROOT_PATH;manifest-src 'self';media-src 'none';form-action 'self';
+
+volumes:
+  grafana-data:
+  grafana-csp-data:
