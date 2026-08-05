@@ -1,4 +1,4 @@
-import { decideLoadAction } from './loadDecision';
+import { decideLoadAction, splitRefresh } from './loadDecision';
 
 /**
  * The panel has to choose between two very different kepler calls on every
@@ -64,5 +64,37 @@ describe('decideLoadAction', () => {
     expect(
       decideLoadAction({ hasLoaded: true, appliedConfig: { version: 'v1', config: {} }, currentConfig: null })
     ).toBe('rebuild');
+  });
+});
+
+/**
+ * The bug this pins was silent and total: after the first load, every query
+ * re-run left the map showing the data it already had. Verified in the browser
+ * against the store — changing a dashboard variable re-ran the query, the
+ * database returned a complete wind reversal (4.3 m/s from 250° against 2.9 m/s
+ * from 70°), and kepler's dataset did not move a single row.
+ */
+describe('splitRefresh', () => {
+  it('replaces the datasets kepler already holds', () => {
+    const { replace, add } = splitRefresh([{ id: 'grafana-A' }, { id: 'grafana-B' }], ['grafana-A', 'grafana-B']);
+
+    expect(replace.map((d) => d.id)).toEqual(['grafana-A', 'grafana-B']);
+    expect(add).toEqual([]);
+  });
+
+  it('adds the ones it does not', () => {
+    // A query gaining a refId is a new dataset, and `replaceDataInMap` has
+    // nothing to replace — it needs an id that already exists.
+    const { replace, add } = splitRefresh([{ id: 'grafana-A' }, { id: 'grafana-B' }], ['grafana-A']);
+
+    expect(replace.map((d) => d.id)).toEqual(['grafana-A']);
+    expect(add.map((d) => d.id)).toEqual(['grafana-B']);
+  });
+
+  it('sends everything down the add path on an empty map', () => {
+    const { replace, add } = splitRefresh([{ id: 'grafana-A' }], []);
+
+    expect(replace).toEqual([]);
+    expect(add.map((d) => d.id)).toEqual(['grafana-A']);
   });
 });

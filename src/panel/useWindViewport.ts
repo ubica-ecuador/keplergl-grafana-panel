@@ -84,8 +84,8 @@ export function useWindViewport(store: Store | null, datasets: PanelDataset[], i
       const wasAnimating = readIsAnimating(store);
       const playhead = readAnimationTime(store);
 
-      // `replaceDataInMap`, not `refreshDatasets`: `updateVisData` leaves the
-      // row count untouched for an id kepler already knows. See the adapter.
+      // Straight to `replaceDatasetData` rather than through the refresh path:
+      // this is a re-trace of the same query's results, not new data arriving.
       for (const dataset of windDatasets) {
         replaceDatasetData(store.dispatch, {
           ...dataset,

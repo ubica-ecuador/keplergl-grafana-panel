@@ -5,6 +5,18 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Fixed: a re-run query never reached the map.** After the first load, every refresh — a dashboard
+  variable, a time range, an auto-refresh interval — left the map showing the data it already had.
+  The panel dispatched `updateVisData`, and for an id kepler already knows that takes the
+  incremental-batch path meant for streaming a dataset in pieces: `KeplerTable.update` calls
+  `this.dataContainer.update?.()`, and `RowDataContainer` — what a `{fields, rows}` dataset gets —
+  has no `update` at all, so the optional chaining swallowed the call in silence. Existing datasets
+  now go through `replaceDataInMap`, which is kepler's own answer and keeps the layers, filters and
+  layer order pointed at the new data; only a genuinely new dataset takes the `updateVisData` path.
+  Traced end to end in the browser: the variable changed, the query re-ran with the new value, the
+  database returned a complete wind reversal — 4.3 m/s from 250° against 2.9 m/s from 70° — and the
+  map moved not one row. It now follows, with the layer intact.
+
 - **Animated wind and current fields.** A query returning a regular grid of velocities — `speed` +
   meteorological `direction`, or `u`/`v` components including GRIB2's `ugrd`/`vgrd` — becomes a field
   of streamlines with no layer setup. The grid is inferred from the rows in any order, smoothed, and

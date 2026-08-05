@@ -51,3 +51,25 @@ function isSameConfig(a: SavedMapConfig | null | undefined, b: SavedMapConfig | 
   }
   return JSON.stringify(a) === JSON.stringify(b);
 }
+
+/**
+ * Splits a refresh into the datasets kepler already holds and the ones it does not.
+ *
+ * The two need different calls. `updateVisData` cannot swap the rows of a
+ * dataset kepler already knows: `createNewDataEntry` sees the id, takes the
+ * incremental-batch path meant for streaming a dataset in pieces, and ends at
+ * `dataContainer.update?.()` — a method `RowDataContainer` does not implement.
+ * The optional chaining swallows it and the old rows stay. `replaceDataInMap`
+ * does the swap, but only for an id that exists, so a query that gains a new
+ * refId still has to go through `updateVisData`.
+ */
+export function splitRefresh<T extends { id: string }>(
+  datasets: T[],
+  knownIds: readonly string[]
+): { replace: T[]; add: T[] } {
+  const known = new Set(knownIds);
+  return {
+    replace: datasets.filter((dataset) => known.has(dataset.id)),
+    add: datasets.filter((dataset) => !known.has(dataset.id)),
+  };
+}

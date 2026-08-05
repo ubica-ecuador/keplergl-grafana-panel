@@ -30,6 +30,7 @@ import {
   type TimeRangeMs,
 } from './timeSync';
 import { supersededTripLayerIds } from './autoLayers';
+import { splitRefresh } from './loadDecision';
 import { KEPLER_INSTANCE_ID } from './constants';
 
 /**
@@ -117,12 +118,28 @@ export function captureMapConfig(store: Store): SavedMapConfig | null {
  * This is the deliberate departure from the Foursquare plugin, which does
  * removeDataset + addDataset on every refresh and therefore discards the user's
  * layer configuration each time the query re-runs.
+ *
+ * Datasets kepler already holds go through `replaceDataInMap`, one call each,
+ * because `updateVisData` cannot swap their rows — see `replaceDatasetData`
+ * below, and `splitRefresh` for why. Only genuinely new ones — a query that
+ * gained a refId — take the `updateVisData` path, which is the one that can
+ * create a dataset.
  */
-export function refreshDatasets(dispatch: Dispatch, datasets: PanelDataset[]): void {
+export function refreshDatasets(store: Store, dispatch: Dispatch, datasets: PanelDataset[]): void {
+  const { replace, add } = splitRefresh(datasets, readDatasetIds(store));
+
+  for (const dataset of replace) {
+    replaceDatasetData(dispatch, dataset);
+  }
+
+  if (add.length === 0) {
+    return;
+  }
+
   dispatch(
     wrapTo(
       KEPLER_INSTANCE_ID,
-      updateVisData(toKeplerDatasets(datasets), {
+      updateVisData(toKeplerDatasets(add), {
         keepExistingConfig: true,
         // Re-framing the viewport on every refresh would fight the user panning.
         centerMap: false,
@@ -131,15 +148,22 @@ export function refreshDatasets(dispatch: Dispatch, datasets: PanelDataset[]): v
   );
 }
 
+/** The dataset ids kepler is currently holding. */
+function readDatasetIds(store: Store): string[] {
+  return Object.keys(getVisState(store)?.datasets ?? {});
+}
+
 /**
  * Swaps the rows behind one dataset, keeping the layers built on it.
  *
  * `updateVisData` cannot do this. For an id it already knows, kepler takes the
  * "update the data when loading data by batches incrementally" path in
- * `createNewDataEntry`, which is meant for streaming a dataset in pieces — the
- * row count simply does not change. Verified against the store, not the panel's
- * label: after three zoom-out steps the dataset still reported every one of its
- * original rows.
+ * `createNewDataEntry`, which is meant for streaming a dataset in pieces. That
+ * path ends at `KeplerTable.update`, which calls `this.dataContainer.update?.()`
+ * — and `RowDataContainer`, which is what a `{fields, rows}` dataset gets, has
+ * no `update` at all. The optional chaining swallows the call and the old rows
+ * stay. Confirmed on the live container, whose whole prototype is `numRows`,
+ * `valueAt`, `row`, `column`, `map`, `find` and friends.
  *
  * `replaceDataInMap` is kepler's own answer, and it preserves what matters:
  * internally it re-points the layers, filters and layer order at the new data

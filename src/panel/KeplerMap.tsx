@@ -125,7 +125,7 @@ export function KeplerMap({
       appliedConfig.current = mapConfig;
       loadDatasets(store.dispatch, datasets, {}, mapConfig);
     } else {
-      refreshDatasets(store.dispatch, datasets);
+      refreshDatasets(store, store.dispatch, datasets);
     }
   }, [isReady, datasets, mapConfig, store]);
 
