@@ -113,7 +113,7 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
     .addSelect({
       path: 'basemap',
       name: 'Base map',
-      description: 'Carto base maps, served without a Mapbox token.',
+      description: 'Base maps served without a Mapbox token.',
       category: ['Map'],
       defaultValue: 'auto',
       settings: {
@@ -122,6 +122,7 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
           { value: 'dark-matter', label: 'Dark Matter' },
           { value: 'positron', label: 'Positron' },
           { value: 'voyager', label: 'Voyager' },
+          { value: 'grafana-satellite', label: 'Satellite (Esri)' },
           { value: 'custom', label: 'Self-hosted style.json' },
         ],
       },

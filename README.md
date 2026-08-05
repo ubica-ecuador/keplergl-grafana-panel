@@ -33,8 +33,11 @@ panel: no external service, no account, no Mapbox token.
 - **Saved map configuration** stored with the dashboard, and configs pasted from kepler.gl,
   Foursquare Studio or Dekart are accepted.
 - **Follows the dashboard theme**, base map included.
-- **No outbound calls to any vendor.** Base maps come from Carto and can be swapped for a
-  self-hosted `style.json`; kepler's icon library ships with the plugin.
+- **No outbound calls to any vendor.** Base maps come from Carto, or Esri for the satellite one, and
+  can be swapped for a self-hosted `style.json`; kepler's icon library ships with the plugin.
+- **Esri's terms of use.** The satellite imagery comes from Esri's public
+  `services.arcgisonline.com` endpoint, whose terms ask for an ArcGIS account for production use —
+  installs that need a cleaner footing should point **Base map** at their own `style.json`.
 
 ## Queries
 
@@ -218,7 +221,7 @@ use the variable.
 | **Time range sync**        | Dashboard drives the map's time filter (default), both directions, or off. Needs a time column. |
 | **Flow line style**        | Straight, curved or animated lines for origin-destination flow layers.                          |
 | **Cross-filtering**        | Map a kepler filter to a dashboard variable to cross-filter other panels.                       |
-| **Base map**               | Carto Dark Matter / Positron / Voyager, or a self-hosted `style.json`.                          |
+| **Base map**               | Carto Dark Matter / Positron / Voyager, Esri satellite, or a self-hosted `style.json`.         |
 | **Map configuration**      | Save the current layers and filters with the dashboard, or paste one in.                        |
 
 Saving is explicit rather than automatic: the configuration is a sizeable blob that lands in the
@@ -244,9 +247,10 @@ blocks the base map. MapLibre fetches styles, sprites, glyphs and tiles over XHR
 under that directive:
 
 ```ini
-content_security_policy_template = """...connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com ...;"""
+content_security_policy_template = """...connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com ...;"""
 ```
 
+The Esri host serves only the **Satellite (Esri)** base map — leave it out if you never select it.
 Or point **Base map** at a `style.json` on your own network and skip this entirely.
 
 ## Development

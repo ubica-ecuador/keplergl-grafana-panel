@@ -6,8 +6,15 @@ import { TimeSyncMode } from './panel/timeSync';
 import { TimeVariableMapping } from './panel/timeVariableSync';
 import { VariableMapping } from './panel/variableSync';
 
-/** Built-in MapLibre base maps kepler ships, all served by Carto without a token. */
-export type BasemapChoice = 'auto' | 'dark-matter' | 'positron' | 'voyager' | 'custom';
+/**
+ * Base maps offered in the panel options.
+ *
+ * All of them work without a Mapbox token: the first four are kepler's MapLibre
+ * styles served by Carto, and `grafana-satellite` is the plugin's own Esri
+ * imagery style. The value is the kepler style id, so `KeplerPanel` can pass it
+ * straight through.
+ */
+export type BasemapChoice = 'auto' | 'dark-matter' | 'positron' | 'voyager' | 'grafana-satellite' | 'custom';
 
 export interface KeplerPanelOptions {
   /**

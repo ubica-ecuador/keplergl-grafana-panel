@@ -56,15 +56,17 @@ services:
       GF_LOG_LEVEL: debug
       GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: ubica-keplergl-panel
       GF_SECURITY_CONTENT_SECURITY_POLICY: 'true'
-      # Grafana's stock CSP template, plus the one delta this plugin needs:
-      # `connect-src` must allow the basemap host. maplibre fetches style.json,
+      # Grafana's stock CSP template, plus the two deltas this plugin needs:
+      # `connect-src` must allow the basemap hosts. maplibre fetches style.json,
       # sprites, glyph .pbf files and vector tiles over XHR, so they all fall
-      # under connect-src rather than img-src/font-src.
+      # under connect-src rather than img-src/font-src. Carto serves the default
+      # base maps; Esri serves the tiles of the satellite one.
       #
       # Verified with the stock template: the plugin still loads, the map still
       # renders and Web Workers still start — only the basemap goes missing.
       GF_SECURITY_CONTENT_SECURITY_POLICY_TEMPLATE: >-
         script-src 'self' 'unsafe-eval' 'unsafe-inline' 'strict-dynamic' $$NONCE;object-src 'none';font-src
         'self';style-src 'self' 'unsafe-inline' blob:;img-src * data:;base-uri 'self';connect-src 'self'
-        grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com ws://$$ROOT_PATH
+        grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com
+        https://services.arcgisonline.com ws://$$ROOT_PATH
         wss://$$ROOT_PATH;manifest-src 'self';media-src 'none';form-action 'self';
