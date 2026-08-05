@@ -5,6 +5,15 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Satellite base map, without a Mapbox account.** kepler ships five styles whose URLs are
+  `mapbox://`, and picking any of them — the satellite one included — swaps MapLibre for mapbox-gl
+  and requests `api.mapbox.com` with the empty token this plugin passes by design; the 401 comes back
+  without CORS headers and the map goes black. **Satellite (Esri)** is a style the plugin serves
+  itself, backed by Esri raster tiles: imagery, roads and place labels, the last two wired to
+  kepler's own Road and Label switches so the image can be seen clean. Selectable from the panel
+  options and from kepler's own base map picker. Under a hardened Grafana it needs
+  `https://services.arcgisonline.com` in `connect-src`, and only if you use it — see the README.
+  The five Mapbox styles are still listed and still blank the map; that is kepler's list, not ours.
 - **Animated wind and current fields.** A query returning a regular grid of velocities — `speed` +
   meteorological `direction`, or `u`/`v` components including GRIB2's `ugrd`/`vgrd` — becomes a field
   of streamlines with no layer setup. The grid is inferred from the rows in any order, smoothed, and
