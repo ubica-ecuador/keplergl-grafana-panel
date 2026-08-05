@@ -275,6 +275,12 @@ export function readMapState(store: Store): MapStateLike | null {
   return state.keplerGl?.[KEPLER_INSTANCE_ID]?.mapState ?? null;
 }
 
+/** The id of the base map style the map is currently showing. */
+export function readBasemapId(store: Store): string | null {
+  const state = store.getState() as { keplerGl?: Record<string, { mapStyle?: { styleType?: string } }> };
+  return state.keplerGl?.[KEPLER_INSTANCE_ID]?.mapStyle?.styleType ?? null;
+}
+
 /** The map's current time-filter window, or null if it has no time filter. */
 export function readTimeRange(store: Store): TimeRangeMs | null {
   const visState = getVisState(store);

@@ -45,6 +45,12 @@ describe('the satellite style document', () => {
   });
 
   it('credits Esri on every source', () => {
+    // This is metadata only — kepler's own `Attribution` component
+    // (@kepler.gl/components/map-container.js) replaces MapLibre's
+    // attribution control with a hardcoded bar of its own and never reads a
+    // raster source's `attribution` field, so this passing is not proof the
+    // user sees a credit anywhere. `BasemapAttribution.tsx` is what actually
+    // renders the visible Esri credit; see `BasemapAttribution.test.tsx`.
     for (const source of rasterSources()) {
       expect(source.attribution).toMatch(/Esri/);
     }

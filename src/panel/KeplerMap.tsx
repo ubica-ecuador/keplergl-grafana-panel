@@ -8,7 +8,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import type { PanelDataset } from '../data/framesToDatasets';
 import type { SavedMapConfig } from '../data/mapConfig';
 import type { KeplerThemeOverride } from '../data/keplerTheme';
-import { KEPLER_INSTANCE_ID } from './constants';
+import { KEPLER_INSTANCE_ID, SATELLITE_BASEMAP_ID } from './constants';
 import { registeredMapStyles } from './basemaps';
 import { configureKepler } from './keplerConfig';
 import { createKeplerStore } from './keplerStore';
@@ -20,6 +20,8 @@ import { useWindViewport } from './useWindViewport';
 import { usePeerTimeSync } from './usePeerTimeSync';
 import { useVariableSync } from './useVariableSync';
 import { useTimeVariableSync } from './useTimeVariableSync';
+import { useActiveBasemap } from './useActiveBasemap';
+import { BasemapAttribution } from './BasemapAttribution';
 import type { TimeRangeMs, TimeSyncMode } from './timeSync';
 import type { TimeVariableMapping } from './timeVariableSync';
 import type { VariableMapping } from './variableSync';
@@ -195,8 +197,15 @@ export function KeplerMap({
     peerSync: peerTimeSync,
   });
 
+  // kepler's own attribution bar never credits Esri — it renders a hardcoded
+  // "© kepler.gl" / basemap-library line and ignores a raster source's
+  // `attribution` field entirely. The panel renders Esri's credit itself,
+  // only while the satellite style is actually the one showing.
+  const activeBasemapId = useActiveBasemap({ store, isReady });
+
   return (
     <div ref={setStyleTarget} style={{ width, height, position: 'relative', overflow: 'hidden' }}>
+      {activeBasemapId === SATELLITE_BASEMAP_ID && <BasemapAttribution />}
       {styleTarget && (
         <StyleSheetManager target={styleTarget}>
           <Provider store={store}>
