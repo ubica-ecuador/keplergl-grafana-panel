@@ -1,0 +1,2409 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Every kepler.gl layer type the panel can build from query rows, on synthetic data. Open at most two rows at a time: each map holds two WebGL contexts.",
+  "editable": true,
+  "id": 6,
+  "links": [],
+  "panels": [
+    {
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "mode": "markdown",
+        "content": "Every kepler.gl layer type this panel can build from query rows, on synthetic data around Cuenca. Each map is pinned to exactly one layer by a saved map configuration, and the table beside it shows the rows behind that layer — read from the map panel itself, not queried twice.\n\n**Narrow `zona` in a map's own filter panel**, on the left, and the whole gallery follows — every other map and every table. The `Zona` picker at the top does the same from the other side.\n\nDashboard time sync is off on every panel, trips included — see `timesync` and `timevars` for that.\n\n**Open at most two rows at a time.** Each map holds two WebGL contexts and browsers cap them at around sixteen; all five rows at once blanks the oldest maps.\n\nNot shown: `vectorTile`, `rasterTile`, `wms`, `tile3d`, `bitmap` and `3D`. Those are configured with a URL rather than with data, so no query can drive them."
+      },
+      "title": "Kepler.gl layer gallery",
+      "type": "text"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "id": 100,
+      "panels": [],
+      "title": "Points — one query, five layers",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 16,
+        "x": 0,
+        "y": 6
+      },
+      "id": 2,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "visState": {
+              "layers": [
+                {
+                  "id": "gallery-point",
+                  "type": "point",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Point",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "columnMode": "points",
+                    "isVisible": true,
+                    "visConfig": {
+                      "radius": 18,
+                      "opacity": 0.85,
+                      "outline": false,
+                      "filled": true
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "value",
+                      "type": "integer"
+                    },
+                    "colorScale": "quantize"
+                  }
+                }
+              ],
+              "filters": [
+                {
+                  "dataId": ["grafana-A"],
+                  "id": "zona-point",
+                  "name": ["zona"],
+                  "type": "multiSelect",
+                  "value": ["norte", "centro", "sur"],
+                  "enabled": true
+                }
+              ],
+              "interactionConfig": {},
+              "splitMaps": []
+            },
+            "mapState": {
+              "latitude": -2.902,
+              "longitude": -79.004,
+              "zoom": 12,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "mapStyle": {
+              "styleType": "dark-matter"
+            }
+          }
+        },
+        "variableMappings": [
+          {
+            "field": "zona",
+            "variable": "zona"
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"latitude\",\"type\":\"number\"},{\"name\":\"longitude\",\"type\":\"number\"},{\"name\":\"value\",\"type\":\"number\"},{\"name\":\"zona\",\"type\":\"string\"}]},\"data\":{\"values\":[[-2.873056,-2.871438,-2.870221,-2.87216,-2.875571,-2.877567,-2.876492,-2.87206,-2.872176,-2.873838,-2.873518,-2.869348,-2.87858,-2.878427,-2.878372,-2.873386,-2.871055,-2.875042,-2.874497,-2.872767,-2.871045,-2.875261,-2.873447,-2.875027,-2.873848,-2.87802,-2.873134,-2.877389,-2.875887,-2.876154,-2.879389,-2.871206,-2.872611,-2.87541,-2.874083,-2.874759,-2.874555,-2.87332,-2.87413,-2.876565,-2.876584,-2.871353,-2.902615,-2.900851,-2.900868,-2.900252,-2.902361,-2.900346,-2.907598,-2.900949,-2.899688,-2.904561,-2.901493,-2.900489,-2.903665,-2.90319,-2.906116,-2.901838,-2.902633,-2.901818,-2.90004,-2.900011,-2.898266,-2.900062,-2.900389,-2.898406,-2.897476,-2.904824,-2.900286,-2.900759,-2.902913,-2.901302,-2.901242,-2.902622,-2.902375,-2.902416,-2.903519,-2.901778,-2.902379,-2.904805,-2.901986,-2.906489,-2.907192,-2.903555,-2.899017,-2.90249,-2.906595,-2.927813,-2.926949,-2.927631,-2.925675,-2.926938,-2.926639,-2.928582,-2.9269,-2.92335,-2.928641,-2.925995,-2.932285,-2.924738,-2.929552,-2.933534,-2.93142,-2.930767,-2.928037,-2.927688,-2.929631,-2.926966,-2.926579,-2.929758,-2.926576,-2.93142,-2.931985,-2.930433,-2.928037,-2.92696,-2.925668,-2.923866,-2.928207,-2.92547,-2.927747,-2.931146,-2.930235],[-78.998668,-78.997968,-78.997063,-79.000399,-78.998335,-78.997896,-79.000749,-78.999086,-79.001598,-78.997036,-79.002693,-79.000979,-78.999292,-79.005312,-79.007195,-79.000402,-79.001442,-78.998254,-78.998585,-79.002656,-78.995302,-78.99312,-79.00003,-79.002532,-78.999139,-78.998284,-78.997954,-79.001259,-79.00037,-79.002613,-78.996411,-78.994855,-79.006642,-79.001034,-79.003771,-79.004349,-78.998452,-79.003033,-78.996047,-78.99835,-79.000894,-79.00378,-79.00821,-79.011923,-79.010632,-79.010126,-79.008843,-79.011246,-79.008189,-79.009162,-79.00847,-79.002513,-79.008157,-79.012082,-79.005407,-79.004054,-79.006899,-79.009555,-79.010478,-79.006145,-79.005861,-79.004336,-79.003939,-79.006964,-79.005077,-79.003316,-79.003458,-79.00518,-79.010953,-79.006258,-79.00699,-79.008625,-79.006443,-79.003905,-79.008887,-79.008532,-79.007689,-79.014709,-79.012603,-79.006299,-79.006737,-79.007878,-79.007313,-79.009255,-79.012412,-79.005974,-79.00232,-78.996886,-78.996949,-78.991764,-78.990059,-78.990006,-78.989473,-78.991071,-78.999074,-78.995325,-78.993924,-78.996805,-78.994292,-78.99439,-78.99802,-78.993935,-78.992945,-78.991375,-78.992845,-78.998081,-78.988479,-78.993671,-78.996669,-78.995478,-78.992302,-78.992766,-78.995084,-78.986505,-78.992704,-78.993863,-78.998548,-78.997019,-78.996309,-78.994224,-78.994939,-78.987693,-78.992874],[68,87,63,92,82,59,62,95,91,55,84,74,80,49,62,33,64,84,37,70,40,21,87,21,92,93,34,68,63,29,41,89,62,36,46,68,56,84,86,59,94,78,75,22,37,25,23,29,78,42,42,67,68,22,34,33,23,39,87,30,83,81,36,85,89,78,54,44,86,37,25,70,81,30,59,59,28,36,72,24,55,74,25,20,58,91,39,38,86,65,72,63,65,51,73,91,92,70,23,26,51,60,70,43,27,44,63,28,26,91,65,75,49,71,74,69,45,39,43,92,85,56,35],[\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\"]]}}]"
+        }
+      ],
+      "title": "point — lat/lng",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "minWidth": 70
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "latitude"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 4
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "longitude"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 4
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 8,
+        "x": 16,
+        "y": 6
+      },
+      "id": 3,
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "refId": "A",
+          "panelId": 2
+        }
+      ],
+      "title": "point — rows",
+      "transformations": [
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "include",
+            "match": "any",
+            "filters": [
+              {
+                "fieldName": "zona",
+                "config": {
+                  "id": "regex",
+                  "options": {
+                    "value": "${zona:regex}"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 16,
+        "x": 0,
+        "y": 20
+      },
+      "id": 4,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "visState": {
+              "layers": [
+                {
+                  "id": "gallery-heatmap",
+                  "type": "heatmap",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Heatmap",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "columnMode": "points",
+                    "isVisible": true,
+                    "visConfig": {
+                      "opacity": 0.8,
+                      "radius": 30
+                    }
+                  },
+                  "visualChannels": {}
+                }
+              ],
+              "filters": [
+                {
+                  "dataId": ["grafana-A"],
+                  "id": "zona-heatmap",
+                  "name": ["zona"],
+                  "type": "multiSelect",
+                  "value": ["norte", "centro", "sur"],
+                  "enabled": true
+                }
+              ],
+              "interactionConfig": {},
+              "splitMaps": []
+            },
+            "mapState": {
+              "latitude": -2.902,
+              "longitude": -79.004,
+              "zoom": 12,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "mapStyle": {
+              "styleType": "dark-matter"
+            }
+          }
+        },
+        "variableMappings": [
+          {
+            "field": "zona",
+            "variable": "zona"
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"latitude\",\"type\":\"number\"},{\"name\":\"longitude\",\"type\":\"number\"},{\"name\":\"value\",\"type\":\"number\"},{\"name\":\"zona\",\"type\":\"string\"}]},\"data\":{\"values\":[[-2.873056,-2.871438,-2.870221,-2.87216,-2.875571,-2.877567,-2.876492,-2.87206,-2.872176,-2.873838,-2.873518,-2.869348,-2.87858,-2.878427,-2.878372,-2.873386,-2.871055,-2.875042,-2.874497,-2.872767,-2.871045,-2.875261,-2.873447,-2.875027,-2.873848,-2.87802,-2.873134,-2.877389,-2.875887,-2.876154,-2.879389,-2.871206,-2.872611,-2.87541,-2.874083,-2.874759,-2.874555,-2.87332,-2.87413,-2.876565,-2.876584,-2.871353,-2.902615,-2.900851,-2.900868,-2.900252,-2.902361,-2.900346,-2.907598,-2.900949,-2.899688,-2.904561,-2.901493,-2.900489,-2.903665,-2.90319,-2.906116,-2.901838,-2.902633,-2.901818,-2.90004,-2.900011,-2.898266,-2.900062,-2.900389,-2.898406,-2.897476,-2.904824,-2.900286,-2.900759,-2.902913,-2.901302,-2.901242,-2.902622,-2.902375,-2.902416,-2.903519,-2.901778,-2.902379,-2.904805,-2.901986,-2.906489,-2.907192,-2.903555,-2.899017,-2.90249,-2.906595,-2.927813,-2.926949,-2.927631,-2.925675,-2.926938,-2.926639,-2.928582,-2.9269,-2.92335,-2.928641,-2.925995,-2.932285,-2.924738,-2.929552,-2.933534,-2.93142,-2.930767,-2.928037,-2.927688,-2.929631,-2.926966,-2.926579,-2.929758,-2.926576,-2.93142,-2.931985,-2.930433,-2.928037,-2.92696,-2.925668,-2.923866,-2.928207,-2.92547,-2.927747,-2.931146,-2.930235],[-78.998668,-78.997968,-78.997063,-79.000399,-78.998335,-78.997896,-79.000749,-78.999086,-79.001598,-78.997036,-79.002693,-79.000979,-78.999292,-79.005312,-79.007195,-79.000402,-79.001442,-78.998254,-78.998585,-79.002656,-78.995302,-78.99312,-79.00003,-79.002532,-78.999139,-78.998284,-78.997954,-79.001259,-79.00037,-79.002613,-78.996411,-78.994855,-79.006642,-79.001034,-79.003771,-79.004349,-78.998452,-79.003033,-78.996047,-78.99835,-79.000894,-79.00378,-79.00821,-79.011923,-79.010632,-79.010126,-79.008843,-79.011246,-79.008189,-79.009162,-79.00847,-79.002513,-79.008157,-79.012082,-79.005407,-79.004054,-79.006899,-79.009555,-79.010478,-79.006145,-79.005861,-79.004336,-79.003939,-79.006964,-79.005077,-79.003316,-79.003458,-79.00518,-79.010953,-79.006258,-79.00699,-79.008625,-79.006443,-79.003905,-79.008887,-79.008532,-79.007689,-79.014709,-79.012603,-79.006299,-79.006737,-79.007878,-79.007313,-79.009255,-79.012412,-79.005974,-79.00232,-78.996886,-78.996949,-78.991764,-78.990059,-78.990006,-78.989473,-78.991071,-78.999074,-78.995325,-78.993924,-78.996805,-78.994292,-78.99439,-78.99802,-78.993935,-78.992945,-78.991375,-78.992845,-78.998081,-78.988479,-78.993671,-78.996669,-78.995478,-78.992302,-78.992766,-78.995084,-78.986505,-78.992704,-78.993863,-78.998548,-78.997019,-78.996309,-78.994224,-78.994939,-78.987693,-78.992874],[68,87,63,92,82,59,62,95,91,55,84,74,80,49,62,33,64,84,37,70,40,21,87,21,92,93,34,68,63,29,41,89,62,36,46,68,56,84,86,59,94,78,75,22,37,25,23,29,78,42,42,67,68,22,34,33,23,39,87,30,83,81,36,85,89,78,54,44,86,37,25,70,81,30,59,59,28,36,72,24,55,74,25,20,58,91,39,38,86,65,72,63,65,51,73,91,92,70,23,26,51,60,70,43,27,44,63,28,26,91,65,75,49,71,74,69,45,39,43,92,85,56,35],[\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\"]]}}]"
+        }
+      ],
+      "title": "heatmap — lat/lng",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "minWidth": 70
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "latitude"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 4
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "longitude"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 4
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 8,
+        "x": 16,
+        "y": 20
+      },
+      "id": 5,
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "refId": "A",
+          "panelId": 4
+        }
+      ],
+      "title": "heatmap — rows",
+      "transformations": [
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "include",
+            "match": "any",
+            "filters": [
+              {
+                "fieldName": "zona",
+                "config": {
+                  "id": "regex",
+                  "options": {
+                    "value": "${zona:regex}"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 16,
+        "x": 0,
+        "y": 34
+      },
+      "id": 6,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "visState": {
+              "layers": [
+                {
+                  "id": "gallery-grid",
+                  "type": "grid",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Grid",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "opacity": 0.8,
+                      "worldUnitSize": 0.6,
+                      "coverage": 0.9
+                    }
+                  },
+                  "visualChannels": {}
+                }
+              ],
+              "filters": [
+                {
+                  "dataId": ["grafana-A"],
+                  "id": "zona-grid",
+                  "name": ["zona"],
+                  "type": "multiSelect",
+                  "value": ["norte", "centro", "sur"],
+                  "enabled": true
+                }
+              ],
+              "interactionConfig": {},
+              "splitMaps": []
+            },
+            "mapState": {
+              "latitude": -2.902,
+              "longitude": -79.004,
+              "zoom": 12,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "mapStyle": {
+              "styleType": "dark-matter"
+            }
+          }
+        },
+        "variableMappings": [
+          {
+            "field": "zona",
+            "variable": "zona"
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"latitude\",\"type\":\"number\"},{\"name\":\"longitude\",\"type\":\"number\"},{\"name\":\"value\",\"type\":\"number\"},{\"name\":\"zona\",\"type\":\"string\"}]},\"data\":{\"values\":[[-2.873056,-2.871438,-2.870221,-2.87216,-2.875571,-2.877567,-2.876492,-2.87206,-2.872176,-2.873838,-2.873518,-2.869348,-2.87858,-2.878427,-2.878372,-2.873386,-2.871055,-2.875042,-2.874497,-2.872767,-2.871045,-2.875261,-2.873447,-2.875027,-2.873848,-2.87802,-2.873134,-2.877389,-2.875887,-2.876154,-2.879389,-2.871206,-2.872611,-2.87541,-2.874083,-2.874759,-2.874555,-2.87332,-2.87413,-2.876565,-2.876584,-2.871353,-2.902615,-2.900851,-2.900868,-2.900252,-2.902361,-2.900346,-2.907598,-2.900949,-2.899688,-2.904561,-2.901493,-2.900489,-2.903665,-2.90319,-2.906116,-2.901838,-2.902633,-2.901818,-2.90004,-2.900011,-2.898266,-2.900062,-2.900389,-2.898406,-2.897476,-2.904824,-2.900286,-2.900759,-2.902913,-2.901302,-2.901242,-2.902622,-2.902375,-2.902416,-2.903519,-2.901778,-2.902379,-2.904805,-2.901986,-2.906489,-2.907192,-2.903555,-2.899017,-2.90249,-2.906595,-2.927813,-2.926949,-2.927631,-2.925675,-2.926938,-2.926639,-2.928582,-2.9269,-2.92335,-2.928641,-2.925995,-2.932285,-2.924738,-2.929552,-2.933534,-2.93142,-2.930767,-2.928037,-2.927688,-2.929631,-2.926966,-2.926579,-2.929758,-2.926576,-2.93142,-2.931985,-2.930433,-2.928037,-2.92696,-2.925668,-2.923866,-2.928207,-2.92547,-2.927747,-2.931146,-2.930235],[-78.998668,-78.997968,-78.997063,-79.000399,-78.998335,-78.997896,-79.000749,-78.999086,-79.001598,-78.997036,-79.002693,-79.000979,-78.999292,-79.005312,-79.007195,-79.000402,-79.001442,-78.998254,-78.998585,-79.002656,-78.995302,-78.99312,-79.00003,-79.002532,-78.999139,-78.998284,-78.997954,-79.001259,-79.00037,-79.002613,-78.996411,-78.994855,-79.006642,-79.001034,-79.003771,-79.004349,-78.998452,-79.003033,-78.996047,-78.99835,-79.000894,-79.00378,-79.00821,-79.011923,-79.010632,-79.010126,-79.008843,-79.011246,-79.008189,-79.009162,-79.00847,-79.002513,-79.008157,-79.012082,-79.005407,-79.004054,-79.006899,-79.009555,-79.010478,-79.006145,-79.005861,-79.004336,-79.003939,-79.006964,-79.005077,-79.003316,-79.003458,-79.00518,-79.010953,-79.006258,-79.00699,-79.008625,-79.006443,-79.003905,-79.008887,-79.008532,-79.007689,-79.014709,-79.012603,-79.006299,-79.006737,-79.007878,-79.007313,-79.009255,-79.012412,-79.005974,-79.00232,-78.996886,-78.996949,-78.991764,-78.990059,-78.990006,-78.989473,-78.991071,-78.999074,-78.995325,-78.993924,-78.996805,-78.994292,-78.99439,-78.99802,-78.993935,-78.992945,-78.991375,-78.992845,-78.998081,-78.988479,-78.993671,-78.996669,-78.995478,-78.992302,-78.992766,-78.995084,-78.986505,-78.992704,-78.993863,-78.998548,-78.997019,-78.996309,-78.994224,-78.994939,-78.987693,-78.992874],[68,87,63,92,82,59,62,95,91,55,84,74,80,49,62,33,64,84,37,70,40,21,87,21,92,93,34,68,63,29,41,89,62,36,46,68,56,84,86,59,94,78,75,22,37,25,23,29,78,42,42,67,68,22,34,33,23,39,87,30,83,81,36,85,89,78,54,44,86,37,25,70,81,30,59,59,28,36,72,24,55,74,25,20,58,91,39,38,86,65,72,63,65,51,73,91,92,70,23,26,51,60,70,43,27,44,63,28,26,91,65,75,49,71,74,69,45,39,43,92,85,56,35],[\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\"]]}}]"
+        }
+      ],
+      "title": "grid — lat/lng",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "minWidth": 70
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "latitude"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 4
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "longitude"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 4
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 8,
+        "x": 16,
+        "y": 34
+      },
+      "id": 7,
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "refId": "A",
+          "panelId": 6
+        }
+      ],
+      "title": "grid — rows",
+      "transformations": [
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "include",
+            "match": "any",
+            "filters": [
+              {
+                "fieldName": "zona",
+                "config": {
+                  "id": "regex",
+                  "options": {
+                    "value": "${zona:regex}"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 48
+      },
+      "id": 101,
+      "panels": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 16,
+            "x": 0,
+            "y": 49
+          },
+          "id": 8,
+          "options": {
+            "showSidePanel": true,
+            "timeSync": "off",
+            "mapConfig": {
+              "version": "v1",
+              "config": {
+                "visState": {
+                  "layers": [
+                    {
+                      "id": "gallery-hexagon",
+                      "type": "hexagon",
+                      "config": {
+                        "dataId": "grafana-A",
+                        "label": "Hexagon",
+                        "columns": {
+                          "lat": "latitude",
+                          "lng": "longitude"
+                        },
+                        "isVisible": true,
+                        "visConfig": {
+                          "opacity": 0.8,
+                          "worldUnitSize": 0.6,
+                          "coverage": 0.9
+                        }
+                      },
+                      "visualChannels": {}
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "dataId": ["grafana-A"],
+                      "id": "zona-hexagon",
+                      "name": ["zona"],
+                      "type": "multiSelect",
+                      "value": ["norte", "centro", "sur"],
+                      "enabled": true
+                    }
+                  ],
+                  "interactionConfig": {},
+                  "splitMaps": []
+                },
+                "mapState": {
+                  "latitude": -2.902,
+                  "longitude": -79.004,
+                  "zoom": 12,
+                  "bearing": 0,
+                  "pitch": 0,
+                  "dragRotate": false
+                },
+                "mapStyle": {
+                  "styleType": "dark-matter"
+                }
+              }
+            },
+            "variableMappings": [
+              {
+                "field": "zona",
+                "variable": "zona"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-testdata-datasource",
+                "uid": "trlxrdZVk"
+              },
+              "refId": "A",
+              "scenarioId": "raw_frame",
+              "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"latitude\",\"type\":\"number\"},{\"name\":\"longitude\",\"type\":\"number\"},{\"name\":\"value\",\"type\":\"number\"},{\"name\":\"zona\",\"type\":\"string\"}]},\"data\":{\"values\":[[-2.873056,-2.871438,-2.870221,-2.87216,-2.875571,-2.877567,-2.876492,-2.87206,-2.872176,-2.873838,-2.873518,-2.869348,-2.87858,-2.878427,-2.878372,-2.873386,-2.871055,-2.875042,-2.874497,-2.872767,-2.871045,-2.875261,-2.873447,-2.875027,-2.873848,-2.87802,-2.873134,-2.877389,-2.875887,-2.876154,-2.879389,-2.871206,-2.872611,-2.87541,-2.874083,-2.874759,-2.874555,-2.87332,-2.87413,-2.876565,-2.876584,-2.871353,-2.902615,-2.900851,-2.900868,-2.900252,-2.902361,-2.900346,-2.907598,-2.900949,-2.899688,-2.904561,-2.901493,-2.900489,-2.903665,-2.90319,-2.906116,-2.901838,-2.902633,-2.901818,-2.90004,-2.900011,-2.898266,-2.900062,-2.900389,-2.898406,-2.897476,-2.904824,-2.900286,-2.900759,-2.902913,-2.901302,-2.901242,-2.902622,-2.902375,-2.902416,-2.903519,-2.901778,-2.902379,-2.904805,-2.901986,-2.906489,-2.907192,-2.903555,-2.899017,-2.90249,-2.906595,-2.927813,-2.926949,-2.927631,-2.925675,-2.926938,-2.926639,-2.928582,-2.9269,-2.92335,-2.928641,-2.925995,-2.932285,-2.924738,-2.929552,-2.933534,-2.93142,-2.930767,-2.928037,-2.927688,-2.929631,-2.926966,-2.926579,-2.929758,-2.926576,-2.93142,-2.931985,-2.930433,-2.928037,-2.92696,-2.925668,-2.923866,-2.928207,-2.92547,-2.927747,-2.931146,-2.930235],[-78.998668,-78.997968,-78.997063,-79.000399,-78.998335,-78.997896,-79.000749,-78.999086,-79.001598,-78.997036,-79.002693,-79.000979,-78.999292,-79.005312,-79.007195,-79.000402,-79.001442,-78.998254,-78.998585,-79.002656,-78.995302,-78.99312,-79.00003,-79.002532,-78.999139,-78.998284,-78.997954,-79.001259,-79.00037,-79.002613,-78.996411,-78.994855,-79.006642,-79.001034,-79.003771,-79.004349,-78.998452,-79.003033,-78.996047,-78.99835,-79.000894,-79.00378,-79.00821,-79.011923,-79.010632,-79.010126,-79.008843,-79.011246,-79.008189,-79.009162,-79.00847,-79.002513,-79.008157,-79.012082,-79.005407,-79.004054,-79.006899,-79.009555,-79.010478,-79.006145,-79.005861,-79.004336,-79.003939,-79.006964,-79.005077,-79.003316,-79.003458,-79.00518,-79.010953,-79.006258,-79.00699,-79.008625,-79.006443,-79.003905,-79.008887,-79.008532,-79.007689,-79.014709,-79.012603,-79.006299,-79.006737,-79.007878,-79.007313,-79.009255,-79.012412,-79.005974,-79.00232,-78.996886,-78.996949,-78.991764,-78.990059,-78.990006,-78.989473,-78.991071,-78.999074,-78.995325,-78.993924,-78.996805,-78.994292,-78.99439,-78.99802,-78.993935,-78.992945,-78.991375,-78.992845,-78.998081,-78.988479,-78.993671,-78.996669,-78.995478,-78.992302,-78.992766,-78.995084,-78.986505,-78.992704,-78.993863,-78.998548,-78.997019,-78.996309,-78.994224,-78.994939,-78.987693,-78.992874],[68,87,63,92,82,59,62,95,91,55,84,74,80,49,62,33,64,84,37,70,40,21,87,21,92,93,34,68,63,29,41,89,62,36,46,68,56,84,86,59,94,78,75,22,37,25,23,29,78,42,42,67,68,22,34,33,23,39,87,30,83,81,36,85,89,78,54,44,86,37,25,70,81,30,59,59,28,36,72,24,55,74,25,20,58,91,39,38,86,65,72,63,65,51,73,91,92,70,23,26,51,60,70,43,27,44,63,28,26,91,65,75,49,71,74,69,45,39,43,92,85,56,35],[\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\"]]}}]"
+            }
+          ],
+          "title": "hexagon — lat/lng",
+          "type": "ubica-keplergl-panel"
+        },
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "minWidth": 70
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "latitude"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "longitude"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 8,
+            "x": 16,
+            "y": 49
+          },
+          "id": 9,
+          "options": {
+            "showHeader": true,
+            "footer": {
+              "show": false
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "datasource",
+                "uid": "-- Dashboard --"
+              },
+              "refId": "A",
+              "panelId": 8
+            }
+          ],
+          "title": "hexagon — rows",
+          "transformations": [
+            {
+              "id": "filterByValue",
+              "options": {
+                "type": "include",
+                "match": "any",
+                "filters": [
+                  {
+                    "fieldName": "zona",
+                    "config": {
+                      "id": "regex",
+                      "options": {
+                        "value": "${zona:regex}"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 16,
+            "x": 0,
+            "y": 63
+          },
+          "id": 10,
+          "options": {
+            "showSidePanel": true,
+            "timeSync": "off",
+            "mapConfig": {
+              "version": "v1",
+              "config": {
+                "visState": {
+                  "layers": [
+                    {
+                      "id": "gallery-cluster",
+                      "type": "cluster",
+                      "config": {
+                        "dataId": "grafana-A",
+                        "label": "Cluster",
+                        "columns": {
+                          "lat": "latitude",
+                          "lng": "longitude"
+                        },
+                        "isVisible": true,
+                        "visConfig": {
+                          "opacity": 0.8,
+                          "clusterRadius": 28,
+                          "radiusRange": [12, 34]
+                        }
+                      },
+                      "visualChannels": {}
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "dataId": ["grafana-A"],
+                      "id": "zona-cluster",
+                      "name": ["zona"],
+                      "type": "multiSelect",
+                      "value": ["norte", "centro", "sur"],
+                      "enabled": true
+                    }
+                  ],
+                  "interactionConfig": {},
+                  "splitMaps": []
+                },
+                "mapState": {
+                  "latitude": -2.902,
+                  "longitude": -79.004,
+                  "zoom": 12,
+                  "bearing": 0,
+                  "pitch": 0,
+                  "dragRotate": false
+                },
+                "mapStyle": {
+                  "styleType": "dark-matter"
+                }
+              }
+            },
+            "variableMappings": [
+              {
+                "field": "zona",
+                "variable": "zona"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-testdata-datasource",
+                "uid": "trlxrdZVk"
+              },
+              "refId": "A",
+              "scenarioId": "raw_frame",
+              "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"latitude\",\"type\":\"number\"},{\"name\":\"longitude\",\"type\":\"number\"},{\"name\":\"value\",\"type\":\"number\"},{\"name\":\"zona\",\"type\":\"string\"}]},\"data\":{\"values\":[[-2.873056,-2.871438,-2.870221,-2.87216,-2.875571,-2.877567,-2.876492,-2.87206,-2.872176,-2.873838,-2.873518,-2.869348,-2.87858,-2.878427,-2.878372,-2.873386,-2.871055,-2.875042,-2.874497,-2.872767,-2.871045,-2.875261,-2.873447,-2.875027,-2.873848,-2.87802,-2.873134,-2.877389,-2.875887,-2.876154,-2.879389,-2.871206,-2.872611,-2.87541,-2.874083,-2.874759,-2.874555,-2.87332,-2.87413,-2.876565,-2.876584,-2.871353,-2.902615,-2.900851,-2.900868,-2.900252,-2.902361,-2.900346,-2.907598,-2.900949,-2.899688,-2.904561,-2.901493,-2.900489,-2.903665,-2.90319,-2.906116,-2.901838,-2.902633,-2.901818,-2.90004,-2.900011,-2.898266,-2.900062,-2.900389,-2.898406,-2.897476,-2.904824,-2.900286,-2.900759,-2.902913,-2.901302,-2.901242,-2.902622,-2.902375,-2.902416,-2.903519,-2.901778,-2.902379,-2.904805,-2.901986,-2.906489,-2.907192,-2.903555,-2.899017,-2.90249,-2.906595,-2.927813,-2.926949,-2.927631,-2.925675,-2.926938,-2.926639,-2.928582,-2.9269,-2.92335,-2.928641,-2.925995,-2.932285,-2.924738,-2.929552,-2.933534,-2.93142,-2.930767,-2.928037,-2.927688,-2.929631,-2.926966,-2.926579,-2.929758,-2.926576,-2.93142,-2.931985,-2.930433,-2.928037,-2.92696,-2.925668,-2.923866,-2.928207,-2.92547,-2.927747,-2.931146,-2.930235],[-78.998668,-78.997968,-78.997063,-79.000399,-78.998335,-78.997896,-79.000749,-78.999086,-79.001598,-78.997036,-79.002693,-79.000979,-78.999292,-79.005312,-79.007195,-79.000402,-79.001442,-78.998254,-78.998585,-79.002656,-78.995302,-78.99312,-79.00003,-79.002532,-78.999139,-78.998284,-78.997954,-79.001259,-79.00037,-79.002613,-78.996411,-78.994855,-79.006642,-79.001034,-79.003771,-79.004349,-78.998452,-79.003033,-78.996047,-78.99835,-79.000894,-79.00378,-79.00821,-79.011923,-79.010632,-79.010126,-79.008843,-79.011246,-79.008189,-79.009162,-79.00847,-79.002513,-79.008157,-79.012082,-79.005407,-79.004054,-79.006899,-79.009555,-79.010478,-79.006145,-79.005861,-79.004336,-79.003939,-79.006964,-79.005077,-79.003316,-79.003458,-79.00518,-79.010953,-79.006258,-79.00699,-79.008625,-79.006443,-79.003905,-79.008887,-79.008532,-79.007689,-79.014709,-79.012603,-79.006299,-79.006737,-79.007878,-79.007313,-79.009255,-79.012412,-79.005974,-79.00232,-78.996886,-78.996949,-78.991764,-78.990059,-78.990006,-78.989473,-78.991071,-78.999074,-78.995325,-78.993924,-78.996805,-78.994292,-78.99439,-78.99802,-78.993935,-78.992945,-78.991375,-78.992845,-78.998081,-78.988479,-78.993671,-78.996669,-78.995478,-78.992302,-78.992766,-78.995084,-78.986505,-78.992704,-78.993863,-78.998548,-78.997019,-78.996309,-78.994224,-78.994939,-78.987693,-78.992874],[68,87,63,92,82,59,62,95,91,55,84,74,80,49,62,33,64,84,37,70,40,21,87,21,92,93,34,68,63,29,41,89,62,36,46,68,56,84,86,59,94,78,75,22,37,25,23,29,78,42,42,67,68,22,34,33,23,39,87,30,83,81,36,85,89,78,54,44,86,37,25,70,81,30,59,59,28,36,72,24,55,74,25,20,58,91,39,38,86,65,72,63,65,51,73,91,92,70,23,26,51,60,70,43,27,44,63,28,26,91,65,75,49,71,74,69,45,39,43,92,85,56,35],[\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\"]]}}]"
+            }
+          ],
+          "title": "cluster — lat/lng",
+          "type": "ubica-keplergl-panel"
+        },
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "minWidth": 70
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "latitude"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "longitude"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 8,
+            "x": 16,
+            "y": 63
+          },
+          "id": 11,
+          "options": {
+            "showHeader": true,
+            "footer": {
+              "show": false
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "datasource",
+                "uid": "-- Dashboard --"
+              },
+              "refId": "A",
+              "panelId": 10
+            }
+          ],
+          "title": "cluster — rows",
+          "transformations": [
+            {
+              "id": "filterByValue",
+              "options": {
+                "type": "include",
+                "match": "any",
+                "filters": [
+                  {
+                    "fieldName": "zona",
+                    "config": {
+                      "id": "regex",
+                      "options": {
+                        "value": "${zona:regex}"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 16,
+            "x": 0,
+            "y": 77
+          },
+          "id": 12,
+          "options": {
+            "showSidePanel": true,
+            "timeSync": "off",
+            "mapConfig": {
+              "version": "v1",
+              "config": {
+                "visState": {
+                  "layers": [
+                    {
+                      "id": "gallery-icon",
+                      "type": "icon",
+                      "config": {
+                        "dataId": "grafana-A",
+                        "label": "Icon",
+                        "columns": {
+                          "lat": "latitude",
+                          "lng": "longitude",
+                          "icon": "icon"
+                        },
+                        "isVisible": true,
+                        "visConfig": {
+                          "radius": 45,
+                          "opacity": 0.95
+                        }
+                      },
+                      "visualChannels": {}
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "dataId": ["grafana-A"],
+                      "id": "zona-icon",
+                      "name": ["zona"],
+                      "type": "multiSelect",
+                      "value": ["norte", "centro", "sur"],
+                      "enabled": true
+                    }
+                  ],
+                  "interactionConfig": {},
+                  "splitMaps": []
+                },
+                "mapState": {
+                  "latitude": -2.902,
+                  "longitude": -79.004,
+                  "zoom": 12.4,
+                  "bearing": 0,
+                  "pitch": 0,
+                  "dragRotate": false
+                },
+                "mapStyle": {
+                  "styleType": "dark-matter"
+                }
+              }
+            },
+            "variableMappings": [
+              {
+                "field": "zona",
+                "variable": "zona"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-testdata-datasource",
+                "uid": "trlxrdZVk"
+              },
+              "refId": "A",
+              "scenarioId": "raw_frame",
+              "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"latitude\",\"type\":\"number\"},{\"name\":\"longitude\",\"type\":\"number\"},{\"name\":\"icon\",\"type\":\"string\"},{\"name\":\"zona\",\"type\":\"string\"}]},\"data\":{\"values\":[[-2.871332,-2.90168,-2.927618,-2.873366,-2.900156,-2.924638,-2.876289,-2.901816,-2.926565,-2.874923,-2.905731,-2.928684],[-78.997903,-79.005262,-78.991204,-78.996775,-79.01501,-78.993567,-78.996605,-79.004922,-78.992336,-79.001315,-79.006866,-78.996661],[\"car\",\"car-taxi\",\"place\",\"alert\",\"heart\",\"star\",\"home\",\"location\",\"pin\",\"key\",\"payment\",\"phone\"],[\"norte\",\"centro\",\"sur\",\"norte\",\"centro\",\"sur\",\"norte\",\"centro\",\"sur\",\"norte\",\"centro\",\"sur\"]]}}]"
+            }
+          ],
+          "title": "icon — lat/lng + icon name",
+          "type": "ubica-keplergl-panel"
+        },
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "minWidth": 70
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "latitude"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "longitude"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 8,
+            "x": 16,
+            "y": 77
+          },
+          "id": 13,
+          "options": {
+            "showHeader": true,
+            "footer": {
+              "show": false
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "datasource",
+                "uid": "-- Dashboard --"
+              },
+              "refId": "A",
+              "panelId": 12
+            }
+          ],
+          "title": "icon — rows",
+          "transformations": [
+            {
+              "id": "filterByValue",
+              "options": {
+                "type": "include",
+                "match": "any",
+                "filters": [
+                  {
+                    "fieldName": "zona",
+                    "config": {
+                      "id": "regex",
+                      "options": {
+                        "value": "${zona:regex}"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "title": "Aggregation and icons",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 91
+      },
+      "id": 102,
+      "panels": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 16,
+            "x": 0,
+            "y": 92
+          },
+          "id": 14,
+          "options": {
+            "showSidePanel": true,
+            "timeSync": "off",
+            "mapConfig": {
+              "version": "v1",
+              "config": {
+                "visState": {
+                  "layers": [
+                    {
+                      "id": "gallery-geojson",
+                      "type": "geojson",
+                      "config": {
+                        "dataId": "grafana-A",
+                        "label": "GeoJSON",
+                        "columns": {
+                          "geojson": "_geojson"
+                        },
+                        "columnMode": "geojson",
+                        "isVisible": true,
+                        "visConfig": {
+                          "opacity": 0.6,
+                          "strokeOpacity": 0.9,
+                          "thickness": 1,
+                          "filled": true,
+                          "stroked": true
+                        }
+                      },
+                      "visualChannels": {
+                        "colorField": {
+                          "name": "value",
+                          "type": "integer"
+                        },
+                        "colorScale": "quantize"
+                      }
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "dataId": ["grafana-A"],
+                      "id": "zona-geojson",
+                      "name": ["zona"],
+                      "type": "multiSelect",
+                      "value": ["norte", "centro", "sur"],
+                      "enabled": true
+                    }
+                  ],
+                  "interactionConfig": {},
+                  "splitMaps": []
+                },
+                "mapState": {
+                  "latitude": -2.902,
+                  "longitude": -79.004,
+                  "zoom": 12,
+                  "bearing": 0,
+                  "pitch": 0,
+                  "dragRotate": false
+                },
+                "mapStyle": {
+                  "styleType": "dark-matter"
+                }
+              }
+            },
+            "variableMappings": [
+              {
+                "field": "zona",
+                "variable": "zona"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-testdata-datasource",
+                "uid": "trlxrdZVk"
+              },
+              "refId": "A",
+              "scenarioId": "raw_frame",
+              "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"geom\",\"type\":\"string\"},{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"value\",\"type\":\"number\"},{\"name\":\"zona\",\"type\":\"string\"}]},\"data\":{\"values\":[[\"POLYGON((-79.007804 -2.882, -79.013 -2.879, -79.018196 -2.882, -79.018196 -2.888, -79.013 -2.891, -79.007804 -2.888, -79.007804 -2.882))\",\"POLYGON((-78.994804 -2.871, -79 -2.868, -79.005196 -2.871, -79.005196 -2.877, -79 -2.88, -78.994804 -2.877, -78.994804 -2.871))\",\"POLYGON((-78.981804 -2.86, -78.987 -2.857, -78.992196 -2.86, -78.992196 -2.866, -78.987 -2.869, -78.981804 -2.866, -78.981804 -2.86))\",\"POLYGON((-79.015804 -2.91, -79.021 -2.907, -79.026196 -2.91, -79.026196 -2.916, -79.021 -2.919, -79.015804 -2.916, -79.015804 -2.91))\",\"POLYGON((-79.002804 -2.899, -79.008 -2.896, -79.013196 -2.899, -79.013196 -2.905, -79.008 -2.908, -79.002804 -2.905, -79.002804 -2.899))\",\"POLYGON((-78.989804 -2.888, -78.995 -2.885, -79.000196 -2.888, -79.000196 -2.894, -78.995 -2.897, -78.989804 -2.894, -78.989804 -2.888))\",\"POLYGON((-79.001804 -2.936, -79.007 -2.933, -79.012196 -2.936, -79.012196 -2.942, -79.007 -2.945, -79.001804 -2.942, -79.001804 -2.936))\",\"POLYGON((-78.988804 -2.925, -78.994 -2.922, -78.999196 -2.925, -78.999196 -2.931, -78.994 -2.934, -78.988804 -2.931, -78.988804 -2.925))\",\"POLYGON((-78.975804 -2.914, -78.981 -2.911, -78.986196 -2.914, -78.986196 -2.92, -78.981 -2.923, -78.975804 -2.92, -78.975804 -2.914))\"],[\"norte-1\",\"norte-2\",\"norte-3\",\"centro-1\",\"centro-2\",\"centro-3\",\"sur-1\",\"sur-2\",\"sur-3\"],[56,37,50,70,75,48,80,31,78],[\"norte\",\"norte\",\"norte\",\"centro\",\"centro\",\"centro\",\"sur\",\"sur\",\"sur\"]]}}]"
+            }
+          ],
+          "title": "geojson — WKT polygons",
+          "type": "ubica-keplergl-panel"
+        },
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "minWidth": 70
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 8,
+            "x": 16,
+            "y": 92
+          },
+          "id": 15,
+          "options": {
+            "showHeader": true,
+            "footer": {
+              "show": false
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "datasource",
+                "uid": "-- Dashboard --"
+              },
+              "refId": "A",
+              "panelId": 14
+            }
+          ],
+          "title": "geojson — rows",
+          "transformations": [
+            {
+              "id": "filterByValue",
+              "options": {
+                "type": "include",
+                "match": "any",
+                "filters": [
+                  {
+                    "fieldName": "zona",
+                    "config": {
+                      "id": "regex",
+                      "options": {
+                        "value": "${zona:regex}"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 16,
+            "x": 0,
+            "y": 106
+          },
+          "id": 16,
+          "options": {
+            "showSidePanel": true,
+            "timeSync": "off",
+            "mapConfig": {
+              "version": "v1",
+              "config": {
+                "visState": {
+                  "layers": [
+                    {
+                      "id": "gallery-hexagonid",
+                      "type": "hexagonId",
+                      "config": {
+                        "dataId": "grafana-A",
+                        "label": "H3",
+                        "columns": {
+                          "hex_id": "h3"
+                        },
+                        "isVisible": true,
+                        "visConfig": {
+                          "opacity": 0.75,
+                          "coverage": 0.92,
+                          "filled": true
+                        }
+                      },
+                      "visualChannels": {
+                        "colorField": {
+                          "name": "value",
+                          "type": "integer"
+                        },
+                        "colorScale": "quantize"
+                      }
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "dataId": ["grafana-A"],
+                      "id": "zona-hexagonid",
+                      "name": ["zona"],
+                      "type": "multiSelect",
+                      "value": ["norte", "centro", "sur"],
+                      "enabled": true
+                    }
+                  ],
+                  "interactionConfig": {},
+                  "splitMaps": []
+                },
+                "mapState": {
+                  "latitude": -2.902,
+                  "longitude": -79.004,
+                  "zoom": 11.8,
+                  "bearing": 0,
+                  "pitch": 0,
+                  "dragRotate": false
+                },
+                "mapStyle": {
+                  "styleType": "dark-matter"
+                }
+              }
+            },
+            "variableMappings": [
+              {
+                "field": "zona",
+                "variable": "zona"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-testdata-datasource",
+                "uid": "trlxrdZVk"
+              },
+              "refId": "A",
+              "scenarioId": "raw_frame",
+              "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"h3\",\"type\":\"string\"},{\"name\":\"value\",\"type\":\"number\"},{\"name\":\"zona\",\"type\":\"string\"}]},\"data\":{\"values\":[[\"888f7699adfffff\",\"888f76d6dbfffff\",\"888f76d6d3fffff\",\"888f7699a5fffff\",\"888f7699a1fffff\",\"888f7699a9fffff\",\"888f7699e7fffff\",\"888f7699e5fffff\",\"888f76d6d9fffff\",\"888f76d6d1fffff\",\"888f76d6d7fffff\",\"888f76d699fffff\",\"888f76d69bfffff\",\"888f7699a7fffff\",\"888f7699a3fffff\",\"888f7699abfffff\",\"888f769985fffff\",\"888f7699e3fffff\",\"888f7699e1fffff\",\"888f7699edfffff\",\"888f769933fffff\",\"888f769937fffff\",\"888f76d6ddfffff\",\"888f76d6d5fffff\",\"888f76d68bfffff\",\"888f76d69dfffff\",\"888f76d691fffff\",\"888f76d693fffff\",\"888f768b4dfffff\",\"888f768b49fffff\",\"888f7699b5fffff\",\"888f7699bdfffff\",\"888f769987fffff\",\"888f769981fffff\",\"888f76998dfffff\",\"888f7699ebfffff\",\"888f7699e9fffff\"],[62,25,12,39,56,25,12,91,91,87,95,58,83,14,20,67,33,52,46,13,49,46,93,60,21,54,30,72,51,90,67,49,12,25,66,92,67],[\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"norte\",\"norte\",\"centro\",\"centro\",\"centro\",\"sur\",\"sur\",\"sur\",\"centro\",\"centro\",\"centro\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"centro\",\"centro\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"centro\",\"centro\",\"centro\",\"norte\",\"norte\"]]}}]"
+            }
+          ],
+          "title": "hexagonId (H3) — H3 index, res 8",
+          "type": "ubica-keplergl-panel"
+        },
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "minWidth": 70
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 8,
+            "x": 16,
+            "y": 106
+          },
+          "id": 17,
+          "options": {
+            "showHeader": true,
+            "footer": {
+              "show": false
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "datasource",
+                "uid": "-- Dashboard --"
+              },
+              "refId": "A",
+              "panelId": 16
+            }
+          ],
+          "title": "hexagonId (H3) — rows",
+          "transformations": [
+            {
+              "id": "filterByValue",
+              "options": {
+                "type": "include",
+                "match": "any",
+                "filters": [
+                  {
+                    "fieldName": "zona",
+                    "config": {
+                      "id": "regex",
+                      "options": {
+                        "value": "${zona:regex}"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 16,
+            "x": 0,
+            "y": 120
+          },
+          "id": 18,
+          "options": {
+            "showSidePanel": true,
+            "timeSync": "off",
+            "mapConfig": {
+              "version": "v1",
+              "config": {
+                "visState": {
+                  "layers": [
+                    {
+                      "id": "gallery-s2",
+                      "type": "s2",
+                      "config": {
+                        "dataId": "grafana-A",
+                        "label": "S2",
+                        "columns": {
+                          "token": "token"
+                        },
+                        "isVisible": true,
+                        "visConfig": {
+                          "opacity": 0.75,
+                          "filled": true,
+                          "stroked": true,
+                          "thickness": 0.5
+                        }
+                      },
+                      "visualChannels": {
+                        "colorField": {
+                          "name": "value",
+                          "type": "integer"
+                        },
+                        "colorScale": "quantize"
+                      }
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "dataId": ["grafana-A"],
+                      "id": "zona-s2",
+                      "name": ["zona"],
+                      "type": "multiSelect",
+                      "value": ["norte", "centro", "sur"],
+                      "enabled": true
+                    }
+                  ],
+                  "interactionConfig": {},
+                  "splitMaps": []
+                },
+                "mapState": {
+                  "latitude": -2.902,
+                  "longitude": -79.004,
+                  "zoom": 11.3,
+                  "bearing": 0,
+                  "pitch": 0,
+                  "dragRotate": false
+                },
+                "mapStyle": {
+                  "styleType": "dark-matter"
+                }
+              }
+            },
+            "variableMappings": [
+              {
+                "field": "zona",
+                "variable": "zona"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-testdata-datasource",
+                "uid": "trlxrdZVk"
+              },
+              "refId": "A",
+              "scenarioId": "raw_frame",
+              "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"token\",\"type\":\"string\"},{\"name\":\"value\",\"type\":\"number\"},{\"name\":\"zona\",\"type\":\"string\"}]},\"data\":{\"values\":[[\"91cd226c\",\"91cd2274\",\"91cd189c\",\"91cd1894\",\"91cd18ec\",\"91cd18e4\",\"91cd2264\",\"91cd227c\",\"91cd1884\",\"91cd188c\",\"91cd18f4\",\"91cd18fc\",\"91cd228c\",\"91cd2284\",\"91cd187c\",\"91cd1864\",\"91cd185c\",\"91cd1854\",\"91cd2294\",\"91cd229c\",\"91cd1874\",\"91cd186c\",\"91cd1844\",\"91cd184c\",\"91cd22bc\",\"91cd22a4\",\"91cd180c\",\"91cd1814\",\"91cd183c\",\"91cd1834\",\"91cd22b4\",\"91cd22ac\",\"91cd1804\",\"91cd181c\",\"91cd1824\",\"91cd182c\",\"91cd3d4c\",\"91cd3d54\",\"91cd17fc\",\"91cd17f4\",\"91cd178c\",\"91cd1784\",\"91cd3d44\",\"91cd3d5c\",\"91cd17e4\",\"91cd17ec\",\"91cd1794\",\"91cd179c\"],[92,36,46,63,82,75,47,75,23,93,29,85,31,35,38,74,66,95,70,89,22,85,47,88,85,52,25,78,58,49,45,75,72,33,89,90,74,22,15,61,53,15,78,55,44,27,64,21],[\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\"]]}}]"
+            }
+          ],
+          "title": "s2 — S2 token, level 13",
+          "type": "ubica-keplergl-panel"
+        },
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "minWidth": 70
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 8,
+            "x": 16,
+            "y": 120
+          },
+          "id": 19,
+          "options": {
+            "showHeader": true,
+            "footer": {
+              "show": false
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "datasource",
+                "uid": "-- Dashboard --"
+              },
+              "refId": "A",
+              "panelId": 18
+            }
+          ],
+          "title": "s2 — rows",
+          "transformations": [
+            {
+              "id": "filterByValue",
+              "options": {
+                "type": "include",
+                "match": "any",
+                "filters": [
+                  {
+                    "fieldName": "zona",
+                    "config": {
+                      "id": "regex",
+                      "options": {
+                        "value": "${zona:regex}"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "title": "Geometry, H3 and S2",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 134
+      },
+      "id": 103,
+      "panels": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 16,
+            "x": 0,
+            "y": 135
+          },
+          "id": 20,
+          "options": {
+            "showSidePanel": true,
+            "timeSync": "off",
+            "mapConfig": {
+              "version": "v1",
+              "config": {
+                "visState": {
+                  "layers": [
+                    {
+                      "id": "gallery-arc",
+                      "type": "arc",
+                      "config": {
+                        "dataId": "grafana-A",
+                        "label": "Arc",
+                        "columns": {
+                          "lat0": "lat0",
+                          "lng0": "lng0",
+                          "lat1": "lat1",
+                          "lng1": "lng1"
+                        },
+                        "columnMode": "points",
+                        "isVisible": true,
+                        "visConfig": {
+                          "opacity": 0.8,
+                          "thickness": 2,
+                          "sizeRange": [1, 9]
+                        }
+                      },
+                      "visualChannels": {
+                        "sizeField": {
+                          "name": "count",
+                          "type": "integer"
+                        },
+                        "sizeScale": "linear"
+                      }
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "dataId": ["grafana-A"],
+                      "id": "zona-arc",
+                      "name": ["zona"],
+                      "type": "multiSelect",
+                      "value": ["norte", "centro", "sur"],
+                      "enabled": true
+                    }
+                  ],
+                  "interactionConfig": {},
+                  "splitMaps": []
+                },
+                "mapState": {
+                  "latitude": -2.902,
+                  "longitude": -79.004,
+                  "zoom": 11.5,
+                  "bearing": 0,
+                  "pitch": 0,
+                  "dragRotate": false
+                },
+                "mapStyle": {
+                  "styleType": "dark-matter"
+                }
+              }
+            },
+            "variableMappings": [
+              {
+                "field": "zona",
+                "variable": "zona"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-testdata-datasource",
+                "uid": "trlxrdZVk"
+              },
+              "refId": "A",
+              "scenarioId": "raw_frame",
+              "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"origin_lat\",\"type\":\"number\"},{\"name\":\"origin_lon\",\"type\":\"number\"},{\"name\":\"dest_lat\",\"type\":\"number\"},{\"name\":\"dest_lon\",\"type\":\"number\"},{\"name\":\"trips\",\"type\":\"number\"},{\"name\":\"zona\",\"type\":\"string\"}]},\"data\":{\"values\":[[-2.874,-2.874,-2.874,-2.874,-2.902,-2.902,-2.902,-2.902,-2.928,-2.928,-2.928,-2.928,-2.895,-2.895,-2.895,-2.895,-2.911,-2.911,-2.911,-2.911],[-79,-79,-79,-79,-79.008,-79.008,-79.008,-79.008,-78.994,-78.994,-78.994,-78.994,-78.972,-78.972,-78.972,-78.972,-79.032,-79.032,-79.032,-79.032],[-2.902,-2.928,-2.895,-2.911,-2.874,-2.928,-2.895,-2.911,-2.874,-2.902,-2.895,-2.911,-2.874,-2.902,-2.928,-2.911,-2.874,-2.902,-2.928,-2.895],[-79.008,-78.994,-78.972,-79.032,-79,-78.994,-78.972,-79.032,-79,-79.008,-78.972,-79.032,-79,-79.008,-78.994,-79.032,-79,-79.008,-78.994,-78.972],[162,409,352,300,326,280,164,306,77,167,374,178,44,327,284,206,76,360,225,110],[\"norte\",\"norte\",\"norte\",\"norte\",\"centro\",\"centro\",\"centro\",\"centro\",\"sur\",\"sur\",\"sur\",\"sur\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\"]]}}]"
+            }
+          ],
+          "title": "arc — origin/destination",
+          "type": "ubica-keplergl-panel"
+        },
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "minWidth": 70
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "origin_lat"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "origin_lon"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "dest_lat"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "dest_lon"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 8,
+            "x": 16,
+            "y": 135
+          },
+          "id": 21,
+          "options": {
+            "showHeader": true,
+            "footer": {
+              "show": false
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "datasource",
+                "uid": "-- Dashboard --"
+              },
+              "refId": "A",
+              "panelId": 20
+            }
+          ],
+          "title": "arc — rows",
+          "transformations": [
+            {
+              "id": "filterByValue",
+              "options": {
+                "type": "include",
+                "match": "any",
+                "filters": [
+                  {
+                    "fieldName": "zona",
+                    "config": {
+                      "id": "regex",
+                      "options": {
+                        "value": "${zona:regex}"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 16,
+            "x": 0,
+            "y": 149
+          },
+          "id": 22,
+          "options": {
+            "showSidePanel": true,
+            "timeSync": "off",
+            "mapConfig": {
+              "version": "v1",
+              "config": {
+                "visState": {
+                  "layers": [
+                    {
+                      "id": "gallery-line",
+                      "type": "line",
+                      "config": {
+                        "dataId": "grafana-A",
+                        "label": "Line",
+                        "columns": {
+                          "lat0": "lat0",
+                          "lng0": "lng0",
+                          "lat1": "lat1",
+                          "lng1": "lng1"
+                        },
+                        "columnMode": "points",
+                        "isVisible": true,
+                        "visConfig": {
+                          "opacity": 0.8,
+                          "thickness": 2,
+                          "sizeRange": [1, 9]
+                        }
+                      },
+                      "visualChannels": {
+                        "sizeField": {
+                          "name": "count",
+                          "type": "integer"
+                        },
+                        "sizeScale": "linear"
+                      }
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "dataId": ["grafana-A"],
+                      "id": "zona-line",
+                      "name": ["zona"],
+                      "type": "multiSelect",
+                      "value": ["norte", "centro", "sur"],
+                      "enabled": true
+                    }
+                  ],
+                  "interactionConfig": {},
+                  "splitMaps": []
+                },
+                "mapState": {
+                  "latitude": -2.902,
+                  "longitude": -79.004,
+                  "zoom": 11.5,
+                  "bearing": 0,
+                  "pitch": 0,
+                  "dragRotate": false
+                },
+                "mapStyle": {
+                  "styleType": "dark-matter"
+                }
+              }
+            },
+            "variableMappings": [
+              {
+                "field": "zona",
+                "variable": "zona"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-testdata-datasource",
+                "uid": "trlxrdZVk"
+              },
+              "refId": "A",
+              "scenarioId": "raw_frame",
+              "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"origin_lat\",\"type\":\"number\"},{\"name\":\"origin_lon\",\"type\":\"number\"},{\"name\":\"dest_lat\",\"type\":\"number\"},{\"name\":\"dest_lon\",\"type\":\"number\"},{\"name\":\"trips\",\"type\":\"number\"},{\"name\":\"zona\",\"type\":\"string\"}]},\"data\":{\"values\":[[-2.874,-2.874,-2.874,-2.874,-2.902,-2.902,-2.902,-2.902,-2.928,-2.928,-2.928,-2.928,-2.895,-2.895,-2.895,-2.895,-2.911,-2.911,-2.911,-2.911],[-79,-79,-79,-79,-79.008,-79.008,-79.008,-79.008,-78.994,-78.994,-78.994,-78.994,-78.972,-78.972,-78.972,-78.972,-79.032,-79.032,-79.032,-79.032],[-2.902,-2.928,-2.895,-2.911,-2.874,-2.928,-2.895,-2.911,-2.874,-2.902,-2.895,-2.911,-2.874,-2.902,-2.928,-2.911,-2.874,-2.902,-2.928,-2.895],[-79.008,-78.994,-78.972,-79.032,-79,-78.994,-78.972,-79.032,-79,-79.008,-78.972,-79.032,-79,-79.008,-78.994,-79.032,-79,-79.008,-78.994,-78.972],[162,409,352,300,326,280,164,306,77,167,374,178,44,327,284,206,76,360,225,110],[\"norte\",\"norte\",\"norte\",\"norte\",\"centro\",\"centro\",\"centro\",\"centro\",\"sur\",\"sur\",\"sur\",\"sur\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\"]]}}]"
+            }
+          ],
+          "title": "line — origin/destination",
+          "type": "ubica-keplergl-panel"
+        },
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "minWidth": 70
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "origin_lat"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "origin_lon"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "dest_lat"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "dest_lon"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 8,
+            "x": 16,
+            "y": 149
+          },
+          "id": 23,
+          "options": {
+            "showHeader": true,
+            "footer": {
+              "show": false
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "datasource",
+                "uid": "-- Dashboard --"
+              },
+              "refId": "A",
+              "panelId": 22
+            }
+          ],
+          "title": "line — rows",
+          "transformations": [
+            {
+              "id": "filterByValue",
+              "options": {
+                "type": "include",
+                "match": "any",
+                "filters": [
+                  {
+                    "fieldName": "zona",
+                    "config": {
+                      "id": "regex",
+                      "options": {
+                        "value": "${zona:regex}"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 16,
+            "x": 0,
+            "y": 163
+          },
+          "id": 24,
+          "options": {
+            "showSidePanel": true,
+            "timeSync": "off",
+            "mapConfig": {
+              "version": "v1",
+              "config": {
+                "visState": {
+                  "layers": [
+                    {
+                      "id": "gallery-flow",
+                      "type": "flow",
+                      "config": {
+                        "dataId": "grafana-A",
+                        "label": "Flow",
+                        "columns": {
+                          "lat0": "lat0",
+                          "lng0": "lng0",
+                          "lat1": "lat1",
+                          "lng1": "lng1",
+                          "count": "count"
+                        },
+                        "columnMode": "LAT_LNG",
+                        "isVisible": true,
+                        "visConfig": {
+                          "flowLinesRenderingMode": "curved"
+                        }
+                      },
+                      "visualChannels": {}
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "dataId": ["grafana-A"],
+                      "id": "zona-flow",
+                      "name": ["zona"],
+                      "type": "multiSelect",
+                      "value": ["norte", "centro", "sur"],
+                      "enabled": true
+                    }
+                  ],
+                  "interactionConfig": {},
+                  "splitMaps": []
+                },
+                "mapState": {
+                  "latitude": -2.902,
+                  "longitude": -79.004,
+                  "zoom": 11.5,
+                  "bearing": 0,
+                  "pitch": 0,
+                  "dragRotate": false
+                },
+                "mapStyle": {
+                  "styleType": "dark-matter"
+                }
+              }
+            },
+            "variableMappings": [
+              {
+                "field": "zona",
+                "variable": "zona"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-testdata-datasource",
+                "uid": "trlxrdZVk"
+              },
+              "refId": "A",
+              "scenarioId": "raw_frame",
+              "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"origin_lat\",\"type\":\"number\"},{\"name\":\"origin_lon\",\"type\":\"number\"},{\"name\":\"dest_lat\",\"type\":\"number\"},{\"name\":\"dest_lon\",\"type\":\"number\"},{\"name\":\"trips\",\"type\":\"number\"},{\"name\":\"zona\",\"type\":\"string\"}]},\"data\":{\"values\":[[-2.874,-2.874,-2.874,-2.874,-2.902,-2.902,-2.902,-2.902,-2.928,-2.928,-2.928,-2.928,-2.895,-2.895,-2.895,-2.895,-2.911,-2.911,-2.911,-2.911],[-79,-79,-79,-79,-79.008,-79.008,-79.008,-79.008,-78.994,-78.994,-78.994,-78.994,-78.972,-78.972,-78.972,-78.972,-79.032,-79.032,-79.032,-79.032],[-2.902,-2.928,-2.895,-2.911,-2.874,-2.928,-2.895,-2.911,-2.874,-2.902,-2.895,-2.911,-2.874,-2.902,-2.928,-2.911,-2.874,-2.902,-2.928,-2.895],[-79.008,-78.994,-78.972,-79.032,-79,-78.994,-78.972,-79.032,-79,-79.008,-78.972,-79.032,-79,-79.008,-78.994,-79.032,-79,-79.008,-78.994,-78.972],[162,409,352,300,326,280,164,306,77,167,374,178,44,327,284,206,76,360,225,110],[\"norte\",\"norte\",\"norte\",\"norte\",\"centro\",\"centro\",\"centro\",\"centro\",\"sur\",\"sur\",\"sur\",\"sur\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\"]]}}]"
+            }
+          ],
+          "title": "flow — origin/destination + count",
+          "type": "ubica-keplergl-panel"
+        },
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "minWidth": 70
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "origin_lat"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "origin_lon"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "dest_lat"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "dest_lon"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 8,
+            "x": 16,
+            "y": 163
+          },
+          "id": 25,
+          "options": {
+            "showHeader": true,
+            "footer": {
+              "show": false
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "datasource",
+                "uid": "-- Dashboard --"
+              },
+              "refId": "A",
+              "panelId": 24
+            }
+          ],
+          "title": "flow — rows",
+          "transformations": [
+            {
+              "id": "filterByValue",
+              "options": {
+                "type": "include",
+                "match": "any",
+                "filters": [
+                  {
+                    "fieldName": "zona",
+                    "config": {
+                      "id": "regex",
+                      "options": {
+                        "value": "${zona:regex}"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "title": "Origin-destination",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 177
+      },
+      "id": 104,
+      "panels": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "gridPos": {
+            "h": 15,
+            "w": 16,
+            "x": 0,
+            "y": 178
+          },
+          "id": 26,
+          "options": {
+            "showSidePanel": true,
+            "timeSync": "off",
+            "mapConfig": {
+              "version": "v1",
+              "config": {
+                "visState": {
+                  "layers": [
+                    {
+                      "id": "gallery-trip",
+                      "type": "trip",
+                      "config": {
+                        "dataId": "grafana-A",
+                        "label": "Trip",
+                        "columns": {
+                          "id": "trip_id",
+                          "lat": "latitude",
+                          "lng": "longitude",
+                          "timestamp": "time"
+                        },
+                        "columnMode": "table",
+                        "isVisible": true,
+                        "visConfig": {
+                          "trailLength": 900,
+                          "thickness": 4,
+                          "opacity": 0.95
+                        }
+                      },
+                      "visualChannels": {}
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "dataId": ["grafana-A"],
+                      "id": "zona-trip",
+                      "name": ["zona"],
+                      "type": "multiSelect",
+                      "value": ["norte", "centro", "sur"],
+                      "enabled": true
+                    }
+                  ],
+                  "interactionConfig": {},
+                  "splitMaps": []
+                },
+                "mapState": {
+                  "latitude": -2.902,
+                  "longitude": -79.004,
+                  "zoom": 12.2,
+                  "bearing": 0,
+                  "pitch": 0,
+                  "dragRotate": false
+                },
+                "mapStyle": {
+                  "styleType": "dark-matter"
+                }
+              }
+            },
+            "variableMappings": [
+              {
+                "field": "zona",
+                "variable": "zona"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-testdata-datasource",
+                "uid": "trlxrdZVk"
+              },
+              "refId": "A",
+              "scenarioId": "raw_frame",
+              "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"trip_id\",\"type\":\"string\"},{\"name\":\"time\",\"type\":\"time\"},{\"name\":\"latitude\",\"type\":\"number\"},{\"name\":\"longitude\",\"type\":\"number\"},{\"name\":\"zona\",\"type\":\"string\"}]},\"data\":{\"values\":[[\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-1\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-2\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\",\"trip-3\"],[1753257600000,1753257660000,1753257720000,1753257780000,1753257840000,1753257900000,1753257960000,1753258020000,1753258080000,1753258140000,1753258200000,1753258260000,1753258320000,1753258380000,1753258440000,1753258500000,1753258560000,1753258620000,1753258680000,1753258740000,1753258800000,1753258860000,1753258920000,1753258980000,1753259040000,1753259100000,1753259160000,1753259220000,1753259280000,1753259340000,1753257600000,1753257660000,1753257720000,1753257780000,1753257840000,1753257900000,1753257960000,1753258020000,1753258080000,1753258140000,1753258200000,1753258260000,1753258320000,1753258380000,1753258440000,1753258500000,1753258560000,1753258620000,1753258680000,1753258740000,1753258800000,1753258860000,1753258920000,1753258980000,1753259040000,1753259100000,1753259160000,1753259220000,1753259280000,1753259340000,1753257600000,1753257660000,1753257720000,1753257780000,1753257840000,1753257900000,1753257960000,1753258020000,1753258080000,1753258140000,1753258200000,1753258260000,1753258320000,1753258380000,1753258440000,1753258500000,1753258560000,1753258620000,1753258680000,1753258740000,1753258800000,1753258860000,1753258920000,1753258980000,1753259040000,1753259100000,1753259160000,1753259220000,1753259280000,1753259340000],[-2.888,-2.887758,-2.88728,-2.886577,-2.885665,-2.884565,-2.883302,-2.881904,-2.880406,-2.878839,-2.877242,-2.875649,-2.874099,-2.872626,-2.871264,-2.870044,-2.868995,-2.868141,-2.867501,-2.867089,-2.866916,-2.866986,-2.867296,-2.867839,-2.868604,-2.869572,-2.870722,-2.872026,-2.873456,-2.874978,-2.914654,-2.913192,-2.911649,-2.91006,-2.908461,-2.906889,-2.90538,-2.903969,-2.902688,-2.901567,-2.90063,-2.899901,-2.899395,-2.899125,-2.899095,-2.899308,-2.899758,-2.900435,-2.901323,-2.902402,-2.903647,-2.905029,-2.906517,-2.908077,-2.909673,-2.911268,-2.912826,-2.91431,-2.915687,-2.916925,-2.940545,-2.939208,-2.938018,-2.937004,-2.936188,-2.93559,-2.935222,-2.935095,-2.935209,-2.935564,-2.93615,-2.936954,-2.937958,-2.939139,-2.940469,-2.941918,-2.943454,-2.945039,-2.946639,-2.948216,-2.949734,-2.951159,-2.952457,-2.9536,-2.954559,-2.955315,-2.955848,-2.956147,-2.956206,-2.956022],[-79.0159,-79.013824,-79.01182,-79.009934,-79.008208,-79.006684,-79.005395,-79.004371,-79.003636,-79.003207,-79.003093,-79.003298,-79.003816,-79.004635,-79.005737,-79.007097,-79.008682,-79.010458,-79.012383,-79.014412,-79.0165,-79.018598,-79.020658,-79.022633,-79.024478,-79.026149,-79.02761,-79.028826,-79.029769,-79.030418,-79.024865,-79.024011,-79.023456,-79.023213,-79.023288,-79.02368,-79.024379,-79.025368,-79.026627,-79.028125,-79.029828,-79.031697,-79.033689,-79.035759,-79.037859,-79.03994,-79.041955,-79.043858,-79.045605,-79.047156,-79.048475,-79.049532,-79.050303,-79.050769,-79.050921,-79.050755,-79.050275,-79.049491,-79.048422,-79.047092,-79.012874,-79.014026,-79.015431,-79.017055,-79.018861,-79.020809,-79.022853,-79.024946,-79.027041,-79.029089,-79.031043,-79.032858,-79.034493,-79.03591,-79.037077,-79.037967,-79.038559,-79.03884,-79.038803,-79.038449,-79.037787,-79.036831,-79.035604,-79.034133,-79.032453,-79.030601,-79.028622,-79.026559,-79.02446,-79.022374],[\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\"]]}}]"
+            }
+          ],
+          "title": "trip — trip id + time + lat/lng",
+          "type": "ubica-keplergl-panel"
+        },
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "minWidth": 70
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "latitude"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "longitude"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 15,
+            "w": 8,
+            "x": 16,
+            "y": 178
+          },
+          "id": 27,
+          "options": {
+            "showHeader": true,
+            "footer": {
+              "show": false
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "datasource",
+                "uid": "-- Dashboard --"
+              },
+              "refId": "A",
+              "panelId": 26
+            }
+          ],
+          "title": "trip — rows",
+          "transformations": [
+            {
+              "id": "filterByValue",
+              "options": {
+                "type": "include",
+                "match": "any",
+                "filters": [
+                  {
+                    "fieldName": "zona",
+                    "config": {
+                      "id": "regex",
+                      "options": {
+                        "value": "${zona:regex}"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "title": "Time",
+      "type": "row"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["kepler"],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "includeAll": true,
+        "label": "Zona",
+        "multi": true,
+        "name": "zona",
+        "options": [],
+        "query": "norte,centro,sur",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "2025-07-23T07:00:00.000Z",
+    "to": "2025-07-23T10:20:00.000Z"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Kepler.gl layer gallery",
+  "uid": "e1f2a3b4-0000-4000-8000-000000000006",
+  "version": 1,
+  "weekStart": ""
+}

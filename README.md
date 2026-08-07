@@ -169,7 +169,7 @@ ORDER BY lat, lon;
 
 Velocity can arrive either way. **`speed` + `direction`** is what most sources give — Open-Meteo,
 GFS, national weather services — and `direction` is read as the meteorological convention, the
-bearing the wind blows *from*. **`u` + `v`** components work too, including the GRIB2 short names
+bearing the wind blows _from_. **`u` + `v`** components work too, including the GRIB2 short names
 `ugrd`/`vgrd`, so a table converted straight from GFS needs no renaming.
 
 A `trip_id` column disqualifies the query: a GPS trace that happens to carry a `speed` column is a
@@ -191,15 +191,15 @@ two weather stations, and a field of parallel arrows reads as a solid block at a
 one reads well at. Lower it when the field looks matted, raise it when it looks sparse.
 
 **Several levels at once:** one query per level, in the same panel. Each becomes its own layer. To
-separate them in the vertical, return a height column and map it to **Altitude** under *Field
-mapping*, then tilt the camera with the 3D control. Height is opt-in on purpose — an `elevation`
+separate them in the vertical, return a height column and map it to **Altitude** under _Field
+mapping_, then tilt the camera with the 3D control. Height is opt-in on purpose — an `elevation`
 column mapped by accident lifts a layer kilometres into the air. Expect to exaggerate the height a
 long way: pressure levels a few kilometres apart are invisible over a country hundreds of kilometres
 wide.
 
 Colour, width and **Trail Length** live in kepler's own layer settings. A short trail reads as
 drifting particles, a long one as complete streamlines. Every line carries its mean `speed`, so
-*Color Based On → speed* works.
+_Color Based On → speed_ works.
 
 ### Cross-filtering
 
@@ -221,7 +221,7 @@ use the variable.
 | **Time range sync**        | Dashboard drives the map's time filter (default), both directions, or off. Needs a time column. |
 | **Flow line style**        | Straight, curved or animated lines for origin-destination flow layers.                          |
 | **Cross-filtering**        | Map a kepler filter to a dashboard variable to cross-filter other panels.                       |
-| **Base map**               | Carto Dark Matter / Positron / Voyager, Esri satellite, or a self-hosted `style.json`.         |
+| **Base map**               | Carto Dark Matter / Positron / Voyager, Esri satellite, or a self-hosted `style.json`.          |
 | **Map configuration**      | Save the current layers and filters with the dashboard, or paste one in.                        |
 
 Saving is explicit rather than automatic: the configuration is a sizeable blob that lands in the
@@ -271,6 +271,26 @@ reached the map — useful when a change breaks rendering without breaking a tes
 
 > Do not `rm -rf dist` while the dev containers are running: `dist` is bind-mounted, and deleting it
 > leaves the containers serving a stale inode. `npm run build` cleans it correctly.
+
+### Provisioned dashboards
+
+`provisioning/dashboards/` is mounted into the dev Grafana, so these appear on a plain
+`npm run server`. Each one exercises a different part of the panel: `dashboard` (trips and EWKB
+geometry), `timesync` and `timevars` (time coupling), `varsync` (cross-filtering), `flows` (OD).
+
+**Kepler.gl layer gallery** (`layers.json`) is the widest of them: every layer type the panel can
+build from query rows, on synthetic data, one map each, with the rows behind each layer in a table
+beside it. Useful for seeing at a glance what the plugin draws, and for spotting what a kepler.gl
+version bump broke. Three things about it are deliberate:
+
+- **Open at most two rows at a time.** Each map holds two WebGL contexts — MapLibre's and
+  deck.gl's — and browsers cap the total at around sixteen, so thirteen maps at once blank the
+  oldest. The rows are collapsed for that reason, and collapsing one releases its contexts.
+- **It does not follow the Grafana theme.** Pinning a layer type needs a saved map configuration,
+  and a saved config names its own base map and wins over the panel option.
+- **Six layer types are missing** — `vectorTile`, `rasterTile`, `wms`, `tile3d`, `bitmap` and `3D`.
+  They are configured with a URL rather than with data, so no query can drive them and demonstrating
+  them would mean calling a third-party service.
 
 ## Roadmap
 

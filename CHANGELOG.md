@@ -5,6 +5,17 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **A layer gallery dashboard.** `provisioning/dashboards/layers.json` draws every kepler.gl layer
+  type the panel can build from query rows — thirteen of the nineteen kepler registers — on synthetic
+  data, one map per type, each pinned to a single layer by a saved map configuration so nothing is
+  left to autodetection. Beside every map is a table of the rows behind it, fed from the map panel
+  itself through the `-- Dashboard --` data source rather than queried twice, and a `zona` filter
+  wired both ways: narrow it in a map's own filter panel and every other map and table follows, or
+  drive it from the dashboard variable. The six remaining types — `vectorTile`, `rasterTile`, `wms`,
+  `tile3d`, `bitmap` and `3D` — are configured with a URL rather than with data, so no query can
+  reach them. The rows are collapsed on purpose: each map holds two WebGL contexts and browsers cap
+  them at around sixteen, so thirteen at once blanks the oldest — measured, not guessed.
+
 - **Satellite base map, without a Mapbox account.** kepler ships five styles whose URLs are
   `mapbox://`, and picking any of them — the satellite one included — swaps MapLibre for mapbox-gl
   and requests `api.mapbox.com` with the empty token this plugin passes by design; the 401 comes back
@@ -54,9 +65,9 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   set to, rather than each spending it in full.
 
 - **The time slider can cross-filter without eating its own data.** A new **Slider writes variables**
-  choice under *Time range sync* publishes the slider's window to two dashboard variables — UTC ISO
+  choice under _Time range sync_ publishes the slider's window to two dashboard variables — UTC ISO
   8601, so `WHERE t >= '$mapFrom'::timestamptz` needs no arithmetic — instead of moving the dashboard
-  time range. This is the mode to use for cross-filtering: moving the range re-runs *this* panel's
+  time range. This is the mode to use for cross-filtering: moving the range re-runs _this_ panel's
   query too, and the rows outside the new window then leave the browser, so the histogram behind the
   slider rescales under the cursor and the window can never be widened again from the map. Writing
   variables costs only the panels that reference them, and the map's own query stays on
@@ -84,7 +95,7 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   animation config) and skip everything else, at the cost of three reference comparisons.
 
 - **Fixed** bidirectional time sync dragging the dashboard time picker down to the data's extent on
-  load, unasked. The echo guard held one value and recorded the range it *asked* kepler for, but
+  load, unasked. The echo guard held one value and recorded the range it _asked_ kepler for, but
   kepler clamps a window to the data's own domain — so with a dashboard window wider than the data,
   which is the ordinary case, the clamped window came back looking like the user had dragged the
   slider and was reported to Grafana, costing a second round of queries on every panel. What was
@@ -93,7 +104,7 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   narrower range re-runs the query and kepler re-clamps the window to the data that is left — a move
   no user made, and previously reported as though one had.
 
-- **Maps on a dashboard can share a clock.** The new **Sync time with other maps** switch under *Map*
+- **Maps on a dashboard can share a clock.** The new **Sync time with other maps** switch under _Map_
   puts a panel on an in-browser channel with every other panel that has it on: playing an animation
   on one moves the rest. Both of kepler's clocks travel — the time filter window and the trip
   playhead — and neither the dashboard time range nor the database is touched, so an animation costs
@@ -107,7 +118,7 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   kepler's table column mode, which groups the rows into paths itself. Tooltips, filters and colour
   now work on the points of a trip. Where kepler guesses a Trip layer of its own — it does that for
   any dataset with a column named `id` — the panel's layer replaces it.
-- **Trip layer shape is selectable.** The new **Trip layer** option under *Map* chooses between
+- **Trip layer shape is selectable.** The new **Trip layer** option under _Map_ chooses between
   `Table columns` (the default, above) and `GeoJSON`, which folds each trip into a single row
   carrying only the path. GeoJSON is the cheaper shape for large trajectory tables — tens of rows
   instead of hundreds of thousands — gives a predictable one-colour-per-trip, and is what map
@@ -124,8 +135,7 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   is looking at, and unrelated option changes no longer reset it.
 - **Fixed** trip layers vanishing as soon as the map was zoomed in. An `elevation` column was
   auto-mapped to the path's third coordinate, and deck.gl reads that as height above ground: a trace
-  through Cuenca at 2,650 m was drawn 2.65 km up and fell out of the camera's view past about zoom
-  15. Altitude is now opt-in through the field mapping editor.
+  through Cuenca at 2,650 m was drawn 2.65 km up and fell out of the camera's view past about zoom 15. Altitude is now opt-in through the field mapping editor.
 
 ## 0.3.0
 
@@ -139,7 +149,7 @@ Origin-destination flows and cross-filtering.
   mapped dashboard variable, and changing that variable applies the matching filter on the map.
   Configure the field↔variable pairs under **Cross-filtering**.
 - **Fixed** the flow-layer shaders failing to compile (`DECKGL_FILTER_COLOR: no matching overloaded
-  function`) by deduplicating deck.gl/luma.gl to a single ESM instance in webpack — the bundle was
+function`) by deduplicating deck.gl/luma.gl to a single ESM instance in webpack — the bundle was
   carrying both the ESM and CommonJS builds.
 
 ## 0.2.0
