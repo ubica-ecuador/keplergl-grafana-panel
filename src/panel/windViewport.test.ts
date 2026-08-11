@@ -15,8 +15,7 @@ describe('viewportFromMapState', () => {
   });
 
   it('halves the span for every zoom level', () => {
-    const at = (zoom: number) =>
-      viewportFromMapState({ latitude: 0, longitude: -78, zoom, width: 800, height: 600 })!;
+    const at = (zoom: number) => viewportFromMapState({ latitude: 0, longitude: -78, zoom, width: 800, height: 600 })!;
 
     const span = (zoom: number) => at(zoom).east - at(zoom).west;
 

@@ -1,4 +1,4 @@
-import { filterVariableValues, normalizeFilterKey, variableFilterValues } from './variableSync';
+import { decideFieldSync, filterVariableValues, normalizeFilterKey, variableFilterValues } from './variableSync';
 
 const mappings = [
   { field: 'category', variable: 'cat' },
@@ -108,5 +108,70 @@ describe('normalizeFilterKey', () => {
   it('distinguishes different selections', () => {
     expect(normalizeFilterKey(['parks'])).not.toBe(normalizeFilterKey(['roads']));
     expect(normalizeFilterKey(['parks'])).not.toBe(normalizeFilterKey(null));
+  });
+});
+
+describe('decideFieldSync', () => {
+  it('lets a preset variable drive the map on the first pass', () => {
+    expect(decideFieldSync({ filterValue: undefined, desired: ['parks'], lastSynced: undefined })).toEqual({
+      kind: 'toMap',
+      values: ['parks'],
+    });
+  });
+
+  it('lets the map drive when it carries a filter and no variable is set', () => {
+    expect(decideFieldSync({ filterValue: ['parks'], desired: null, lastSynced: undefined })).toEqual({
+      kind: 'toVariable',
+      value: ['parks'],
+    });
+  });
+
+  it('does nothing when both sides already say the same thing', () => {
+    expect(decideFieldSync({ filterValue: ['parks'], desired: ['parks'], lastSynced: '["parks"]' })).toEqual({
+      kind: 'agreed',
+    });
+  });
+
+  it('publishes the map filter once the map moves away from what both sides agreed on', () => {
+    expect(decideFieldSync({ filterValue: ['roads'], desired: ['parks'], lastSynced: '["parks"]' })).toEqual({
+      kind: 'toVariable',
+      value: ['roads'],
+    });
+  });
+
+  it('clears the map filter when the variable goes back to All', () => {
+    expect(decideFieldSync({ filterValue: ['parks'], desired: null, lastSynced: '["parks"]' })).toEqual({
+      kind: 'toMap',
+      values: null,
+    });
+  });
+
+  /**
+   * The regression this function exists for.
+   *
+   * The map is not ready to take a filter yet — no datasets, so no field to
+   * filter on — and every pass must keep trying rather than concluding that the
+   * map has been set to All and publishing that over the variable. A dashboard
+   * opened at `?var-category=parks` used to lose its filter this way within a
+   * few hundred milliseconds.
+   */
+  it('keeps driving the map for as long as the map has not taken the filter', () => {
+    let lastSynced: string | undefined;
+    const actions = [];
+
+    for (let pass = 0; pass < 3; pass++) {
+      const action = decideFieldSync({ filterValue: undefined, desired: ['parks'], lastSynced });
+      actions.push(action);
+      // The map never accepts it, so nothing is ever recorded as agreed.
+      if (action.kind === 'toVariable') {
+        lastSynced = normalizeFilterKey(action.value);
+      }
+    }
+
+    expect(actions).toEqual([
+      { kind: 'toMap', values: ['parks'] },
+      { kind: 'toMap', values: ['parks'] },
+      { kind: 'toMap', values: ['parks'] },
+    ]);
   });
 });

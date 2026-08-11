@@ -78,6 +78,52 @@ export function normalizeFilterKey(value: unknown): string {
   return values.length ? JSON.stringify([...values].sort()) : 'ALL';
 }
 
+/** What a reconcile should do about one mapped field. */
+export type SyncAction =
+  { kind: 'agreed' } | { kind: 'toMap'; values: string[] | null } | { kind: 'toVariable'; value: unknown };
+
+/**
+ * Which side of a mapped field has moved, and so which way to sync it.
+ *
+ * The `lastSynced` key is what tells the two directions apart: it is the value
+ * both sides were last known to agree on, so whichever side still matches it is
+ * the side that did not move. On the first pass there is no such value, and a
+ * variable that already carries a selection wins — that is what makes a
+ * dashboard opened at `?var-category=parks` filter the map rather than the other
+ * way round.
+ *
+ * The caller records `lastSynced` itself, and — this is the point of pulling the
+ * decision out here — only once the map has actually taken the filter. Recording
+ * it optimistically is what used to clobber a preset variable: the map is not
+ * ready to be filtered until its datasets have loaded, so the write was lost,
+ * and the next pass read the map's empty filter as "the user cleared it" and
+ * published `$__all` over the variable that was meant to be driving.
+ */
+export function decideFieldSync({
+  filterValue,
+  desired,
+  lastSynced,
+}: {
+  /** The value of the map's filter on this field, if it has one. */
+  filterValue: unknown;
+  /** What the variable says the filter should be; `null` is no restriction. */
+  desired: string[] | null;
+  /** The value both sides last agreed on, or undefined on the first pass. */
+  lastSynced: string | undefined;
+}): SyncAction {
+  const mapKey = normalizeFilterKey(filterValue);
+  const variableKey = normalizeFilterKey(desired);
+
+  if (mapKey === variableKey) {
+    return { kind: 'agreed' };
+  }
+
+  const allKey = normalizeFilterKey(null);
+  const variableDrives = lastSynced === undefined ? variableKey !== allKey : mapKey === lastSynced;
+
+  return variableDrives ? { kind: 'toMap', values: desired } : { kind: 'toVariable', value: filterValue };
+}
+
 /** Coerces any variable/filter value to a list of real selections. */
 function toStringValues(value: unknown): string[] {
   const list = Array.isArray(value) ? value : value === null || value === undefined ? [] : [value];

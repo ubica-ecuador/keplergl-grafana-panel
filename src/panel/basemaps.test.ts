@@ -88,7 +88,7 @@ describe('registeredMapStyles', () => {
     expect(custom.url).toBe('https://tiles.internal/style.json');
   });
 
-  it('does not claim the id of kepler\'s own satellite entry', () => {
+  it("does not claim the id of kepler's own satellite entry", () => {
     // _loadMapStyle merges [...custom, ...defaults] into an object keyed by id
     // and the defaults are written last, so taking `satellite` would hand the
     // slot straight back to the mapbox:// style that needs a token.
