@@ -121,9 +121,7 @@ export function useTimeVariableSync({ store, isReady, enabled, mapping, whilePla
    * to find is the other: with peer sync on, the map being played can be a
    * different panel entirely, and this one sees only its filter moving.
    */
-  const clockRunning = useRef(
-    () => isTimeFilterAnimating(store) || (peerSyncRef.current && timeChannel.anyPlaying())
-  );
+  const clockRunning = useRef(() => isTimeFilterAnimating(store) || (peerSyncRef.current && timeChannel.anyPlaying()));
 
   const publishTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingPublish = useRef<{ window: TimeRangeMs | null; domain: TimeRangeMs | null } | null>(null);

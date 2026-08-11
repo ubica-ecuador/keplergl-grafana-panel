@@ -1,5 +1,17 @@
+import { LayerClasses } from '@kepler.gl/layers';
 import { keplerGlReducer, enhanceReduxMiddleware } from '@kepler.gl/reducers';
 import { applyMiddleware, combineReducers, legacy_createStore, Store } from 'redux';
+
+import { withTripGpuFilterFix } from './tripLayerFix';
+
+/**
+ * kepler's layer classes, with the Trip layer repaired.
+ *
+ * kepler builds layers from `visState.layerClasses`, so replacing the entry here
+ * is the whole of the fix — see `tripLayerFix.ts` for what is wrong with the
+ * stock one and why it has to be done at the class rather than the instance.
+ */
+const layerClasses = { ...LayerClasses, trip: withTripGpuFilterFix(LayerClasses.trip) };
 
 /**
  * Builds a Redux store dedicated to one panel instance.
@@ -23,6 +35,9 @@ export function createKeplerStore(): Store {
         // The export/share modals reach for cloud providers we do not configure.
         currentModal: null,
       },
+      // Merged key by key into kepler's own initial vis state, so this replaces
+      // the layer registry and nothing else.
+      visState: { layerClasses },
     }),
   });
 

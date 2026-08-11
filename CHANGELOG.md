@@ -5,6 +5,32 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Fixed: a trajectory map went blank as soon as the dashboard time range drove it.** The plugin's
+  two headline features cancelled each other out: a query with a trip id became an animated Trip
+  layer, `Time range sync` then added kepler's time filter as documented, and deck.gl threw
+  `TripsLayer … Cannot read properties of undefined (reading 'index')`, disabled the layer and left
+  an empty map. The cause is upstream, in kepler.gl 3.3.0-alpha.3: its GPU filter reads a layer's
+  values through an accessor it calls as `getData(dataContainer, feature, fieldIndex)`, but the Trip
+  layer's table-mode accessor takes the feature _alone_, so the data container arrived where the
+  feature was expected and had no `properties`. Only GPU-filterable filters — `range` and `timeRange`
+  — reach that code, which is why a categorical cross-filter never triggered it and this looked like
+  a time-sync problem rather than a filtering one. The panel now registers a Trip layer class whose
+  accessor takes the arguments kepler actually passes, through kepler's own `layerClasses` registry.
+  Traced by elimination and confirmed by experiment: same data and same filter, the layer's other
+  column mode — whose accessor already has the right signature — renders cleanly. `tripLayerFix.ts`
+  goes away when the pin moves to a kepler.gl that has fixed it.
+
+- **Fixed: a shared link lost its cross-filter.** Opening a dashboard at `?var-category=parks`
+  rewrote the URL to `var-category=$__all` within a few hundred milliseconds, so the filter a link
+  was sharing was gone before anyone saw it. The first reconcile runs when kepler reports itself
+  initialised, which is before any dataset has loaded — so there was no column to filter on,
+  `applyFieldFilter` silently did nothing, and the sync recorded the field as agreed anyway. The next
+  pass then read the map's missing filter as a deliberate clearing and published it back over the
+  variable that was meant to be driving. Applying a filter now reports whether it landed, on the same
+  contract `pushTimeRange` already used, and a field is recorded as synced only once the map has
+  actually taken it; until then every pass keeps trying. The decision of which side drives moved into
+  a pure function so the sequence is covered by tests rather than only by the browser.
+
 - **A layer gallery dashboard.** `provisioning/dashboards/layers.json` draws every kepler.gl layer
   type the panel can build from query rows — thirteen of the nineteen kepler registers — on synthetic
   data, one map per type, each pinned to a single layer by a saved map configuration so nothing is

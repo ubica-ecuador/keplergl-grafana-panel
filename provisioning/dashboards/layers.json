@@ -17,7 +17,7 @@
       "id": 1,
       "options": {
         "mode": "markdown",
-        "content": "Every kepler.gl layer type this panel can build from query rows, on synthetic data around Cuenca. Each map is pinned to exactly one layer by a saved map configuration, and the table beside it shows the rows behind that layer — read from the map panel itself, not queried twice.\n\n**Narrow `zona` in a map's own filter panel**, on the left, and the whole gallery follows — every other map and every table. The `Zona` picker at the top does the same from the other side.\n\nDashboard time sync is off on every panel, trips included — see `timesync` and `timevars` for that.\n\n**Open at most two rows at a time.** Each map holds two WebGL contexts and browsers cap them at around sixteen; all five rows at once blanks the oldest maps.\n\nNot shown: `vectorTile`, `rasterTile`, `wms`, `tile3d`, `bitmap` and `3D`. Those are configured with a URL rather than with data, so no query can drive them."
+        "content": "Every kepler.gl layer type this panel can build from query rows, on synthetic data around Cuenca. Each map is pinned to exactly one layer by a saved map configuration, and the table beside it shows the rows behind that layer — read from the map panel itself, not queried twice.\n\n**Narrow `zona` in a map's own filter panel**, on the left, and the whole gallery follows — every other map and every table. The `Zona` picker at the top does the same from the other side.\n\nDashboard time sync is off except on the trip panel, whose time filter is there on purpose — see `timesync` and `timevars` for what time coupling can do.\n\n**Open at most two rows at a time.** Each map holds two WebGL contexts and browsers cap them at around sixteen; all five rows at once blanks the oldest maps.\n\nNot shown: `vectorTile`, `rasterTile`, `wms`, `tile3d`, `bitmap` and `3D`. Those are configured with a URL rather than with data, so no query can drive them."
       },
       "title": "Kepler.gl layer gallery",
       "type": "text"
@@ -2209,7 +2209,7 @@
           "id": 26,
           "options": {
             "showSidePanel": true,
-            "timeSync": "off",
+            "timeSync": "toMap",
             "mapConfig": {
               "version": "v1",
               "config": {

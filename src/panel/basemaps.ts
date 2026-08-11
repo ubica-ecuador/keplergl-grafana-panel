@@ -21,9 +21,7 @@ export interface RegisteredMapStyle {
  * filters come from kepler rather than being copied, so a rename upstream
  * surfaces as a test failure instead of an inert switch.
  */
-const SATELLITE_LAYER_GROUPS = DEFAULT_LAYER_GROUPS.filter(
-  (group) => group.slug === 'label' || group.slug === 'road'
-);
+const SATELLITE_LAYER_GROUPS = DEFAULT_LAYER_GROUPS.filter((group) => group.slug === 'label' || group.slug === 'road');
 
 /**
  * Thumbnail for the style picker: a real Esri tile over South America.
@@ -31,8 +29,7 @@ const SATELLITE_LAYER_GROUPS = DEFAULT_LAYER_GROUPS.filter(
  * kepler renders it as an `<img>`, so it falls under Grafana's `img-src`, which
  * is already open — unlike the tiles themselves, which maplibre fetches.
  */
-const SATELLITE_ICON =
-  'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/3/4/2';
+const SATELLITE_ICON = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/3/4/2';
 
 /**
  * The map styles this panel registers on top of the ones kepler ships.

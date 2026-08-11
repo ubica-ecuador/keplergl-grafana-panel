@@ -61,13 +61,7 @@ export function viewportFromMapState(mapState: MapStateLike | null | undefined):
 
   // kepler reports a zero-sized map before the layout settles; dividing by that
   // yields an infinite extent, and every seed would land at NaN.
-  if (
-    !Number.isFinite(latitude) ||
-    !Number.isFinite(longitude) ||
-    !Number.isFinite(zoom) ||
-    !width ||
-    !height
-  ) {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(zoom) || !width || !height) {
     return null;
   }
 

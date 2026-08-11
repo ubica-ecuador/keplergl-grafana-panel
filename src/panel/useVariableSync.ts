@@ -4,7 +4,7 @@ import type { Store } from 'redux';
 
 import { applyFieldFilter, readFilters, readSyncSlices, removeFieldFilter } from './keplerAdapter';
 import { SliceWatcher } from './sliceWatcher';
-import { normalizeFilterKey, variableFilterValues, type VariableMapping } from './variableSync';
+import { decideFieldSync, normalizeFilterKey, variableFilterValues, type VariableMapping } from './variableSync';
 
 interface Params {
   store: Store;
@@ -12,8 +12,6 @@ interface Params {
   isReady: boolean;
   mappings: VariableMapping[];
 }
-
-const ALL_KEY = normalizeFilterKey(null);
 
 /**
  * Two-way cross-filtering between kepler filters and dashboard variables.
@@ -66,29 +64,30 @@ export function useVariableSync({ store, isReady, mappings }: Params): void {
     for (const { field, variable } of maps) {
       const filterValue = filterValueByField[field];
       const desired = desiredByField[field]; // string[] | null (from the variable)
-      const mapKey = normalizeFilterKey(filterValue);
-      const varKey = normalizeFilterKey(desired);
-      const last = lastSynced.current[field];
+      const action = decideFieldSync({ filterValue, desired, lastSynced: lastSynced.current[field] });
 
-      if (mapKey === varKey) {
-        lastSynced.current[field] = mapKey;
+      if (action.kind === 'agreed') {
+        lastSynced.current[field] = normalizeFilterKey(filterValue);
         continue;
       }
 
-      // Decide which side changed. On the first pass (no `last`) a variable with
-      // a real selection wins, so a preset variable filters the map on load.
-      const variableDrives = last === undefined ? varKey !== ALL_KEY : mapKey === last;
+      if (action.kind === 'toVariable') {
+        variableWrites[`var-${variable}`] =
+          Array.isArray(action.value) && action.value.length ? action.value : '$__all';
+        lastSynced.current[field] = normalizeFilterKey(action.value);
+        continue;
+      }
 
-      if (variableDrives) {
-        if (desired) {
-          applyFieldFilter(store, store.dispatch, field, desired);
-        } else {
-          removeFieldFilter(store, store.dispatch, field);
-        }
-        lastSynced.current[field] = varKey;
-      } else {
-        variableWrites[`var-${variable}`] = Array.isArray(filterValue) && filterValue.length ? filterValue : '$__all';
-        lastSynced.current[field] = mapKey;
+      // The map is only recorded as synced once it has actually taken the
+      // filter. Until its datasets have loaded there is no column to filter on,
+      // and recording the attempt would make the next pass read the map's
+      // missing filter as a clearing and publish it over the variable.
+      const applied = action.values
+        ? applyFieldFilter(store, store.dispatch, field, action.values)
+        : (removeFieldFilter(store, store.dispatch, field), true);
+
+      if (applied) {
+        lastSynced.current[field] = normalizeFilterKey(action.values);
       }
     }
 

@@ -250,25 +250,33 @@ function filterHasField(filter: { name?: string[] | string }, field: string): bo
  * Updates the existing filter on that column if there is one, otherwise creates
  * one on the first dataset that has the column. A string column becomes a
  * multiSelect filter, so the values are applied as its selection.
+ *
+ * Returns false when there is nothing to filter on yet — no map state, or no
+ * loaded dataset carrying the column — the same contract as `pushTimeRange`. The
+ * caller must not record the field as synced on a false, or the next reconcile
+ * reads the map's missing filter as a deliberate clearing and publishes it back
+ * over the variable that was driving.
  */
-export function applyFieldFilter(store: Store, dispatch: Dispatch, field: string, values: string[]): void {
+export function applyFieldFilter(store: Store, dispatch: Dispatch, field: string, values: string[]): boolean {
   const visState = getVisState(store);
   if (!visState) {
-    return;
+    return false;
   }
 
   const existing = visState.filters.find((f) => filterHasField(f, field));
   if (existing) {
     dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(existing.id, undefined, undefined, values)));
-    return;
+    return true;
   }
 
   for (const [dataId, dataset] of Object.entries(visState.datasets)) {
     if (dataset.fields.some((f) => f.name === field)) {
       dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(undefined, dataId, field, values)));
-      return;
+      return true;
     }
   }
+
+  return false;
 }
 
 /** Removes the filter on `field`, if any — clears a variable-driven selection. */

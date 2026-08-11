@@ -156,11 +156,7 @@ export class TimeSyncGuard {
    * value it is about to stop reading cannot be pushed back at the map while the
    * report is in flight.
    */
-  takeEmit(
-    mapRange: TimeRangeMs | null,
-    domain: TimeRangeMs | null,
-    dashboardRange: TimeRangeMs
-  ): TimeRangeMs | null {
+  takeEmit(mapRange: TimeRangeMs | null, domain: TimeRangeMs | null, dashboardRange: TimeRangeMs): TimeRangeMs | null {
     const domainMoved = !this.seenDomain || !rangesEqual(domain, this.domain);
     this.domain = domain;
     this.seenDomain = true;
