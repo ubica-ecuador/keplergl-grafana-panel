@@ -1,0 +1,145 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "id": "0",
+      "type": "Feature",
+      "properties": {
+        "name": "Centro Histórico",
+        "population": 4820
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -79.01,
+              -2.904
+            ],
+            [
+              -78.998,
+              -2.904
+            ],
+            [
+              -78.998,
+              -2.893
+            ],
+            [
+              -79.01,
+              -2.893
+            ],
+            [
+              -79.01,
+              -2.904
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "1",
+      "type": "Feature",
+      "properties": {
+        "name": "El Ejido",
+        "population": 3610
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -79.01,
+              -2.913
+            ],
+            [
+              -78.998,
+              -2.913
+            ],
+            [
+              -78.998,
+              -2.904
+            ],
+            [
+              -79.01,
+              -2.904
+            ],
+            [
+              -79.01,
+              -2.913
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "2",
+      "type": "Feature",
+      "properties": {
+        "name": "Yanuncay",
+        "population": 2740
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -79.023,
+              -2.913
+            ],
+            [
+              -79.01,
+              -2.913
+            ],
+            [
+              -79.01,
+              -2.904
+            ],
+            [
+              -79.023,
+              -2.904
+            ],
+            [
+              -79.023,
+              -2.913
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "3",
+      "type": "Feature",
+      "properties": {
+        "name": "Machángara",
+        "population": 1950
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -79.0,
+              -2.893
+            ],
+            [
+              -78.986,
+              -2.893
+            ],
+            [
+              -78.986,
+              -2.882
+            ],
+            [
+              -79.0,
+              -2.882
+            ],
+            [
+              -79.0,
+              -2.893
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

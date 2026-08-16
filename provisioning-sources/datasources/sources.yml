@@ -1,0 +1,33 @@
+apiVersion: 1
+
+# Data sources for the sources bench (:3002) only. Deliberately a separate tree
+# from ../provisioning: the Grafana instances on :3000 and :3001 run the Alpine
+# image, where the DuckDB plugin cannot load at all, and provisioning a data
+# source whose plugin is missing just litters those instances with broken
+# entries.
+
+datasources:
+  # Reads GeoParquet straight off disk with read_parquet(). `path` blank means
+  # an in-memory database — no .duckdb file is needed for that.
+  - name: DuckDB
+    type: motherduck-duckdb-datasource
+    uid: duckdb
+    jsonData:
+      path: ''
+      # The spatial extension is not built in: without it ST_GeomFromWKB and
+      # ST_AsGeoJSON are undefined. v0.4.5 runs this per connection, which
+      # supersedes the note in docs/duckdb-geoparquet-findings.md that there is
+      # no datasource-level init SQL — that was true of the version tested then.
+      #
+      # INSTALL reaches out to DuckDB's extension repository the first time, so
+      # the first query after a fresh volume needs outbound internet. LOAD alone
+      # is enough afterwards.
+      initSql: 'INSTALL spatial; LOAD spatial;'
+
+  # Fetches the GeoJSON and CSV fixtures over HTTP from the `sources-data`
+  # container. No authentication: it is a static file server on the compose
+  # network, not something reachable from outside.
+  - name: Infinity
+    type: yesoreyeram-infinity-datasource
+    uid: infinity
+    jsonData: {}

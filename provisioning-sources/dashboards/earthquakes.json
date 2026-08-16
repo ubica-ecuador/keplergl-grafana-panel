@@ -1,0 +1,210 @@
+{
+  "annotations": { "list": [] },
+  "description": "Global seismicity of the last 30 days, read as remote GeoParquet by DuckDB. The map holds every event and its time slider narrows what is drawn; the summary and the table below follow that window through two dashboard variables rather than through the dashboard time range.",
+  "editable": true,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "motherduck-duckdb-datasource", "uid": "duckdb" },
+      "description": "Time range sync is set to `variables`, not `toMap`. Moving the dashboard range would re-run this query, and every event outside the new range would leave the browser — the histogram under the slider would rescale and the window could never be widened again from the map. Publishing the window to variables instead keeps the whole month loaded and costs only the panels that read them.",
+      "gridPos": { "h": 16, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "showSidePanel": false,
+        "timeSync": "variables",
+        "timeVariables": { "from": "quakeFrom", "to": "quakeTo" },
+        "basemap": "dark-matter",
+        "followGrafanaTheme": false,
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "visState": {
+              "layers": [
+                {
+                  "id": "quakes",
+                  "type": "point",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Sismos",
+                    "columns": { "lat": "latitude", "lng": "longitude" },
+                    "columnMode": "points",
+                    "isVisible": true,
+                    "visConfig": {
+                      "radius": 10,
+                      "opacity": 0.75,
+                      "outline": false,
+                      "filled": true,
+                      "radiusRange": [3, 45]
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": { "name": "mag", "type": "real" },
+                    "colorScale": "quantile",
+                    "sizeField": { "name": "mag", "type": "real" },
+                    "sizeScale": "sqrt"
+                  }
+                }
+              ],
+              "filters": [],
+              "interactionConfig": {},
+              "splitMaps": []
+            },
+            "mapState": {
+              "latitude": 15,
+              "longitude": 0,
+              "zoom": 1,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "mapStyle": { "styleType": "dark-matter" }
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "motherduck-duckdb-datasource", "uid": "duckdb" },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- force_download is not tuning. This endpoint builds the parquet per request,\n-- so each ranged read sees a different ETag and DuckDB aborts with \"the remote\n-- file has changed\". One whole-file GET sidesteps it; at 378 KB that is free.\nSELECT\n  place,\n  mag,\n  depth_num               AS depth,\n  event_time_utc_date_fmt AS time,\n  latitude_num            AS latitude,\n  longitude_num           AS longitude\nFROM read_parquet('https://demo.getgeolens.com/api/datasets/2717becb-bfc5-4029-845f-24c3bbe19780/export?format=parquet')",
+          "refId": "A"
+        }
+      ],
+      "title": "Sismicidad global — últimos 30 días",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": { "type": "motherduck-duckdb-datasource", "uid": "duckdb" },
+      "description": "Reads the map's window. Both variables start empty — before the slider has been touched — so each bound falls back to an infinity, and the summary covers everything rather than nothing.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "text", "value": null }] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 16 },
+      "id": 2,
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "motherduck-duckdb-datasource", "uid": "duckdb" },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\nSELECT\n  count(*)                 AS \"Sismos\",\n  round(max(mag), 1)       AS \"Magnitud máxima\",\n  round(avg(depth_num), 1) AS \"Profundidad media (km)\"\nFROM read_parquet('https://demo.getgeolens.com/api/datasets/2717becb-bfc5-4029-845f-24c3bbe19780/export?format=parquet')\nWHERE event_time_utc_date_fmt\n  BETWEEN COALESCE(try_cast($quakeFrom AS TIMESTAMPTZ), '-infinity'::TIMESTAMPTZ)\n      AND COALESCE(try_cast($quakeTo   AS TIMESTAMPTZ), 'infinity'::TIMESTAMPTZ)",
+          "refId": "A"
+        }
+      ],
+      "title": "En la ventana del mapa",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "motherduck-duckdb-datasource", "uid": "duckdb" },
+      "description": "The ten strongest events inside the map's window. Scrub the slider and this list follows.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 16 },
+      "id": 3,
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "motherduck-duckdb-datasource", "uid": "duckdb" },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\nSELECT\n  strftime(event_time_utc_date_fmt, '%d %b %H:%M') AS \"Fecha\",\n  place                                            AS \"Lugar\",\n  mag                                              AS \"Mag\"\nFROM read_parquet('https://demo.getgeolens.com/api/datasets/2717becb-bfc5-4029-845f-24c3bbe19780/export?format=parquet')\nWHERE event_time_utc_date_fmt\n  BETWEEN COALESCE(try_cast($quakeFrom AS TIMESTAMPTZ), '-infinity'::TIMESTAMPTZ)\n      AND COALESCE(try_cast($quakeTo   AS TIMESTAMPTZ), 'infinity'::TIMESTAMPTZ)\nORDER BY mag DESC\nLIMIT 10",
+          "refId": "A"
+        }
+      ],
+      "title": "Los más fuertes de la ventana",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "motherduck-duckdb-datasource", "uid": "duckdb" },
+      "description": "Deliberately unfiltered: this is the context the slider moves through, so it must show the whole month whatever the window is.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "bars", "fillOpacity": 60, "lineWidth": 1, "axisPlacement": "auto" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Magnitud máxima" },
+            "properties": [
+              { "id": "custom.drawStyle", "value": "line" },
+              { "id": "custom.axisPlacement", "value": "right" },
+              { "id": "custom.lineWidth", "value": 2 },
+              { "id": "custom.fillOpacity", "value": 0 }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 24 },
+      "id": 4,
+      "options": {
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "motherduck-duckdb-datasource", "uid": "duckdb" },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\nSELECT\n  date_trunc('day', event_time_utc_date_fmt) AS time,\n  count(*)           AS \"Sismos\",\n  round(max(mag), 1) AS \"Magnitud máxima\"\nFROM read_parquet('https://demo.getgeolens.com/api/datasets/2717becb-bfc5-4029-845f-24c3bbe19780/export?format=parquet')\nGROUP BY 1\nORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Sismos por día — el mes completo",
+      "type": "timeseries"
+    }
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["kepler", "sources", "terremotos"],
+  "templating": {
+    "list": [
+      {
+        "current": { "text": "", "value": "" },
+        "hide": 0,
+        "label": "Desde (mapa)",
+        "name": "quakeFrom",
+        "options": [],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": { "text": "", "value": "" },
+        "hide": 0,
+        "label": "Hasta (mapa)",
+        "name": "quakeTo",
+        "options": [],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": { "from": "now-30d", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Terremotos — espacio-temporal",
+  "uid": "earthquakes",
+  "version": 1,
+  "weekStart": ""
+}

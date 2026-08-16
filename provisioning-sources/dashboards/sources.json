@@ -1,0 +1,232 @@
+{
+  "annotations": { "list": [] },
+  "description": "Every file-based source the panel is meant to handle, side by side: GeoParquet through DuckDB, GeoJSON and CSV through Infinity. Each panel is deliberately unconfigured — no saved mapConfig — so what renders is what autodetection alone produces.",
+  "editable": true,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "mode": "markdown",
+        "content": "# Fuentes de datos\n\nCada panel llega al mismo sitio — una capa de kepler — por un camino distinto. Ninguno tiene capas guardadas: lo que se dibuja es lo que la autodetección deduce de las columnas. Lo único fijado es el encuadre, porque sin él el mapa arranca demasiado cerca y parte del dataset queda fuera de pantalla.\n\n| Panel | Origen | Cómo llega la geometría |\n|---|---|---|\n| GeoParquet · puntos | DuckDB `read_parquet` | columnas `latitude` / `longitude` |\n| GeoParquet · zonas | DuckDB + extensión `spatial` | `ST_AsGeoJSON(ST_GeomFromWKB(...))` |\n| GeoJSON · zonas | Infinity, URL | objeto `geometry` serializado a string |\n| CSV · puntos | Infinity, URL | convención `<prefijo>_latitude` de kepler |\n| CSV · zonas | Infinity, URL | WKT en una columna `geometry` |\n\nLos ficheros salen de `testdata/`, servidos por el contenedor `sources-data` y montados en `/testdata` dentro de Grafana."
+      },
+      "title": "",
+      "type": "text"
+    },
+    {
+      "datasource": { "type": "motherduck-duckdb-datasource", "uid": "duckdb" },
+      "description": "Plain columns, no spatial extension involved. The parquet carries point_latitude/point_longitude alongside the geometry, and aliasing them to latitude/longitude is what the plugin's own detectFields matches on.",
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 5 },
+      "id": 2,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -2.905,
+              "longitude": -79.0,
+              "zoom": 11.5,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "motherduck-duckdb-datasource", "uid": "duckdb" },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "SELECT\n  name,\n  category,\n  visitors,\n  point_latitude  AS latitude,\n  point_longitude AS longitude\nFROM read_parquet('/testdata/cuenca-points.parquet')",
+          "refId": "A"
+        }
+      ],
+      "title": "GeoParquet · puntos (DuckDB)",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": { "type": "motherduck-duckdb-datasource", "uid": "duckdb" },
+      "description": "kepler reads no form of WKB, so the geometry has to become GeoJSON. Note there is no ST_GeomFromWKB call: DuckDB's spatial extension reads a GeoParquet geometry column as a native GEOMETRY (carrying its EPSG:4326 CRS), not as a BLOB. The CAST to VARCHAR is not decoration — ST_AsGeoJSON returns DuckDB's JSON type and the data source's Go driver cannot Scan that into a string.",
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 5 },
+      "id": 3,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -2.905,
+              "longitude": -79.0,
+              "zoom": 11.5,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "motherduck-duckdb-datasource", "uid": "duckdb" },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "SELECT\n  name,\n  population,\n  CAST(ST_AsGeoJSON(geometry) AS VARCHAR) AS geojson\nFROM read_parquet('/testdata/cuenca-zones.parquet')",
+          "refId": "A"
+        }
+      ],
+      "title": "GeoParquet · zonas (DuckDB + spatial)",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "infinity" },
+      "description": "A GeoJSON URL flattened by Infinity's backend parser. Typing the geometry column as String is what makes Infinity serialise the nested object to a GeoJSON string; the panel then autodetects the geojson column as geometry.",
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 17 },
+      "id": 4,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -2.905,
+              "longitude": -79.0,
+              "zoom": 11.5,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "columns": [
+            { "selector": "properties.name", "text": "name", "type": "string" },
+            { "selector": "properties.population", "text": "population", "type": "number" },
+            { "selector": "geometry", "text": "geojson", "type": "string" }
+          ],
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "infinity" },
+          "format": "table",
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "features",
+          "source": "url",
+          "type": "json",
+          "url": "http://sources-data/cuenca-zones.geojson",
+          "url_options": { "method": "GET" }
+        }
+      ],
+      "title": "GeoJSON · zonas (Infinity, URL)",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "infinity" },
+      "description": "The lat/lng columns keep kepler's <prefix>_latitude naming, which the plugin's detectFields does NOT match — it renders anyway because kepler runs its own layer autodetection and that convention is one of its own. Infinity's CSV parser types every column as string, hence the explicit Number types.",
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 17 },
+      "id": 5,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -2.905,
+              "longitude": -79.0,
+              "zoom": 11.5,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "columns": [
+            { "selector": "name", "text": "name", "type": "string" },
+            { "selector": "category", "text": "category", "type": "string" },
+            { "selector": "visitors", "text": "visitors", "type": "number" },
+            { "selector": "point_latitude", "text": "point_latitude", "type": "number" },
+            { "selector": "point_longitude", "text": "point_longitude", "type": "number" }
+          ],
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "infinity" },
+          "format": "table",
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "",
+          "source": "url",
+          "type": "csv",
+          "url": "http://sources-data/cuenca-points.csv",
+          "url_options": { "method": "GET" }
+        }
+      ],
+      "title": "CSV · puntos (Infinity, URL)",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "infinity" },
+      "description": "Geometry embedded in the CSV as WKT. kepler's geojson layer reads WKT strings directly, so no conversion is needed anywhere in the chain.",
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 29 },
+      "id": 6,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -2.905,
+              "longitude": -79.0,
+              "zoom": 11.5,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "columns": [
+            { "selector": "name", "text": "name", "type": "string" },
+            { "selector": "population", "text": "population", "type": "number" },
+            { "selector": "geometry", "text": "geometry", "type": "string" }
+          ],
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "infinity" },
+          "format": "table",
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "",
+          "source": "url",
+          "type": "csv",
+          "url": "http://sources-data/cuenca-zones.csv",
+          "url_options": { "method": "GET" }
+        }
+      ],
+      "title": "CSV · zonas en WKT (Infinity, URL)",
+      "type": "ubica-keplergl-panel"
+    }
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["kepler", "sources"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Fuentes — GeoParquet, GeoJSON y CSV",
+  "uid": "sources-bench",
+  "version": 1,
+  "weekStart": ""
+}

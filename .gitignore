@@ -52,4 +52,7 @@ ci/
 
 # Phase 0 spike verification artifacts (scripts/verify-spike.mjs)
 /spike-*.png
+
+# Sources bench verification artifact (scripts/verify-sources.mjs)
+/sources-verify.png
 /.playwright-mcp/

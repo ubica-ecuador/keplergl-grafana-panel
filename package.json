@@ -12,8 +12,10 @@
     "lint:fix": "npm run lint -- --fix && prettier --write --list-different .",
     "e2e": "playwright test",
     "server": "docker compose up --build",
+    "server:sources": "docker compose up --build grafana-sources sources-data",
     "verify:spike": "node scripts/verify-spike.mjs http://localhost:3000 spike-default-csp.png",
     "verify:spike:csp": "node scripts/verify-spike.mjs http://localhost:3001 spike-strict-csp.png",
+    "verify:sources": "node scripts/verify-sources.mjs http://localhost:3002 sources-verify.png",
     "sign": "sign-plugin"
   },
   "author": "Ubica",

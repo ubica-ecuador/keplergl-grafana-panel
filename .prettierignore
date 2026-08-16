@@ -1,0 +1,4 @@
+# Generated fixtures for the sources bench. Prettier and json.dumps disagree on
+# how to lay out coordinate arrays, so formatting these would put every run of
+# testdata/make-testdata.py permanently at odds with the committed files.
+testdata/

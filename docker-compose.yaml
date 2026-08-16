@@ -84,6 +84,73 @@ services:
         https://services.arcgisonline.com ws://$$ROOT_PATH
         wss://$$ROOT_PATH;manifest-src 'self';media-src 'none';form-action 'self';
 
+  # Sources bench, on port 3002: the file-based formats the panel is meant to
+  # read — GeoParquet, GeoJSON, CSV — through the two data sources that serve
+  # them. Kept apart from the `grafana` service on purpose, for two reasons.
+  #
+  # First, the image. The DuckDB data source is a Go binary linked against
+  # glibc, and the scaffold's default `grafana-enterprise` image is Alpine/musl:
+  # it fails to load there with "libstdc++.so.6: cannot open shared object
+  # file". Hence the `-ubuntu` tag. Moving the main dev Grafana to Ubuntu would
+  # have been the smaller diff, but that instance is deliberately pinned to the
+  # floor of the supported range on the stock image — it is the thing that
+  # catches "works on my machine", so it stays as the plainest install we ship
+  # to.
+  #
+  # Second, provisioning. This service mounts ./provisioning-sources rather than
+  # ./provisioning, so the two Alpine instances never see data sources whose
+  # plugin cannot load.
+  grafana-sources:
+    user: root
+    container_name: 'ubica-keplergl-panel-sources'
+    build:
+      context: .config
+      args:
+        grafana_image: ${GRAFANA_IMAGE:-grafana-enterprise}
+        grafana_version: ${GRAFANA_VERSION:-12.0.10}-ubuntu
+        # Must stay false. On true the entrypoint hands over to supervisord
+        # instead of Grafana's own /run.sh, and /run.sh is what reads
+        # GF_INSTALL_PLUGINS — the data sources below would silently never
+        # install.
+        development: 'false'
+        anonymous_auth_enabled: ${ANONYMOUS_AUTH_ENABLED:-true}
+    ports:
+      - '3002:3000/tcp'
+    volumes:
+      - ./dist:/var/lib/grafana/plugins/ubica-keplergl-panel
+      - ./provisioning-sources:/etc/grafana/provisioning
+      # DuckDB reads the GeoParquet straight off this mount; the same directory
+      # is what `sources-data` serves over HTTP for Infinity.
+      - ./testdata:/testdata:ro
+      # Its own database. Two Grafanas provisioning into one SQLite file race
+      # each other and the loser dies with "database is locked".
+      - grafana-sources-data:/var/lib/grafana
+    environment:
+      NODE_ENV: development
+      GF_LOG_FILTERS: plugin.ubica-keplergl-panel:debug
+      GF_LOG_LEVEL: debug
+      # The DuckDB data source ships no MANIFEST.txt — it is distributed from
+      # GitHub releases rather than the Grafana catalogue, so it is unsigned and
+      # has to be named here alongside our own panel.
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: ubica-keplergl-panel,motherduck-duckdb-datasource
+      # Infinity comes from the catalogue by id. DuckDB is not in the catalogue
+      # at all, so it is installed from its release zip with `<url>;<id>`. That
+      # zip is ~140 MB — it bundles a DuckDB engine per platform — and lands in
+      # the named volume above, so this download happens once, not per restart.
+      # The first start needs outbound internet.
+      GF_INSTALL_PLUGINS: 'yesoreyeram-infinity-datasource,https://github.com/motherduckdb/grafana-duckdb-datasource/releases/download/v0.4.5/motherduck-duckdb-datasource-0.4.5.zip;motherduck-duckdb-datasource'
+
+  # Serves ./testdata over HTTP so Infinity exercises a real URL fetch rather
+  # than inline data. Only reachable from the compose network — no published
+  # port — and read-only.
+  sources-data:
+    image: nginx:alpine
+    container_name: 'ubica-keplergl-panel-sources-data'
+    volumes:
+      - ./testdata:/usr/share/nginx/html:ro
+      - ./docker/sources-data.nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
 volumes:
   grafana-data:
   grafana-csp-data:
+  grafana-sources-data:

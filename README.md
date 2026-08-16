@@ -109,11 +109,21 @@ cannot place. The plugin renders WGS84 lon/lat only; it does not reproject.
 ### GeoParquet on S3 via DuckDB
 
 The [DuckDB data source](https://github.com/motherduckdb/grafana-duckdb-datasource) reads GeoParquet
-directly from S3. Two things to know:
+directly, locally or from S3. Four things to know:
 
-- Load the spatial extension inside the query: `INSTALL spatial; LOAD spatial; SELECT …`.
+- Load the spatial extension. From v0.4.5 the data source has an **Init SQL** field, so
+  `INSTALL spatial; LOAD spatial;` belongs there rather than at the head of every query.
+- **No `ST_GeomFromWKB`.** With spatial loaded, a GeoParquet geometry column arrives as a native
+  `GEOMETRY` carrying its CRS — passing it through `ST_GeomFromWKB` is a binder error, not a no-op.
 - Cast `ST_AsGeoJSON(...)` to `VARCHAR` — the data source cannot marshal DuckDB's JSON type.
-- That data source needs glibc (Ubuntu/Debian Grafana image); it does **not** run on Alpine.
+- It needs glibc (Ubuntu/Debian Grafana image); it does **not** run on Alpine. It is also not in the
+  Grafana catalog, so it installs from its release zip and is unsigned.
+
+```sql
+SELECT name, population,
+       CAST(ST_AsGeoJSON(geometry) AS VARCHAR) AS geojson
+FROM read_parquet('s3://bucket/zones/*.parquet')
+```
 
 ### Trajectories
 
@@ -268,6 +278,52 @@ Requires Node 22+. If you have changed your dev Grafana's admin password, pass i
 
 `npm run verify:spike` drives a browser against the provisioned dashboard and reports what actually
 reached the map — useful when a change breaks rendering without breaking a test.
+
+### Sources bench (:3002)
+
+`npm run server` deliberately gives you a plain Grafana with no third-party data sources. To exercise
+the file formats — GeoParquet, GeoJSON, CSV — bring up the bench instead:
+
+```bash
+npm run server:sources   # Grafana on :3002 with DuckDB + Infinity installed
+npm run verify:sources   # drives a browser over its dashboard, one line per panel
+```
+
+It is a separate service rather than a flag on the main one, because the DuckDB data source is linked
+against glibc and the default image is Alpine — the bench runs the `-ubuntu` tag. Keeping it apart
+leaves `:3000` as the plainest install we ship to, which is the point of pinning it to the floor of
+the supported range.
+
+Both data sources install declaratively through `GF_INSTALL_PLUGINS`, so the first start needs
+outbound internet and pulls ~140 MB (the DuckDB zip bundles an engine per platform). It lands in a
+named volume, so that cost is paid once.
+
+The fixtures live in `testdata/` — real GeoParquet with WKB geometry and EPSG:4326 metadata, the same
+features as GeoJSON, and two CSVs. A `sources-data` container serves them over HTTP so Infinity
+exercises a genuine URL fetch rather than inline data; DuckDB reads the parquet off the same
+directory, mounted at `/testdata`. Regenerate them with `python3 testdata/make-testdata.py` (needs
+geopandas) only if the sample data itself must change.
+
+Its dashboard sets no layers — what renders is what autodetection alone produces — so it doubles as a
+check that a bare query still finds its geometry. Points draw at kepler's default radius, which is
+small; bump it in the layer panel if you are eyeballing them.
+
+The bench also carries **Terremotos — espacio-temporal** (`earthquakes.json`): a month of global
+seismicity read as **remote** GeoParquet over HTTPS, sized and coloured by magnitude, with the time
+slider driving a summary and a table beside it. Three things it demonstrates that the local fixtures
+cannot:
+
+- **Time range sync set to `variables`, not `toMap`.** Driving the dashboard range from the map would
+  re-run the query, and every event outside the new window would leave the browser — the histogram
+  under the slider rescales and the window can never be widened again from the map. Variables keep
+  the whole month loaded and cost only the panels that read them.
+- **`SET force_download = true` before reading a generated URL.** That endpoint builds the parquet per
+  request, so successive ranged reads see different ETags and DuckDB aborts with "the remote file has
+  changed". Against a stable object store you want the opposite — ranged reads are the point.
+- **Do not quote a variable in SQL.** The data source interpolates with Grafana's SQL-string format,
+  which adds the quotes itself; `'$var'` arrives as `''value''` and fails to parse. Write `$var`, and
+  wrap it in `try_cast(... AS TIMESTAMPTZ)` so the empty value before the first scrub falls back to a
+  bound rather than erroring.
 
 > Do not `rm -rf dist` while the dev containers are running: `dist` is bind-mounted, and deleting it
 > leaves the containers serving a stale inode. `npm run build` cleans it correctly.
