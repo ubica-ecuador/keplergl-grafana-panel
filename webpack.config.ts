@@ -44,16 +44,37 @@ const config = async (env: Env): Promise<Configuration> => {
        * collapses it to one instance and one registry. See visgl/deck.gl FAQ,
        * "duplicate deck.gl bundles".
        */
-      alias: Object.fromEntries(
-        [
-          '@deck.gl/core',
-          '@luma.gl/core',
-          '@luma.gl/engine',
-          '@luma.gl/shadertools',
-          '@luma.gl/webgl',
-          '@luma.gl/constants',
-        ].map((pkg) => [`${pkg}$`, path.resolve(process.cwd(), 'node_modules', pkg, 'dist/index.js')])
-      ),
+      alias: {
+        ...Object.fromEntries(
+          [
+            '@deck.gl/core',
+            '@luma.gl/core',
+            '@luma.gl/engine',
+            '@luma.gl/shadertools',
+            '@luma.gl/webgl',
+            '@luma.gl/constants',
+          ].map((pkg) => [`${pkg}$`, path.resolve(process.cwd(), 'node_modules', pkg, 'dist/index.js')])
+        ),
+        /*
+         * Force the ESM build of the map-draw editor. kepler's packages require
+         * it from CommonJS, so webpack picks its CJS build — where esbuild's
+         * node-mode interop (`__toESM(require(...), 1)`) resolves every
+         * `@turf/*` default import to the module's exports *object*, never the
+         * function. Every draw mode then throws `(0, x.default) is not a
+         * function`: the rectangle on its first click (`bboxPolygon`), the
+         * polygon when double-click finishes it (`kinks`) — so drawing a
+         * polygon filter was impossible. The ESM build's turf imports resolve
+         * through the `import` condition to real functions. All kepler access
+         * is via named exports, which survive the CJS-requires-ESM interop.
+         */
+        '@deck.gl-community/editable-layers$': path.resolve(
+          process.cwd(),
+          'node_modules',
+          '@deck.gl-community',
+          'editable-layers',
+          'dist/index.js'
+        ),
+      },
     },
     module: {
       rules: [

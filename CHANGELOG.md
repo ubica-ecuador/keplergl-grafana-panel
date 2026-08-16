@@ -5,6 +5,22 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Fixed: drawing a polygon or rectangle filter did nothing.** The polygon collected its vertices
+  and then refused to close — double-click, Enter and clicking the first vertex all died in
+  `finishDrawing` — and the rectangle broke one step earlier, on its very first click. Both threw
+  the same `TypeError: (0, x.default) is not a function`, from different `@turf/*` functions
+  (`kinks`, `bboxPolygon`). kepler's packages `require()` the draw editor, so webpack resolved
+  `@deck.gl-community/editable-layers` to its CommonJS build — where esbuild's node-mode interop
+  (`__toESM(require(...), 1)`) hands every turf *default* import the module's exports object
+  instead of its function, faithfully imitating how Node itself treats a CJS default. That
+  combination is broken by construction; the packages only cooperate through their ESM builds.
+  webpack now pins the editor to its ESM build, the same move already made for deck.gl and
+  luma.gl, and turf's default imports resolve through the `import` condition to real functions.
+  Covered by e2e tests that draw both shapes on a real map — where kepler's actual behaviour
+  surfaced: a finished polygon waits in `editor.features` for a layer to be chosen, while a
+  finished rectangle never stays there, because kepler applies it to every layer immediately and
+  `setFeaturesUpdater` keeps filter-bound features out of the editor.
+
 - **Fixed: "Save current map configuration" saved an empty config and wiped the layers it was
   meant to keep.** Clicking the button reverted the map to kepler's defaults and stored a config
   with no layers and no filters, so the user's edits were gone twice over — from the screen and
