@@ -8,6 +8,7 @@ import { toKeplerTheme } from '../data/keplerTheme';
 import { SavedMapConfig } from '../data/mapConfig';
 import { CUSTOM_BASEMAP_ID } from './constants';
 import { LazyKeplerMap } from './LazyKeplerMap';
+import { useStableValue } from './useStableValue';
 
 interface Props extends PanelProps<KeplerPanelOptions> {}
 
@@ -24,9 +25,14 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
   // kepler and the sync hook work in epoch ms; Grafana hands DateTime objects.
   const grafanaRange = useMemo(() => ({ from: timeRange.from.valueOf(), to: timeRange.to.valueOf() }), [timeRange]);
 
+  // Grafana deep-clones the options on every options change, so without this
+  // any click in the panel editor would arrive as "new" field mappings, rebuild
+  // the datasets and push a needless — and destructive — refresh into kepler.
+  const fieldMappings = useStableValue(options.fieldMappings);
+
   const datasets = useMemo(
     () =>
-      framesToDatasets(data.series, options.fieldMappings, {
+      framesToDatasets(data.series, fieldMappings, {
         flowRenderMode: options.flowRenderMode,
         tripLayerMode: options.tripLayerMode,
         // Wind streamlines carry a synthetic clock. Starting it at the dashboard
@@ -39,7 +45,7 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
       }),
     [
       data.series,
-      options.fieldMappings,
+      fieldMappings,
       options.flowRenderMode,
       options.tripLayerMode,
       options.windDensity,

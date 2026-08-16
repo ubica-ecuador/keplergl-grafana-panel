@@ -103,6 +103,7 @@ export function KeplerMap({
 
   const hasLoaded = useRef(false);
   const appliedConfig = useRef<SavedMapConfig | null | undefined>(undefined);
+  const appliedDatasets = useRef<PanelDataset[] | undefined>(undefined);
   const handledSaveRequest = useRef(saveRequest);
 
   // Registering the plugin's own styles: satellite imagery that needs no Mapbox
@@ -120,8 +121,19 @@ export function KeplerMap({
       hasLoaded: hasLoaded.current,
       appliedConfig: appliedConfig.current,
       currentConfig: mapConfig,
+      appliedDatasets: appliedDatasets.current,
+      currentDatasets: datasets,
     });
 
+    // 'none' when neither the data nor the config really changed — an options
+    // clone from the panel editor. Dispatching anything here is what used to
+    // corrupt "Save current map configuration": the refresh emptied the store
+    // right before the save effect below snapshotted it.
+    if (action === 'none') {
+      return;
+    }
+
+    appliedDatasets.current = datasets;
     if (action === 'rebuild') {
       hasLoaded.current = true;
       appliedConfig.current = mapConfig;

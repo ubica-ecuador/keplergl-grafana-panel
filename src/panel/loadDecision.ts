@@ -1,6 +1,6 @@
 import { SavedMapConfig } from '../data/mapConfig';
 
-export type LoadAction = 'rebuild' | 'refresh';
+export type LoadAction = 'rebuild' | 'refresh' | 'none';
 
 interface LoadState {
   /** Whether kepler has already been handed a full map. */
@@ -9,26 +9,48 @@ interface LoadState {
   appliedConfig: SavedMapConfig | null | undefined;
   /** The config the panel options currently carry. */
   currentConfig: SavedMapConfig | null | undefined;
+  /** The datasets object last handed to kepler — an identity token, not data. */
+  appliedDatasets?: unknown;
+  /** The datasets object this render carries. */
+  currentDatasets?: unknown;
 }
 
 /**
- * Chooses between rebuilding the map and refreshing its data.
+ * Chooses between rebuilding the map, refreshing its data, and doing nothing.
  *
  * `rebuild` is `addDataToMap`: it constructs layers and frames the viewport
- * around the data. `refresh` is `updateVisData` with `keepExistingConfig`: it
- * swaps the rows while preserving everything the user configured on top.
+ * around the data. `refresh` is `replaceDataInMap`: it swaps the rows while
+ * preserving everything the user configured on top. `none` is exactly that,
+ * and it is not an optimisation: `replaceDataInMap` empties the kepler store
+ * and restores it through async tasks, so a gratuitous refresh hands anything
+ * that reads the store in the same commit — the config snapshot behind "Save
+ * current map configuration", above all — a map with no layers, no filters and
+ * no datasets. Grafana deep-clones the panel options on every options change,
+ * which made every click in the panel editor exactly that gratuitous refresh.
  *
  * Tracked as an explicit `hasLoaded` flag rather than inferred from the config
  * alone, because "no config yet" and "no config saved" are both `undefined` and
  * comparing them would make the first load look like a refresh.
  */
-export function decideLoadAction({ hasLoaded, appliedConfig, currentConfig }: LoadState): LoadAction {
+export function decideLoadAction({
+  hasLoaded,
+  appliedConfig,
+  currentConfig,
+  appliedDatasets,
+  currentDatasets,
+}: LoadState): LoadAction {
   if (!hasLoaded) {
     return 'rebuild';
   }
   // kepler will not accept a config once data is loaded, so a config change has
   // to rebuild rather than patch.
-  return isSameConfig(appliedConfig, currentConfig) ? 'refresh' : 'rebuild';
+  if (!isSameConfig(appliedConfig, currentConfig)) {
+    return 'rebuild';
+  }
+  // Datasets are compared by identity, not value: the memo that builds them
+  // only re-runs when a query actually re-ran, so a fresh object means fresh
+  // rows, and value-comparing row arrays on every render would not be free.
+  return currentDatasets === appliedDatasets ? 'none' : 'refresh';
 }
 
 /**

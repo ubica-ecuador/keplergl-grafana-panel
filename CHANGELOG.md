@@ -5,6 +5,23 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Fixed: "Save current map configuration" saved an empty config and wiped the layers it was
+  meant to keep.** Clicking the button reverted the map to kepler's defaults and stored a config
+  with no layers and no filters, so the user's edits were gone twice over — from the screen and
+  from the dashboard. Three gears meshed to cause it. Grafana deep-clones the whole panel options
+  object on every options change, so the click handed the load effect a JSON-identical copy of the
+  saved config under a fresh identity; the effect answered with a "refresh", which since the
+  `replaceDataInMap` fix is not a harmless no-op: kepler empties the store and restores it through
+  async tasks. The save effect, running later in the same React commit, then snapshotted the map
+  mid-swap — no layers, no filters, a stale `layerOrder` — and storing that snapshot triggered a
+  second replace that overlapped the first one's restore and lost the configured layers for good.
+  The decision now distinguishes doing nothing from refreshing: when neither the config (by value)
+  nor the datasets (by identity) changed, the effect stays silent, so the snapshot always reads a
+  settled store. Field mappings are re-anchored to their previous identity while their content is
+  unchanged, closing the same options-clone hole for panels that have them. This also stops every
+  click in the panel editor — any toggle, any slider — from putting the map through a full
+  swap-and-restore cycle it never needed.
+
 - **Fixed: a trajectory map went blank as soon as the dashboard time range drove it.** The plugin's
   two headline features cancelled each other out: a query with a trip id became an animated Trip
   layer, `Time range sync` then added kepler's time filter as documented, and deck.gl threw

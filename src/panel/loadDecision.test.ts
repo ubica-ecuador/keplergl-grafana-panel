@@ -21,14 +21,30 @@ describe('decideLoadAction', () => {
     expect(decideLoadAction({ hasLoaded: false, appliedConfig: undefined, currentConfig: config })).toBe('rebuild');
   });
 
-  it('refreshes once loaded and the config has not changed', () => {
+  it('refreshes once loaded when the config has not changed but the data has', () => {
     const config = { version: 'v1', config: {} };
 
-    expect(decideLoadAction({ hasLoaded: true, appliedConfig: config, currentConfig: config })).toBe('refresh');
+    expect(
+      decideLoadAction({
+        hasLoaded: true,
+        appliedConfig: config,
+        currentConfig: config,
+        appliedDatasets: [{ id: 'grafana-A' }],
+        currentDatasets: [{ id: 'grafana-A' }],
+      })
+    ).toBe('refresh');
   });
 
-  it('refreshes when no config is involved at all', () => {
-    expect(decideLoadAction({ hasLoaded: true, appliedConfig: undefined, currentConfig: undefined })).toBe('refresh');
+  it('refreshes new data when no config is involved at all', () => {
+    expect(
+      decideLoadAction({
+        hasLoaded: true,
+        appliedConfig: undefined,
+        currentConfig: undefined,
+        appliedDatasets: [{ id: 'grafana-A' }],
+        currentDatasets: [{ id: 'grafana-A' }],
+      })
+    ).toBe('refresh');
   });
 
   it('rebuilds when the user imports a different config', () => {
@@ -41,16 +57,27 @@ describe('decideLoadAction', () => {
     ).toBe('rebuild');
   });
 
-  it('refreshes when the same config arrives as a new object', () => {
-    // Grafana hands the panel a fresh options object on every options change,
-    // so the saved config is a structurally equal but non-identical copy.
-    // Comparing by identity made every options change — including the click on
-    // "Save current map configuration" itself — rebuild the map, which threw
-    // away the viewport the user had just set and re-saved the stored one.
+  it('does nothing when the same config arrives as a new object and the data has not moved', () => {
+    // Grafana deep-clones the panel options on EVERY options change, so any
+    // click in the editor — including "Save current map configuration" itself —
+    // hands the effect a JSON-identical copy of the saved config. Anything but
+    // a no-op here is destructive: `replaceDataInMap` empties the kepler store
+    // and restores it through async tasks, so the save effect running in the
+    // same commit snapshots the emptied store ({layers: [], filters: []}) and
+    // the overlapping second replace loses the configured layers for good.
     const applied = { version: 'v1', config: { mapState: { zoom: 16 } } };
     const current = { version: 'v1', config: { mapState: { zoom: 16 } } };
+    const datasets = [{ id: 'grafana-A' }];
 
-    expect(decideLoadAction({ hasLoaded: true, appliedConfig: applied, currentConfig: current })).toBe('refresh');
+    expect(
+      decideLoadAction({
+        hasLoaded: true,
+        appliedConfig: applied,
+        currentConfig: current,
+        appliedDatasets: datasets,
+        currentDatasets: datasets,
+      })
+    ).toBe('none');
   });
 
   it('rebuilds when the same object arrives with a different viewport', () => {
