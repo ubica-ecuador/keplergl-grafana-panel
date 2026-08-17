@@ -5,6 +5,22 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Added: clicking the map can publish the clicked coordinate to a lat/lng variable pair.** A
+  cross-filtering mapping row switched to "Coordinates" names two variables, Lat and Lng; any click
+  on the map pins the place clicked and the pair takes it (escalón 3b of the cross-filtering design
+  doc). The variables are for the other panels' spatial queries — `ST_DWithin(geom,
+  ST_MakePoint($lng, $lat)::geography, $radius)` with `$radius` a plain dashboard variable — and
+  the computed coverage returns to the map as an ordinary query, so the panel carries no spatial
+  logic at all. The panel switches kepler's coordinate interaction on by itself, and back on after
+  a saved-config restore. kepler's pin toggles — a second click unpins — but the variables keep the
+  last spot until the next pin, so a coverage query never loses its centre; a data refresh keeps
+  both the pin and the variables, and clicks made while the draw toolbar is engaged publish
+  nothing. An entity click also pins, deliberately: clicking a vehicle both selects it (a Click
+  mapping) and recentres a coverage query there. The sample cross-filter dashboard gained a
+  `$lat`/`$lng` pair driven by a Coordinates mapping. Covered by unit tests over the pure decision
+  module (`coordinateSync.ts`) and verified in the browser on both containers: publish on click,
+  quiet unpin, refresh survival, draw-toolbar silence, and co-publishing with the entity click.
+
 - **Added: clicking an entity on the map can publish it to a dashboard variable.** A
   cross-filtering mapping row can now be switched from "Filter" to "Click": the value of its
   column for the clicked point or trajectory lands in the variable — `WHERE vehicle_id =

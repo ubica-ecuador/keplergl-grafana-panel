@@ -3,6 +3,7 @@ import {
   addLayer,
   createOrUpdateFilter,
   fitBounds,
+  interactionConfigChange,
   mapStyleChange,
   removeFilter,
   removeLayer,
@@ -239,6 +240,20 @@ interface VisStateLike {
   editor?: {
     features?: Array<{ id?: string | number; geometry?: { type?: string; coordinates?: unknown } }>;
   };
+  /**
+   * The mouse-position tracking behind kepler's coordinate interaction.
+   * `pinned` is where a click froze it: `layerClickUpdater` toggles it — a
+   * clone of the tracked position on one click, back to `null` on the next.
+   * The object itself is rebuilt on every mouse move but `pinned` travels by
+   * reference, so its identity moves exactly on a pin or unpin.
+   */
+  mousePos?: {
+    pinned?: { coordinate?: unknown } | null;
+  };
+  /** kepler's per-interaction switches; `coordinate` is the one the pin needs. */
+  interactionConfig?: {
+    coordinate?: { enabled?: boolean };
+  };
 }
 
 /** A kepler filter, as the variable sync reads it. */
@@ -411,6 +426,71 @@ function firstFeatureRow(object: unknown): unknown {
   const feature = object as { properties?: { values?: unknown[] } } | null | undefined;
   const values = feature?.properties?.values;
   return Array.isArray(values) ? values[0] : undefined;
+}
+
+/**
+ * The vis-state slices the coordinate sync watches: the pin, whose identity
+ * moves exactly on a pin or unpin (see `VisStateLike.mousePos`), and the
+ * interaction config, so restoring a saved map configuration — which can
+ * switch the coordinate interaction back off — wakes the hook to re-enable
+ * it. Mouse moves rebuild `mousePos` but not `pinned`, so they stay quiet.
+ */
+export function readCoordinateSlices(store: Store): unknown[] {
+  const visState = getVisState(store);
+  return visState ? [visState.mousePos?.pinned, visState.interactionConfig] : [];
+}
+
+/**
+ * The map coordinate the user last pinned, as kepler's `[lng, lat]`.
+ *
+ * The tri-state `coordinateSync.ts` decides over: a pair for a pinned spot,
+ * `null` for the unpin of kepler's toggle, `undefined` for no state at all.
+ * Same draw guard as `readClickedEntity`, and for the same reason: while the
+ * draw toolbar is engaged, map clicks place vertices, and kepler's own
+ * interception of them is not contractual.
+ */
+export function readPinnedCoordinate(store: Store): [number, number] | null | undefined {
+  const visState = getVisState(store);
+  if (!visState || isDrawActive(store)) {
+    return undefined;
+  }
+  const pinned = visState.mousePos?.pinned;
+  if (pinned === undefined) {
+    return undefined;
+  }
+  if (pinned === null) {
+    return null;
+  }
+  const coordinate = pinned.coordinate;
+  if (!Array.isArray(coordinate) || coordinate.length < 2) {
+    return undefined;
+  }
+  const [lng, lat] = coordinate;
+  return typeof lng === 'number' && typeof lat === 'number' ? [lng, lat] : undefined;
+}
+
+/**
+ * Switches kepler's coordinate interaction on, so clicks pin a coordinate at
+ * all — it ships disabled, and nothing else in the panel turns it on.
+ *
+ * Idempotent, so the caller can re-run it on every reconcile: restoring a
+ * saved map configuration replaces `interactionConfig` wholesale, and a
+ * config saved before the coordinate mapping existed would switch the
+ * interaction back off. Returns false while the map has no vis-state yet,
+ * same contract as `pushTimeRange`.
+ */
+export function ensureCoordinateInteraction(store: Store, dispatch: Dispatch): boolean {
+  const coordinate = getVisState(store)?.interactionConfig?.coordinate;
+  if (!coordinate) {
+    return false;
+  }
+  if (!coordinate.enabled) {
+    // The state object is kepler's full interaction config; only this module's
+    // view of it is narrowed, hence the cast.
+    const config = { ...coordinate, enabled: true } as Parameters<typeof interactionConfigChange>[0];
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, interactionConfigChange(config)));
+  }
+  return true;
 }
 
 /** Whether kepler's draw toolbar is engaged, so map clicks belong to it. */

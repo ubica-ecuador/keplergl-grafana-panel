@@ -332,10 +332,12 @@ describe('partitionMappings', () => {
     const scalar = { field: 'category', variable: 'cat' };
     const range = { field: 'value', variable: 'valueMin', variableTo: 'valueMax' };
     const click = { field: 'vehicle_id', variable: 'vehicle', source: 'click' as const };
-    expect(partitionMappings([scalar, range, click])).toEqual({
+    const coordinate = { field: '', variable: 'lat', variableTo: 'lng', source: 'coordinate' as const };
+    expect(partitionMappings([scalar, range, click, coordinate])).toEqual({
       scalar: [scalar],
       range: [range],
       click: [click],
+      coordinate: [coordinate],
     });
   });
 
@@ -344,7 +346,14 @@ describe('partitionMappings', () => {
     // promote it to a range mapping would have the variable pair create a
     // filter on the map, which no click ever asked for.
     const mapping = { field: 'vehicle_id', variable: 'vehicle', variableTo: 'stray', source: 'click' as const };
-    expect(partitionMappings([mapping])).toEqual({ scalar: [], range: [], click: [mapping] });
+    expect(partitionMappings([mapping])).toEqual({ scalar: [], range: [], click: [mapping], coordinate: [] });
+  });
+
+  it('keeps a coordinate mapping out of the range set, whose pair encoding it shares', () => {
+    // variable/variableTo is lat/lng here, not min/max: the range reconcile
+    // would read the pair as a numeric window and create a filter on the map.
+    const mapping = { field: '', variable: 'lat', variableTo: 'lng', source: 'coordinate' as const };
+    expect(partitionMappings([mapping])).toEqual({ scalar: [], range: [], click: [], coordinate: [mapping] });
   });
 
   it('reads an absent source as filter-driven', () => {

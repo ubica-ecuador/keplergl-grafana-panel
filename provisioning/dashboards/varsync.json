@@ -58,6 +58,32 @@
         "hide": 0,
         "options": [],
         "skipUrlSync": false
+      },
+      {
+        "name": "lat",
+        "type": "textbox",
+        "label": "Lat",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
+        "name": "lng",
+        "type": "textbox",
+        "label": "Lng",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "options": [],
+        "skipUrlSync": false
       }
     ]
   },
@@ -91,6 +117,12 @@
             "field": "site",
             "variable": "site",
             "source": "click"
+          },
+          {
+            "field": "",
+            "variable": "lat",
+            "variableTo": "lng",
+            "source": "coordinate"
           }
         ]
       },
@@ -117,7 +149,7 @@
       },
       "id": 2,
       "options": {
-        "content": "### What the filters published\n\n| | |\n|---|---|\n| `$category` | **${category}** |\n| `$valueMin` | **${valueMin}** |\n| `$valueMax` | **${valueMax}** |\n| `$site` | **${site}** |\n\nSet a filter on `category` on the map and the variable follows at once. Add a filter on `value` (a numeric column) and drag its histogram brush: the pair follows ~300 ms after the brush rests — one write per gesture, not one per frame. Consumers use `value BETWEEN '$valueMin' AND '$valueMax'`; both variables go blank when the filter is removed. Both directions work: type bounds into the boxes above and the map's filter follows.\n\n`$site` is the *click* mapping: click a point on the map and the variable takes its `site` — `WHERE site = '$site'` on any other panel. Click empty map to clear it. One way only: typing in the box does not move the map.",
+        "content": "### What the filters published\n\n| | |\n|---|---|\n| `$category` | **${category}** |\n| `$valueMin` | **${valueMin}** |\n| `$valueMax` | **${valueMax}** |\n| `$site` | **${site}** |\n| `$lat` / `$lng` | **${lat}** / **${lng}** |\n\nSet a filter on `category` on the map and the variable follows at once. Add a filter on `value` (a numeric column) and drag its histogram brush: the pair follows ~300 ms after the brush rests — one write per gesture, not one per frame. Consumers use `value BETWEEN '$valueMin' AND '$valueMax'`; both variables go blank when the filter is removed. Both directions work: type bounds into the boxes above and the map's filter follows.\n\n`$site` is the *click* mapping: click a point on the map and the variable takes its `site` — `WHERE site = '$site'` on any other panel. Click empty map to clear it. One way only: typing in the box does not move the map.\n\n`$lat`/`$lng` is the *coordinates* mapping: any click also pins the place clicked and the pair takes it, for a spatial query on another panel — `ST_DWithin(geom, ST_MakePoint($lng, $lat)::geography, $radius)` with `$radius` a plain dashboard variable. Clicking again unpins on the map but the pair keeps the last spot; the next pin moves it.",
         "mode": "markdown"
       },
       "title": "Published range",

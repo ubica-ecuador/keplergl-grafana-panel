@@ -25,9 +25,11 @@ export interface VariableMapping {
    * instead publishes the value of `field` for the entity clicked on the map —
    * one way only, and by the click-sync rules in `clickSync.ts` — which is what
    * turns "click a vehicle" into "the rest of the dashboard shows that
-   * vehicle".
+   * vehicle". `coordinate` publishes the *place* clicked rather than any
+   * column: `variable` receives the latitude and `variableTo` the longitude
+   * (see `coordinateSync.ts`), so `field` means nothing to it.
    */
-  source?: 'filter' | 'click';
+  source?: 'filter' | 'click' | 'coordinate';
 }
 
 /** Whether a mapping publishes a numeric range as a min/max variable pair. */
@@ -40,26 +42,41 @@ export function isClickMapping(mapping: VariableMapping): boolean {
   return mapping.source === 'click';
 }
 
+/** Whether a mapping is driven by the clicked map coordinate. */
+export function isCoordinateMapping(mapping: VariableMapping): boolean {
+  return mapping.source === 'coordinate';
+}
+
 /**
  * The mappings, split by the state that drives each: `scalar` and `range`
  * mirror a kepler filter both ways, `click` publishes the clicked entity one
- * way. The split is exclusive — in particular a click mapping stays a click
- * mapping whatever else it names, so a stray `variableTo` cannot promote it
- * into the range reconcile and have a variable pair create a filter no click
- * ever asked for.
+ * way, `coordinate` the clicked place. The split is exclusive — in particular
+ * a click or coordinate mapping stays what it is whatever else it names, so a
+ * `variableTo` (a stray one on a click, the *longitude* on a coordinate)
+ * cannot promote it into the range reconcile and have a variable pair create
+ * a filter no click ever asked for.
  */
 export function partitionMappings(mappings: VariableMapping[]): {
   scalar: VariableMapping[];
   range: VariableMapping[];
   click: VariableMapping[];
+  coordinate: VariableMapping[];
 } {
   const scalar: VariableMapping[] = [];
   const range: VariableMapping[] = [];
   const click: VariableMapping[] = [];
+  const coordinate: VariableMapping[] = [];
   for (const mapping of mappings) {
-    (isClickMapping(mapping) ? click : isRangeMapping(mapping) ? range : scalar).push(mapping);
+    (isCoordinateMapping(mapping)
+      ? coordinate
+      : isClickMapping(mapping)
+        ? click
+        : isRangeMapping(mapping)
+          ? range
+          : scalar
+    ).push(mapping);
   }
-  return { scalar, range, click };
+  return { scalar, range, click, coordinate };
 }
 
 /** The little kepler filter shape this reads. */

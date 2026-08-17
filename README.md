@@ -221,6 +221,28 @@ map. Add a template variable, then map a filtered column to it under **Cross-fil
 The variable is read from the URL, which is what lets the map react even when its own query does not
 use the variable.
 
+#### Clicks
+
+A mapping row switched to **Click** publishes the clicked entity instead of a filter: click a point
+or trajectory and the variable takes that entity's value of the column — `WHERE vehicle_id =
+'$vehicle'` on any consuming panel. One way only, map → variable; clicking empty map clears it,
+but only when the running selection was published from this panel, so a shared link's preset value
+survives stray clicks.
+
+A row switched to **Coordinates** publishes the *place* clicked instead of any column: the pair of
+variables named under **Lat**/**Lng** takes the coordinate, for a spatial query on another panel —
+with `$radius` a plain dashboard variable:
+
+```sql
+WHERE $lat != '' AND ST_DWithin(geom, ST_MakePoint($lng, $lat)::geography, $radius)
+```
+
+The computed coverage comes back to the map as one more query, so the panel needs no spatial logic
+of its own. Any click pins the coordinate (the panel switches kepler's coordinate interaction on by
+itself); clicking again unpins on the map, but the variables keep the last spot until the next pin,
+so the consuming query never loses its centre. While the draw toolbar is engaged, clicks belong to
+the drawing and publish nothing.
+
 #### Drawn areas
 
 The polygon or rectangle drawn with kepler's draw tool can be published to a variable too. Add a

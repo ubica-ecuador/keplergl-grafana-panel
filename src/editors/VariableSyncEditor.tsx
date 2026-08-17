@@ -8,10 +8,11 @@ import { KeplerPanelOptions } from '../types';
 
 type Props = StandardEditorProps<VariableMapping[] | undefined, unknown, KeplerPanelOptions>;
 
-/** How a mapping row is driven: by the filter on its column, or by a click. */
-const SOURCE_OPTIONS: Array<ComboboxOption<'filter' | 'click'>> = [
+/** How a mapping row is driven: the filter on its column, a click's entity, or a click's place. */
+const SOURCE_OPTIONS: Array<ComboboxOption<'filter' | 'click' | 'coordinate'>> = [
   { label: 'Filter', value: 'filter' },
   { label: 'Click', value: 'click' },
+  { label: 'Coordinates', value: 'coordinate' },
 ];
 
 /**
@@ -31,6 +32,12 @@ const SOURCE_OPTIONS: Array<ComboboxOption<'filter' | 'click'>> = [
  * a point or trajectory on the map publishes that entity's value of the
  * column — `WHERE vehicle_id = '$vehicle'` on the consuming panel. One way
  * only, so the Max field does not apply and is hidden.
+ *
+ * Switching to Coordinates publishes the *place* clicked instead: the pair of
+ * variables receives the latitude and longitude, for the consuming panel's
+ * spatial query — `ST_DWithin(geom, ST_MakePoint($lng, $lat)::geography,
+ * $radius)` with the radius a plain dashboard variable. No column applies, so
+ * that field is hidden too.
  */
 export function VariableSyncEditor({ value, onChange, context }: Props) {
   const mappings = value ?? [];
@@ -68,21 +75,23 @@ export function VariableSyncEditor({ value, onChange, context }: Props) {
               onChange={(o) =>
                 // `filter` is the default, so it is stored as an absence and an
                 // untouched dashboard JSON stays byte-identical.
-                setRow(index, { source: o?.value === 'click' ? 'click' : undefined })
+                setRow(index, { source: o?.value === 'filter' ? undefined : o?.value })
               }
             />
           </InlineField>
-          <InlineField label={mapping.source === 'click' ? 'Column' : 'Filter'} labelWidth={8}>
-            <Combobox
-              options={columns}
-              value={mapping.field || null}
-              placeholder="column"
-              width={20}
-              createCustomValue
-              onChange={(o) => setRow(index, { field: o?.value ?? '' })}
-            />
-          </InlineField>
-          <InlineField label="Variable" labelWidth={10}>
+          {mapping.source !== 'coordinate' && (
+            <InlineField label={mapping.source === 'click' ? 'Column' : 'Filter'} labelWidth={8}>
+              <Combobox
+                options={columns}
+                value={mapping.field || null}
+                placeholder="column"
+                width={20}
+                createCustomValue
+                onChange={(o) => setRow(index, { field: o?.value ?? '' })}
+              />
+            </InlineField>
+          )}
+          <InlineField label={mapping.source === 'coordinate' ? 'Lat' : 'Variable'} labelWidth={10}>
             <Combobox
               options={variables}
               value={mapping.variable || null}
@@ -93,14 +102,18 @@ export function VariableSyncEditor({ value, onChange, context }: Props) {
           </InlineField>
           {mapping.source !== 'click' && (
             <InlineField
-              label="Max"
+              label={mapping.source === 'coordinate' ? 'Lng' : 'Max'}
               labelWidth={6}
-              tooltip="For a numeric column: the filter publishes its window as this pair, first variable = min, this one = max."
+              tooltip={
+                mapping.source === 'coordinate'
+                  ? 'The longitude half of the pair; the first variable receives the latitude.'
+                  : 'For a numeric column: the filter publishes its window as this pair, first variable = min, this one = max.'
+              }
             >
               <Combobox
                 options={variables}
                 value={mapping.variableTo || null}
-                placeholder="(range)"
+                placeholder={mapping.source === 'coordinate' ? 'variable' : '(range)'}
                 width={20}
                 isClearable
                 onChange={(o) => setRow(index, { variableTo: o?.value || undefined })}

@@ -124,7 +124,9 @@ export interface KeplerPanelOptions {
    * the map writes its value to the named variable, cross-filtering the rest of
    * the dashboard. A mapping with `source: 'click'` publishes the clicked
    * entity's value of the column instead — one way, map to variable — so
-   * clicking a vehicle on the map filters the dashboard to that vehicle.
+   * clicking a vehicle on the map filters the dashboard to that vehicle. One
+   * with `source: 'coordinate'` publishes the clicked place as a lat/lng
+   * variable pair, for the other panels' spatial queries.
    */
   variableMappings?: VariableMapping[];
 
