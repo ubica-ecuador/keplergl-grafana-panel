@@ -14,6 +14,7 @@
         "showSidePanel": false,
         "timeSync": "variables",
         "timeVariables": { "from": "quakeFrom", "to": "quakeTo" },
+        "areaVariable": "quakeArea",
         "basemap": "dark-matter",
         "followGrafanaTheme": false,
         "mapConfig": {
@@ -101,7 +102,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\nSELECT\n  count(*)                 AS \"Sismos\",\n  round(max(mag), 1)       AS \"Magnitud máxima\",\n  round(avg(depth_num), 1) AS \"Profundidad media (km)\"\nFROM read_parquet('https://demo.getgeolens.com/api/datasets/2717becb-bfc5-4029-845f-24c3bbe19780/export?format=parquet')\nWHERE event_time_utc_date_fmt\n  BETWEEN COALESCE(try_cast($quakeFrom AS TIMESTAMPTZ), '-infinity'::TIMESTAMPTZ)\n      AND COALESCE(try_cast($quakeTo   AS TIMESTAMPTZ), 'infinity'::TIMESTAMPTZ)",
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nINSTALL spatial; LOAD spatial;\nSET force_download = true;\n\nSELECT\n  count(*)                 AS \"Sismos\",\n  round(max(mag), 1)       AS \"Magnitud máxima\",\n  round(avg(depth_num), 1) AS \"Profundidad media (km)\"\nFROM read_parquet('https://demo.getgeolens.com/api/datasets/2717becb-bfc5-4029-845f-24c3bbe19780/export?format=parquet')\nWHERE event_time_utc_date_fmt\n  BETWEEN COALESCE(try_cast($quakeFrom AS TIMESTAMPTZ), '-infinity'::TIMESTAMPTZ)\n      AND COALESCE(try_cast($quakeTo   AS TIMESTAMPTZ), 'infinity'::TIMESTAMPTZ)\n  -- The drawn area arrives as WKT via $quakeArea; empty means no spatial cut.\n  AND ($quakeArea = '' OR ST_Contains(ST_GeomFromText($quakeArea), ST_Point(longitude_num, latitude_num)))",
           "refId": "A"
         }
       ],
@@ -125,7 +126,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\nSELECT\n  strftime(event_time_utc_date_fmt, '%d %b %H:%M') AS \"Fecha\",\n  place                                            AS \"Lugar\",\n  mag                                              AS \"Mag\"\nFROM read_parquet('https://demo.getgeolens.com/api/datasets/2717becb-bfc5-4029-845f-24c3bbe19780/export?format=parquet')\nWHERE event_time_utc_date_fmt\n  BETWEEN COALESCE(try_cast($quakeFrom AS TIMESTAMPTZ), '-infinity'::TIMESTAMPTZ)\n      AND COALESCE(try_cast($quakeTo   AS TIMESTAMPTZ), 'infinity'::TIMESTAMPTZ)\nORDER BY mag DESC\nLIMIT 10",
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nINSTALL spatial; LOAD spatial;\nSET force_download = true;\n\nSELECT\n  strftime(event_time_utc_date_fmt, '%d %b %H:%M') AS \"Fecha\",\n  place                                            AS \"Lugar\",\n  mag                                              AS \"Mag\"\nFROM read_parquet('https://demo.getgeolens.com/api/datasets/2717becb-bfc5-4029-845f-24c3bbe19780/export?format=parquet')\nWHERE event_time_utc_date_fmt\n  BETWEEN COALESCE(try_cast($quakeFrom AS TIMESTAMPTZ), '-infinity'::TIMESTAMPTZ)\n      AND COALESCE(try_cast($quakeTo   AS TIMESTAMPTZ), 'infinity'::TIMESTAMPTZ)\n  -- The drawn area arrives as WKT via $quakeArea; empty means no spatial cut.\n  AND ($quakeArea = '' OR ST_Contains(ST_GeomFromText($quakeArea), ST_Point(longitude_num, latitude_num)))\nORDER BY mag DESC\nLIMIT 10",
           "refId": "A"
         }
       ],
@@ -193,6 +194,16 @@
         "hide": 0,
         "label": "Hasta (mapa)",
         "name": "quakeTo",
+        "options": [],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": { "text": "", "value": "" },
+        "hide": 0,
+        "label": "Área (mapa)",
+        "name": "quakeArea",
         "options": [],
         "query": "",
         "skipUrlSync": false,

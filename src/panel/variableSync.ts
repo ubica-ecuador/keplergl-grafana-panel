@@ -29,6 +29,18 @@ interface FilterLike {
 const VARIABLE_FILTER_TYPES = new Set(['select', 'multiSelect', 'input']);
 
 /**
+ * Whether a filter's value can drive a mapped variable at all.
+ *
+ * The point is less the accepted set than the rejected one: a `polygon`
+ * filter's `name` is the *labels of the layers* it applies to, not a column, so
+ * without this guard a layer labelled like a mapped column would feed a GeoJSON
+ * Feature into the field sync as that column's value.
+ */
+export function isVariableFilter(filter: FilterLike): boolean {
+  return VARIABLE_FILTER_TYPES.has(filter.type ?? '');
+}
+
+/**
  * The value each mapped variable should hold, from the current filters.
  *
  * Only mappings with a matching, value-bearing filter appear — a mapping whose

@@ -7,6 +7,7 @@ import { MapConfigEditor } from './editors/MapConfigEditor';
 import { FieldMappingEditor } from './editors/FieldMappingEditor';
 import { VariableSyncEditor } from './editors/VariableSyncEditor';
 import { TimeVariableEditor } from './editors/TimeVariableEditor';
+import { AreaVariableEditor } from './editors/AreaVariableEditor';
 
 export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelOptions((builder) =>
   builder
@@ -142,6 +143,14 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       description: 'Write a kepler filter into a dashboard variable to cross-filter other panels.',
       category: ['Cross-filtering'],
       editor: VariableSyncEditor,
+    })
+    .addCustomEditor({
+      id: 'areaVariable',
+      path: 'areaVariable',
+      name: 'Publish drawn area',
+      description: 'Write the polygon or rectangle drawn on the map to a dashboard variable as WKT.',
+      category: ['Cross-filtering'],
+      editor: AreaVariableEditor,
     })
     .addCustomEditor({
       id: 'saveRequest',

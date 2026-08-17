@@ -5,6 +5,40 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Fixed: side-panel dropdowns opened far below their trigger, often invisible.** Changing a
+  layer's type — or opening any of kepler's selectors, field pickers and color palettes — showed
+  the options well below where they should be, and near the bottom of a panel not at all. kepler's
+  `Portaled` component parents every popover to KeplerGl's root div and positions it
+  `position: fixed` at viewport coordinates; inside a Grafana dashboard that root sits under
+  `.react-grid-item`, whose CSS transform makes the panel — not the viewport — the containing
+  block for fixed descendants, shifting every popover down by the panel's own offset, and the
+  panel chrome clipped whatever poked past the edge. `Portaled` is not an injectable factory, so
+  webpack now rewrites every kepler-internal request for the module to a thin wrapper that severs
+  the RootContext, making the portal fall back to `document.body` — no transformed ancestors, no
+  clipping, and kepler's coordinates land where they were computed. Dropdowns now open next to
+  their trigger and may extend past the panel like any ordinary dropdown. Covered by e2e tests
+  that open the layer-type dropdown on a dashboard and actually pick an option from it.
+
+- **Added: the drawn polygon or rectangle can be published to a dashboard variable, as WKT.** The
+  figure drawn with kepler's draw tool was locked inside the panel; now **Cross-filtering → Publish
+  drawn area** names a text box variable and the figure lands in it as canonical WKT (EPSG:4326) the
+  moment it is finished — `WHERE $area != '' AND ST_Intersects(geom, ST_GeomFromText($area, 4326))`
+  in any other panel, against PostGIS, MobilityDB or DuckDB `spatial`. The shape of the channel
+  follows the cross-filtering design doc. Only the most recent figure is published — kepler keeps
+  figures in two places (a finished polygon waits in the editor until a layer is chosen, a rectangle
+  becomes a polygon filter immediately), and the sync reads both. It publishes on the gesture, with
+  the same 300 ms rest the time variables use, because dragging a vertex updates the store per
+  pointer move. It never writes on dashboard load — the first pass adopts whatever figures a saved
+  config restored, silently — so a shared link keeps the value it was opened with. And it is
+  one-way by design: the variable exists for the *other* panels' queries, and feeding it back into
+  this panel's own would shrink the map's dataset under the drawn shape, which could then never be
+  widened again. Deleting the last figure clears the variable to `''`, which keeps the SQL guard
+  literal. The WKT is emitted by the plugin — fixed format, coordinates rounded to 6 decimals — so
+  the variable never carries text the plugin did not format, and a hand-drawn shape does not bloat
+  the URL with float noise. Along the way: the field-mapping sync now skips polygon filters, whose
+  `name` is layer labels rather than a column — a layer labelled like a mapped column would have fed
+  a GeoJSON Feature into the variable as that column's value.
+
 - **Fixed: drawing a polygon or rectangle filter did nothing.** The polygon collected its vertices
   and then refused to close — double-click, Enter and clicking the first vertex all died in
   `finishDrawing` — and the rectangle broke one step earlier, on its very first click. Both threw

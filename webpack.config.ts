@@ -1,3 +1,4 @@
+import CopyWebpackPlugin from 'copy-webpack-plugin';
 import path from 'path';
 import webpack, { type Configuration } from 'webpack';
 import { merge } from 'webpack-merge';
@@ -10,6 +11,18 @@ const config = async (env: Env): Promise<Configuration> => {
   return merge(baseConfig, {
     plugins: [
       /*
+       * Static assets kepler fetches at runtime from `cdnUrl` — which
+       * keplerConfig.ts points at the plugin's own asset path so air-gapped
+       * installs never call the Foursquare CDN. The scaffold only copies JSON
+       * (that rule carries the vendored svg-icons.json); the effect preview
+       * thumbnails under src/images/effects/ are PNG, vendored from kepler.gl
+       * (MIT), and need their own copy rule to be served at
+       * `<plugin>/images/effects/*.png`.
+       */
+      new CopyWebpackPlugin({
+        patterns: [{ from: 'images', to: 'images' }],
+      }),
+      /*
        * Parts of the kepler.gl tree read the Node `process` global as a free
        * variable, and webpack 5 no longer shims it. Most reads are guarded with
        * `typeof process` or a try/catch, but at least one is not: the plugin
@@ -18,6 +31,26 @@ const config = async (env: Env): Promise<Configuration> => {
        */
       new webpack.ProvidePlugin({
         process: 'process/browser.js',
+      }),
+      /*
+       * kepler's Portaled component parents every dropdown / color picker
+       * popover to KeplerGl's root div and positions it `position: fixed` at
+       * viewport coordinates. Under Grafana's `.react-grid-item` a CSS
+       * transform re-bases those coordinates to the panel and the panel chrome
+       * clips them, so side-panel dropdowns opened shifted below their trigger
+       * and were cut off at the panel edge — often invisible entirely.
+       *
+       * Portaled is not an injectable factory, so the swap happens here:
+       * every request for the module from inside @kepler.gl resolves to
+       * src/panel/portaledBodyMount.tsx, which re-parents the portal to
+       * document.body. The issuer check keeps the wrapper's own import of the
+       * original from being rewritten into a cycle.
+       */
+      new webpack.NormalModuleReplacementPlugin(/[\\/]portaled(\.js)?$/, (resource) => {
+        const issuer: string = resource.contextInfo?.issuer ?? '';
+        if (issuer.includes('@kepler.gl')) {
+          resource.request = path.resolve(process.cwd(), 'src', 'panel', 'portaledBodyMount.tsx');
+        }
       }),
     ],
     resolve: {

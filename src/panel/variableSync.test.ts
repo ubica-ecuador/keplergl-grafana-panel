@@ -1,9 +1,38 @@
-import { decideFieldSync, filterVariableValues, normalizeFilterKey, variableFilterValues } from './variableSync';
+import {
+  decideFieldSync,
+  filterVariableValues,
+  isVariableFilter,
+  normalizeFilterKey,
+  variableFilterValues,
+} from './variableSync';
 
 const mappings = [
   { field: 'category', variable: 'cat' },
   { field: 'city', variable: 'city' },
 ];
+
+describe('isVariableFilter', () => {
+  it('accepts the filter types whose value maps to a variable', () => {
+    expect(isVariableFilter({ name: ['category'], type: 'select', value: 'parks' })).toBe(true);
+    expect(isVariableFilter({ name: ['category'], type: 'multiSelect', value: ['parks'] })).toBe(true);
+    expect(isVariableFilter({ name: ['city'], type: 'input', value: 'Cuenca' })).toBe(true);
+  });
+
+  it('rejects a polygon filter, whose name is layer labels rather than a column', () => {
+    // A drawn rectangle becomes a polygon filter named after the LAYERS it
+    // applies to. A layer labelled like a mapped column would otherwise feed a
+    // GeoJSON Feature into the field sync as if it were that column's value.
+    expect(
+      isVariableFilter({ name: ['category'], type: 'polygon', value: { type: 'Feature', geometry: {} } })
+    ).toBe(false);
+  });
+
+  it('rejects windows and unknowns', () => {
+    expect(isVariableFilter({ name: ['x'], type: 'range', value: [1, 2] })).toBe(false);
+    expect(isVariableFilter({ name: ['t'], type: 'timeRange', value: [1, 2] })).toBe(false);
+    expect(isVariableFilter({ name: ['x'] })).toBe(false);
+  });
+});
 
 describe('filterVariableValues', () => {
   it('reads a select filter value into its mapped variable', () => {

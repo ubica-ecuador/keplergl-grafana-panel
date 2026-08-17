@@ -221,6 +221,24 @@ map. Add a template variable, then map a filtered column to it under **Cross-fil
 The variable is read from the URL, which is what lets the map react even when its own query does not
 use the variable.
 
+#### Drawn areas
+
+The polygon or rectangle drawn with kepler's draw tool can be published to a variable too. Add a
+**text box** variable to the dashboard, pick it under **Cross-filtering → Publish drawn area**, and
+the figure arrives as **WKT in EPSG:4326** the moment it is finished — even before a layer is chosen
+for it. Other panels use it unquoted, with a guard for the empty value:
+
+```sql
+WHERE $area != '' AND ST_Intersects(geom, ST_GeomFromText($area, 4326))
+```
+
+Three deliberate limits. Only the **most recent** figure is published, and deleting the last one
+clears the variable to `''`. The channel is **one-way** — editing the variable does not draw on the
+map — and the value is never written on dashboard load, so a shared link keeps the area it was
+opened with. And the variable is for the **other** panels: put `$area` in this panel's own query and
+drawing a shape shrinks the data behind the map, after which the shape can never be widened again
+from the map.
+
 ## Panel options
 
 | Option                     | Notes                                                                                           |
@@ -231,6 +249,7 @@ use the variable.
 | **Time range sync**        | Dashboard drives the map's time filter (default), both directions, or off. Needs a time column. |
 | **Flow line style**        | Straight, curved or animated lines for origin-destination flow layers.                          |
 | **Cross-filtering**        | Map a kepler filter to a dashboard variable to cross-filter other panels.                       |
+| **Publish drawn area**     | Write the drawn polygon/rectangle to a variable as WKT, for other panels' spatial SQL.          |
 | **Base map**               | Carto Dark Matter / Positron / Voyager, Esri satellite, or a self-hosted `style.json`.          |
 | **Map configuration**      | Save the current layers and filters with the dashboard, or paste one in.                        |
 

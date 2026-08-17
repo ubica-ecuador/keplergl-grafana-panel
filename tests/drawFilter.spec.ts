@@ -152,6 +152,10 @@ test('double-click finishes a drawn polygon and stores it as an editor feature',
   test.slow();
   const { panel, map, errors } = await gotoLoadedTripsPanel(gotoDashboardPage, readProvisionedDashboard, page);
 
+  // The area variable is never written on load — a shared link's value must
+  // survive — so before any drawing the URL carries no published figure.
+  expect(decodeURIComponent(page.url())).not.toContain('var-area=POLYGON');
+
   await selectDrawMode(panel, 'draw-feature');
   await expect.poll(async () => (await readEditorState(map)).mode).toBe('DRAW_POLYGON');
 
@@ -160,6 +164,14 @@ test('double-click finishes a drawn polygon and stores it as an editor feature',
   await page.mouse.dblclick(c.x, c.y);
 
   await expect.poll(async () => (await readEditorState(map)).features, { timeout: 10_000 }).toBe(1);
+
+  // The finished figure reaches the mapped dashboard variable as WKT once it
+  // rests (300 ms trailing debounce), even before a layer is chosen for it.
+  // Deletion → clear is covered by the pure areaSync tests: kepler's delete
+  // path goes through the feature action panel, too fiddly under software GL.
+  await expect
+    .poll(async () => decodeURIComponent(page.url()), { timeout: 10_000 })
+    .toContain('var-area=POLYGON');
   expect(errors).toEqual([]);
 });
 
@@ -190,5 +202,10 @@ test('two clicks draw a rectangle that becomes a polygon filter', async ({
   await expect
     .poll(async () => (await readEditorState(map)).filterTypes, { timeout: 10_000 })
     .toContain('polygon');
+
+  // The filter-bound figure is published too — the polygon-filter source path.
+  await expect
+    .poll(async () => decodeURIComponent(page.url()), { timeout: 10_000 })
+    .toContain('var-area=POLYGON');
   expect(errors).toEqual([]);
 });

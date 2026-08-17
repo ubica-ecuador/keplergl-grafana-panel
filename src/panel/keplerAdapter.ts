@@ -209,6 +209,10 @@ interface VisStateLike {
     /** True while the trip playback is running. */
     isAnimating?: boolean;
   };
+  /** kepler's draw editor: finished figures not (yet) bound to a polygon filter. */
+  editor?: {
+    features?: Array<{ id?: string | number; geometry?: { type?: string; coordinates?: unknown } }>;
+  };
 }
 
 /** A kepler filter, as the variable sync reads it. */
@@ -228,15 +232,65 @@ export function readFilters(store: Store): KeplerFilter[] {
  * notification is worth reacting to at all.
  *
  * Filters carry the time window and the cross-filter selections, datasets say
- * whether there is yet a time column to bind to, and the animation config holds
- * the trip playhead — between them that is everything the four sync hooks look
- * at. Panning the map, hovering a point and opening a panel touch none of the
- * three, so their identity stays put and the reconcile is skipped. See
- * {@link SliceWatcher}.
+ * whether there is yet a time column to bind to, the animation config holds the
+ * trip playhead, and the editor holds the drawn figures the area sync
+ * publishes — between them that is everything the sync hooks look at. kepler's
+ * `setFeaturesUpdater` rebuilds the whole `editor` object on every change, so
+ * its identity moves exactly when a figure does. Panning the map, hovering a
+ * point and opening a panel touch none of the four, so their identity stays put
+ * and the reconcile is skipped. See {@link SliceWatcher}.
  */
 export function readSyncSlices(store: Store): unknown[] {
   const visState = getVisState(store);
-  return visState ? [visState.filters, visState.datasets, visState.animationConfig] : [];
+  return visState ? [visState.filters, visState.datasets, visState.animationConfig, visState.editor] : [];
+}
+
+/** A figure drawn on the map, wherever kepler is keeping it. */
+export interface DrawnArea {
+  /** kepler's feature id — assigned once when the figure is finished, stable across vertex edits. */
+  id: string;
+  geometry: { type: string; coordinates?: unknown };
+}
+
+/**
+ * Every figure drawn on the map, from both places kepler keeps them: polygon
+ * filters (`type: 'polygon'`, whose `value` is the whole GeoJSON Feature — a
+ * rectangle is applied to every layer the moment it is finished) and
+ * `editor.features` (a finished polygon waits there until a layer is chosen;
+ * kepler removes it from the editor once it becomes a filter).
+ *
+ * Deduped by feature id keeping the first occurrence; filters come first and
+ * editor features last, so "the last element" is a deterministic notion of the
+ * most recent figure that `areaSync` relies on.
+ */
+export function readDrawnAreas(store: Store): DrawnArea[] {
+  const visState = getVisState(store);
+  if (!visState) {
+    return [];
+  }
+
+  const candidates: Array<{ id?: string | number; geometry?: { type?: string; coordinates?: unknown } }> = [];
+  for (const filter of visState.filters) {
+    if (filter.type === 'polygon') {
+      const feature = filter.value as { id?: string | number; geometry?: { type?: string; coordinates?: unknown } };
+      if (feature && typeof feature === 'object') {
+        candidates.push(feature);
+      }
+    }
+  }
+  candidates.push(...(visState.editor?.features ?? []));
+
+  const seen = new Set<string>();
+  const areas: DrawnArea[] = [];
+  for (const { id, geometry } of candidates) {
+    const key = typeof id === 'number' ? String(id) : id;
+    if (!key || seen.has(key) || !geometry?.type) {
+      continue;
+    }
+    seen.add(key);
+    areas.push({ id: key, geometry: { type: geometry.type, coordinates: geometry.coordinates } });
+  }
+  return areas;
 }
 
 function filterHasField(filter: { name?: string[] | string }, field: string): boolean {

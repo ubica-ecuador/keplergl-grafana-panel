@@ -34,7 +34,9 @@
         "y": 0
       },
       "id": 1,
-      "options": {},
+      "options": {
+        "areaVariable": "area"
+      },
       "targets": [
         {
           "datasource": {
@@ -81,7 +83,19 @@
   "schemaVersion": 39,
   "tags": [],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "name": "area",
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      }
+    ]
   },
   "time": {
     "from": "now-6h",

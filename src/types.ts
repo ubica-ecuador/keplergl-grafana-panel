@@ -125,4 +125,16 @@ export interface KeplerPanelOptions {
    * the dashboard.
    */
   variableMappings?: VariableMapping[];
+
+  /**
+   * Dashboard variable the figure drawn on the map is published to, as WKT in
+   * EPSG:4326 — `ST_GeomFromText($area, 4326)` on the consuming side.
+   *
+   * One way only, and only the most recent figure; deleting the last one
+   * clears the variable to ''. Never written on dashboard load, so the value a
+   * shared link carries survives. The variable is for the *other* panels'
+   * queries: put it in this panel's own and drawing a shape shrinks the map's
+   * dataset, after which the shape can never be widened again from the map.
+   */
+  areaVariable?: string;
 }

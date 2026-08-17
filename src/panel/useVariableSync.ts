@@ -4,7 +4,13 @@ import type { Store } from 'redux';
 
 import { applyFieldFilter, readFilters, readSyncSlices, removeFieldFilter } from './keplerAdapter';
 import { SliceWatcher } from './sliceWatcher';
-import { decideFieldSync, normalizeFilterKey, variableFilterValues, type VariableMapping } from './variableSync';
+import {
+  decideFieldSync,
+  isVariableFilter,
+  normalizeFilterKey,
+  variableFilterValues,
+  type VariableMapping,
+} from './variableSync';
 
 interface Params {
   store: Store;
@@ -54,6 +60,12 @@ export function useVariableSync({ store, isReady, mappings }: Params): void {
 
     const filterValueByField: Record<string, unknown> = {};
     for (const filter of readFilters(store)) {
+      // A polygon filter's name is its layer labels, not a column — letting it
+      // through would hand a GeoJSON Feature to a field mapping. See
+      // `isVariableFilter`.
+      if (!isVariableFilter(filter)) {
+        continue;
+      }
       const field = Array.isArray(filter.name) ? filter.name[0] : filter.name;
       if (field) {
         filterValueByField[field] = filter.value;

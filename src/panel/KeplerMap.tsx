@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Provider } from 'react-redux';
 import { StyleSheetManager } from 'styled-components';
-import KeplerGl from '@kepler.gl/components';
+import { injectComponents } from '@kepler.gl/components';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -14,11 +14,13 @@ import { configureKepler } from './keplerConfig';
 import { createKeplerStore } from './keplerStore';
 import { captureMapConfig, loadDatasets, refreshDatasets, setBasemap, setSidePanel } from './keplerAdapter';
 import { decideLoadAction } from './loadDecision';
+import { replaceMapControl } from './effectsMapControl';
 import { useTimeRangeSync } from './useTimeRangeSync';
 import { useAutoLayers } from './useAutoLayers';
 import { useWindViewport } from './useWindViewport';
 import { usePeerTimeSync } from './usePeerTimeSync';
 import { useVariableSync } from './useVariableSync';
+import { useAreaSync } from './useAreaSync';
 import { useTimeVariableSync } from './useTimeVariableSync';
 import { useActiveBasemap } from './useActiveBasemap';
 import { BasemapAttribution } from './BasemapAttribution';
@@ -32,6 +34,11 @@ const NO_TIME_VARIABLES: TimeVariableMapping = { from: '', to: '' };
 // Must run before any kepler component mounts. Lives here rather than in
 // module.ts so it is part of the deferred chunk.
 configureKepler();
+
+// The stock KeplerGl toolbar has no effects button; this KeplerGl carries the
+// map control that adds it. Module scope so the component tree is built once —
+// recreating it per render would remount the whole map.
+const KeplerGl = injectComponents([replaceMapControl()]);
 
 export interface KeplerMapProps {
   width: number;
@@ -54,6 +61,8 @@ export interface KeplerMapProps {
   onChangeGrafanaRange?: (range: TimeRangeMs) => void;
   /** kepler filter -> dashboard variable bindings. */
   variableMappings: VariableMapping[];
+  /** Variable the drawn polygon/rectangle is published to as WKT; empty for none. */
+  areaVariable: string;
   /** The two variables the time slider's window is published to, if configured. */
   timeVariables?: TimeVariableMapping;
   /** Whether playing the slider publishes as it runs, or only once it stops. */
@@ -93,6 +102,7 @@ export function KeplerMap({
   grafanaRange,
   onChangeGrafanaRange,
   variableMappings,
+  areaVariable,
   timeVariables,
   publishWhilePlaying,
   peerTimeSync,
@@ -197,6 +207,10 @@ export function KeplerMap({
   usePeerTimeSync({ store, isReady, enabled: peerTimeSync });
 
   useVariableSync({ store, isReady, mappings: variableMappings });
+
+  // One-way and silent on its first pass — it adopts whatever figures a saved
+  // config restored without publishing — so it contends with nothing on load.
+  useAreaSync({ store, isReady, variable: areaVariable });
 
   // Declared last so the dashboard-range sync has already had its say on load;
   // in `variables` mode that sync stands down entirely and this owns the clock.

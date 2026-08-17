@@ -91,6 +91,7 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
         grafanaRange={grafanaRange}
         onChangeGrafanaRange={onChangeTimeRange}
         variableMappings={options.variableMappings ?? []}
+        areaVariable={options.areaVariable ?? ''}
         timeVariables={options.timeVariables}
         publishWhilePlaying={options.publishWhilePlaying ?? false}
         peerTimeSync={options.peerTimeSync ?? false}
