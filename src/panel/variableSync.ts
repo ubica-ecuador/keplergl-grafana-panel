@@ -19,11 +19,47 @@ export interface VariableMapping {
    * ignored.
    */
   variableTo?: string;
+  /**
+   * What drives the variable. The default, `filter`, is the two-way binding
+   * above: the filter on `field` and the variable mirror each other. `click`
+   * instead publishes the value of `field` for the entity clicked on the map —
+   * one way only, and by the click-sync rules in `clickSync.ts` — which is what
+   * turns "click a vehicle" into "the rest of the dashboard shows that
+   * vehicle".
+   */
+  source?: 'filter' | 'click';
 }
 
 /** Whether a mapping publishes a numeric range as a min/max variable pair. */
 export function isRangeMapping(mapping: VariableMapping): boolean {
   return Boolean(mapping.variable && mapping.variableTo);
+}
+
+/** Whether a mapping is driven by the clicked entity rather than a filter. */
+export function isClickMapping(mapping: VariableMapping): boolean {
+  return mapping.source === 'click';
+}
+
+/**
+ * The mappings, split by the state that drives each: `scalar` and `range`
+ * mirror a kepler filter both ways, `click` publishes the clicked entity one
+ * way. The split is exclusive — in particular a click mapping stays a click
+ * mapping whatever else it names, so a stray `variableTo` cannot promote it
+ * into the range reconcile and have a variable pair create a filter no click
+ * ever asked for.
+ */
+export function partitionMappings(mappings: VariableMapping[]): {
+  scalar: VariableMapping[];
+  range: VariableMapping[];
+  click: VariableMapping[];
+} {
+  const scalar: VariableMapping[] = [];
+  const range: VariableMapping[] = [];
+  const click: VariableMapping[] = [];
+  for (const mapping of mappings) {
+    (isClickMapping(mapping) ? click : isRangeMapping(mapping) ? range : scalar).push(mapping);
+  }
+  return { scalar, range, click };
 }
 
 /** The little kepler filter shape this reads. */

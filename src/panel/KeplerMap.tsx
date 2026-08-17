@@ -20,6 +20,7 @@ import { useAutoLayers } from './useAutoLayers';
 import { useWindViewport } from './useWindViewport';
 import { usePeerTimeSync } from './usePeerTimeSync';
 import { useVariableSync } from './useVariableSync';
+import { useClickSync } from './useClickSync';
 import { useAreaSync } from './useAreaSync';
 import { useTimeVariableSync } from './useTimeVariableSync';
 import { useActiveBasemap } from './useActiveBasemap';
@@ -209,6 +210,11 @@ export function KeplerMap({
   usePeerTimeSync({ store, isReady, enabled: peerTimeSync });
 
   useVariableSync({ store, isReady, mappings: variableMappings });
+
+  // One-way: publishes the clicked entity's mapped columns, and clears only
+  // what it published itself, so a shared link's variable survives stray
+  // clicks on the map background.
+  useClickSync({ store, isReady, mappings: variableMappings });
 
   // One-way and silent on its first pass — it adopts whatever figures a saved
   // config restored without publishing — so it contends with nothing on load.

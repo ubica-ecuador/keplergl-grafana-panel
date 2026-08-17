@@ -4,6 +4,7 @@ import {
   isRangeMapping,
   isVariableFilter,
   normalizeFilterKey,
+  partitionMappings,
   rangeFilterPair,
   rangeVariableWrites,
   readRangeFromVariables,
@@ -323,5 +324,31 @@ describe('range values through the shared arbitration', () => {
       kind: 'toMap',
       values: ['12.5', '80'],
     });
+  });
+});
+
+describe('partitionMappings', () => {
+  it('splits mappings by the state that drives them', () => {
+    const scalar = { field: 'category', variable: 'cat' };
+    const range = { field: 'value', variable: 'valueMin', variableTo: 'valueMax' };
+    const click = { field: 'vehicle_id', variable: 'vehicle', source: 'click' as const };
+    expect(partitionMappings([scalar, range, click])).toEqual({
+      scalar: [scalar],
+      range: [range],
+      click: [click],
+    });
+  });
+
+  it('keeps a click mapping out of the range set even when it names a Max variable', () => {
+    // A click mapping is one-way map → variable; letting its stray variableTo
+    // promote it to a range mapping would have the variable pair create a
+    // filter on the map, which no click ever asked for.
+    const mapping = { field: 'vehicle_id', variable: 'vehicle', variableTo: 'stray', source: 'click' as const };
+    expect(partitionMappings([mapping])).toEqual({ scalar: [], range: [], click: [mapping] });
+  });
+
+  it('reads an absent source as filter-driven', () => {
+    const mapping = { field: 'category', variable: 'cat', source: 'filter' as const };
+    expect(partitionMappings([mapping]).scalar).toEqual([mapping]);
   });
 });

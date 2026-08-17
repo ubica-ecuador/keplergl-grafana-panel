@@ -122,7 +122,9 @@ export interface KeplerPanelOptions {
   /**
    * Ties kepler filters to dashboard variables: setting a select/text filter on
    * the map writes its value to the named variable, cross-filtering the rest of
-   * the dashboard.
+   * the dashboard. A mapping with `source: 'click'` publishes the clicked
+   * entity's value of the column instead — one way, map to variable — so
+   * clicking a vehicle on the map filters the dashboard to that vehicle.
    */
   variableMappings?: VariableMapping[];
 

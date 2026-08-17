@@ -5,6 +5,26 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Added: clicking an entity on the map can publish it to a dashboard variable.** A
+  cross-filtering mapping row can now be switched from "Filter" to "Click": the value of its
+  column for the clicked point or trajectory lands in the variable — `WHERE vehicle_id =
+  '$vehicle'` on any consuming panel — so clicking a vehicle filters the rest of the dashboard to
+  it (escalón 3 of the cross-filtering design doc). One direction only, map → variable; a filter
+  mapping on the same column remains the way to drive the map from the variable. Clicking empty
+  map — kepler's deselect gesture — publishes the variable blank, but only when the running
+  selection was published by this panel: a dashboard opened from a shared link keeps its preset
+  value through any number of stray background clicks. A data refresh resets kepler's click state
+  without a gesture (`replaceDataInMap` removes and re-merges the layers), which the sync reads
+  as "no state", never as a deselect — the selection survives auto-refresh. Resolution rides
+  kepler's own tooltip path (`layer.getHoverData`), so it is uniform across layer types,
+  including both Trip layer shapes: a `geojson`-mode trip resolves to its trajectory's row and a
+  `table`-mode trip to the vertex under the playhead, falling back to the trip's first vertex
+  when the playhead sits outside its window (a fading trail is still clickable). The sample
+  cross-filter dashboard gained a `site` column and a click mapping publishing it to `$site`.
+  Covered by unit tests over the pure decision module (`clickSync.ts`) and verified in the
+  browser: publish on click, entity switch, blank on deselect, refresh survival, shared-link
+  protection, and both trip modes.
+
 - **Added: a numeric range filter can be published as a min/max variable pair.** A cross-filtering
   mapping now takes an optional second variable ("Max"), turning it into a range mapping: narrow a
   filter on a numeric column and the pair lands in the two variables —

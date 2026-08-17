@@ -6,9 +6,9 @@ import { applyFieldFilter, applyRangeFilter, readFilters, readSyncSlices, remove
 import { SliceWatcher } from './sliceWatcher';
 import {
   decideFieldSync,
-  isRangeMapping,
   isVariableFilter,
   normalizeFilterKey,
+  partitionMappings,
   rangeFilterPair,
   rangeVariableWrites,
   readRangeFromVariables,
@@ -97,8 +97,10 @@ export function useVariableSync({ store, isReady, mappings }: Params): void {
       return;
     }
 
-    const scalarMaps = maps.filter((m) => !isRangeMapping(m));
-    const rangeMaps = maps.filter(isRangeMapping);
+    // Click mappings belong to `useClickSync` — one-way, publish-on-click.
+    // Reconciling them here would have the variable write a filter back onto
+    // the map, a direction no click mapping asked for.
+    const { scalar: scalarMaps, range: rangeMaps } = partitionMappings(maps);
 
     const variableValues: Record<string, unknown> = {};
     for (const { variable, variableTo } of maps) {
@@ -267,8 +269,11 @@ export function useVariableSync({ store, isReady, mappings }: Params): void {
  * template service right after writing a variable returns the stale value and
  * the map bounces back to it. The URL is consistent with both our own writes and
  * the variable picker, so it is the race-free source of truth.
+ *
+ * Exported for the sibling sync hooks (`useClickSync`) that need the same
+ * race-free read.
  */
-function readVariable(name: string): unknown {
+export function readVariable(name: string): unknown {
   const values = locationService.getSearch().getAll(`var-${name}`);
   if (values.length === 0) {
     return undefined;

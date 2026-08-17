@@ -8,6 +8,12 @@ import { KeplerPanelOptions } from '../types';
 
 type Props = StandardEditorProps<VariableMapping[] | undefined, unknown, KeplerPanelOptions>;
 
+/** How a mapping row is driven: by the filter on its column, or by a click. */
+const SOURCE_OPTIONS: Array<ComboboxOption<'filter' | 'click'>> = [
+  { label: 'Filter', value: 'filter' },
+  { label: 'Click', value: 'click' },
+];
+
 /**
  * Binds kepler filters to dashboard variables.
  *
@@ -20,6 +26,11 @@ type Props = StandardEditorProps<VariableMapping[] | undefined, unknown, KeplerP
  * numeric filter on the column publishes its window as the min/max pair —
  * `speed BETWEEN '$speedMin' AND '$speedMax'` on the consuming panel — the
  * same two-variable encoding the time window uses.
+ *
+ * Switching "From" to Click turns the row into an *entity* mapping: clicking
+ * a point or trajectory on the map publishes that entity's value of the
+ * column — `WHERE vehicle_id = '$vehicle'` on the consuming panel. One way
+ * only, so the Max field does not apply and is hidden.
  */
 export function VariableSyncEditor({ value, onChange, context }: Props) {
   const mappings = value ?? [];
@@ -45,7 +56,23 @@ export function VariableSyncEditor({ value, onChange, context }: Props) {
 
       {mappings.map((mapping, index) => (
         <InlineFieldRow key={index}>
-          <InlineField label="Filter" labelWidth={8}>
+          <InlineField
+            label="From"
+            labelWidth={8}
+            tooltip="What drives the variable: the filter set on the column (two-way), or the entity clicked on the map (one-way)."
+          >
+            <Combobox
+              options={SOURCE_OPTIONS}
+              value={mapping.source ?? 'filter'}
+              width={12}
+              onChange={(o) =>
+                // `filter` is the default, so it is stored as an absence and an
+                // untouched dashboard JSON stays byte-identical.
+                setRow(index, { source: o?.value === 'click' ? 'click' : undefined })
+              }
+            />
+          </InlineField>
+          <InlineField label={mapping.source === 'click' ? 'Column' : 'Filter'} labelWidth={8}>
             <Combobox
               options={columns}
               value={mapping.field || null}
@@ -64,20 +91,22 @@ export function VariableSyncEditor({ value, onChange, context }: Props) {
               onChange={(o) => setRow(index, { variable: o?.value ?? '' })}
             />
           </InlineField>
-          <InlineField
-            label="Max"
-            labelWidth={6}
-            tooltip="For a numeric column: the filter publishes its window as this pair, first variable = min, this one = max."
-          >
-            <Combobox
-              options={variables}
-              value={mapping.variableTo || null}
-              placeholder="(range)"
-              width={20}
-              isClearable
-              onChange={(o) => setRow(index, { variableTo: o?.value || undefined })}
-            />
-          </InlineField>
+          {mapping.source !== 'click' && (
+            <InlineField
+              label="Max"
+              labelWidth={6}
+              tooltip="For a numeric column: the filter publishes its window as this pair, first variable = min, this one = max."
+            >
+              <Combobox
+                options={variables}
+                value={mapping.variableTo || null}
+                placeholder="(range)"
+                width={20}
+                isClearable
+                onChange={(o) => setRow(index, { variableTo: o?.value || undefined })}
+              />
+            </InlineField>
+          )}
           <IconButton name="trash-alt" tooltip="Remove" aria-label="Remove mapping" onClick={() => removeRow(index)} />
         </InlineFieldRow>
       ))}

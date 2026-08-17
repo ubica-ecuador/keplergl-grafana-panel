@@ -18,6 +18,7 @@ import KeplerGlSchema from '@kepler.gl/schemas';
 import type { Dispatch, Store } from 'redux';
 
 import type { PanelDataset } from '../data/framesToDatasets';
+import { rowFieldValue } from './clickSync';
 import type { FlowLayerConfig } from '../data/buildFlows';
 import type { TripLayerConfig } from '../data/buildTripLayer';
 import type { SavedMapConfig } from '../data/mapConfig';
@@ -201,8 +202,33 @@ interface VisStateLike {
     /** True while kepler is playing the filter window across the domain. */
     isAnimating?: boolean;
   }>;
-  datasets: Record<string, { fields: Array<{ name: string; type?: string }> }>;
-  layers: Array<{ id: string; type?: string; config?: { dataId?: string }; meta?: { bounds?: number[] } }>;
+  datasets: Record<string, { fields: Array<{ name: string; type?: string }>; dataContainer?: unknown }>;
+  layers: Array<{
+    id: string;
+    type?: string;
+    config?: { dataId?: string };
+    meta?: { bounds?: number[] };
+    /** Resolves a picked deck.gl object to its row — what the tooltip uses. */
+    getHoverData?: (
+      object: unknown,
+      dataContainer: unknown,
+      fields: Array<{ name: string }>,
+      animationConfig: unknown,
+      hoverInfo: unknown
+    ) => unknown;
+  }>;
+  /**
+   * The deck.gl picking info of the entity last clicked, stored verbatim by
+   * `layerClickUpdater`. `null` is the user's deselect (empty-map click or
+   * closing the popover); `undefined` is no state — initial, or reset by the
+   * system when a refresh removes and re-merges the clicked layer.
+   */
+  clicked?: {
+    picked?: boolean;
+    object?: unknown;
+    index?: number;
+    layer?: { props?: { idx?: number } };
+  } | null;
   animationConfig?: {
     currentTime?: number | null;
     domain?: number[] | null;
@@ -291,6 +317,108 @@ export function readDrawnAreas(store: Store): DrawnArea[] {
     areas.push({ id: key, geometry: { type: geometry.type, coordinates: geometry.coordinates } });
   }
   return areas;
+}
+
+/**
+ * The vis-state slice the click sync watches: just `clicked`, whose identity
+ * moves exactly on a click (or its reset). Kept apart from `readSyncSlices` so
+ * a click does not wake the filter and area reconciles, nor a filter change
+ * the click one.
+ */
+export function readClickSlices(store: Store): unknown[] {
+  const visState = getVisState(store);
+  return visState ? [visState.clicked] : [];
+}
+
+/**
+ * The mapped column values of the entity last clicked on the map.
+ *
+ * Returns the tri-state `clickSync.ts` decides over: an object of resolved
+ * values for a clicked entity, `null` for the user's deselect, `undefined` for
+ * no click state. A click this cannot resolve — no layer index, a layer with
+ * no dataset — is `undefined` too: it is not a deselect, and must not clear.
+ *
+ * Resolution is kepler's own tooltip path (`getLayerHoverData` in
+ * `layer-utils`): deck's picking info names the kepler layer by `props.idx`,
+ * and the layer's `getHoverData` turns the picked object into a row of its
+ * dataset. That is what makes this uniform across layer types — a point's row,
+ * a trajectory's row in a geojson-mode trip layer, the vertex under the
+ * playhead in a table-mode one.
+ *
+ * The fallback covers table-mode trip layers only: their `getHoverData` finds
+ * the vertex at the *current animation time*, which is null when the playhead
+ * sits outside the clicked trip's window (a fading trail is still clickable).
+ * The feature's rows all share the identity columns — the feature exists
+ * because they were grouped by trip id — so the first row answers for the
+ * trip.
+ */
+export function readClickedEntity(store: Store, fields: string[]): Record<string, unknown> | null | undefined {
+  const visState = getVisState(store);
+  if (!visState) {
+    return undefined;
+  }
+  // While the draw toolbar is engaged, map clicks place or edit vertices.
+  // kepler consumes them before they reach the layers, but that interception
+  // is not contractual (the map-click spike saw LAYER_CLICKs leak through), so
+  // any click state during a draw is "no state" — never a selection or a
+  // deselect someone drew by accident.
+  if (isDrawActive(store)) {
+    return undefined;
+  }
+  const clicked = visState.clicked;
+  if (clicked === undefined) {
+    return undefined;
+  }
+  if (clicked === null) {
+    return null;
+  }
+
+  const layerIdx = clicked.layer?.props?.idx;
+  const layer = typeof layerIdx === 'number' ? (visState.layers ?? [])[layerIdx] : undefined;
+  const dataId = layer?.config?.dataId;
+  const dataset = dataId ? visState.datasets[dataId] : undefined;
+  if (!layer?.getHoverData || !dataset) {
+    return undefined;
+  }
+
+  // `object ?? index`: binary-format geojson layers pick with a null object
+  // and the row index instead, same contract as kepler's `getLayerHoverProp`.
+  const row = layer.getHoverData(
+    clicked.object ?? clicked.index,
+    dataset.dataContainer,
+    dataset.fields,
+    visState.animationConfig,
+    clicked
+  );
+  const fallback = firstFeatureRow(clicked.object);
+
+  const values: Record<string, unknown> = {};
+  for (const field of fields) {
+    const fieldIdx = dataset.fields.findIndex((f) => f.name === field);
+    if (fieldIdx < 0) {
+      continue;
+    }
+    const value = rowFieldValue(row, fieldIdx) ?? rowFieldValue(fallback, fieldIdx);
+    if (value !== undefined && value !== null) {
+      values[field] = value;
+    }
+  }
+  return values;
+}
+
+/** A table-mode trip feature's first vertex row, if the object is one. */
+function firstFeatureRow(object: unknown): unknown {
+  const feature = object as { properties?: { values?: unknown[] } } | null | undefined;
+  const values = feature?.properties?.values;
+  return Array.isArray(values) ? values[0] : undefined;
+}
+
+/** Whether kepler's draw toolbar is engaged, so map clicks belong to it. */
+function isDrawActive(store: Store): boolean {
+  const state = store.getState() as {
+    keplerGl?: Record<string, { uiState?: { mapControls?: { mapDraw?: { active?: boolean } } } }>;
+  };
+  return Boolean(state.keplerGl?.[KEPLER_INSTANCE_ID]?.uiState?.mapControls?.mapDraw?.active);
 }
 
 function filterHasField(filter: { name?: string[] | string }, field: string): boolean {
