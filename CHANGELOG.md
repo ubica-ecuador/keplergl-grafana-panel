@@ -5,6 +5,15 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **kepler.gl 3.3.0-alpha.6.** The pin moves up three pre-releases from alpha.3. The `@kepler.gl/*`
+  packages now publish dual CJS/ESM builds behind an `exports` map, so the two deep imports the
+  portal fix relies on drop their `/dist` segment, and the effect panel's new date/time picker
+  dependencies (`react-date-picker` and friends, ESM-only) join jest's transform allowlist. The
+  Trip layer's GPU-filter accessor is still broken upstream — `tripLayerFix.ts` stays until a
+  kepler.gl release fixes it. Verified end to end: typecheck, the unit suite, the production
+  build, and the e2e specs covering every piece of version-sensitive webpack machinery — portal
+  placement, the effects panel, polygon drawing, flow-layer shaders — all pass.
+
 - **Fixed: side-panel dropdowns opened far below their trigger, often invisible.** Changing a
   layer's type — or opening any of kepler's selectors, field pickers and color palettes — showed
   the options well below where they should be, and near the bottom of a panel not at all. kepler's

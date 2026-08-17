@@ -38,7 +38,9 @@ configureKepler();
 // The stock KeplerGl toolbar has no effects button; this KeplerGl carries the
 // map control that adds it. Module scope so the component tree is built once —
 // recreating it per render would remount the whole map.
-const KeplerGl = injectComponents([replaceMapControl()]);
+// The published d.ts declares `injectComponents(recipes?: never[])` — the
+// recipe tuple type is lost in compilation — so the list needs a cast.
+const KeplerGl = injectComponents([replaceMapControl()] as unknown as never[]);
 
 export interface KeplerMapProps {
   width: number;

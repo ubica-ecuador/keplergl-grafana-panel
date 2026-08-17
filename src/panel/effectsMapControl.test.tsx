@@ -28,7 +28,7 @@ function StubEffectManagerFactory() {
   const StubEffectManager = () => <div data-testid="effect-manager" />;
   return StubEffectManager;
 }
-StubEffectManagerFactory.deps = [];
+StubEffectManagerFactory.deps = [] as typeof EffectManagerFactory.deps;
 
 const controlProps = (active: boolean) => ({
   mapControls: { effect: { show: true, active } },

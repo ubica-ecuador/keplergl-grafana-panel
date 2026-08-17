@@ -2,11 +2,12 @@ import React from 'react';
 // Deep imports on purpose: the context must be the very module instance the
 // original Portaled consumes, and importing the barrel here would make the
 // module replacement below circular (the barrel itself requires portaled).
-import { RootContext } from '@kepler.gl/components/dist/context';
+// Resolved through the package's `exports` map (`./*` → `./dist/…`).
+import { RootContext } from '@kepler.gl/components/context';
 // The unpatched component; every request for this module from inside
 // @kepler.gl is rewritten to this file by the NormalModuleReplacementPlugin
 // in webpack.config.ts.
-import KeplerPortaled from '@kepler.gl/components/dist/common/portaled';
+import KeplerPortaled from '@kepler.gl/components/common/portaled';
 
 /**
  * kepler's Portaled renders every dropdown, color picker and tooltip through

@@ -3,7 +3,7 @@ import { render } from '@testing-library/react';
 import { ThemeProvider } from 'styled-components';
 import { theme } from '@kepler.gl/styles';
 import { RootContext } from '@kepler.gl/components';
-import KeplerPortaled from '@kepler.gl/components/dist/common/portaled';
+import KeplerPortaled from '@kepler.gl/components/common/portaled';
 
 import PortaledBodyMount from './portaledBodyMount';
 

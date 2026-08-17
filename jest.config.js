@@ -15,6 +15,18 @@ const keplerESModules = [
   'supercluster',
   'preact',
   'maplibregl-mapbox-request-transformer',
+  // kepler 3.3.0-alpha.6 adds a date/time picker to the effect time selector.
+  'react-date-picker',
+  'react-calendar',
+  'react-clock',
+  'react-time-picker',
+  'react-datetime-picker',
+  '@wojtekmaj/[^/]+',
+  'get-user-locale',
+  'make-event-props',
+  'react-fit',
+  'update-input-width',
+  'detect-element-overflow',
 ];
 
 module.exports = {

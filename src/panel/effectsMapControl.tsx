@@ -55,10 +55,14 @@ CustomMapControlFactory.deps = [EffectControlFactory, EffectManagerFactory, ...M
 function CustomMapControlFactory(
   EffectControl: ReturnType<typeof EffectControlFactory>,
   EffectManager: ReturnType<typeof EffectManagerFactory>,
-  ...deps: Array<ReturnType<Factory>>
+  ...deps: Parameters<typeof MapControlFactory>
 ) {
-  const MapControl = MapControlFactory(...(deps as Parameters<typeof MapControlFactory>));
+  const MapControl = MapControlFactory(...deps);
   const actionComponents = [...(MapControl.defaultActionComponents ?? []), EffectControl];
+  // The factory's d.ts types the inner component (props with intl and vis
+  // state), but at runtime the injector hands over the component already
+  // wrapped in withState + injectIntl, so it mounts with no props.
+  const MountedEffectManager = EffectManager as unknown as React.FC;
 
   const CustomMapControl: React.FC<React.ComponentProps<typeof MapControl>> = (props) => {
     const showEffects = Boolean(props.mapControls?.effect?.active);
@@ -68,7 +72,7 @@ function CustomMapControlFactory(
           {/* top is consumed by the overlay; the inner toolbar starts at 0. */}
           <MapControl {...props} top={0} actionComponents={actionComponents} />
         </StyledMapControlPanel>
-        <StyledMapControlContextPanel>{showEffects ? <EffectManager /> : null}</StyledMapControlContextPanel>
+        <StyledMapControlContextPanel>{showEffects ? <MountedEffectManager /> : null}</StyledMapControlContextPanel>
       </StyledMapControlOverlay>
     );
   };
