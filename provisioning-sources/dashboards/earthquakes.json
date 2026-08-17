@@ -7,7 +7,7 @@
   "panels": [
     {
       "datasource": { "type": "motherduck-duckdb-datasource", "uid": "duckdb" },
-      "description": "Time range sync is set to `variables`, not `toMap`. Moving the dashboard range would re-run this query, and every event outside the new range would leave the browser — the histogram under the slider would rescale and the window could never be widened again from the map. Publishing the window to variables instead keeps the whole month loaded and costs only the panels that read them.",
+      "description": "Time range sync is set to `variables`, not `toMap`. Moving the dashboard range would re-run this query, and every event outside the new range would leave the browser — the histogram under the slider would rescale and the window could never be widened again from the map. Publishing the window to variables instead keeps the whole month loaded and costs only the panels that read them. Clicking the map publishes the place to $lat/$lng (a Coordinates mapping); DuckDB builds a geodesic circle of $radio km around it (query B) and intersects the quakes with it (query C), which come back as the coverage outline and a magnitude-weighted heatmap.",
       "gridPos": { "h": 16, "w": 24, "x": 0, "y": 0 },
       "id": 1,
       "options": {
@@ -15,6 +15,9 @@
         "timeSync": "variables",
         "timeVariables": { "from": "quakeFrom", "to": "quakeTo" },
         "areaVariable": "quakeArea",
+        "variableMappings": [
+          { "field": "", "variable": "lat", "variableTo": "lng", "source": "coordinate" }
+        ],
         "basemap": "dark-matter",
         "followGrafanaTheme": false,
         "mapConfig": {
@@ -45,6 +48,41 @@
                     "sizeField": { "name": "mag", "type": "real" },
                     "sizeScale": "sqrt"
                   }
+                },
+                {
+                  "id": "click-heatmap",
+                  "type": "heatmap",
+                  "config": {
+                    "dataId": "grafana-C",
+                    "label": "Sismos en el radio",
+                    "columns": { "lat": "latitude", "lng": "longitude" },
+                    "columnMode": "points",
+                    "isVisible": true,
+                    "visConfig": { "opacity": 0.8, "radius": 30 }
+                  },
+                  "visualChannels": {
+                    "weightField": { "name": "mag", "type": "real" },
+                    "weightScale": "linear"
+                  }
+                },
+                {
+                  "id": "click-radius",
+                  "type": "geojson",
+                  "config": {
+                    "dataId": "grafana-B",
+                    "label": "Radio de cobertura",
+                    "color": [255, 203, 119],
+                    "columns": { "geojson": "_geojson" },
+                    "isVisible": true,
+                    "visConfig": {
+                      "opacity": 0.1,
+                      "thickness": 1.5,
+                      "stroked": true,
+                      "filled": true,
+                      "strokeColor": [255, 203, 119]
+                    }
+                  },
+                  "visualChannels": {}
                 }
               ],
               "filters": [],
@@ -71,6 +109,22 @@
           "rawQuery": true,
           "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- force_download is not tuning. This endpoint builds the parquet per request,\n-- so each ranged read sees a different ETag and DuckDB aborts with \"the remote\n-- file has changed\". One whole-file GET sidesteps it; at 378 KB that is free.\nSELECT\n  place,\n  mag,\n  depth_num               AS depth,\n  event_time_utc_date_fmt AS time,\n  latitude_num            AS latitude,\n  longitude_num           AS longitude\nFROM read_parquet('https://demo.getgeolens.com/api/datasets/2717becb-bfc5-4029-845f-24c3bbe19780/export?format=parquet')",
           "refId": "A"
+        },
+        {
+          "datasource": { "type": "motherduck-duckdb-datasource", "uid": "duckdb" },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL spatial; LOAD spatial;\n\n-- The coverage circle around the click ($lat/$lng, radius $radio km), drawn\n-- by the pinned geojson layer. A true geodesic ring — the spherical\n-- destination formula per bearing — because ST_Buffer is planar and in\n-- degrees, which at these radii draws an ellipse. Both variables empty (no\n-- click yet) returns no rows and no circle.\nWITH params AS (\n  SELECT try_cast($lat AS DOUBLE) AS lat0,\n         try_cast($lng AS DOUBLE) AS lng0,\n         coalesce(try_cast($radio AS DOUBLE), 500) / 6371.0 AS d\n),\npts AS (\n  SELECT deg,\n         asin(sin(radians(lat0)) * cos(d) + cos(radians(lat0)) * sin(d) * cos(radians(deg))) AS lat2,\n         lat0, lng0, d\n  FROM params, (SELECT unnest(generate_series(0, 360, 6)) AS deg)\n  WHERE lat0 IS NOT NULL AND lng0 IS NOT NULL\n),\nring AS (\n  SELECT deg,\n         degrees(lat2) AS lat_deg,\n         lng0 + degrees(atan2(sin(radians(deg)) * sin(d) * cos(radians(lat0)),\n                              cos(d) - sin(radians(lat0)) * sin(lat2))) AS lng_deg\n  FROM pts\n)\nSELECT\n  ST_AsHEXWKB(ST_GeomFromText(\n    'POLYGON((' || string_agg(round(lng_deg, 5) || ' ' || round(lat_deg, 5), ',' ORDER BY deg) || '))'\n  )) AS geom,\n  'radio' AS name\nFROM ring\nHAVING count(*) > 0",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "motherduck-duckdb-datasource", "uid": "duckdb" },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nINSTALL spatial; LOAD spatial;\nSET force_download = true;\n\n-- The quakes inside the click's circle, for the pinned heatmap layer. The\n-- ring is regenerated identical to query B's, so what the heatmap counts is\n-- exactly what the drawn circle encloses; the time window follows the map's\n-- slider through the same variable pair the other panels read.\nWITH params AS (\n  SELECT try_cast($lat AS DOUBLE) AS lat0,\n         try_cast($lng AS DOUBLE) AS lng0,\n         coalesce(try_cast($radio AS DOUBLE), 500) / 6371.0 AS d\n),\npts AS (\n  SELECT deg,\n         asin(sin(radians(lat0)) * cos(d) + cos(radians(lat0)) * sin(d) * cos(radians(deg))) AS lat2,\n         lat0, lng0, d\n  FROM params, (SELECT unnest(generate_series(0, 360, 6)) AS deg)\n  WHERE lat0 IS NOT NULL AND lng0 IS NOT NULL\n),\nring AS (\n  SELECT deg,\n         degrees(lat2) AS lat_deg,\n         lng0 + degrees(atan2(sin(radians(deg)) * sin(d) * cos(radians(lat0)),\n                              cos(d) - sin(radians(lat0)) * sin(lat2))) AS lng_deg\n  FROM pts\n),\ncircle AS (\n  SELECT ST_GeomFromText(\n    'POLYGON((' || string_agg(round(lng_deg, 5) || ' ' || round(lat_deg, 5), ',' ORDER BY deg) || '))'\n  ) AS geom\n  FROM ring\n  HAVING count(*) > 0\n)\nSELECT\n  latitude_num  AS latitude,\n  longitude_num AS longitude,\n  mag\nFROM read_parquet('https://demo.getgeolens.com/api/datasets/2717becb-bfc5-4029-845f-24c3bbe19780/export?format=parquet'), circle\nWHERE ST_Contains(circle.geom, ST_Point(longitude_num, latitude_num))\n  AND event_time_utc_date_fmt\n    BETWEEN COALESCE(try_cast($quakeFrom AS TIMESTAMPTZ), '-infinity'::TIMESTAMPTZ)\n        AND COALESCE(try_cast($quakeTo   AS TIMESTAMPTZ), 'infinity'::TIMESTAMPTZ)",
+          "refId": "C"
         }
       ],
       "title": "Sismicidad global — últimos 30 días",
@@ -206,6 +260,36 @@
         "name": "quakeArea",
         "options": [],
         "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": { "text": "-0.9", "value": "-0.9" },
+        "hide": 0,
+        "label": "Lat (clic)",
+        "name": "lat",
+        "options": [],
+        "query": "-0.9",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": { "text": "-79.5", "value": "-79.5" },
+        "hide": 0,
+        "label": "Lng (clic)",
+        "name": "lng",
+        "options": [],
+        "query": "-79.5",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": { "text": "500", "value": "500" },
+        "hide": 0,
+        "label": "Radio (km)",
+        "name": "radio",
+        "options": [],
+        "query": "500",
         "skipUrlSync": false,
         "type": "textbox"
       }

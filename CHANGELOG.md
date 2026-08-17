@@ -5,6 +5,15 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Added: the earthquakes sources dashboard demonstrates the coordinates mapping end-to-end.**
+  Clicking the map publishes the place to `$lat`/`$lng`; DuckDB builds a geodesic circle of
+  `$radio` km around it — the spherical destination formula per bearing, because `ST_Buffer` is
+  planar and in degrees — and intersects the month's quakes with that same ring. Both come back as
+  ordinary queries: the coverage outline as `ST_AsHEXWKB` into a pinned geojson layer, the
+  intersected quakes as a magnitude-weighted heatmap. `$lat`/`$lng` default to coastal Ecuador so
+  the circle exists from the first render — a dataset that is empty at load has no fields for the
+  saved config's layers to bind to, and kepler drops them.
+
 - **Added: clicking the map can publish the clicked coordinate to a lat/lng variable pair.** A
   cross-filtering mapping row switched to "Coordinates" names two variables, Lat and Lng; any click
   on the map pins the place clicked and the pair takes it (escalón 3b of the cross-filtering design
