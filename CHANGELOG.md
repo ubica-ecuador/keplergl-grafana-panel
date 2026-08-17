@@ -5,6 +5,20 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Added: the map can be centred from outside through its lat/lng variable pair.** A
+  cross-filtering mapping row switched to "Center" reads the pair back into the viewport: when the
+  variables change from outside the map — a table row's data link, a textbox — the map centres on
+  them, jumping to the row's optional Zoom level (empty keeps the current zoom). Two silences make
+  it liveable: the map's own clicks — which the Coordinates mapping writes into the same pair —
+  are recognised against the pinned coordinate and never re-centre, and a pair that has not moved
+  is never re-asserted, so unrelated variable changes cannot yank the map back from a pan. On load
+  the saved viewport wins — the first pass adopts the pair without acting, because centring raced
+  the saved-config restore and whichever dispatch landed last won. The earthquakes dashboard wires
+  it up: the strongest-quakes table carries hidden lat/lng columns and a per-row data link, so
+  clicking a quake centres the map on it at zoom 6 while the coverage circle and heatmap recompute
+  around it. Covered by unit tests over the pure decision module (`centerSync.ts`) and verified in
+  the browser: table-click centring, echo-free map clicks, and a load that stays put.
+
 - **Added: the earthquakes sources dashboard demonstrates the coordinates mapping end-to-end.**
   Clicking the map publishes the place to `$lat`/`$lng`; DuckDB builds a geodesic circle of
   `$radio` km around it — the spherical destination formula per bearing, because `ST_Buffer` is

@@ -243,6 +243,15 @@ itself); clicking again unpins on the map, but the variables keep the last spot 
 so the consuming query never loses its centre. While the draw toolbar is engaged, clicks belong to
 the drawing and publish nothing.
 
+A row switched to **Center** reads the same kind of pair the other way: when the variables change
+from outside the map, the viewport centres on them — jumping to the row's optional **Zoom** level.
+That is what turns a table into a map control: give the table's query the coordinates as hidden
+columns and a per-row data link that writes them
+(`?var-lat=${__data.fields.latitude}&var-lng=${__data.fields.longitude}`), and clicking a row flies
+the map to that feature. A textbox on the pair works the same way. The map's own clicks are
+recognised and never re-centre, and on load the saved viewport wins — the pair moves the map only
+when someone changes it.
+
 #### Drawn areas
 
 The polygon or rectangle drawn with kepler's draw tool can be published to a variable too. Add a

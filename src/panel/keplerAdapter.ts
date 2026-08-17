@@ -11,6 +11,7 @@ import {
   replaceDataInMap,
   setLayerAnimationTime,
   toggleSidePanel,
+  updateMap,
   updateVisData,
   wrapTo,
 } from '@kepler.gl/actions';
@@ -784,6 +785,21 @@ export function addAutoLayer(
 /** Frames the map on a bounding box. */
 export function fitMapToBounds(dispatch: Dispatch, bounds: MapBounds): void {
   dispatch(wrapTo(KEPLER_INSTANCE_ID, fitBounds(bounds)));
+}
+
+/**
+ * Centres the map on a coordinate — the read-back direction of the centre
+ * mapping. Without `zoom` the map keeps the zoom it has, so centring never
+ * costs the user the scale they chose. Returns false while the map has no
+ * state yet, same contract as `pushTimeRange`.
+ */
+export function centerMapOn(store: Store, dispatch: Dispatch, lat: number, lng: number, zoom?: number): boolean {
+  if (!getVisState(store)) {
+    return false;
+  }
+  const viewport = { latitude: lat, longitude: lng, ...(typeof zoom === 'number' ? { zoom } : {}) };
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, updateMap(viewport as Parameters<typeof updateMap>[0], 0)));
+  return true;
 }
 
 /** Switches the base map to one of kepler's registered styles. */

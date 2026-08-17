@@ -333,11 +333,13 @@ describe('partitionMappings', () => {
     const range = { field: 'value', variable: 'valueMin', variableTo: 'valueMax' };
     const click = { field: 'vehicle_id', variable: 'vehicle', source: 'click' as const };
     const coordinate = { field: '', variable: 'lat', variableTo: 'lng', source: 'coordinate' as const };
-    expect(partitionMappings([scalar, range, click, coordinate])).toEqual({
+    const center = { field: '', variable: 'lat', variableTo: 'lng', source: 'center' as const };
+    expect(partitionMappings([scalar, range, click, coordinate, center])).toEqual({
       scalar: [scalar],
       range: [range],
       click: [click],
       coordinate: [coordinate],
+      center: [center],
     });
   });
 
@@ -346,14 +348,39 @@ describe('partitionMappings', () => {
     // promote it to a range mapping would have the variable pair create a
     // filter on the map, which no click ever asked for.
     const mapping = { field: 'vehicle_id', variable: 'vehicle', variableTo: 'stray', source: 'click' as const };
-    expect(partitionMappings([mapping])).toEqual({ scalar: [], range: [], click: [mapping], coordinate: [] });
+    expect(partitionMappings([mapping])).toEqual({
+      scalar: [],
+      range: [],
+      click: [mapping],
+      coordinate: [],
+      center: [],
+    });
   });
 
   it('keeps a coordinate mapping out of the range set, whose pair encoding it shares', () => {
     // variable/variableTo is lat/lng here, not min/max: the range reconcile
     // would read the pair as a numeric window and create a filter on the map.
     const mapping = { field: '', variable: 'lat', variableTo: 'lng', source: 'coordinate' as const };
-    expect(partitionMappings([mapping])).toEqual({ scalar: [], range: [], click: [], coordinate: [mapping] });
+    expect(partitionMappings([mapping])).toEqual({
+      scalar: [],
+      range: [],
+      click: [],
+      coordinate: [mapping],
+      center: [],
+    });
+  });
+
+  it('routes a center mapping to its own set, out of the range reconcile', () => {
+    // Same lat/lng pair encoding as coordinate, opposite direction: the pair
+    // drives the viewport. In the range set it would create a numeric filter.
+    const mapping = { field: '', variable: 'lat', variableTo: 'lng', source: 'center' as const, zoom: 6 };
+    expect(partitionMappings([mapping])).toEqual({
+      scalar: [],
+      range: [],
+      click: [],
+      coordinate: [],
+      center: [mapping],
+    });
   });
 
   it('reads an absent source as filter-driven', () => {

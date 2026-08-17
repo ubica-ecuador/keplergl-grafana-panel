@@ -27,9 +27,18 @@ export interface VariableMapping {
    * turns "click a vehicle" into "the rest of the dashboard shows that
    * vehicle". `coordinate` publishes the *place* clicked rather than any
    * column: `variable` receives the latitude and `variableTo` the longitude
-   * (see `coordinateSync.ts`), so `field` means nothing to it.
+   * (see `coordinateSync.ts`), so `field` means nothing to it. `center` is
+   * the same pair read the other way: when the variables change from outside
+   * — a table's data link, a textbox — the map centres on them
+   * (`centerSync.ts`); `field` means nothing to it either.
    */
-  source?: 'filter' | 'click' | 'coordinate';
+  source?: 'filter' | 'click' | 'coordinate' | 'center';
+
+  /**
+   * For a `center` mapping only: the zoom level to jump to when centring.
+   * Absent, the map keeps whatever zoom it has.
+   */
+  zoom?: number;
 }
 
 /** Whether a mapping publishes a numeric range as a min/max variable pair. */
@@ -47,36 +56,46 @@ export function isCoordinateMapping(mapping: VariableMapping): boolean {
   return mapping.source === 'coordinate';
 }
 
+/** Whether a mapping drives the viewport from its variable pair. */
+export function isCenterMapping(mapping: VariableMapping): boolean {
+  return mapping.source === 'center';
+}
+
 /**
  * The mappings, split by the state that drives each: `scalar` and `range`
  * mirror a kepler filter both ways, `click` publishes the clicked entity one
- * way, `coordinate` the clicked place. The split is exclusive — in particular
- * a click or coordinate mapping stays what it is whatever else it names, so a
- * `variableTo` (a stray one on a click, the *longitude* on a coordinate)
- * cannot promote it into the range reconcile and have a variable pair create
- * a filter no click ever asked for.
+ * way, `coordinate` the clicked place, and `center` reads a pair back into
+ * the viewport. The split is exclusive — in particular a click, coordinate or
+ * center mapping stays what it is whatever else it names, so a `variableTo`
+ * (a stray one on a click, the *longitude* on the pair kinds) cannot promote
+ * it into the range reconcile and have a variable pair create a filter no
+ * click ever asked for.
  */
 export function partitionMappings(mappings: VariableMapping[]): {
   scalar: VariableMapping[];
   range: VariableMapping[];
   click: VariableMapping[];
   coordinate: VariableMapping[];
+  center: VariableMapping[];
 } {
   const scalar: VariableMapping[] = [];
   const range: VariableMapping[] = [];
   const click: VariableMapping[] = [];
   const coordinate: VariableMapping[] = [];
+  const center: VariableMapping[] = [];
   for (const mapping of mappings) {
-    (isCoordinateMapping(mapping)
-      ? coordinate
-      : isClickMapping(mapping)
-        ? click
-        : isRangeMapping(mapping)
-          ? range
-          : scalar
+    (isCenterMapping(mapping)
+      ? center
+      : isCoordinateMapping(mapping)
+        ? coordinate
+        : isClickMapping(mapping)
+          ? click
+          : isRangeMapping(mapping)
+            ? range
+            : scalar
     ).push(mapping);
   }
-  return { scalar, range, click, coordinate };
+  return { scalar, range, click, coordinate, center };
 }
 
 /** The little kepler filter shape this reads. */

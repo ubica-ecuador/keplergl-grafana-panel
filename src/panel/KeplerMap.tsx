@@ -22,6 +22,7 @@ import { usePeerTimeSync } from './usePeerTimeSync';
 import { useVariableSync } from './useVariableSync';
 import { useClickSync } from './useClickSync';
 import { useCoordinateSync } from './useCoordinateSync';
+import { useCenterSync } from './useCenterSync';
 import { useAreaSync } from './useAreaSync';
 import { useTimeVariableSync } from './useTimeVariableSync';
 import { useActiveBasemap } from './useActiveBasemap';
@@ -220,6 +221,11 @@ export function KeplerMap({
   // One-way: publishes the clicked map coordinate as a lat/lng variable pair,
   // keeping the last pin through kepler's unpin toggle and data refreshes.
   useCoordinateSync({ store, isReady, mappings: variableMappings });
+
+  // The read-back of that pair: centres the map when the variables change from
+  // outside (a table's data link, a textbox), suppressing the echo of the
+  // map's own clicks.
+  useCenterSync({ store, isReady, mappings: variableMappings });
 
   // One-way and silent on its first pass — it adopts whatever figures a saved
   // config restored without publishing — so it contends with nothing on load.

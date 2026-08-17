@@ -1,18 +1,19 @@
 import React from 'react';
 import { StandardEditorProps } from '@grafana/data';
 import { getTemplateSrv } from '@grafana/runtime';
-import { Button, Combobox, ComboboxOption, IconButton, InlineField, InlineFieldRow, Stack, Text } from '@grafana/ui';
+import { Button, Combobox, ComboboxOption, IconButton, InlineField, InlineFieldRow, Input, Stack, Text } from '@grafana/ui';
 
 import { VariableMapping } from '../panel/variableSync';
 import { KeplerPanelOptions } from '../types';
 
 type Props = StandardEditorProps<VariableMapping[] | undefined, unknown, KeplerPanelOptions>;
 
-/** How a mapping row is driven: the filter on its column, a click's entity, or a click's place. */
-const SOURCE_OPTIONS: Array<ComboboxOption<'filter' | 'click' | 'coordinate'>> = [
+/** How a mapping row is driven: a filter, a click's entity or place, or the pair read back. */
+const SOURCE_OPTIONS: Array<ComboboxOption<'filter' | 'click' | 'coordinate' | 'center'>> = [
   { label: 'Filter', value: 'filter' },
   { label: 'Click', value: 'click' },
   { label: 'Coordinates', value: 'coordinate' },
+  { label: 'Center', value: 'center' },
 ];
 
 /**
@@ -38,6 +39,12 @@ const SOURCE_OPTIONS: Array<ComboboxOption<'filter' | 'click' | 'coordinate'>> =
  * spatial query — `ST_DWithin(geom, ST_MakePoint($lng, $lat)::geography,
  * $radius)` with the radius a plain dashboard variable. No column applies, so
  * that field is hidden too.
+ *
+ * Center is the same pair read the other way: when the variables change from
+ * outside — a table's data link, a textbox — the map centres on them, jumping
+ * to the row's Zoom if one is set. The map's own clicks are recognised and
+ * never re-centre, and on load the saved viewport wins: the pair moves the
+ * map only when someone changes it.
  */
 export function VariableSyncEditor({ value, onChange, context }: Props) {
   const mappings = value ?? [];
@@ -79,7 +86,7 @@ export function VariableSyncEditor({ value, onChange, context }: Props) {
               }
             />
           </InlineField>
-          {mapping.source !== 'coordinate' && (
+          {mapping.source !== 'coordinate' && mapping.source !== 'center' && (
             <InlineField label={mapping.source === 'click' ? 'Column' : 'Filter'} labelWidth={8}>
               <Combobox
                 options={columns}
@@ -91,7 +98,10 @@ export function VariableSyncEditor({ value, onChange, context }: Props) {
               />
             </InlineField>
           )}
-          <InlineField label={mapping.source === 'coordinate' ? 'Lat' : 'Variable'} labelWidth={10}>
+          <InlineField
+            label={mapping.source === 'coordinate' || mapping.source === 'center' ? 'Lat' : 'Variable'}
+            labelWidth={10}
+          >
             <Combobox
               options={variables}
               value={mapping.variable || null}
@@ -102,10 +112,10 @@ export function VariableSyncEditor({ value, onChange, context }: Props) {
           </InlineField>
           {mapping.source !== 'click' && (
             <InlineField
-              label={mapping.source === 'coordinate' ? 'Lng' : 'Max'}
+              label={mapping.source === 'coordinate' || mapping.source === 'center' ? 'Lng' : 'Max'}
               labelWidth={6}
               tooltip={
-                mapping.source === 'coordinate'
+                mapping.source === 'coordinate' || mapping.source === 'center'
                   ? 'The longitude half of the pair; the first variable receives the latitude.'
                   : 'For a numeric column: the filter publishes its window as this pair, first variable = min, this one = max.'
               }
@@ -113,10 +123,28 @@ export function VariableSyncEditor({ value, onChange, context }: Props) {
               <Combobox
                 options={variables}
                 value={mapping.variableTo || null}
-                placeholder={mapping.source === 'coordinate' ? 'variable' : '(range)'}
+                placeholder={mapping.source === 'coordinate' || mapping.source === 'center' ? 'variable' : '(range)'}
                 width={20}
                 isClearable
                 onChange={(o) => setRow(index, { variableTo: o?.value || undefined })}
+              />
+            </InlineField>
+          )}
+          {mapping.source === 'center' && (
+            <InlineField
+              label="Zoom"
+              labelWidth={7}
+              tooltip="Zoom level to jump to when centring. Empty keeps the current zoom."
+            >
+              <Input
+                type="number"
+                width={8}
+                value={mapping.zoom ?? ''}
+                placeholder="keep"
+                onChange={(e) => {
+                  const parsed = Number(e.currentTarget.value);
+                  setRow(index, { zoom: e.currentTarget.value === '' || !Number.isFinite(parsed) ? undefined : parsed });
+                }}
               />
             </InlineField>
           )}

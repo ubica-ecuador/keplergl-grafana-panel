@@ -16,7 +16,8 @@
         "timeVariables": { "from": "quakeFrom", "to": "quakeTo" },
         "areaVariable": "quakeArea",
         "variableMappings": [
-          { "field": "", "variable": "lat", "variableTo": "lng", "source": "coordinate" }
+          { "field": "", "variable": "lat", "variableTo": "lng", "source": "coordinate" },
+          { "field": "", "variable": "lat", "variableTo": "lng", "source": "center", "zoom": 6 }
         ],
         "basemap": "dark-matter",
         "followGrafanaTheme": false,
@@ -165,8 +166,27 @@
     },
     {
       "datasource": { "type": "motherduck-duckdb-datasource", "uid": "duckdb" },
-      "description": "The ten strongest events inside the map's window. Scrub the slider and this list follows.",
-      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "description": "The ten strongest events inside the map's window. Scrub the slider and this list follows. Clicking a row writes the quake's coordinates to $lat/$lng: the map centres there (the Center mapping) and the coverage circle and heatmap recompute around it.",
+      "fieldConfig": {
+        "defaults": {
+          "links": [
+            {
+              "title": "Centrar el mapa en este sismo",
+              "url": "/d/earthquakes?${__url_time_range}&var-quakeFrom=${quakeFrom:percentencode}&var-quakeTo=${quakeTo:percentencode}&var-quakeArea=${quakeArea:percentencode}&var-radio=${radio:percentencode}&var-lat=${__data.fields.latitude}&var-lng=${__data.fields.longitude}"
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "latitude" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "longitude" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          }
+        ]
+      },
       "gridPos": { "h": 8, "w": 18, "x": 6, "y": 16 },
       "id": 3,
       "options": {
@@ -180,7 +200,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\nINSTALL spatial; LOAD spatial;\nSET force_download = true;\n\nSELECT\n  strftime(event_time_utc_date_fmt, '%d %b %H:%M') AS \"Fecha\",\n  place                                            AS \"Lugar\",\n  mag                                              AS \"Mag\"\nFROM read_parquet('https://demo.getgeolens.com/api/datasets/2717becb-bfc5-4029-845f-24c3bbe19780/export?format=parquet')\nWHERE event_time_utc_date_fmt\n  BETWEEN COALESCE(try_cast($quakeFrom AS TIMESTAMPTZ), '-infinity'::TIMESTAMPTZ)\n      AND COALESCE(try_cast($quakeTo   AS TIMESTAMPTZ), 'infinity'::TIMESTAMPTZ)\n  -- The drawn area arrives as WKT via $quakeArea; empty means no spatial cut.\n  AND ($quakeArea = '' OR ST_Contains(ST_GeomFromText($quakeArea), ST_Point(longitude_num, latitude_num)))\nORDER BY mag DESC\nLIMIT 10",
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nINSTALL spatial; LOAD spatial;\nSET force_download = true;\n\n-- latitude/longitude are hidden in the table; they feed the row's data link,\n-- which writes them to $lat/$lng so the map centres on the clicked quake.\nSELECT\n  strftime(event_time_utc_date_fmt, '%d %b %H:%M') AS \"Fecha\",\n  place                                            AS \"Lugar\",\n  mag                                              AS \"Mag\",\n  latitude_num                                     AS latitude,\n  longitude_num                                    AS longitude\nFROM read_parquet('https://demo.getgeolens.com/api/datasets/2717becb-bfc5-4029-845f-24c3bbe19780/export?format=parquet')\nWHERE event_time_utc_date_fmt\n  BETWEEN COALESCE(try_cast($quakeFrom AS TIMESTAMPTZ), '-infinity'::TIMESTAMPTZ)\n      AND COALESCE(try_cast($quakeTo   AS TIMESTAMPTZ), 'infinity'::TIMESTAMPTZ)\n  -- The drawn area arrives as WKT via $quakeArea; empty means no spatial cut.\n  AND ($quakeArea = '' OR ST_Contains(ST_GeomFromText($quakeArea), ST_Point(longitude_num, latitude_num)))\nORDER BY mag DESC\nLIMIT 10",
           "refId": "A"
         }
       ],
