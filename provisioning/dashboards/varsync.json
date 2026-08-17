@@ -14,6 +14,26 @@
         "includeAll": true,
         "multi": true,
         "options": []
+      },
+      {
+        "name": "valueMin",
+        "type": "textbox",
+        "label": "Value min",
+        "query": "",
+        "current": { "text": "", "value": "" },
+        "hide": 0,
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
+        "name": "valueMax",
+        "type": "textbox",
+        "label": "Value max",
+        "query": "",
+        "current": { "text": "", "value": "" },
+        "hide": 0,
+        "options": [],
+        "skipUrlSync": false
       }
     ]
   },
@@ -25,7 +45,10 @@
       "options": {
         "showSidePanel": true,
         "timeSync": "off",
-        "variableMappings": [{ "field": "category", "variable": "category" }]
+        "variableMappings": [
+          { "field": "category", "variable": "category" },
+          { "field": "value", "variable": "valueMin", "variableTo": "valueMax" }
+        ]
       },
       "targets": [
         {
@@ -37,6 +60,16 @@
       ],
       "title": "Kepler.gl — cross-filter",
       "type": "ubica-keplergl-panel"
+    },
+    {
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 16 },
+      "id": 2,
+      "options": {
+        "content": "### What the filters published\n\n| | |\n|---|---|\n| `$category` | **${category}** |\n| `$valueMin` | **${valueMin}** |\n| `$valueMax` | **${valueMax}** |\n\nSet a filter on `category` on the map and the variable follows at once. Add a filter on `value` (a numeric column) and drag its histogram brush: the pair follows ~300 ms after the brush rests — one write per gesture, not one per frame. Consumers use `value BETWEEN '$valueMin' AND '$valueMax'`; both variables go blank when the filter is removed. Both directions work: type bounds into the boxes above and the map's filter follows.",
+        "mode": "markdown"
+      },
+      "title": "Published range",
+      "type": "text"
     }
   ],
   "refresh": "",

@@ -1,8 +1,12 @@
 import {
   decideFieldSync,
   filterVariableValues,
+  isRangeMapping,
   isVariableFilter,
   normalizeFilterKey,
+  rangeFilterPair,
+  rangeVariableWrites,
+  readRangeFromVariables,
   variableFilterValues,
 } from './variableSync';
 
@@ -22,9 +26,9 @@ describe('isVariableFilter', () => {
     // A drawn rectangle becomes a polygon filter named after the LAYERS it
     // applies to. A layer labelled like a mapped column would otherwise feed a
     // GeoJSON Feature into the field sync as if it were that column's value.
-    expect(
-      isVariableFilter({ name: ['category'], type: 'polygon', value: { type: 'Feature', geometry: {} } })
-    ).toBe(false);
+    expect(isVariableFilter({ name: ['category'], type: 'polygon', value: { type: 'Feature', geometry: {} } })).toBe(
+      false
+    );
   });
 
   it('rejects windows and unknowns', () => {
@@ -202,5 +206,122 @@ describe('decideFieldSync', () => {
       { kind: 'toMap', values: ['parks'] },
       { kind: 'toMap', values: ['parks'] },
     ]);
+  });
+});
+
+const rangeMapping = { field: 'speed', variable: 'speedMin', variableTo: 'speedMax' };
+
+describe('isRangeMapping', () => {
+  it('needs both a min and a max variable', () => {
+    expect(isRangeMapping(rangeMapping)).toBe(true);
+  });
+
+  it('rejects a mapping with either variable missing or blank', () => {
+    expect(isRangeMapping({ field: 'speed', variable: 'speedMin' })).toBe(false);
+    expect(isRangeMapping({ field: 'speed', variable: 'speedMin', variableTo: '' })).toBe(false);
+    expect(isRangeMapping({ field: 'speed', variable: '', variableTo: 'speedMax' })).toBe(false);
+  });
+});
+
+describe('rangeFilterPair', () => {
+  it('accepts what a kepler range filter holds: an ordered numeric pair', () => {
+    expect(rangeFilterPair([12.5, 80])).toEqual([12.5, 80]);
+    expect(rangeFilterPair([-5, 0])).toEqual([-5, 0]);
+  });
+
+  it('accepts a degenerate pair (both bounds equal)', () => {
+    expect(rangeFilterPair([5, 5])).toEqual([5, 5]);
+  });
+
+  it('rejects everything that is not an ordered finite pair', () => {
+    expect(rangeFilterPair([80, 12.5])).toBeNull();
+    expect(rangeFilterPair([5])).toBeNull();
+    expect(rangeFilterPair([1, 2, 3])).toBeNull();
+    expect(rangeFilterPair(['12.5', 80])).toBeNull();
+    expect(rangeFilterPair([NaN, 2])).toBeNull();
+    expect(rangeFilterPair([1, Infinity])).toBeNull();
+    expect(rangeFilterPair('12.5,80')).toBeNull();
+    expect(rangeFilterPair(null)).toBeNull();
+    expect(rangeFilterPair(undefined)).toBeNull();
+  });
+});
+
+describe('readRangeFromVariables', () => {
+  it('reads a numeric pair from the two mapped variables', () => {
+    expect(readRangeFromVariables({ speedMin: '12.5', speedMax: '80' }, rangeMapping)).toEqual([12.5, 80]);
+  });
+
+  it('accepts numbers, negatives and exponent notation', () => {
+    expect(readRangeFromVariables({ speedMin: -5, speedMax: '1e3' }, rangeMapping)).toEqual([-5, 1000]);
+  });
+
+  it('takes the first entry when the URL repeats a variable', () => {
+    expect(readRangeFromVariables({ speedMin: ['12.5', '99'], speedMax: '80' }, rangeMapping)).toEqual([12.5, 80]);
+  });
+
+  it('treats a half-set pair as no window', () => {
+    expect(readRangeFromVariables({ speedMin: '12.5' }, rangeMapping)).toBeNull();
+    expect(readRangeFromVariables({ speedMax: '80' }, rangeMapping)).toBeNull();
+  });
+
+  it('treats empty, All and non-numeric values as no window', () => {
+    expect(readRangeFromVariables({ speedMin: '', speedMax: '80' }, rangeMapping)).toBeNull();
+    expect(readRangeFromVariables({ speedMin: '$__all', speedMax: '80' }, rangeMapping)).toBeNull();
+    expect(readRangeFromVariables({ speedMin: 'abc', speedMax: '80' }, rangeMapping)).toBeNull();
+  });
+
+  it('treats an inverted pair as no window rather than a filter that hides everything', () => {
+    expect(readRangeFromVariables({ speedMin: '80', speedMax: '12.5' }, rangeMapping)).toBeNull();
+  });
+
+  it('returns nothing for a mapping that is not a range mapping', () => {
+    expect(
+      readRangeFromVariables({ speedMin: '12.5', speedMax: '80' }, { field: 'speed', variable: 'speedMin' })
+    ).toBeNull();
+  });
+});
+
+describe('rangeVariableWrites', () => {
+  it('writes each bound to its own variable', () => {
+    expect(rangeVariableWrites([12.5, 80], rangeMapping)).toEqual({ speedMin: '12.5', speedMax: '80' });
+  });
+
+  it('writes both variables blank when the filter is gone', () => {
+    // An explicit "no restriction" publish: leaving the old values in place
+    // would freeze the arbitration — the variables could never drive again
+    // because neither side would ever match the last agreement.
+    expect(rangeVariableWrites(null, rangeMapping)).toEqual({ speedMin: '', speedMax: '' });
+  });
+
+  it('writes nothing for a mapping that is not a range mapping', () => {
+    expect(rangeVariableWrites([12.5, 80], { field: 'speed', variable: 'speedMin' })).toEqual({});
+  });
+});
+
+/**
+ * The range path reuses the select path's arbitration wholesale: a numeric pair
+ * and its two-variable string form must land on the same canonical key, so
+ * `decideFieldSync` can cut the echo between them without knowing about ranges.
+ */
+describe('range values through the shared arbitration', () => {
+  it('gives a numeric pair and its string form the same key', () => {
+    expect(normalizeFilterKey([12.5, 80])).toBe(normalizeFilterKey(['12.5', '80']));
+  });
+
+  it('agrees once the map filter matches what the variables say', () => {
+    expect(
+      decideFieldSync({
+        filterValue: [12.5, 80],
+        desired: ['12.5', '80'],
+        lastSynced: normalizeFilterKey([12.5, 80]),
+      })
+    ).toEqual({ kind: 'agreed' });
+  });
+
+  it('lets preset range variables drive the map on the first pass', () => {
+    expect(decideFieldSync({ filterValue: undefined, desired: ['12.5', '80'], lastSynced: undefined })).toEqual({
+      kind: 'toMap',
+      values: ['12.5', '80'],
+    });
   });
 });

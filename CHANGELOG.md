@@ -5,6 +5,21 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Added: a numeric range filter can be published as a min/max variable pair.** A cross-filtering
+  mapping now takes an optional second variable ("Max"), turning it into a range mapping: narrow a
+  filter on a numeric column and the pair lands in the two variables —
+  `value BETWEEN '$valueMin' AND '$valueMax'` on any consuming panel — the same two-variable
+  encoding the time window already uses. Both directions work: presetting the pair in a shared
+  link (or typing bounds into the text boxes) creates or moves the filter on the map, and deleting
+  the filter publishes both variables blank so they can drive again. Publishing is debounced with
+  the same 300 ms rest as the time variables, because a histogram brush updates the filter per
+  pointer move — one write per gesture, not one per frame. Scalar mappings are untouched;
+  `range` stays out of their filter set and rides its own path (escalón 1 of the cross-filtering
+  design doc). The sample cross-filter dashboard gained the `valueMin`/`valueMax` pair and a
+  panel that renders what was published. Covered by unit tests over the pure sync helpers and
+  verified in the browser across the full cycle: create-from-variables, publish-on-edit,
+  blank-on-delete, recreate-from-variables.
+
 - **kepler.gl 3.3.0-alpha.6.** The pin moves up three pre-releases from alpha.3. The `@kepler.gl/*`
   packages now publish dual CJS/ESM builds behind an `exports` map, so the two deep imports the
   portal fix relies on drop their `/dist` segment, and the effect panel's new date/time picker
@@ -39,7 +54,7 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   the same 300 ms rest the time variables use, because dragging a vertex updates the store per
   pointer move. It never writes on dashboard load — the first pass adopts whatever figures a saved
   config restored, silently — so a shared link keeps the value it was opened with. And it is
-  one-way by design: the variable exists for the *other* panels' queries, and feeding it back into
+  one-way by design: the variable exists for the _other_ panels' queries, and feeding it back into
   this panel's own would shrink the map's dataset under the drawn shape, which could then never be
   widened again. Deleting the last figure clears the variable to `''`, which keeps the SQL guard
   literal. The WKT is emitted by the plugin — fixed format, coordinates rounded to 6 decimals — so
@@ -54,7 +69,7 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   the same `TypeError: (0, x.default) is not a function`, from different `@turf/*` functions
   (`kinks`, `bboxPolygon`). kepler's packages `require()` the draw editor, so webpack resolved
   `@deck.gl-community/editable-layers` to its CommonJS build — where esbuild's node-mode interop
-  (`__toESM(require(...), 1)`) hands every turf *default* import the module's exports object
+  (`__toESM(require(...), 1)`) hands every turf _default_ import the module's exports object
   instead of its function, faithfully imitating how Node itself treats a CJS default. That
   combination is broken by construction; the packages only cooperate through their ESM builds.
   webpack now pins the editor to its ESM build, the same move already made for deck.gl and

@@ -312,6 +312,22 @@ function filterHasField(filter: { name?: string[] | string }, field: string): bo
  * over the variable that was driving.
  */
 export function applyFieldFilter(store: Store, dispatch: Dispatch, field: string, values: string[]): boolean {
+  return applyFilterValue(store, dispatch, field, values);
+}
+
+/**
+ * Sets a numeric range filter on `field` to `pair` — the variable → map
+ * direction of a range mapping.
+ *
+ * Same contract as {@link applyFieldFilter}. kepler infers the filter type
+ * from the column, so on a numeric column the created filter is a `range` and
+ * the pair lands as its window.
+ */
+export function applyRangeFilter(store: Store, dispatch: Dispatch, field: string, pair: [number, number]): boolean {
+  return applyFilterValue(store, dispatch, field, pair);
+}
+
+function applyFilterValue(store: Store, dispatch: Dispatch, field: string, value: unknown): boolean {
   const visState = getVisState(store);
   if (!visState) {
     return false;
@@ -319,13 +335,13 @@ export function applyFieldFilter(store: Store, dispatch: Dispatch, field: string
 
   const existing = visState.filters.find((f) => filterHasField(f, field));
   if (existing) {
-    dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(existing.id, undefined, undefined, values)));
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(existing.id, undefined, undefined, value)));
     return true;
   }
 
   for (const [dataId, dataset] of Object.entries(visState.datasets)) {
     if (dataset.fields.some((f) => f.name === field)) {
-      dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(undefined, dataId, field, values)));
+      dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(undefined, dataId, field, value)));
       return true;
     }
   }

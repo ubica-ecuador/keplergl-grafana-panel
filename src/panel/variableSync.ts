@@ -10,6 +10,20 @@
 export interface VariableMapping {
   field: string;
   variable: string;
+  /**
+   * The variable for the upper bound, which is what makes this a *range*
+   * mapping: the filter on `field` is numeric, `variable` carries its min and
+   * `variableTo` its max — the same two-variable encoding `timeVariables` uses,
+   * so a consumer writes `speed BETWEEN '$speedMin' AND '$speedMax'`. Absent,
+   * the mapping is the scalar kind above and a range filter on the field is
+   * ignored.
+   */
+  variableTo?: string;
+}
+
+/** Whether a mapping publishes a numeric range as a min/max variable pair. */
+export function isRangeMapping(mapping: VariableMapping): boolean {
+  return Boolean(mapping.variable && mapping.variableTo);
 }
 
 /** The little kepler filter shape this reads. */
@@ -23,8 +37,10 @@ interface FilterLike {
  * Filter types whose value maps cleanly to a Grafana variable.
  *
  * `select`/`input` carry a scalar, `multiSelect` an array — all directly usable
- * as a variable value. `range` and `timeRange` are windows (timeRange has its
- * own sync) and `polygon` is spatial, so none of those drive a variable.
+ * as a variable value. The windows travel by other roads: `timeRange` has its
+ * own sync (`timeVariableSync.ts`) and `range` publishes as a min/max variable
+ * pair when its mapping names both (see {@link isRangeMapping}). `polygon` is
+ * spatial (`areaSync.ts`), so it never drives a scalar variable.
  */
 const VARIABLE_FILTER_TYPES = new Set(['select', 'multiSelect', 'input']);
 
@@ -134,6 +150,86 @@ export function decideFieldSync({
   const variableDrives = lastSynced === undefined ? variableKey !== allKey : mapKey === lastSynced;
 
   return variableDrives ? { kind: 'toMap', values: desired } : { kind: 'toVariable', value: filterValue };
+}
+
+/**
+ * The ordered numeric pair a kepler `range` filter holds, or null.
+ *
+ * Strict about shape because the value reaches us untyped from kepler state: an
+ * inverted or non-finite pair is treated as no value rather than propagated to
+ * a variable someone will interpolate into SQL.
+ */
+export function rangeFilterPair(value: unknown): [number, number] | null {
+  if (!Array.isArray(value) || value.length !== 2) {
+    return null;
+  }
+  const [min, max] = value;
+  if (typeof min !== 'number' || typeof max !== 'number') {
+    return null;
+  }
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) {
+    return null;
+  }
+  return [min, max];
+}
+
+/**
+ * The range the mapped variable pair currently describes, or null.
+ *
+ * Mirrors `readWindowFromVariables` in `timeVariableSync.ts`: both bounds must
+ * be present, numeric and ordered — a half-set or inverted pair means "no
+ * window", never a filter that hides everything.
+ */
+export function readRangeFromVariables(
+  values: Record<string, unknown>,
+  mapping: VariableMapping
+): [number, number] | null {
+  if (!isRangeMapping(mapping)) {
+    return null;
+  }
+  const min = parseRangeBound(values[mapping.variable]);
+  const max = parseRangeBound(values[mapping.variableTo!]);
+  if (min === null || max === null || min > max) {
+    return null;
+  }
+  return [min, max];
+}
+
+/**
+ * The value each of the pair's variables should hold for `pair`.
+ *
+ * A null pair writes both variables *blank* rather than leaving them: the
+ * filter is gone, and keeping the old values would freeze the arbitration —
+ * with the map at "no filter" and the variables at the old pair, neither side
+ * ever matches the last agreement again, so the variables could never drive.
+ */
+export function rangeVariableWrites(pair: [number, number] | null, mapping: VariableMapping): Record<string, string> {
+  if (!isRangeMapping(mapping)) {
+    return {};
+  }
+  return {
+    [mapping.variable]: pair ? String(pair[0]) : '',
+    [mapping.variableTo!]: pair ? String(pair[1]) : '',
+  };
+}
+
+/** A numeric bound from whatever the variable holds; null for every "no value" form. */
+function parseRangeBound(raw: unknown): number | null {
+  // Grafana repeats a variable in the URL when it is multi-value; a bound is
+  // single-valued, so the first entry is the one that means anything.
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (trimmed === '' || trimmed === ALL_VALUE) {
+    return null;
+  }
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 /** Coerces any variable/filter value to a list of real selections. */

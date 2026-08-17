@@ -15,6 +15,11 @@ type Props = StandardEditorProps<VariableMapping[] | undefined, unknown, KeplerP
  * select or text filter on that column, the panel writes its value to the
  * variable and the rest of the dashboard re-queries. Turning a map into a
  * cross-filter control is something the Foursquare plugin cannot do at all.
+ *
+ * Naming a second variable in "Max" turns the row into a *range* mapping: a
+ * numeric filter on the column publishes its window as the min/max pair —
+ * `speed BETWEEN '$speedMin' AND '$speedMax'` on the consuming panel — the
+ * same two-variable encoding the time window uses.
  */
 export function VariableSyncEditor({ value, onChange, context }: Props) {
   const mappings = value ?? [];
@@ -57,6 +62,20 @@ export function VariableSyncEditor({ value, onChange, context }: Props) {
               placeholder="variable"
               width={20}
               onChange={(o) => setRow(index, { variable: o?.value ?? '' })}
+            />
+          </InlineField>
+          <InlineField
+            label="Max"
+            labelWidth={6}
+            tooltip="For a numeric column: the filter publishes its window as this pair, first variable = min, this one = max."
+          >
+            <Combobox
+              options={variables}
+              value={mapping.variableTo || null}
+              placeholder="(range)"
+              width={20}
+              isClearable
+              onChange={(o) => setRow(index, { variableTo: o?.value || undefined })}
             />
           </InlineField>
           <IconButton name="trash-alt" tooltip="Remove" aria-label="Remove mapping" onClick={() => removeRow(index)} />
