@@ -438,7 +438,8 @@ version bump broke. Three things about it are deliberate:
 - **v0.3** _(done)_ — origin-destination flow layers; map filters driving dashboard variables.
 - **v1.0** — move to kepler.gl 3.3.0 stable, sign, and submit to the Grafana catalog.
 
-Design notes and the findings from the feasibility spike are in [`docs/`](docs/).
+The findings from the feasibility spike, and from verifying GeoParquet end to end, are in
+[`docs/`](docs/).
 
 ## Licence
 

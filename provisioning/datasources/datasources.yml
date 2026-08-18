@@ -5,26 +5,3 @@ datasources:
     type: testdata
     uid: trlxrdZVk
     isDefault: true
-
-  # PostgreSQL 14 + PostGIS 3.2 + MobilityDB 1.0, running as
-  # `mobilitydb` in a separate Compose project.
-  #
-  # It is unreachable by container name (different network), so we dial the
-  # port it publishes on the host: 45432 -> 5432. `host.docker.internal` is
-  # mapped to `host-gateway` in docker-compose.yaml; plain `localhost` here
-  # would resolve to the Grafana container itself.
-  #
-  # The password comes from MOBILITYDB_PASSWORD (see .env.example) — Grafana
-  # interpolates $VAR in provisioning files at startup.
-  - name: MobilityDB
-    type: postgres
-    uid: mobilitydb
-    url: host.docker.internal:45432
-    user: postgres
-    secureJsonData:
-      password: $MOBILITYDB_PASSWORD
-    jsonData:
-      database: mobilitydb
-      sslmode: 'disable'
-      postgresVersion: 1400
-      timescaledb: false

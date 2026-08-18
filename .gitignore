@@ -42,7 +42,7 @@ ci/
 /playwright/.cache/
 /playwright/.auth/
 
-# Local secrets consumed by docker-compose (see .env.example)
+# Local secrets consumed by docker-compose
 .env
 
 # Editor
@@ -56,3 +56,14 @@ ci/
 # Sources bench verification artifact (scripts/verify-sources.mjs)
 /sources-verify.png
 /.playwright-mcp/
+
+# Agent working files. The skills under .claude/ and .codex/ come from
+# create-plugin and are committed; these do not. `settings.json` is a
+# machine-local permission allowlist, and worktrees are whole checkouts —
+# previously excluded only via .git/info/exclude, which no clone inherits.
+/.claude/settings.json
+/.claude/settings.local.json
+/.claude/worktrees/
+
+# Internal design notes kept out of the published repository.
+/internal-docs/
