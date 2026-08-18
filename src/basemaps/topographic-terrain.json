@@ -1,0 +1,36 @@
+{
+  "version": 8,
+  "name": "Topographic with relief (Esri + Mapterhorn)",
+  "sources": {
+    "esri-topographic": {
+      "type": "raster",
+      "tiles": [
+        "https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+      ],
+      "tileSize": 256,
+      "maxzoom": 19,
+      "attribution": "Esri, HERE, Garmin, Intermap, INCREMENT P, GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), (c) OpenStreetMap contributors, and the GIS User Community"
+    },
+    "terrain-dem": {
+      "type": "raster-dem",
+      "tiles": ["https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"],
+      "encoding": "terrarium",
+      "tileSize": 512,
+      "maxzoom": 12,
+      "attribution": "<a href=\"https://mapterhorn.com/attribution\">© Mapterhorn</a>"
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": { "background-color": "#f2efe9" }
+    },
+    {
+      "id": "topographic",
+      "type": "raster",
+      "source": "esri-topographic"
+    }
+  ],
+  "terrain": { "source": "terrain-dem", "exaggeration": 1.5 }
+}

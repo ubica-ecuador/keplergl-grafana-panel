@@ -1,0 +1,64 @@
+{
+  "version": 8,
+  "name": "Satellite with relief (Esri + Mapterhorn)",
+  "sources": {
+    "esri-imagery": {
+      "type": "raster",
+      "tiles": [
+        "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+      ],
+      "tileSize": 256,
+      "maxzoom": 20,
+      "attribution": "Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community"
+    },
+    "esri-transportation": {
+      "type": "raster",
+      "tiles": [
+        "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}"
+      ],
+      "tileSize": 256,
+      "maxzoom": 20,
+      "attribution": "Esri, HERE, Garmin, (c) OpenStreetMap contributors"
+    },
+    "esri-places": {
+      "type": "raster",
+      "tiles": [
+        "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+      ],
+      "tileSize": 256,
+      "maxzoom": 20,
+      "attribution": "Esri, HERE, Garmin, (c) OpenStreetMap contributors, and the GIS user community"
+    },
+    "terrain-dem": {
+      "type": "raster-dem",
+      "tiles": ["https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"],
+      "encoding": "terrarium",
+      "tileSize": 512,
+      "maxzoom": 12,
+      "attribution": "<a href=\"https://mapterhorn.com/attribution\">© Mapterhorn</a>"
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": { "background-color": "#0a0a0a" }
+    },
+    {
+      "id": "satellite",
+      "type": "raster",
+      "source": "esri-imagery"
+    },
+    {
+      "id": "road-transportation",
+      "type": "raster",
+      "source": "esri-transportation"
+    },
+    {
+      "id": "label-places",
+      "type": "raster",
+      "source": "esri-places"
+    }
+  ],
+  "terrain": { "source": "terrain-dem", "exaggeration": 1.5 }
+}

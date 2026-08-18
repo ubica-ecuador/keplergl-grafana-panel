@@ -33,11 +33,23 @@ panel: no external service, no account, no Mapbox token.
 - **Saved map configuration** stored with the dashboard, and configs pasted from kepler.gl,
   Foursquare Studio or Dekart are accepted.
 - **Follows the dashboard theme**, base map included.
-- **No outbound calls to any vendor.** Base maps come from Carto, or Esri for the satellite one, and
-  can be swapped for a self-hosted `style.json`; kepler's icon library ships with the plugin.
-- **Esri's terms of use.** The satellite imagery comes from Esri's public
+- **No account needed for any base map.** Carto's three, Esri's satellite and topographic ones, and
+  two of those with **real elevation** — tilt the camera and the ground has relief. Every one can be
+  swapped for a self-hosted `style.json`; kepler's icon library ships with the plugin. The base maps
+  that require a Mapbox account are not offered at all, rather than sitting in the picker blanking
+  the map when clicked.
+- **Esri's terms of use.** The satellite and topographic imagery come from Esri's public
   `services.arcgisonline.com` endpoint, whose terms ask for an ArcGIS account for production use —
   installs that need a cleaner footing should point **Base map** at their own `style.json`.
+
+### Relief
+
+**Satellite + relief** and **Topographic + relief** carry a `terrain` key that MapLibre reads from
+the style document, with elevation tiles from [Mapterhorn](https://mapterhorn.com). Tilt the camera
+with the 3D control and the ground rises. Two things to know before leaning on it: the relief is the
+*base map's* — deck.gl draws your data at its own altitude, so points and paths do not drape over
+the terrain — and kepler pins MapLibre 4, where panning a tilted terrain map can make the camera
+jitter ([keplergl/kepler.gl#3394](https://github.com/keplergl/kepler.gl/issues/3394)).
 
 ## Queries
 
@@ -300,7 +312,7 @@ from the map.
 | **Flow line style**        | Straight, curved or animated lines for origin-destination flow layers.                          |
 | **Cross-filtering**        | Map a kepler filter to a dashboard variable to cross-filter other panels.                       |
 | **Publish drawn area**     | Write the drawn polygon/rectangle to a variable as WKT, for other panels' spatial SQL.          |
-| **Base map**               | Carto Dark Matter / Positron / Voyager, Esri satellite, or a self-hosted `style.json`.          |
+| **Base map**               | Carto Dark Matter / Positron / Voyager, Esri satellite or satellite/topographic with relief, or a self-hosted `style.json`. |
 | **Map configuration**      | Save the current layers and filters with the dashboard, or paste one in.                        |
 
 Saving is explicit rather than automatic: the configuration is a sizeable blob that lands in the
@@ -326,11 +338,13 @@ blocks the base map. MapLibre fetches styles, sprites, glyphs and tiles over XHR
 under that directive:
 
 ```ini
-content_security_policy_template = """...connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com ...;"""
+content_security_policy_template = """...connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com ...;"""
 ```
 
-The Esri host serves only the **Satellite (Esri)** base map — leave it out if you never select it.
-Or point **Base map** at a `style.json` on your own network and skip this entirely.
+Each host serves only what its name suggests: Carto the three default base maps, Esri the satellite
+and topographic ones, Mapterhorn the elevation tiles behind the two relief styles. Leave out the
+ones whose base maps you never select. Or point **Base map** at a `style.json` on your own network
+and skip this entirely.
 
 ## Development
 

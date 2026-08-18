@@ -73,7 +73,8 @@ services:
       # `connect-src` must allow the basemap hosts. maplibre fetches style.json,
       # sprites, glyph .pbf files and vector tiles over XHR, so they all fall
       # under connect-src rather than img-src/font-src. Carto serves the default
-      # base maps; Esri serves the tiles of the satellite one.
+      # base maps; Esri serves the tiles of the satellite and topographic ones;
+      # Mapterhorn serves the elevation tiles behind the two relief styles.
       #
       # Verified with the stock template: the plugin still loads, the map still
       # renders and Web Workers still start — only the basemap goes missing.
@@ -81,7 +82,7 @@ services:
         script-src 'self' 'unsafe-eval' 'unsafe-inline' 'strict-dynamic' $$NONCE;object-src 'none';font-src
         'self';style-src 'self' 'unsafe-inline' blob:;img-src * data:;base-uri 'self';connect-src 'self'
         grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com
-        https://services.arcgisonline.com ws://$$ROOT_PATH
+        https://services.arcgisonline.com https://tiles.mapterhorn.com ws://$$ROOT_PATH
         wss://$$ROOT_PATH;manifest-src 'self';media-src 'none';form-action 'self';
 
   # Sources bench, on port 3002: the file-based formats the panel is meant to

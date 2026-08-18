@@ -22,3 +22,13 @@ export const KEPLER_INSTANCE_ID = 'grafana';
  * hand the slot back to the style that cannot load without a Mapbox token.
  */
 export const SATELLITE_BASEMAP_ID = 'grafana-satellite';
+
+/**
+ * Ids of the two styles that carry real relief.
+ *
+ * They are separate entries rather than a switch on the flat ones because the
+ * elevation rides in the style document — MapLibre reads `terrain` from the
+ * style it is handed — and kepler has no notion of terrain to toggle.
+ */
+export const SATELLITE_TERRAIN_BASEMAP_ID = 'grafana-satellite-terrain';
+export const TOPOGRAPHIC_TERRAIN_BASEMAP_ID = 'grafana-topographic-terrain';

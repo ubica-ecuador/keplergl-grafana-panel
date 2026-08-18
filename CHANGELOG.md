@@ -5,6 +5,27 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Added: two base maps with real elevation, and the base maps that need an account are gone.**
+  "Satellite + relief" and "Topographic + relief" carry a `terrain` key that MapLibre reads straight
+  from the style document — kepler has no notion of terrain, but it passes the key through, which is
+  what makes elevation possible at all — with Esri imagery or topographic cartography over
+  Mapterhorn's elevation tiles. Tilt the camera and the ground rises. Two limits worth knowing: the
+  relief belongs to the *base map*, so deck.gl keeps drawing your data at its own altitude rather
+  than draping it over the terrain, and kepler pins MapLibre 4, where panning a tilted terrain map
+  can jitter the camera (keplergl/kepler.gl#3394).
+
+  The panel now replaces kepler's list of base maps rather than adding to it. Five of kepler's nine
+  defaults are `mapbox://` styles that blank the map when clicked without an account; they are no
+  longer offered. The three that work without one — Carto's — are re-registered from kepler's own
+  definitions, as is "No Basemap", which would otherwise have gone with them.
+
+  Two fixes fell out of building it. The style picker showed broken thumbnails for every Carto
+  entry: kepler names its thumbnails as paths under the app's `cdnUrl`, which this plugin points at
+  its own assets, so each one asked the plugin for a `geodude/*.png` it has never shipped. They are
+  now real tiles from the service each style draws, like the satellite entry already used. And the
+  panel's own Esri attribution is gone: as of kepler 3.3.0-alpha.7 the attribution bar reads each
+  source's `attribution` field, so rendering the credit ourselves showed it twice.
+
 - **Changed: the map credits kepler.gl, and so does the plugin's icon.** The side panel used to
   read "Grafana", because the panel passed its own `appName`; it now shows kepler's default,
   "kepler.gl", with the version underneath — the header names the library the map comes from, and

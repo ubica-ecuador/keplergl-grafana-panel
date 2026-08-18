@@ -15,7 +15,15 @@ import { ViewportVariables } from './panel/viewportSync';
  * imagery style. The value is the kepler style id, so `KeplerPanel` can pass it
  * straight through.
  */
-export type BasemapChoice = 'auto' | 'dark-matter' | 'positron' | 'voyager' | 'grafana-satellite' | 'custom';
+export type BasemapChoice =
+  | 'auto'
+  | 'dark-matter'
+  | 'positron'
+  | 'voyager'
+  | 'grafana-satellite'
+  | 'grafana-satellite-terrain'
+  | 'grafana-topographic-terrain'
+  | 'custom';
 
 export interface KeplerPanelOptions {
   /**

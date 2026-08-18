@@ -8,8 +8,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import type { PanelDataset } from '../data/framesToDatasets';
 import type { SavedMapConfig } from '../data/mapConfig';
 import type { KeplerThemeOverride } from '../data/keplerTheme';
-import { KEPLER_INSTANCE_ID, SATELLITE_BASEMAP_ID } from './constants';
-import { registeredMapStyles } from './basemaps';
+import { KEPLER_INSTANCE_ID } from './constants';
+import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES } from './basemaps';
 import { configureKepler } from './keplerConfig';
 import { createKeplerStore } from './keplerStore';
 import { captureMapConfig, loadDatasets, refreshDatasets, setBasemap, setSidePanel } from './keplerAdapter';
@@ -28,8 +28,6 @@ import { useViewportSync } from './useViewportSync';
 import type { ViewportVariables } from './viewportSync';
 import { useAreaSync } from './useAreaSync';
 import { useTimeVariableSync } from './useTimeVariableSync';
-import { useActiveBasemap } from './useActiveBasemap';
-import { BasemapAttribution } from './BasemapAttribution';
 import type { TimeRangeMs, TimeSyncMode } from './timeSync';
 import type { TimeVariableMapping } from './timeVariableSync';
 import type { VariableMapping } from './variableSync';
@@ -258,15 +256,8 @@ export function KeplerMap({
     peerSync: peerTimeSync,
   });
 
-  // kepler's own attribution bar never credits Esri — it renders a hardcoded
-  // "© kepler.gl" / basemap-library line and ignores a raster source's
-  // `attribution` field entirely. The panel renders Esri's credit itself,
-  // only while the satellite style is actually the one showing.
-  const activeBasemapId = useActiveBasemap({ store, isReady });
-
   return (
     <div ref={setStyleTarget} style={{ width, height, position: 'relative', overflow: 'hidden' }}>
-      {activeBasemapId === SATELLITE_BASEMAP_ID && <BasemapAttribution />}
       {styleTarget && (
         <StyleSheetManager target={styleTarget}>
           <Provider store={store}>
@@ -282,6 +273,9 @@ export function KeplerMap({
                  it "Grafana" claimed credit for someone else's work. */
               theme={theme}
               mapStyles={mapStyles}
+              /* Drops kepler's own list, which is half Mapbox styles that
+                 cannot load without an account — see REPLACES_DEFAULT_MAP_STYLES. */
+              mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
               /* kepler renders one commit late and silently discards actions
                  addressed to an instance that has not registered yet. */
               onKeplerGlInitialized={() => setIsReady(true)}

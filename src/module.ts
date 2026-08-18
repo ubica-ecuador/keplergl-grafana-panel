@@ -125,6 +125,8 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
           { value: 'positron', label: 'Positron' },
           { value: 'voyager', label: 'Voyager' },
           { value: 'grafana-satellite', label: 'Satellite (Esri)' },
+          { value: 'grafana-satellite-terrain', label: 'Satellite + relief' },
+          { value: 'grafana-topographic-terrain', label: 'Topographic + relief' },
           { value: 'custom', label: 'Self-hosted style.json' },
         ],
       },
