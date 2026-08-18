@@ -207,18 +207,19 @@
     },
     {
       "gridPos": {
-        "h": 6,
+        "h": 12,
         "w": 24,
         "x": 0,
         "y": 16
       },
       "id": 2,
       "options": {
-        "content": "### What the filters published\n\n| | |\n|---|---|\n| `$category` | **${category}** |\n| `$valueMin` | **${valueMin}** |\n| `$valueMax` | **${valueMax}** |\n| `$site` | **${site}** |\n| `$lat` / `$lng` | **${lat}** / **${lng}** |\n\nSet a filter on `category` on the map and the variable follows at once. Add a filter on `value` (a numeric column) and drag its histogram brush: the pair follows ~300 ms after the brush rests — one write per gesture, not one per frame. Consumers use `value BETWEEN '$valueMin' AND '$valueMax'`; both variables go blank when the filter is removed. Both directions work: type bounds into the boxes above and the map's filter follows.\n\n`$site` is the *click* mapping: click a point on the map and the variable takes its `site` — `WHERE site = '$site'` on any other panel. Click empty map to clear it. One way only: typing in the box does not move the map.\n\n`$lat`/`$lng` is the *coordinates* mapping: any click also pins the place clicked and the pair takes it, for a spatial query on another panel — `ST_DWithin(geom, ST_MakePoint($lng, $lat)::geography, $radius)` with `$radius` a plain dashboard variable. Clicking again unpins on the map but the pair keeps the last spot; the next pin moves it.\n\n`$west`/`$south`/`$east`/`$north` is the *viewport* channel: pan or zoom the map and the four edges of what it shows follow, once the gesture rests — **${west}**, **${south}**, **${east}**, **${north}**. Another panel filters to the view with `WHERE lng BETWEEN $west AND $east AND lat BETWEEN $south AND $north`. Never put it in this map's own query: its data would shrink to what is on screen and zooming out could not bring those rows back.",
+        "content": "| Variable | Value now |\n|---|---|\n| `$​category` | ${category} |\n| `$​valueMin` / `$​valueMax` | ${valueMin} / ${valueMax} |\n| `$​site` | ${site} |\n| `$​lat` / `$​lng` | ${lat} / ${lng} |\n| `$​west` / `$​south` / `$​east` / `$​north` | ${west} / ${south} / ${east} / ${north} |\n\n**Filters — two ways.** Set a filter on `category` in the map's own filter panel and the variable follows at once; type in the picker above and the map's filter follows. A filter on `value` (a numeric column) publishes its histogram brush as the min/max pair ~300 ms after the brush rests — one write per gesture, not one per frame — and consumers read `value BETWEEN '$​valueMin' AND '$​valueMax'`. Both go blank when the filter is removed.\n\n**Click → entity.** Clicking a point publishes its `site` column, for `WHERE site = '$​site'` on any other panel. Clicking empty map clears it — but only a selection this panel published, so a shared link's preset survives. One way only.\n\n**Click → place.** The same click also pins the coordinate, for a spatial query elsewhere: `ST_DWithin(geom, ST_MakePoint($​lng, $​lat)::geography, $​radius)`. Clicking again unpins on the map, but the pair keeps the last spot until the next pin.\n\n**Place → map.** The pair read back: type into Lat/Lng above — or click a row in a table that writes them — and the map centres there at zoom 13. The map's own clicks are recognised and never re-centre it.\n\n**Viewport → bbox.** Pan or zoom, and once the map rests the four edges of what it shows follow. Another panel filters to the view with `WHERE lng BETWEEN $​west AND $​east AND lat BETWEEN $​south AND $​north`. Never put those in this map's own query: its data would shrink to what is on screen, and zooming out could not bring the rows back.",
         "mode": "markdown"
       },
-      "title": "Published range",
-      "type": "text"
+      "title": "What the map publishes",
+      "type": "text",
+      "description": "The variable names in the left column and in the SQL examples carry a zero-width space after the dollar sign. Without it Grafana interpolates them — even inside backticks — and the column meant to name the variables shows their values instead."
     }
   ],
   "refresh": "",
