@@ -5,6 +5,14 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Fixed: the cross-filtering hooks no longer re-subscribe to the map on every render.** The
+  mappings reached the map as `options.variableMappings ?? []`, and all four sync hooks — filter,
+  click, coordinate and centre — key their store subscription on that value. Grafana's clone moved
+  its identity on every options change, and the `?? []` fallback moved it on every render when no
+  mapping was configured, so each render tore down four subscriptions and made four more. Anchored
+  with the same `useStableValue` the field mappings and viewport variables already use. Measured in
+  the browser: three variable changes now add zero subscriptions.
+
 - **Added: two base maps with real elevation, and the base maps that need an account are gone.**
   "Satellite + relief" and "Topographic + relief" carry a `terrain` key that MapLibre reads straight
   from the style document — kepler has no notion of terrain, but it passes the key through, which is

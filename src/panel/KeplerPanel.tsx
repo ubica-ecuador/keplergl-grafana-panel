@@ -9,8 +9,12 @@ import { SavedMapConfig } from '../data/mapConfig';
 import { CUSTOM_BASEMAP_ID } from './constants';
 import { LazyKeplerMap } from './LazyKeplerMap';
 import { useStableValue } from './useStableValue';
+import type { VariableMapping } from './variableSync';
 
 interface Props extends PanelProps<KeplerPanelOptions> {}
+
+/** Stable empty list, so an unconfigured panel has nothing new to react to. */
+const EMPTY_MAPPINGS: VariableMapping[] = [];
 
 /**
  * Translates Grafana concerns into props for the map.
@@ -34,6 +38,13 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
   // — whenever this identity moves, which a clone would do on every click in
   // the panel editor.
   const viewportVariables = useStableValue(options.viewportVariables);
+
+  // The cross-filtering mappings feed four hooks — filter, click, coordinate
+  // and centre — each of which subscribes to the kepler store in an effect
+  // keyed by this value. Grafana's clone moves the identity on every options
+  // change, and the `?? []` fallback moves it on *every render* when no
+  // mapping is configured, so all four tore down and re-subscribed constantly.
+  const variableMappings = useStableValue(options.variableMappings ?? EMPTY_MAPPINGS);
 
   const datasets = useMemo(
     () =>
@@ -95,7 +106,7 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
         timeSync={options.timeSync ?? 'toMap'}
         grafanaRange={grafanaRange}
         onChangeGrafanaRange={onChangeTimeRange}
-        variableMappings={options.variableMappings ?? []}
+        variableMappings={variableMappings}
         areaVariable={options.areaVariable ?? ''}
         viewportVariables={viewportVariables}
         timeVariables={options.timeVariables}
