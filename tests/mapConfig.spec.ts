@@ -24,8 +24,9 @@ test('saves the map configuration into the panel options and restores it', async
   await page.getByTestId('save-map-config').click();
 
   // The panel writes the captured config back into the options, which the
-  // editor reflects — proof the capture actually reached the panel model.
-  await expect(page.getByText(/Saved: 1 layer/)).toBeVisible({ timeout: 10_000 });
+  // editor reflects — proof the capture actually reached the panel model. Two
+  // layers because table trip mode keeps the point layer alongside the trip.
+  await expect(page.getByText(/Saved: 2 layers/)).toBeVisible({ timeout: 10_000 });
 
   // Applying returns to the dashboard, which remounts the panel from the
   // options — so the layer name coming back proves the restore path works, not

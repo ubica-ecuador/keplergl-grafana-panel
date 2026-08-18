@@ -23,8 +23,14 @@ export default defineConfig<PluginOptions>({
    * spawns one worker per core and the maps starve each other, tipping the
    * heaviest test (save → apply → remount) past its timeout. Cap the workers so
    * every map has room to render.
+   *
+   * Two, not four: the cross-filter specs grew the suite by half, and at four
+   * workers the surviving failures were pure contention — a different trio
+   * every run, each passing on its own. Two keeps the suite deterministic at
+   * roughly the same wall-clock, since the bottleneck is the CPU the maps
+   * share rather than the number of tests in flight.
    */
-  workers: process.env.CI ? 2 : 4,
+  workers: 2,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */

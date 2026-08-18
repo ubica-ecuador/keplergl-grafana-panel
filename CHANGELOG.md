@@ -5,6 +5,18 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Tested: the cross-filtering channels have end-to-end regressions, and the suite is green
+  again.** Five new specs cover what only browser sessions had verified: the coordinate channel
+  (a click publishes the pair, the unpin toggle and a data refresh both keep it), the entity click
+  (publish, deselect, and a shared link's preset surviving stray clicks), a preset min/max pair
+  filtering the map on load, the centre mapping (an outside write moves the viewport, the map's
+  own click never does) and the viewport guard's data-fit path. Three long-standing failures were
+  the specs, not the plugin — they still described the pre-`table` trip mode (80 rows rather than
+  2, a lone trip layer rather than trip + point, one saved layer rather than two) — and are now
+  fixed. Local Playwright workers drop from four to two: the suite grew by half, and at four the
+  remaining failures were pure contention between software-rendered maps, a different trio every
+  run and each passing alone. The whole suite now passes deterministically.
+
 - **Fixed: the map no longer opens on kepler's default San Francisco instead of its own
   viewport.** kepler 3.x localises the view state in a React context seeded at mount time — the
   default — and a debounced write-back pushes it into Redux after deck's first emissions. On load

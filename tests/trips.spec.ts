@@ -22,12 +22,17 @@ test('renders a trip query as an animated Trip layer', async ({
 
   // kepler only labels a layer `trip` once it finds timestamped LineStrings —
   // which means the grouping and the [lng, lat, alt, ts] shape both worked.
-  await expect(panelEditPage.panel.locator.locator('.layer__title__type')).toHaveText('trip', {
+  // The panel deliberately carries a point layer alongside (table trip mode
+  // keeps one row per ping), so the assertion is "a trip layer exists", not
+  // "the only layer is a trip".
+  await expect(panelEditPage.panel.locator.locator('.layer__title__type', { hasText: 'trip' })).toBeVisible({
     timeout: 60_000,
   });
 
-  // The Trip layer brings a playback timeline; a static geojson layer would not.
-  await expect(panelEditPage.panel.locator.locator('[class*="playback-controls"]')).toBeVisible({
+  // The Trip layer brings a playback timeline; a static geojson layer would
+  // not. The panel shows two of them — the trip animation's and the time
+  // filter's — so the assertion is that a playback timeline exists at all.
+  await expect(panelEditPage.panel.locator.locator('[class*="playback-controls"]').first()).toBeVisible({
     timeout: 60_000,
   });
 });

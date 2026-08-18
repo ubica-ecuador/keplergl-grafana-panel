@@ -123,6 +123,13 @@
             "variable": "lat",
             "variableTo": "lng",
             "source": "coordinate"
+          },
+          {
+            "field": "",
+            "variable": "lat",
+            "variableTo": "lng",
+            "source": "center",
+            "zoom": 13
           }
         ]
       },
