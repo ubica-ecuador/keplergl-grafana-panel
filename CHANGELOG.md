@@ -5,6 +5,16 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Changed: kepler.gl 3.3.0-alpha.7.** A clean bump — no source change was needed, and the
+  transitive deck.gl (9.3.10) and luma.gl (9.3.6) versions are unchanged, which is the axis that
+  matters here: the flow layer's shaders need a single deduped instance of both. Upstream adds
+  filter-feature badges on the map, an optional theme toggle driven by `uiState.theme` (off unless
+  an app config enables it, so the panel's own theme still wins), column statistics, sketch draw
+  modes behind a config flag, and `padding` on `fitBounds`. The internals this plugin leans on are
+  untouched — `map-view-state-context.js` is byte-identical, so the load-window viewport guard is
+  still both necessary and correct. Verified: unit suite, the full 26-spec e2e suite, and the
+  browser on both dev containers including the strict-CSP one, with no new console errors.
+
 - **Added: the map can publish its viewport as a bounding box, for other panels to filter by.**
   "Publish viewport (for other panels)" names four dashboard variables and the map writes the
   edges of what it is showing into them, so a consuming panel answers "filter to what I am looking
