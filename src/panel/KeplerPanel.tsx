@@ -30,6 +30,11 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
   // the datasets and push a needless — and destructive — refresh into kepler.
   const fieldMappings = useStableValue(options.fieldMappings);
 
+  // Same reason: the viewport channel's effect re-subscribes — and republishes
+  // — whenever this identity moves, which a clone would do on every click in
+  // the panel editor.
+  const viewportVariables = useStableValue(options.viewportVariables);
+
   const datasets = useMemo(
     () =>
       framesToDatasets(data.series, fieldMappings, {
@@ -92,6 +97,7 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
         onChangeGrafanaRange={onChangeTimeRange}
         variableMappings={options.variableMappings ?? []}
         areaVariable={options.areaVariable ?? ''}
+        viewportVariables={viewportVariables}
         timeVariables={options.timeVariables}
         publishWhilePlaying={options.publishWhilePlaying ?? false}
         peerTimeSync={options.peerTimeSync ?? false}

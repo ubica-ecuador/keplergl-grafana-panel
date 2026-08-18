@@ -24,7 +24,8 @@ import { rowFieldValue } from './clickSync';
 import type { FlowLayerConfig } from '../data/buildFlows';
 import type { TripLayerConfig } from '../data/buildTripLayer';
 import type { SavedMapConfig } from '../data/mapConfig';
-import type { MapStateLike } from './windViewport';
+import { viewportFromMapState, type MapStateLike } from './windViewport';
+import type { ViewportBounds } from './viewportSync';
 import {
   findTimeFieldName,
   readTimeFilterDomain,
@@ -785,6 +786,19 @@ export function addAutoLayer(
 /** Frames the map on a bounding box. */
 export function fitMapToBounds(dispatch: Dispatch, bounds: MapBounds): void {
   dispatch(wrapTo(KEPLER_INSTANCE_ID, fitBounds(bounds)));
+}
+
+/**
+ * The bbox of what the map is currently showing, or null before its layout
+ * has settled — kepler reports a zero-sized map until then.
+ *
+ * Derived from centre, zoom and pixel size by the same Mercator arithmetic
+ * the wind field uses; `viewportFromMapState` carries the extra pixel
+ * dimensions that tracer needs, and this drops them.
+ */
+export function readViewportBounds(store: Store): ViewportBounds | null {
+  const viewport = viewportFromMapState(readMapState(store));
+  return viewport ? { west: viewport.west, south: viewport.south, east: viewport.east, north: viewport.north } : null;
 }
 
 /**

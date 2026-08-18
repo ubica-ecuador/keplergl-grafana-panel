@@ -84,6 +84,58 @@
         "hide": 0,
         "options": [],
         "skipUrlSync": false
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "label": "West",
+        "name": "west",
+        "options": [],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "label": "South",
+        "name": "south",
+        "options": [],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "label": "East",
+        "name": "east",
+        "options": [],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "label": "North",
+        "name": "north",
+        "options": [],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
       }
     ]
   },
@@ -131,7 +183,13 @@
             "source": "center",
             "zoom": 13
           }
-        ]
+        ],
+        "viewportVariables": {
+          "west": "west",
+          "south": "south",
+          "east": "east",
+          "north": "north"
+        }
       },
       "targets": [
         {
@@ -156,7 +214,7 @@
       },
       "id": 2,
       "options": {
-        "content": "### What the filters published\n\n| | |\n|---|---|\n| `$category` | **${category}** |\n| `$valueMin` | **${valueMin}** |\n| `$valueMax` | **${valueMax}** |\n| `$site` | **${site}** |\n| `$lat` / `$lng` | **${lat}** / **${lng}** |\n\nSet a filter on `category` on the map and the variable follows at once. Add a filter on `value` (a numeric column) and drag its histogram brush: the pair follows ~300 ms after the brush rests — one write per gesture, not one per frame. Consumers use `value BETWEEN '$valueMin' AND '$valueMax'`; both variables go blank when the filter is removed. Both directions work: type bounds into the boxes above and the map's filter follows.\n\n`$site` is the *click* mapping: click a point on the map and the variable takes its `site` — `WHERE site = '$site'` on any other panel. Click empty map to clear it. One way only: typing in the box does not move the map.\n\n`$lat`/`$lng` is the *coordinates* mapping: any click also pins the place clicked and the pair takes it, for a spatial query on another panel — `ST_DWithin(geom, ST_MakePoint($lng, $lat)::geography, $radius)` with `$radius` a plain dashboard variable. Clicking again unpins on the map but the pair keeps the last spot; the next pin moves it.",
+        "content": "### What the filters published\n\n| | |\n|---|---|\n| `$category` | **${category}** |\n| `$valueMin` | **${valueMin}** |\n| `$valueMax` | **${valueMax}** |\n| `$site` | **${site}** |\n| `$lat` / `$lng` | **${lat}** / **${lng}** |\n\nSet a filter on `category` on the map and the variable follows at once. Add a filter on `value` (a numeric column) and drag its histogram brush: the pair follows ~300 ms after the brush rests — one write per gesture, not one per frame. Consumers use `value BETWEEN '$valueMin' AND '$valueMax'`; both variables go blank when the filter is removed. Both directions work: type bounds into the boxes above and the map's filter follows.\n\n`$site` is the *click* mapping: click a point on the map and the variable takes its `site` — `WHERE site = '$site'` on any other panel. Click empty map to clear it. One way only: typing in the box does not move the map.\n\n`$lat`/`$lng` is the *coordinates* mapping: any click also pins the place clicked and the pair takes it, for a spatial query on another panel — `ST_DWithin(geom, ST_MakePoint($lng, $lat)::geography, $radius)` with `$radius` a plain dashboard variable. Clicking again unpins on the map but the pair keeps the last spot; the next pin moves it.\n\n`$west`/`$south`/`$east`/`$north` is the *viewport* channel: pan or zoom the map and the four edges of what it shows follow, once the gesture rests — **${west}**, **${south}**, **${east}**, **${north}**. Another panel filters to the view with `WHERE lng BETWEEN $west AND $east AND lat BETWEEN $south AND $north`. Never put it in this map's own query: its data would shrink to what is on screen and zooming out could not bring those rows back.",
         "mode": "markdown"
       },
       "title": "Published range",

@@ -5,6 +5,7 @@ import { SavedMapConfig } from './data/mapConfig';
 import { TimeSyncMode } from './panel/timeSync';
 import { TimeVariableMapping } from './panel/timeVariableSync';
 import { VariableMapping } from './panel/variableSync';
+import { ViewportVariables } from './panel/viewportSync';
 
 /**
  * Base maps offered in the panel options.
@@ -129,6 +130,18 @@ export interface KeplerPanelOptions {
    * variable pair, for the other panels' spatial queries.
    */
   variableMappings?: VariableMapping[];
+
+  /**
+   * Dashboard variables the map's viewport is published to, as the four edges
+   * of its bounding box in EPSG:4326 — `lng BETWEEN $west AND $east` on the
+   * consuming side.
+   *
+   * One way, and for the *other* panels: putting the bbox in this panel's own
+   * query shrinks its data to what is on screen, after which zooming out
+   * cannot bring those rows back. Published when the map comes to rest, and
+   * once on load so a consumer never opens without a value.
+   */
+  viewportVariables?: ViewportVariables;
 
   /**
    * Dashboard variable the figure drawn on the map is published to, as WKT in

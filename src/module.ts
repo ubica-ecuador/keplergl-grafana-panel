@@ -8,6 +8,7 @@ import { FieldMappingEditor } from './editors/FieldMappingEditor';
 import { VariableSyncEditor } from './editors/VariableSyncEditor';
 import { TimeVariableEditor } from './editors/TimeVariableEditor';
 import { AreaVariableEditor } from './editors/AreaVariableEditor';
+import { ViewportVariablesEditor } from './editors/ViewportVariablesEditor';
 
 export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelOptions((builder) =>
   builder
@@ -151,6 +152,14 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       description: 'Write the polygon or rectangle drawn on the map to a dashboard variable as WKT.',
       category: ['Cross-filtering'],
       editor: AreaVariableEditor,
+    })
+    .addCustomEditor({
+      id: 'viewportVariables',
+      path: 'viewportVariables',
+      name: 'Publish viewport (for other panels)',
+      description: "Write the bounding box of what the map is showing to four dashboard variables.",
+      category: ['Cross-filtering'],
+      editor: ViewportVariablesEditor,
     })
     .addCustomEditor({
       id: 'saveRequest',

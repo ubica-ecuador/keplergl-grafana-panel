@@ -5,6 +5,19 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Added: the map can publish its viewport as a bounding box, for other panels to filter by.**
+  "Publish viewport (for other panels)" names four dashboard variables and the map writes the
+  edges of what it is showing into them, so a consuming panel answers "filter to what I am looking
+  at" with `WHERE lng BETWEEN $west AND $east AND lat BETWEEN $south AND $north`. Numbers rather
+  than WKT: they carry no injection risk into a consumer's SQL. Published once on load — a
+  consumer should not open without bounds — and thereafter when the map comes to rest, 300 ms
+  after the last pan or zoom, so one gesture costs one round of queries rather than one per frame.
+  Edges are clamped to coordinates that exist, since a world-wide view computes a span past the
+  antimeridian and the poles, and an unchanged view writes nothing. The option's name carries its
+  own warning, and so does the editor hint: this is for the *other* panels. Filtering the map's
+  own query by its own viewport is a ratchet — the data shrinks to what is on screen and zooming
+  out cannot bring those rows back. This completes the cross-filtering design's five escalones.
+
 - **Tested: the cross-filtering channels have end-to-end regressions, and the suite is green
   again.** Five new specs cover what only browser sessions had verified: the coordinate channel
   (a click publishes the pair, the unpin toggle and a data refresh both keep it), the entity click

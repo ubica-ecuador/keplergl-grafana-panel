@@ -252,6 +252,25 @@ the map to that feature. A textbox on the pair works the same way. The map's own
 recognised and never re-centre, and on load the saved viewport wins — the pair moves the map only
 when someone changes it.
 
+#### The viewport
+
+**Publish viewport (for other panels)** names four variables — west, south, east and north — and
+the map writes the bounding box of what it is showing into them. Another panel then filters to the
+view:
+
+```sql
+WHERE lng BETWEEN $west AND $east AND lat BETWEEN $south AND $north
+```
+
+Four numbers rather than a geometry, so nothing free-form reaches a consumer's SQL. The bbox is
+published once on load, so a consuming panel never opens without bounds, and afterwards whenever
+the map comes to rest — 300 ms after the last pan or zoom, so a gesture costs one round of queries
+rather than one per frame.
+
+The name is a warning worth repeating: this is for the **other** panels. Put the bbox in this
+panel's own query and the map filters itself — the data shrinks to what is on screen, and zooming
+out cannot bring those rows back, because the dataset no longer holds them.
+
 #### Drawn areas
 
 The polygon or rectangle drawn with kepler's draw tool can be published to a variable too. Add a

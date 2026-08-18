@@ -24,6 +24,8 @@ import { useClickSync } from './useClickSync';
 import { useCoordinateSync } from './useCoordinateSync';
 import { useCenterSync } from './useCenterSync';
 import { useViewportGuard } from './useViewportGuard';
+import { useViewportSync } from './useViewportSync';
+import type { ViewportVariables } from './viewportSync';
 import { useAreaSync } from './useAreaSync';
 import { useTimeVariableSync } from './useTimeVariableSync';
 import { useActiveBasemap } from './useActiveBasemap';
@@ -69,6 +71,7 @@ export interface KeplerMapProps {
   variableMappings: VariableMapping[];
   /** Variable the drawn polygon/rectangle is published to as WKT; empty for none. */
   areaVariable: string;
+  viewportVariables?: ViewportVariables;
   /** The two variables the time slider's window is published to, if configured. */
   timeVariables?: TimeVariableMapping;
   /** Whether playing the slider publishes as it runs, or only once it stops. */
@@ -109,6 +112,7 @@ export function KeplerMap({
   onChangeGrafanaRange,
   variableMappings,
   areaVariable,
+  viewportVariables,
   timeVariables,
   publishWhilePlaying,
   peerTimeSync,
@@ -238,6 +242,10 @@ export function KeplerMap({
   // One-way and silent on its first pass — it adopts whatever figures a saved
   // config restored without publishing — so it contends with nothing on load.
   useAreaSync({ store, isReady, variable: areaVariable });
+
+  // One-way: publishes the bbox of what the map shows once it comes to rest,
+  // and once on load so a consuming panel never opens without one.
+  useViewportSync({ store, isReady, variables: viewportVariables });
 
   // Declared last so the dashboard-range sync has already had its say on load;
   // in `variables` mode that sync stands down entirely and this owns the clock.
