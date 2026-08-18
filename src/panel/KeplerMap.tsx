@@ -277,7 +277,9 @@ export function KeplerMap({
               /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
                  required by the type but unused unless a Mapbox style is picked. */
               mapboxApiAccessToken=""
-              appName="Grafana"
+              /* `appName` is deliberately left at kepler's own default: the
+                 side panel names the library the map comes from, and calling
+                 it "Grafana" claimed credit for someone else's work. */
               theme={theme}
               mapStyles={mapStyles}
               /* kepler renders one commit late and silently discards actions

@@ -5,6 +5,13 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Changed: the map credits kepler.gl, and so does the plugin's icon.** The side panel used to
+  read "Grafana", because the panel passed its own `appName`; it now shows kepler's default,
+  "kepler.gl", with the version underneath — the header names the library the map comes from, and
+  claiming it for the host was wrong. The plugin icon is kepler's own mark, its two overlapping
+  squares in the library's slate and cyan, rebuilt as a standalone square SVG from the geometry
+  the library draws inline.
+
 - **Changed: catalog readiness — the plugin now passes Grafana's full plugin-validator.** Running
   it against a packaged build (not just the `metadatavalid` analyzer CI already ran) surfaced three
   fixable things: the Apache licence still carried its `{yyyy}` / `{name of copyright owner}`
