@@ -38,7 +38,16 @@
         "url": "https://kepler.gl"
       }
     ],
-    "screenshots": [],
+    "screenshots": [
+      {
+        "name": "Global seismicity, read as remote GeoParquet by DuckDB",
+        "path": "img/screenshot-quakes.png"
+      },
+      {
+        "name": "Origin-destination flows built from query rows",
+        "path": "img/screenshot-flows.png"
+      }
+    ],
     "version": "%VERSION%",
     "updated": "%TODAY%"
   },

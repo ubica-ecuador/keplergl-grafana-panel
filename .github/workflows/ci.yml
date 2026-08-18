@@ -123,6 +123,20 @@ jobs:
         env:
           ARCHIVE: ${{ steps.metadata.outputs.archive }}
 
+      # The full validator is what the catalog runs at submission time. Kept
+      # separate from the blocking check above and allowed to fail, because it
+      # also reports things that are only true until the plugin is published —
+      # "unsigned plugin", an unregistered account prefix — which must not stop
+      # a build. Read its output before submitting.
+      - name: Validate plugin (full, advisory)
+        continue-on-error: true
+        run: |
+          docker run --pull=always \
+            -v $PWD/${ARCHIVE}:/archive.zip \
+            grafana/plugin-validator-cli /archive.zip
+        env:
+          ARCHIVE: ${{ steps.metadata.outputs.archive }}
+
       - name: Archive Build
         uses: actions/upload-artifact@v7
         with:
@@ -182,10 +196,15 @@ jobs:
       - name: Install dev dependencies
         run: npm ci
 
+      # Only the `grafana` service. The compose file also defines a
+      # strict-CSP instance and a data-sources bench (a second Grafana plus a
+      # file server, whose DuckDB queries reach out to the internet) — both are
+      # development benches, neither is what the e2e suite drives, and starting
+      # three Grafanas on a two-core runner starves the software-rendered maps.
       - name: Start Grafana
         run: |
-          docker compose pull
-          ANONYMOUS_AUTH_ENABLED=false DEVELOPMENT=false GRAFANA_VERSION=${{ matrix.GRAFANA_IMAGE.VERSION }} GRAFANA_IMAGE=${{ matrix.GRAFANA_IMAGE.NAME }} docker compose up -d
+          docker compose pull grafana
+          ANONYMOUS_AUTH_ENABLED=false DEVELOPMENT=false GRAFANA_VERSION=${{ matrix.GRAFANA_IMAGE.VERSION }} GRAFANA_IMAGE=${{ matrix.GRAFANA_IMAGE.NAME }} docker compose up -d grafana
 
       - name: Wait for grafana server
         uses: grafana/plugin-actions/wait-for-grafana@wait-for-grafana/v1.0.2

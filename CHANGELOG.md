@@ -5,6 +5,20 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Changed: catalog readiness — the plugin now passes Grafana's full plugin-validator.** Running
+  it against a packaged build (not just the `metadatavalid` analyzer CI already ran) surfaced three
+  fixable things: the Apache licence still carried its `{yyyy}` / `{name of copyright owner}`
+  placeholders, `plugin.json` declared no screenshots — the catalog shows them on the plugin page —
+  and the CI only ever checked metadata. The licence is filled in, two screenshots taken from the
+  running plugin are shipped (global seismicity over remote GeoParquet, and origin-destination
+  flows), and CI gained an advisory full-validator step alongside the blocking metadata one; it is
+  allowed to fail because the validator also reports states that are only true until publication.
+  Two warnings remain by design: "unsigned plugin", expected until the catalog review signs it, and
+  the `ubica` account prefix, which needs the Grafana Cloud account to exist. The e2e job also now
+  starts only the `grafana` service rather than the whole compose file — it was booting the
+  strict-CSP instance and the data-sources bench too, three Grafanas competing for a two-core
+  runner.
+
 - **Changed: kepler.gl 3.3.0-alpha.7.** A clean bump — no source change was needed, and the
   transitive deck.gl (9.3.10) and luma.gl (9.3.6) versions are unchanged, which is the axis that
   matters here: the flow layer's shaders need a single deduped instance of both. Upstream adds
