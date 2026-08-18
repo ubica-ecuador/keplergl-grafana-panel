@@ -5,6 +5,18 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Fixed: the map no longer opens on kepler's default San Francisco instead of its own
+  viewport.** kepler 3.x localises the view state in a React context seeded at mount time — the
+  default — and a debounced write-back pushes it into Redux after deck's first emissions. On load
+  that echo raced the saved config's `addDataToMap`, and whichever landed last won: sometimes the
+  saved viewport, sometimes the default, which is why the bug came and went. A load-window guard
+  now defends the intended viewport for a few seconds after each rebuild: whenever the map lands
+  exactly on kepler's initial triple it puts back the saved viewport — or re-fits the data bounds
+  on a config-less map, whose centre-on-data the same echo undid. Bounded by a window and an
+  attempt cap, and keyed to the exact default fingerprint, so it can never fight a user's real
+  panning. Verified with an action-level timeline: the echo still fires, and the guard corrects it
+  within ~50 ms, once per load.
+
 - **Added: the map can be centred from outside through its lat/lng variable pair.** A
   cross-filtering mapping row switched to "Center" reads the pair back into the viewport: when the
   variables change from outside the map — a table row's data link, a textbox — the map centres on

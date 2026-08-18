@@ -23,6 +23,7 @@ import { useVariableSync } from './useVariableSync';
 import { useClickSync } from './useClickSync';
 import { useCoordinateSync } from './useCoordinateSync';
 import { useCenterSync } from './useCenterSync';
+import { useViewportGuard } from './useViewportGuard';
 import { useAreaSync } from './useAreaSync';
 import { useTimeVariableSync } from './useTimeVariableSync';
 import { useActiveBasemap } from './useActiveBasemap';
@@ -115,6 +116,8 @@ export function KeplerMap({
   const store = useMemo(() => createKeplerStore(), []);
   const [styleTarget, setStyleTarget] = useState<HTMLElement | null>(null);
   const [isReady, setIsReady] = useState(false);
+  // Bumped on every rebuild; arms the viewport guard for the load window.
+  const [guardArm, setGuardArm] = useState(0);
 
   const hasLoaded = useRef(false);
   const appliedConfig = useRef<SavedMapConfig | null | undefined>(undefined);
@@ -153,10 +156,15 @@ export function KeplerMap({
       hasLoaded.current = true;
       appliedConfig.current = mapConfig;
       loadDatasets(store.dispatch, datasets, {}, mapConfig);
+      // The viewport this load intends is not safe yet — kepler's internal
+      // view state echo can overwrite it — so arm the guard that defends it.
+      setGuardArm((n) => n + 1);
     } else {
       refreshDatasets(store, store.dispatch, datasets);
     }
   }, [isReady, datasets, mapConfig, store]);
+
+  useViewportGuard({ store, isReady, mapConfig, arm: guardArm });
 
   // A saved config already names a base map, so it wins over the panel option.
   useEffect(() => {

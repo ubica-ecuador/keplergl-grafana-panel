@@ -788,6 +788,43 @@ export function fitMapToBounds(dispatch: Dispatch, bounds: MapBounds): void {
 }
 
 /**
+ * The union of every layer's data bounds, or null when no layer has any.
+ *
+ * What the load-window viewport guard fits a config-less map back to when
+ * kepler's internal view state echo undoes the centre-on-data of the load.
+ */
+export function readLayerBoundsUnion(store: Store): MapBounds | null {
+  let union: MapBounds | null = null;
+  for (const layer of getVisState(store)?.layers ?? []) {
+    const bounds = layer.meta?.bounds;
+    if (!Array.isArray(bounds) || bounds.length !== 4) {
+      continue;
+    }
+    const b = bounds as MapBounds;
+    union = union
+      ? [Math.min(union[0], b[0]), Math.min(union[1], b[1]), Math.max(union[2], b[2]), Math.max(union[3], b[3])]
+      : b;
+  }
+  return union;
+}
+
+/**
+ * Puts a full saved viewport back on the map — latitude, longitude, zoom and
+ * whatever bearing/pitch the config carried. The viewport guard's restore.
+ */
+export function restoreViewport(
+  store: Store,
+  dispatch: Dispatch,
+  viewport: { latitude: number; longitude: number; zoom: number; bearing?: number; pitch?: number }
+): boolean {
+  if (!getVisState(store)) {
+    return false;
+  }
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, updateMap(viewport as Parameters<typeof updateMap>[0], 0)));
+  return true;
+}
+
+/**
  * Centres the map on a coordinate — the read-back direction of the centre
  * mapping. Without `zoom` the map keeps the zoom it has, so centring never
  * costs the user the scale they chose. Returns false while the map has no
