@@ -1,38 +1,41 @@
 {
   "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
   "type": "panel",
-  "name": "Maps by Kepler.gl",
+  "name": "Kepler Geospatial Maps",
   "id": "ubica-keplergl-panel",
   "info": {
     "keywords": [
-      "panel",
       "map",
       "geospatial",
       "gis",
-      "kepler",
+      "spatio-temporal",
       "kepler.gl",
       "deck.gl",
-      "maplibre",
       "mobility",
       "trips",
       "flows",
       "geojson",
       "h3",
       "postgis",
-      "spatial",
-      "temporal",
-      "spatio-temporal",
       "geoparquet"
     ],
-    "description": "Interactive kepler.gl maps for Grafana dashboards — spatio-temporal data from any data source.",
+    "description": "Spatio-temporal maps for Grafana dashboards — trajectories, origin-destination flows and velocity fields from any data source. Runs kepler.gl inside the panel: no external service, no account, no Mapbox token.",
     "author": {
       "name": "UBICA"
     },
     "logos": {
-      "small": "img/logo.svg",
-      "large": "img/logo.svg"
+      "small": "img/logo-small.svg",
+      "large": "img/logo-large.svg"
     },
     "links": [
+      {
+        "name": "Documentation",
+        "url": "https://ubica-ecuador.github.io/keplergl-grafana-panel/"
+      },
+      {
+        "name": "Source code",
+        "url": "https://github.com/ubica-ecuador/keplergl-grafana-panel"
+      },
       {
         "name": "kepler.gl",
         "url": "https://kepler.gl"

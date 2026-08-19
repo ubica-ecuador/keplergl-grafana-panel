@@ -1,6 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="86 48 340 340" width="64" height="64" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="title desc">
 <title id="title">Kepler Geospatial Maps</title>
-<desc id="desc">Compact mark: three hexagonal prisms of different heights in Grafana orange.</desc>
+<desc id="desc">Three hexagonal prisms of different heights on an isometric hex grid, in Grafana orange.</desc>
+<g fill="none" stroke="#FF9830" stroke-width="2.5" opacity="0.3">
+<polygon points="190,256 223,218 289,218 322,256 289,294 223,294"/>
+<polygon points="91,294 124,256 190,256 223,294 190,332 124,332"/>
+<polygon points="289,294 322,256 388,256 421,294 388,332 322,332"/>
+<polygon points="190,332 223,294 289,294 322,332 289,370 223,370"/>
+<polygon points="91,370 124,332 190,332 223,370 190,408 124,408"/>
+<polygon points="289,370 322,332 388,332 421,370 388,408 322,408"/>
+<polygon points="190,408 223,370 289,370 322,408 289,446 223,446"/>
+</g>
 <polygon points="91,104 124,142 124,332 91,294" fill="#9B4300"/>
 <polygon points="190,142 223,104 223,294 190,332" fill="#9B4300"/>
 <polygon points="124,142 190,142 190,332 124,332" fill="#C25400"/>

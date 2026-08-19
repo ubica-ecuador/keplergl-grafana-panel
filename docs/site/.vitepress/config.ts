@@ -22,13 +22,14 @@ export const VERSIONS = {
  * renaming the repository does not silently break every image on the site —
  * the workflow passes `github.event.repository.name`.
  */
-const base = process.env.DOCS_BASE ?? '/kepler-grafana/';
+const base = process.env.DOCS_BASE ?? '/keplergl-grafana-panel/';
 
 export default defineConfig({
   base,
   lang: 'en-GB',
-  title: 'Maps by Kepler.gl',
-  description: 'Interactive kepler.gl maps for Grafana dashboards — spatio-temporal data from any data source.',
+  title: 'Kepler Geospatial Maps',
+  description:
+    'Spatio-temporal maps for Grafana dashboards — trajectories, origin-destination flows and velocity fields from any data source. Runs kepler.gl inside the panel: no external service, no account, no Mapbox token.',
   // Broken internal links fail the build. Outbound links are checked separately
   // by `docs:linkcheck`, which does not block: a third party's outage must not
   // stop us publishing.
@@ -113,7 +114,7 @@ export default defineConfig({
         collapsed: true,
         items: [
           { text: 'PostGIS', link: '/guide/sources/postgis' },
-          { text: 'DuckDB and GeoParquet', link: '/guide/sources/duckdb-geoparquet' },
+          { text: 'DuckDB — parquet, CSV, GeoJSON', link: '/guide/sources/duckdb-geoparquet' },
           { text: 'Infinity — GeoJSON, CSV, WFS', link: '/guide/sources/infinity' },
           { text: 'Any other SQL source', link: '/guide/sources/other-sql' },
         ],

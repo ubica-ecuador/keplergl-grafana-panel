@@ -1,4 +1,4 @@
-# Kepler.gl panel for Grafana
+# Kepler Geospatial Maps
 
 Interactive [kepler.gl](https://kepler.gl) maps inside Grafana dashboards, fed by any Grafana data
 source. Built for spatio-temporal mobility data — points, trajectories and origin-destination flows.

@@ -28,7 +28,7 @@ Until then, install it from the release archive.
    ```
 
 3. Restart Grafana.
-4. Confirm it loaded under **Administration → Plugins**, and that **Maps by Kepler.gl** appears in
+4. Confirm it loaded under **Administration → Plugins**, and that **Kepler Geospatial Maps** appears in
    the visualisation picker when you edit a panel.
 
 ::: warning An unsigned plugin is a decision, not a formality

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="title desc">
+<title id="title">Kepler Geospatial Maps (black monochrome)</title>
+<desc id="desc">Black monochrome mark on a transparent background, for light surfaces.</desc>
+<g fill="none" stroke="#000000" stroke-width="2.5" opacity="0.25">
+<polygon points="190,256 223,218 289,218 322,256 289,294 223,294"/>
+<polygon points="91,294 124,256 190,256 223,294 190,332 124,332"/>
+<polygon points="289,294 322,256 388,256 421,294 388,332 322,332"/>
+<polygon points="190,332 223,294 289,294 322,332 289,370 223,370"/>
+<polygon points="91,370 124,332 190,332 223,370 190,408 124,408"/>
+<polygon points="289,370 322,332 388,332 421,370 388,408 322,408"/>
+<polygon points="190,408 223,370 289,370 322,408 289,446 223,446"/>
+</g>
+<g fill="#000000">
+<polygon points="91,104 124,142 124,332 91,294" opacity="0.5"/>
+<polygon points="190,142 223,104 223,294 190,332" opacity="0.5"/>
+<polygon points="124,142 190,142 190,332 124,332" opacity="0.75"/>
+<polygon points="91,104 124,66 190,66 223,104 190,142 124,142"/>
+<polygon points="289,174 322,212 322,332 289,294" opacity="0.5"/>
+<polygon points="388,212 421,174 421,294 388,332" opacity="0.5"/>
+<polygon points="322,212 388,212 388,332 322,332" opacity="0.75"/>
+<polygon points="289,174 322,136 388,136 421,174 388,212 322,212"/>
+<polygon points="190,262 223,300 223,370 190,332" opacity="0.5"/>
+<polygon points="289,300 322,262 322,332 289,370" opacity="0.5"/>
+<polygon points="223,300 289,300 289,370 223,370" opacity="0.75"/>
+<polygon points="190,262 223,224 289,224 322,262 289,300 223,300"/>
+</g>
+</svg>

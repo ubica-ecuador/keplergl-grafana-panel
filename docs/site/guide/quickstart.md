@@ -7,7 +7,7 @@ one from a public URL.
 
 ## 1. Add a panel
 
-New dashboard → **Add visualization** → pick your data source → choose **Maps by Kepler.gl** in
+New dashboard → **Add visualization** → pick your data source → choose **Kepler Geospatial Maps** in
 the visualisation picker at the top right.
 
 ## 2. Write a query that returns coordinates

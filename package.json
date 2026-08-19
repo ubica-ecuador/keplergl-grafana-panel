@@ -1,7 +1,7 @@
 {
   "name": "ubica-keplergl-panel",
   "version": "0.3.0",
-  "description": "Interactive kepler.gl maps for Grafana dashboards — spatio-temporal mobility data from any data source.",
+  "description": "Spatio-temporal maps for Grafana dashboards — trajectories, origin-destination flows and velocity fields from any data source. Runs kepler.gl inside the panel: no external service, no account, no Mapbox token.",
   "scripts": {
     "build": "webpack -c ./webpack.config.ts --env production",
     "dev": "webpack -w -c ./webpack.config.ts --env development",

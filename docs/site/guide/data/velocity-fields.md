@@ -63,6 +63,16 @@ coordinates, plus a velocity pair, and **no** trip id.
 
 ## The grid
 
+::: warning The grid must really be regular
+The axes are inferred, and the values have to lie on a regular lattice within 5% of the inferred
+step. A source that snaps your requested coordinates to its own model grid — Open-Meteo does — will
+break that: the inference fails, the field is never built, and you get **rows in the panel, an empty
+map, and no error anywhere**.
+
+Round the coordinates back to the lattice you asked for, and space that lattice wider than the
+snapping error. See [Tutorial 6](../../tutorials/wind-field).
+:::
+
 Rows are cells. The grid itself is **inferred**, so the query may return them in any order —
 `ORDER BY lat, lon` is for your own benefit when you inspect the rows, not the panel's.
 
@@ -90,6 +100,11 @@ blur averages over about a synoptic feature: enough to stop the tracer jittering
 cells, not enough to erase anything a 25 km model actually resolves.
 
 ## The lines follow the view
+
+::: tip Nothing is drawn until you press play
+Streamlines are a Trip layer underneath, so at the start of the animation window every trail has
+zero length. A paused field is a blank map — press play on the timeline.
+:::
 
 Density and on-screen length hold steady as you zoom, because the field is **re-traced whenever the
 map settles** — a fixed budget of lines per screen, each a fixed number of pixels long. Only the

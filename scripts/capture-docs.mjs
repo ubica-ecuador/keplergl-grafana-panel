@@ -49,6 +49,14 @@ const MAX_BYTES = 200 * 1024;
  * `hideSidePanel` and `hideBottomWidget` default to hiding, because kepler
  * overlays both on top of the map and a documentation image wants the map.
  * Set either to `false` where the chrome *is* the subject.
+ *
+ * Not yet covered here: a **velocity field** panel. Its subtree re-traces on
+ * every settle and never goes quiet, so Playwright's auto-waiting — which
+ * `locator.screenshot()` and `boundingBox()` both do — times out, and under
+ * software rendering a field of thousands of animating streamlines does not
+ * yield a frame inside the default screenshot timeout either. Capturing one
+ * means reading the rect with `page.evaluate`, clipping a page screenshot to
+ * it, and pausing the animation first.
  */
 const SHOTS = [
   // ---- Layer gallery. One map per layer type the panel can build from rows.

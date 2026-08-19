@@ -5,19 +5,19 @@ kepler's nineteen registered layer types can be driven by data; the other six ta
 are covered on [Layers a query cannot drive](./url-configured).
 
 <div class="gallery">
-  <a href="./points-and-aggregation#point"><img src="/img/layer-point.jpg" alt="Point layer"><span>point</span></a>
-  <a href="./points-and-aggregation#heatmap"><img src="/img/layer-heatmap.jpg" alt="Heatmap layer"><span>heatmap</span></a>
-  <a href="./points-and-aggregation#grid"><img src="/img/layer-grid.jpg" alt="Grid layer"><span>grid</span></a>
-  <a href="./points-and-aggregation#hexagon"><img src="/img/layer-hexagon.jpg" alt="Hexagon layer"><span>hexagon</span></a>
-  <a href="./points-and-aggregation#cluster"><img src="/img/layer-cluster.jpg" alt="Cluster layer"><span>cluster</span></a>
-  <a href="./points-and-aggregation#icon"><img src="/img/layer-icon.jpg" alt="Icon layer"><span>icon</span></a>
-  <a href="./geometry-and-indices#geojson"><img src="/img/layer-geojson.jpg" alt="GeoJSON layer"><span>geojson</span></a>
-  <a href="./geometry-and-indices#h3"><img src="/img/layer-h3.jpg" alt="H3 hexagon layer"><span>hexagonId (H3)</span></a>
-  <a href="./geometry-and-indices#s2"><img src="/img/layer-s2.jpg" alt="S2 layer"><span>s2</span></a>
-  <a href="./origin-destination#arc"><img src="/img/layer-arc.jpg" alt="Arc layer"><span>arc</span></a>
-  <a href="./origin-destination#line"><img src="/img/layer-line.jpg" alt="Line layer"><span>line</span></a>
-  <a href="./origin-destination#flow"><img src="/img/layer-flow.jpg" alt="Flow layer"><span>flow</span></a>
-  <a href="./time#trip"><img src="/img/layer-trip.jpg" alt="Trip layer"><span>trip</span></a>
+  <a href="./points-and-aggregation.html#point"><img src="/img/layer-point.jpg" alt="Point layer"><span>point</span></a>
+  <a href="./points-and-aggregation.html#heatmap"><img src="/img/layer-heatmap.jpg" alt="Heatmap layer"><span>heatmap</span></a>
+  <a href="./points-and-aggregation.html#grid"><img src="/img/layer-grid.jpg" alt="Grid layer"><span>grid</span></a>
+  <a href="./points-and-aggregation.html#hexagon"><img src="/img/layer-hexagon.jpg" alt="Hexagon layer"><span>hexagon</span></a>
+  <a href="./points-and-aggregation.html#cluster"><img src="/img/layer-cluster.jpg" alt="Cluster layer"><span>cluster</span></a>
+  <a href="./points-and-aggregation.html#icon"><img src="/img/layer-icon.jpg" alt="Icon layer"><span>icon</span></a>
+  <a href="./geometry-and-indices.html#geojson"><img src="/img/layer-geojson.jpg" alt="GeoJSON layer"><span>geojson</span></a>
+  <a href="./geometry-and-indices.html#h3"><img src="/img/layer-h3.jpg" alt="H3 hexagon layer"><span>hexagonId (H3)</span></a>
+  <a href="./geometry-and-indices.html#s2"><img src="/img/layer-s2.jpg" alt="S2 layer"><span>s2</span></a>
+  <a href="./origin-destination.html#arc"><img src="/img/layer-arc.jpg" alt="Arc layer"><span>arc</span></a>
+  <a href="./origin-destination.html#line"><img src="/img/layer-line.jpg" alt="Line layer"><span>line</span></a>
+  <a href="./origin-destination.html#flow"><img src="/img/layer-flow.jpg" alt="Flow layer"><span>flow</span></a>
+  <a href="./time.html#trip"><img src="/img/layer-trip.jpg" alt="Trip layer"><span>trip</span></a>
 </div>
 
 <style scoped>

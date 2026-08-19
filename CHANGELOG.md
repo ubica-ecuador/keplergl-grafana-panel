@@ -5,6 +5,18 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Changed: the panel is now "Kepler Geospatial Maps".** "Maps by Kepler.gl" put the plugin's
+  identity in the authorship slot: the catalog card credits UBICA while the name reads as if the
+  kepler.gl project had published it, and Grafana's plugin policy asks that you hold the rights to
+  any trademark you ship. The new name also matches how Grafana searches. The visualisation picker
+  matches the plugin `name` as a plain substring and reads neither the id, nor the description, nor
+  the keywords, so every word someone might type has to live in the name itself — map, geo, spatial,
+  kepler — and no other panel in the catalog claims "geospatial". The id stays
+  `ubica-keplergl-panel`: it is frozen at publication and has to match the grafana.com organisation
+  slug. Keywords pruned from 18 to 13, since `spatial`, `temporal` and `spatio-temporal` were one
+  term spelled three ways and `panel` only repeats the plugin type, and `info.links` now carries the
+  documentation and source-code URLs.
+
 - **Fixed: the cross-filtering hooks no longer re-subscribe to the map on every render.** The
   mappings reached the map as `options.variableMappings ?? []`, and all four sync hooks — filter,
   click, coordinate and centre — key their store subscription on that value. Grafana's clone moved
@@ -34,12 +46,17 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   panel's own Esri attribution is gone: as of kepler 3.3.0-alpha.7 the attribution bar reads each
   source's `attribution` field, so rendering the credit ourselves showed it twice.
 
-- **Changed: the map credits kepler.gl, and so does the plugin's icon.** The side panel used to
-  read "Grafana", because the panel passed its own `appName`; it now shows kepler's default,
+- **Changed: the map credits kepler.gl, and the plugin has a mark of its own.** The side panel used
+  to read "Grafana", because the panel passed its own `appName`; it now shows kepler's default,
   "kepler.gl", with the version underneath — the header names the library the map comes from, and
-  claiming it for the host was wrong. The plugin icon is kepler's own mark, its two overlapping
-  squares in the library's slate and cyan, rebuilt as a standalone square SVG from the geometry
-  the library draws inline.
+  claiming it for the host was wrong. The icon went the other way. It started as kepler's own mark,
+  the two overlapping squares rebuilt from the geometry the library draws inline, but that mark
+  identifies kepler.gl and is not ours to ship as the identity of a third-party plugin. It is now
+  three hexagonal cells extruded to different heights over an isometric grid, in Grafana's orange
+  ramp: the 3D hexbin layer kepler.gl is known for, read at the same time as a bar chart. Two
+  variants ship — `img/logo-large.svg` with the base grid for the catalog page, `img/logo-small.svg`
+  tight-cropped for the panel-type picker, where the grid turns to noise below 24 px. The source
+  set, monochrome variants included, lives in `brand/`.
 
 - **Changed: catalog readiness — the plugin now passes Grafana's full plugin-validator.** Running
   it against a packaged build (not just the `metadatavalid` analyzer CI already ran) surfaced three

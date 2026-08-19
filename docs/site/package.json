@@ -8,7 +8,7 @@
     "dev": "vitepress dev",
     "build": "vitepress build",
     "preview": "vitepress preview",
-    "linkcheck": "linkinator .vitepress/dist --recurse --silent"
+    "linkcheck": "DOCS_BASE=/ vitepress build && linkinator .vitepress/dist --recurse --silent --timeout 20000"
   },
   "devDependencies": {
     "linkinator": "^8.0.4",

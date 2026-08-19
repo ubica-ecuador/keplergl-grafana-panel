@@ -24,6 +24,15 @@ npm run docs:linkcheck           # checks outbound links in the built output
 broken _internal_ link; outbound links are checked separately and non-blocking, because a third
 party's outage must not stop us publishing.
 
+It also catches something VitePress does not: **raw HTML `href`s are not rewritten**. VitePress
+appends `.html` to markdown links but leaves `<a href="…">` alone, so a hand-written anchor in an
+HTML block needs the extension spelled out — `./points-and-aggregation.html#point`.
+
+Note that `docs:linkcheck` rebuilds with `DOCS_BASE=/` first, because linkinator serves `dist` as
+the web root and every link would otherwise 404 against the deployed prefix. It therefore leaves
+`dist` built for the **root** path — run `npm run docs:build` again before serving it locally. CI is
+unaffected: the workflow always builds fresh with the repository's own base.
+
 ## The base path
 
 A project Pages site is served from `/<repo>/`, so every asset URL carries that prefix.
