@@ -25,12 +25,23 @@ premise that the plugin makes no outbound call to any vendor.
 
 ## Using them anyway
 
-Nothing stops you. Add the layer by hand in kepler's panel, give it a URL, and
-**Map configuration → Save current map** so it survives a reload. It will sit alongside the layers
-your queries produce, which is a genuinely useful arrangement — your own data over your
-organisation's basemap tiles, say.
+Nothing stops you. The first five in the table come from **Add Data → Tileset** in kepler's own
+panel: pick the type, give it a URL, and kepler creates the dataset and its layer together. `3D` is
+the odd one out — it is an ordinary layer over a point dataset, so it takes its model URL in the
+layer's own settings. Either way the result sits alongside the layers your queries produce, which
+is a genuinely useful arrangement — your own data over your organisation's basemap tiles, say.
 
-Two things to plan for.
+Three things to plan for.
+
+::: warning It is not saved until you save it
+Adding the tileset is not enough. Go back to **Map configuration → Save current map** in the panel
+options, or the layer is gone the moment the panel is rebuilt — returning to the dashboard from the
+editor is enough to do it.
+
+The save stores the tileset's **descriptor**, not its data: its name, field list and URLs, a few
+lines of JSON. On the next load the panel hands that back to kepler alongside your query results,
+which is what re-creates the layer. See [Map configuration](../guide/map/map-configuration).
+:::
 
 ::: warning A hardened Grafana will block the fetch
 These layers fetch over XHR, so they fall under `connect-src`. With

@@ -133,7 +133,10 @@ export function KeplerMap({
   const mapStyles = useMemo(() => registeredMapStyles(customBasemapUrl), [customBasemapUrl]);
 
   useEffect(() => {
-    if (!isReady || datasets.length === 0) {
+    // A saved tileset is content in its own right: a panel whose map is one
+    // vector tile layer over a base map has no query rows at all, and waiting
+    // for rows it will never get would leave it permanently blank.
+    if (!isReady || (datasets.length === 0 && !mapConfig?.datasets?.length)) {
       return;
     }
 

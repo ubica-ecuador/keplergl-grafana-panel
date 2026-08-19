@@ -16,6 +16,7 @@ type Props = StandardEditorProps<number | undefined, unknown, KeplerPanelOptions
 export function SaveMapConfigEditor({ value, onChange, context }: Props) {
   const saved = context.options?.mapConfig;
   const layerCount = countLayers(saved);
+  const tilesetCount = saved?.datasets?.length ?? 0;
 
   return (
     <Stack direction="column" gap={1}>
@@ -30,7 +31,9 @@ export function SaveMapConfigEditor({ value, onChange, context }: Props) {
       </Button>
       <Text variant="bodySmall" color="secondary">
         {saved
-          ? `Saved: ${layerCount} ${layerCount === 1 ? 'layer' : 'layers'}. Applied when the panel loads.`
+          ? `Saved: ${plural(layerCount, 'layer')}${
+              tilesetCount > 0 ? `, ${plural(tilesetCount, 'tileset')}` : ''
+            }. Applied when the panel loads.`
           : 'Nothing saved yet — the map resets to its defaults on reload.'}
       </Text>
     </Stack>
@@ -40,4 +43,8 @@ export function SaveMapConfigEditor({ value, onChange, context }: Props) {
 function countLayers(saved: KeplerPanelOptions['mapConfig']): number {
   const visState = saved?.config?.visState as { layers?: unknown[] } | undefined;
   return visState?.layers?.length ?? 0;
+}
+
+function plural(count: number, noun: string): string {
+  return `${count} ${count === 1 ? noun : `${noun}s`}`;
 }

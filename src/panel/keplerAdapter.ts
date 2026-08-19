@@ -15,15 +15,22 @@ import {
   updateVisData,
   wrapTo,
 } from '@kepler.gl/actions';
+import { ALL_FIELD_TYPES } from '@kepler.gl/constants';
 import { processRowObject } from '@kepler.gl/processors';
-import KeplerGlSchema from '@kepler.gl/schemas';
+import KeplerGlSchema, { datasetSchema, VERSIONS, type SavedDatasetV1 } from '@kepler.gl/schemas';
+import type { ProtoDataset } from '@kepler.gl/types';
 import type { Dispatch, Store } from 'redux';
 
 import type { PanelDataset } from '../data/framesToDatasets';
 import { rowFieldValue } from './clickSync';
 import type { FlowLayerConfig } from '../data/buildFlows';
 import type { TripLayerConfig } from '../data/buildTripLayer';
-import type { SavedMapConfig } from '../data/mapConfig';
+import {
+  keepRemoteDatasets,
+  REMOTE_DATASET_TYPES,
+  type SavedMapConfig,
+  type SavedRemoteDataset,
+} from '../data/mapConfig';
 import { viewportFromMapState, type MapStateLike } from './windViewport';
 import type { ViewportBounds } from './viewportSync';
 import {
@@ -71,6 +78,14 @@ export function toKeplerDatasets(datasets: PanelDataset[]): KeplerDataset[] {
 /**
  * First load: hands datasets and an optional saved config to kepler, letting it
  * create the default layers and frame the viewport around the data.
+ *
+ * The saved config's own URL-backed datasets — tilesets the user added inside
+ * kepler — go in the *same* payload as the query data, not a follow-up call:
+ * `updateVisDataUpdater` runs `Task.allSettled` across every dataset in a
+ * payload and merges the config only once they have all settled, so the
+ * tileset's async metadata fetch and the query rows reach the merge together
+ * and the saved layer finds its dataset. A tileset whose host is unreachable
+ * settles as rejected, costing a kepler error notification and nothing else.
  */
 export function loadDatasets(
   dispatch: Dispatch,
@@ -91,7 +106,7 @@ export function loadDatasets(
     wrapTo(
       KEPLER_INSTANCE_ID,
       addDataToMap({
-        datasets: toKeplerDatasets(datasets),
+        datasets: [...toKeplerDatasets(datasets), ...restoredDatasets(savedConfig)],
         options: { centerMap },
         ...(config ? { config } : {}),
       })
@@ -99,9 +114,43 @@ export function loadDatasets(
   );
 }
 
+/** kepler's `DatasetType.VECTOR_TILE`, the one type that needs the filter hint. */
+const VECTOR_TILE_TYPE = 'vector-tile';
+const VECTOR_TILE_FILTER_TYPES = [ALL_FIELD_TYPES.real, ALL_FIELD_TYPES.integer, ALL_FIELD_TYPES.boolean];
+
+/**
+ * The URL-backed datasets a saved config carries, ready for `addDataToMap`.
+ *
+ * `supportedFilterTypes` is re-attached rather than restored: kepler's
+ * `DatasetSchema` does not save the field, but the tileset modal
+ * (`modal-container`'s `_onTilesetAdded`) sets it when the dataset is added,
+ * because a vector tile layer filters on the GPU and only handles numeric and
+ * boolean columns. Without it kepler's filter field picker offers every column,
+ * including ones the filter cannot act on.
+ */
+export function restoredDatasets(savedConfig?: SavedMapConfig | null): ProtoDataset[] {
+  return (savedConfig?.datasets ?? []).map((saved) => {
+    const parsed = datasetSchema[VERSIONS.v1].load(saved.data as SavedDatasetV1['data']);
+    return saved.data.type === VECTOR_TILE_TYPE
+      ? { ...parsed, supportedFilterTypes: VECTOR_TILE_FILTER_TYPES }
+      : parsed;
+  });
+}
+
 /**
  * Snapshots the current map configuration — layers, filters, interactions, base
  * map — so it can be stored in the panel options.
+ *
+ * Also captures the datasets kepler holds by URL rather than by rows: the
+ * tilesets added through kepler's own Add Data. They exist nowhere but in
+ * kepler's store, so a config that named their layers without them came back
+ * pointing at nothing. Everything else — the panel's query datasets, a file
+ * dropped into Add Data — is deliberately left out: the queries rebuild their
+ * own, and a dropped file's rows have no business in the dashboard JSON.
+ *
+ * Serialised one at a time rather than through `KeplerGlSchema.getDatasetToSave`,
+ * which flattens *every* dataset — the whole query result included — only for
+ * this to throw the result away.
  *
  * Returns null before kepler has registered its instance, which is what happens
  * if the user hits save on a panel whose map has not finished mounting.
@@ -112,7 +161,28 @@ export function captureMapConfig(store: Store): SavedMapConfig | null {
   if (!instance) {
     return null;
   }
-  return KeplerGlSchema.getConfigToSave(instance) as unknown as SavedMapConfig;
+  const config = KeplerGlSchema.getConfigToSave(instance) as unknown as SavedMapConfig;
+  const datasets = captureRemoteDatasets(store);
+  return datasets.length > 0 ? { ...config, datasets } : config;
+}
+
+/** The saved form of every URL-backed dataset the map currently holds. */
+function captureRemoteDatasets(store: Store): SavedRemoteDataset[] {
+  const datasets = Object.values(getVisState(store)?.datasets ?? {});
+  // Called as a method: `DatasetSchema.save` reads `this.key`, so it cannot be
+  // detached from the schema object.
+  const schema = datasetSchema[VERSIONS.v1];
+  const saved = datasets
+    .filter((dataset) => REMOTE_DATASET_TYPES.includes(dataset.type ?? ''))
+    .map((dataset) => ({
+      version: VERSIONS.v1,
+      // The state object is kepler's own `KeplerTable`; only this module's view
+      // of it is narrowed, hence the cast.
+      data: schema.save(dataset as unknown as Parameters<typeof schema.save>[0]),
+    }));
+  // Back through the same filter the import path uses, so what a save writes and
+  // what a paste accepts can never drift apart.
+  return keepRemoteDatasets(saved);
 }
 
 /**
@@ -205,7 +275,15 @@ interface VisStateLike {
     /** True while kepler is playing the filter window across the domain. */
     isAnimating?: boolean;
   }>;
-  datasets: Record<string, { fields: Array<{ name: string; type?: string }>; dataContainer?: unknown }>;
+  datasets: Record<
+    string,
+    {
+      fields: Array<{ name: string; type?: string }>;
+      dataContainer?: unknown;
+      /** kepler's `DatasetType`: '' for a dataset built from rows, 'vector-tile' and friends for a URL. */
+      type?: string;
+    }
+  >;
   layers: Array<{
     id: string;
     type?: string;

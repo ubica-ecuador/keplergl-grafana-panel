@@ -29,6 +29,16 @@ Whatever kepler's own export produces: the layer list with all their styling, fi
 interaction configuration, split-map state, and the base map. It does not capture your data —
 that comes from the queries, every time.
 
+**With one exception: tilesets.** A layer you added through kepler's own **Add Data → Tileset** —
+vector tile, raster tile, WMS, 3D tiles, bitmap — has no query behind it, so nothing would rebuild
+it on the next load. The save writes its **descriptor** instead: the name, the field list, and the
+URLs. No rows, so it stays a few lines of JSON. See
+[Layers a query cannot drive](../../layers/url-configured).
+
+A CSV or GeoJSON you drop into **Add Data** is _not_ saved. Persisting it would mean putting every
+row of the file in the dashboard JSON. Load such data through a query instead — see
+[How a query becomes a map](../data/how-a-query-becomes-a-map).
+
 If you hit save before the map has finished mounting, nothing is captured. Give it a moment and
 try again.
 
@@ -54,8 +64,10 @@ bring a map across from somewhere else — including from the tools this plugin 
 | `{ version, config }`        | kepler's saved config               |
 | `{ datasets, config, info }` | kepler's **Export map**, and Dekart |
 
-From the second, only the `config` half is kept. The data comes from your panel's own queries —
-importing a map does not import someone else's rows.
+From the second, the `config` half is kept along with any **tileset descriptors** among its
+datasets — so a map built over someone's vector tiles arrives with those tiles. Everything else in
+`datasets` is dropped: the data comes from your panel's own queries, and importing a map does not
+import someone else's rows.
 
 ### Configurations from older kepler releases
 

@@ -19,6 +19,8 @@ export interface KeplerSummary {
   filters: Array<{ type: string; name: string; value: unknown }>;
   mapState: { latitude: number; longitude: number; zoom: number };
   layers: Array<{ id: string; type: string }>;
+  /** The loaded datasets and kepler's `DatasetType` for each: '' for query data, 'vector-tile' for a tileset. */
+  datasets: Array<{ id: string; type: string }>;
 }
 
 export async function readKepler(map: Locator): Promise<KeplerSummary> {
@@ -59,6 +61,7 @@ export async function readKepler(map: Locator): Promise<KeplerSummary> {
         zoom: entry?.mapState?.zoom ?? NaN,
       },
       layers: (visState?.layers ?? []).map((l: { id: string; type?: string }) => ({ id: l.id, type: l.type ?? '' })),
+      datasets: Object.values(visState?.datasets ?? {}).map((d: any) => ({ id: d.id, type: d.type ?? '' })),
     };
   });
 }

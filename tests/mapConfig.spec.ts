@@ -10,6 +10,12 @@ test('saves the map configuration into the panel options and restores it', async
   readProvisionedDashboard,
   page,
 }) => {
+  // Save → apply → remount is the heaviest kepler flow under software WebGL,
+  // and it does it twice over: mounting the map, then mounting it again from
+  // the saved config. On the default budget it finishes with seconds to spare
+  // when the machine is quiet and times out when it is not — the contention
+  // `playwright.config.ts` caps the workers for. Same call as effects.spec.
+  test.slow();
   const dashboard = await readProvisionedDashboard({ fileName: 'dashboard.json' });
   const panelEditPage = await gotoPanelEditPage({ dashboard, id: '1' });
 
