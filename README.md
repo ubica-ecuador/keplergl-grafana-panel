@@ -7,6 +7,9 @@ An open source alternative to the Foursquare Studio panel, which renders its map
 `studio.foursquare.com` and therefore needs a Foursquare account. This one runs kepler.gl inside the
 panel: no external service, no account, no Mapbox token.
 
+**📖 [Full documentation](https://ubica-ecuador.github.io/keplergl-grafana-panel/)** — guides,
+tutorials, a layer gallery and a complete option reference.
+
 > **Status: v0.3.** Usable, and pinned to a kepler.gl pre-release because the Flow layer exists
 > nowhere else. Not yet in the Grafana catalog — see [Roadmap](#roadmap).
 
@@ -16,18 +19,17 @@ panel: no external service, no account, no Mapbox token.
 - **Column autodetection**, overridable per query — lat/lng, time, trip id, geometry, H3 and
   origin/destination pairs.
 - **Geometry from any spatial source** — GeoJSON, WKT, or raw WKB/EWKB hex, so a plain
-  `SELECT geom` from PostGIS works with no `ST_AsGeoJSON`. See [Geometry](#geometry).
-- **Automatic trip animation** — a query with a trip id and a time becomes an animated kepler
-  Trip layer with a playback timeline, no manual layer setup. See [Trajectories](#trajectories).
-- **Dashboard time range synced with the map**, one-way or both ways — the time picker drives the
-  map's time filter, and optionally the map's time slider drives the dashboard back.
-- **Origin-destination flow layers**, automatic — an OD query becomes an animated flow map, no
-  manual layer setup. See [Origin-destination flows](#origin-destination-flows).
+  `SELECT geom` from PostGIS works with no `ST_AsGeoJSON`.
+- **Automatic trip animation** — a query with a trip id and a time becomes an animated kepler Trip
+  layer with a playback timeline, no manual layer setup.
+- **Origin-destination flow layers**, automatic — an OD query becomes an animated flow map.
 - **Animated wind and current fields** — a grid of velocities becomes a field of streamlines that
   follows the view, keeping its density and line length steady as you zoom. Several levels can be
-  stacked in one map. See [Wind and other velocity fields](#wind-and-other-velocity-fields).
+  stacked in one map.
+- **Dashboard time range synced with the map** — one-way, both ways, or published to variables so
+  the map keeps its whole dataset while the slider drives the other panels.
 - **Cross-filtering, both ways** — a filter set on the map drives a dashboard variable, and changing
-  that variable filters the map. See [Cross-filtering](#cross-filtering).
+  that variable filters the map. Clicks, the viewport and drawn areas publish too.
 - **Your layer configuration survives a refresh.** Data is swapped underneath the layers rather than
   the datasets being torn down and rebuilt.
 - **Saved map configuration** stored with the dashboard, and configs pasted from kepler.gl,
@@ -38,285 +40,10 @@ panel: no external service, no account, no Mapbox token.
   swapped for a self-hosted `style.json`; kepler's icon library ships with the plugin. The base maps
   that require a Mapbox account are not offered at all, rather than sitting in the picker blanking
   the map when clicked.
-- **Esri's terms of use.** The satellite and topographic imagery come from Esri's public
-  `services.arcgisonline.com` endpoint, whose terms ask for an ArcGIS account for production use —
-  installs that need a cleaner footing should point **Base map** at their own `style.json`.
 
-### Relief
-
-**Satellite + relief** and **Topographic + relief** carry a `terrain` key that MapLibre reads from
-the style document, with elevation tiles from [Mapterhorn](https://mapterhorn.com). Tilt the camera
-with the 3D control and the ground rises. Two things to know before leaning on it: the relief is the
-*base map's* — deck.gl draws your data at its own altitude, so points and paths do not drape over
-the terrain — and kepler pins MapLibre 4, where panning a tilted terrain map can make the camera
-jitter ([keplergl/kepler.gl#3394](https://github.com/keplergl/kepler.gl/issues/3394)).
-
-## Queries
-
-Nothing special is required — the plugin reads the columns your query already returns. Name them
-recognisably and it configures itself; otherwise map them by hand under **Field mapping**.
-
-### Points
-
-```sql
-SELECT lat AS latitude,
-       lon AS longitude,
-       recorded_at,          -- any time column is detected by type
-       speed_kmh             -- extra columns become tooltips and colour scales
-FROM gps_readings;
-```
-
-### Geometry
-
-A geometry column can hold **GeoJSON, WKT, or raw WKB/EWKB hex** — the plugin decodes WKB to GeoJSON
-for you, so all of these render:
-
-```sql
--- PostGIS: raw geometry, no conversion function
-SELECT geom, name FROM neighbourhoods;
-
--- or projected explicitly, if you prefer
-SELECT ST_AsGeoJSON(geom) AS geojson, name FROM neighbourhoods;
-
--- DuckDB over GeoParquet on S3
-SELECT CAST(ST_AsGeoJSON(geometry) AS VARCHAR) AS geojson, name
-FROM read_parquet('s3://bucket/zones/*.parquet');
-```
-
-Under the hood kepler.gl itself only renders GeoJSON and WKT; WKB decoding happens in the plugin
-(`src/data/wkbToGeoJson.ts`), which is what makes the raw-geometry path work.
-
-### CSV
-
-A CSV source (Infinity's CSV type, or any data source that returns a table) works like any other —
-each row becomes a feature. Column detection runs on two levels, so both naming schemes work:
-
-- The plugin's own roles (`latitude`/`lon`/`geom`/`h3`/origin-destination, overridable in **Field
-  mapping**).
-- kepler.gl's own conventions on top: a `<prefix>_lat` + `<prefix>_lng` pair makes a point layer, and
-  a column of WKT or GeoJSON strings makes a polygon layer — verified with `point_latitude` /
-  `point_longitude` and an embedded WKT column.
-
-With Infinity, set the lat/lng columns to type **Number** (its CSV parser defaults everything to
-string); geometry columns stay **String**.
-
-### GeoJSON from a URL
-
-The [Infinity data source](https://grafana.com/grafana/plugins/yesoreyeram-infinity-datasource/)
-(signed, in the catalog) fetches a `.geojson` from any URL and flattens it into rows the panel reads:
-
-- **Type** JSON, **Source** URL, **Parser** Backend, **URL** your `.geojson`
-- **Rows/Root** selector: `features`
-- **Columns**: `geometry` aliased to `geojson` (type **String**), plus `properties.name`, etc.
-
-Infinity serialises the nested `geometry` object to a GeoJSON string when the column type is String —
-no JSONata needed — and the panel autodetects a column named `geojson` as the geometry. Verified
-end-to-end against a served FeatureCollection.
-
-A **WFS** endpoint that speaks GeoJSON (`outputFormat=application/json`) is just such a URL and works
-the same way — but **request WGS84 explicitly** with `&srsName=EPSG:4326`. GeoServer otherwise
-returns coordinates in the layer's native CRS (often projected metres, e.g. UTM), which the map
-cannot place. The plugin renders WGS84 lon/lat only; it does not reproject.
-
-### GeoParquet on S3 via DuckDB
-
-The [DuckDB data source](https://github.com/motherduckdb/grafana-duckdb-datasource) reads GeoParquet
-directly, locally or from S3. Four things to know:
-
-- Load the spatial extension. From v0.4.5 the data source has an **Init SQL** field, so
-  `INSTALL spatial; LOAD spatial;` belongs there rather than at the head of every query.
-- **No `ST_GeomFromWKB`.** With spatial loaded, a GeoParquet geometry column arrives as a native
-  `GEOMETRY` carrying its CRS — passing it through `ST_GeomFromWKB` is a binder error, not a no-op.
-- Cast `ST_AsGeoJSON(...)` to `VARCHAR` — the data source cannot marshal DuckDB's JSON type.
-- It needs glibc (Ubuntu/Debian Grafana image); it does **not** run on Alpine. It is also not in the
-  Grafana catalog, so it installs from its release zip and is unsigned.
-
-```sql
-SELECT name, population,
-       CAST(ST_AsGeoJSON(geometry) AS VARCHAR) AS geojson
-FROM read_parquet('s3://bucket/zones/*.parquet')
-```
-
-### Trajectories
-
-Give each row a trip id, a time and a position, and the plugin groups the points into paths and
-builds an **animated Trip layer** — one LineString per trip, ordered by time, with a playback
-timeline. No manual layer configuration: a query with a trip id, a time and lat/lng is detected as
-trips automatically. Map an optional **Altitude** column for 3D paths.
-
-```sql
-SELECT vehicle_id AS trip_id,
-       ST_Y(geom) AS latitude,
-       ST_X(geom) AS longitude,
-       ts AS time
-FROM vehicle_positions
-ORDER BY vehicle_id, ts;
-```
-
-The trip id, time, lat/lng and altitude are all overridable under **Field mapping** when the
-column names are not recognised.
-
-### Origin-destination flows
-
-A flat OD table becomes an animated **flow layer** automatically — the plugin detects the
-origin/destination columns and builds the layer (kepler does not auto-detect flows the way it does
-points or trips), then frames the map on it.
-
-```sql
-SELECT o.lat AS origin_lat, o.lon AS origin_lon,
-       d.lat AS dest_lat,   d.lon AS dest_lon,
-       COUNT(*) AS trips
-FROM trips t
-JOIN zones o ON o.id = t.origin_zone
-JOIN zones d ON d.id = t.dest_zone
-GROUP BY 1, 2, 3, 4;
-```
-
-H3 hexagons work too — map **Origin H3** / **Destination H3** instead of the coordinate pairs. Choose
-the line style (straight, curved, animated) under **Flow line style**.
-
-### Wind and other velocity fields
-
-A query that returns a **regular grid of velocities** becomes an animated field of streamlines —
-the paths a massless particle would take through it. Nothing to configure: give the plugin
-coordinates and a velocity and it builds the field, smooths it, traces the lines and hands them to
-kepler's own Trip layer.
-
-```sql
-SELECT ts AS "time", lat, lon, speed, direction
-FROM wind_grid
-WHERE level_hpa = 700
-ORDER BY lat, lon;
-```
-
-Velocity can arrive either way. **`speed` + `direction`** is what most sources give — Open-Meteo,
-GFS, national weather services — and `direction` is read as the meteorological convention, the
-bearing the wind blows _from_. **`u` + `v`** components work too, including the GRIB2 short names
-`ugrd`/`vgrd`, so a table converted straight from GFS needs no renaming.
-
-A `trip_id` column disqualifies the query: a GPS trace that happens to carry a `speed` column is a
-trajectory, not a field, and shredding it into streamlines would draw lines that mean nothing.
-
-Rows are one cell of the grid; the grid itself is inferred, so the query may return them in any
-order. When it spans several timesteps the earliest is used — select a single one to be explicit.
-Cells the query omits are treated as **holes**, not as calm air, and streamlines stop at their edge.
-That is how a level that runs below ground is excluded: omit those cells and the lines end at the
-mountains instead of drawing weather over rock.
-
-The lines follow the view. Density and on-screen length hold steady as you zoom, because the field
-is re-traced whenever the map settles — a fixed budget of lines per screen, each a fixed number of
-pixels long. Several velocity queries in one panel share that budget between them.
-
-How large that budget is, **Wind line density** decides. There is no figure that suits every map: a
-country covering a third of the view wants more lines than a pair of three-kilometre patches around
-two weather stations, and a field of parallel arrows reads as a solid block at a density a swirling
-one reads well at. Lower it when the field looks matted, raise it when it looks sparse.
-
-**Several levels at once:** one query per level, in the same panel. Each becomes its own layer. To
-separate them in the vertical, return a height column and map it to **Altitude** under _Field
-mapping_, then tilt the camera with the 3D control. Height is opt-in on purpose — an `elevation`
-column mapped by accident lifts a layer kilometres into the air. Expect to exaggerate the height a
-long way: pressure levels a few kilometres apart are invisible over a country hundreds of kilometres
-wide.
-
-Colour, width and **Trail Length** live in kepler's own layer settings. A short trail reads as
-drifting particles, a long one as complete streamlines. Every line carries its mean `speed`, so
-_Color Based On → speed_ works.
-
-### Cross-filtering
-
-The map and a **dashboard variable** stay in sync, both ways. A select, multi-select or text filter
-set on the map writes its value to the variable, so filtering on the map filters every other panel;
-and changing that variable — from its picker or another panel — applies the matching filter on the
-map. Add a template variable, then map a filtered column to it under **Cross-filtering**.
-
-The variable is read from the URL, which is what lets the map react even when its own query does not
-use the variable.
-
-#### Clicks
-
-A mapping row switched to **Click** publishes the clicked entity instead of a filter: click a point
-or trajectory and the variable takes that entity's value of the column — `WHERE vehicle_id =
-'$vehicle'` on any consuming panel. One way only, map → variable; clicking empty map clears it,
-but only when the running selection was published from this panel, so a shared link's preset value
-survives stray clicks.
-
-A row switched to **Coordinates** publishes the *place* clicked instead of any column: the pair of
-variables named under **Lat**/**Lng** takes the coordinate, for a spatial query on another panel —
-with `$radius` a plain dashboard variable:
-
-```sql
-WHERE $lat != '' AND ST_DWithin(geom, ST_MakePoint($lng, $lat)::geography, $radius)
-```
-
-The computed coverage comes back to the map as one more query, so the panel needs no spatial logic
-of its own. Any click pins the coordinate (the panel switches kepler's coordinate interaction on by
-itself); clicking again unpins on the map, but the variables keep the last spot until the next pin,
-so the consuming query never loses its centre. While the draw toolbar is engaged, clicks belong to
-the drawing and publish nothing.
-
-A row switched to **Center** reads the same kind of pair the other way: when the variables change
-from outside the map, the viewport centres on them — jumping to the row's optional **Zoom** level.
-That is what turns a table into a map control: give the table's query the coordinates as hidden
-columns and a per-row data link that writes them
-(`?var-lat=${__data.fields.latitude}&var-lng=${__data.fields.longitude}`), and clicking a row flies
-the map to that feature. A textbox on the pair works the same way. The map's own clicks are
-recognised and never re-centre, and on load the saved viewport wins — the pair moves the map only
-when someone changes it.
-
-#### The viewport
-
-**Publish viewport (for other panels)** names four variables — west, south, east and north — and
-the map writes the bounding box of what it is showing into them. Another panel then filters to the
-view:
-
-```sql
-WHERE lng BETWEEN $west AND $east AND lat BETWEEN $south AND $north
-```
-
-Four numbers rather than a geometry, so nothing free-form reaches a consumer's SQL. The bbox is
-published once on load, so a consuming panel never opens without bounds, and afterwards whenever
-the map comes to rest — 300 ms after the last pan or zoom, so a gesture costs one round of queries
-rather than one per frame.
-
-The name is a warning worth repeating: this is for the **other** panels. Put the bbox in this
-panel's own query and the map filters itself — the data shrinks to what is on screen, and zooming
-out cannot bring those rows back, because the dataset no longer holds them.
-
-#### Drawn areas
-
-The polygon or rectangle drawn with kepler's draw tool can be published to a variable too. Add a
-**text box** variable to the dashboard, pick it under **Cross-filtering → Publish drawn area**, and
-the figure arrives as **WKT in EPSG:4326** the moment it is finished — even before a layer is chosen
-for it. Other panels use it unquoted, with a guard for the empty value:
-
-```sql
-WHERE $area != '' AND ST_Intersects(geom, ST_GeomFromText($area, 4326))
-```
-
-Three deliberate limits. Only the **most recent** figure is published, and deleting the last one
-clears the variable to `''`. The channel is **one-way** — editing the variable does not draw on the
-map — and the value is never written on dashboard load, so a shared link keeps the area it was
-opened with. And the variable is for the **other** panels: put `$area` in this panel's own query and
-drawing a shape shrinks the data behind the map, after which the shape can never be widened again
-from the map.
-
-## Panel options
-
-| Option                     | Notes                                                                                           |
-| -------------------------- | ----------------------------------------------------------------------------------------------- |
-| **Field mapping**          | Per query. Autodetected values appear as placeholders; set one to override.                     |
-| **Show side panel**        | kepler's layer and filter panel. Worth hiding on small tiles.                                   |
-| **Follow dashboard theme** | Off leaves kepler with its own styling.                                                         |
-| **Time range sync**        | Dashboard drives the map's time filter (default), both directions, or off. Needs a time column. |
-| **Flow line style**        | Straight, curved or animated lines for origin-destination flow layers.                          |
-| **Cross-filtering**        | Map a kepler filter to a dashboard variable to cross-filter other panels.                       |
-| **Publish drawn area**     | Write the drawn polygon/rectangle to a variable as WKT, for other panels' spatial SQL.          |
-| **Base map**               | Carto Dark Matter / Positron / Voyager, Esri satellite or satellite/topographic with relief, or a self-hosted `style.json`. |
-| **Map configuration**      | Save the current layers and filters with the dashboard, or paste one in.                        |
-
-Saving is explicit rather than automatic: the configuration is a sizeable blob that lands in the
-dashboard JSON, and rewriting it on every pan would churn the dashboard for nothing.
+> **Esri's terms of use.** The satellite and topographic imagery come from Esri's public
+> `services.arcgisonline.com` endpoint, whose terms ask for an ArcGIS account for production use.
+> Installs that need a cleaner footing should point **Base map** at their own `style.json`.
 
 ## Installing
 
@@ -331,6 +58,9 @@ The plugin is unsigned while it is pre-1.0, so allow it explicitly:
 allow_loading_unsigned_plugins = ubica-keplergl-panel
 ```
 
+Then restart Grafana. Full instructions, including Docker and a hardened Grafana, are in the
+[install guide](https://ubica-ecuador.github.io/keplergl-grafana-panel/guide/install.html).
+
 ### Hardened Grafana
 
 With `content_security_policy = true` the map loads and its Web Workers start, but `connect-src`
@@ -342,94 +72,77 @@ content_security_policy_template = """...connect-src 'self' grafana.com https://
 ```
 
 Each host serves only what its name suggests: Carto the three default base maps, Esri the satellite
-and topographic ones, Mapterhorn the elevation tiles behind the two relief styles. Leave out the
-ones whose base maps you never select. Or point **Base map** at a `style.json` on your own network
-and skip this entirely.
+and topographic ones, Mapterhorn the elevation tiles behind the two relief styles. Leave out the ones
+whose base maps you never select — or point **Base map** at a `style.json` on your own network and
+skip this entirely.
+
+## A first map
+
+Nothing special is required of a query: the plugin reads the columns it already returns.
+
+```sql
+SELECT lat AS latitude,
+       lon AS longitude,
+       recorded_at,          -- any time column is detected by type
+       speed_kmh             -- extra columns become tooltips and colour scales
+FROM gps_readings;
+```
+
+Add a panel, choose **Kepler Geospatial Maps**, and that is a map. Name a column the plugin does not
+recognise and you map it by hand under **Field mapping**, per query.
+
+Two things worth knowing immediately: kepler's default point radius is small, so raise it before
+concluding nothing rendered; and layer styling lives in kepler's store, so capture it with
+**Map configuration → Save current map** before reloading the page.
+
+The [quickstart](https://ubica-ecuador.github.io/keplergl-grafana-panel/guide/quickstart.html) walks
+through it properly, and
+[tutorial 1](https://ubica-ecuador.github.io/keplergl-grafana-panel/tutorials/first-map.html) builds a
+live map of global seismicity from a public feed.
+
+## Documentation
+
+| Section                                                                                                                    | Covers                                                                                       |
+| -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| [Getting data in](https://ubica-ecuador.github.io/keplergl-grafana-panel/guide/data/how-a-query-becomes-a-map.html)        | How a query becomes a map, points, geometry, trajectories, flows, H3 and S2, velocity fields |
+| [The map](https://ubica-ecuador.github.io/keplergl-grafana-panel/guide/map/basemaps-and-relief.html)                       | Base maps and relief, theme, saving and importing a configuration                            |
+| [Using kepler's own panel](https://ubica-ecuador.github.io/keplergl-grafana-panel/guide/kepler/layers-and-attributes.html) | Layers, colour, filters, interactions, playback, effects — and what differs here             |
+| [Dashboard integration](https://ubica-ecuador.github.io/keplergl-grafana-panel/guide/dashboard/time-range-sync.html)       | Time sync, cross-filtering, publishing the viewport and drawn areas                          |
+| [Data source recipes](https://ubica-ecuador.github.io/keplergl-grafana-panel/guide/sources/postgis.html)                   | PostGIS, DuckDB, Infinity, and any other SQL source                                          |
+| [Layer gallery](https://ubica-ecuador.github.io/keplergl-grafana-panel/layers/)                                            | Every layer type the panel can build, with the query behind it                               |
+| [Tutorials](https://ubica-ecuador.github.io/keplergl-grafana-panel/tutorials/)                                             | Six end-to-end walkthroughs against public data                                              |
+| [Reference](https://ubica-ecuador.github.io/keplergl-grafana-panel/reference/panel-options.html)                           | Panel options, field roles, variable formats, troubleshooting, compatibility                 |
+
+Two pages are worth singling out.
+[Differences from stock kepler.gl](https://ubica-ecuador.github.io/keplergl-grafana-panel/reference/differences-from-kepler.html)
+lists everything this panel changes about kepler, and
+[Under the hood](https://ubica-ecuador.github.io/keplergl-grafana-panel/reference/under-the-hood.html)
+maps each kepler layer to the deck.gl layer that actually draws it.
 
 ## Development
 
 ```bash
 npm install
-npm run dev          # watch build
-npm run server       # Grafana 12.0.10 on :3000, plus a strict-CSP one on :3001
-npm run test:ci      # unit tests
-npm run e2e          # end-to-end against the running Grafana
+npm run dev             # watch build
+npm run server          # Grafana 12.0.10 on :3000, plus a strict-CSP one on :3001
+npm run server:sources  # a bench on :3002 with DuckDB and Infinity installed
+npm run test:ci         # unit tests
+npm run e2e             # end-to-end against the running Grafana
 ```
 
-Requires Node 22+. If you have changed your dev Grafana's admin password, pass it through:
-`GRAFANA_ADMIN_PASSWORD=… npm run e2e`.
+Requires Node 22+. `dist/` is bind-mounted into the containers, so do **not** `rm -rf dist` while
+they are running — that leaves them serving a stale inode. `npm run build` cleans it correctly.
 
-`npm run verify:spike` drives a browser against the provisioned dashboard and reports what actually
-reached the map — useful when a change breaks rendering without breaking a test.
-
-### Sources bench (:3002)
-
-`npm run server` deliberately gives you a plain Grafana with no third-party data sources. To exercise
-the file formats — GeoParquet, GeoJSON, CSV — bring up the bench instead:
+The documentation site lives in `docs/site` as its own npm package:
 
 ```bash
-npm run server:sources   # Grafana on :3002 with DuckDB + Infinity installed
-npm run verify:sources   # drives a browser over its dashboard, one line per panel
+npm --prefix docs/site install
+npm run docs:dev
 ```
 
-It is a separate service rather than a flag on the main one, because the DuckDB data source is linked
-against glibc and the default image is Alpine — the bench runs the `-ubuntu` tag. Keeping it apart
-leaves `:3000` as the plainest install we ship to, which is the point of pinning it to the floor of
-the supported range.
-
-Both data sources install declaratively through `GF_INSTALL_PLUGINS`, so the first start needs
-outbound internet and pulls ~140 MB (the DuckDB zip bundles an engine per platform). It lands in a
-named volume, so that cost is paid once.
-
-The fixtures live in `testdata/` — real GeoParquet with WKB geometry and EPSG:4326 metadata, the same
-features as GeoJSON, and two CSVs. A `sources-data` container serves them over HTTP so Infinity
-exercises a genuine URL fetch rather than inline data; DuckDB reads the parquet off the same
-directory, mounted at `/testdata`. Regenerate them with `python3 testdata/make-testdata.py` (needs
-geopandas) only if the sample data itself must change.
-
-Its dashboard sets no layers — what renders is what autodetection alone produces — so it doubles as a
-check that a bare query still finds its geometry. Points draw at kepler's default radius, which is
-small; bump it in the layer panel if you are eyeballing them.
-
-The bench also carries **Terremotos — espacio-temporal** (`earthquakes.json`): a month of global
-seismicity read as **remote** GeoParquet over HTTPS, sized and coloured by magnitude, with the time
-slider driving a summary and a table beside it. Three things it demonstrates that the local fixtures
-cannot:
-
-- **Time range sync set to `variables`, not `toMap`.** Driving the dashboard range from the map would
-  re-run the query, and every event outside the new window would leave the browser — the histogram
-  under the slider rescales and the window can never be widened again from the map. Variables keep
-  the whole month loaded and cost only the panels that read them.
-- **`SET force_download = true` before reading a generated URL.** That endpoint builds the parquet per
-  request, so successive ranged reads see different ETags and DuckDB aborts with "the remote file has
-  changed". Against a stable object store you want the opposite — ranged reads are the point.
-- **Do not quote a variable in SQL.** The data source interpolates with Grafana's SQL-string format,
-  which adds the quotes itself; `'$var'` arrives as `''value''` and fails to parse. Write `$var`, and
-  wrap it in `try_cast(... AS TIMESTAMPTZ)` so the empty value before the first scrub falls back to a
-  bound rather than erroring.
-
-> Do not `rm -rf dist` while the dev containers are running: `dist` is bind-mounted, and deleting it
-> leaves the containers serving a stale inode. `npm run build` cleans it correctly.
-
-### Provisioned dashboards
-
-`provisioning/dashboards/` is mounted into the dev Grafana, so these appear on a plain
-`npm run server`. Each one exercises a different part of the panel: `dashboard` (trips and EWKB
-geometry), `timesync` and `timevars` (time coupling), `varsync` (cross-filtering), `flows` (OD).
-
-**Kepler.gl layer gallery** (`layers.json`) is the widest of them: every layer type the panel can
-build from query rows, on synthetic data, one map each, with the rows behind each layer in a table
-beside it. Useful for seeing at a glance what the plugin draws, and for spotting what a kepler.gl
-version bump broke. Three things about it are deliberate:
-
-- **Open at most two rows at a time.** Each map holds two WebGL contexts — MapLibre's and
-  deck.gl's — and browsers cap the total at around sixteen, so thirteen maps at once blank the
-  oldest. The rows are collapsed for that reason, and collapsing one releases its contexts.
-- **It does not follow the Grafana theme.** Pinning a layer type needs a saved map configuration,
-  and a saved config names its own base map and wins over the panel option.
-- **Six layer types are missing** — `vectorTile`, `rasterTile`, `wms`, `tile3d`, `bitmap` and `3D`.
-  They are configured with a URL rather than with data, so no query can drive them and demonstrating
-  them would mean calling a third-party service.
+The [contributing guide](https://ubica-ecuador.github.io/keplergl-grafana-panel/contributing.html)
+covers the three benches, the provisioned dashboards, the browser verification scripts and how the
+documentation screenshots are regenerated.
 
 ## Roadmap
 
@@ -437,9 +150,6 @@ version bump broke. Three things about it are deliberate:
   one-way or both ways.
 - **v0.3** _(done)_ — origin-destination flow layers; map filters driving dashboard variables.
 - **v1.0** — move to kepler.gl 3.3.0 stable, sign, and submit to the Grafana catalog.
-
-The findings from the feasibility spike, and from verifying GeoParquet end to end, are under `docs/`
-in the source repository.
 
 ## Licence
 
