@@ -1,0 +1,76 @@
+# Builds the documentation site and publishes it to GitHub Pages.
+#
+# The site is its own npm package under docs/site, with its own lockfile, so
+# nothing here touches the plugin's dependency tree — CI's `npm ci` for the
+# plugin stays exactly as fast as it was.
+#
+# Requires Pages to be enabled on the repository, with Settings -> Pages ->
+# Source set to "GitHub Actions". Without that, the deploy job fails with a
+# permissions error rather than anything more helpful.
+name: Docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/site/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deployment at a time, and never cancel one that is already running: a
+# half-deployed Pages site is worse than a slightly stale one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: docs/site/package-lock.json
+
+      - name: Install
+        run: npm ci
+        working-directory: docs/site
+
+      - name: Build
+        run: npm run build
+        working-directory: docs/site
+        env:
+          # A project Pages site is served from /<repo>/, so every asset URL
+          # carries that prefix. Taken from the repository name rather than
+          # hardcoded, so a rename does not silently break every image.
+          DOCS_BASE: /${{ github.event.repository.name }}/
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/site/.vitepress/dist
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

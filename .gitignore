@@ -67,3 +67,7 @@ ci/
 
 # Internal design notes kept out of the published repository.
 /internal-docs/
+
+# Documentation site. Its build output is already covered by the `dist/` rule
+# above; the cache is not, and it is large.
+/docs/site/.vitepress/cache/

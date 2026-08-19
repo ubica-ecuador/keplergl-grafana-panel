@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="kepler.gl">
+  <!--
+    kepler.gl's own mark: two overlapping squares rotated 45°, the slate one
+    behind and the cyan one in front. Rebuilt here from the geometry and the
+    two brand colours the library's `common/logo` component draws inline
+    (#535C6C and #1FBAD6), scaled and centred for a square plugin icon.
+  -->
+  <g transform="translate(32 8) rotate(45)">
+    <rect fill="#535C6C" x="0" y="11" width="22" height="22" />
+    <rect fill="#1FBAD6" x="11" y="0" width="22" height="22" />
+  </g>
+</svg>

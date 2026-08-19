@@ -1,0 +1,17 @@
+{
+  "name": "ubica-keplergl-panel-docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Documentation site for the kepler.gl Grafana panel. Deliberately a separate package: VitePress pulls in Vite, Vue and Shiki, and none of that belongs in the plugin's dependency tree, which CI installs before typecheck, lint, build and e2e.",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview",
+    "linkcheck": "linkinator .vitepress/dist --recurse --silent"
+  },
+  "devDependencies": {
+    "linkinator": "^8.0.4",
+    "vitepress": "^1.6.4"
+  }
+}

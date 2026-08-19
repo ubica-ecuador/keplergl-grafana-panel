@@ -33,6 +33,9 @@ export default defineConfig([
       'playwright/.auth/',
       '**/.idea',
       '**/.eslintcache',
+      // The documentation site is its own npm package with its own toolchain;
+      // linting it with the plugin's Grafana config would only produce noise.
+      'docs/site/',
     ],
   },
   ...baseConfig,
