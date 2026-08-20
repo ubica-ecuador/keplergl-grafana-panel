@@ -14,6 +14,26 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    # A group's `update-types` filter does not stop dependabot from opening a
+    # lone PR for the majors it excludes — that is how @grafana/schema arrived
+    # at 13.x on its own. These are majors we cannot take: the production
+    # @grafana/* packages stay pinned at the floor of `grafanaDependency` so a
+    # build breaks on an API the oldest supported Grafana lacks, and the eslint
+    # stack is bound to .config/eslint.config.mjs, which only create-plugin may
+    # change — @grafana/eslint-config@10 drops the `flat.js` export it imports.
+    ignore:
+      - dependency-name: "@grafana/data"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@grafana/runtime"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@grafana/schema"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@grafana/ui"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@grafana/eslint-config"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
     groups:
       unit-test:
         patterns:
