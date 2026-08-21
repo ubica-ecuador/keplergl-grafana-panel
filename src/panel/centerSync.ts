@@ -18,6 +18,13 @@ import type { VariableMapping } from './variableSync';
  *   back to a pair the hook already centred on would fight the user's own
  *   panning. `lastCentered` is the key of the last pair *seen* (acted on or
  *   suppressed), recorded by the caller from `key`.
+ * - **The restore.** A saved viewport lands moments after mount, and centring
+ *   into that race leaves the map somewhere neither the config nor the link
+ *   asked for. So a first pass with a viewport to restore only adopts.
+ *   Without one there is nothing to race and the pair is the map's only
+ *   instruction — which is the case that matters when a drill-down opens a
+ *   panel that mounts with the pair already in the URL, so that first pass
+ *   centres like any other.
  */
 
 export interface CenterDecision {
@@ -32,6 +39,7 @@ export function decideCenter({
   mapping,
   pinned,
   lastCentered,
+  adoptOnly,
 }: {
   /** variable name → the value it currently holds (from the URL). */
   variableValues: Record<string, unknown>;
@@ -41,6 +49,11 @@ export function decideCenter({
   pinned: [number, number] | null | undefined;
   /** The key of the last pair this decision saw, or undefined on the first pass. */
   lastCentered: string | undefined;
+  /**
+   * The map is mounting *and* has a saved viewport waiting to be restored, so
+   * this pass only records the pair. See the note on the third silence below.
+   */
+  adoptOnly?: boolean;
 }): CenterDecision {
   if (!mapping.variable || !mapping.variableTo) {
     return { target: null, key: undefined };
@@ -52,6 +65,9 @@ export function decideCenter({
   }
 
   const key = `${round6(lat)},${round6(lng)}`;
+  if (adoptOnly) {
+    return { target: null, key };
+  }
   if (key === lastCentered) {
     return { target: null, key };
   }

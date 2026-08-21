@@ -24,6 +24,7 @@ import { useClickSync } from './useClickSync';
 import { useCoordinateSync } from './useCoordinateSync';
 import { useCenterSync } from './useCenterSync';
 import { useViewportGuard } from './useViewportGuard';
+import { savedViewportOf } from './viewportGuard';
 import { useViewportSync } from './useViewportSync';
 import type { ViewportVariables } from './viewportSync';
 import { useAreaSync } from './useAreaSync';
@@ -238,7 +239,12 @@ export function KeplerMap({
   // The read-back of that pair: centres the map when the variables change from
   // outside (a table's data link, a textbox), suppressing the echo of the
   // map's own clicks.
-  useCenterSync({ store, isReady, mappings: variableMappings });
+  useCenterSync({
+    store,
+    isReady,
+    mappings: variableMappings,
+    hasSavedViewport: savedViewportOf(mapConfig) !== null,
+  });
 
   // One-way and silent on its first pass — it adopts whatever figures a saved
   // config restored without publishing — so it contends with nothing on load.

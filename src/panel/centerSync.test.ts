@@ -98,6 +98,32 @@ describe('decideCenter', () => {
     ).toEqual({ target: [-4.2, -79.7], key: '-4.2,-79.7' });
   });
 
+  it('only adopts on a first pass that has a saved viewport to restore', () => {
+    expect(
+      decideCenter({
+        variableValues: { lat: '-4.2', lng: '-79.7' },
+        mapping,
+        pinned: undefined,
+        lastCentered: undefined,
+        adoptOnly: true,
+      })
+    ).toEqual({ target: null, key: '-4.2,-79.7' });
+  });
+
+  it('centres on a first pass with no viewport to restore', () => {
+    // The drill-down case: the panel mounts with the pair already in the URL,
+    // so this pass is the only chance to honour it.
+    expect(
+      decideCenter({
+        variableValues: { lat: '-7.58', lng: '24.4' },
+        mapping,
+        pinned: undefined,
+        lastCentered: undefined,
+        adoptOnly: false,
+      })
+    ).toEqual({ target: [-7.58, 24.4], key: '-7.58,24.4' });
+  });
+
   it('needs both halves of the pair named on the mapping', () => {
     const latOnly: VariableMapping = { field: '', variable: 'lat', source: 'center' };
     expect(
