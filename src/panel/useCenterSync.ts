@@ -13,6 +13,12 @@ interface Params {
   isReady: boolean;
   /** All the panel's mappings; only the `center` ones drive this hook. */
   mappings: VariableMapping[];
+  /**
+   * Whether the panel carries a saved viewport. Only then does the first pass
+   * hold back: with nothing to restore, a panel that mounts with the pair
+   * already set should honour it.
+   */
+  hasSavedViewport: boolean;
 }
 
 /**
@@ -37,11 +43,13 @@ interface Params {
  * does not re-render when one it does not query on changes. Reconcile on a
  * microtask, like every sibling hook.
  */
-export function useCenterSync({ store, isReady, mappings }: Params): void {
+export function useCenterSync({ store, isReady, mappings, hasSavedViewport }: Params): void {
   const mappingsRef = useRef(mappings);
+  const hasSavedViewportRef = useRef(hasSavedViewport);
   // Updated in an effect, not during render: reconcile only runs on a microtask.
   useEffect(() => {
     mappingsRef.current = mappings;
+    hasSavedViewportRef.current = hasSavedViewport;
   });
 
   /** Per-mapping key of the last pair seen, acted on or suppressed. */
@@ -55,7 +63,7 @@ export function useCenterSync({ store, isReady, mappings }: Params): void {
     if (!center.length) {
       return;
     }
-    const adopting = firstPass.current;
+    const adoptOnly = firstPass.current && hasSavedViewportRef.current;
     firstPass.current = false;
 
     const pinned = readPinnedCoordinate(store);
@@ -74,11 +82,12 @@ export function useCenterSync({ store, isReady, mappings }: Params): void {
         mapping,
         pinned: pinned ?? undefined,
         lastCentered: lastCentered.current[slot],
+        adoptOnly,
       });
       if (key !== undefined) {
         lastCentered.current[slot] = key;
       }
-      if (target && !adopting) {
+      if (target) {
         centerMapOn(store, store.dispatch, target[0], target[1], mapping.zoom);
       }
     }
