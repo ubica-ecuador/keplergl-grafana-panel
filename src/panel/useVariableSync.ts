@@ -57,6 +57,18 @@ const RANGE_PUBLISH_DELAY_MS = 300;
  */
 export function useVariableSync({ store, isReady, mappings }: Params): void {
   const lastSynced = useRef<Record<string, string>>({});
+  /**
+   * False while this panel is live; true from the moment it tears down.
+   *
+   * kepler deletes its store entry as the panel unmounts, and that notification
+   * reaches this hook's subscriber before React gets to the cleanup below. The
+   * reconcile it schedules would then run after teardown, find no filters left
+   * and read that absence as the user clearing them — publishing blanks over
+   * variables nobody touched. Switching dashboard tabs was enough to wipe the
+   * threshold slider's pair. Reset when the effect re-arms, so a change of
+   * mappings does not retire the hook for good.
+   */
+  const disposed = useRef(false);
   const mappingsRef = useRef(mappings);
   // Updated in an effect, not during render: reconcile only runs on a microtask.
   useEffect(() => {
@@ -74,6 +86,9 @@ export function useVariableSync({ store, isReady, mappings }: Params): void {
 
   const flushRange = useRef(() => {
     rangeTimer.current = null;
+    if (disposed.current) {
+      return;
+    }
     const pending = pendingRange.current;
     pendingRange.current = null;
     if (!pending) {
@@ -93,7 +108,7 @@ export function useVariableSync({ store, isReady, mappings }: Params): void {
 
   const reconcile = useRef(() => {
     const maps = mappingsRef.current;
-    if (!maps.length) {
+    if (!maps.length || disposed.current) {
       return;
     }
 
@@ -247,6 +262,7 @@ export function useVariableSync({ store, isReady, mappings }: Params): void {
     // Captured rather than read in the cleanup: the ref is assigned once, but
     // reading it on teardown is what the exhaustive-deps rule warns about.
     const cancel = cancelRange.current;
+    disposed.current = false;
 
     schedule.current();
     // Map → dashboard: react to kepler filter changes.
@@ -254,6 +270,7 @@ export function useVariableSync({ store, isReady, mappings }: Params): void {
     // Dashboard → map: react to variable changes, which land in the URL.
     const unlisten = locationService.getHistory().listen(schedule.current);
     return () => {
+      disposed.current = true;
       unsubscribeStore();
       unlisten();
       cancel();
