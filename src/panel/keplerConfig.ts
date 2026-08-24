@@ -24,12 +24,35 @@ export function assetBaseUrl(): string {
 }
 
 /**
+ * Raster tile server offered by default when adding a COG or STAC tileset.
+ *
+ * kepler ships a RasterTileLayer but no server to feed it: the stock
+ * `rasterServerUrls` is an empty list — with a literal `// TODO` upstream — and
+ * the layer throws 'No raster tile servers' before it ever reaches the network.
+ *
+ * This is the TiTiler in docker-compose.yaml. It is only a default: the value
+ * seeds the "raster tile server" field of the Add Data → Tileset form, and the
+ * server a dataset actually uses travels in that dataset's own metadata. Two
+ * consequences worth knowing before debugging a tile that never arrives:
+ *
+ *  - Pasting a bare `.tif` into that form ignores this entirely. kepler decides
+ *    a URL is a COG from its pathname and then hardcodes `titiler.xyz` for both
+ *    the metadata and the tiles, with no way to override it from the form. To
+ *    use our own server, paste the STAC URL — `<server>/cog/stac?url=<cog>` —
+ *    whose pathname is `/cog/stac`, so it does not trip that branch.
+ *  - Grafana's strict CSP must allow this host under `connect-src`: the tiles
+ *    are NumPy arrays fetched with XHR, not images.
+ */
+const DEFAULT_RASTER_SERVER_URL = 'http://localhost:8088';
+
+/**
  * kepler.gl's official escape hatch for embedding it in another application.
  * Called once at module load, before any kepler component mounts.
  */
 export function configureKepler(): void {
   initApplicationConfig({
     cdnUrl: assetBaseUrl(),
+    rasterServerUrls: [DEFAULT_RASTER_SERVER_URL],
     // A "new release" banner has no place inside a dashboard panel.
     showReleaseBanner: false,
     // The Flow layer is the reason this plugin pins kepler.gl 3.3.0-alpha.3

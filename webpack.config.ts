@@ -14,13 +14,24 @@ const config = async (env: Env): Promise<Configuration> => {
        * Static assets kepler fetches at runtime from `cdnUrl` — which
        * keplerConfig.ts points at the plugin's own asset path so air-gapped
        * installs never call the Foursquare CDN. The scaffold only copies JSON
-       * (that rule carries the vendored svg-icons.json); the effect preview
-       * thumbnails under src/images/effects/ are PNG, vendored from kepler.gl
-       * (MIT), and need their own copy rule to be served at
-       * `<plugin>/images/effects/*.png`.
+       * (that rule carries the vendored svg-icons.json); these two trees are
+       * PNG, vendored from kepler.gl (MIT), and need their own copy rule.
+       *
+       * `images/effects/*.png` are the effect preview thumbnails.
+       *
+       * `raster/colormaps/*.png` are the 71 colormaps of RasterTileLayer, and
+       * they are load-bearing rather than decorative: raster-tile/image.ts
+       * fetches `${cdnUrl}/raster/colormaps/<id>.png` inside the same
+       * Promise.all as the tile itself — for every tile, even an RGB composite
+       * that never samples a colormap, defaulting to `cfastie`. A 404 there
+       * rejects the whole promise, so a missing colormap does not degrade the
+       * colouring: it takes the imagery down with it. 18 KB for the set.
        */
       new CopyWebpackPlugin({
-        patterns: [{ from: 'images', to: 'images' }],
+        patterns: [
+          { from: 'images', to: 'images' },
+          { from: 'raster', to: 'raster' },
+        ],
       }),
       /*
        * Parts of the kepler.gl tree read the Node `process` global as a free

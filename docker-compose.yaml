@@ -71,13 +71,18 @@ services:
       # base maps; Esri serves the tiles of the satellite and topographic ones;
       # Mapterhorn serves the elevation tiles behind the two relief styles.
       #
+      # The raster tile server is the third delta. kepler fetches raster tiles as
+      # NumPy arrays over XHR, so they land in connect-src too — not img-src,
+      # which is where a "tile" would normally be looked for.
+      #
       # Verified with the stock template: the plugin still loads, the map still
       # renders and Web Workers still start — only the basemap goes missing.
       GF_SECURITY_CONTENT_SECURITY_POLICY_TEMPLATE: >-
         script-src 'self' 'unsafe-eval' 'unsafe-inline' 'strict-dynamic' $$NONCE;object-src 'none';font-src
         'self';style-src 'self' 'unsafe-inline' blob:;img-src * data:;base-uri 'self';connect-src 'self'
         grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com
-        https://services.arcgisonline.com https://tiles.mapterhorn.com ws://$$ROOT_PATH
+        https://services.arcgisonline.com https://tiles.mapterhorn.com
+        http://localhost:8088 ws://$$ROOT_PATH
         wss://$$ROOT_PATH;manifest-src 'self';media-src 'none';form-action 'self';
 
   # Sources bench, on port 3002: the file-based formats the panel is meant to
@@ -145,6 +150,47 @@ services:
     volumes:
       - ./testdata:/usr/share/nginx/html:ro
       - ./docker/sources-data.nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+  # Raster tile server, on port 8088. kepler ships a RasterTileLayer but no
+  # server to feed it: `rasterServerUrls` defaults to an empty list, so the
+  # layer throws 'No raster tile servers' before it ever reaches the network.
+  #
+  # Self-hosted rather than the public titiler.xyz, for two reasons that decide
+  # it: the CORS headers are ours to set — the public deployment sits behind a
+  # CDN that caches without varying on Origin, so its headers are a lottery —
+  # and only our own server can read our own private rasters.
+  #
+  # Tag pinned, never `latest`. kepler knows exactly two shapes of the TiTiler
+  # API (`rasterServerUseLatestTitiler` toggles between v0.11 and v0.21) and
+  # TiTiler is on 2.x, well past that fork; it works because the two routes
+  # kepler builds happen to have survived. An upgrade has to re-verify them:
+  #   GET /cog/stac?url=<cog>
+  #   GET /cog/tiles/WebMercatorQuad/{z}/{x}/{y}.npy?url=<cog>&bidx=1&bidx=2&bidx=3
+  #
+  # The image listens on 80 and is published on 8088 because the browser talks
+  # to it directly — kepler builds these URLs client-side, so a compose-network
+  # name would not resolve.
+  titiler:
+    image: ghcr.io/developmentseed/titiler:2.2.1
+    container_name: 'ubica-keplergl-panel-titiler'
+    ports:
+      - '8088:80/tcp'
+    environment:
+      # The panel calls this server from Grafana's origin, so every response
+      # needs CORS. Wide open is right for a dev bench and wrong in production.
+      TITILER_API_CORS_ORIGINS: '*'
+      # GDAL reading COGs over /vsicurl. Without the first two, every tile costs
+      # a directory listing of the remote bucket and re-reads ranges it already
+      # has; the rest is header caching. Deliberately NOT setting
+      # CPL_VSIL_CURL_ALLOWED_EXTENSIONS: it turns "unexpected extension" into a
+      # silent failure, and the COGs we write ourselves may not end in .tif.
+      GDAL_DISABLE_READDIR_ON_OPEN: 'EMPTY_DIR'
+      GDAL_HTTP_MERGE_CONSECUTIVE_RANGES: 'YES'
+      GDAL_INGESTED_BYTES_AT_OPEN: '32768'
+      GDAL_CACHEMAX: '200'
+      GDAL_BAND_BLOCK_CACHE: 'HASHSET'
+      VSI_CACHE: 'TRUE'
+      VSI_CACHE_SIZE: '5000000'
 
 volumes:
   grafana-data:
