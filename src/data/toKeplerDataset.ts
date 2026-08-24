@@ -12,8 +12,11 @@ export type KeplerRow = Record<string, unknown>;
  * The wind roles are absent on purpose: a velocity field never reaches kepler as
  * columns. It is consumed to trace streamlines, and what kepler receives is
  * their geometry, so renaming `u`/`v` would be renaming something nobody looks at.
+ *
+ * `rasterUrl` is absent for the same reason: it becomes a dataset of its own,
+ * whose substance is a metadata url rather than any row.
  */
-type RenamedRole = Exclude<keyof FieldRoles, 'u' | 'v' | 'speed' | 'direction'>;
+type RenamedRole = Exclude<keyof FieldRoles, 'u' | 'v' | 'speed' | 'direction' | 'rasterUrl'>;
 
 /**
  * Column name kepler expects for each role.

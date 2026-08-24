@@ -1,4 +1,4 @@
-import { decideLoadAction, splitRefresh } from './loadDecision';
+import { decideLoadAction, splitRasterRefresh, splitRefresh } from './loadDecision';
 
 /**
  * The panel has to choose between two very different kepler calls on every
@@ -123,5 +123,59 @@ describe('splitRefresh', () => {
 
     expect(replace).toEqual([]);
     expect(add.map((d) => d.id)).toEqual(['grafana-A']);
+  });
+});
+
+describe('splitRasterRefresh', () => {
+  const scene = (id: string, metadataUrl: string) => ({ id, metadataUrl });
+
+  it('adds a raster the map does not hold yet', () => {
+    const { add, replace, keep, remove } = splitRasterRefresh([scene('grafana-A-raster', 'http://t/aug')], []);
+
+    expect(add.map((r) => r.id)).toEqual(['grafana-A-raster']);
+    expect(replace).toEqual([]);
+    expect(keep).toEqual([]);
+    expect(remove).toEqual([]);
+  });
+
+  it('replaces a raster whose scene changed', () => {
+    const { replace, keep } = splitRasterRefresh(
+      [scene('grafana-A-raster', 'http://t/jul')],
+      [scene('grafana-A-raster', 'http://t/aug')]
+    );
+
+    expect(replace.map((r) => r.id)).toEqual(['grafana-A-raster']);
+    expect(keep).toEqual([]);
+  });
+
+  it('keeps a raster the auto-refresh re-derived unchanged', () => {
+    // The 30s auto-refresh re-runs the query and produces a fresh object for
+    // the same scene. Comparing by identity would swap the dataset — and the
+    // raster would blink every refresh for no reason at all.
+    const { keep, replace, add } = splitRasterRefresh(
+      [scene('grafana-A-raster', 'http://t/aug')],
+      [scene('grafana-A-raster', 'http://t/aug')]
+    );
+
+    expect(keep.map((r) => r.id)).toEqual(['grafana-A-raster']);
+    expect(replace).toEqual([]);
+    expect(add).toEqual([]);
+  });
+
+  it('removes a raster the query no longer produces', () => {
+    // A range with no cloud-free scene returns no rows. Leaving the previous
+    // scene on the map would show imagery from outside the range as if it
+    // belonged to it.
+    const { remove } = splitRasterRefresh([], [scene('grafana-A-raster', 'http://t/aug')]);
+
+    expect(remove).toEqual(['grafana-A-raster']);
+  });
+
+  it('leaves tilesets the user added by hand alone', () => {
+    // Only ids the panel itself minted are the panel's to remove; a tileset
+    // from kepler's Add Data belongs to the user.
+    const { remove } = splitRasterRefresh([], [scene('pawlsg7ej', 'https://titiler.xyz/cog/stac?url=x')]);
+
+    expect(remove).toEqual([]);
   });
 });

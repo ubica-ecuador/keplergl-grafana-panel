@@ -3,8 +3,8 @@
 A **role** is the part a column plays. Roles are detected from the column's name — case-insensitively
 and **exactly** — except for time, which is detected from its type.
 
-There are **eighteen** roles. The Field mapping editor exposes **twelve** of them; the other six are
-autodetect-only and are marked below.
+There are **nineteen** roles. The Field mapping editor exposes **twelve** of them; the other seven
+are autodetect-only and are marked below.
 
 ## The full table
 
@@ -28,11 +28,12 @@ autodetect-only and are marked below.
 | V component     | ❌     | `v`, `v10`, `v_wind`, `wind_v`, `vgrd`, `v_component`                                                                                                                                                           | not renamed |
 | Speed           | ❌     | `wind_speed`, `windspeed`, `wind_speed_10m`, `speed`, `ws`                                                                                                                                                      | not renamed |
 | Direction       | ❌     | `wind_direction`, `winddirection`, `wind_direction_10m`, `direction`, `wind_dir`, `wd`                                                                                                                          | not renamed |
+| Raster URL      | ❌     | `raster_url`, `cog_url`, `cog`, `asset_href`, `href`                                                                                                                                                            | not renamed |
 
-::: warning Six roles cannot be mapped by hand
-`originH3`, `destH3`, `u`, `v`, `speed` and `direction` are detected but have no entry in the Field
-mapping editor. If your columns are named something the lists do not cover, **alias them in the
-query**:
+::: warning Seven roles cannot be mapped by hand
+`originH3`, `destH3`, `u`, `v`, `speed`, `direction` and `rasterUrl` are detected but have no entry
+in the Field mapping editor. If your columns are named something the lists do not cover, **alias them
+in the query**:
 
 ```sql
 SELECT h3_pickup AS origin_h3, h3_drop AS dest_h3, COUNT(*) AS trips
@@ -40,7 +41,8 @@ FROM journeys GROUP BY 1, 2;
 ```
 
 The four velocity roles are never renamed for kepler in any case, because a velocity field is
-consumed to trace streamlines and never reaches kepler as columns at all.
+consumed to trace streamlines and never reaches kepler as columns at all. Neither is the raster
+role, for the same kind of reason: it becomes a dataset of its own.
 :::
 
 ## Why the match is exact
@@ -103,3 +105,21 @@ trajectory, not a field.
 
 Passed through untouched, under their original names, and available for colour scales, radius,
 filters and tooltips. Nothing is dropped for not having a role.
+
+## The raster role makes a second dataset
+
+`rasterUrl` behaves unlike every other role. The others describe _where a row is_; this one says the
+query is not really about rows at all — it points at an image somewhere in a bucket.
+
+A query that carries one produces **two** datasets:
+
+- the ordinary row dataset, with whatever columns the query returned: scene id, date, cloud cover.
+  Useful in a table beside the map, and drawn as a layer if it also carries coordinates;
+- a raster dataset, id `grafana-<refId>-raster`, holding no rows at all — only the link to the
+  imagery and the tile server that can read it. kepler draws it with its Raster Tile layer.
+
+Only the **first row** is read. A query is expected to resolve to a single scene — `ORDER BY …
+LIMIT 1` — because a table of ten scenes describes a choice still to be made, not ten layers to
+stack.
+
+Drawing it needs a tile server, which is the [Raster tile server](./panel-options.md) panel option.

@@ -32,6 +32,11 @@ export interface FieldRoles {
   v?: string;
   speed?: string;
   direction?: string;
+  /**
+   * A link to a cloud-optimised GeoTIFF, which is drawn as raster tiles rather
+   * than as rows. One url per query — the first row wins.
+   */
+  rasterUrl?: string;
 }
 
 /**
@@ -132,6 +137,10 @@ const NAME_CANDIDATES: Record<string, string[]> = {
   originH3: ['origin_h3', 'source_h3', 'from_h3', 'h3_0'],
   destH3: ['dest_h3', 'target_h3', 'to_h3', 'h3_1'],
   count: ['count', 'trips', 'magnitude', 'weight', 'flow', 'total', 'volume'],
+  // Raster. `asset_href` and `href` are what a STAC asset is called in the
+  // catalogue's own JSON, so a query that lifts the asset straight out of a
+  // search response needs no aliasing.
+  rasterUrl: ['raster_url', 'cog_url', 'cog', 'asset_href', 'href'],
 };
 
 /**

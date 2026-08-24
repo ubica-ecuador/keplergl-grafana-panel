@@ -1,4 +1,5 @@
 import { SavedMapConfig } from '../data/mapConfig';
+import { isPanelRasterId } from '../data/rasterDataset';
 
 export type LoadAction = 'rebuild' | 'refresh' | 'none';
 
@@ -94,4 +95,49 @@ export function splitRefresh<T extends { id: string }>(
     replace: datasets.filter((dataset) => known.has(dataset.id)),
     add: datasets.filter((dataset) => !known.has(dataset.id)),
   };
+}
+
+/**
+ * Splits a raster refresh four ways: add, replace, keep, remove.
+ *
+ * The extra buckets a row dataset does not need come from what a raster costs
+ * to swap. `replaceDataInMap` empties and rebuilds the dataset, and the layer's
+ * tiles are refetched with it — so an unnecessary swap is a visible blink, not
+ * a wasted cycle. The dashboard's own 30-second auto-refresh re-runs the query
+ * and hands back a fresh object describing the very same scene, which is why
+ * the comparison is on `metadataUrl` and not on object identity: the identity
+ * is new every time, the scene is not.
+ *
+ * `remove` is the other side of it. A range with no scene under the cloud
+ * threshold returns no rows at all, and a raster left behind then shows imagery
+ * from outside the range as though it belonged to it. Only ids the panel minted
+ * are removable — a tileset the user added through kepler's own Add Data is
+ * theirs, and disappears from nothing but their own hand.
+ */
+export function splitRasterRefresh<T extends { id: string; metadataUrl: string }>(
+  rasters: T[],
+  known: ReadonlyArray<{ id: string; metadataUrl?: string }>
+): { add: T[]; replace: T[]; keep: T[]; remove: string[] } {
+  const byId = new Map(known.map((dataset) => [dataset.id, dataset.metadataUrl]));
+  const wanted = new Set(rasters.map((raster) => raster.id));
+
+  const add: T[] = [];
+  const replace: T[] = [];
+  const keep: T[] = [];
+
+  for (const raster of rasters) {
+    if (!byId.has(raster.id)) {
+      add.push(raster);
+    } else if (byId.get(raster.id) === raster.metadataUrl) {
+      keep.push(raster);
+    } else {
+      replace.push(raster);
+    }
+  }
+
+  const remove = known
+    .map((dataset) => dataset.id)
+    .filter((id) => !wanted.has(id) && isPanelRasterId(id));
+
+  return { add, replace, keep, remove };
 }

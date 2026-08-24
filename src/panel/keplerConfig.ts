@@ -1,5 +1,7 @@
 import { initApplicationConfig } from '@kepler.gl/utils';
 
+import { DEFAULT_RASTER_SERVER_URL } from './constants';
+
 /**
  * Base URL for kepler's own static assets.
  *
@@ -42,8 +44,11 @@ export function assetBaseUrl(): string {
  *    whose pathname is `/cog/stac`, so it does not trip that branch.
  *  - Grafana's strict CSP must allow this host under `connect-src`: the tiles
  *    are NumPy arrays fetched with XHR, not images.
+ *
+ * Rasters the panel builds from a query do not read this: they carry their own
+ * server, from the panel option, so two panels on one dashboard can draw from
+ * different servers.
  */
-const DEFAULT_RASTER_SERVER_URL = 'http://localhost:8088';
 
 /**
  * kepler.gl's official escape hatch for embedding it in another application.

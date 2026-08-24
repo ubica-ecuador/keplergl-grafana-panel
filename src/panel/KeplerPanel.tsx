@@ -4,9 +4,10 @@ import { useTheme2 } from '@grafana/ui';
 
 import { KeplerPanelOptions } from '../types';
 import { framesToDatasets } from '../data/framesToDatasets';
+import { framesToRasters } from '../data/rasterDataset';
 import { toKeplerTheme } from '../data/keplerTheme';
 import { SavedMapConfig } from '../data/mapConfig';
-import { CUSTOM_BASEMAP_ID } from './constants';
+import { CUSTOM_BASEMAP_ID, DEFAULT_RASTER_SERVER_URL } from './constants';
 import { LazyKeplerMap } from './LazyKeplerMap';
 import { useStableValue } from './useStableValue';
 import type { VariableMapping } from './variableSync';
@@ -69,6 +70,17 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
     ]
   );
 
+  // Rasters travel separately from the row datasets all the way to the adapter:
+  // a scene has no rows, and `processRowObject([])` returns null, so anything
+  // riding in the row list is dropped on the way into kepler.
+  const rasters = useMemo(
+    () =>
+      framesToRasters(data.series, fieldMappings, {
+        tileServerUrls: [(options.rasterServerUrl || DEFAULT_RASTER_SERVER_URL).trim()],
+      }),
+    [data.series, fieldMappings, options.rasterServerUrl]
+  );
+
   const keplerTheme = useMemo(() => toKeplerTheme(grafanaTheme), [grafanaTheme]);
   const followTheme = options.followGrafanaTheme ?? true;
 
@@ -96,6 +108,7 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
         width={width}
         height={height}
         datasets={datasets}
+        rasters={rasters}
         mapConfig={options.mapConfig}
         theme={followTheme ? keplerTheme : undefined}
         basemapId={basemapId}

@@ -5,6 +5,7 @@ import {
   fitBounds,
   interactionConfigChange,
   mapStyleChange,
+  removeDataset,
   removeFilter,
   removeLayer,
   toggleLayerAnimation,
@@ -16,12 +17,14 @@ import {
   wrapTo,
 } from '@kepler.gl/actions';
 import { ALL_FIELD_TYPES } from '@kepler.gl/constants';
+import { getApplicationConfig } from '@kepler.gl/utils';
 import { processRowObject } from '@kepler.gl/processors';
 import KeplerGlSchema, { datasetSchema, VERSIONS, type SavedDatasetV1 } from '@kepler.gl/schemas';
 import type { ProtoDataset } from '@kepler.gl/types';
 import type { Dispatch, Store } from 'redux';
 
 import type { PanelDataset } from '../data/framesToDatasets';
+import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
 import { rowFieldValue } from './clickSync';
 import type { FlowLayerConfig } from '../data/buildFlows';
 import type { TripLayerConfig } from '../data/buildTripLayer';
@@ -41,7 +44,7 @@ import {
   type TimeRangeMs,
 } from './timeSync';
 import { supersededTripLayerIds } from './autoLayers';
-import { splitRefresh } from './loadDecision';
+import { splitRasterRefresh, splitRefresh } from './loadDecision';
 import { KEPLER_INSTANCE_ID } from './constants';
 
 /**
@@ -118,6 +121,122 @@ export function loadDatasets(
 const VECTOR_TILE_TYPE = 'vector-tile';
 const VECTOR_TILE_FILTER_TYPES = [ALL_FIELD_TYPES.real, ALL_FIELD_TYPES.integer, ALL_FIELD_TYPES.boolean];
 
+/** kepler's `DatasetType.RASTER_TILE`: a dataset that is a scene, not rows. */
+const RASTER_TILE_TYPE = 'raster-tile';
+
+/**
+ * A raster scene in the shape kepler's own Add Data → Tileset produces.
+ *
+ * Copied from `modal-container`'s `_onTilesetAdded` and
+ * `getDatasetAttributesFromRasterTile` on purpose: a dataset the panel builds
+ * and one the user adds by hand end up in the same store, and any difference
+ * between them would show up later as a raster that behaves subtly unlike its
+ * neighbour.
+ *
+ * `rows: []` with `disableDataOperation` is the whole point of the shape — the
+ * substance is `metadata`, and kepler fetches the STAC Item itself from
+ * `metadataUrl` (`dataset-utils`' `refreshRasterTileMetadata`), so nothing here
+ * has to know what a STAC Item looks like.
+ *
+ * The `rasterServer*` values are frozen into the dataset rather than read at
+ * draw time, which is what kepler does: the dataset then keeps working if the
+ * application config changes underneath it. `rasterServerUseLatestTitiler` is
+ * the load-bearing one — it picks between two ways of writing the band index,
+ * and TiTiler 2.x rejects the older one outright.
+ */
+function rasterProtoDataset(raster: RasterDataset) {
+  const appConfig = getApplicationConfig();
+  return {
+    info: { id: raster.id, label: raster.label, type: RASTER_TILE_TYPE, format: 'rows' },
+    data: { fields: [], rows: [] },
+    metadata: {
+      metadataUrl: raster.metadataUrl,
+      rasterTileServerUrls: raster.tileServerUrls,
+      rasterServerUseLatestTitiler: appConfig.rasterServerUseLatestTitiler,
+      rasterServerSupportsElevation: appConfig.rasterServerSupportsElevation,
+      rasterServerMaxRetries: appConfig.rasterServerMaxRetries,
+      rasterServerRetryDelay: appConfig.rasterServerRetryDelay,
+      rasterServerServerErrorsToRetry: appConfig.rasterServerServerErrorsToRetry,
+      rasterServerMaxPerServerRequests: appConfig.rasterServerMaxPerServerRequests,
+    },
+    disableDataOperation: true,
+  } as unknown as ProtoDataset;
+}
+
+/**
+ * Adds raster scenes to the map, one dataset and one layer each.
+ *
+ * Separate from `loadDatasets` rather than folded into its payload: a raster
+ * carries no rows, and `processRowObject([])` returns null, so the row path
+ * drops it on the floor without a word.
+ *
+ * `centerMap` defaults to false. A Sentinel granule is a hundred kilometres
+ * across and framing the map to it would throw away wherever the user was
+ * looking — and on a refresh, that is exactly the frame they are watching
+ * change.
+ */
+export function loadRasters(dispatch: Dispatch, rasters: RasterDataset[], options: { centerMap?: boolean } = {}): void {
+  if (rasters.length === 0) {
+    return;
+  }
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      updateVisData(rasters.map(rasterProtoDataset), {
+        keepExistingConfig: true,
+        centerMap: options.centerMap ?? false,
+      })
+    )
+  );
+}
+
+/**
+ * Refresh path for rasters: add what is new, swap what changed, drop what the
+ * query stopped producing, and — the point of the exercise — leave alone what
+ * did not change.
+ *
+ * The swap is `replaceDataInMap`, never `updateDatasetProps`. The latter exists,
+ * accepts `metadata`, and is a trap twice over: it merges with `deepmerge`,
+ * which *concatenates* arrays, so `bbox` would come back with eight numbers and
+ * the band list would double; and `stac` is not in the layer's
+ * `updateTriggers.getTileData`, so deck would go on serving the old tiles
+ * regardless. `replaceDataInMap` rebuilds the dataset but rescues the
+ * serialised layer config and re-merges it, so the layer keeps its id and
+ * whatever the user styled on it.
+ */
+export function refreshRasters(store: Store, dispatch: Dispatch, rasters: RasterDataset[]): void {
+  const { add, replace, remove } = splitRasterRefresh(rasters, readRasterDatasets(store));
+
+  for (const id of remove) {
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(id)));
+  }
+
+  for (const raster of replace) {
+    dispatch(
+      wrapTo(
+        KEPLER_INSTANCE_ID,
+        replaceDataInMap({
+          datasetToReplaceId: raster.id,
+          datasetToUse: rasterProtoDataset(raster),
+          // The payload of this whole phase: the default is `centerMap: true`,
+          // and with it every change of the time range would yank the map back
+          // to the granule's extent.
+          options: { centerMap: false, keepExistingConfig: true },
+        })
+      )
+    );
+  }
+
+  loadRasters(dispatch, add);
+}
+
+/** The raster datasets kepler holds, as the identity the refresh compares on. */
+function readRasterDatasets(store: Store): Array<{ id: string; metadataUrl?: string }> {
+  return Object.entries(getVisState(store)?.datasets ?? {})
+    .filter(([, dataset]) => dataset.type === RASTER_TILE_TYPE)
+    .map(([id, dataset]) => ({ id, metadataUrl: dataset.metadata?.metadataUrl }));
+}
+
 /**
  * The URL-backed datasets a saved config carries, ready for `addDataToMap`.
  *
@@ -168,13 +287,19 @@ export function captureMapConfig(store: Store): SavedMapConfig | null {
 
 /** The saved form of every URL-backed dataset the map currently holds. */
 function captureRemoteDatasets(store: Store): SavedRemoteDataset[] {
-  const datasets = Object.values(getVisState(store)?.datasets ?? {});
+  const datasets = Object.entries(getVisState(store)?.datasets ?? {});
   // Called as a method: `DatasetSchema.save` reads `this.key`, so it cannot be
   // detached from the schema object.
   const schema = datasetSchema[VERSIONS.v1];
   const saved = datasets
-    .filter((dataset) => REMOTE_DATASET_TYPES.includes(dataset.type ?? ''))
-    .map((dataset) => ({
+    .filter(([, dataset]) => REMOTE_DATASET_TYPES.includes(dataset.type ?? ''))
+    // Not the ones the panel mints from a query. They are remote datasets like
+    // any other, but the query rebuilds them on every load, so saving them
+    // writes a second dataset with the same id into the dashboard JSON — and
+    // the stale copy would then race the fresh one on the next load. Same
+    // reasoning the comment above gives for leaving the row datasets out.
+    .filter(([id]) => !isPanelRasterId(id))
+    .map(([, dataset]) => ({
       version: VERSIONS.v1,
       // The state object is kepler's own `KeplerTable`; only this module's view
       // of it is narrowed, hence the cast.
@@ -282,6 +407,8 @@ interface VisStateLike {
       dataContainer?: unknown;
       /** kepler's `DatasetType`: '' for a dataset built from rows, 'vector-tile' and friends for a URL. */
       type?: string;
+      /** Where a URL-backed dataset points; for a raster, which scene it is. */
+      metadata?: { metadataUrl?: string };
     }
   >;
   layers: Array<{

@@ -1,0 +1,132 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "COG y STAC sin salir del dashboard: DuckDB busca la escena en el catálogo, TiTiler la sirve en teselas y kepler la pinta como ráster.",
+  "editable": true,
+  "id": null,
+  "links": [],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": [
+    "kepler",
+    "raster"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Ráster — COG y STAC vía TiTiler",
+  "uid": "raster-bench",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "mode": "markdown",
+        "content": "# Ráster cloud-native\n\nUna consulta descubre la escena y el mapa la pinta. No hay ETL, ni descarga: DuckDB pregunta al catálogo STAC de Sentinel-2 qué imagen cubre Cuenca dentro del rango del dashboard, devuelve **una fila** con el enlace al COG, y el panel se lo pasa a TiTiler, que sirve las teselas leyendo el fichero remoto por rangos de bytes.\n\n| Pieza | Quién la pone |\n|---|---|\n| Catálogo | `earth-search.aws.element84.com`, público y sin autenticación |\n| Búsqueda | DuckDB con la extensión `http_client`, parametrizada por el rango |\n| Teselas | el contenedor `titiler` del compose, en el puerto 8088 |\n| Dibujo | `RasterTileLayer`, que kepler ya trae |\n\n**Mueve el rango de fechas**: cambia la escena, no el encuadre. Si en el periodo no hay ninguna imagen bajo el 60 % de nubes, la consulta no devuelve nada y no hay ráster que pintar."
+      },
+      "title": "",
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "La misma consulta que alimenta el mapa. Aquí se ve en crudo lo que el panel recibe: una fila, con la columna raster_url que el plugin detecta por nombre.",
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "id": 2,
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Descubrimiento de escenas: STAC de Element 84, sin autenticación.\n-- http_get es una función escalar corriente, así que la URL se arma por\n-- concatenación y el rango del dashboard entra por las macros de Grafana.\nWITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=100'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT\n  f->>'id'                                     AS scene_id,\n  (f->'properties'->>'datetime')::TIMESTAMP    AS acquired,\n  (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n  f->'assets'->'visual'->>'href'               AS raster_url\nFROM features\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE < 60\nORDER BY acquired DESC\nLIMIT 1",
+          "refId": "A"
+        }
+      ],
+      "title": "La escena elegida para el rango actual",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "El ráster llega al mapa por la columna raster_url del DataFrame; el resto de la cadena la resuelve el panel.",
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "id": 3,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -2.905,
+              "longitude": -79.0,
+              "zoom": 9.5,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Descubrimiento de escenas: STAC de Element 84, sin autenticación.\n-- http_get es una función escalar corriente, así que la URL se arma por\n-- concatenación y el rango del dashboard entra por las macros de Grafana.\nWITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=100'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT\n  f->>'id'                                     AS scene_id,\n  (f->'properties'->>'datetime')::TIMESTAMP    AS acquired,\n  (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n  f->'assets'->'visual'->>'href'               AS raster_url\nFROM features\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE < 60\nORDER BY acquired DESC\nLIMIT 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Sentinel-2 sobre Cuenca",
+      "type": "ubica-keplergl-panel"
+    }
+  ]
+}

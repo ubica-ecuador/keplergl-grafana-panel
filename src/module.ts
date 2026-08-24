@@ -9,6 +9,7 @@ import { VariableSyncEditor } from './editors/VariableSyncEditor';
 import { TimeVariableEditor } from './editors/TimeVariableEditor';
 import { AreaVariableEditor } from './editors/AreaVariableEditor';
 import { ViewportVariablesEditor } from './editors/ViewportVariablesEditor';
+import { DEFAULT_RASTER_SERVER_URL } from './panel/constants';
 
 export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelOptions((builder) =>
   builder
@@ -138,6 +139,14 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       category: ['Map'],
       settings: { placeholder: 'https://tiles.internal/style.json' },
       showIf: (config) => config.basemap === 'custom',
+    })
+    .addTextInput({
+      path: 'rasterServerUrl',
+      name: 'Raster tile server',
+      description:
+        'TiTiler-compatible server that turns a COG into tiles, for queries returning a raster_url column. It reads the imagery on the map\u2019s behalf, so it must be able to reach it.',
+      category: ['Map'],
+      settings: { placeholder: DEFAULT_RASTER_SERVER_URL },
     })
     .addCustomEditor({
       id: 'variableMappings',

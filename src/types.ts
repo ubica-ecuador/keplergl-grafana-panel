@@ -62,6 +62,18 @@ export interface KeplerPanelOptions {
    */
   customBasemapUrl?: string;
 
+  /**
+   * Base URL of the TiTiler-compatible server that turns a COG into tiles, for
+   * queries that return a link to imagery rather than rows.
+   *
+   * There is no useful public default. A tile server reads the raster on the
+   * panel's behalf, so it is the one piece that has to be able to reach the
+   * imagery: private rasters are exactly what a public service cannot serve.
+   * Left empty, the panel falls back to the server in this repository's
+   * docker-compose, which is right for development and wrong everywhere else.
+   */
+  rasterServerUrl?: string;
+
   /** Follow the dashboard theme. Off leaves kepler with its own dark styling. */
   followGrafanaTheme?: boolean;
 

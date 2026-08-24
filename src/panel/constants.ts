@@ -32,3 +32,16 @@ export const SATELLITE_BASEMAP_ID = 'grafana-satellite';
  */
 export const SATELLITE_TERRAIN_BASEMAP_ID = 'grafana-satellite-terrain';
 export const TOPOGRAPHIC_TERRAIN_BASEMAP_ID = 'grafana-topographic-terrain';
+
+/**
+ * Raster tile server used when the panel option is left empty.
+ *
+ * This is the TiTiler in the repository's docker-compose. It is a development
+ * default and nothing more: a real install points the panel option at its own
+ * server, which is the only way to serve rasters that are not public.
+ *
+ * Here rather than in `keplerConfig` because `KeplerPanel` reads it, and that
+ * module is deliberately free of kepler imports — pulling one in would drag
+ * deck.gl and MapLibre into the main chunk and undo the code splitting.
+ */
+export const DEFAULT_RASTER_SERVER_URL = 'http://localhost:8088';

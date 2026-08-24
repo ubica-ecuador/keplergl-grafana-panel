@@ -6,13 +6,22 @@ import { injectComponents } from '@kepler.gl/components';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import type { PanelDataset } from '../data/framesToDatasets';
+import type { RasterDataset } from '../data/rasterDataset';
 import type { SavedMapConfig } from '../data/mapConfig';
 import type { KeplerThemeOverride } from '../data/keplerTheme';
 import { KEPLER_INSTANCE_ID } from './constants';
 import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES } from './basemaps';
 import { configureKepler } from './keplerConfig';
 import { createKeplerStore } from './keplerStore';
-import { captureMapConfig, loadDatasets, refreshDatasets, setBasemap, setSidePanel } from './keplerAdapter';
+import {
+  captureMapConfig,
+  loadDatasets,
+  loadRasters,
+  refreshDatasets,
+  refreshRasters,
+  setBasemap,
+  setSidePanel,
+} from './keplerAdapter';
 import { decideLoadAction } from './loadDecision';
 import { replaceMapControl } from './effectsMapControl';
 import { useTimeRangeSync } from './useTimeRangeSync';
@@ -51,6 +60,11 @@ export interface KeplerMapProps {
   width: number;
   height: number;
   datasets: PanelDataset[];
+  /**
+   * Raster scenes the queries point at. Separate from `datasets` because a
+   * scene has no rows to carry.
+   */
+  rasters: RasterDataset[];
   mapConfig?: SavedMapConfig | null;
   theme?: KeplerThemeOverride;
   /** Resolved base map style id, or null to leave kepler's default alone. */
@@ -99,6 +113,7 @@ export function KeplerMap({
   width,
   height,
   datasets,
+  rasters,
   mapConfig,
   theme,
   basemapId,
@@ -137,7 +152,7 @@ export function KeplerMap({
     // A saved tileset is content in its own right: a panel whose map is one
     // vector tile layer over a base map has no query rows at all, and waiting
     // for rows it will never get would leave it permanently blank.
-    if (!isReady || (datasets.length === 0 && !mapConfig?.datasets?.length)) {
+    if (!isReady || (datasets.length === 0 && rasters.length === 0 && !mapConfig?.datasets?.length)) {
       return;
     }
 
@@ -162,13 +177,21 @@ export function KeplerMap({
       hasLoaded.current = true;
       appliedConfig.current = mapConfig;
       loadDatasets(store.dispatch, datasets, {}, mapConfig);
+      loadRasters(store.dispatch, rasters);
       // The viewport this load intends is not safe yet — kepler's internal
       // view state echo can overwrite it — so arm the guard that defends it.
       setGuardArm((n) => n + 1);
     } else {
       refreshDatasets(store, store.dispatch, datasets);
+      // Deliberately on the refresh path and never on rebuild. A rebuild frames
+      // the viewport around the data and re-arms the viewport guard, so routing
+      // a change of scene through it would move the map on every change of the
+      // time range — which is the one thing this whole path exists to avoid.
+      // `refreshRasters` compares scenes by url, so a refresh that did not
+      // change the scene leaves the raster untouched.
+      refreshRasters(store, store.dispatch, rasters);
     }
-  }, [isReady, datasets, mapConfig, store]);
+  }, [isReady, datasets, rasters, mapConfig, store]);
 
   useViewportGuard({ store, isReady, mapConfig, arm: guardArm });
 
