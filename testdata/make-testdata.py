@@ -6,6 +6,20 @@ so the sources bench works without running this. Requires geopandas:
 
     pip install geopandas pyarrow
 
+The two GeoTIFFs under raster/ are not produced here. They are crops of a real
+Sentinel-2 scene, cut by the TiTiler in docker-compose so no GDAL install is
+needed locally, and committed like every other fixture:
+
+    BASE=https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/17/M/QS/2026/8/S2B_17MQS_20260813_0_L2A
+    for band in B04 B08; do
+      url=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1],safe=''))" "$BASE/$band.tif")
+      curl -o "raster/cuenca-${band}.tif" \
+        "http://localhost:8088/cog/bbox/-79.10,-3.05,-78.90,-2.85.tif?url=$url&max_size=256"
+    done
+
+They are red and near-infrared over Cuenca — the two bands an NDVI needs — kept
+at 256x256 so the pair costs half a megabyte rather than four.
+
 Everything here is deliberately hardcoded rather than random: the fixtures are
 committed, so a regeneration that shuffled coordinates would produce a diff on
 every run and make review meaningless.

@@ -118,6 +118,44 @@ A range with no scene under the threshold returns no rows, and the raster leaves
 showing the previous scene would be showing imagery from outside the range as though it belonged
 to it.
 
+### The raster does not have to be someone else's
+
+`raster_url` is just a link, so it can point at a raster **your own query computed**. DuckDB's
+`raster` community extension reads and writes GeoTIFFs in SQL, which closes the loop: compute an
+index from two bands, write it as a COG, and the panel draws it through the same path as a Sentinel
+scene — it cannot tell the difference.
+
+```sql
+COPY (
+  SELECT r.geometry,
+         RT_Cube2TypeUInt16(((n.databand_1 - r.databand_1) / (n.databand_1 + r.databand_1)
+                             + 0.2) / 1.1 * 65535.0) AS ndvi
+  FROM RT_Read('red.tif') r JOIN RT_Read('nir.tif') n ON r.id = n.id)
+TO 'ndvi.tif'
+WITH (FORMAT RASTER, DRIVER 'COG', SRS 'EPSG:4326',
+      DATABAND_COLUMNS ['ndvi'], CREATION_OPTIONS ('COMPRESS=DEFLATE'));
+```
+
+Three things about that are worth knowing before you spend an afternoon on them:
+
+- **Write an integer type.** kepler cannot draw a `float32` raster: it looks up a maximum value per
+  data type to rescale against, has none for the float types, and gives up — leaving a layer that
+  renders nothing and reports nothing. `uint8` draws, but flat. `uint16` is what works, so scale
+  your index onto it, as above.
+- **The tile server has to be able to read the file.** It reads on the map's behalf, so a raster
+  written to a path only the database can see is invisible to everyone. Share the directory, or
+  write to object storage both can reach.
+- **Materialising is not a query.** It writes a file, and a dashboard refreshing every 30 seconds
+  must not redo it. Give the output a deterministic name — scene plus formula — compute it once,
+  and let the panels read what is there. Writing to a name that already exists fails anyway.
+
+Statistics are the other half, and they need no file at all: a TiTiler-compatible server answers
+`/cog/statistics` for a whole scene or, with a GeoJSON in the body, for one polygon — which the
+Infinity data source can call directly. Inside the database, `RT_CubeClip` plus `RT_CubeStats_Agg`
+with a `GROUP BY` does the same for _every_ zone in one query, joined to your own tables. That is
+the one thing the tile server cannot do, and it is what makes four thousand polygons a query rather
+than four thousand HTTP requests.
+
 ## Base maps are a different thing
 
 Do not reach for `rasterTile` or `vectorTile` to change the background. The base map is a **panel

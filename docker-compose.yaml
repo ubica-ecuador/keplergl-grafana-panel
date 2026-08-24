@@ -123,6 +123,11 @@ services:
       # DuckDB reads the GeoParquet straight off this mount; the same directory
       # is what `sources-data` serves over HTTP for Infinity.
       - ./testdata:/testdata:ro
+      # Where a query writes a raster it computed — an NDVI, a mosaic, a clip.
+      # Shared with the tiler, which is what makes "compute it in SQL and then
+      # draw it" a closed loop rather than two disconnected halves. Writable
+      # here and read-only there: only the database produces these files.
+      - raster-derived:/derived
       # Its own database. Two Grafanas provisioning into one SQLite file race
       # each other and the loser dies with "database is locked".
       - grafana-sources-data:/var/lib/grafana
@@ -179,6 +184,13 @@ services:
       # The panel calls this server from Grafana's origin, so every response
       # needs CORS. Wide open is right for a dev bench and wrong in production.
       TITILER_API_CORS_ORIGINS: '*'
+      # The image defaults to a single gunicorn worker, and reading a raster is
+      # CPU-bound work that blocks it: with one worker, a dashboard that draws
+      # a scene *and* measures it puts the statistics request in the queue
+      # behind a dozen tile requests. That was a 60-second Grafana timeout on
+      # first load, not a slow query — the same request answers in seconds on
+      # its own.
+      WEB_CONCURRENCY: '4'
       # GDAL reading COGs over /vsicurl. Without the first two, every tile costs
       # a directory listing of the remote bucket and re-reads ranges it already
       # has; the rest is header caching. Deliberately NOT setting
@@ -191,8 +203,13 @@ services:
       GDAL_BAND_BLOCK_CACHE: 'HASHSET'
       VSI_CACHE: 'TRUE'
       VSI_CACHE_SIZE: '5000000'
+    volumes:
+      # Rasters DuckDB computed. Read-only: the tiler serves them, it does not
+      # make them.
+      - raster-derived:/derived:ro
 
 volumes:
+  raster-derived:
   grafana-data:
   grafana-csp-data:
   grafana-sources-data:
