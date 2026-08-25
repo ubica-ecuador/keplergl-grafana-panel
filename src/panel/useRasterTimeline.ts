@@ -10,6 +10,7 @@ import {
   readTimeDomain,
   readTimeRange,
   refreshRasters,
+  setRasterLayerVisible,
   swapRasterScene,
 } from './keplerAdapter';
 import { SliceWatcher } from './sliceWatcher';
@@ -53,7 +54,11 @@ export function useRasterTimeline({ store, isReady, rasters }: Params): void {
     rastersRef.current = rasters;
   }, [rasters]);
 
-  /** Datasets already given their colour ramp, so the user can then change it freely. */
+  /**
+   * Layers already given their colour ramp, so the user can then change it
+   * freely. Keyed by layer id rather than by dataset: should a layer ever be
+   * rebuilt, the ramp is owed to the new one too.
+   */
   const dressed = useRef(new Set<string>());
 
   // The filter is opened to its full domain once, when this hook first finds
@@ -83,14 +88,18 @@ export function useRasterTimeline({ store, isReady, rasters }: Params): void {
       }
     }
 
-    // The configured ramp, applied once per dataset — kepler creates the layer
+    // The configured ramp, applied once per layer — kepler creates the layer
     // asynchronously, so this is retried on each store change until it lands.
     // Once only: after that the ramp is the user's to change from the layer
     // panel, and re-imposing it on every store change would undo them.
     for (const raster of series) {
-      if (raster.colormap && !dressed.current.has(raster.id)) {
+      if (!raster.colormap) {
+        continue;
+      }
+      const layerId = readRasterLayerId(store, raster.id);
+      if (layerId && !dressed.current.has(layerId)) {
         if (applyRasterStyle(store, store.dispatch, raster.id, { colormapId: raster.colormap })) {
-          dressed.current.add(raster.id);
+          dressed.current.add(layerId);
         }
       }
     }
@@ -100,13 +109,19 @@ export function useRasterTimeline({ store, isReady, rasters }: Params): void {
       .map((raster) => rasterForWindow(raster, window))
       .filter((raster): raster is RasterDataset => raster !== null);
 
-    // Nothing in the window: nothing to draw, so the raster leaves the map.
+    // Nothing in the window: hide the layer rather than drop the dataset. A
+    // window with no scene is a passing state — playback crosses one on every
+    // lap — and rebuilding the layer afterwards would hand the user a fresh one
+    // with default styling each time round.
     if (selected.length === 0) {
-      refreshRasters(store, store.dispatch, []);
+      for (const raster of series) {
+        setRasterLayerVisible(store, store.dispatch, raster.id, false);
+      }
       return;
     }
 
     for (const raster of selected) {
+      setRasterLayerVisible(store, store.dispatch, raster.id, true);
       // The scene already showing: every drag that stays between two captures
       // lands here, and does nothing at all.
       if (readRasterScene(store, raster.id) === raster.cogUrl) {
@@ -147,6 +162,15 @@ export function useRasterTimeline({ store, isReady, rasters }: Params): void {
     const unsubscribe = store.subscribe(onStoreChange.current);
     return unsubscribe;
   }, [isReady, store, rasters]);
+}
+
+/** The id of the layer drawing a raster dataset, or null before it exists. */
+function readRasterLayerId(store: Store, dataId: string): string | null {
+  const state = store.getState() as {
+    keplerGl?: Record<string, { visState?: { layers?: Array<{ id: string; config?: { dataId?: string } }> } }>;
+  };
+  const layers = Object.values(state.keplerGl ?? {})[0]?.visState?.layers ?? [];
+  return layers.find((layer) => layer.config?.dataId === dataId)?.id ?? null;
 }
 
 /**

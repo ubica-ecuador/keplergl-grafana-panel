@@ -4,6 +4,7 @@ import {
   createOrUpdateFilter,
   fitBounds,
   interactionConfigChange,
+  layerConfigChange,
   layerVisConfigChange,
   mapStyleChange,
   removeDataset,
@@ -300,6 +301,35 @@ export function swapRasterScene(store: Store, dispatch: Dispatch, raster: Raster
 }
 
 /**
+ * Shows or hides a raster layer without touching its dataset.
+ *
+ * The alternative — dropping the dataset when there is nothing to draw — takes
+ * the layer with it, and the one rebuilt afterwards is a different layer with
+ * default styling. Playback makes that constant: wrapping from the end of the
+ * timeline to the start crosses a window with no scene in it, so every lap
+ * threw away whatever the user had named, coloured or faded. Hidden layers come
+ * back exactly as they were.
+ *
+ * Returns false when there is no such layer yet, so the caller can try again.
+ */
+export function setRasterLayerVisible(store: Store, dispatch: Dispatch, dataId: string, visible: boolean): boolean {
+  const layer = getVisState(store)?.layers.find((candidate) => candidate.config?.dataId === dataId);
+  if (!layer) {
+    return false;
+  }
+  if (layer.config?.isVisible === visible) {
+    return true;
+  }
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      layerConfigChange(layer as unknown as Parameters<typeof layerConfigChange>[0], { isVisible: visible })
+    )
+  );
+  return true;
+}
+
+/**
  * Copies styling onto the raster layer of a dataset, if that layer exists yet.
  *
  * kepler creates the layer asynchronously, so this is called again on each
@@ -504,7 +534,7 @@ interface VisStateLike {
   layers: Array<{
     id: string;
     type?: string;
-    config?: { dataId?: string; visConfig?: { useSTACSearching?: boolean } };
+    config?: { dataId?: string; isVisible?: boolean; visConfig?: { useSTACSearching?: boolean } };
     meta?: { bounds?: number[] };
     /** Resolves a picked deck.gl object to its row — what the tooltip uses. */
     getHoverData?: (
