@@ -1,6 +1,6 @@
 import { FieldType, toDataFrame } from '@grafana/data';
 
-import { framesToRasters, pickScene, rasterForWindow } from './rasterDataset';
+import { framesToRasters, inSlot, isPanelRasterId, otherSlot, pickScene, rasterForWindow } from './rasterDataset';
 
 const SERVER = 'http://titiler.test';
 const COG = 'https://bucket.example/scenes/2026/TCI.tif';
@@ -211,5 +211,30 @@ describe('rasterForWindow', () => {
 
   it('returns nothing when the window holds no scene', () => {
     expect(rasterForWindow(framed(), { from: Date.UTC(2026, 6, 3), to: Date.UTC(2026, 6, 9) })).toBeNull();
+  });
+});
+
+describe('raster slots', () => {
+  it('recognises both slots as the panel’s own', () => {
+    // Both must be excluded from a saved dashboard, and both must be removable
+    // by the panel — a tileset the user added by hand is neither.
+    expect(isPanelRasterId('grafana-A-raster')).toBe(true);
+    expect(isPanelRasterId('grafana-A-raster-b')).toBe(true);
+    expect(isPanelRasterId('pawlsg7ej')).toBe(false);
+  });
+
+  it('alternates between the two slots', () => {
+    expect(otherSlot('grafana-A-raster')).toBe('grafana-A-raster-b');
+    expect(otherSlot('grafana-A-raster-b')).toBe('grafana-A-raster');
+  });
+
+  it('re-points a descriptor at a given slot', () => {
+    const [raster] = framesToRasters([rasterFrame(COG)], {}, { tileServerUrls: [SERVER] });
+    const moved = inSlot(raster, 'grafana-A-raster-b');
+
+    expect(moved.id).toBe('grafana-A-raster-b');
+    // Everything else travels untouched: it is the same scene, in the other slot.
+    expect(moved.cogUrl).toBe(raster.cogUrl);
+    expect(moved.metadataUrl).toBe(raster.metadataUrl);
   });
 });

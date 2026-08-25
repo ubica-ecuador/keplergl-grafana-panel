@@ -4,6 +4,7 @@ import {
   createOrUpdateFilter,
   fitBounds,
   interactionConfigChange,
+  layerVisConfigChange,
   mapStyleChange,
   removeDataset,
   removeFilter,
@@ -24,7 +25,7 @@ import type { ProtoDataset } from '@kepler.gl/types';
 import type { Dispatch, Store } from 'redux';
 
 import type { PanelDataset } from '../data/framesToDatasets';
-import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
+import { inSlot, isPanelRasterId, otherSlot, type RasterDataset } from '../data/rasterDataset';
 import { rowFieldValue } from './clickSync';
 import type { FlowLayerConfig } from '../data/buildFlows';
 import type { TripLayerConfig } from '../data/buildTripLayer';
@@ -235,6 +236,91 @@ function readRasterDatasets(store: Store): Array<{ id: string; metadataUrl?: str
   return Object.entries(getVisState(store)?.datasets ?? {})
     .filter(([, dataset]) => dataset.type === RASTER_TILE_TYPE)
     .map(([id, dataset]) => ({ id, metadataUrl: dataset.metadata?.metadataUrl }));
+}
+
+/** What a raster swap left behind for the caller to finish. */
+export interface RasterHandover {
+  /** The slot now carrying the scene. */
+  shown: string;
+  /** The slot still on screen underneath, to be removed once the new one paints. */
+  retiring: string | null;
+  /** The outgoing layer's styling, to be copied onto the new layer when it exists. */
+  style: Record<string, unknown> | null;
+}
+
+/**
+ * Puts a scene on the map *without* taking the previous one off.
+ *
+ * The plain swap — `replaceDataInMap` on one id — empties the dataset and
+ * rebuilds it, so the layer disappears for as long as the new tiles take to
+ * arrive. Even on a warm cache that is a visible blink, because the gap is not
+ * the network: it is the layer being destroyed and rebuilt.
+ *
+ * So the scene is added to the query's *other* slot while the current one keeps
+ * drawing, and the caller removes the old slot once the new has painted. If the
+ * other slot is still occupied — a second change arriving before the first
+ * retirement ran — it is cleared first, which is what keeps this to two layers
+ * however fast the user drags.
+ *
+ * Returns what the caller must finish: which slot is now showing, which one is
+ * waiting to be dropped, and the styling to carry across so a colormap chosen
+ * by hand survives the change of scene.
+ */
+export function showRasterInFreeSlot(store: Store, dispatch: Dispatch, next: RasterDataset): RasterHandover {
+  const visState = getVisState(store);
+  const held = readRasterDatasets(store).map((dataset) => dataset.id);
+  const current = held.find((id) => id === next.id || id === otherSlot(next.id)) ?? null;
+
+  if (!current) {
+    loadRasters(dispatch, [next]);
+    return { shown: next.id, retiring: null, style: null };
+  }
+
+  const target = otherSlot(current);
+  // A change arriving before the previous retirement ran: clear the slot we are
+  // about to reuse, or the add would land on a dataset that still exists.
+  if (held.includes(target)) {
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(target)));
+  }
+
+  const outgoing = visState?.layers.find((layer) => layer.config?.dataId === current);
+  const style = (outgoing?.config as { visConfig?: Record<string, unknown> } | undefined)?.visConfig ?? null;
+
+  loadRasters(dispatch, [inSlot(next, target)]);
+  return { shown: target, retiring: current, style };
+}
+
+/** Drops a raster slot that is no longer showing anything. */
+export function retireRasterSlot(dispatch: Dispatch, id: string): void {
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(id)));
+}
+
+/**
+ * Copies styling onto the raster layer of a dataset, if that layer exists yet.
+ *
+ * kepler creates the layer asynchronously, so this is called again on each
+ * store change until it finds one — and reports whether it did, so the caller
+ * knows when to stop asking.
+ */
+export function applyRasterStyle(
+  store: Store,
+  dispatch: Dispatch,
+  dataId: string,
+  style: Record<string, unknown>
+): boolean {
+  const layer = getVisState(store)?.layers.find((candidate) => candidate.config?.dataId === dataId);
+  if (!layer) {
+    return false;
+  }
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      // The layer object is kepler's own; only this module's view of it is
+      // narrowed, hence the cast.
+      layerVisConfigChange(layer as unknown as Parameters<typeof layerVisConfigChange>[0], style)
+    )
+  );
+  return true;
 }
 
 /**
