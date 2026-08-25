@@ -124,35 +124,14 @@ export function rasterDatasetId(refId: string): string {
 }
 
 /**
- * Suffix of the second slot a query's raster can occupy.
- *
- * Changing scene has to overlap: if the old image left the map before the new
- * one had drawn, there would be a moment of bare basemap between them, however
- * fast the network is — the layer is destroyed and rebuilt in between. So a
- * query owns *two* slots and alternates: the new scene is added to the free one
- * and the old one is dropped once the new has painted.
- */
-const SECOND_SLOT = '-b';
-
-/**
- * Whether an id is one this panel minted for a query's raster, in either slot.
+ * Whether an id is one this panel minted for a query's raster.
  *
  * The panel may only replace or remove its own: a tileset the user added
  * through kepler's Add Data lives in the same store and must survive every
  * refresh the query does.
  */
 export function isPanelRasterId(id: string): boolean {
-  return id.startsWith('grafana-') && (id.endsWith('-raster') || id.endsWith(`-raster${SECOND_SLOT}`));
-}
-
-/** The other of a raster's two slots. */
-export function otherSlot(id: string): string {
-  return id.endsWith(SECOND_SLOT) ? id.slice(0, -SECOND_SLOT.length) : `${id}${SECOND_SLOT}`;
-}
-
-/** The same scene, described as living in a given slot. */
-export function inSlot(raster: RasterDataset, id: string): RasterDataset {
-  return raster.id === id ? raster : { ...raster, id };
+  return id.startsWith('grafana-') && id.endsWith('-raster');
 }
 
 /**

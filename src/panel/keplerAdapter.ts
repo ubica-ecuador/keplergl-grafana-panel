@@ -13,6 +13,7 @@ import {
   replaceDataInMap,
   setLayerAnimationTime,
   toggleSidePanel,
+  updateDatasetProps,
   updateMap,
   updateVisData,
   wrapTo,
@@ -25,7 +26,7 @@ import type { ProtoDataset } from '@kepler.gl/types';
 import type { Dispatch, Store } from 'redux';
 
 import type { PanelDataset } from '../data/framesToDatasets';
-import { inSlot, isPanelRasterId, otherSlot, type RasterDataset } from '../data/rasterDataset';
+import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
 import { rowFieldValue } from './clickSync';
 import type { FlowLayerConfig } from '../data/buildFlows';
 import type { TripLayerConfig } from '../data/buildTripLayer';
@@ -238,61 +239,64 @@ function readRasterDatasets(store: Store): Array<{ id: string; metadataUrl?: str
     .map(([id, dataset]) => ({ id, metadataUrl: dataset.metadata?.metadataUrl }));
 }
 
-/** What a raster swap left behind for the caller to finish. */
-export interface RasterHandover {
-  /** The slot now carrying the scene. */
-  shown: string;
-  /** The slot still on screen underneath, to be removed once the new one paints. */
-  retiring: string | null;
-  /** The outgoing layer's styling, to be copied onto the new layer when it exists. */
-  style: Record<string, unknown> | null;
-}
-
 /**
- * Puts a scene on the map *without* taking the previous one off.
+ * Points a raster dataset at another scene, in place.
  *
- * The plain swap — `replaceDataInMap` on one id — empties the dataset and
- * rebuilds it, so the layer disappears for as long as the new tiles take to
- * arrive. Even on a warm cache that is a visible blink, because the gap is not
- * the network: it is the layer being destroyed and rebuilt.
+ * The obvious way — `replaceDataInMap` — rebuilds the dataset, and with it the
+ * layer: the map goes bare while the new tiles arrive, and the layer the user
+ * had styled and named is replaced by a different one, which shows as a flicker
+ * in the layer tree and as lost settings. Doing it in place avoids all three.
  *
- * So the scene is added to the query's *other* slot while the current one keeps
- * drawing, and the caller removes the old slot once the new has painted. If the
- * other slot is still occupied — a second change arriving before the first
- * retirement ran — it is cleared first, which is what keeps this to two layers
- * however fast the user drags.
+ * Two dispatches. The first swaps the asset's `href` on the dataset, and only
+ * that: `updateDatasetProps` deep-merges, and deep-merging *concatenates
+ * arrays*, so touching `bbox` or the band list would silently double them. The
+ * second changes `_stacQuery`, whose only role here is to be one of the values
+ * in the layer's `updateTriggers.getTileData` — kepler reads `dataset.metadata`
+ * afresh on every render, but deck will not refetch tiles until a trigger
+ * changes. It is unused while STAC searching is off, which is the only reason
+ * it is free to borrow; `useSTACSearching` layers keep the old path.
  *
- * Returns what the caller must finish: which slot is now showing, which one is
- * waiting to be dropped, and the styling to carry across so a colormap chosen
- * by hand survives the change of scene.
+ * What stays behind is the rest of the metadata — extent, band statistics — from
+ * the scene the dataset was created with. For a series of one product on one
+ * grid that is exactly right. It would not be for scenes of differing extent.
+ *
+ * Returns false when the swap cannot be made in place, so the caller can fall
+ * back to the rebuild.
  */
-export function showRasterInFreeSlot(store: Store, dispatch: Dispatch, next: RasterDataset): RasterHandover {
+export function swapRasterScene(store: Store, dispatch: Dispatch, raster: RasterDataset): boolean {
   const visState = getVisState(store);
-  const held = readRasterDatasets(store).map((dataset) => dataset.id);
-  const current = held.find((id) => id === next.id || id === otherSlot(next.id)) ?? null;
-
-  if (!current) {
-    loadRasters(dispatch, [next]);
-    return { shown: next.id, retiring: null, style: null };
+  const dataset = visState?.datasets[raster.id];
+  const layer = visState?.layers.find((candidate) => candidate.config?.dataId === raster.id);
+  if (!dataset || !layer) {
+    return false;
+  }
+  if (layer.config?.visConfig?.useSTACSearching) {
+    return false;
   }
 
-  const target = otherSlot(current);
-  // A change arriving before the previous retirement ran: clear the slot we are
-  // about to reuse, or the add would land on a dataset that still exists.
-  if (held.includes(target)) {
-    dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(target)));
+  // Which asset carries the imagery is the STAC's business, not ours: read the
+  // key back rather than assuming the one TiTiler happens to emit.
+  const assets = (dataset.metadata as { assets?: Record<string, { href?: string }> } | undefined)?.assets ?? {};
+  const assetId = Object.keys(assets).find((key) => typeof assets[key]?.href === 'string');
+  if (!assetId) {
+    return false;
   }
 
-  const outgoing = visState?.layers.find((layer) => layer.config?.dataId === current);
-  const style = (outgoing?.config as { visConfig?: Record<string, unknown> } | undefined)?.visConfig ?? null;
-
-  loadRasters(dispatch, [inSlot(next, target)]);
-  return { shown: target, retiring: current, style };
-}
-
-/** Drops a raster slot that is no longer showing anything. */
-export function retireRasterSlot(dispatch: Dispatch, id: string): void {
-  dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(id)));
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      updateDatasetProps(raster.id, { metadata: { assets: { [assetId]: { href: raster.cogUrl } } } })
+    )
+  );
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      layerVisConfigChange(layer as unknown as Parameters<typeof layerVisConfigChange>[0], {
+        _stacQuery: raster.cogUrl,
+      })
+    )
+  );
+  return true;
 }
 
 /**
@@ -500,7 +504,7 @@ interface VisStateLike {
   layers: Array<{
     id: string;
     type?: string;
-    config?: { dataId?: string };
+    config?: { dataId?: string; visConfig?: { useSTACSearching?: boolean } };
     meta?: { bounds?: number[] };
     /** Resolves a picked deck.gl object to its row — what the tooltip uses. */
     getHoverData?: (

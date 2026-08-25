@@ -74,8 +74,8 @@ A satellite scene is a file in a bucket, and its address is a string like any ot
 Return **one row per date** and the query stops being an answer and becomes a small catalogue: the
 map's time widget shows a bar per capture and draws the most recent scene inside the window you
 select. Dragging it costs nothing — the series is already in the browser — and it is the natural way
-to walk a multitemporal collection. Scenes hand over by overlapping rather than by being swapped in
-place, so the map never goes bare between two images. See [Field roles](../reference/field-roles#the-raster-role-makes-a-second-dataset).
+to walk a multitemporal collection. The scene changes on the layer itself, which keeps whatever you
+styled and named on it, and the previous image stays on screen until the new one has drawn. See [Field roles](../reference/field-roles#the-raster-role-makes-a-second-dataset).
 
 Two pieces make it work:
 

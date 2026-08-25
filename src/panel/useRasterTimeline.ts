@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { Store } from 'redux';
 
-import { otherSlot, rasterForWindow, type RasterDataset } from '../data/rasterDataset';
+import { rasterForWindow, type RasterDataset } from '../data/rasterDataset';
 import {
   applyRasterStyle,
   ensureTimeFilter,
@@ -10,8 +10,7 @@ import {
   readTimeDomain,
   readTimeRange,
   refreshRasters,
-  retireRasterSlot,
-  showRasterInFreeSlot,
+  swapRasterScene,
 } from './keplerAdapter';
 import { SliceWatcher } from './sliceWatcher';
 
@@ -22,16 +21,6 @@ interface Params {
   /** The raster queries, each carrying its whole series of scenes. */
   rasters: RasterDataset[];
 }
-
-/**
- * How long the outgoing scene stays on the map after the new one is added.
- *
- * Long enough for the incoming tiles to paint on a warm cache, short enough
- * that nobody reads it as lag. It is a cover, not a wait: the new scene is
- * already drawing underneath from the moment it is added, so overshooting costs
- * only a little memory and undershooting costs a blink.
- */
-const RETIRE_DELAY_MS = 700;
 
 /**
  * Makes the map's time filter choose which scene of a raster series is drawn.
@@ -49,9 +38,10 @@ const RETIRE_DELAY_MS = 700;
  * republishes, which re-runs the query. That loop is not hypothetical: it is
  * what this hook exists instead of.
  *
- * Scenes are swapped by overlap, never in place: the new one is added to the
- * query's free slot and the old is dropped a moment later, so there is never a
- * frame with no image on the map. See `showRasterInFreeSlot`.
+ * Scenes are swapped in place — the dataset's asset href is re-pointed and the
+ * layer is told to refetch — so the layer the user styled is the same layer
+ * throughout, and deck keeps the previous tiles on screen while the new ones
+ * arrive. See `swapRasterScene`.
  *
  * Reconciliation runs on a **microtask** rather than inside the subscription:
  * dispatching while kepler is mid-dispatch re-enters its reducer and overflows
@@ -63,27 +53,8 @@ export function useRasterTimeline({ store, isReady, rasters }: Params): void {
     rastersRef.current = rasters;
   }, [rasters]);
 
-  /** The slot showing each query's scene, so the next change knows what to cover. */
-  const shown = useRef(new Map<string, string>());
-  /** Retirements not yet run, keyed by the slot they will drop. */
-  const retiring = useRef(new Map<string, ReturnType<typeof setTimeout>>());
-  /** Styling waiting for its layer to exist, so a hand-picked colormap carries over. */
-  const pendingStyle = useRef<{ dataId: string; style: Record<string, unknown> } | null>(null);
-  /** Slots already given their colour ramp, so the user can then change it freely. */
+  /** Datasets already given their colour ramp, so the user can then change it freely. */
   const dressed = useRef(new Set<string>());
-
-  const cancelRetire = useRef((id: string) => {
-    const timer = retiring.current.get(id);
-    if (timer !== undefined) {
-      clearTimeout(timer);
-      retiring.current.delete(id);
-    }
-  });
-
-  const retireNow = useRef((id: string) => {
-    cancelRetire.current(id);
-    retireRasterSlot(store.dispatch, id);
-  });
 
   // The filter is opened to its full domain once, when this hook first finds
   // it. kepler creates a time filter narrowed to a slice of the domain, and
@@ -112,21 +83,14 @@ export function useRasterTimeline({ store, isReady, rasters }: Params): void {
       }
     }
 
-    // Styling waits for kepler to create the layer, which it does
-    // asynchronously — so this is retried on every store change until it lands.
-    const waiting = pendingStyle.current;
-    if (waiting && applyRasterStyle(store, store.dispatch, waiting.dataId, waiting.style)) {
-      pendingStyle.current = null;
-    }
-
-    // The configured ramp, applied once per slot. Once only: after that the
-    // ramp is the user's to change from the layer panel, and re-imposing it on
-    // every store change would undo them.
+    // The configured ramp, applied once per dataset — kepler creates the layer
+    // asynchronously, so this is retried on each store change until it lands.
+    // Once only: after that the ramp is the user's to change from the layer
+    // panel, and re-imposing it on every store change would undo them.
     for (const raster of series) {
-      const slot = shown.current.get(raster.id);
-      if (raster.colormap && slot && !dressed.current.has(slot)) {
-        if (applyRasterStyle(store, store.dispatch, slot, { colormapId: raster.colormap })) {
-          dressed.current.add(slot);
+      if (raster.colormap && !dressed.current.has(raster.id)) {
+        if (applyRasterStyle(store, store.dispatch, raster.id, { colormapId: raster.colormap })) {
+          dressed.current.add(raster.id);
         }
       }
     }
@@ -136,53 +100,22 @@ export function useRasterTimeline({ store, isReady, rasters }: Params): void {
       .map((raster) => rasterForWindow(raster, window))
       .filter((raster): raster is RasterDataset => raster !== null);
 
-    // Nothing in the window: no scene to cover with, so the raster simply goes.
+    // Nothing in the window: nothing to draw, so the raster leaves the map.
     if (selected.length === 0) {
-      for (const [key, slot] of shown.current) {
-        retireNow.current(slot);
-        shown.current.delete(key);
-      }
       refreshRasters(store, store.dispatch, []);
       return;
     }
 
     for (const raster of selected) {
-      const key = raster.id;
-      // The load effect draws the first scene, in the base slot, without this
-      // hook's help; adopting it here is what lets the ramp reach it.
-      const currentSlot = shown.current.get(key) ?? (readRasterScene(store, key) ? key : undefined);
-      if (currentSlot && !shown.current.has(key)) {
-        shown.current.set(key, currentSlot);
-      }
-      const onScreen = currentSlot ? readRasterScene(store, currentSlot) : null;
-
       // The scene already showing: every drag that stays between two captures
       // lands here, and does nothing at all.
-      if (onScreen === raster.metadataUrl) {
+      if (readRasterScene(store, raster.id) === raster.cogUrl) {
         continue;
       }
-
-      // Any retirement still pending for this query must go before the swap.
-      // A drag that changes scene twice inside the delay would otherwise leave
-      // a timer aimed at the slot the second change just filled — and it would
-      // fire, taking the visible image with it. Measured: one frame of bare
-      // basemap, which is the very thing the overlap exists to prevent.
-      cancelRetire.current(key);
-      cancelRetire.current(otherSlot(key));
-
-      const handover = showRasterInFreeSlot(store, store.dispatch, raster);
-      dressed.current.delete(handover.shown);
-      shown.current.set(key, handover.shown);
-      if (handover.style) {
-        pendingStyle.current = { dataId: handover.shown, style: handover.style };
-      }
-      if (handover.retiring) {
-        const going = handover.retiring;
-        const timer = setTimeout(() => {
-          retiring.current.delete(going);
-          retireRasterSlot(store.dispatch, going);
-        }, RETIRE_DELAY_MS);
-        retiring.current.set(going, timer);
+      // In place if the dataset is there to re-point; the rebuild is only for
+      // the first scene, or one that has just been removed and is coming back.
+      if (!swapRasterScene(store, store.dispatch, raster)) {
+        refreshRasters(store, store.dispatch, [raster]);
       }
     }
   });
@@ -212,22 +145,26 @@ export function useRasterTimeline({ store, isReady, rasters }: Params): void {
     }
     schedule.current();
     const unsubscribe = store.subscribe(onStoreChange.current);
-    const timers = retiring.current;
-    return () => {
-      unsubscribe();
-      // A retirement that fires after the panel is gone would dispatch into a
-      // store kepler has already torn down.
-      for (const timer of timers.values()) {
-        clearTimeout(timer);
-      }
-      timers.clear();
-    };
+    return unsubscribe;
   }, [isReady, store, rasters]);
 }
 
-/** The scene a raster slot is currently showing, or null if the slot is empty. */
-function readRasterScene(store: Store, slot: string): string | null {
-  const state = store.getState() as { keplerGl?: Record<string, { visState?: { datasets?: Record<string, { metadata?: { metadataUrl?: string } }> } }> };
+/**
+ * The scene a raster dataset is currently drawing, or null if it holds none.
+ *
+ * Read from the asset's href rather than from `metadataUrl`, because that is
+ * what an in-place swap changes: `metadataUrl` keeps naming the STAC document
+ * the dataset was created from, whichever scene it ended up pointing at.
+ */
+function readRasterScene(store: Store, dataId: string): string | null {
+  const state = store.getState() as {
+    keplerGl?: Record<
+      string,
+      { visState?: { datasets?: Record<string, { metadata?: { assets?: Record<string, { href?: string }> } }> } }
+    >;
+  };
   const datasets = Object.values(state.keplerGl ?? {})[0]?.visState?.datasets ?? {};
-  return datasets[slot]?.metadata?.metadataUrl ?? null;
+  const assets = datasets[dataId]?.metadata?.assets ?? {};
+  const asset = Object.values(assets).find((candidate) => typeof candidate?.href === 'string');
+  return asset?.href ?? null;
 }
