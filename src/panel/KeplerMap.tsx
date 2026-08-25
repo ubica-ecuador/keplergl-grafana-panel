@@ -32,6 +32,7 @@ import { useVariableSync } from './useVariableSync';
 import { useClickSync } from './useClickSync';
 import { useCoordinateSync } from './useCoordinateSync';
 import { useCenterSync } from './useCenterSync';
+import { useRasterTimeline } from './useRasterTimeline';
 import { useViewportGuard } from './useViewportGuard';
 import { savedViewportOf } from './viewportGuard';
 import { useViewportSync } from './useViewportSync';
@@ -194,6 +195,10 @@ export function KeplerMap({
   }, [isReady, datasets, rasters, mapConfig, store]);
 
   useViewportGuard({ store, isReady, mapConfig, arm: guardArm });
+
+  // A raster query that returns a dated series hands the choice of scene to the
+  // map's own time widget.
+  useRasterTimeline({ store, isReady, rasters });
 
   // A saved config already names a base map, so it wins over the panel option.
   useEffect(() => {

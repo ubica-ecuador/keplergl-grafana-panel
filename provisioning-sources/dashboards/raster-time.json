@@ -1,0 +1,146 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Multitemporalidad de un catálogo STAC: el timeline muestra cada pasada del satélite y el mapa pinta la última imagen de la ventana seleccionada.",
+  "editable": true,
+  "id": null,
+  "links": [],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": [
+    "kepler",
+    "raster",
+    "multitemporal"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-4M",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Ráster — multitemporal",
+  "uid": "raster-time",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "options": {
+        "mode": "markdown",
+        "content": "# Multitemporal: qué había, y cuándo\n\nEl satélite pasa por Cuenca cada cinco días, llueva o truene. La barra de tiempo bajo el mapa es ese calendario — **una barra por pasada** — y arrastrándola el mapa te enseña **la última imagen que cae dentro de la ventana**.\n\nTodo sale de **una sola consulta**: una fila por pasada, con su fecha y su enlace al COG. El calendario y las imágenes son la misma tabla, así que arrastrar no pregunta nada al servidor — la elección se hace aquí, y solo cambia algo cuando cruzas una fecha con imagen. Si la ventana cae entre dos pasadas, no hay nada que enseñar y el ráster se retira.\n\nMira la nubosidad en la tabla de la derecha antes de sacar conclusiones: sobre los Andes ecuatoriales **la mayoría de las pasadas vienen tapadas**, y eso es justamente lo que hace útil poder recorrer el calendario en vez de conformarse con la más reciente."
+      }
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Una consulta, dos papeles: alimenta el timeline y aporta el catálogo de escenas. La ventana del timeline elige cuál se pinta, en el navegador.",
+      "gridPos": {
+        "h": 19,
+        "w": 17,
+        "x": 0,
+        "y": 8
+      },
+      "id": 2,
+      "type": "ubica-keplergl-panel",
+      "options": {
+        "showSidePanel": false,
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -2.93,
+              "longitude": -79.0,
+              "zoom": 9.8,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Una fila por pasada del satélite, cada una con su enlace a la imagen.\n-- Esto es a la vez el timeline (kepler monta su filtro temporal sobre `time`)\n-- y el catálogo del que sale la escena que se pinta: el panel dibuja la última\n-- que cae dentro de la ventana, sin volver a preguntar al servidor.\nWITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=400'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT\n  (f->'properties'->>'datetime')::TIMESTAMPTZ  AS time,\n  f->>'id'                                     AS scene_id,\n  (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n  f->'assets'->'visual'->>'href'               AS raster_url\nFROM features\nORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "title": "Sentinel-2 sobre Cuenca · arrastra la barra de tiempo"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Las mismas filas que el mapa: cada barra del timeline es una de estas pasadas.",
+      "gridPos": {
+        "h": 19,
+        "w": 7,
+        "x": 17,
+        "y": 8
+      },
+      "id": 3,
+      "type": "table",
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "raster_url"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Una fila por pasada del satélite, cada una con su enlace a la imagen.\n-- Esto es a la vez el timeline (kepler monta su filtro temporal sobre `time`)\n-- y el catálogo del que sale la escena que se pinta: el panel dibuja la última\n-- que cae dentro de la ventana, sin volver a preguntar al servidor.\nWITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=400'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT\n  (f->'properties'->>'datetime')::TIMESTAMPTZ  AS time,\n  f->>'id'                                     AS scene_id,\n  (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n  f->'assets'->'visual'->>'href'               AS raster_url\nFROM features\nORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "title": "El calendario completo"
+    }
+  ]
+}

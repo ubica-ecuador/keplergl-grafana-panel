@@ -1,6 +1,6 @@
 import { FieldType, toDataFrame } from '@grafana/data';
 
-import { framesToRasters } from './rasterDataset';
+import { framesToRasters, pickScene, rasterForWindow } from './rasterDataset';
 
 const SERVER = 'http://titiler.test';
 const COG = 'https://bucket.example/scenes/2026/TCI.tif';
@@ -94,5 +94,122 @@ describe('framesToRasters', () => {
     });
 
     expect(framesToRasters([plain, rasterFrame(COG, 'B')], {}, { tileServerUrls: [SERVER] })).toHaveLength(1);
+  });
+});
+
+describe('pickScene', () => {
+  const scenes = [
+    { time: Date.UTC(2026, 6, 1), cogUrl: 'https://b/jul01.tif' },
+    { time: Date.UTC(2026, 6, 11), cogUrl: 'https://b/jul11.tif' },
+    { time: Date.UTC(2026, 6, 21), cogUrl: 'https://b/jul21.tif' },
+  ];
+
+  it('takes the last scene inside the window', () => {
+    const window = { from: Date.UTC(2026, 5, 1), to: Date.UTC(2026, 6, 15) };
+
+    expect(pickScene(scenes, window)?.cogUrl).toBe('https://b/jul11.tif');
+  });
+
+  it('ignores scenes the window has not reached yet', () => {
+    // Dragging the slider back in time must show what was there then, not the
+    // newest image the query happened to return.
+    const window = { from: Date.UTC(2026, 5, 1), to: Date.UTC(2026, 6, 5) };
+
+    expect(pickScene(scenes, window)?.cogUrl).toBe('https://b/jul01.tif');
+  });
+
+  it('finds nothing when the window falls between passes', () => {
+    const window = { from: Date.UTC(2026, 6, 2), to: Date.UTC(2026, 6, 9) };
+
+    expect(pickScene(scenes, window)).toBeNull();
+  });
+
+  it('takes the most recent scene when there is no window', () => {
+    expect(pickScene(scenes, null)?.cogUrl).toBe('https://b/jul21.tif');
+  });
+
+  it('takes the first row when the scenes carry no time at all', () => {
+    // A query that returns one scene and no time column is the ordinary case,
+    // and it must keep behaving as it did before the timeline existed.
+    const undated = [
+      { time: null, cogUrl: 'https://b/first.tif' },
+      { time: null, cogUrl: 'https://b/second.tif' },
+    ];
+
+    expect(pickScene(undated, { from: 0, to: 1 })?.cogUrl).toBe('https://b/first.tif');
+  });
+});
+
+describe('framesToRasters — a series of scenes', () => {
+  it('carries every dated scene, oldest first', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'time', type: FieldType.time, values: [Date.UTC(2026, 6, 21), Date.UTC(2026, 6, 1)] },
+        { name: 'raster_url', type: FieldType.string, values: ['https://b/jul21.tif', 'https://b/jul01.tif'] },
+      ],
+    });
+
+    const [raster] = framesToRasters([frame], {}, { tileServerUrls: [SERVER] });
+
+    expect(raster.scenes).toEqual([
+      { time: Date.UTC(2026, 6, 1), cogUrl: 'https://b/jul01.tif' },
+      { time: Date.UTC(2026, 6, 21), cogUrl: 'https://b/jul21.tif' },
+    ]);
+  });
+
+  it('shows the most recent scene until a window says otherwise', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'time', type: FieldType.time, values: [Date.UTC(2026, 6, 1), Date.UTC(2026, 6, 21)] },
+        { name: 'raster_url', type: FieldType.string, values: ['https://b/jul01.tif', 'https://b/jul21.tif'] },
+      ],
+    });
+
+    expect(framesToRasters([frame], {}, { tileServerUrls: [SERVER] })[0].cogUrl).toBe('https://b/jul21.tif');
+  });
+
+  it('still takes the first row when the query has no time column', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [{ name: 'raster_url', type: FieldType.string, values: [COG, 'https://b/other.tif'] }],
+    });
+
+    expect(framesToRasters([frame], {}, { tileServerUrls: [SERVER] })[0].cogUrl).toBe(COG);
+  });
+});
+
+describe('rasterForWindow', () => {
+  const framed = () =>
+    framesToRasters(
+      [
+        toDataFrame({
+          refId: 'A',
+          fields: [
+            { name: 'time', type: FieldType.time, values: [Date.UTC(2026, 6, 1), Date.UTC(2026, 6, 21)] },
+            { name: 'raster_url', type: FieldType.string, values: ['https://b/jul01.tif', 'https://b/jul21.tif'] },
+          ],
+        }),
+      ],
+      {},
+      { tileServerUrls: [SERVER] }
+    )[0];
+
+  it('re-points the descriptor at the scene the window selects', () => {
+    const moved = rasterForWindow(framed(), { from: Date.UTC(2026, 5, 1), to: Date.UTC(2026, 6, 10) });
+
+    expect(moved?.cogUrl).toBe('https://b/jul01.tif');
+    expect(moved?.metadataUrl).toBe(`${SERVER}/cog/stac?url=${encodeURIComponent('https://b/jul01.tif')}`);
+  });
+
+  it('keeps the dataset id, so the swap replaces rather than adds', () => {
+    const moved = rasterForWindow(framed(), { from: Date.UTC(2026, 5, 1), to: Date.UTC(2026, 6, 10) });
+
+    expect(moved?.id).toBe('grafana-A-raster');
+  });
+
+  it('returns nothing when the window holds no scene', () => {
+    expect(rasterForWindow(framed(), { from: Date.UTC(2026, 6, 3), to: Date.UTC(2026, 6, 9) })).toBeNull();
   });
 });

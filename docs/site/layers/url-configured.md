@@ -69,7 +69,12 @@ network position or by a reverse proxy over one that carries a key in the query 
 
 A satellite scene is a file in a bucket, and its address is a string like any other — so a query
 **can** hand one over. Return a column named `raster_url` (or `cog_url`, `cog`, `asset_href`,
-`href`) and the panel builds a raster dataset from the first row and lets kepler draw it.
+`href`) and the panel builds a raster dataset from it and lets kepler draw it.
+
+Return **one row per date** and the query stops being an answer and becomes a small catalogue: the
+map's time widget shows a bar per capture and draws the most recent scene inside the window you
+select. Dragging it costs nothing — the series is already in the browser — and it is the natural way
+to walk a multitemporal collection. See [Field roles](../reference/field-roles#the-raster-role-makes-a-second-dataset).
 
 Two pieces make it work:
 

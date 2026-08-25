@@ -118,8 +118,14 @@ A query that carries one produces **two** datasets:
 - a raster dataset, id `grafana-<refId>-raster`, holding no rows at all — only the link to the
   imagery and the tile server that can read it. kepler draws it with its Raster Tile layer.
 
-Only the **first row** is read. A query is expected to resolve to a single scene — `ORDER BY …
-LIMIT 1` — because a table of ten scenes describes a choice still to be made, not ten layers to
-stack.
+One scene is drawn at a time — a table of ten describes a choice still to be made, not ten layers
+to stack. Which one depends on what the query returned:
+
+- **One row**, or several with no time column: the first row. This is the ordinary case, and what
+  `ORDER BY … LIMIT 1` in SQL gives you.
+- **Several dated rows**: the map's time widget decides. One row per pass of the satellite makes the
+  query a small catalogue, the timeline shows a bar per capture, and the map draws the most recent
+  one inside the window you select. The whole series is already in the browser, so dragging costs no
+  query at all — and a window that contains no capture draws nothing, which is the honest answer.
 
 Drawing it needs a tile server, which is the [Raster tile server](./panel-options.md) panel option.
