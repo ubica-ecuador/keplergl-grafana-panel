@@ -77,8 +77,9 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
     () =>
       framesToRasters(data.series, fieldMappings, {
         tileServerUrls: [(options.rasterServerUrl || DEFAULT_RASTER_SERVER_URL).trim()],
+        colormap: options.rasterColormap || undefined,
       }),
-    [data.series, fieldMappings, options.rasterServerUrl]
+    [data.series, fieldMappings, options.rasterServerUrl, options.rasterColormap]
   );
 
   const keplerTheme = useMemo(() => toKeplerTheme(grafanaTheme), [grafanaTheme]);

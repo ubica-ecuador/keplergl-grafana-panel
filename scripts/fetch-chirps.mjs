@@ -38,8 +38,17 @@ const AUTH = process.env.GRAFANA_AUTH ?? 'admin:ubica';
 /** South America, give or take: the window every day is cut to. */
 const BBOX = { west: -82, south: -56, east: -34, north: 13 };
 
-/** Above this many millimetres in one day the raster saturates. */
-const MAX_MM = 100;
+/**
+ * Above this many millimetres in one day the raster saturates.
+ *
+ * Thirty rather than a hundred because the point is to see the shape of a day's
+ * rain, not to reserve room for its extremes: most wet cells are under 20 mm,
+ * and a ceiling three times higher than the interesting range leaves everything
+ * crowded into the bottom of the ramp. The published GPCP maps saturate at
+ * 10 mm/day for the same reason. Days above the ceiling still show as the
+ * darkest tone, and the figures beside the map are computed before this.
+ */
+const MAX_MM = 30;
 
 /** Where the derived rasters land — shared with the tile server, read-only there. */
 const OUT_DIR = '/derived';
@@ -140,13 +149,23 @@ async function convert(date) {
   if (await alreadyBuilt(out)) {
     return out;
   }
+  // Every cell gets a value, including the ones with no rain: a field drawn
+  // only where it rained is a scatter of dots, and reads as noise rather than
+  // as weather. Dry ground takes the palest tone, which is how the published
+  // CHIRPS maps show it.
+  //
+  // No `RT_CubeSetNoData` anywhere near this: on a uint16 cube it corrupts the
+  // data outright — values of 1..65533 come back with a minimum of 32 and two
+  // thirds of the cells gone, in memory, before anything is written. Which is
+  // also why the sea cannot be masked out here; it clamps to "no rain" and is
+  // drawn in the palest tone with everything else.
   await query(`${PRELUDE}
 COPY (
   SELECT geometry,
-         RT_CubeSetNoData(
-           RT_Cube2TypeUInt16(
-             RT_CubeMultiply(RT_CubeMin(RT_CubeMax(databand_1, 0.0), ${MAX_MM}.0), ${(65535 / MAX_MM).toFixed(2)})),
-           0.0) AS mm
+         RT_Cube2TypeUInt16(
+           RT_CubeAdd(
+             RT_CubeMultiply(RT_CubeMin(RT_CubeMax(databand_1, 0.0), ${MAX_MM}.0), ${((65534 - 1) / MAX_MM).toFixed(2)}),
+             1.0)) AS mm
   FROM RT_Read('${url}')
   WHERE ${TILES_OVER_SOUTH_AMERICA}
 )

@@ -69,6 +69,8 @@ export function useRasterTimeline({ store, isReady, rasters }: Params): void {
   const retiring = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   /** Styling waiting for its layer to exist, so a hand-picked colormap carries over. */
   const pendingStyle = useRef<{ dataId: string; style: Record<string, unknown> } | null>(null);
+  /** Slots already given their colour ramp, so the user can then change it freely. */
+  const dressed = useRef(new Set<string>());
 
   const cancelRetire = useRef((id: string) => {
     const timer = retiring.current.get(id);
@@ -117,6 +119,18 @@ export function useRasterTimeline({ store, isReady, rasters }: Params): void {
       pendingStyle.current = null;
     }
 
+    // The configured ramp, applied once per slot. Once only: after that the
+    // ramp is the user's to change from the layer panel, and re-imposing it on
+    // every store change would undo them.
+    for (const raster of series) {
+      const slot = shown.current.get(raster.id);
+      if (raster.colormap && slot && !dressed.current.has(slot)) {
+        if (applyRasterStyle(store, store.dispatch, slot, { colormapId: raster.colormap })) {
+          dressed.current.add(slot);
+        }
+      }
+    }
+
     const window = readTimeRange(store);
     const selected = series
       .map((raster) => rasterForWindow(raster, window))
@@ -134,10 +148,13 @@ export function useRasterTimeline({ store, isReady, rasters }: Params): void {
 
     for (const raster of selected) {
       const key = raster.id;
-      const currentSlot = shown.current.get(key);
-      const onScreen = currentSlot
-        ? readRasterScene(store, currentSlot)
-        : null;
+      // The load effect draws the first scene, in the base slot, without this
+      // hook's help; adopting it here is what lets the ramp reach it.
+      const currentSlot = shown.current.get(key) ?? (readRasterScene(store, key) ? key : undefined);
+      if (currentSlot && !shown.current.has(key)) {
+        shown.current.set(key, currentSlot);
+      }
+      const onScreen = currentSlot ? readRasterScene(store, currentSlot) : null;
 
       // The scene already showing: every drag that stays between two captures
       // lands here, and does nothing at all.
@@ -154,6 +171,7 @@ export function useRasterTimeline({ store, isReady, rasters }: Params): void {
       cancelRetire.current(otherSlot(key));
 
       const handover = showRasterInFreeSlot(store, store.dispatch, raster);
+      dressed.current.delete(handover.shown);
       shown.current.set(key, handover.shown);
       if (handover.style) {
         pendingStyle.current = { dataId: handover.shown, style: handover.style };

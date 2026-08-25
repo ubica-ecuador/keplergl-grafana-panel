@@ -148,6 +148,27 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       category: ['Map'],
       settings: { placeholder: DEFAULT_RASTER_SERVER_URL },
     })
+    .addSelect({
+      path: 'rasterColormap',
+      name: 'Raster colour ramp',
+      description:
+        "Colour ramp for rasters a query produces. kepler's default is built for drone NDVI and steps through unrelated colours, which reads as noise on a continuous field.",
+      category: ['Map'],
+      defaultValue: '',
+      settings: {
+        options: [
+          { value: '', label: "kepler's default (Cfastie)" },
+          { value: 'blues', label: 'Blues — white to blue' },
+          { value: 'greens', label: 'Greens' },
+          { value: 'reds', label: 'Reds' },
+          { value: 'viridis', label: 'Viridis' },
+          { value: 'magma', label: 'Magma' },
+          { value: 'greys', label: 'Greys' },
+          { value: 'rdylbu', label: 'Red–yellow–blue (diverging)' },
+          { value: 'spectral', label: 'Spectral (diverging)' },
+        ],
+      },
+    })
     .addCustomEditor({
       id: 'variableMappings',
       path: 'variableMappings',

@@ -20,6 +20,16 @@ export interface RasterDataset {
   /** Tile servers kepler may draw from, in the order it should try them. */
   tileServerUrls: string[];
   /**
+   * Colour ramp for the layer, or undefined to leave kepler's default alone.
+   *
+   * Worth choosing rather than accepting: the default is `cfastie`, a palette
+   * built for drone NDVI, and it is not monotonic — it steps through black,
+   * grey, white, green, yellow, red and magenta. On a continuous field like
+   * rainfall neighbouring cells of similar value land on unrelated colours, and
+   * the map reads as confetti rather than as weather.
+   */
+  colormap?: string;
+  /**
    * Every scene the query returned, oldest first.
    *
    * One row per pass of the satellite makes the query a small catalogue rather
@@ -162,7 +172,7 @@ export function inSlot(raster: RasterDataset, id: string): RasterDataset {
 export function framesToRasters(
   frames: DataFrame[],
   overrides: Record<string, FieldRoleOverrides> = {},
-  opts: { tileServerUrls: string[] }
+  opts: { tileServerUrls: string[]; colormap?: string }
 ): RasterDataset[] {
   // No server means kepler's own `getTitilerUrl` throws 'No raster tile
   // servers' from inside the layer's tile fetch, where it surfaces as a layer
@@ -194,6 +204,7 @@ export function framesToRasters(
       cogUrl: opening.cogUrl,
       metadataUrl: metadataUrlFor(opts.tileServerUrls[0], opening.cogUrl),
       tileServerUrls: opts.tileServerUrls,
+      ...(opts.colormap ? { colormap: opts.colormap } : {}),
       scenes,
     });
   });

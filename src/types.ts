@@ -63,6 +63,17 @@ export interface KeplerPanelOptions {
   customBasemapUrl?: string;
 
   /**
+   * Colour ramp for rasters the queries produce.
+   *
+   * kepler's own default is `cfastie`, which is built for drone NDVI and is not
+   * monotonic — it steps through black, grey, white, green, yellow, red and
+   * magenta. On a continuous field like rainfall or temperature, neighbouring
+   * cells of similar value land on unrelated colours and the map reads as
+   * confetti. Left empty, nothing is imposed and kepler's default stands.
+   */
+  rasterColormap?: string;
+
+  /**
    * Base URL of the TiTiler-compatible server that turns a COG into tiles, for
    * queries that return a link to imagery rather than rows.
    *

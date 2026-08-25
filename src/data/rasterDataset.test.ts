@@ -238,3 +238,32 @@ describe('raster slots', () => {
     expect(moved.metadataUrl).toBe(raster.metadataUrl);
   });
 });
+
+describe('framesToRasters — colormap', () => {
+  it('carries the colormap the panel chose', () => {
+    const [raster] = framesToRasters([rasterFrame(COG)], {}, { tileServerUrls: [SERVER], colormap: 'blues' });
+
+    expect(raster.colormap).toBe('blues');
+  });
+
+  it('leaves it unset when the panel has no preference', () => {
+    // Unset means "whatever kepler defaults to", not a hardcoded choice: the
+    // panel must not silently restyle a raster nobody asked it to.
+    const [raster] = framesToRasters([rasterFrame(COG)], {}, { tileServerUrls: [SERVER] });
+
+    expect(raster.colormap).toBeUndefined();
+  });
+
+  it('keeps the colormap when the window moves to another scene', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'time', type: FieldType.time, values: [Date.UTC(2026, 6, 1), Date.UTC(2026, 6, 21)] },
+        { name: 'raster_url', type: FieldType.string, values: ['https://b/a.tif', 'https://b/b.tif'] },
+      ],
+    });
+    const [raster] = framesToRasters([frame], {}, { tileServerUrls: [SERVER], colormap: 'blues' });
+
+    expect(rasterForWindow(raster, { from: 0, to: Date.UTC(2026, 6, 10) })?.colormap).toBe('blues');
+  });
+});

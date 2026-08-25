@@ -9,7 +9,12 @@
   "preload": false,
   "refresh": "",
   "schemaVersion": 39,
-  "tags": ["kepler", "raster", "multitemporal", "clima"],
+  "tags": [
+    "kepler",
+    "raster",
+    "multitemporal",
+    "clima"
+  ],
   "templating": {
     "list": []
   },
@@ -36,7 +41,7 @@
       "title": "",
       "options": {
         "mode": "markdown",
-        "content": "# Lluvia diaria sobre Sudamérica\n\nSesenta días de precipitación satelital (**CHIRPS**, 0.05°), uno por barra del timeline. Arrástralo y el mapa muestra la lluvia de ese día; las curvas de la derecha te dicen dónde mirar, porque un pico en **intensidad** o en **área con lluvia** es un día que merece la pena abrir.\n\nNada de esto se descargó entero: CHIRPS publica un COG por día y DuckDB leyó por HTTP solo las nueve teselas que cubren el continente, las recortó y las dejó listas para el mapa.\n\n**Dos cosas que conviene saber de lo que ves.** La imagen está cuantizada —0 a 100 mm estirados sobre un entero— porque kepler no dibuja rásters de coma flotante: **por encima de 100 mm en un día la imagen satura**, aunque las cifras de la derecha, calculadas sobre los datos originales, sí llegan a los 300 mm que caen algunos días. Y donde no llueve es transparente, no negro: lo que ves sobre el mapa es lluvia, y el resto es suelo."
+        "content": "# Lluvia diaria sobre Sudamérica\n\nSesenta días de precipitación satelital (**CHIRPS**, 0.05°), uno por barra del timeline. Arrástralo y el mapa muestra la lluvia de ese día; las curvas de la derecha te dicen dónde mirar, porque un pico en **intensidad** o en **área con lluvia** es un día que merece la pena abrir.\n\nNada de esto se descargó entero: CHIRPS publica un COG por día y DuckDB leyó por HTTP solo las nueve teselas que cubren el continente, las recortó y las dejó listas para el mapa.\n\n**Dos cosas que conviene saber de lo que ves.** La lámina está cuantizada —0 a 30 mm sobre un entero— porque kepler no dibuja rásters de coma flotante: **por encima de 30 mm en un día el tono ya no distingue**, aunque las cifras de la derecha, calculadas sobre los datos originales, sí llegan a los 300 mm que caen algunos días. Y se pinta **todo**, también lo que no llovió, con el tono más claro: un campo dibujado solo donde llueve se lee como ruido, no como tiempo. El océano entra en ese mismo tono claro aunque CHIRPS no mida sobre el mar — enmascararlo exigiría un recorte con la línea de costa."
       }
     },
     {
@@ -68,7 +73,8 @@
               "dragRotate": false
             }
           }
-        }
+        },
+        "rasterColormap": "blues"
       },
       "targets": [
         {
