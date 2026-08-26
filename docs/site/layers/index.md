@@ -1,8 +1,12 @@
 # Layer gallery
 
 Every layer type the panel can build from query rows, with the query that produces it. Thirteen of
-kepler's nineteen registered layer types can be driven by data; the other six take a URL instead and
-are covered on [Layers a query cannot drive](./url-configured).
+kepler's nineteen registered layer types can be driven by data.
+
+Of the six that take a URL instead, two can now be driven by one as well — a query that returns a
+link to imagery draws a `rasterTile` layer, and one that names a service draws a `wms` layer. See
+[Rasters](../guide/data/rasters) and [WMS services](../guide/data/wms). The remaining four, and
+adding any of them by hand, are on [Layers configured with a URL](./url-configured).
 
 <div class="gallery">
   <a href="./points-and-aggregation.html#point"><img src="/img/layer-point.jpg" alt="Point layer"><span>point</span></a>

@@ -59,7 +59,7 @@ Roles are guessed twice over. First by **column name**, matched case-insensitive
 
 The exact match is deliberate. Substring matching would let `origin_lat` satisfy `lat`, and an
 origin–destination table would silently collapse into a plain point layer. The full table for all
-eighteen roles is in [Field roles](../../reference/field-roles).
+twenty-one roles is in [Field roles](../../reference/field-roles).
 
 **Time is the exception**: it is found by _type_, not by name. Grafana already knows which column is
 temporal, and real dashboards call it everything from `time` to `recorded_at` to `__timestamp`.
@@ -131,6 +131,22 @@ never sees your `u`/`v` or `speed`/`direction` columns at all. See
 A query qualifies when it has coordinates and a velocity **and no trip id**. That last condition
 is load-bearing: a GPS trace that happens to carry a `speed` column is a trajectory, and shredding
 it into streamlines would draw lines that mean nothing.
+
+## The query that returns an address instead of rows
+
+There is a second departure from the pipeline, and it goes the other way. A column named
+`raster_url` — or a `wms_url` and `wms_layer` pair — does not describe where a row is. It says the
+query is not really about rows at all: the thing to draw is an image, and what the query can
+contribute is **where to find it**.
+
+Those queries produce a **second dataset with no rows** alongside the ordinary one, holding only
+the address and, for a raster, the server that can read it. Your rows are still a dataset — a
+catalogue search returns a scene id, a date and a cloud cover worth keeping — so nothing is lost
+by one of its columns being an image.
+
+Return one row per date and the map's time widget walks them, which is the whole of the
+multitemporal arrangement. See [Rasters](./rasters), [WMS services](./wms) and
+[Imagery over time](./imagery-over-time).
 
 ## What survives a refresh
 

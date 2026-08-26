@@ -79,6 +79,28 @@ your own network and skip the list entirely. See [Base maps and relief](./map/ba
 Note that these hosts are for the _base map_. Your own data never leaves Grafana: it arrives
 through the data source you already configured, and the panel draws it locally.
 
+### Imagery adds its own hosts
+
+A query that draws [imagery](./data/rasters) points the browser at somewhere new, so it needs an
+entry of its own. Which host depends on the path:
+
+| What you draw               | Host that needs the `connect-src` entry                             |
+| --------------------------- | ------------------------------------------------------------------- |
+| A COG, through a tile server | the **tile server** — it reads the file, so the bucket is never contacted by the browser |
+| A `.pmtiles` archive        | wherever the archive is served from                                 |
+| A [WMS](./data/wms)         | the service itself                                                  |
+
+::: warning `connect-src`, never `img-src`
+Tiles and WMS pictures are fetched and parsed as data rather than pointed at by an `<img>`, so the
+directive that looks right is the wrong one. The symptom is a map that draws nothing, silently, with
+no CSP message about images.
+:::
+
+Imagery is also the one case where the paragraph above wants qualifying. Your rows still never leave
+Grafana — but the **address** of a raster does reach whichever tile server you configured, and the
+option defaults to a public one. Point it at a server of your own for anything private. See
+[Rasters](./data/rasters#something-has-to-read-the-file).
+
 ## Esri's terms of use
 
 The satellite and topographic imagery come from Esri's public `services.arcgisonline.com`

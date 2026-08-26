@@ -3,7 +3,7 @@
 A **role** is the part a column plays. Roles are detected from the column's name — case-insensitively
 and **exactly** — except for time, which is detected from its type.
 
-There are **nineteen** roles. The Field mapping editor exposes **twelve** of them; the other seven
+There are **twenty-one** roles. The Field mapping editor exposes **twelve** of them; the other nine
 are autodetect-only and are marked below.
 
 ## The full table
@@ -69,7 +69,7 @@ calendar arrives as a third dataset, `grafana-<refId>-wms-times`, one row per da
 filter is always a filter on a column, so the dates have to be on the map for the widget to exist.
 
 Moving the widget re-asks the service for that date and nothing else. See
-[Layers a query cannot drive](../layers/url-configured#from-a-query-wms).
+[WMS services](../guide/data/wms) and [Imagery over time](../guide/data/imagery-over-time).
 
 ## Why the match is exact
 
@@ -154,4 +154,7 @@ to stack. Which one depends on what the query returned:
   one inside the window you select. The whole series is already in the browser, so dragging costs no
   query at all — and a window that contains no capture draws nothing, which is the honest answer.
 
-Drawing it needs a tile server, which is the [Raster tile server](./panel-options.md) panel option.
+Drawing it needs a tile server, which is the [Raster tile server](./panel-options.md) panel option —
+unless the URL names a `.pmtiles` archive, which kepler reads by itself. See
+[Satellite imagery and other rasters](../guide/data/rasters) and
+[Imagery over time](../guide/data/imagery-over-time).

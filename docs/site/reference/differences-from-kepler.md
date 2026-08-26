@@ -96,8 +96,36 @@ kepler auto-detects layers from column names, but not all of them:
 | **Trip**           | kepler's own heuristic insists on a column literally named `id`                                 |
 | **Flow**           | kepler does not auto-detect flows at all                                                        |
 | **Velocity field** | not a layer type — the panel traces streamlines and hands kepler their geometry as a Trip layer |
+| **Raster tile**    | kepler builds one from its own tileset form, but not from a query — the panel turns a `raster_url` column into the dataset it needs |
+| **WMS**            | likewise, from a `wms_url` and `wms_layer` pair                                                 |
 
 See [How a query becomes a map](../guide/data/how-a-query-becomes-a-map).
+
+## A WMS gets a clock it does not have upstream
+
+kepler draws a WMS, but has **no notion of its time dimension**: a time-aware service is asked
+without a `TIME` and answers with its default slice for ever. The panel reads the layer's calendar —
+from the query, or from the service's own `GetCapabilities` — puts it on the map's time widget, and
+carries the selected date onto every request, the click that asks `GetFeatureInfo` included.
+
+See [Imagery over time](../guide/data/imagery-over-time).
+
+## Scene changes happen on the layer, not to it
+
+Walking a series of rasters could be done by replacing the dataset for each date, and that is what
+the obvious implementation does — at the cost of a new layer with default styling every time the
+date changes. The panel re-points the layer that is already drawing instead, so its id, its name and
+everything you styled survive the change, and deck.gl keeps the previous image on screen until the
+new tiles have drawn.
+
+A window that contains no scene **hides** the layer rather than removing it, for the same reason:
+playback crosses gaps, and a rebuild on the far side of one would reset the styling every loop.
+
+## A colour ramp is imposed, when you ask for one
+
+kepler's default raster ramp is `cfastie`, which is built for drone NDVI and is not monotonic. The
+panel leaves it alone unless the **Raster colour ramp** option names another, in which case the ramp
+is applied to the rasters your queries produce. See [Rasters](../guide/data/rasters#colour).
 
 ## Refresh behaviour
 

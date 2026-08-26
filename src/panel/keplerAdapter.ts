@@ -589,7 +589,7 @@ export function syncWmsCalendar(store: Store, dispatch: Dispatch, wms: WmsDatase
     return;
   }
   const proto = {
-    info: { id, label: `${wms.label} · fechas`, format: 'row' },
+    info: { id, label: `${wms.label} · dates`, format: 'row' },
     data,
     metadata: { calendarFingerprint: fingerprint },
   } as unknown as ProtoDataset;

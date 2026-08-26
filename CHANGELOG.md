@@ -22,6 +22,77 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   dashboard cuts it to the polygon you draw on the map and reports the zonal mean, in one query,
   with no ETL and no second source.
 
+- **Added: a query can draw a satellite scene.** Return a column named `raster_url` — or `cog_url`,
+  `cog`, `asset_href`, `href` — and the panel builds a raster dataset from it and lets kepler draw
+  it with the `RasterTileLayer` that 3.3.0-alpha.7 already registers but has no server for. What was
+  missing was a tile server and the path from a query to the layer, and both are now here: the
+  **Raster tile server** panel option names a TiTiler-compatible service, which reads the imagery on
+  the map's behalf — so it, not the browser, is what has to be able to reach the file, and a private
+  raster therefore needs a server of your own. The option defaults to `https://titiler.xyz`, which
+  is what kepler itself falls back to for a lone COG: enough to draw a public scene out of the box,
+  and no use for anything private, since it is handed the URL signature and all. A catalogue query
+  makes the imagery follow the dashboard — parameterise a STAC search by `$__timeFrom()` and
+  `$__timeTo()` and the scene changes with the range, without moving the frame or restyling the
+  layer; a range with no scene under the cloud threshold returns no rows and the raster leaves the
+  map with them, because showing the previous one would be showing imagery from outside the range.
+  Two notes for anyone debugging this: the tiles arrive over XHR, so a strict CSP wants the tile
+  server's host in `connect-src` and **not** `img-src`, and kepler swallows a STAC document it
+  rejects — the symptom is an empty layer and no error at all, checkable by reading
+  `metadata.stac_version` on the dataset. The 71 colormap PNGs kepler loads from Foursquare's CDN
+  are now vendored with the plugin, because the panel repoints kepler's `cdnUrl` at itself and the
+  colormap is fetched in the same `Promise.all` as the tile: a 404 there took down **the whole
+  tile**, not just its colours.
+
+- **Added: the map's clock walks a series of scenes.** Return one row per date and the query stops
+  being an answer and becomes a small catalogue: the time widget shows a bar per capture and draws
+  the most recent scene *inside* the window — not the nearest one, because an image captured after
+  the moment you dragged to was not on the ground then. Dragging costs no query at all, since the
+  series is already in the browser. The scene changes **on the layer that is already drawing**
+  rather than by replacing the dataset, which is what keeps the layer's id, its name and everything
+  you styled through a date change, and deck.gl keeps the previous image on screen while the new
+  tiles refine — measured across eight captures during a change, with no bare frame among them. A
+  window containing no scene **hides** the layer instead of dropping it: playback crosses gaps on
+  every loop, and rebuilding on the far side handed back a layer with default styling each time,
+  which reads as styling that resets itself. Note for anyone tempted by the obvious alternative:
+  coupling this through dashboard variables does not work. The imagery query would read variables
+  the panel itself publishes, so moving the window re-runs every query on the panel including the
+  one feeding the filter, which resets and republishes. The loop was measured, not theorised.
+
+- **Added: PMTiles — the same imagery with no server at all.** A URL containing `.pmtiles` takes a
+  different path entirely: kepler reads the archive itself over range requests, and the tile server
+  option is ignored. That is the answer for an install with nowhere to run a service — all the file
+  needs is somewhere static with CORS and byte ranges. It is decided by the data rather than by
+  configuration, so both kinds can sit on one dashboard and a COG with no server is discarded
+  without taking the archive beside it down. The cost is one thing: an archive holds **pictures**,
+  so the colours were baked when it was built and kepler's layer panel offers opacity and nothing
+  else. Sixty days of CHIRPS rainfall came to 26.4 MB against ~37 MB of COG, with zero requests to
+  any server while drawing and animating. Scene changes take a rebuild here rather than a
+  re-pointing, because kepler's archive path gives deck.gl no way to learn its tiles have expired —
+  a failure with a good disguise, since the network shows requests against the new file that are
+  its header and directory and never a tile.
+
+- **Added: a colour ramp for rasters a query produces.** kepler's default is `cfastie`, which was
+  built for drone NDVI and is not monotonic — it steps through black, grey, white, green, yellow,
+  red and magenta, so on a continuous field like rainfall neighbouring cells of similar value land
+  on unrelated colours and the map reads as confetti. The **Raster colour ramp** option imposes one
+  of eight ramps instead, and left empty imposes nothing. Related, from drawing rainfall: a
+  continuous field should be painted over its whole extent with the dry end at the palest tone,
+  because a field drawn only where there is something reads as noise.
+
+- **Added: the raster can be measured, not only drawn.** Three ways, all of which produce a table,
+  which is what a Grafana panel eats — and none of which vectorises pixels in order to draw them.
+  A TiTiler-compatible server answers `/cog/statistics` for a whole scene or, with a GeoJSON in the
+  body, for one polygon, and `/cog/point/{lon},{lat}` for a single coordinate; the Infinity data
+  source calls those directly, and since the panel already publishes the clicked coordinate and any
+  polygon you draw, clicking the map moves the number. Inside DuckDB, the `raster` community
+  extension does what the tile server cannot: `RT_CubeClip` plus `RT_CubeStats_Agg` with a
+  `GROUP BY` joins imagery to your own tables, so four thousand zones is one query rather than four
+  thousand HTTP requests. And `COPY … FORMAT RASTER` writes a COG, so an index computed in SQL is
+  drawn through the same path as a Sentinel scene. The finding that costs the most time if you meet
+  it blind: **kepler cannot draw a float32 raster** — it has no maximum value to rescale a float
+  against and gives up, requesting no tiles and reporting nothing. `uint8` draws flat; `uint16` is
+  what works.
+
 - **Changed: the panel is now "Kepler Geospatial Maps".** "Maps by Kepler.gl" put the plugin's
   identity in the authorship slot: the catalog card credits UBICA while the name reads as if the
   kepler.gl project had published it, and Grafana's plugin policy asks that you hold the rights to
