@@ -37,6 +37,15 @@ export interface FieldRoles {
    * than as rows. One url per query — the first row wins.
    */
   rasterUrl?: string;
+  /**
+   * A WMS service and the one layer of it to draw.
+   *
+   * Both are needed: a service publishes many layers and nothing in the query
+   * says which one is meant, so a url on its own is not a picture. The service
+   * renders the imagery itself, which is why no tile server appears here.
+   */
+  wmsUrl?: string;
+  wmsLayer?: string;
 }
 
 /**
@@ -141,6 +150,11 @@ const NAME_CANDIDATES: Record<string, string[]> = {
   // catalogue's own JSON, so a query that lifts the asset straight out of a
   // search response needs no aliasing.
   rasterUrl: ['raster_url', 'cog_url', 'cog', 'asset_href', 'href'],
+  // WMS. `wms` alone is worth accepting because a query that fixes the service
+  // by hand reads better as `SELECT '…' AS wms`, and `service_url` is what the
+  // OGC calls the endpoint.
+  wmsUrl: ['wms_url', 'wms', 'service_url'],
+  wmsLayer: ['wms_layer', 'layer', 'layer_name'],
 };
 
 /**

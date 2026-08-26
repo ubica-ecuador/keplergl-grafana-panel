@@ -1,5 +1,6 @@
 import { SavedMapConfig } from '../data/mapConfig';
 import { isPanelRasterId } from '../data/rasterDataset';
+import { isPanelWmsId } from '../data/wmsDataset';
 
 export type LoadAction = 'rebuild' | 'refresh' | 'none';
 
@@ -138,6 +139,50 @@ export function splitRasterRefresh<T extends { id: string; metadataUrl: string }
   const remove = known
     .map((dataset) => dataset.id)
     .filter((id) => !wanted.has(id) && isPanelRasterId(id));
+
+  return { add, replace, keep, remove };
+}
+
+/**
+ * Splits a WMS refresh the same four ways, on a different identity.
+ *
+ * Not `splitRasterRefresh` with another argument, because what makes two WMS
+ * layers the same thing is not a url: it is the service **and** the layer name
+ * together, and either can change while the other stands. A query whose layer
+ * variable moves from rain to cloud cover is pointing at the same endpoint and
+ * must still be rebuilt.
+ *
+ * What is *not* here is the date. Moving through the timeline changes no
+ * dataset at all — it is a `visConfig` change on the layer — so a refresh never
+ * sees it, and a query re-run that returns the same service and layer with a
+ * hundred new dates is a `keep`.
+ */
+export function splitWmsRefresh<T extends { id: string; serviceUrl: string; layerName: string }>(
+  wanted: T[],
+  known: ReadonlyArray<{ id: string; serviceUrl?: string; layerName?: string }>
+): { add: T[]; replace: T[]; keep: T[]; remove: string[] } {
+  const identity = (dataset: { serviceUrl?: string; layerName?: string }) =>
+    `${dataset.serviceUrl ?? ''}|${dataset.layerName ?? ''}`;
+  const byId = new Map(known.map((dataset) => [dataset.id, identity(dataset)]));
+  const ids = new Set(wanted.map((dataset) => dataset.id));
+
+  const add: T[] = [];
+  const replace: T[] = [];
+  const keep: T[] = [];
+
+  for (const dataset of wanted) {
+    if (!byId.has(dataset.id)) {
+      add.push(dataset);
+    } else if (byId.get(dataset.id) === identity(dataset)) {
+      keep.push(dataset);
+    } else {
+      replace.push(dataset);
+    }
+  }
+
+  // Only ids the panel minted: a WMS someone added through kepler's own Add
+  // Data lives in the same store and must survive every refresh the query does.
+  const remove = known.map((dataset) => dataset.id).filter((id) => !ids.has(id) && isPanelWmsId(id));
 
   return { add, replace, keep, remove };
 }

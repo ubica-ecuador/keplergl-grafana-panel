@@ -4,15 +4,16 @@ kepler.gl 3.3.0-alpha.7 registers nineteen layer types. Thirteen are in [the gal
 six are configured with a **URL** rather than with data, so a Grafana query cannot describe one the
 way it describes a table of points.
 
-One of the six is now an exception: a query that returns a link to a cloud-optimised GeoTIFF **does**
-produce a `rasterTile` layer. See [From a query: rasters](#from-a-query-rasters) below. The rest are
-still added by hand.
+Two of the six are now exceptions. A query that returns a link to a cloud-optimised GeoTIFF **does**
+produce a `rasterTile` layer, and one that names a WMS service produces a `wms` layer — with a
+timeline, if the service publishes one. See [From a query: rasters](#from-a-query-rasters) and
+[From a query: a WMS](#from-a-query-wms) below. The rest are still added by hand.
 
 | Layer        | What it takes                                                        | deck.gl layer            |
 | ------------ | -------------------------------------------------------------------- | ------------------------ |
 | `vectorTile` | an MVT tile endpoint or a `tiles.json`                               | `MVTLayer` / `TileLayer` |
 | `rasterTile` | a raster tile endpoint, or STAC metadata — **or a query, see below** | `TileLayer`              |
-| `wms`        | a WMS service URL                                                    | `WMSLayer`               |
+| `wms`        | a WMS service URL — **or a query, see below**                        | `WMSLayer`               |
 | `tile3d`     | a 3D Tiles / Cesium ion endpoint                                     | `Tile3DLayer`            |
 | `bitmap`     | one image plus its corner coordinates                                | `BitmapLayer`            |
 | `3D`         | a glTF model URL                                                     | `ScenegraphLayer`        |
@@ -83,9 +84,29 @@ Two pieces make it work:
   TiTiler-compatible service. A COG is not a tile source by itself: something has to read the parts
   of it the map is showing and hand back tiles. That service reads the imagery on the map's behalf,
   which is why it — not the browser — is what must be able to reach it, and why a private raster
-  needs a server of your own;
+  needs a server of your own. The option defaults to `https://titiler.xyz`, Development Seed's
+  public demo, which is enough to draw a **public** COG out of the box — and is handed the URL you
+  give it, signature and all, so anything private wants a server of your own;
 - a catalogue query, if the scene is not fixed. STAC catalogues answer over plain HTTP, so a data
   source that can make an HTTP call can search one and return today's best scene.
+
+### Or no server at all: PMTiles {#pmtiles}
+
+If the URL ends in `.pmtiles` the panel takes a different path entirely: kepler reads the archive
+itself, over range requests, and no tile server is involved — the panel option is ignored, and can
+be left empty. All the file needs is somewhere static to be fetched from, with CORS and byte ranges.
+
+That is the answer for an install with nowhere to run a server, and it costs exactly one thing: a
+PMTiles archive holds **pictures**, not measurements, so the colours were decided when it was built.
+The layer panel offers opacity and nothing else — no ramp, no rescaling, no picking a band. A COG
+keeps its numbers and can be restyled live; an archive cannot.
+
+Everything else is the same, bar one detail of how the scene changes. One row per date still makes a
+series the time widget walks; a COG re-points the layer it is already drawing, while an archive
+rebuilds it — kepler's PMTiles path gives deck.gl no way to learn that its tiles have expired, so
+re-pointing one would leave the first date on screen for every date after it. In practice that costs
+a fresh tile source per scene and nothing else. A dashboard can hold both kinds at once: which one a
+query means is read off its URL, not configured.
 
 The point of doing it this way is that **the raster follows the dashboard**. Parameterise the search
 by `$__timeFrom()`/`$__timeTo()` and moving the time range changes the imagery, without moving the
@@ -161,6 +182,109 @@ Infinity data source can call directly. Inside the database, `RT_CubeClip` plus 
 with a `GROUP BY` does the same for _every_ zone in one query, joined to your own tables. That is
 the one thing the tile server cannot do, and it is what makes four thousand polygons a query rather
 than four thousand HTTP requests.
+
+## From a query: a WMS, with its clock {#from-a-query-wms}
+
+A WMS is not a file: it is a service that draws pictures on demand. So the query hands over an
+address and a name rather than data — a column named `wms_url` (or `wms`, `service_url`) and one
+named `wms_layer` (or `layer`, `layer_name`) — and the panel builds the dataset and its layer.
+
+Give it the **bare endpoint**, without a query string:
+`https://services.geoglows.org/geoserver/satellite_based_precipitation/wms`. A whole `GetMap` URL
+pasted in is trimmed back to that, deliberately: every request is built by appending parameters to
+what you give, so anything after a `?` would end up merged into the first parameter and the server
+would answer with a parse error about a date it was never sent.
+
+Nothing else is needed. There is no tile server to configure — that is the difference between this
+and a COG, and the reason a WMS works on a Grafana with no infrastructure behind it at all. The
+**Raster tile server** option plays no part here.
+
+### The timeline comes from whoever knows the dates
+
+Many environmental services publish one image per day or per hour and expect a `TIME` on the
+request. The map's time widget walks those dates, and they can come from either side:
+
+- **From the query.** Return one row per date, alongside the service and layer, and those dates are
+  the timeline. Use this when you want a subset, or a calendar assembled from somewhere else.
+- **From the service.** Return no time column at all, and the panel reads the layer's
+  `<Dimension name="time">` out of the service's own `GetCapabilities`. This is the one that keeps
+  working by itself: a server gains a new pass every day and no hand-written calendar stays in step
+  with it.
+
+The query wins when both exist. Either way the dates become a small dataset of their own — kepler's
+time filter is always a filter on a column, so the calendar has to be on the map for the widget to
+exist — and you will see it in the data table beside your own rows.
+
+Dragging the widget then costs one image. The date travels as a parameter on the next `GetMap`; no
+query is re-run, no dataset is rebuilt, the layer you styled is the same layer throughout, and a
+drag that stays between two dates asks for nothing at all. A window containing no date hides the
+layer rather than dropping it, so playback can cross a gap and come back with your styling intact.
+
+### What to expect of the service
+
+- **CORS.** The browser fetches the pictures, so the service has to allow it. This is not the COG
+  arrangement, where a server in the middle does the reading.
+- **A strict CSP** needs the host in `connect-src`, **not** `img-src`. A WMS image is fetched and
+  parsed as data rather than pointed at by an `<img>`, so the obvious directive is the wrong one —
+  and the symptom is a map that draws nothing, silently, with no CSP message about images.
+- **The capabilities document** is read once per service per page load, and it can be large: nearly
+  a megabyte on GeoGLOWS, whose hourly layers list fourteen thousand dates. An extent longer than
+  two thousand instants keeps its newest end.
+- **A date the service does not have** comes back as an empty picture. That is why nothing is ever
+  guessed: with no calendar from either side, no `TIME` is sent and the service answers with its own
+  default.
+
+### Clicking asks the service
+
+A WMS carries no rows, so the only way to know what is under a pixel is to ask the server —
+`GetFeatureInfo`, which is what a click does on a queryable layer. kepler shows the answer in its
+popover, and a **click mapping** on the field `wms_value` sends it to a dashboard variable, so the
+panels around the map can read it.
+
+`wms_value` is the first value the service returned, under a name that is the same everywhere. The
+attributes also arrive under their own names — both as the service spells them (`GRAY_INDEX`) and as
+kepler displays them (`GRAY INDEX`) — for a vector WMS returning several.
+
+The question carries the date on screen, so the answer is about the image you are looking at rather
+than the service's default. And it is the service's answer verbatim: a sentinel like `-99` means
+*no data here*, not a failure.
+
+### Reading the same data instead of drawing it
+
+A WMS hands out pictures, which is a wall for anything you want to *compute*. But a GeoServer that
+publishes a WMS usually publishes a **WCS** over the same coverage — the same scene, delivered as
+pixels rather than as a rendering — and that turns the map's imagery into something a query can work
+on. No second source, no ETL.
+
+With the `raster` DuckDB extension, one query reads a window of it over HTTP and cuts it to a
+polygon:
+
+```sql
+INSTALL raster FROM community; LOAD raster;
+SELECT RT_GdalConfig('CURL_CA_BUNDLE', '/etc/ssl/certs/ca-certificates.crt');
+SET VARIABLE cobertura = '/vsicurl/<service>/wcs?service=WCS&version=2.0.1&request=GetCoverage&…';
+SELECT RT_CubeStats_Agg(RT_CubeClip(databand_1, tile_x, tile_y, metadata, ST_GeomFromText($area), -99.0), 0)
+FROM RT_Read(getvariable('cobertura'));
+```
+
+`$area` is the polygon the map publishes when you draw one, so the number follows the shape on
+screen. Five things are worth knowing before you write your own:
+
+- **`RT_Read` needs a literal path**, so the URL is assembled into a variable and read back with
+  `getvariable()`. The data source runs multi-statement scripts and returns the last one's result,
+  which is what makes this a single panel query.
+- **Ask the service which date it has.** Deriving one from the dashboard range gives a 404 the day
+  the range runs ahead of the last pass — the same `GetCapabilities` the map reads answers this.
+- **The band index is zero-based.** `RT_CubeStats(cube, 1)` on a one-band coverage fails with
+  `Band index out of range`.
+- **Do not set the nodata value.** The GeoTIFF declares its own and the aggregate honours it;
+  overwriting it with `RT_CubeSetNoData` returned negative minima for a rainfall product — the clip's
+  fill value is enough, and a fill equal to the service's own sentinel is discarded automatically.
+- **The request happens on the Grafana server**, not in the browser, so CORS and CSP have nothing to
+  do with it — but the server is what must be able to reach the service.
+
+The output is a table, which is what a Grafana panel eats. Nothing here goes back to the map: the
+imagery is still drawn as imagery, and what travels is an aggregate.
 
 ## Base maps are a different thing
 

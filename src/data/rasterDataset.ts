@@ -1,6 +1,7 @@
 import { DataFrame } from '@grafana/data';
 
 import { detectFields, FieldRoleOverrides, resolveRoles } from './detectFields';
+import { pickLatestWithin, type TimeWindow } from './timeWindow';
 
 /**
  * A raster scene a query points at, in the shape kepler's raster tileset needs.
@@ -13,11 +14,23 @@ import { detectFields, FieldRoleOverrides, resolveRoles } from './detectFields';
 export interface RasterDataset {
   id: string;
   label: string;
-  /** The cloud-optimised GeoTIFF currently being drawn. */
-  cogUrl: string;
-  /** Where the tile server describes that COG as a STAC Item. */
+  /** How the imagery reaches the map — see {@link RasterKind}. */
+  kind: RasterKind;
+  /** The image currently being drawn: a COG, or a PMTiles archive. */
+  sourceUrl: string;
+  /**
+   * What kepler asks for the imagery's shape.
+   *
+   * For a COG that is the tile server's STAC document about it; for a PMTiles
+   * archive it is the archive itself, which carries its own header.
+   */
   metadataUrl: string;
-  /** Tile servers kepler may draw from, in the order it should try them. */
+  /**
+   * Tile servers kepler may draw from, in the order it should try them.
+   *
+   * Empty for a PMTiles archive, and not for want of configuration: kepler
+   * reads that format itself and never asks a server anything.
+   */
   tileServerUrls: string[];
   /**
    * Colour ramp for the layer, or undefined to leave kepler's default alone.
@@ -40,18 +53,38 @@ export interface RasterDataset {
   scenes: RasterScene[];
 }
 
+/**
+ * How a raster's imagery reaches the map.
+ *
+ * `cog` is a GeoTIFF a tile server cuts into tiles on demand — the imagery
+ * stays as it was measured, so the map can restyle it live: change the ramp,
+ * move the range, pick another band. It needs that server to be reachable, and
+ * to be able to reach the imagery.
+ *
+ * `pmtiles` is an archive of tiles already drawn, which kepler reads directly
+ * over range requests. Nothing sits in between, which is what makes it the
+ * answer for an install with nowhere to run a server — but the colours were
+ * decided when the archive was built, so the layer panel offers only opacity.
+ *
+ * Which one a query means is read off its url, the same way kepler reads it:
+ * the format is a property of the file, not a setting to keep in step with it.
+ */
+export type RasterKind = 'cog' | 'pmtiles';
+
 /** One dated image in a raster query's result. */
 export interface RasterScene {
   /** Capture time in epoch ms, or null when the query carries no time column. */
   time: number | null;
-  cogUrl: string;
+  sourceUrl: string;
 }
 
-/** A time window, in epoch ms — kepler's time filter, as the panel reads it. */
-export interface SceneWindow {
-  from: number;
-  to: number;
-}
+/**
+ * A time window, in epoch ms — kepler's time filter, as the panel reads it.
+ *
+ * An alias rather than a second declaration: the WMS path walks the same clock
+ * with the same rule, so the rule and its window live in one place now.
+ */
+export type SceneWindow = TimeWindow;
 
 /**
  * The scene a time window selects: the most recent one it contains.
@@ -66,21 +99,11 @@ export interface SceneWindow {
  * behaviour because a timeline exists elsewhere.
  */
 export function pickScene(scenes: RasterScene[], window: SceneWindow | null): RasterScene | null {
-  const dated = scenes.filter((scene): scene is RasterScene & { time: number } => scene.time !== null);
-  if (dated.length === 0) {
+  const dated = scenes.some((scene) => scene.time !== null);
+  if (!dated) {
     return scenes[0] ?? null;
   }
-  if (!window) {
-    return dated[dated.length - 1];
-  }
-
-  let picked: RasterScene | null = null;
-  for (const scene of dated) {
-    if (scene.time >= window.from && scene.time <= window.to) {
-      picked = scene;
-    }
-  }
-  return picked;
+  return pickLatestWithin(scenes, (scene) => scene.time, window);
 }
 
 /**
@@ -99,13 +122,13 @@ export function rasterForWindow(raster: RasterDataset, window: SceneWindow | nul
   if (!scene) {
     return null;
   }
-  if (scene.cogUrl === raster.cogUrl) {
+  if (scene.sourceUrl === raster.sourceUrl) {
     return raster;
   }
   return {
     ...raster,
-    cogUrl: scene.cogUrl,
-    metadataUrl: metadataUrlFor(raster.tileServerUrls[0], scene.cogUrl),
+    sourceUrl: scene.sourceUrl,
+    metadataUrl: metadataUrlForScene(raster.kind, raster.tileServerUrls[0], scene.sourceUrl),
   };
 }
 
@@ -153,13 +176,6 @@ export function framesToRasters(
   overrides: Record<string, FieldRoleOverrides> = {},
   opts: { tileServerUrls: string[]; colormap?: string }
 ): RasterDataset[] {
-  // No server means kepler's own `getTitilerUrl` throws 'No raster tile
-  // servers' from inside the layer's tile fetch, where it surfaces as a layer
-  // that renders nothing rather than as a message anyone can act on.
-  if (opts.tileServerUrls.length === 0) {
-    return [];
-  }
-
   const rasters: RasterDataset[] = [];
 
   frames.forEach((frame, index) => {
@@ -177,18 +193,47 @@ export function framesToRasters(
       return;
     }
 
+    // A COG with nowhere to be served is dropped here, on its own. Left in,
+    // kepler's `getTitilerUrl` throws 'No raster tile servers' from inside the
+    // layer's tile fetch, where it surfaces as a layer that draws nothing
+    // rather than as anything anyone can act on. An archive beside it is
+    // unaffected: it never wanted a server.
+    const kind = rasterKind(opening.sourceUrl);
+    if (kind === 'cog' && opts.tileServerUrls.length === 0) {
+      return;
+    }
+
     rasters.push({
       id: rasterDatasetId(refId),
       label: frame.name ?? `Query ${refId}`,
-      cogUrl: opening.cogUrl,
-      metadataUrl: metadataUrlFor(opts.tileServerUrls[0], opening.cogUrl),
-      tileServerUrls: opts.tileServerUrls,
+      kind,
+      sourceUrl: opening.sourceUrl,
+      metadataUrl: metadataUrlForScene(kind, opts.tileServerUrls[0], opening.sourceUrl),
+      tileServerUrls: kind === 'pmtiles' ? [] : opts.tileServerUrls,
       ...(opts.colormap ? { colormap: opts.colormap } : {}),
       scenes,
     });
   });
 
   return rasters;
+}
+
+/**
+ * What a raster url is, read the way kepler reads it.
+ *
+ * By extension rather than by configuration, and `includes` rather than
+ * `endsWith` because a signed link carries a query string of its own. This is
+ * `isPMTilesUrl` from `@kepler.gl/common-utils`, spelled out here so the pure
+ * data modules stay free of kepler imports — the panel would otherwise drag
+ * deck.gl into the main chunk to answer a question about a file name.
+ */
+export function rasterKind(url: string): RasterKind {
+  return url.includes('.pmtiles') ? 'pmtiles' : 'cog';
+}
+
+/** Where kepler should ask about a scene, given how that scene is served. */
+function metadataUrlForScene(kind: RasterKind, tileServerUrl: string | undefined, sourceUrl: string): string {
+  return kind === 'pmtiles' ? sourceUrl : metadataUrlFor(tileServerUrl ?? '', sourceUrl);
 }
 
 /**
@@ -203,9 +248,9 @@ export function framesToRasters(
  * `<server>//cog/stac` is a 404 on some deployments and a redirect on others,
  * and a redirect loses the CORS headers.
  */
-export function metadataUrlFor(tileServerUrl: string, cogUrl: string): string {
+export function metadataUrlFor(tileServerUrl: string, sourceUrl: string): string {
   const base = tileServerUrl.replace(/\/+$/, '');
-  return `${base}/cog/stac?url=${encodeURIComponent(cogUrl)}`;
+  return `${base}/cog/stac?url=${encodeURIComponent(sourceUrl)}`;
 }
 
 /**
@@ -230,7 +275,7 @@ function readScenes(frame: DataFrame, urlColumn: string, timeColumn?: string): R
       continue;
     }
     const raw = times ? Number(times.values[i]) : NaN;
-    scenes.push({ time: Number.isFinite(raw) ? raw : null, cogUrl: url.trim() });
+    scenes.push({ time: Number.isFinite(raw) ? raw : null, sourceUrl: url.trim() });
   }
 
   return scenes.sort((a, b) => (a.time ?? 0) - (b.time ?? 0));

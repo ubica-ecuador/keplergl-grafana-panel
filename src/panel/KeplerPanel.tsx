@@ -5,6 +5,7 @@ import { useTheme2 } from '@grafana/ui';
 import { KeplerPanelOptions } from '../types';
 import { framesToDatasets } from '../data/framesToDatasets';
 import { framesToRasters } from '../data/rasterDataset';
+import { framesToWms } from '../data/wmsDataset';
 import { toKeplerTheme } from '../data/keplerTheme';
 import { SavedMapConfig } from '../data/mapConfig';
 import { CUSTOM_BASEMAP_ID, DEFAULT_RASTER_SERVER_URL } from './constants';
@@ -82,6 +83,11 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
     [data.series, fieldMappings, options.rasterServerUrl, options.rasterColormap]
   );
 
+  // A WMS travels the same separate road, and for the same reason: what the
+  // query describes is a service, not rows. Nothing about it needs a tile
+  // server — the service renders its own pictures.
+  const wmsLayers = useMemo(() => framesToWms(data.series, fieldMappings), [data.series, fieldMappings]);
+
   const keplerTheme = useMemo(() => toKeplerTheme(grafanaTheme), [grafanaTheme]);
   const followTheme = options.followGrafanaTheme ?? true;
 
@@ -110,6 +116,7 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
         height={height}
         datasets={datasets}
         rasters={rasters}
+        wmsLayers={wmsLayers}
         mapConfig={options.mapConfig}
         theme={followTheme ? keplerTheme : undefined}
         basemapId={basemapId}

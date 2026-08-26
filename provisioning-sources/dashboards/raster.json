@@ -161,7 +161,8 @@
               "dragRotate": false
             }
           }
-        }
+        },
+        "rasterServerUrl": "http://localhost:8088"
       },
       "targets": [
         {
@@ -375,7 +376,8 @@
               "dragRotate": false
             }
           }
-        }
+        },
+        "rasterServerUrl": "http://localhost:8088"
       },
       "targets": [
         {

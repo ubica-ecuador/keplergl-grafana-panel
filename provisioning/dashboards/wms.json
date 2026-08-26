@@ -1,0 +1,111 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Un WMS temporal dibujado desde una sola fila, con las fechas leídas del propio servicio.",
+  "editable": true,
+  "id": null,
+  "links": [],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 41,
+  "tags": [
+    "ubica",
+    "wms"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "valor",
+        "label": "Valor bajo el clic",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "description": "Lo escribe el mapa: pinchar sobre la capa pregunta al servicio por ese píxel, en la fecha que se está viendo."
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Kepler.gl — WMS temporal",
+  "uid": "wms",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "mode": "markdown",
+        "content": "## Un WMS temporal sin infraestructura ninguna\n\nLa consulta es un frame de TestData con **una sola fila**: el servicio y la capa. Ni una fecha.\n\nEl calendario lo pone el servicio. Una capa con dimensión `TIME` publica en su GetCapabilities todas las pasadas que tiene, y el panel las lee de ahí para montar el eje del reloj — así que **arrastra la barra de tiempo del mapa** y la imagen cambia de día, sin datasource, sin ETL y sin servidor de teselas.\n\nSi la consulta trae su propia columna de tiempo, manda ella. Este panel enseña el otro lado del trato: cuando no la trae, el servicio sabe sus fechas mejor que nadie.\n\n**Pincha sobre la lluvia** y el valor del píxel aparece arriba, en «Valor bajo el clic». Un `-99` es lo que este producto usa para «sin dato», no un fallo."
+      }
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Una fila nombrando servicio y capa. Las fechas salen del GetCapabilities del servicio.",
+      "gridPos": {
+        "h": 18,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "id": 2,
+      "type": "ubica-keplergl-panel",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\": {\"fields\": [{\"name\": \"wms_url\", \"type\": \"string\"}, {\"name\": \"wms_layer\", \"type\": \"string\"}]}, \"data\": {\"values\": [[\"https://services.geoglows.org/geoserver/satellite_based_precipitation/wms\"], [\"persiann_pdir_24h\"]]}}]"
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -1.7,
+              "longitude": -78.6,
+              "zoom": 5.2,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        },
+        "variableMappings": [
+          {
+            "field": "wms_value",
+            "variable": "valor",
+            "source": "click"
+          }
+        ]
+      },
+      "title": "PERSIANN sobre Ecuador · el calendario lo pone el servicio"
+    }
+  ]
+}

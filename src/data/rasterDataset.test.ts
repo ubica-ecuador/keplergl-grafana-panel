@@ -18,7 +18,7 @@ describe('framesToRasters', () => {
 
     expect(raster).toMatchObject({
       id: 'grafana-A-raster',
-      cogUrl: COG,
+      sourceUrl: COG,
       tileServerUrls: [SERVER],
     });
   });
@@ -45,7 +45,7 @@ describe('framesToRasters', () => {
       fields: [{ name: 'raster_url', type: FieldType.string, values: [COG, 'https://bucket.example/other.tif'] }],
     });
 
-    expect(framesToRasters([frame], {}, { tileServerUrls: [SERVER] })[0].cogUrl).toBe(COG);
+    expect(framesToRasters([frame], {}, { tileServerUrls: [SERVER] })[0].sourceUrl).toBe(COG);
   });
 
   it('lets an override point the role at another column', () => {
@@ -57,7 +57,7 @@ describe('framesToRasters', () => {
       ],
     });
 
-    expect(framesToRasters([frame], { A: { rasterUrl: 'preview' } }, { tileServerUrls: [SERVER] })[0].cogUrl).toBe(COG);
+    expect(framesToRasters([frame], { A: { rasterUrl: 'preview' } }, { tileServerUrls: [SERVER] })[0].sourceUrl).toBe(COG);
   });
 
   it('produces nothing for a query whose raster role is switched off', () => {
@@ -99,15 +99,15 @@ describe('framesToRasters', () => {
 
 describe('pickScene', () => {
   const scenes = [
-    { time: Date.UTC(2026, 6, 1), cogUrl: 'https://b/jul01.tif' },
-    { time: Date.UTC(2026, 6, 11), cogUrl: 'https://b/jul11.tif' },
-    { time: Date.UTC(2026, 6, 21), cogUrl: 'https://b/jul21.tif' },
+    { time: Date.UTC(2026, 6, 1), sourceUrl: 'https://b/jul01.tif' },
+    { time: Date.UTC(2026, 6, 11), sourceUrl: 'https://b/jul11.tif' },
+    { time: Date.UTC(2026, 6, 21), sourceUrl: 'https://b/jul21.tif' },
   ];
 
   it('takes the last scene inside the window', () => {
     const window = { from: Date.UTC(2026, 5, 1), to: Date.UTC(2026, 6, 15) };
 
-    expect(pickScene(scenes, window)?.cogUrl).toBe('https://b/jul11.tif');
+    expect(pickScene(scenes, window)?.sourceUrl).toBe('https://b/jul11.tif');
   });
 
   it('ignores scenes the window has not reached yet', () => {
@@ -115,7 +115,7 @@ describe('pickScene', () => {
     // newest image the query happened to return.
     const window = { from: Date.UTC(2026, 5, 1), to: Date.UTC(2026, 6, 5) };
 
-    expect(pickScene(scenes, window)?.cogUrl).toBe('https://b/jul01.tif');
+    expect(pickScene(scenes, window)?.sourceUrl).toBe('https://b/jul01.tif');
   });
 
   it('finds nothing when the window falls between passes', () => {
@@ -125,18 +125,18 @@ describe('pickScene', () => {
   });
 
   it('takes the most recent scene when there is no window', () => {
-    expect(pickScene(scenes, null)?.cogUrl).toBe('https://b/jul21.tif');
+    expect(pickScene(scenes, null)?.sourceUrl).toBe('https://b/jul21.tif');
   });
 
   it('takes the first row when the scenes carry no time at all', () => {
     // A query that returns one scene and no time column is the ordinary case,
     // and it must keep behaving as it did before the timeline existed.
     const undated = [
-      { time: null, cogUrl: 'https://b/first.tif' },
-      { time: null, cogUrl: 'https://b/second.tif' },
+      { time: null, sourceUrl: 'https://b/first.tif' },
+      { time: null, sourceUrl: 'https://b/second.tif' },
     ];
 
-    expect(pickScene(undated, { from: 0, to: 1 })?.cogUrl).toBe('https://b/first.tif');
+    expect(pickScene(undated, { from: 0, to: 1 })?.sourceUrl).toBe('https://b/first.tif');
   });
 });
 
@@ -153,8 +153,8 @@ describe('framesToRasters — a series of scenes', () => {
     const [raster] = framesToRasters([frame], {}, { tileServerUrls: [SERVER] });
 
     expect(raster.scenes).toEqual([
-      { time: Date.UTC(2026, 6, 1), cogUrl: 'https://b/jul01.tif' },
-      { time: Date.UTC(2026, 6, 21), cogUrl: 'https://b/jul21.tif' },
+      { time: Date.UTC(2026, 6, 1), sourceUrl: 'https://b/jul01.tif' },
+      { time: Date.UTC(2026, 6, 21), sourceUrl: 'https://b/jul21.tif' },
     ]);
   });
 
@@ -167,7 +167,7 @@ describe('framesToRasters — a series of scenes', () => {
       ],
     });
 
-    expect(framesToRasters([frame], {}, { tileServerUrls: [SERVER] })[0].cogUrl).toBe('https://b/jul21.tif');
+    expect(framesToRasters([frame], {}, { tileServerUrls: [SERVER] })[0].sourceUrl).toBe('https://b/jul21.tif');
   });
 
   it('still takes the first row when the query has no time column', () => {
@@ -176,7 +176,7 @@ describe('framesToRasters — a series of scenes', () => {
       fields: [{ name: 'raster_url', type: FieldType.string, values: [COG, 'https://b/other.tif'] }],
     });
 
-    expect(framesToRasters([frame], {}, { tileServerUrls: [SERVER] })[0].cogUrl).toBe(COG);
+    expect(framesToRasters([frame], {}, { tileServerUrls: [SERVER] })[0].sourceUrl).toBe(COG);
   });
 });
 
@@ -199,7 +199,7 @@ describe('rasterForWindow', () => {
   it('re-points the descriptor at the scene the window selects', () => {
     const moved = rasterForWindow(framed(), { from: Date.UTC(2026, 5, 1), to: Date.UTC(2026, 6, 10) });
 
-    expect(moved?.cogUrl).toBe('https://b/jul01.tif');
+    expect(moved?.sourceUrl).toBe('https://b/jul01.tif');
     expect(moved?.metadataUrl).toBe(`${SERVER}/cog/stac?url=${encodeURIComponent('https://b/jul01.tif')}`);
   });
 
@@ -249,5 +249,59 @@ describe('framesToRasters — colormap', () => {
     const [raster] = framesToRasters([frame], {}, { tileServerUrls: [SERVER], colormap: 'blues' });
 
     expect(rasterForWindow(raster, { from: 0, to: Date.UTC(2026, 6, 10) })?.colormap).toBe('blues');
+  });
+});
+
+const PMTILES = 'https://bucket.example/scenes/2026/rain.pmtiles';
+
+describe('framesToRasters — PMTiles', () => {
+  it('needs no tile server at all', () => {
+    // The whole point of the format: kepler reads the archive itself over
+    // range requests, so an install with nowhere to run TiTiler still draws.
+    const [raster] = framesToRasters([rasterFrame(PMTILES)], {}, { tileServerUrls: [] });
+
+    expect(raster).toMatchObject({ kind: 'pmtiles', sourceUrl: PMTILES, tileServerUrls: [] });
+  });
+
+  it('points the metadata straight at the archive', () => {
+    const [raster] = framesToRasters([rasterFrame(PMTILES)], {}, { tileServerUrls: [SERVER] });
+
+    expect(raster.metadataUrl).toBe(PMTILES);
+  });
+
+  it('ignores a configured server, which cannot serve it anyway', () => {
+    expect(framesToRasters([rasterFrame(PMTILES)], {}, { tileServerUrls: [SERVER] })[0].tileServerUrls).toEqual([]);
+  });
+
+  it('recognises an archive behind a query string', () => {
+    const signed = 'https://bucket.example/rain.pmtiles?token=abc';
+    expect(framesToRasters([rasterFrame(signed)], {}, { tileServerUrls: [] })[0].kind).toBe('pmtiles');
+  });
+
+  it('marks a COG as one, so the two paths never blur', () => {
+    expect(framesToRasters([rasterFrame(COG)], {}, { tileServerUrls: [SERVER] })[0].kind).toBe('cog');
+  });
+
+  it('drops only the queries that need the missing server', () => {
+    // A dashboard may hold both, and losing the archive because a COG beside
+    // it has nowhere to be served would be a strange kind of solidarity.
+    const rasters = framesToRasters([rasterFrame(COG, 'A'), rasterFrame(PMTILES, 'B')], {}, { tileServerUrls: [] });
+
+    expect(rasters.map((raster) => raster.id)).toEqual(['grafana-B-raster']);
+  });
+
+  it('follows the window without inventing a server url', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'time', type: FieldType.time, values: [1000, 2000] },
+        { name: 'raster_url', type: FieldType.string, values: [PMTILES, 'https://bucket.example/b.pmtiles'] },
+      ],
+    });
+    const [raster] = framesToRasters([frame], {}, { tileServerUrls: [] });
+
+    const picked = rasterForWindow(raster, { from: 0, to: 1500 });
+
+    expect(picked).toMatchObject({ sourceUrl: PMTILES, metadataUrl: PMTILES });
   });
 });

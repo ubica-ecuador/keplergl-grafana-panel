@@ -5,6 +5,23 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Added: a query can draw a WMS, and the map's clock can walk its dates.** Return `wms_url` and
+  `wms_layer` and the panel builds the layer — no tile server anywhere, which is what makes this
+  work on a Grafana with nothing behind it. kepler 3.3.0-alpha.7 draws a WMS but has no notion of
+  its time dimension, so a time-aware service answered with its default slice for ever; the date now
+  reaches the request, and moving the time widget re-asks the service for one image without re-running
+  the query or rebuilding the dataset. Where the dates come from is a choice the query makes by
+  saying nothing: with a time column those rows are the timeline, without one the panel reads the
+  layer's `<Dimension name="time">` from the service's own `GetCapabilities` — the version that
+  stays correct as a server gains new passes. Note for strict-CSP installs: a WMS image is fetched
+  and parsed as data, so the host belongs in `connect-src` and **not** `img-src`, and the symptom of
+  getting that wrong is a map that draws nothing without a word about images. Clicking a queryable
+  layer asks the service what is under the pixel, on the date being shown, and a click mapping on
+  `wms_value` puts that number in a dashboard variable. And where the same GeoServer publishes a WCS
+  over the coverage, the imagery on screen can be *read* rather than only drawn: the provisioned
+  dashboard cuts it to the polygon you draw on the map and reports the zonal mean, in one query,
+  with no ETL and no second source.
+
 - **Changed: the panel is now "Kepler Geospatial Maps".** "Maps by Kepler.gl" put the plugin's
   identity in the authorship slot: the catalog card credits UBICA while the name reads as if the
   kepler.gl project had published it, and Grafana's plugin policy asks that you hold the rights to
@@ -16,6 +33,31 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   slug. Keywords pruned from 18 to 13, since `spatial`, `temporal` and `spatio-temporal` were one
   term spelled three ways and `panel` only repeats the plugin type, and `info.links` now carries the
   documentation and source-code URLs.
+
+- **Fixed: the growing-window animation now reaches the last of the data before looping.** With the
+  playback set to an incremental window — the start anchored, the end advancing — kepler discarded
+  the final step instead of clamping it: the moment one more increment would pass the end of the
+  domain, the window jumped back to the anchor. Measured on the provisioned rainfall calendar of
+  2026-08-20…26, the window end climbed to 2026-08-25T23:58:38 and restarted, a minute and a half
+  short, so the last day's image was never drawn and its histogram bar never lit up. Clamping to the
+  last timestamp is not enough on its own, because a time filter's domain *ends* on the newest row:
+  a window stopping there would reach the final scene for one animation frame, too briefly to fetch
+  the image, let alone see it. So the sweep now runs to the end of the last histogram bin — the span
+  the slider already draws, since it pads its display range by one bin so the edge bars are not
+  clipped — and the last scene gets the same turn as every other. The visible consequence is that
+  the end of the window travels one bin past the newest timestamp on its way out, which is what
+  kepler's sliding-window mode has always done. Free, point and interval playback are unchanged.
+
+- **Fixed: the time slider is drawn on top of its histogram, not under it.** kepler renders the
+  brush — the shaded window and the two drag handles — as a child of the plot, and its unmasked
+  histogram puts that group *before* the bars. SVG has no z-index, so siblings paint in document
+  order and every bar covered the handles: on a dense demo histogram they fall in the gaps and the
+  flaw goes unseen, but on a daily series, where a handful of bars fill the width, each handle sat
+  half-buried and the selected window disappeared entirely. The bars carry `pointer-events: none`,
+  so dragging never stopped working — the slider was invisible, not inert, which is why it read as a
+  styling bug. The defect is upstream and unfixed on kepler's master, and no stylesheet can answer
+  it, so the panel lifts the group to the end of the enclosing `<svg>` after each commit, which is
+  where kepler's own masked histogram already puts it.
 
 - **Fixed: the cross-filtering hooks no longer re-subscribe to the map on every render.** The
   mappings reached the map as `options.variableMappings ?? []`, and all four sync hooks — filter,

@@ -32,9 +32,9 @@ export function assetBaseUrl(): string {
  * `rasterServerUrls` is an empty list — with a literal `// TODO` upstream — and
  * the layer throws 'No raster tile servers' before it ever reaches the network.
  *
- * This is the TiTiler in docker-compose.yaml. It is only a default: the value
- * seeds the "raster tile server" field of the Add Data → Tileset form, and the
- * server a dataset actually uses travels in that dataset's own metadata. Two
+ * This is the public demo TiTiler. It is only a default: the value seeds the
+ * "raster tile server" field of the Add Data → Tileset form, and the server a
+ * dataset actually uses travels in that dataset's own metadata. Two
  * consequences worth knowing before debugging a tile that never arrives:
  *
  *  - Pasting a bare `.tif` into that form ignores this entirely. kepler decides

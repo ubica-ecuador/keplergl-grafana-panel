@@ -144,7 +144,7 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       path: 'rasterServerUrl',
       name: 'Raster tile server',
       description:
-        'TiTiler-compatible server that turns a COG into tiles, for queries returning a raster_url column. It reads the imagery on the map\u2019s behalf, so it must be able to reach it.',
+        'TiTiler-compatible server that turns a COG into tiles, for queries returning a raster_url column. It reads the imagery on the map\u2019s behalf, so it must be able to reach it \u2014 the public default cannot see anything private, and is given the url you point it at. A .pmtiles url needs no server and ignores this.',
       category: ['Map'],
       settings: { placeholder: DEFAULT_RASTER_SERVER_URL },
     })

@@ -3,15 +3,24 @@ import { keplerGlReducer, enhanceReduxMiddleware } from '@kepler.gl/reducers';
 import { applyMiddleware, combineReducers, legacy_createStore, Store } from 'redux';
 
 import { withTripGpuFilterFix } from './tripLayerFix';
+import { buildTimedWmsLayer } from './wmsDeckLayer';
+import { withWmsTime } from './wmsTimeLayer';
 
 /**
- * kepler's layer classes, with the Trip layer repaired.
+ * kepler's layer classes, with the Trip layer repaired and the WMS layer taught
+ * to ask for a date.
  *
- * kepler builds layers from `visState.layerClasses`, so replacing the entry here
- * is the whole of the fix — see `tripLayerFix.ts` for what is wrong with the
- * stock one and why it has to be done at the class rather than the instance.
+ * kepler builds layers from `visState.layerClasses`, so replacing an entry here
+ * is the whole of the change — see `tripLayerFix.ts` for what is wrong with the
+ * stock Trip layer and why it has to be done at the class rather than the
+ * instance, and `wmsTimeLayer.ts` for why a time-aware WMS cannot be driven
+ * from outside the layer at all.
  */
-const layerClasses = { ...LayerClasses, trip: withTripGpuFilterFix(LayerClasses.trip) };
+const layerClasses = {
+  ...LayerClasses,
+  trip: withTripGpuFilterFix(LayerClasses.trip),
+  wms: withWmsTime(LayerClasses.wms, buildTimedWmsLayer),
+};
 
 /**
  * Builds a Redux store dedicated to one panel instance.

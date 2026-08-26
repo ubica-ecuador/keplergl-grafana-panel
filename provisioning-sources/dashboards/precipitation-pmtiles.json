@@ -24,8 +24,8 @@
   },
   "timepicker": {},
   "timezone": "utc",
-  "title": "Lluvia — CHIRPS diario sobre Sudamérica",
-  "uid": "precip-time",
+  "title": "Lluvia — CHIRPS sobre Sudamérica · PMTiles sin servidor",
+  "uid": "precip-pmtiles",
   "version": 1,
   "weekStart": "",
   "panels": [
@@ -41,7 +41,7 @@
       "title": "",
       "options": {
         "mode": "markdown",
-        "content": "# Lluvia diaria sobre Sudamérica\n\nSesenta días de precipitación satelital (**CHIRPS**, 0.05°), uno por barra del timeline. Arrástralo y el mapa muestra la lluvia de ese día; las curvas de la derecha te dicen dónde mirar, porque un pico en **intensidad** o en **área con lluvia** es un día que merece la pena abrir.\n\nNada de esto se descargó entero: CHIRPS publica un COG por día y DuckDB leyó por HTTP solo las nueve teselas que cubren el continente, las recortó y las dejó listas para el mapa.\n\n**Dos cosas que conviene saber de lo que ves.** La lámina está cuantizada —0 a 30 mm sobre un entero— porque kepler no dibuja rásters de coma flotante: **por encima de 30 mm en un día el tono ya no distingue**, aunque las cifras de la derecha, calculadas sobre los datos originales, sí llegan a los 300 mm que caen algunos días. Y se pinta **todo**, también lo que no llovió, con el tono más claro: un campo dibujado solo donde llueve se lee como ruido, no como tiempo. El océano entra en ese mismo tono claro aunque CHIRPS no mida sobre el mar — enmascararlo exigiría un recorte con la línea de costa."
+        "content": "# Lluvia diaria — la misma, sin servidor de teselas\n\nEste tablero dibuja **exactamente los mismos sesenta días** que [el original](/d/precip-time), y la diferencia está en cómo llegan a la pantalla.\n\nAllí cada día es un **COG** que un TiTiler recorta en teselas cuando el mapa las pide. Aquí cada día es un **PMTiles**: un archivo con la pirámide ya dibujada dentro, que kepler lee por sí mismo pidiendo trozos del fichero. La opción «Raster tile server» del panel está **vacía a propósito** — no hay nada que configurar, y ese es justo el caso de quien instale el plugin desde el catálogo de Grafana y no tenga dónde levantar un servidor.\n\nEl precio se ve en el panel de capas: **solo hay opacidad**. Ni rampa, ni reescalado, ni elegir banda — el azul se decidió al hornear el archivo, y ya no hay números debajo que repintar. En el original esos controles siguen ahí.\n\nLo que cuesta cada forma, medido sobre estos mismos datos: el COG de un día pesa 631 KB y necesita un servidor vivo; el archivo pesa unos 470 KB y no necesita ninguno."
       }
     },
     {
@@ -74,8 +74,7 @@
             }
           }
         },
-        "rasterColormap": "blues",
-        "rasterServerUrl": "http://localhost:8088"
+        "rasterServerUrl": ""
       },
       "targets": [
         {
@@ -86,11 +85,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- Una fila por día: la fecha, el COG de ese día y las tres cifras que lo\n-- resumen. El mismo resultado alimenta el timeline, el mapa y las curvas, así\n-- que arrastrar la barra no pide nada al servidor.\nSELECT\n  dia::TIMESTAMPTZ                    AS time,\n  raster_url,\n  round(intensidad_mm, 1)             AS intensidad_mm,\n  round(fraccion_con_lluvia * 100, 1) AS area_con_lluvia_pct,\n  round(max_mm, 0)                    AS max_mm\nFROM read_parquet('/derived/chirps-index.parquet')\nORDER BY time",
+          "rawSql": "-- Una fila por día: la fecha, el COG de ese día y las tres cifras que lo\n-- resumen. El mismo resultado alimenta el timeline, el mapa y las curvas, así\n-- que arrastrar la barra no pide nada al servidor.\nSELECT\n  dia::TIMESTAMPTZ                    AS time,\n  -- El mismo índice, con la URL apuntando al archivo PMTiles en vez de al\n  -- COG: mismo día, mismos píxeles, otra forma de servirlos.\n  replace(replace(raster_url, '/derived/', 'http://localhost:8089/'), '.tif', '.pmtiles') AS raster_url,\n  round(intensidad_mm, 1)             AS intensidad_mm,\n  round(fraccion_con_lluvia * 100, 1) AS area_con_lluvia_pct,\n  round(max_mm, 0)                    AS max_mm\nFROM read_parquet('/derived/chirps-index.parquet')\nORDER BY time",
           "refId": "A"
         }
       ],
-      "title": "Lluvia del día · arrastra la barra de tiempo"
+      "title": "Lluvia del día · leída del archivo, sin servidor de teselas"
     },
     {
       "datasource": {
@@ -178,7 +177,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- Una fila por día: la fecha, el COG de ese día y las tres cifras que lo\n-- resumen. El mismo resultado alimenta el timeline, el mapa y las curvas, así\n-- que arrastrar la barra no pide nada al servidor.\nSELECT\n  dia::TIMESTAMPTZ                    AS time,\n  raster_url,\n  round(intensidad_mm, 1)             AS intensidad_mm,\n  round(fraccion_con_lluvia * 100, 1) AS area_con_lluvia_pct,\n  round(max_mm, 0)                    AS max_mm\nFROM read_parquet('/derived/chirps-index.parquet')\nORDER BY time",
+          "rawSql": "-- Una fila por día: la fecha, el COG de ese día y las tres cifras que lo\n-- resumen. El mismo resultado alimenta el timeline, el mapa y las curvas, así\n-- que arrastrar la barra no pide nada al servidor.\nSELECT\n  dia::TIMESTAMPTZ                    AS time,\n  -- El mismo índice, con la URL apuntando al archivo PMTiles en vez de al\n  -- COG: mismo día, mismos píxeles, otra forma de servirlos.\n  replace(replace(raster_url, '/derived/', 'http://localhost:8089/'), '.tif', '.pmtiles') AS raster_url,\n  round(intensidad_mm, 1)             AS intensidad_mm,\n  round(fraccion_con_lluvia * 100, 1) AS area_con_lluvia_pct,\n  round(max_mm, 0)                    AS max_mm\nFROM read_parquet('/derived/chirps-index.parquet')\nORDER BY time",
           "refId": "A"
         }
       ],
@@ -231,7 +230,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- Una fila por día: la fecha, el COG de ese día y las tres cifras que lo\n-- resumen. El mismo resultado alimenta el timeline, el mapa y las curvas, así\n-- que arrastrar la barra no pide nada al servidor.\nSELECT\n  dia::TIMESTAMPTZ                    AS time,\n  raster_url,\n  round(intensidad_mm, 1)             AS intensidad_mm,\n  round(fraccion_con_lluvia * 100, 1) AS area_con_lluvia_pct,\n  round(max_mm, 0)                    AS max_mm\nFROM read_parquet('/derived/chirps-index.parquet')\nORDER BY time",
+          "rawSql": "-- Una fila por día: la fecha, el COG de ese día y las tres cifras que lo\n-- resumen. El mismo resultado alimenta el timeline, el mapa y las curvas, así\n-- que arrastrar la barra no pide nada al servidor.\nSELECT\n  dia::TIMESTAMPTZ                    AS time,\n  -- El mismo índice, con la URL apuntando al archivo PMTiles en vez de al\n  -- COG: mismo día, mismos píxeles, otra forma de servirlos.\n  replace(replace(raster_url, '/derived/', 'http://localhost:8089/'), '.tif', '.pmtiles') AS raster_url,\n  round(intensidad_mm, 1)             AS intensidad_mm,\n  round(fraccion_con_lluvia * 100, 1) AS area_con_lluvia_pct,\n  round(max_mm, 0)                    AS max_mm\nFROM read_parquet('/derived/chirps-index.parquet')\nORDER BY time",
           "refId": "A"
         }
       ],

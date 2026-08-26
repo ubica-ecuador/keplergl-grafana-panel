@@ -14,9 +14,13 @@ export type KeplerRow = Record<string, unknown>;
  * their geometry, so renaming `u`/`v` would be renaming something nobody looks at.
  *
  * `rasterUrl` is absent for the same reason: it becomes a dataset of its own,
- * whose substance is a metadata url rather than any row.
+ * whose substance is a metadata url rather than any row. So are `wmsUrl` and
+ * `wmsLayer`, which name a service rather than describe a row.
  */
-type RenamedRole = Exclude<keyof FieldRoles, 'u' | 'v' | 'speed' | 'direction' | 'rasterUrl'>;
+type RenamedRole = Exclude<
+  keyof FieldRoles,
+  'u' | 'v' | 'speed' | 'direction' | 'rasterUrl' | 'wmsUrl' | 'wmsLayer'
+>;
 
 /**
  * Column name kepler expects for each role.

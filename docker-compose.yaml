@@ -71,9 +71,18 @@ services:
       # base maps; Esri serves the tiles of the satellite and topographic ones;
       # Mapterhorn serves the elevation tiles behind the two relief styles.
       #
-      # The raster tile server is the third delta. kepler fetches raster tiles as
-      # NumPy arrays over XHR, so they land in connect-src too — not img-src,
-      # which is where a "tile" would normally be looked for.
+      # The raster hosts are the third delta, and all three go in connect-src —
+      # not img-src, which is where a "tile" would normally be looked for.
+      # kepler fetches COG tiles as NumPy arrays over XHR (:8088 here, and
+      # titiler.xyz which is the panel's default server), and reads a PMTiles
+      # archive by asking :8089 for byte ranges of it.
+      #
+      # A WMS host belongs there too, and that one is genuinely surprising: the
+      # pictures a WMS serves are PNGs, but loaders.gl fetches them and parses
+      # the ArrayBuffer itself rather than pointing an <img> at them — so
+      # `img-src *` does not cover them and a strict `connect-src` blocks the
+      # map without a word about images. GeoGLOWS serves the provisioned
+      # rainfall dashboards.
       #
       # Verified with the stock template: the plugin still loads, the map still
       # renders and Web Workers still start — only the basemap goes missing.
@@ -82,7 +91,8 @@ services:
         'self';style-src 'self' 'unsafe-inline' blob:;img-src * data:;base-uri 'self';connect-src 'self'
         grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com
         https://services.arcgisonline.com https://tiles.mapterhorn.com
-        http://localhost:8088 ws://$$ROOT_PATH
+        http://localhost:8088 http://localhost:8089 https://titiler.xyz
+        https://services.geoglows.org ws://$$ROOT_PATH
         wss://$$ROOT_PATH;manifest-src 'self';media-src 'none';form-action 'self';
 
   # Sources bench, on port 3002: the file-based formats the panel is meant to
@@ -155,6 +165,25 @@ services:
     volumes:
       - ./testdata:/usr/share/nginx/html:ro
       - ./docker/sources-data.nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+  # The derived rasters, served to the browser on port 8089.
+  #
+  # Only PMTiles needs this. A COG is read by the tile server, which reaches it
+  # through the shared volume and hands back tiles; an archive is read by the
+  # browser itself, so it has to be fetchable from there — with CORS, and with
+  # byte ranges, which is what `docker/derived-data.nginx.conf` is about.
+  #
+  # Separate from `sources-data` rather than folded into it: that one publishes
+  # no port on purpose, being fixtures for Infinity to fetch from inside the
+  # compose network. This one exists to be reached from outside.
+  derived-data:
+    image: nginx:alpine
+    container_name: 'ubica-keplergl-panel-derived-data'
+    ports:
+      - '8089:80/tcp'
+    volumes:
+      - raster-derived:/usr/share/nginx/html:ro
+      - ./docker/derived-data.nginx.conf:/etc/nginx/conf.d/default.conf:ro
 
   # Raster tile server, on port 8088. kepler ships a RasterTileLayer but no
   # server to feed it: `rasterServerUrls` defaults to an empty list, so the

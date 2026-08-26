@@ -29,10 +29,12 @@ are autodetect-only and are marked below.
 | Speed           | ❌     | `wind_speed`, `windspeed`, `wind_speed_10m`, `speed`, `ws`                                                                                                                                                      | not renamed |
 | Direction       | ❌     | `wind_direction`, `winddirection`, `wind_direction_10m`, `direction`, `wind_dir`, `wd`                                                                                                                          | not renamed |
 | Raster URL      | ❌     | `raster_url`, `cog_url`, `cog`, `asset_href`, `href`                                                                                                                                                            | not renamed |
+| WMS URL         | ❌     | `wms_url`, `wms`, `service_url`                                                                                                                                                                                 | not renamed |
+| WMS layer       | ❌     | `wms_layer`, `layer`, `layer_name`                                                                                                                                                                              | not renamed |
 
-::: warning Seven roles cannot be mapped by hand
-`originH3`, `destH3`, `u`, `v`, `speed`, `direction` and `rasterUrl` are detected but have no entry
-in the Field mapping editor. If your columns are named something the lists do not cover, **alias them
+::: warning Nine roles cannot be mapped by hand
+`originH3`, `destH3`, `u`, `v`, `speed`, `direction`, `rasterUrl`, `wmsUrl` and `wmsLayer` are
+detected but have no entry in the Field mapping editor. If your columns are named something the lists do not cover, **alias them
 in the query**:
 
 ```sql
@@ -41,9 +43,33 @@ FROM journeys GROUP BY 1, 2;
 ```
 
 The four velocity roles are never renamed for kepler in any case, because a velocity field is
-consumed to trace streamlines and never reaches kepler as columns at all. Neither is the raster
-role, for the same kind of reason: it becomes a dataset of its own.
+consumed to trace streamlines and never reaches kepler as columns at all. Neither are the raster and
+WMS roles, for the same kind of reason: each becomes a dataset of its own.
 :::
+
+## The WMS roles make a second dataset too
+
+`wmsUrl` and `wmsLayer` work the same way as `rasterUrl`, and go together: a service publishes many
+layers, so a URL without a layer name is not a picture. Both must be present or neither role
+applies.
+
+A query that carries them produces the ordinary row dataset plus a WMS dataset, id
+`grafana-<refId>-wms`, which holds no rows — only where the service is and which of its layers to
+draw. There is no tile server in that list, and its absence is the point: a WMS renders its own
+imagery, so nothing sits in between.
+
+Give the **bare endpoint**. A whole `GetMap` URL is trimmed back to it, because every request is
+built by appending parameters to what you give and a query string already there would corrupt the
+first of them.
+
+If the query also carries a **time column**, those dates become the timeline. If it does not, the
+panel reads the layer's own `<Dimension name="time">` from the service's `GetCapabilities` and uses
+that — which is the version that stays correct as the server gains new passes. Either way the
+calendar arrives as a third dataset, `grafana-<refId>-wms-times`, one row per date: kepler's time
+filter is always a filter on a column, so the dates have to be on the map for the widget to exist.
+
+Moving the widget re-asks the service for that date and nothing else. See
+[Layers a query cannot drive](../layers/url-configured#from-a-query-wms).
 
 ## Why the match is exact
 

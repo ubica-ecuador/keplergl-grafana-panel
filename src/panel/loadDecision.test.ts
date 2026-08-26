@@ -1,4 +1,4 @@
-import { decideLoadAction, splitRasterRefresh, splitRefresh } from './loadDecision';
+import { decideLoadAction, splitRasterRefresh, splitRefresh, splitWmsRefresh } from './loadDecision';
 
 /**
  * The panel has to choose between two very different kepler calls on every
@@ -177,5 +177,45 @@ describe('splitRasterRefresh', () => {
     const { remove } = splitRasterRefresh([], [scene('pawlsg7ej', 'https://titiler.xyz/cog/stac?url=x')]);
 
     expect(remove).toEqual([]);
+  });
+});
+
+describe('splitWmsRefresh', () => {
+  const wms = (id: string, layerName = 'rain', serviceUrl = 'https://geo.test/wms') => ({ id, serviceUrl, layerName });
+
+  it('adds what kepler does not have yet', () => {
+    const { add, replace, keep } = splitWmsRefresh([wms('grafana-A-wms')], []);
+
+    expect(add.map((d) => d.id)).toEqual(['grafana-A-wms']);
+    expect(replace).toEqual([]);
+    expect(keep).toEqual([]);
+  });
+
+  it('keeps a layer the query re-describes unchanged, so a refresh does not blink', () => {
+    const { keep, replace } = splitWmsRefresh([wms('grafana-A-wms')], [wms('grafana-A-wms')]);
+
+    expect(keep.map((d) => d.id)).toEqual(['grafana-A-wms']);
+    expect(replace).toEqual([]);
+  });
+
+  it('rebuilds when the layer changes under the same service', () => {
+    const { replace } = splitWmsRefresh([wms('grafana-A-wms', 'clouds')], [wms('grafana-A-wms', 'rain')]);
+
+    expect(replace.map((d) => d.layerName)).toEqual(['clouds']);
+  });
+
+  it('rebuilds when the service changes under the same layer', () => {
+    const { replace } = splitWmsRefresh(
+      [wms('grafana-A-wms', 'rain', 'https://other.test/wms')],
+      [wms('grafana-A-wms', 'rain')]
+    );
+
+    expect(replace.map((d) => d.serviceUrl)).toEqual(['https://other.test/wms']);
+  });
+
+  it('removes only the ids the panel minted', () => {
+    const { remove } = splitWmsRefresh([], [wms('grafana-A-wms'), wms('someones-own-wms'), wms('grafana-A-raster')]);
+
+    expect(remove).toEqual(['grafana-A-wms']);
   });
 });
