@@ -43,6 +43,10 @@
     ],
     "screenshots": [
       {
+        "name": "The Amazon drainage as a velocity field, traced from origin-destination rows",
+        "path": "img/banner.png"
+      },
+      {
         "name": "Global seismicity, read as remote GeoParquet by DuckDB",
         "path": "img/screenshot-quakes.png"
       },

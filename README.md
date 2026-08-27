@@ -1,5 +1,7 @@
 # Kepler Geospatial Maps
 
+![The Amazon basin drawn as a velocity field: every tributary traced by streamlines over a dark basemap](src/img/banner.png)
+
 Interactive [kepler.gl](https://kepler.gl) maps inside Grafana dashboards, fed by any Grafana data
 source. Built for spatio-temporal mobility data — points, trajectories and origin-destination flows.
 
