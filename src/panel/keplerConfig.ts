@@ -1,6 +1,8 @@
+import { messages } from '@kepler.gl/localization';
 import { initApplicationConfig } from '@kepler.gl/utils';
 
 import { DEFAULT_RASTER_SERVER_URL } from './constants';
+import { registerFlowFieldMessages } from './flowFieldMessages';
 
 /**
  * Base URL for kepler's own static assets.
@@ -65,4 +67,8 @@ export function configureKepler(): void {
     // upstream default cannot silently remove it.
     enableFlowLayer: true,
   });
+
+  // The flow field is a layer kepler does not ship, so its words are in no
+  // catalogue: without this its labels render as their own message ids.
+  registerFlowFieldMessages(messages);
 }

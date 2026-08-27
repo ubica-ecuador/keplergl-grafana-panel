@@ -30,6 +30,7 @@ import {
 } from './keplerAdapter';
 import { decideLoadAction } from './loadDecision';
 import { replaceMapControl } from './effectsMapControl';
+import { replaceLayerConfigurator } from './flowFieldConfigurator';
 import { replaceRangeBrush } from './rangeBrushFix';
 import { replaceAnimationController } from './animationSweepFix';
 import { useTimeRangeSync } from './useTimeRangeSync';
@@ -62,17 +63,20 @@ const NO_TIME_VARIABLES: TimeVariableMapping = { from: '', to: '' };
 // module.ts so it is part of the deferred chunk.
 configureKepler();
 
-// Three repairs to the stock KeplerGl: a map control that carries the effects
-// button kepler ships but never mounts, a range brush that paints over its
-// histogram rather than under it, and an animation controller whose growing
-// window reaches the last of the data before looping. Module scope so the
-// component tree is built once — recreating it per render would remount the
-// whole map. The published d.ts declares `injectComponents(recipes?: never[])`
-// — the recipe tuple type is lost in compilation — so the list needs a cast.
+// Three repairs to the stock KeplerGl and one addition: a map control that
+// carries the effects button kepler ships but never mounts, a range brush that
+// paints over its histogram rather than under it, an animation controller whose
+// growing window reaches the last of the data before looping — and a layer
+// configurator that knows how to draw the flow field's own panel, which kepler
+// cannot, never having heard of the type. Module scope so the component tree is
+// built once — recreating it per render would remount the whole map. The
+// published d.ts declares `injectComponents(recipes?: never[])` — the recipe
+// tuple type is lost in compilation — so the list needs a cast.
 const KeplerGl = injectComponents([
   replaceMapControl(),
   replaceRangeBrush(),
   replaceAnimationController(),
+  replaceLayerConfigurator(),
 ] as unknown as never[]);
 
 export interface KeplerMapProps {

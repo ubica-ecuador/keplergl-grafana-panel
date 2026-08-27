@@ -76,7 +76,7 @@ export const FLOW_FIELD_VIS_CONFIGS = {
   trailShare: {
     type: 'number',
     defaultValue: 4,
-    label: 'Trail length (% of cycle)',
+    label: 'flowfield.trailShare',
     isRanged: false,
     range: [0.5, 60],
     step: 0.5,
@@ -86,7 +86,7 @@ export const FLOW_FIELD_VIS_CONFIGS = {
   density: {
     type: 'number',
     defaultValue: 9000,
-    label: 'Line density',
+    label: 'flowfield.density',
     isRanged: false,
     range: [500, 20000],
     step: 500,
@@ -96,7 +96,7 @@ export const FLOW_FIELD_VIS_CONFIGS = {
   lineLength: {
     type: 'number',
     defaultValue: 30,
-    label: 'Line length (vertices)',
+    label: 'flowfield.lineLength',
     isRanged: false,
     range: [5, 60],
     step: 1,
@@ -106,7 +106,7 @@ export const FLOW_FIELD_VIS_CONFIGS = {
   cycleSeconds: {
     type: 'number',
     defaultValue: 60,
-    label: 'Animation cycle (s)',
+    label: 'flowfield.cycleSeconds',
     isRanged: false,
     range: [5, 300],
     step: 5,
@@ -116,7 +116,7 @@ export const FLOW_FIELD_VIS_CONFIGS = {
   lifeFraction: {
     type: 'number',
     defaultValue: 0.55,
-    label: 'Line lifetime (share of cycle)',
+    label: 'flowfield.lifeFraction',
     isRanged: false,
     range: [0.1, 1],
     step: 0.05,
@@ -126,7 +126,7 @@ export const FLOW_FIELD_VIS_CONFIGS = {
   smoothing: {
     type: 'number',
     defaultValue: 3,
-    label: 'Field smoothing (cells)',
+    label: 'flowfield.smoothing',
     isRanged: false,
     range: [0, 8],
     step: 1,
@@ -136,7 +136,7 @@ export const FLOW_FIELD_VIS_CONFIGS = {
   elevationScale: {
     type: 'number',
     defaultValue: 1,
-    label: 'Vertical exaggeration',
+    label: 'flowfield.elevationScale',
     isRanged: false,
     range: [0, 5],
     step: 0.1,
@@ -146,7 +146,7 @@ export const FLOW_FIELD_VIS_CONFIGS = {
   colorBySpeed: {
     type: 'boolean',
     defaultValue: true,
-    label: 'Colour by speed',
+    label: 'flowfield.colorBySpeed',
     group: 'color',
     property: 'colorBySpeed',
   },
