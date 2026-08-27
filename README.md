@@ -47,6 +47,53 @@ tutorials, a layer gallery and a complete option reference.
 > `services.arcgisonline.com` endpoint, whose terms ask for an ArcGIS account for production use.
 > Installs that need a cleaner footing should point **Base map** at their own `style.json`.
 
+## Dashboards built with it
+
+Each one is a Grafana dashboard and nothing else — no external service, no account, no Mapbox
+token. Every picture is the panel drawing rows a query returned.
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/site/public/img/showcase/zarr-stats.jpg" alt="Zarr, drawn and measured" width="100%">
+      <p><b>Zarr, drawn and measured</b><br>
+      <sub>A Zarr store rendered live, and the rectangle you draw measured in the month the layer is showing.</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/site/public/img/showcase/chirps-rain.jpg" alt="Daily rainfall, and its clock" width="100%">
+      <p><b>Daily rainfall, and its clock</b><br>
+      <sub>One cloud-optimised GeoTIFF per day. The time bar changes the picture without re-running the query.</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/site/public/img/showcase/earthquakes.jpg" alt="Seismicity in three dimensions" width="100%">
+      <p><b>Seismicity in three dimensions</b><br>
+      <sub>Magnitude as height and colour, kepler's own layer panel open, a click publishing its coordinate.</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/site/public/img/showcase/fires.jpg" alt="Active fires, ranked as you pan" width="100%">
+      <p><b>Active fires, ranked as you pan</b><br>
+      <sub>Hotspots on a 0.1° grid, with the table beside it ranking whatever is in view.</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/site/public/img/showcase/water-risk.jpg" alt="Polygons straight from the database" width="100%">
+      <p><b>Polygons straight from the database</b><br>
+      <sub>WRI Aqueduct basins as GeoJSON, coloured by score over a satellite base map.</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/site/public/img/showcase/severe-weather.jpg" alt="Reports, filtered both ways" width="100%">
+      <p><b>Reports, filtered both ways</b><br>
+      <sub>NOAA storm reports by type. The variables filter the map, and the map filters the counts.</sub></p>
+    </td>
+  </tr>
+</table>
+
+More of them, and how each was built, in the
+[documentation](https://ubica-ecuador.github.io/keplergl-grafana-panel/).
+
 ## Installing
 
 Requires **Grafana `>=12.0.10 <12.1 || >=12.1.7 <12.2 || >=12.2.5`**. Those floors are not arbitrary:
