@@ -5,7 +5,7 @@ is something to animate.
 
 ## What creates it
 
-Two different things, and they behave differently:
+Three different things, and they behave differently:
 
 **A time filter.** Any dataset with a time column gets one, with a histogram and a brush. Playing it
 slides the window across the data.
@@ -14,7 +14,12 @@ slides the window across the data.
 [Trajectories](../data/trajectories). Velocity fields are Trip layers underneath, so they animate
 the same way — see [Wind and other velocity fields](../data/velocity-fields).
 
-A map can have both. They are separate clocks, which is why
+**An imagery calendar.** A query that returns one row per date alongside a raster URL — or a WMS
+layer whose service publishes its own dates — puts those dates on the widget, and playing it walks
+the pictures. Nothing is re-queried as it does: the catalogue is already in the browser, and a WMS
+costs one image per date. See [Imagery over time](../data/imagery-over-time).
+
+A map can have more than one. They are separate clocks, which is why
 [peer time sync](../dashboard/peer-time-sync) carries them as separate fields.
 
 ## Trail length

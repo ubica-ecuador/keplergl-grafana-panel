@@ -1,0 +1,398 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "COG y STAC sin salir del dashboard: DuckDB busca la escena en el catálogo, TiTiler la sirve en teselas y la mide, y kepler la pinta como ráster.",
+  "editable": true,
+  "id": null,
+  "links": [],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": [
+    "kepler",
+    "raster"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "cog",
+        "label": "Banda roja de la escena",
+        "type": "query",
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "query": "WITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=100'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT f->'assets'->'red'->>'href'\nFROM features\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE < 60\nORDER BY (f->'properties'->>'datetime')::TIMESTAMP DESC\nLIMIT 1",
+        "refresh": 2,
+        "hide": 2,
+        "description": "The red band of the same scene the map draws, re-resolved whenever the range changes.",
+        "current": {},
+        "options": [],
+        "regex": "",
+        "sort": 0
+      },
+      {
+        "name": "lat",
+        "type": "textbox",
+        "label": "Lat",
+        "hide": 2,
+        "query": "-2.90",
+        "current": {
+          "text": "-2.90",
+          "value": "-2.90"
+        },
+        "options": []
+      },
+      {
+        "name": "lng",
+        "type": "textbox",
+        "label": "Lng",
+        "hide": 2,
+        "query": "-79.00",
+        "current": {
+          "text": "-79.00",
+          "value": "-79.00"
+        },
+        "options": []
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Ráster — COG y STAC vía TiTiler",
+  "uid": "raster-bench",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "gridPos": {
+        "h": 13,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "options": {
+        "mode": "markdown",
+        "content": "# Ráster cloud-native\n\nUna consulta descubre la escena y el mapa la pinta. No hay ETL, ni descarga: DuckDB pregunta al catálogo STAC de Sentinel-2 qué imagen cubre Cuenca dentro del rango del dashboard, devuelve **una fila** con el enlace al COG, y el panel se lo pasa a TiTiler, que sirve las teselas leyendo el fichero remoto por rangos de bytes.\n\nEl mismo servidor sabe además **medir** lo que sirve, así que los dos paneles de abajo sacan números del ráster sin traerse un solo píxel al navegador: la media de la banda roja sobre una zona, y el valor del píxel donde pinches en el mapa.\n\n| Pieza | Quién la pone |\n|---|---|\n| Catálogo | `earth-search.aws.element84.com`, público y sin autenticación |\n| Búsqueda | DuckDB con la extensión `http_client`, parametrizada por el rango |\n| Teselas y estadísticas | el contenedor `titiler` del compose |\n| Dibujo | `RasterTileLayer`, que kepler ya trae |\n\n**Mueve el rango de fechas**: cambian la escena y los números, no el encuadre. Si en el periodo no hay ninguna imagen bajo el 60 % de nubes, la consulta no devuelve nada y no hay ráster que pintar.\n\n**Los dos paneles de abajo no piden nada por HTTP.** La estadística zonal se calcula dentro de DuckDB, uniendo el ráster a la tabla de zonas — cuatro zonas o cuatro mil, una sola consulta. Y el NDVI está calculado en SQL y escrito como COG, que TiTiler sirve igual que una escena remota:\n\n```sql\nCOPY (\n  SELECT r.geometry,\n         -- NDVI (-0.2 .. 0.9) estirado sobre el rango del entero.\n         RT_Cube2TypeUInt16(((n.databand_1 - r.databand_1) / (n.databand_1 + r.databand_1)\n                             + 0.2) / 1.1 * 65535.0) AS ndvi\n  FROM RT_Read('/testdata/raster/cuenca-b04.tif') r\n  JOIN RT_Read('/testdata/raster/cuenca-b08.tif') n ON r.id = n.id)\nTO '/derived/ndvi-cuenca-u16.tif'\nWITH (FORMAT RASTER, DRIVER 'COG', SRS 'EPSG:4326',\n      DATABAND_COLUMNS ['ndvi'], CREATION_OPTIONS ('COMPRESS=DEFLATE'));\n```\n\nEsa consulta **no** está en ningún panel, y es deliberado: escribe un fichero, y un dashboard que refresca cada 30 s no debe rehacer un cálculo cada vez. Se ejecuta una vez —desde Explore, contra el datasource DuckDB— y los paneles leen lo que ya está. Si el panel de NDVI aparece vacío, es que nadie la ha ejecutado todavía.\n\n**El entero no es un detalle**: kepler no pinta un ráster `float32` (se queda sin capa, sin decir nada) y con `uint8` sale un plano de color. `uint16` es lo que funciona."
+      }
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "La misma consulta que alimenta el mapa. Aquí se ve en crudo lo que el panel recibe: una fila, con la columna raster_url que el plugin detecta por nombre.",
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "id": 2,
+      "type": "table",
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "WITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=100'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT\n  f->>'id'                                     AS scene_id,\n  (f->'properties'->>'datetime')::TIMESTAMP    AS acquired,\n  (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n  f->'assets'->'visual'->>'href'               AS raster_url\nFROM features\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE < 60\nORDER BY acquired DESC\nLIMIT 1",
+          "refId": "A"
+        }
+      ],
+      "title": "La escena elegida para el rango actual"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "El ráster llega al mapa por la columna raster_url del DataFrame. Al pinchar, el panel publica el lugar en $lat/$lng, que es lo que consulta el panel de la derecha.",
+      "gridPos": {
+        "h": 16,
+        "w": 16,
+        "x": 0,
+        "y": 18
+      },
+      "id": 3,
+      "type": "ubica-keplergl-panel",
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "variableMappings": [
+          {
+            "field": "",
+            "variable": "lat",
+            "variableTo": "lng",
+            "source": "coordinate"
+          }
+        ],
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -2.905,
+              "longitude": -79.0,
+              "zoom": 9.5,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        },
+        "rasterServerUrl": "http://localhost:8088"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "WITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=100'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT\n  f->>'id'                                     AS scene_id,\n  (f->'properties'->>'datetime')::TIMESTAMP    AS acquired,\n  (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n  f->'assets'->'visual'->>'href'               AS raster_url\nFROM features\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE < 60\nORDER BY acquired DESC\nLIMIT 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Sentinel-2 sobre Cuenca"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "description": "Estadística zonal calculada por TiTiler: recorta la banda roja con el polígono y devuelve el resumen. Una petición HTTP, cero píxeles en el navegador.",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 18
+      },
+      "id": 4,
+      "type": "stat",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "displayName": "reflectancia media"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://titiler/cog/statistics?url=${cog:percentencode}",
+          "url_options": {
+            "method": "POST",
+            "data": "{\"type\": \"Feature\", \"properties\": {\"name\": \"Cuenca\"}, \"geometry\": {\"type\": \"Polygon\", \"coordinates\": [[[-79.05, -2.95], [-78.95, -2.95], [-78.95, -2.85], [-79.05, -2.85], [-79.05, -2.95]]]}}",
+            "body_type": "raw",
+            "body_content_type": "application/json"
+          },
+          "root_selector": "properties.statistics.b1",
+          "columns": [
+            {
+              "selector": "mean",
+              "text": "mean",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "title": "Reflectancia roja media · zona de Cuenca"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "description": "El valor del píxel bajo el punto que pinches en el mapa. Las coordenadas llegan por las variables $lat y $lng, que publica el propio panel del mapa.",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 26
+      },
+      "id": 5,
+      "type": "stat",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "displayName": "reflectancia (banda roja)"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://titiler/cog/point/${lng},${lat}?url=${cog:percentencode}",
+          "url_options": {
+            "method": "GET",
+            "data": ""
+          },
+          "root_selector": "values",
+          "columns": []
+        }
+      ],
+      "title": "Valor del píxel donde pinchas"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "RT_CubeClip + RT_CubeStats_Agg con GROUP BY: una fila por zona, unida a la población que ya vivía en la tabla. Cuatro zonas o cuatro mil, es la misma consulta.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 31
+      },
+      "id": 6,
+      "type": "table",
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Estadística zonal dentro de la base de datos: el ráster se une a tus\n-- propias tablas en SQL, en una sola consulta, en vez de una petición HTTP\n-- por zona. Es lo que un servidor de teselas no puede hacer.\nLOAD raster; LOAD spatial;\nWITH zonas AS (\n  SELECT name, population, geometry AS geom\n  FROM read_parquet('/testdata/cuenca-zones.parquet')\n),\nteselas AS (\n  SELECT geometry, tile_x, tile_y, metadata, databand_1 AS band\n  FROM RT_Read('/testdata/raster/cuenca-b04.tif')\n),\nrecortes AS (\n  -- El recorte rellena con 0 fuera del polígono; declararlo nodata es lo que\n  -- impide que ese relleno entre en la media.\n  SELECT z.name, z.population,\n         RT_CubeSetNoData(RT_CubeClip(t.band, t.tile_x, t.tile_y, t.metadata, z.geom, 0.0), 0.0) AS cube\n  FROM teselas t JOIN zonas z ON ST_Intersects(t.geometry, z.geom)\n)\nSELECT name AS zona,\n       round((RT_CubeStats_Agg(cube, 0)).mean, 1)   AS reflectancia_media,\n       (RT_CubeStats_Agg(cube, 0)).valid_count      AS pixeles,\n       (RT_CubeStats_Agg(cube, 0)).minimum          AS minimo,\n       (RT_CubeStats_Agg(cube, 0)).maximum          AS maximo,\n       population                                   AS poblacion\nFROM recortes\nGROUP BY name, population\nORDER BY reflectancia_media DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Estadística zonal calculada en DuckDB"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "NDVI calculado en SQL a partir de dos bandas y escrito como COG; TiTiler lo sirve y kepler lo pinta. El panel no distingue este ráster de una escena remota.",
+      "gridPos": {
+        "h": 14,
+        "w": 12,
+        "x": 12,
+        "y": 31
+      },
+      "id": 7,
+      "type": "ubica-keplergl-panel",
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -2.95,
+              "longitude": -79.0,
+              "zoom": 10,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        },
+        "rasterServerUrl": "http://localhost:8088"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- El COG que escribió la consulta de arriba. Para el panel esto es una URL\n-- como cualquier otra: la misma tubería que dibuja una escena de Sentinel.\nSELECT file AS raster_url FROM glob('/derived/ndvi-*.tif') ORDER BY file LIMIT 1",
+          "refId": "A"
+        }
+      ],
+      "title": "NDVI calculado en SQL"
+    }
+  ]
+}

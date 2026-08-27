@@ -91,12 +91,18 @@ Project in the query, or ask the server for 4326.
 ## Network
 
 With a default Grafana CSP, nothing needs configuring. With `content_security_policy = true`, the
-base map tile hosts need `connect-src` entries — and only those; your data never leaves Grafana. See
+base map tile hosts need `connect-src` entries — and, if a query draws imagery, so does the tile
+server, archive host or WMS behind it. Your rows never leave Grafana either way. See
 [Install](../guide/install#hardened-grafana).
 
 An **air-gapped** install works with **Base map → Self-hosted style.json**, or with _No Basemap_.
 kepler's icon library and the effect thumbnails are vendored with the plugin, so nothing is fetched
 from any CDN at runtime.
+
+Imagery is compatible with that, but not by default: the **Raster tile server** option starts at a
+public service, and has to be repointed at one of your own — or sidestepped entirely with a
+[`.pmtiles` archive](../guide/data/rasters#pmtiles), which needs no server at all, only somewhere
+static to be served from.
 
 ## Roadmap
 

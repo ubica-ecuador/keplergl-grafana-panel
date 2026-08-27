@@ -76,9 +76,19 @@ this codebase has most of.
 | `varsync`              | cross-filtering into variables                             |
 | `flows`                | origin–destination                                         |
 | `layers`               | **every layer type the panel can build**, thirteen of them |
+| `wms`                  | a time-aware WMS, with the calendar coming from the service |
 
 `provisioning-sources/dashboards/` is the same idea for the `:3002` bench: the file formats
-(GeoParquet, GeoJSON, CSV) and a global seismicity dashboard reading remote GeoParquet over HTTPS.
+(GeoParquet, GeoJSON, CSV), a global seismicity dashboard reading remote GeoParquet over HTTPS, and
+the imagery ones, which need the bench's DuckDB and its TiTiler:
+
+| Dashboard        | Exercises                                                              |
+| ---------------- | ---------------------------------------------------------------------- |
+| `raster`         | a COG found by STAC search, plus statistics over it by HTTP and in SQL |
+| `raster-time`    | one row per date — the time widget as scene selector                   |
+| `precip-time`    | sixty days of CHIRPS rainfall, as a continuous field                   |
+| `precip-pmtiles` | the same map read from an archive, with no tile server at all          |
+| `wms-time`       | a WMS drawn, clicked and read back as data over WCS                    |
 
 ### The layer gallery
 
@@ -93,7 +103,7 @@ saved config names its own base map, which wins over the panel option.
 
 **Six layer types are missing.** `vectorTile`, `rasterTile`, `wms`, `tile3d`, `bitmap` and `3D` are
 configured with a URL rather than with data, so no query can drive them — see
-[Layers a query cannot drive](./layers/url-configured).
+[Layers configured with a URL](./layers/url-configured).
 
 These dashboards set no layers where they can avoid it, so what renders is what autodetection alone
 produces. That makes the gallery a regression test you scroll: a layer type that stops rendering

@@ -32,3 +32,23 @@ export const SATELLITE_BASEMAP_ID = 'grafana-satellite';
  */
 export const SATELLITE_TERRAIN_BASEMAP_ID = 'grafana-satellite-terrain';
 export const TOPOGRAPHIC_TERRAIN_BASEMAP_ID = 'grafana-topographic-terrain';
+
+/**
+ * Raster tile server used when the panel option is left empty.
+ *
+ * Development Seed's public demo, which is also what kepler.gl itself falls
+ * back to for a lone COG (`tileset-raster-form`'s `TITILER_BASE_URL`). The
+ * point of a default that exists is that a freshly installed plugin draws a
+ * public COG without being configured first; pointing it at this repository's
+ * own docker-compose would leave everyone else with a silent blank map.
+ *
+ * Its limits are real and belong in the option's description, not only here:
+ * it can only read imagery that is public, the url — signature and all — is
+ * handed to a third party, and it is a demo endpoint with no guarantees.
+ * Anything private needs a server of one's own.
+ *
+ * Here rather than in `keplerConfig` because `KeplerPanel` reads it, and that
+ * module is deliberately free of kepler imports — pulling one in would drag
+ * deck.gl and MapLibre into the main chunk and undo the code splitting.
+ */
+export const DEFAULT_RASTER_SERVER_URL = 'https://titiler.xyz';

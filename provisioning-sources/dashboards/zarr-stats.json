@@ -1,0 +1,393 @@
+{
+  "uid": "zarr-stats",
+  "title": "Zarr — estadística de lo que dibujas",
+  "description": "Zonal sobre un Zarr piramidado: la figura dibujada se mide en el mes que la capa está pintando, con una sola petición compartida.",
+  "tags": [
+    "zarr",
+    "raster",
+    "duckdb"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "time": {
+    "from": "2020-01-01T00:00:00.000Z",
+    "to": "2020-07-15T00:00:00.000Z"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "store",
+        "label": "store",
+        "hide": 2,
+        "type": "constant",
+        "query": "https://carbonplan-maps.s3.us-west-2.amazonaws.com/v2/demo/4d/tavg-prec-month"
+      },
+      {
+        "name": "area",
+        "label": "Zona dibujada (WKT)",
+        "hide": 0,
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        }
+      },
+      {
+        "name": "mapFrom",
+        "label": "mapFrom",
+        "hide": 2,
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        }
+      },
+      {
+        "name": "mapTo",
+        "label": "mapTo",
+        "hide": 2,
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        }
+      },
+      {
+        "name": "zona",
+        "label": "zona",
+        "hide": 2,
+        "type": "query",
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "refresh": 2,
+        "query": "-- El mapa publica lo que dibujas como WKT; TiTiler quiere GeoJSON.\n-- OJO: en una consulta de VARIABLE el datasource NO entrecomilla solo (si lo\n-- hace en las de panel), asi que las comillas van a mano. Y el ::VARCHAR no es\n-- cosmetico: sin el, \"unsupported Scan ... map[string]interface{}\".\nLOAD spatial;\nSELECT ST_AsGeoJSON(ST_GeomFromText(\n  coalesce(nullif('${area}', ''), 'POLYGON((-75 -12, -75 2, -50 2, -50 -12, -75 -12))')))::VARCHAR",
+        "definition": "-- El mapa publica lo que dibujas como WKT; TiTiler quiere GeoJSON.\n-- OJO: en una consulta de VARIABLE el datasource NO entrecomilla solo (si lo\n-- hace en las de panel), asi que las comillas van a mano. Y el ::VARCHAR no es\n-- cosmetico: sin el, \"unsupported Scan ... map[string]interface{}\".\nLOAD spatial;\nSELECT ST_AsGeoJSON(ST_GeomFromText(\n  coalesce(nullif('${area}', ''), 'POLYGON((-75 -12, -75 2, -50 2, -50 -12, -75 -12))')))::VARCHAR",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "name": "mes",
+        "label": "Mes medido",
+        "hide": 0,
+        "type": "query",
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "refresh": 2,
+        "query": "-- El mes que el mapa esta pintando. `mapTo` lo publica el propio panel al\n-- mover la barra de tiempo, y el store responde a un entero, no a una fecha.\nSELECT extract(month FROM coalesce(try_cast(nullif('${mapTo}', '') AS TIMESTAMPTZ),\n                                   $__timeTo()::TIMESTAMPTZ) AT TIME ZONE 'UTC')::INTEGER::VARCHAR",
+        "definition": "-- El mes que el mapa esta pintando. `mapTo` lo publica el propio panel al\n-- mover la barra de tiempo, y el store responde a un entero, no a una fecha.\nSELECT extract(month FROM coalesce(try_cast(nullif('${mapTo}', '') AS TIMESTAMPTZ),\n                                   $__timeTo()::TIMESTAMPTZ) AT TIME ZONE 'UTC')::INTEGER::VARCHAR",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "text",
+      "id": 1,
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "# Estadística de lo que dibujas, sobre un Zarr piramidado\n\nTemperatura media mensual del demo climático de CarbonPlan. **Dibuja** un polígono con la\nherramienta del mapa y **arrastra el tiempo**: los números miden esa zona en ese mes.\n\nEste store está escrito **para mapas** —pirámide de 6 niveles, chunks de 128×128, ya en Web\nMercator— y se nota en las dos mitades:\n\n| | Pintar una tesela | Medir una zona |\n|---|---|---|\n| Este store | 0,22–2,2 s, plano en todos los zooms | **1,0–1,5 s** |\n| GPCP, sin pirámide | 1,2–17,5 s, peor al alejar | 6,9–21,1 s |\n\nLos cuatro paneles de la derecha **comparten una sola petición**: la tabla la hace, y los dos\nnúmeros la reutilizan con el datasource `-- Dashboard --`. Añadir un número más cuesta cero peticiones.\n\nLa cadena sigue siendo la misma: el mapa publica la figura como WKT, una variable de consulta la\npasa a GeoJSON con DuckDB, e Infinity la manda a `/zarr/statistics` con la misma `sel` que la capa.\n\n**El reloj del mapa es quien manda** (`Time range sync: Slider writes variables`): al soltar la\nbarra, el panel escribe la ventana en `mapFrom`/`mapTo`, eso recalcula el mes y los tres paneles se\nrefrescan. Con cualquier otro modo las variables no se publican y la estadística se queda pegada al\nfinal del rango del dashboard.\n"
+      }
+    },
+    {
+      "type": "ubica-keplergl-panel",
+      "id": 2,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "title": "Temperatura media mensual · dibuja una zona y arrastra el tiempo",
+      "gridPos": {
+        "h": 21,
+        "w": 15,
+        "x": 0,
+        "y": 11
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawSql": "-- Una fila por mes. El store es piramidado (`zarr_levels`), asi que cada zoom\n-- pide su propio nivel; y su eje temporal no son fechas sino enteros 1..12 en\n-- una dimension llamada `month`, de ahi `zarr_time_dim` y `zarr_time_label`.\nSELECT\n  make_timestamp(2020, m, 1, 0, 0, 0)::TIMESTAMPTZ AS time,\n  'https://carbonplan-maps.s3.us-west-2.amazonaws.com/v2/demo/4d/tavg-prec-month' AS zarr_url,\n  'climate'   AS zarr_variable,\n  6           AS zarr_levels,\n  'band=tavg' AS zarr_sel,\n  'month'     AS zarr_time_dim,\n  m::TEXT     AS zarr_time_label\nFROM generate_series(1, 12) t(m)\nORDER BY time",
+          "format": 1,
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "timeSync": "variables",
+        "rasterServerUrl": "http://localhost:8088",
+        "rasterColormap": "magma",
+        "zarrRescale": "-20,40",
+        "areaVariable": "area",
+        "timeVariables": {
+          "from": "mapFrom",
+          "to": "mapTo"
+        },
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -8,
+              "longitude": -62,
+              "zoom": 3.0,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        },
+        "publishWhilePlaying": false
+      }
+    },
+    {
+      "type": "table",
+      "id": 5,
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "title": "La petición · todas las estadísticas",
+      "description": "El único POST a /zarr/statistics del dashboard. Los dos paneles de abajo reutilizan este resultado.",
+      "gridPos": {
+        "h": 6,
+        "w": 9,
+        "x": 15,
+        "y": 11
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://titiler/zarr/statistics?url=${store:percentencode}&variable=climate&group=4&sel=band%3Dtavg&sel=month%3D${mes}",
+          "url_options": {
+            "method": "POST",
+            "data": "{\"type\": \"Feature\", \"properties\": {}, \"geometry\": ${zona}}",
+            "body_type": "raw",
+            "body_content_type": "application/json"
+          },
+          "root_selector": "properties.statistics.b1",
+          "columns": [
+            {
+              "selector": "min",
+              "text": "mín",
+              "type": "number"
+            },
+            {
+              "selector": "max",
+              "text": "máx",
+              "type": "number"
+            },
+            {
+              "selector": "mean",
+              "text": "media",
+              "type": "number"
+            },
+            {
+              "selector": "median",
+              "text": "mediana",
+              "type": "number"
+            },
+            {
+              "selector": "std",
+              "text": "desv",
+              "type": "number"
+            },
+            {
+              "selector": "count",
+              "text": "celdas",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "mín": 0,
+              "máx": 1,
+              "media": 2,
+              "mediana": 3,
+              "desv": 4,
+              "celdas": 5
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 3,
+      "title": "Temperatura media en la zona",
+      "description": "Reutiliza el resultado de la tabla de arriba: cero peticiones propias.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 9,
+        "x": 15,
+        "y": 17
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 5
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^media$/",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "id": 6,
+      "title": "Mínimo en la zona",
+      "description": "El extremo frío, que en un campo de temperatura dice tanto como la media: es donde hiela. Reutiliza el mismo frame, sin una petición propia.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 9,
+        "x": 15,
+        "y": 22
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 5
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^mín$/",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "id": 4,
+      "title": "Máximo en la zona",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "description": "El extremo cálido. Mismo frame, otro campo.",
+      "gridPos": {
+        "h": 5,
+        "w": 9,
+        "x": 15,
+        "y": 27
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 5
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^máx$/",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          }
+        },
+        "overrides": []
+      }
+    }
+  ]
+}

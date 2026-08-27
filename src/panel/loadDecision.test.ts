@@ -1,4 +1,4 @@
-import { decideLoadAction, splitRefresh } from './loadDecision';
+import { decideLoadAction, splitRasterRefresh, splitRefresh, splitWmsRefresh, splitZarrRefresh } from './loadDecision';
 
 /**
  * The panel has to choose between two very different kepler calls on every
@@ -123,5 +123,146 @@ describe('splitRefresh', () => {
 
     expect(replace).toEqual([]);
     expect(add.map((d) => d.id)).toEqual(['grafana-A']);
+  });
+});
+
+describe('splitRasterRefresh', () => {
+  const scene = (id: string, metadataUrl: string) => ({ id, metadataUrl });
+
+  it('adds a raster the map does not hold yet', () => {
+    const { add, replace, keep, remove } = splitRasterRefresh([scene('grafana-A-raster', 'http://t/aug')], []);
+
+    expect(add.map((r) => r.id)).toEqual(['grafana-A-raster']);
+    expect(replace).toEqual([]);
+    expect(keep).toEqual([]);
+    expect(remove).toEqual([]);
+  });
+
+  it('replaces a raster whose scene changed', () => {
+    const { replace, keep } = splitRasterRefresh(
+      [scene('grafana-A-raster', 'http://t/jul')],
+      [scene('grafana-A-raster', 'http://t/aug')]
+    );
+
+    expect(replace.map((r) => r.id)).toEqual(['grafana-A-raster']);
+    expect(keep).toEqual([]);
+  });
+
+  it('keeps a raster the auto-refresh re-derived unchanged', () => {
+    // The 30s auto-refresh re-runs the query and produces a fresh object for
+    // the same scene. Comparing by identity would swap the dataset — and the
+    // raster would blink every refresh for no reason at all.
+    const { keep, replace, add } = splitRasterRefresh(
+      [scene('grafana-A-raster', 'http://t/aug')],
+      [scene('grafana-A-raster', 'http://t/aug')]
+    );
+
+    expect(keep.map((r) => r.id)).toEqual(['grafana-A-raster']);
+    expect(replace).toEqual([]);
+    expect(add).toEqual([]);
+  });
+
+  it('removes a raster the query no longer produces', () => {
+    // A range with no cloud-free scene returns no rows. Leaving the previous
+    // scene on the map would show imagery from outside the range as if it
+    // belonged to it.
+    const { remove } = splitRasterRefresh([], [scene('grafana-A-raster', 'http://t/aug')]);
+
+    expect(remove).toEqual(['grafana-A-raster']);
+  });
+
+  it('leaves tilesets the user added by hand alone', () => {
+    // Only ids the panel itself minted are the panel's to remove; a tileset
+    // from kepler's Add Data belongs to the user.
+    const { remove } = splitRasterRefresh([], [scene('pawlsg7ej', 'https://titiler.xyz/cog/stac?url=x')]);
+
+    expect(remove).toEqual([]);
+  });
+});
+
+describe('splitWmsRefresh', () => {
+  const wms = (id: string, layerName = 'rain', serviceUrl = 'https://geo.test/wms') => ({ id, serviceUrl, layerName });
+
+  it('adds what kepler does not have yet', () => {
+    const { add, replace, keep } = splitWmsRefresh([wms('grafana-A-wms')], []);
+
+    expect(add.map((d) => d.id)).toEqual(['grafana-A-wms']);
+    expect(replace).toEqual([]);
+    expect(keep).toEqual([]);
+  });
+
+  it('keeps a layer the query re-describes unchanged, so a refresh does not blink', () => {
+    const { keep, replace } = splitWmsRefresh([wms('grafana-A-wms')], [wms('grafana-A-wms')]);
+
+    expect(keep.map((d) => d.id)).toEqual(['grafana-A-wms']);
+    expect(replace).toEqual([]);
+  });
+
+  it('rebuilds when the layer changes under the same service', () => {
+    const { replace } = splitWmsRefresh([wms('grafana-A-wms', 'clouds')], [wms('grafana-A-wms', 'rain')]);
+
+    expect(replace.map((d) => d.layerName)).toEqual(['clouds']);
+  });
+
+  it('rebuilds when the service changes under the same layer', () => {
+    const { replace } = splitWmsRefresh(
+      [wms('grafana-A-wms', 'rain', 'https://other.test/wms')],
+      [wms('grafana-A-wms', 'rain')]
+    );
+
+    expect(replace.map((d) => d.serviceUrl)).toEqual(['https://other.test/wms']);
+  });
+
+  it('removes only the ids the panel minted', () => {
+    const { remove } = splitWmsRefresh([], [wms('grafana-A-wms'), wms('someones-own-wms'), wms('grafana-A-raster')]);
+
+    expect(remove).toEqual(['grafana-A-wms']);
+  });
+});
+
+describe('splitZarrRefresh', () => {
+  const zarr = (id: string, variable = 'precip', storeUrl = 'https://data.test/gpcp.zarr') => ({
+    id,
+    storeUrl,
+    variable,
+  });
+
+  it('adds what kepler does not have yet', () => {
+    const { add, replace, keep } = splitZarrRefresh([zarr('grafana-A-zarr')], []);
+
+    expect(add.map((d) => d.id)).toEqual(['grafana-A-zarr']);
+    expect(replace).toEqual([]);
+    expect(keep).toEqual([]);
+  });
+
+  it('keeps a variable the query re-describes unchanged, so a refresh does not blink', () => {
+    const { keep, replace } = splitZarrRefresh([zarr('grafana-A-zarr')], [zarr('grafana-A-zarr')]);
+
+    expect(keep.map((d) => d.id)).toEqual(['grafana-A-zarr']);
+    expect(replace).toEqual([]);
+  });
+
+  it('rebuilds when the variable changes under the same store', () => {
+    const { replace } = splitZarrRefresh([zarr('grafana-A-zarr', 'error')], [zarr('grafana-A-zarr', 'precip')]);
+
+    expect(replace.map((d) => d.variable)).toEqual(['error']);
+  });
+
+  it('rebuilds when the store changes under the same variable', () => {
+    const { replace } = splitZarrRefresh(
+      [zarr('grafana-A-zarr', 'precip', 'https://other.test/mur.zarr')],
+      [zarr('grafana-A-zarr', 'precip')]
+    );
+
+    expect(replace.map((d) => d.storeUrl)).toEqual(['https://other.test/mur.zarr']);
+  });
+
+  it('removes only the ids the panel minted', () => {
+    const { remove } = splitZarrRefresh(
+      [],
+      [zarr('grafana-A-zarr'), zarr('someones-own-zarr'), zarr('grafana-A-wms')]
+    );
+
+    expect(remove).toEqual(['grafana-A-zarr']);
   });
 });

@@ -19,10 +19,17 @@ datasources:
       # supersedes the note in docs/duckdb-geoparquet-findings.md that there is
       # no datasource-level init SQL — that was true of the version tested then.
       #
+      # `http_client` is a community extension and carries the STAC catalogue
+      # search: `http_get` is an ordinary scalar function, so the search URL can
+      # be built by concatenation from $__timeFrom()/$__timeTo() — which is what
+      # makes the raster follow the dashboard's time range. The `stac` extension
+      # would be sugar over the same thing, but it only builds for DuckDB 1.5.5
+      # and this data source runs 1.5.4, so this is the route that exists.
+      #
       # INSTALL reaches out to DuckDB's extension repository the first time, so
       # the first query after a fresh volume needs outbound internet. LOAD alone
       # is enough afterwards.
-      initSql: 'INSTALL spatial; LOAD spatial;'
+      initSql: 'INSTALL spatial; LOAD spatial; INSTALL http_client FROM community; LOAD http_client;'
 
   # Fetches the GeoJSON and CSV fixtures over HTTP from the `sources-data`
   # container. No authentication: it is a static file server on the compose

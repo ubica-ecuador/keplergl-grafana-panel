@@ -33,7 +33,7 @@ that comes from the queries, every time.
 vector tile, raster tile, WMS, 3D tiles, bitmap — has no query behind it, so nothing would rebuild
 it on the next load. The save writes its **descriptor** instead: the name, the field list, and the
 URLs. No rows, so it stays a few lines of JSON. See
-[Layers a query cannot drive](../../layers/url-configured).
+[Layers configured with a URL](../../layers/url-configured).
 
 A CSV or GeoJSON you drop into **Add Data** is _not_ saved. Persisting it would mean putting every
 row of the file in the dashboard JSON. Load such data through a query instead — see

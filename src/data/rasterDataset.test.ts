@@ -1,0 +1,307 @@
+import { FieldType, toDataFrame } from '@grafana/data';
+
+import { framesToRasters, isPanelRasterId, pickScene, rasterForWindow } from './rasterDataset';
+
+const SERVER = 'http://titiler.test';
+const COG = 'https://bucket.example/scenes/2026/TCI.tif';
+
+function rasterFrame(url: string, refId = 'A') {
+  return toDataFrame({
+    refId,
+    fields: [{ name: 'raster_url', type: FieldType.string, values: [url] }],
+  });
+}
+
+describe('framesToRasters', () => {
+  it('describes the raster a query points at', () => {
+    const [raster] = framesToRasters([rasterFrame(COG)], {}, { tileServerUrls: [SERVER] });
+
+    expect(raster).toMatchObject({
+      id: 'grafana-A-raster',
+      sourceUrl: COG,
+      tileServerUrls: [SERVER],
+    });
+  });
+
+  it('builds the metadata url titiler answers on', () => {
+    const [raster] = framesToRasters([rasterFrame(COG)], {}, { tileServerUrls: [SERVER] });
+
+    expect(raster.metadataUrl).toBe(`${SERVER}/cog/stac?url=${encodeURIComponent(COG)}`);
+  });
+
+  it('percent-encodes a href carrying its own query string', () => {
+    // A signed url brings ? and & of its own; left raw they would be read as
+    // titiler's parameters and the scene would resolve to nothing.
+    const signed = 'https://bucket.example/a.tif?X-Amz-Expires=60&X-Amz-Signature=abc';
+    const [raster] = framesToRasters([rasterFrame(signed)], {}, { tileServerUrls: [SERVER] });
+
+    expect(raster.metadataUrl).toBe(`${SERVER}/cog/stac?url=${encodeURIComponent(signed)}`);
+    expect(raster.metadataUrl).not.toContain('&X-Amz-Signature');
+  });
+
+  it('takes the first row when a query returns several scenes', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [{ name: 'raster_url', type: FieldType.string, values: [COG, 'https://bucket.example/other.tif'] }],
+    });
+
+    expect(framesToRasters([frame], {}, { tileServerUrls: [SERVER] })[0].sourceUrl).toBe(COG);
+  });
+
+  it('lets an override point the role at another column', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'raster_url', type: FieldType.string, values: ['https://bucket.example/wrong.tif'] },
+        { name: 'preview', type: FieldType.string, values: [COG] },
+      ],
+    });
+
+    expect(framesToRasters([frame], { A: { rasterUrl: 'preview' } }, { tileServerUrls: [SERVER] })[0].sourceUrl).toBe(COG);
+  });
+
+  it('produces nothing for a query whose raster role is switched off', () => {
+    expect(framesToRasters([rasterFrame(COG)], { A: { rasterUrl: null } }, { tileServerUrls: [SERVER] })).toEqual([]);
+  });
+
+  it('produces nothing when the url is empty', () => {
+    expect(framesToRasters([rasterFrame('   ')], {}, { tileServerUrls: [SERVER] })).toEqual([]);
+  });
+
+  it('produces nothing when no tile server is configured', () => {
+    // Without a server kepler's own layer throws 'No raster tile servers'
+    // mid-render; refusing to build the dataset keeps that out of the map.
+    expect(framesToRasters([rasterFrame(COG)], {}, { tileServerUrls: [] })).toEqual([]);
+  });
+
+  it('names the dataset after the query', () => {
+    const frame = toDataFrame({
+      refId: 'B',
+      name: 'Sentinel-2',
+      fields: [{ name: 'raster_url', type: FieldType.string, values: [COG] }],
+    });
+
+    expect(framesToRasters([frame], {}, { tileServerUrls: [SERVER] })[0]).toMatchObject({
+      id: 'grafana-B-raster',
+      label: 'Sentinel-2',
+    });
+  });
+
+  it('ignores queries that carry no raster url', () => {
+    const plain = toDataFrame({
+      refId: 'A',
+      fields: [{ name: 'latitude', type: FieldType.number, values: [-2.9] }],
+    });
+
+    expect(framesToRasters([plain, rasterFrame(COG, 'B')], {}, { tileServerUrls: [SERVER] })).toHaveLength(1);
+  });
+});
+
+describe('pickScene', () => {
+  const scenes = [
+    { time: Date.UTC(2026, 6, 1), sourceUrl: 'https://b/jul01.tif' },
+    { time: Date.UTC(2026, 6, 11), sourceUrl: 'https://b/jul11.tif' },
+    { time: Date.UTC(2026, 6, 21), sourceUrl: 'https://b/jul21.tif' },
+  ];
+
+  it('takes the last scene inside the window', () => {
+    const window = { from: Date.UTC(2026, 5, 1), to: Date.UTC(2026, 6, 15) };
+
+    expect(pickScene(scenes, window)?.sourceUrl).toBe('https://b/jul11.tif');
+  });
+
+  it('ignores scenes the window has not reached yet', () => {
+    // Dragging the slider back in time must show what was there then, not the
+    // newest image the query happened to return.
+    const window = { from: Date.UTC(2026, 5, 1), to: Date.UTC(2026, 6, 5) };
+
+    expect(pickScene(scenes, window)?.sourceUrl).toBe('https://b/jul01.tif');
+  });
+
+  it('finds nothing when the window falls between passes', () => {
+    const window = { from: Date.UTC(2026, 6, 2), to: Date.UTC(2026, 6, 9) };
+
+    expect(pickScene(scenes, window)).toBeNull();
+  });
+
+  it('takes the most recent scene when there is no window', () => {
+    expect(pickScene(scenes, null)?.sourceUrl).toBe('https://b/jul21.tif');
+  });
+
+  it('takes the first row when the scenes carry no time at all', () => {
+    // A query that returns one scene and no time column is the ordinary case,
+    // and it must keep behaving as it did before the timeline existed.
+    const undated = [
+      { time: null, sourceUrl: 'https://b/first.tif' },
+      { time: null, sourceUrl: 'https://b/second.tif' },
+    ];
+
+    expect(pickScene(undated, { from: 0, to: 1 })?.sourceUrl).toBe('https://b/first.tif');
+  });
+});
+
+describe('framesToRasters — a series of scenes', () => {
+  it('carries every dated scene, oldest first', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'time', type: FieldType.time, values: [Date.UTC(2026, 6, 21), Date.UTC(2026, 6, 1)] },
+        { name: 'raster_url', type: FieldType.string, values: ['https://b/jul21.tif', 'https://b/jul01.tif'] },
+      ],
+    });
+
+    const [raster] = framesToRasters([frame], {}, { tileServerUrls: [SERVER] });
+
+    expect(raster.scenes).toEqual([
+      { time: Date.UTC(2026, 6, 1), sourceUrl: 'https://b/jul01.tif' },
+      { time: Date.UTC(2026, 6, 21), sourceUrl: 'https://b/jul21.tif' },
+    ]);
+  });
+
+  it('shows the most recent scene until a window says otherwise', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'time', type: FieldType.time, values: [Date.UTC(2026, 6, 1), Date.UTC(2026, 6, 21)] },
+        { name: 'raster_url', type: FieldType.string, values: ['https://b/jul01.tif', 'https://b/jul21.tif'] },
+      ],
+    });
+
+    expect(framesToRasters([frame], {}, { tileServerUrls: [SERVER] })[0].sourceUrl).toBe('https://b/jul21.tif');
+  });
+
+  it('still takes the first row when the query has no time column', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [{ name: 'raster_url', type: FieldType.string, values: [COG, 'https://b/other.tif'] }],
+    });
+
+    expect(framesToRasters([frame], {}, { tileServerUrls: [SERVER] })[0].sourceUrl).toBe(COG);
+  });
+});
+
+describe('rasterForWindow', () => {
+  const framed = () =>
+    framesToRasters(
+      [
+        toDataFrame({
+          refId: 'A',
+          fields: [
+            { name: 'time', type: FieldType.time, values: [Date.UTC(2026, 6, 1), Date.UTC(2026, 6, 21)] },
+            { name: 'raster_url', type: FieldType.string, values: ['https://b/jul01.tif', 'https://b/jul21.tif'] },
+          ],
+        }),
+      ],
+      {},
+      { tileServerUrls: [SERVER] }
+    )[0];
+
+  it('re-points the descriptor at the scene the window selects', () => {
+    const moved = rasterForWindow(framed(), { from: Date.UTC(2026, 5, 1), to: Date.UTC(2026, 6, 10) });
+
+    expect(moved?.sourceUrl).toBe('https://b/jul01.tif');
+    expect(moved?.metadataUrl).toBe(`${SERVER}/cog/stac?url=${encodeURIComponent('https://b/jul01.tif')}`);
+  });
+
+  it('keeps the dataset id, so the swap replaces rather than adds', () => {
+    const moved = rasterForWindow(framed(), { from: Date.UTC(2026, 5, 1), to: Date.UTC(2026, 6, 10) });
+
+    expect(moved?.id).toBe('grafana-A-raster');
+  });
+
+  it('returns nothing when the window holds no scene', () => {
+    expect(rasterForWindow(framed(), { from: Date.UTC(2026, 6, 3), to: Date.UTC(2026, 6, 9) })).toBeNull();
+  });
+});
+
+describe('isPanelRasterId', () => {
+  it('tells the panel’s own rasters from a hand-added tileset', () => {
+    // Only ids the panel minted are its to replace, to remove, and to keep out
+    // of a saved dashboard.
+    expect(isPanelRasterId('grafana-A-raster')).toBe(true);
+    expect(isPanelRasterId('pawlsg7ej')).toBe(false);
+  });
+});
+
+describe('framesToRasters — colormap', () => {
+  it('carries the colormap the panel chose', () => {
+    const [raster] = framesToRasters([rasterFrame(COG)], {}, { tileServerUrls: [SERVER], colormap: 'blues' });
+
+    expect(raster.colormap).toBe('blues');
+  });
+
+  it('leaves it unset when the panel has no preference', () => {
+    // Unset means "whatever kepler defaults to", not a hardcoded choice: the
+    // panel must not silently restyle a raster nobody asked it to.
+    const [raster] = framesToRasters([rasterFrame(COG)], {}, { tileServerUrls: [SERVER] });
+
+    expect(raster.colormap).toBeUndefined();
+  });
+
+  it('keeps the colormap when the window moves to another scene', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'time', type: FieldType.time, values: [Date.UTC(2026, 6, 1), Date.UTC(2026, 6, 21)] },
+        { name: 'raster_url', type: FieldType.string, values: ['https://b/a.tif', 'https://b/b.tif'] },
+      ],
+    });
+    const [raster] = framesToRasters([frame], {}, { tileServerUrls: [SERVER], colormap: 'blues' });
+
+    expect(rasterForWindow(raster, { from: 0, to: Date.UTC(2026, 6, 10) })?.colormap).toBe('blues');
+  });
+});
+
+const PMTILES = 'https://bucket.example/scenes/2026/rain.pmtiles';
+
+describe('framesToRasters — PMTiles', () => {
+  it('needs no tile server at all', () => {
+    // The whole point of the format: kepler reads the archive itself over
+    // range requests, so an install with nowhere to run TiTiler still draws.
+    const [raster] = framesToRasters([rasterFrame(PMTILES)], {}, { tileServerUrls: [] });
+
+    expect(raster).toMatchObject({ kind: 'pmtiles', sourceUrl: PMTILES, tileServerUrls: [] });
+  });
+
+  it('points the metadata straight at the archive', () => {
+    const [raster] = framesToRasters([rasterFrame(PMTILES)], {}, { tileServerUrls: [SERVER] });
+
+    expect(raster.metadataUrl).toBe(PMTILES);
+  });
+
+  it('ignores a configured server, which cannot serve it anyway', () => {
+    expect(framesToRasters([rasterFrame(PMTILES)], {}, { tileServerUrls: [SERVER] })[0].tileServerUrls).toEqual([]);
+  });
+
+  it('recognises an archive behind a query string', () => {
+    const signed = 'https://bucket.example/rain.pmtiles?token=abc';
+    expect(framesToRasters([rasterFrame(signed)], {}, { tileServerUrls: [] })[0].kind).toBe('pmtiles');
+  });
+
+  it('marks a COG as one, so the two paths never blur', () => {
+    expect(framesToRasters([rasterFrame(COG)], {}, { tileServerUrls: [SERVER] })[0].kind).toBe('cog');
+  });
+
+  it('drops only the queries that need the missing server', () => {
+    // A dashboard may hold both, and losing the archive because a COG beside
+    // it has nowhere to be served would be a strange kind of solidarity.
+    const rasters = framesToRasters([rasterFrame(COG, 'A'), rasterFrame(PMTILES, 'B')], {}, { tileServerUrls: [] });
+
+    expect(rasters.map((raster) => raster.id)).toEqual(['grafana-B-raster']);
+  });
+
+  it('follows the window without inventing a server url', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'time', type: FieldType.time, values: [1000, 2000] },
+        { name: 'raster_url', type: FieldType.string, values: [PMTILES, 'https://bucket.example/b.pmtiles'] },
+      ],
+    });
+    const [raster] = framesToRasters([frame], {}, { tileServerUrls: [] });
+
+    const picked = rasterForWindow(raster, { from: 0, to: 1500 });
+
+    expect(picked).toMatchObject({ sourceUrl: PMTILES, metadataUrl: PMTILES });
+  });
+});

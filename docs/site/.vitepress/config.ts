@@ -74,6 +74,10 @@ export default defineConfig({
           { text: 'Origin–destination flows', link: '/guide/data/flows' },
           { text: 'H3 and S2', link: '/guide/data/h3-and-s2' },
           { text: 'Velocity fields', link: '/guide/data/velocity-fields' },
+          { text: 'Rasters', link: '/guide/data/rasters' },
+          { text: 'WMS services', link: '/guide/data/wms' },
+          { text: 'Zarr stores', link: '/guide/data/zarr' },
+          { text: 'Imagery over time', link: '/guide/data/imagery-over-time' },
         ],
       },
       {
@@ -117,6 +121,7 @@ export default defineConfig({
           { text: 'DuckDB — parquet, CSV, GeoJSON', link: '/guide/sources/duckdb-geoparquet' },
           { text: 'Infinity — GeoJSON, CSV, WFS', link: '/guide/sources/infinity' },
           { text: 'Any other SQL source', link: '/guide/sources/other-sql' },
+          { text: 'Measuring imagery', link: '/guide/sources/measuring-imagery' },
         ],
       },
       {
@@ -128,7 +133,7 @@ export default defineConfig({
           { text: 'Geometry and spatial indices', link: '/layers/geometry-and-indices' },
           { text: 'Origin–destination', link: '/layers/origin-destination' },
           { text: 'Time', link: '/layers/time' },
-          { text: 'Layers a query cannot drive', link: '/layers/url-configured' },
+          { text: 'Layers configured with a URL', link: '/layers/url-configured' },
         ],
       },
       {
@@ -142,6 +147,7 @@ export default defineConfig({
           { text: '4 — A cross-filtered dashboard', link: '/tutorials/cross-filtered-dashboard' },
           { text: '5 — Click the map, query a radius', link: '/tutorials/click-to-query' },
           { text: '6 — A wind field', link: '/tutorials/wind-field' },
+          { text: '7 — Imagery over time', link: '/tutorials/imagery-over-time' },
         ],
       },
       {

@@ -32,6 +32,51 @@ export interface FieldRoles {
   v?: string;
   speed?: string;
   direction?: string;
+  /**
+   * A link to a cloud-optimised GeoTIFF, which is drawn as raster tiles rather
+   * than as rows. One url per query — the first row wins.
+   */
+  rasterUrl?: string;
+  /**
+   * A WMS service and the one layer of it to draw.
+   *
+   * Both are needed: a service publishes many layers and nothing in the query
+   * says which one is meant, so a url on its own is not a picture. The service
+   * renders the imagery itself, which is why no tile server appears here.
+   */
+  wmsUrl?: string;
+  wmsLayer?: string;
+  /**
+   * A Zarr store, the one array of it to draw, and — when that array has a time
+   * axis — the exact index label of each moment.
+   *
+   * The label is a separate role rather than a rendering of {@link time}
+   * because TiTiler hands it to xarray's `.sel`, which matches exactly and
+   * offers no nearest-neighbour fallback: a store stamped at 09:00 rejects the
+   * date-only spelling of its own timestamps.
+   */
+  zarrUrl?: string;
+  zarrVariable?: string;
+  zarrTimeLabel?: string;
+  /**
+   * How many levels the store's `multiscales` pyramid has, and which slice to
+   * pin on every non-spatial axis other than time.
+   *
+   * Both come from the query rather than from the store because reading them
+   * means fetching the store's metadata, and that is a request the panel would
+   * make on every render to learn something a dashboard author already knows.
+   */
+  zarrLevels?: string;
+  zarrSel?: string;
+  /**
+   * Which axis of the store the map's clock walks. Defaults to `time`.
+   *
+   * Named because a climate store often holds its temporal axis as something
+   * else entirely — twelve months as `month=1..12`, integers rather than dates.
+   * The clock still walks it; the query says which axis and what each moment is
+   * called there.
+   */
+  zarrTimeDim?: string;
 }
 
 /**
@@ -132,6 +177,24 @@ const NAME_CANDIDATES: Record<string, string[]> = {
   originH3: ['origin_h3', 'source_h3', 'from_h3', 'h3_0'],
   destH3: ['dest_h3', 'target_h3', 'to_h3', 'h3_1'],
   count: ['count', 'trips', 'magnitude', 'weight', 'flow', 'total', 'volume'],
+  // Raster. `asset_href` and `href` are what a STAC asset is called in the
+  // catalogue's own JSON, so a query that lifts the asset straight out of a
+  // search response needs no aliasing.
+  rasterUrl: ['raster_url', 'cog_url', 'cog', 'asset_href', 'href'],
+  // WMS. `wms` alone is worth accepting because a query that fixes the service
+  // by hand reads better as `SELECT '…' AS wms`, and `service_url` is what the
+  // OGC calls the endpoint.
+  wmsUrl: ['wms_url', 'wms', 'service_url'],
+  wmsLayer: ['wms_layer', 'layer', 'layer_name'],
+  // Zarr. Deliberately narrow: `variable` on its own is an ordinary column name
+  // in any long-format table, and claiming it would read a frame of unrelated
+  // measurements as a Zarr store.
+  zarrUrl: ['zarr_url', 'zarr', 'store_url'],
+  zarrVariable: ['zarr_variable', 'zarr_var'],
+  zarrTimeLabel: ['zarr_time_label', 'zarr_label'],
+  zarrLevels: ['zarr_levels', 'zarr_pyramid'],
+  zarrSel: ['zarr_sel', 'zarr_select'],
+  zarrTimeDim: ['zarr_time_dim', 'zarr_dim'],
 };
 
 /**

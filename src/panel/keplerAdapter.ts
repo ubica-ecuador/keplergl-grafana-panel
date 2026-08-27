@@ -4,25 +4,33 @@ import {
   createOrUpdateFilter,
   fitBounds,
   interactionConfigChange,
+  layerConfigChange,
+  layerVisConfigChange,
   mapStyleChange,
+  removeDataset,
   removeFilter,
   removeLayer,
   toggleLayerAnimation,
   replaceDataInMap,
   setLayerAnimationTime,
   toggleSidePanel,
+  updateDatasetProps,
   updateMap,
   updateVisData,
   wrapTo,
 } from '@kepler.gl/actions';
-import { ALL_FIELD_TYPES } from '@kepler.gl/constants';
+import { ALL_FIELD_TYPES, PMTilesType, REMOTE_TILE, RemoteTileFormat } from '@kepler.gl/constants';
+import { getApplicationConfig } from '@kepler.gl/utils';
 import { processRowObject } from '@kepler.gl/processors';
 import KeplerGlSchema, { datasetSchema, VERSIONS, type SavedDatasetV1 } from '@kepler.gl/schemas';
 import type { ProtoDataset } from '@kepler.gl/types';
 import type { Dispatch, Store } from 'redux';
 
 import type { PanelDataset } from '../data/framesToDatasets';
-import { rowFieldValue } from './clickSync';
+import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
+import { isPanelWmsId, wmsCalendarDatasetId, type WmsDataset } from '../data/wmsDataset';
+import { zarrCalendarDatasetId, type ZarrDataset } from '../data/zarrDataset';
+import { rowFieldValue, wmsFeatureValues } from './clickSync';
 import type { FlowLayerConfig } from '../data/buildFlows';
 import type { TripLayerConfig } from '../data/buildTripLayer';
 import {
@@ -41,7 +49,7 @@ import {
   type TimeRangeMs,
 } from './timeSync';
 import { supersededTripLayerIds } from './autoLayers';
-import { splitRefresh } from './loadDecision';
+import { splitRasterRefresh, splitRefresh, splitWmsRefresh, splitZarrRefresh } from './loadDecision';
 import { KEPLER_INSTANCE_ID } from './constants';
 
 /**
@@ -118,6 +126,534 @@ export function loadDatasets(
 const VECTOR_TILE_TYPE = 'vector-tile';
 const VECTOR_TILE_FILTER_TYPES = [ALL_FIELD_TYPES.real, ALL_FIELD_TYPES.integer, ALL_FIELD_TYPES.boolean];
 
+/** kepler's `DatasetType.RASTER_TILE`: a dataset that is a scene, not rows. */
+const RASTER_TILE_TYPE = 'raster-tile';
+
+/**
+ * A raster scene in the shape kepler's own Add Data → Tileset produces.
+ *
+ * Copied from `modal-container`'s `_onTilesetAdded` and
+ * `getDatasetAttributesFromRasterTile` on purpose: a dataset the panel builds
+ * and one the user adds by hand end up in the same store, and any difference
+ * between them would show up later as a raster that behaves subtly unlike its
+ * neighbour.
+ *
+ * `rows: []` with `disableDataOperation` is the whole point of the shape — the
+ * substance is `metadata`, and kepler fetches the STAC Item itself from
+ * `metadataUrl` (`dataset-utils`' `refreshRasterTileMetadata`), so nothing here
+ * has to know what a STAC Item looks like.
+ *
+ * The `rasterServer*` values are frozen into the dataset rather than read at
+ * draw time, which is what kepler does: the dataset then keeps working if the
+ * application config changes underneath it. `rasterServerUseLatestTitiler` is
+ * the load-bearing one — it picks between two ways of writing the band index,
+ * and TiTiler 2.x rejects the older one outright.
+ */
+function rasterProtoDataset(raster: RasterDataset) {
+  return {
+    info: { id: raster.id, label: raster.label, type: RASTER_TILE_TYPE, format: 'rows' },
+    data: { fields: [], rows: [] },
+    metadata: rasterMetadata(raster),
+    disableDataOperation: true,
+  } as unknown as ProtoDataset;
+}
+
+/**
+ * The metadata that tells kepler how to fetch a raster's tiles.
+ *
+ * A PMTiles archive is declared and nothing else: `pmtilesType` is the flag
+ * every branch inside kepler tests — `refreshRasterTileMetadata` reads the
+ * archive's own header through `PMTilesSource` instead of fetching a STAC
+ * document, and the layer builds a `PMTilesSource` rather than calling a
+ * server. None of the `rasterServer*` settings apply to that path, and
+ * carrying them would only suggest a server is involved.
+ */
+function rasterMetadata(raster: RasterDataset) {
+  if (raster.kind === 'pmtiles') {
+    return { metadataUrl: raster.metadataUrl, pmtilesType: PMTilesType.RASTER };
+  }
+
+  const appConfig = getApplicationConfig();
+  return {
+    metadataUrl: raster.metadataUrl,
+    rasterTileServerUrls: raster.tileServerUrls,
+    rasterServerUseLatestTitiler: appConfig.rasterServerUseLatestTitiler,
+    rasterServerSupportsElevation: appConfig.rasterServerSupportsElevation,
+    rasterServerMaxRetries: appConfig.rasterServerMaxRetries,
+    rasterServerRetryDelay: appConfig.rasterServerRetryDelay,
+    rasterServerServerErrorsToRetry: appConfig.rasterServerServerErrorsToRetry,
+    rasterServerMaxPerServerRequests: appConfig.rasterServerMaxPerServerRequests,
+  };
+}
+
+/**
+ * Adds raster scenes to the map, one dataset and one layer each.
+ *
+ * Separate from `loadDatasets` rather than folded into its payload: a raster
+ * carries no rows, and `processRowObject([])` returns null, so the row path
+ * drops it on the floor without a word.
+ *
+ * `centerMap` defaults to false. A Sentinel granule is a hundred kilometres
+ * across and framing the map to it would throw away wherever the user was
+ * looking — and on a refresh, that is exactly the frame they are watching
+ * change.
+ */
+export function loadRasters(dispatch: Dispatch, rasters: RasterDataset[], options: { centerMap?: boolean } = {}): void {
+  if (rasters.length === 0) {
+    return;
+  }
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      updateVisData(rasters.map(rasterProtoDataset), {
+        keepExistingConfig: true,
+        centerMap: options.centerMap ?? false,
+      })
+    )
+  );
+}
+
+/**
+ * Refresh path for rasters: add what is new, swap what changed, drop what the
+ * query stopped producing, and — the point of the exercise — leave alone what
+ * did not change.
+ *
+ * The swap is `replaceDataInMap`, never `updateDatasetProps`. The latter exists,
+ * accepts `metadata`, and is a trap twice over: it merges with `deepmerge`,
+ * which *concatenates* arrays, so `bbox` would come back with eight numbers and
+ * the band list would double; and `stac` is not in the layer's
+ * `updateTriggers.getTileData`, so deck would go on serving the old tiles
+ * regardless. `replaceDataInMap` rebuilds the dataset but rescues the
+ * serialised layer config and re-merges it, so the layer keeps its id and
+ * whatever the user styled on it.
+ */
+export function refreshRasters(store: Store, dispatch: Dispatch, rasters: RasterDataset[]): void {
+  const { add, replace, remove } = splitRasterRefresh(rasters, readRasterDatasets(store));
+
+  for (const id of remove) {
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(id)));
+  }
+
+  for (const raster of replace) {
+    dispatch(
+      wrapTo(
+        KEPLER_INSTANCE_ID,
+        replaceDataInMap({
+          datasetToReplaceId: raster.id,
+          datasetToUse: rasterProtoDataset(raster),
+          // The payload of this whole phase: the default is `centerMap: true`,
+          // and with it every change of the time range would yank the map back
+          // to the granule's extent.
+          options: { centerMap: false, keepExistingConfig: true },
+        })
+      )
+    );
+  }
+
+  loadRasters(dispatch, add);
+}
+
+/** The raster datasets kepler holds, as the identity the refresh compares on. */
+function readRasterDatasets(store: Store): Array<{ id: string; metadataUrl?: string }> {
+  return Object.entries(getVisState(store)?.datasets ?? {})
+    .filter(([, dataset]) => dataset.type === RASTER_TILE_TYPE)
+    .map(([id, dataset]) => ({ id, metadataUrl: dataset.metadata?.metadataUrl }));
+}
+
+/**
+ * Points a raster dataset at another scene, in place.
+ *
+ * The obvious way — `replaceDataInMap` — rebuilds the dataset, and with it the
+ * layer: the map goes bare while the new tiles arrive, and the layer the user
+ * had styled and named is replaced by a different one, which shows as a flicker
+ * in the layer tree and as lost settings. Doing it in place avoids all three.
+ *
+ * Two dispatches. The first swaps the asset's `href` on the dataset, and only
+ * that: `updateDatasetProps` deep-merges, and deep-merging *concatenates
+ * arrays*, so touching `bbox` or the band list would silently double them. The
+ * second changes `_stacQuery`, whose only role here is to be one of the values
+ * in the layer's `updateTriggers.getTileData` — kepler reads `dataset.metadata`
+ * afresh on every render, but deck will not refetch tiles until a trigger
+ * changes. It is unused while STAC searching is off, which is the only reason
+ * it is free to borrow; `useSTACSearching` layers keep the old path.
+ *
+ * What stays behind is the rest of the metadata — extent, band statistics — from
+ * the scene the dataset was created with. For a series of one product on one
+ * grid that is exactly right. It would not be for scenes of differing extent.
+ *
+ * Returns false when the swap cannot be made in place, so the caller can fall
+ * back to the rebuild.
+ */
+export function swapRasterScene(store: Store, dispatch: Dispatch, raster: RasterDataset): boolean {
+  // An archive cannot be swapped in place, and the reason is in deck rather
+  // than here. kepler's PMTiles branch declares `updateTriggers.getTileData:
+  // [shouldLoadTerrain]` and nothing else (`raster-tile-layer`'s
+  // `renderPMTilesLayer`), so no change this module can make to the dataset
+  // tells deck that its tiles have expired: it builds the new tile source,
+  // reads its header, and goes on drawing the tiles of the first archive.
+  // Measured, not assumed — every date drew the same rain. The COG branch
+  // lists `_stacQuery` among its triggers, which is the whole reason the swap
+  // below works there. So an archive takes the rebuild instead, which costs a
+  // new tile source and buys a scene that actually changes.
+  if (raster.kind === 'pmtiles') {
+    return false;
+  }
+
+  const visState = getVisState(store);
+  const dataset = visState?.datasets[raster.id];
+  const layer = visState?.layers.find((candidate) => candidate.config?.dataId === raster.id);
+  if (!dataset || !layer) {
+    return false;
+  }
+  if (layer.config?.visConfig?.useSTACSearching) {
+    return false;
+  }
+
+  // Which asset carries the imagery is the STAC's business, not ours: read the
+  // key back rather than assuming the one TiTiler happens to emit.
+  const assets = (dataset.metadata as { assets?: Record<string, { href?: string }> } | undefined)?.assets ?? {};
+  const assetId = Object.keys(assets).find((key) => typeof assets[key]?.href === 'string');
+  if (!assetId) {
+    return false;
+  }
+
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      updateDatasetProps(raster.id, { metadata: { assets: { [assetId]: { href: raster.sourceUrl } } } })
+    )
+  );
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      layerVisConfigChange(layer as unknown as Parameters<typeof layerVisConfigChange>[0], {
+        _stacQuery: raster.sourceUrl,
+      })
+    )
+  );
+  return true;
+}
+
+
+/**
+ * Shows or hides a raster layer without touching its dataset.
+ *
+ * The alternative — dropping the dataset when there is nothing to draw — takes
+ * the layer with it, and the one rebuilt afterwards is a different layer with
+ * default styling. Playback makes that constant: wrapping from the end of the
+ * timeline to the start crosses a window with no scene in it, so every lap
+ * threw away whatever the user had named, coloured or faded. Hidden layers come
+ * back exactly as they were.
+ *
+ * Returns false when there is no such layer yet, so the caller can try again.
+ */
+export function setRasterLayerVisible(store: Store, dispatch: Dispatch, dataId: string, visible: boolean): boolean {
+  const layer = getVisState(store)?.layers.find((candidate) => candidate.config?.dataId === dataId);
+  if (!layer) {
+    return false;
+  }
+  if (layer.config?.isVisible === visible) {
+    return true;
+  }
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      layerConfigChange(layer as unknown as Parameters<typeof layerConfigChange>[0], { isVisible: visible })
+    )
+  );
+  return true;
+}
+
+/**
+ * Copies styling onto the raster layer of a dataset, if that layer exists yet.
+ *
+ * kepler creates the layer asynchronously, so this is called again on each
+ * store change until it finds one — and reports whether it did, so the caller
+ * knows when to stop asking.
+ */
+export function applyRasterStyle(
+  store: Store,
+  dispatch: Dispatch,
+  dataId: string,
+  style: Record<string, unknown>
+): boolean {
+  return applyLayerVisConfig(store, dispatch, dataId, style);
+}
+
+/**
+ * Merges values into the `visConfig` of whatever layer draws a dataset.
+ *
+ * A `visConfig` change is the one way to tell kepler that a layer's data has to
+ * be recomputed without touching the dataset, which is why both the raster's
+ * colour ramp and the WMS layer's date and layer name travel this way.
+ *
+ * Returns false when there is no such layer yet, so a caller polling for one
+ * knows to ask again.
+ */
+export function applyLayerVisConfig(
+  store: Store,
+  dispatch: Dispatch,
+  dataId: string,
+  visConfig: Record<string, unknown>
+): boolean {
+  const layer = getVisState(store)?.layers.find((candidate) => candidate.config?.dataId === dataId);
+  if (!layer) {
+    return false;
+  }
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      // The layer object is kepler's own; only this module's view of it is
+      // narrowed, hence the cast.
+      layerVisConfigChange(layer as unknown as Parameters<typeof layerVisConfigChange>[0], visConfig)
+    )
+  );
+  return true;
+}
+
+/** kepler's `DatasetType.WMS_TILE`: a dataset that is a service, not rows. */
+const WMS_TILE_TYPE = 'wms-tile';
+
+/**
+ * A WMS layer in the shape kepler's own Add Data -> Tileset -> WMS produces.
+ *
+ * `layers` is supplied with the one layer the query named, and that is only a
+ * bootstrap: `createTable` merges what the capabilities refresh returns *over*
+ * this metadata, so moments later it holds every layer the service publishes
+ * and `findDefaultLayerProps` would have picked the first of them. Which layer
+ * is actually drawn is settled afterwards, by `applyWmsLayerChoice`.
+ *
+ * `tilesetDataUrl` is the bare endpoint. Everything else — the date included —
+ * is built from it at request time, and a query string here would corrupt every
+ * request built on it; `serviceUrlOf` is what guarantees it is bare.
+ */
+function wmsProtoDataset(wms: WmsDataset) {
+  return {
+    info: { id: wms.id, label: wms.label, type: WMS_TILE_TYPE, format: 'rows' },
+    data: { fields: [], rows: [] },
+    metadata: {
+      type: REMOTE_TILE,
+      remoteTileFormat: RemoteTileFormat.WMS,
+      tilesetDataUrl: wms.serviceUrl,
+      tilesetMetadataUrl: `${wms.serviceUrl}?service=WMS&request=GetCapabilities`,
+      layers: [{ name: wms.layerName, title: wms.layerName, boundingBox: null, queryable: true }],
+      version: '1.3.0',
+    },
+    disableDataOperation: true,
+  } as unknown as ProtoDataset;
+}
+
+/**
+ * Adds WMS layers to the map, one dataset and one layer each.
+ *
+ * Separate from `loadDatasets` for the same reason as `loadRasters`: no rows.
+ * `centerMap` defaults to false — a WMS covers a country or a continent, and
+ * framing the map to it would throw away wherever the user was looking.
+ */
+export function loadWms(dispatch: Dispatch, layers: WmsDataset[], options: { centerMap?: boolean } = {}): void {
+  if (layers.length === 0) {
+    return;
+  }
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      updateVisData(layers.map(wmsProtoDataset), {
+        keepExistingConfig: true,
+        centerMap: options.centerMap ?? false,
+      })
+    )
+  );
+}
+
+/**
+ * Refresh path for WMS layers: add, rebuild, drop, and leave the rest alone.
+ *
+ * Rebuilding is rare by design. The date never comes through here — it is a
+ * `visConfig` change on the layer — so the only things that reach this path are
+ * a query that starts naming a different service or layer, and one that stops
+ * naming any. That matters because a rebuild costs a fresh GetCapabilities, and
+ * on a service like GeoGLOWS that is the better part of a megabyte of XML.
+ */
+export function refreshWms(store: Store, dispatch: Dispatch, layers: WmsDataset[]): void {
+  const { add, replace, remove } = splitWmsRefresh(layers, readWmsDatasets(store));
+
+  for (const id of remove) {
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(id)));
+  }
+
+  for (const wms of replace) {
+    dispatch(
+      wrapTo(
+        KEPLER_INSTANCE_ID,
+        replaceDataInMap({
+          datasetToReplaceId: wms.id,
+          datasetToUse: wmsProtoDataset(wms),
+          options: { centerMap: false, keepExistingConfig: true },
+        })
+      )
+    );
+  }
+
+  loadWms(dispatch, add);
+}
+
+/** The WMS datasets kepler holds, as the identity the refresh compares on. */
+function readWmsDatasets(store: Store): Array<{ id: string; serviceUrl?: string; layerName?: string }> {
+  const visState = getVisState(store);
+  return Object.entries(visState?.datasets ?? {})
+    .filter(([, dataset]) => dataset.type === WMS_TILE_TYPE)
+    .map(([id, dataset]) => {
+      const metadata = dataset.metadata as { tilesetDataUrl?: string } | undefined;
+      const layer = visState?.layers.find((candidate) => candidate.config?.dataId === id);
+      const chosen = layer?.config?.visConfig?.wmsLayer as { name?: string } | undefined;
+      return { id, serviceUrl: metadata?.tilesetDataUrl, layerName: chosen?.name };
+    });
+}
+
+/**
+ * Pins the layer of the service that should actually be drawn.
+ *
+ * Needed because kepler's own metadata refresh overwrites the single-layer list
+ * the panel supplied with every layer the service publishes, and the layer was
+ * built from `layers[0]` of whichever list arrived first. On the GeoGLOWS
+ * service that is `imerg_early_run_24h`, whatever the query asked for.
+ *
+ * `boundingBox` is left null and `queryable` true: the values that matter come
+ * from the capabilities document, and overwriting them with guesses would trade
+ * a wrong layer for a wrong extent.
+ */
+export function applyWmsLayerChoice(store: Store, dispatch: Dispatch, wms: WmsDataset): boolean {
+  const layer = getVisState(store)?.layers.find((candidate) => candidate.config?.dataId === wms.id);
+  if (!layer) {
+    return false;
+  }
+
+  const known = (getVisState(store)?.datasets[wms.id]?.metadata as { layers?: WmsServiceLayer[] } | undefined)?.layers;
+  const chosen = known?.find((candidate) => candidate.name === wms.layerName) ?? {
+    name: wms.layerName,
+    title: wms.layerName,
+    boundingBox: null,
+    queryable: true,
+  };
+
+  const current = layer.config?.visConfig?.wmsLayer as { name?: string } | undefined;
+  if (current?.name === chosen.name) {
+    return true;
+  }
+  return applyLayerVisConfig(store, dispatch, wms.id, { wmsLayer: chosen });
+}
+
+/** One entry of a WMS dataset's layer list, as kepler stores it. */
+interface WmsServiceLayer {
+  name: string;
+  title: string;
+  boundingBox: number[] | null;
+  queryable?: boolean;
+}
+
+/**
+ * The dataset that gives a WMS timeline its clock.
+ *
+ * kepler's time filter is always a filter *on a column of a dataset*: there is
+ * no such thing as a free-standing time axis. So when the dates come from the
+ * service rather than from the query — the query named a layer and nothing else
+ * — there is nothing on the map for the widget to attach to, and the timeline
+ * simply never appears.
+ *
+ * This makes one: a dataset of a single `time` column, one row per date the
+ * service publishes. It is also honest content in its own right, and shows up
+ * in kepler's data table as the calendar it is.
+ *
+ * The fingerprint in `metadata` is what makes this idempotent. The hook that
+ * calls this runs on every store change, and rebuilding the calendar each time
+ * would reset the very filter it exists to feed. Comparing the dates
+ * themselves, rather than the identity of the array holding them, means a
+ * re-query that returns the same calendar changes nothing.
+ */
+export function syncWmsCalendar(store: Store, dispatch: Dispatch, wms: WmsDataset): void {
+  syncCalendarDataset(store, dispatch, {
+    id: wmsCalendarDatasetId(wms.id),
+    label: wms.label,
+    times: wms.times,
+  });
+}
+
+/**
+ * Puts a calendar of dates on the map as a dataset of rows.
+ *
+ * Shared by the WMS and Zarr paths, and shared rather than copied because what
+ * they need here is identical down to the fingerprint: neither carries rows of
+ * its own, kepler's time filter can only hang off a column, and both are
+ * reconciled from a hook that runs on every store change. The two `split*Refresh`
+ * functions stay apart because what makes two layers *the same layer* differs
+ * between them; nothing differs here.
+ */
+export function syncCalendarDataset(
+  store: Store,
+  dispatch: Dispatch,
+  calendar: { id: string; label: string; times: number[] }
+): void {
+  if (calendar.times.length === 0) {
+    return;
+  }
+
+  const { id, times } = calendar;
+  const fingerprint = `${times.length}|${times[0]}|${times[times.length - 1]}`;
+  const existing = getVisState(store)?.datasets[id];
+  if (existing) {
+    const held = (existing.metadata as { calendarFingerprint?: string } | undefined)?.calendarFingerprint;
+    if (held === fingerprint) {
+      return;
+    }
+  }
+
+  const data = processRowObject(times.map((time) => ({ time })));
+  if (!data) {
+    return;
+  }
+  const proto = {
+    info: { id, label: `${calendar.label} · dates`, format: 'row' },
+    data,
+    metadata: { calendarFingerprint: fingerprint },
+  } as unknown as ProtoDataset;
+
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      existing
+        ? replaceDataInMap({
+            datasetToReplaceId: id,
+            datasetToUse: proto,
+            options: { centerMap: false, keepExistingConfig: true },
+          })
+        : updateVisData([proto], { keepExistingConfig: true, centerMap: false })
+    )
+  );
+}
+
+/**
+ * Points a WMS layer at a moment.
+ *
+ * One dispatch, and no dataset is touched at all: the date lands in the layer's
+ * `visConfig`, `wmsTimeLayer` reads it there on the next render, and deck sees a
+ * data url it has not seen before. Nothing is rebuilt, nothing is refetched
+ * except the picture itself, and the layer the user styled is the same layer
+ * before and after.
+ *
+ * Quiet when the layer already shows that moment, which is most of the time: a
+ * drag of the time widget that stays between two dates arrives here and stops.
+ */
+export function applyWmsTime(store: Store, dispatch: Dispatch, dataId: string, time: string): boolean {
+  const layer = getVisState(store)?.layers.find((candidate) => candidate.config?.dataId === dataId);
+  if (!layer) {
+    return false;
+  }
+  if (layer.config?.visConfig?.wmsTime === time) {
+    return true;
+  }
+  return applyLayerVisConfig(store, dispatch, dataId, { wmsTime: time });
+}
+
 /**
  * The URL-backed datasets a saved config carries, ready for `addDataToMap`.
  *
@@ -168,13 +704,19 @@ export function captureMapConfig(store: Store): SavedMapConfig | null {
 
 /** The saved form of every URL-backed dataset the map currently holds. */
 function captureRemoteDatasets(store: Store): SavedRemoteDataset[] {
-  const datasets = Object.values(getVisState(store)?.datasets ?? {});
+  const datasets = Object.entries(getVisState(store)?.datasets ?? {});
   // Called as a method: `DatasetSchema.save` reads `this.key`, so it cannot be
   // detached from the schema object.
   const schema = datasetSchema[VERSIONS.v1];
   const saved = datasets
-    .filter((dataset) => REMOTE_DATASET_TYPES.includes(dataset.type ?? ''))
-    .map((dataset) => ({
+    .filter(([, dataset]) => REMOTE_DATASET_TYPES.includes(dataset.type ?? ''))
+    // Not the ones the panel mints from a query. They are remote datasets like
+    // any other, but the query rebuilds them on every load, so saving them
+    // writes a second dataset with the same id into the dashboard JSON — and
+    // the stale copy would then race the fresh one on the next load. Same
+    // reasoning the comment above gives for leaving the row datasets out.
+    .filter(([id]) => !isPanelRasterId(id) && !isPanelWmsId(id))
+    .map(([, dataset]) => ({
       version: VERSIONS.v1,
       // The state object is kepler's own `KeplerTable`; only this module's view
       // of it is narrowed, hence the cast.
@@ -282,12 +824,18 @@ interface VisStateLike {
       dataContainer?: unknown;
       /** kepler's `DatasetType`: '' for a dataset built from rows, 'vector-tile' and friends for a URL. */
       type?: string;
+      /** Where a URL-backed dataset points; for a raster, which scene it is. */
+      metadata?: { metadataUrl?: string };
     }
   >;
   layers: Array<{
     id: string;
     type?: string;
-    config?: { dataId?: string };
+    config?: {
+      dataId?: string;
+      isVisible?: boolean;
+      visConfig?: { useSTACSearching?: boolean; wmsLayer?: unknown; wmsTime?: unknown; zarrLabel?: unknown };
+    };
     meta?: { bounds?: number[] };
     /** Resolves a picked deck.gl object to its row — what the tooltip uses. */
     getHoverData?: (
@@ -466,6 +1014,21 @@ export function readClickedEntity(store: Store, fields: string[]): Record<string
   }
   if (clicked === null) {
     return null;
+  }
+
+  // A WMS click never resolves through a dataset: the values came from the
+  // service, not from any row the panel holds, and the dataset kepler binds the
+  // layer to has no fields at all. Answered here, before the row path that
+  // would find nothing and read as "not a selection".
+  const fromService = wmsFeatureValues(clicked.object);
+  if (fromService) {
+    const asked: Record<string, unknown> = {};
+    for (const field of fields) {
+      if (fromService[field] !== undefined) {
+        asked[field] = fromService[field];
+      }
+    }
+    return asked;
   }
 
   const layerIdx = clicked.layer?.props?.idx;
@@ -944,4 +1507,146 @@ export function setBasemap(dispatch: Dispatch, styleId: string): void {
  */
 export function setSidePanel(dispatch: Dispatch, visible: boolean): void {
   dispatch(wrapTo(KEPLER_INSTANCE_ID, toggleSidePanel(visible ? 'layer' : null)));
+}
+
+/**
+ * The dataset type the panel mints for a Zarr variable.
+ *
+ * Not one of kepler's own — `DatasetType` knows local, vector-tile,
+ * raster-tile, wms-tile, tile-3d and bitmap, and none of them describes a store
+ * of named arrays rendered on demand. Making one up is safe because the only
+ * code that asks is `matchDatasetType`, which compares strings, and
+ * `refreshRemoteData` falls through to `null` for a type it does not recognise —
+ * so kepler will not try to refresh metadata the panel owns.
+ */
+const ZARR_TILE_TYPE = 'zarr';
+
+/**
+ * A Zarr variable in the shape the panel's own layer reads.
+ *
+ * Everything the layer needs to build a tile url lives in `metadata`, because
+ * that is what survives kepler's dataset machinery untouched: there are no rows
+ * here, and no upstream code that would rewrite these keys the way the WMS
+ * capabilities refresh rewrites `layers`.
+ *
+ * The server travels with the dataset rather than being read at draw time, for
+ * the reason the raster path gives: two panels on one dashboard may render from
+ * different TiTilers, and a dataset that reads a global at draw time cannot.
+ */
+function zarrProtoDataset(zarr: ZarrDataset) {
+  return {
+    info: { id: zarr.id, label: zarr.label, type: ZARR_TILE_TYPE, format: 'rows' },
+    data: { fields: [], rows: [] },
+    metadata: {
+      serverUrl: zarr.serverUrl,
+      storeUrl: zarr.storeUrl,
+      variable: zarr.variable,
+      selectors: zarr.selectors,
+      levels: zarr.levels,
+      dimension: zarr.dimension,
+      colormap: zarr.colormap,
+      rescale: zarr.rescale,
+    },
+    disableDataOperation: true,
+  } as unknown as ProtoDataset;
+}
+
+/**
+ * Adds Zarr variables to the map, one dataset and one layer each.
+ *
+ * Separate from `loadDatasets` for the reason `loadRasters` and `loadWms` are:
+ * no rows, and `processRowObject([])` returns null, so the row path drops it
+ * without a word.
+ *
+ * `centerMap` defaults to false. A climate store is global, and framing the map
+ * to it would throw away wherever the user was looking — and pull a great many
+ * tiles from a server that makes each one from scratch.
+ */
+export function loadZarr(dispatch: Dispatch, layers: ZarrDataset[], options: { centerMap?: boolean } = {}): void {
+  if (layers.length === 0) {
+    return;
+  }
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      updateVisData(layers.map(zarrProtoDataset), {
+        keepExistingConfig: true,
+        centerMap: options.centerMap ?? false,
+      })
+    )
+  );
+}
+
+/**
+ * Refresh path for Zarr variables: add, rebuild, drop, leave the rest alone.
+ *
+ * Rebuilding is rare by design, and the moment never reaches here — it is a
+ * `visConfig` change on the layer. What does reach here is a query that starts
+ * naming a different store or variable, and one that stops naming any.
+ */
+export function refreshZarr(store: Store, dispatch: Dispatch, layers: ZarrDataset[]): void {
+  const { add, replace, remove } = splitZarrRefresh(layers, readZarrDatasets(store));
+
+  for (const id of remove) {
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(id)));
+  }
+
+  for (const zarr of replace) {
+    dispatch(
+      wrapTo(
+        KEPLER_INSTANCE_ID,
+        replaceDataInMap({
+          datasetToReplaceId: zarr.id,
+          datasetToUse: zarrProtoDataset(zarr),
+          options: { centerMap: false, keepExistingConfig: true },
+        })
+      )
+    );
+  }
+
+  loadZarr(dispatch, add);
+}
+
+/** The Zarr datasets kepler holds, as the identity the refresh compares on. */
+function readZarrDatasets(store: Store): Array<{ id: string; storeUrl?: string; variable?: string }> {
+  const visState = getVisState(store);
+  return Object.entries(visState?.datasets ?? {})
+    .filter(([, dataset]) => dataset.type === ZARR_TILE_TYPE)
+    .map(([id, dataset]) => {
+      const metadata = dataset.metadata as { storeUrl?: string; variable?: string } | undefined;
+      return { id, storeUrl: metadata?.storeUrl, variable: metadata?.variable };
+    });
+}
+
+/** Puts a Zarr variable's calendar on the map, so the clock has a column. */
+export function syncZarrCalendar(store: Store, dispatch: Dispatch, zarr: ZarrDataset): void {
+  syncCalendarDataset(store, dispatch, {
+    id: zarrCalendarDatasetId(zarr.id),
+    label: zarr.label,
+    times: zarr.times,
+  });
+}
+
+/**
+ * Points a Zarr layer at a moment, by its own index label.
+ *
+ * The label rather than a timestamp, because TiTiler hands it straight to
+ * xarray's `.sel`, which matches exactly and offers no nearest-neighbour
+ * fallback: a store stamped at 09:00 answers 500 to the date-only spelling of
+ * its own dates.
+ *
+ * One dispatch and no dataset touched: the label lands in `visConfig`,
+ * `zarrTileLayer` builds a new tile url from it, and deck refetches only the
+ * tiles on screen. Quiet when the layer already shows that moment, which is most
+ * of the time — a drag of the widget between two dates arrives here and stops.
+ */
+export function applyZarrLabel(store: Store, dispatch: Dispatch, dataId: string, label: string): boolean {
+  const layer = getVisState(store)?.layers.find((candidate) => candidate.config?.dataId === dataId);
+  if (!layer) {
+    return false;
+  }
+  if (layer.config?.visConfig?.zarrLabel === label) {
+    return true;
+  }
+  return applyLayerVisConfig(store, dispatch, dataId, { zarrLabel: label });
 }

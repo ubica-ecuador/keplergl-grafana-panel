@@ -62,6 +62,41 @@ export interface KeplerPanelOptions {
    */
   customBasemapUrl?: string;
 
+  /**
+   * Colour ramp for rasters the queries produce.
+   *
+   * kepler's own default is `cfastie`, which is built for drone NDVI and is not
+   * monotonic — it steps through black, grey, white, green, yellow, red and
+   * magenta. On a continuous field like rainfall or temperature, neighbouring
+   * cells of similar value land on unrelated colours and the map reads as
+   * confetti. Left empty, nothing is imposed and kepler's default stands.
+   */
+  rasterColormap?: string;
+
+  /**
+   * Base URL of the TiTiler-compatible server that turns a COG into tiles, for
+   * queries that return a link to imagery rather than rows.
+   *
+   * There is no useful public default. A tile server reads the raster on the
+   * panel's behalf, so it is the one piece that has to be able to reach the
+   * imagery: private rasters are exactly what a public service cannot serve.
+   * Left empty, the panel falls back to the server in this repository's
+   * docker-compose, which is right for development and wrong everywhere else.
+   */
+  rasterServerUrl?: string;
+
+  /**
+   * Value range a Zarr variable is stretched over, as `min,max`.
+   *
+   * Needed where a raster's is not, because a COG the panel draws was written
+   * for drawing and a scientific Zarr was not: the store holds physical units —
+   * kelvin, mm/day, a reflectance — and nothing in it says which slice of that
+   * range is worth a colour. Left empty, TiTiler stretches each tile over its
+   * own extremes, and neighbouring tiles then disagree about what a colour
+   * means, which reads as patchwork.
+   */
+  zarrRescale?: string;
+
   /** Follow the dashboard theme. Off leaves kepler with its own dark styling. */
   followGrafanaTheme?: boolean;
 

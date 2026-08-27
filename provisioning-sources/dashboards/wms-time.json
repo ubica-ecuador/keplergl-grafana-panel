@@ -1,0 +1,427 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Un WMS temporal como capa del mapa: el reloj del panel recorre las fechas del servicio.",
+  "editable": true,
+  "id": null,
+  "links": [],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 41,
+  "tags": [
+    "ubica",
+    "wms",
+    "raster"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "capa",
+        "label": "Capa del servicio",
+        "type": "custom",
+        "query": "persiann_pdir_24h,persiann_pdir_48h,persiann_pdir_72h,persiann_no_precipitation,imerg_early_run_24h",
+        "current": {
+          "selected": true,
+          "text": "persiann_pdir_24h",
+          "value": "persiann_pdir_24h"
+        },
+        "options": [],
+        "includeAll": false,
+        "multi": false,
+        "description": "Qué capa del servicio se dibuja. Va a la columna wms_layer, así que el mapa la sigue sin editar nada."
+      },
+      {
+        "name": "lluvia",
+        "label": "Valor bajo el clic",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "description": "Lo escribe el mapa: pinchar sobre la capa pregunta al servicio por ese píxel, en la fecha que se está viendo."
+      },
+      {
+        "name": "area",
+        "label": "Zona dibujada",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "description": "La escribe el mapa al dibujar un polígono, como WKT. Vacía significa Ecuador entero."
+      },
+      {
+        "name": "mapFrom",
+        "label": "Ventana del mapa · desde",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "hide": 2,
+        "description": "La escribe el mapa al mover su barra de tiempo."
+      },
+      {
+        "name": "mapTo",
+        "label": "Ventana del mapa · hasta",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "hide": 2,
+        "description": "La escribe el mapa al mover su barra de tiempo. Es la fecha que el análisis zonal usa."
+      },
+      {
+        "name": "west",
+        "label": "Encuadre · oeste",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "hide": 2,
+        "description": "La escribe el mapa al moverse. Sirve de zona cuando no hay polígono dibujado."
+      },
+      {
+        "name": "south",
+        "label": "Encuadre · sur",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "hide": 2,
+        "description": "La escribe el mapa al moverse. Sirve de zona cuando no hay polígono dibujado."
+      },
+      {
+        "name": "east",
+        "label": "Encuadre · este",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "hide": 2,
+        "description": "La escribe el mapa al moverse. Sirve de zona cuando no hay polígono dibujado."
+      },
+      {
+        "name": "north",
+        "label": "Encuadre · norte",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "hide": 2,
+        "description": "La escribe el mapa al moverse. Sirve de zona cuando no hay polígono dibujado."
+      }
+    ]
+  },
+  "time": {
+    "from": "now-45d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Lluvia — PERSIANN por WMS temporal",
+  "uid": "wms-time",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "mode": "markdown",
+        "content": "## Lluvia por WMS temporal — PERSIANN sobre Ecuador\n\nEl servicio es de [GeoGLOWS](https://services.geoglows.org/geoserver/): un GeoServer con dimensión `TIME`, que publica una imagen por día y espera que se le pida una fecha en la propia petición.\n\n**Arrastra la barra de tiempo del mapa.** La imagen cambia sin volver a consultar y sin mover el encuadre: la fecha viaja en el `TIME` del GetMap. Un arrastre que se queda entre dos días no pide nada. La consulta no devuelve imágenes — devuelve el servicio, la capa, y las fechas que el propio servicio dice tener.\n\n**Pincha sobre la lluvia** y el panel le pregunta al servicio qué hay bajo ese píxel, en la fecha que estás viendo. El número aparece arriba, en «Valor bajo el clic», y cualquier otro panel puede leerlo.\n\n**Dibuja un polígono** con la herramienta del mapa: el mismo dato que ves pintado se lee en números por WCS —la otra cara del mismo GeoServer— y DuckDB lo recorta por tu zona. El WMS dibuja; el WCS entrega los píxeles. Ni ETL ni segunda fuente — y el número sigue a la misma barra de tiempo que la imagen.\n\nAbajo, la **serie de siete días** sobre esa misma zona: si no hay polígono dibujado, mide lo que estás mirando, así que mover el mapa la recalcula."
+      }
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "La consulta nombra el servicio y la capa; el reloj del mapa elige el día. Ningún servidor de teselas interviene: el WMS dibuja sus propias imágenes.",
+      "gridPos": {
+        "h": 19,
+        "w": 14,
+        "x": 0,
+        "y": 7
+      },
+      "id": 2,
+      "type": "ubica-keplergl-panel",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Las fechas las publica el propio servicio, en su GetCapabilities: una capa\n-- con dimensión TIME lista ahí todas las pasadas que tiene. Así que la consulta\n-- no inventa un calendario, lo lee — y de paso nombra el servicio y la capa.\n--\n-- Nada de esto trae imágenes: un WMS las dibuja él mismo. La ventana del reloj\n-- del mapa elige la fecha, en el navegador, y viaja como TIME en el GetMap.\n--\n-- OJO con $capa: este datasource entrecomilla las variables por su cuenta, así\n-- que va desnuda y concatenada. Metida dentro de unas comillas se convertiría\n-- en ''persiann_pdir_24h'' y la consulta no llega ni al parser.\nWITH caps AS (\n  SELECT http_get(\n    'https://services.geoglows.org/geoserver/satellite_based_precipitation/wms'\n    || '?service=WMS&request=GetCapabilities'\n  )->>'body' AS xml\n), extent AS (\n  SELECT regexp_extract(\n    xml,\n    '(?s)<Name>' || $capa || '</Name>.*?<Dimension name=\"time\"[^>]*>([^<]*)</Dimension>',\n    1\n  ) AS times\n  FROM caps\n), fechas AS (\n  -- En su propia etapa: DuckDB no admite UNNEST en un SELECT que además filtra.\n  SELECT unnest(str_split(times, ','))::TIMESTAMPTZ AS time FROM extent\n)\nSELECT\n  time,\n  'https://services.geoglows.org/geoserver/satellite_based_precipitation/wms' AS wms_url,\n  $capa AS wms_layer\nFROM fechas\nWHERE time BETWEEN $__timeFrom()::TIMESTAMPTZ AND $__timeTo()::TIMESTAMPTZ\nORDER BY time\n",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "timeSync": "variables",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -1.7,
+              "longitude": -78.6,
+              "zoom": 5.4,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        },
+        "variableMappings": [
+          {
+            "field": "wms_value",
+            "variable": "lluvia",
+            "source": "click"
+          }
+        ],
+        "areaVariable": "area",
+        "timeVariables": {
+          "from": "mapFrom",
+          "to": "mapTo"
+        },
+        "viewportVariables": {
+          "west": "west",
+          "south": "south",
+          "east": "east",
+          "north": "north"
+        }
+      },
+      "title": "PERSIANN sobre Ecuador · arrastra el tiempo, pincha el mapa"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Lo mismo que alimenta el mapa, como tabla: una fila por día disponible.",
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 14,
+        "y": 7
+      },
+      "id": 3,
+      "type": "table",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Las fechas las publica el propio servicio, en su GetCapabilities: una capa\n-- con dimensión TIME lista ahí todas las pasadas que tiene. Así que la consulta\n-- no inventa un calendario, lo lee — y de paso nombra el servicio y la capa.\n--\n-- Nada de esto trae imágenes: un WMS las dibuja él mismo. La ventana del reloj\n-- del mapa elige la fecha, en el navegador, y viaja como TIME en el GetMap.\n--\n-- OJO con $capa: este datasource entrecomilla las variables por su cuenta, así\n-- que va desnuda y concatenada. Metida dentro de unas comillas se convertiría\n-- en ''persiann_pdir_24h'' y la consulta no llega ni al parser.\nWITH caps AS (\n  SELECT http_get(\n    'https://services.geoglows.org/geoserver/satellite_based_precipitation/wms'\n    || '?service=WMS&request=GetCapabilities'\n  )->>'body' AS xml\n), extent AS (\n  SELECT regexp_extract(\n    xml,\n    '(?s)<Name>' || $capa || '</Name>.*?<Dimension name=\"time\"[^>]*>([^<]*)</Dimension>',\n    1\n  ) AS times\n  FROM caps\n), fechas AS (\n  -- En su propia etapa: DuckDB no admite UNNEST en un SELECT que además filtra.\n  SELECT unnest(str_split(times, ','))::TIMESTAMPTZ AS time FROM extent\n)\nSELECT\n  time,\n  'https://services.geoglows.org/geoserver/satellite_based_precipitation/wms' AS wms_url,\n  $capa AS wms_layer\nFROM fechas\nWHERE time BETWEEN $__timeFrom()::TIMESTAMPTZ AND $__timeTo()::TIMESTAMPTZ\nORDER BY time\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Los días que el servicio ofrece",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "El mismo dato que pinta el mapa, leído por WCS y recortado en DuckDB. La zona es el polígono que dibujes; si no hay ninguno, el encuadre del mapa. La fecha es la del extremo de la barra de tiempo del mapa.",
+      "gridPos": {
+        "h": 9,
+        "w": 10,
+        "x": 14,
+        "y": 17
+      },
+      "id": 4,
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- El otro eje del mismo dato: el WMS lo pinta, el WCS lo entrega en números.\n-- GeoServer publica ambos sobre la misma capa, así que esto no es otra fuente\n-- ni otro ETL — es la misma escena, leída en vez de dibujada.\n--\n-- La fecha se la preguntamos al servicio, igual que el mapa: suponerla a partir\n-- del rango daría 404 el día que el rango va por delante de la última pasada.\nINSTALL raster FROM community; LOAD raster;\nSELECT RT_GdalConfig('CURL_CA_BUNDLE','/etc/ssl/certs/ca-certificates.crt');\n\n-- Sin polígono dibujado, la zona es Ecuador entero: el panel dice algo desde el\n-- primer momento, y dibujar en el mapa lo acota.\nSET VARIABLE zona = coalesce(\n  nullif($area, ''),\n  CASE WHEN nullif($west, '') IS NOT NULL THEN\n    'POLYGON((' || $west || ' ' || $north || ', ' || $east || ' ' || $north || ', '\n                || $east || ' ' || $south || ', ' || $west || ' ' || $south || ', '\n                || $west || ' ' || $north || '))'\n  END,\n  'POLYGON((-80 1, -77 1, -77 -3, -80 -3, -80 1))'\n);\n\nSET VARIABLE fecha = (\n  WITH caps AS (\n    SELECT http_get('https://services.geoglows.org/geoserver/satellite_based_precipitation/wms?service=WMS&request=GetCapabilities')->>'body' AS xml\n  ), extent AS (\n    SELECT regexp_extract(xml, '(?s)<Name>' || $capa || '</Name>.*?<Dimension name=\"time\"[^>]*>([^<]*)</Dimension>', 1) AS times FROM caps\n  ), fechas AS (\n    SELECT unnest(str_split(times, ','))::TIMESTAMPTZ AS t FROM extent\n  )\n  -- El reloj que manda aquí es el del mapa, no el del dashboard: el panel\n  -- responde a la barra de tiempo que estás arrastrando. `mapTo` la publica el\n  -- propio mapa (opción «Time variables»); vacía —antes del primer movimiento—\n  -- vale el extremo del rango del dashboard.\n  SELECT max(t) FROM fechas\n  WHERE t <= coalesce(try_cast(nullif($mapTo, '') AS TIMESTAMPTZ), $__timeTo()::TIMESTAMPTZ)\n);\n\n-- RT_Read exige una ruta literal en tiempo de bind, así que la URL se arma en\n-- una variable y se lee con getvariable(). El recuadro sale del polígono: se\n-- descarga la zona y no la escena entera.\nSET VARIABLE cobertura = (\n  SELECT '/vsicurl/https://services.geoglows.org/geoserver/satellite_based_precipitation/wcs'\n      || '?service=WCS&version=2.0.1&request=GetCoverage'\n      || '&coverageId=satellite_based_precipitation__' || $capa || '&format=image/tiff'\n      || '&subset=Long(' || round(ST_XMin(g), 3) || ',' || round(ST_XMax(g), 3) || ')'\n      || '&subset=Lat('  || round(ST_YMin(g), 3) || ',' || round(ST_YMax(g), 3) || ')'\n      || '&subset=time(%22' || strftime(getvariable('fecha') AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%S.000Z') || '%22)'\n  FROM (SELECT ST_GeomFromText(getvariable('zona')) AS g)\n);\n\n-- RT_CubeClip rellena con -99 fuera del polígono, que es justo lo que este\n-- producto ya usa para «sin dato», así que el agregado lo descarta solo. Nada\n-- de RT_CubeSetNoData: el fichero trae su nodata declarado y sobreescribirlo\n-- devuelve mínimos negativos en un producto de lluvia.\nSELECT\n  getvariable('fecha')::TIMESTAMPTZ AS time,\n  round((s).mean, 3)                AS \"media mm\",\n  (s).maximum                       AS \"máximo mm\",\n  (s).valid_count                   AS \"celdas en la zona\"\nFROM (\n  SELECT RT_CubeStats_Agg(\n           RT_CubeClip(databand_1, tile_x, tile_y, metadata, ST_GeomFromText(getvariable('zona')), -99.0), 0) AS s\n  FROM RT_Read(getvariable('cobertura'))\n);\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Lluvia sobre la zona · un día",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "celdas en la zona"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "orientation": "horizontal"
+      }
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Los siete días que terminan hoy, sobre el polígono que dibujes — y si no hay ninguno, sobre el encuadre del mapa. Son siete peticiones WCS, una por día: RT_Read exige ruta literal y un rango temporal en WCS devuelve una sola loncha. Unos cuatro segundos por pasada, y se relanza cada vez que mueves el mapa. Hoy aparece en cuanto el servicio publica su pasada; hasta entonces son seis puntos, no un error.",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "id": 5,
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Serie de 7 días sobre la zona: el mismo dato que pinta el mapa, leído en\n-- números por WCS y recortado en DuckDB. Una petición por día, y no por pereza:\n-- RT_Read exige ruta literal en tiempo de bind, y un subset temporal con rango\n-- en WCS 2.0.1 devuelve una sola loncha, no un cubo. Así que 7 lecturas.\n--\n-- La zona es el polígono que dibujes; si no hay ninguno, el encuadre del mapa;\n-- y si el panel no publica encuadre, Ecuador entero.\nINSTALL raster FROM community; LOAD raster;\nSELECT RT_GdalConfig('CURL_CA_BUNDLE','/etc/ssl/certs/ca-certificates.crt');\n\nSET VARIABLE zona = coalesce(\n  nullif($area, ''),\n  CASE WHEN nullif($west, '') IS NOT NULL THEN\n    'POLYGON((' || $west || ' ' || $north || ', ' || $east || ' ' || $north || ', '\n                || $east || ' ' || $south || ', ' || $west || ' ' || $south || ', '\n                || $west || ' ' || $north || '))'\n  END,\n  'POLYGON((-80 1, -77 1, -77 -3, -80 -3, -80 1))'\n);\n\n-- Los siete días naturales que terminan hoy, cruzados con los que el servicio\n-- dice tener: uno que le falte —hoy mismo, hasta que publique la pasada— se\n-- queda sin punto, en vez de dar 404 y tumbar todo.\nSET VARIABLE dias = (\n  WITH caps AS (\n    SELECT http_get('https://services.geoglows.org/geoserver/satellite_based_precipitation/wms?service=WMS&request=GetCapabilities')->>'body' AS xml\n  ), extent AS (\n    SELECT regexp_extract(xml, '(?s)<Name>' || $capa || '</Name>.*?<Dimension name=\"time\"[^>]*>([^<]*)</Dimension>', 1) AS times FROM caps\n  ), fechas AS (\n    SELECT unnest(str_split(times, ','))::TIMESTAMPTZ AS t FROM extent\n  )\n  SELECT list(t ORDER BY t DESC)\n  FROM fechas\n  WHERE t >= current_date - INTERVAL 6 DAY AND t < current_date + INTERVAL 1 DAY\n);\n\n-- Día 1. Si el servicio tiene menos de 7, se repite el más reciente y el\n-- GROUP BY final colapsa el duplicado; nunca se pide una fecha inexistente.\nSET VARIABLE d1 = coalesce(getvariable('dias')[1], getvariable('dias')[1]);\nSET VARIABLE u1 = (SELECT '/vsicurl/https://services.geoglows.org/geoserver/satellite_based_precipitation/wcs'\n      || '?service=WCS&version=2.0.1&request=GetCoverage'\n      || '&coverageId=satellite_based_precipitation__' || $capa || '&format=image/tiff'\n      || '&subset=Long(' || round(ST_XMin(g), 3) || ',' || round(ST_XMax(g), 3) || ')'\n      || '&subset=Lat('  || round(ST_YMin(g), 3) || ',' || round(ST_YMax(g), 3) || ')'\n      || '&subset=time(%22' || strftime(d AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%S.000Z') || '%22)' FROM (SELECT ST_GeomFromText(getvariable('zona')) AS g, getvariable('d1') AS d));\n\n-- Día 2. Si el servicio tiene menos de 7, se repite el más reciente y el\n-- GROUP BY final colapsa el duplicado; nunca se pide una fecha inexistente.\nSET VARIABLE d2 = coalesce(getvariable('dias')[2], getvariable('dias')[1]);\nSET VARIABLE u2 = (SELECT '/vsicurl/https://services.geoglows.org/geoserver/satellite_based_precipitation/wcs'\n      || '?service=WCS&version=2.0.1&request=GetCoverage'\n      || '&coverageId=satellite_based_precipitation__' || $capa || '&format=image/tiff'\n      || '&subset=Long(' || round(ST_XMin(g), 3) || ',' || round(ST_XMax(g), 3) || ')'\n      || '&subset=Lat('  || round(ST_YMin(g), 3) || ',' || round(ST_YMax(g), 3) || ')'\n      || '&subset=time(%22' || strftime(d AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%S.000Z') || '%22)' FROM (SELECT ST_GeomFromText(getvariable('zona')) AS g, getvariable('d2') AS d));\n\n-- Día 3. Si el servicio tiene menos de 7, se repite el más reciente y el\n-- GROUP BY final colapsa el duplicado; nunca se pide una fecha inexistente.\nSET VARIABLE d3 = coalesce(getvariable('dias')[3], getvariable('dias')[1]);\nSET VARIABLE u3 = (SELECT '/vsicurl/https://services.geoglows.org/geoserver/satellite_based_precipitation/wcs'\n      || '?service=WCS&version=2.0.1&request=GetCoverage'\n      || '&coverageId=satellite_based_precipitation__' || $capa || '&format=image/tiff'\n      || '&subset=Long(' || round(ST_XMin(g), 3) || ',' || round(ST_XMax(g), 3) || ')'\n      || '&subset=Lat('  || round(ST_YMin(g), 3) || ',' || round(ST_YMax(g), 3) || ')'\n      || '&subset=time(%22' || strftime(d AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%S.000Z') || '%22)' FROM (SELECT ST_GeomFromText(getvariable('zona')) AS g, getvariable('d3') AS d));\n\n-- Día 4. Si el servicio tiene menos de 7, se repite el más reciente y el\n-- GROUP BY final colapsa el duplicado; nunca se pide una fecha inexistente.\nSET VARIABLE d4 = coalesce(getvariable('dias')[4], getvariable('dias')[1]);\nSET VARIABLE u4 = (SELECT '/vsicurl/https://services.geoglows.org/geoserver/satellite_based_precipitation/wcs'\n      || '?service=WCS&version=2.0.1&request=GetCoverage'\n      || '&coverageId=satellite_based_precipitation__' || $capa || '&format=image/tiff'\n      || '&subset=Long(' || round(ST_XMin(g), 3) || ',' || round(ST_XMax(g), 3) || ')'\n      || '&subset=Lat('  || round(ST_YMin(g), 3) || ',' || round(ST_YMax(g), 3) || ')'\n      || '&subset=time(%22' || strftime(d AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%S.000Z') || '%22)' FROM (SELECT ST_GeomFromText(getvariable('zona')) AS g, getvariable('d4') AS d));\n\n-- Día 5. Si el servicio tiene menos de 7, se repite el más reciente y el\n-- GROUP BY final colapsa el duplicado; nunca se pide una fecha inexistente.\nSET VARIABLE d5 = coalesce(getvariable('dias')[5], getvariable('dias')[1]);\nSET VARIABLE u5 = (SELECT '/vsicurl/https://services.geoglows.org/geoserver/satellite_based_precipitation/wcs'\n      || '?service=WCS&version=2.0.1&request=GetCoverage'\n      || '&coverageId=satellite_based_precipitation__' || $capa || '&format=image/tiff'\n      || '&subset=Long(' || round(ST_XMin(g), 3) || ',' || round(ST_XMax(g), 3) || ')'\n      || '&subset=Lat('  || round(ST_YMin(g), 3) || ',' || round(ST_YMax(g), 3) || ')'\n      || '&subset=time(%22' || strftime(d AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%S.000Z') || '%22)' FROM (SELECT ST_GeomFromText(getvariable('zona')) AS g, getvariable('d5') AS d));\n\n-- Día 6. Si el servicio tiene menos de 7, se repite el más reciente y el\n-- GROUP BY final colapsa el duplicado; nunca se pide una fecha inexistente.\nSET VARIABLE d6 = coalesce(getvariable('dias')[6], getvariable('dias')[1]);\nSET VARIABLE u6 = (SELECT '/vsicurl/https://services.geoglows.org/geoserver/satellite_based_precipitation/wcs'\n      || '?service=WCS&version=2.0.1&request=GetCoverage'\n      || '&coverageId=satellite_based_precipitation__' || $capa || '&format=image/tiff'\n      || '&subset=Long(' || round(ST_XMin(g), 3) || ',' || round(ST_XMax(g), 3) || ')'\n      || '&subset=Lat('  || round(ST_YMin(g), 3) || ',' || round(ST_YMax(g), 3) || ')'\n      || '&subset=time(%22' || strftime(d AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%S.000Z') || '%22)' FROM (SELECT ST_GeomFromText(getvariable('zona')) AS g, getvariable('d6') AS d));\n\n-- Día 7. Si el servicio tiene menos de 7, se repite el más reciente y el\n-- GROUP BY final colapsa el duplicado; nunca se pide una fecha inexistente.\nSET VARIABLE d7 = coalesce(getvariable('dias')[7], getvariable('dias')[1]);\nSET VARIABLE u7 = (SELECT '/vsicurl/https://services.geoglows.org/geoserver/satellite_based_precipitation/wcs'\n      || '?service=WCS&version=2.0.1&request=GetCoverage'\n      || '&coverageId=satellite_based_precipitation__' || $capa || '&format=image/tiff'\n      || '&subset=Long(' || round(ST_XMin(g), 3) || ',' || round(ST_XMax(g), 3) || ')'\n      || '&subset=Lat('  || round(ST_YMin(g), 3) || ',' || round(ST_YMax(g), 3) || ')'\n      || '&subset=time(%22' || strftime(d AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%S.000Z') || '%22)' FROM (SELECT ST_GeomFromText(getvariable('zona')) AS g, getvariable('d7') AS d));\n\nSELECT\n  t                        AS time,\n  round(max((s).mean), 3)  AS \"media mm\",\n  max((s).maximum)         AS \"máximo mm\"\nFROM (\n  SELECT getvariable('d1')::TIMESTAMPTZ AS t,\n         RT_CubeStats_Agg(RT_CubeClip(databand_1, tile_x, tile_y, metadata, ST_GeomFromText(getvariable('zona')), -99.0), 0) AS s\n  FROM RT_Read(getvariable('u1'))\n  UNION ALL\n  SELECT getvariable('d2')::TIMESTAMPTZ AS t,\n         RT_CubeStats_Agg(RT_CubeClip(databand_1, tile_x, tile_y, metadata, ST_GeomFromText(getvariable('zona')), -99.0), 0) AS s\n  FROM RT_Read(getvariable('u2'))\n  UNION ALL\n  SELECT getvariable('d3')::TIMESTAMPTZ AS t,\n         RT_CubeStats_Agg(RT_CubeClip(databand_1, tile_x, tile_y, metadata, ST_GeomFromText(getvariable('zona')), -99.0), 0) AS s\n  FROM RT_Read(getvariable('u3'))\n  UNION ALL\n  SELECT getvariable('d4')::TIMESTAMPTZ AS t,\n         RT_CubeStats_Agg(RT_CubeClip(databand_1, tile_x, tile_y, metadata, ST_GeomFromText(getvariable('zona')), -99.0), 0) AS s\n  FROM RT_Read(getvariable('u4'))\n  UNION ALL\n  SELECT getvariable('d5')::TIMESTAMPTZ AS t,\n         RT_CubeStats_Agg(RT_CubeClip(databand_1, tile_x, tile_y, metadata, ST_GeomFromText(getvariable('zona')), -99.0), 0) AS s\n  FROM RT_Read(getvariable('u5'))\n  UNION ALL\n  SELECT getvariable('d6')::TIMESTAMPTZ AS t,\n         RT_CubeStats_Agg(RT_CubeClip(databand_1, tile_x, tile_y, metadata, ST_GeomFromText(getvariable('zona')), -99.0), 0) AS s\n  FROM RT_Read(getvariable('u6'))\n  UNION ALL\n  SELECT getvariable('d7')::TIMESTAMPTZ AS t,\n         RT_CubeStats_Agg(RT_CubeClip(databand_1, tile_x, tile_y, metadata, ST_GeomFromText(getvariable('zona')), -99.0), 0) AS s\n  FROM RT_Read(getvariable('u7'))\n)\nWHERE t IS NOT NULL\nGROUP BY t\nORDER BY t;\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Siete días sobre la zona · media y máximo",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 2,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "pointSize": 6,
+            "showPoints": "always",
+            "fillOpacity": 8,
+            "spanNulls": true,
+            "axisLabel": "media (mm)"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "máximo mm"
+            },
+            "properties": [
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    4
+                  ]
+                }
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "máximo (mm)"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "timeFrom": "7d"
+    }
+  ]
+}

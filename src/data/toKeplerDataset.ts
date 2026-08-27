@@ -12,8 +12,29 @@ export type KeplerRow = Record<string, unknown>;
  * The wind roles are absent on purpose: a velocity field never reaches kepler as
  * columns. It is consumed to trace streamlines, and what kepler receives is
  * their geometry, so renaming `u`/`v` would be renaming something nobody looks at.
+ *
+ * `rasterUrl` is absent for the same reason: it becomes a dataset of its own,
+ * whose substance is a metadata url rather than any row. So are `wmsUrl` and
+ * `wmsLayer`, which name a service rather than describe a row, and the three
+ * `zarr*` roles, which name a store, one array inside it, and the label that
+ * array answers to — a tile request, not a column anyone reads.
  */
-type RenamedRole = Exclude<keyof FieldRoles, 'u' | 'v' | 'speed' | 'direction'>;
+type RenamedRole = Exclude<
+  keyof FieldRoles,
+  | 'u'
+  | 'v'
+  | 'speed'
+  | 'direction'
+  | 'rasterUrl'
+  | 'wmsUrl'
+  | 'wmsLayer'
+  | 'zarrUrl'
+  | 'zarrVariable'
+  | 'zarrTimeLabel'
+  | 'zarrLevels'
+  | 'zarrSel'
+  | 'zarrTimeDim'
+>;
 
 /**
  * Column name kepler expects for each role.

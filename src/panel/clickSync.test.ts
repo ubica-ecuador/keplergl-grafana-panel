@@ -1,4 +1,4 @@
-import { decideClickPublish, rowFieldValue } from './clickSync';
+import { WMS_VALUE_FIELD, decideClickPublish, rowFieldValue, wmsFeatureValues } from './clickSync';
 import type { VariableMapping } from './variableSync';
 
 /**
@@ -158,5 +158,42 @@ describe('decideClickPublish', () => {
     expect(
       decideClickPublish({ selection: undefined, mappings: [vehicle], variableValues: {}, published: false })
     ).toEqual({ writes: {}, published: false });
+  });
+});
+
+describe('wmsFeatureValues', () => {
+  const clicked = {
+    wmsFeatureInfo: [
+      { name: 'GRAY INDEX', value: '12.5' },
+      { name: 'STATION NAME', value: 'Cuenca' },
+    ],
+  };
+
+  it('flattens what the service answered into publishable values', () => {
+    expect(wmsFeatureValues(clicked)).toMatchObject({ 'GRAY INDEX': '12.5', 'STATION NAME': 'Cuenca' });
+  });
+
+  it('offers the server’s own spelling as well as kepler’s', () => {
+    // kepler uppercases and turns underscores into spaces for its tooltip. The
+    // column the service documents is `GRAY_INDEX`, and that is what someone
+    // will type into a mapping.
+    expect(wmsFeatureValues(clicked)).toMatchObject({ GRAY_INDEX: '12.5', STATION_NAME: 'Cuenca' });
+  });
+
+  it('publishes the first value under a name that is the same everywhere', () => {
+    // A raster WMS answers with one band whose name is the server's business.
+    expect(wmsFeatureValues(clicked)?.[WMS_VALUE_FIELD]).toBe('12.5');
+  });
+
+  it('is not a WMS click at all when there is no feature info', () => {
+    expect(wmsFeatureValues({ vehicle_id: 'bus-1' })).toBeNull();
+    expect(wmsFeatureValues(null)).toBeNull();
+    expect(wmsFeatureValues(undefined)).toBeNull();
+  });
+
+  it('skips attributes with no name or no value rather than publishing blanks', () => {
+    const partial = { wmsFeatureInfo: [{ name: '', value: '1' }, { name: 'GOOD', value: null }, { name: 'OK', value: '2' }] };
+
+    expect(wmsFeatureValues(partial)).toEqual({ OK: '2', wms_value: '2' });
   });
 });

@@ -114,3 +114,50 @@ export function rowFieldValue(row: unknown, fieldIdx: number): unknown {
   }
   return undefined;
 }
+
+/**
+ * The synthetic column carrying the first value a WMS answered with.
+ *
+ * A raster WMS answers with exactly one band, and its name is the server's
+ * business — GeoServer calls it `GRAY_INDEX`, which kepler then shows as
+ * `GRAY INDEX`. Making someone find that out before they can wire a click to a
+ * variable is a poor trade, so the first value is also published under a name
+ * that is the same everywhere.
+ */
+export const WMS_VALUE_FIELD = 'wms_value';
+
+/**
+ * The values a WMS answered for the clicked pixel, or null if this was not one.
+ *
+ * kepler asks the service on the user's behalf — `GetFeatureInfo`, on the date
+ * being shown — parses the reply and leaves it in `visState.clicked` under
+ * `wmsFeatureInfo`, as the `{name, value}` pairs its tooltip renders. This
+ * flattens those into the shape the publish rules already work in.
+ *
+ * Both names are offered for each attribute: the one kepler displays, and the
+ * same with spaces turned back into underscores — which is what the server
+ * actually calls the column, and what someone reading the service's
+ * documentation will type. They point at one value; nothing is duplicated but
+ * a key.
+ */
+export function wmsFeatureValues(object: unknown): Record<string, unknown> | null {
+  const info = (object as { wmsFeatureInfo?: unknown } | null | undefined)?.wmsFeatureInfo;
+  if (!Array.isArray(info)) {
+    return null;
+  }
+
+  const values: Record<string, unknown> = {};
+  for (const attribute of info) {
+    const { name, value } = (attribute ?? {}) as { name?: unknown; value?: unknown };
+    if (typeof name !== 'string' || !name.trim() || value === undefined || value === null) {
+      continue;
+    }
+    values[name] = value;
+    values[name.replace(/ /g, '_')] = value;
+    if (!(WMS_VALUE_FIELD in values)) {
+      values[WMS_VALUE_FIELD] = value;
+    }
+  }
+
+  return values;
+}

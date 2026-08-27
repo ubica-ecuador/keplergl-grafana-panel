@@ -6,15 +6,32 @@ import { injectComponents } from '@kepler.gl/components';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import type { PanelDataset } from '../data/framesToDatasets';
+import type { RasterDataset } from '../data/rasterDataset';
+import type { WmsDataset } from '../data/wmsDataset';
+import type { ZarrDataset } from '../data/zarrDataset';
 import type { SavedMapConfig } from '../data/mapConfig';
 import type { KeplerThemeOverride } from '../data/keplerTheme';
 import { KEPLER_INSTANCE_ID } from './constants';
 import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES } from './basemaps';
 import { configureKepler } from './keplerConfig';
 import { createKeplerStore } from './keplerStore';
-import { captureMapConfig, loadDatasets, refreshDatasets, setBasemap, setSidePanel } from './keplerAdapter';
+import {
+  captureMapConfig,
+  loadDatasets,
+  loadRasters,
+  loadWms,
+  loadZarr,
+  refreshDatasets,
+  refreshRasters,
+  refreshWms,
+  refreshZarr,
+  setBasemap,
+  setSidePanel,
+} from './keplerAdapter';
 import { decideLoadAction } from './loadDecision';
 import { replaceMapControl } from './effectsMapControl';
+import { replaceRangeBrush } from './rangeBrushFix';
+import { replaceAnimationController } from './animationSweepFix';
 import { useTimeRangeSync } from './useTimeRangeSync';
 import { useAutoLayers } from './useAutoLayers';
 import { useWindViewport } from './useWindViewport';
@@ -23,6 +40,10 @@ import { useVariableSync } from './useVariableSync';
 import { useClickSync } from './useClickSync';
 import { useCoordinateSync } from './useCoordinateSync';
 import { useCenterSync } from './useCenterSync';
+import { useRasterTimeline } from './useRasterTimeline';
+import { useWmsCalendar } from './useWmsCalendar';
+import { useWmsTimeline } from './useWmsTimeline';
+import { useZarrTimeline } from './useZarrTimeline';
 import { useViewportGuard } from './useViewportGuard';
 import { savedViewportOf } from './viewportGuard';
 import { useViewportSync } from './useViewportSync';
@@ -40,17 +61,40 @@ const NO_TIME_VARIABLES: TimeVariableMapping = { from: '', to: '' };
 // module.ts so it is part of the deferred chunk.
 configureKepler();
 
-// The stock KeplerGl toolbar has no effects button; this KeplerGl carries the
-// map control that adds it. Module scope so the component tree is built once —
-// recreating it per render would remount the whole map.
-// The published d.ts declares `injectComponents(recipes?: never[])` — the
-// recipe tuple type is lost in compilation — so the list needs a cast.
-const KeplerGl = injectComponents([replaceMapControl()] as unknown as never[]);
+// Three repairs to the stock KeplerGl: a map control that carries the effects
+// button kepler ships but never mounts, a range brush that paints over its
+// histogram rather than under it, and an animation controller whose growing
+// window reaches the last of the data before looping. Module scope so the
+// component tree is built once — recreating it per render would remount the
+// whole map. The published d.ts declares `injectComponents(recipes?: never[])`
+// — the recipe tuple type is lost in compilation — so the list needs a cast.
+const KeplerGl = injectComponents([
+  replaceMapControl(),
+  replaceRangeBrush(),
+  replaceAnimationController(),
+] as unknown as never[]);
 
 export interface KeplerMapProps {
   width: number;
   height: number;
   datasets: PanelDataset[];
+  /**
+   * Raster scenes the queries point at. Separate from `datasets` because a
+   * scene has no rows to carry.
+   */
+  rasters: RasterDataset[];
+  /**
+   * WMS layers the queries name. Separate for the same reason as `rasters`, and
+   * a separate list from them because nothing about the two paths is shared:
+   * one needs a tile server, the other *is* one.
+   */
+  wmsLayers: WmsDataset[];
+  /**
+   * Zarr variables the queries name. Separate again, and for a third reason:
+   * unlike a COG this is not one picture but a store of them, so what identifies
+   * it is a store plus a variable plus — as the clock moves — an index label.
+   */
+  zarrLayers: ZarrDataset[];
   mapConfig?: SavedMapConfig | null;
   theme?: KeplerThemeOverride;
   /** Resolved base map style id, or null to leave kepler's default alone. */
@@ -99,6 +143,9 @@ export function KeplerMap({
   width,
   height,
   datasets,
+  rasters,
+  wmsLayers,
+  zarrLayers,
   mapConfig,
   theme,
   basemapId,
@@ -133,11 +180,24 @@ export function KeplerMap({
   // maps are unreachable.
   const mapStyles = useMemo(() => registeredMapStyles(customBasemapUrl), [customBasemapUrl]);
 
+  // A query that named a service but no dates still gets a timeline: the
+  // service publishes its own. Everything below works with the filled-in list,
+  // so neither the load path nor the timeline has to know which of the two the
+  // dates came from.
+  const wms = useWmsCalendar(wmsLayers);
+
   useEffect(() => {
     // A saved tileset is content in its own right: a panel whose map is one
     // vector tile layer over a base map has no query rows at all, and waiting
     // for rows it will never get would leave it permanently blank.
-    if (!isReady || (datasets.length === 0 && !mapConfig?.datasets?.length)) {
+    if (
+      !isReady ||
+      (datasets.length === 0 &&
+        rasters.length === 0 &&
+        wms.length === 0 &&
+        zarrLayers.length === 0 &&
+        !mapConfig?.datasets?.length)
+    ) {
       return;
     }
 
@@ -162,15 +222,43 @@ export function KeplerMap({
       hasLoaded.current = true;
       appliedConfig.current = mapConfig;
       loadDatasets(store.dispatch, datasets, {}, mapConfig);
+      loadRasters(store.dispatch, rasters);
+      loadWms(store.dispatch, wms);
+      loadZarr(store.dispatch, zarrLayers);
       // The viewport this load intends is not safe yet — kepler's internal
       // view state echo can overwrite it — so arm the guard that defends it.
       setGuardArm((n) => n + 1);
     } else {
       refreshDatasets(store, store.dispatch, datasets);
+      // Deliberately on the refresh path and never on rebuild. A rebuild frames
+      // the viewport around the data and re-arms the viewport guard, so routing
+      // a change of scene through it would move the map on every change of the
+      // time range — which is the one thing this whole path exists to avoid.
+      // `refreshRasters` compares scenes by url, so a refresh that did not
+      // change the scene leaves the raster untouched.
+      refreshRasters(store, store.dispatch, rasters);
+      // A WMS is only rebuilt when the query names a different service or
+      // layer; moving through time never reaches here at all.
+      refreshWms(store, store.dispatch, wms);
+      // A Zarr is only rebuilt when the query names a different store or
+      // variable; moving through time never reaches here either.
+      refreshZarr(store, store.dispatch, zarrLayers);
     }
-  }, [isReady, datasets, mapConfig, store]);
+  }, [isReady, datasets, rasters, wms, zarrLayers, mapConfig, store]);
 
   useViewportGuard({ store, isReady, mapConfig, arm: guardArm });
+
+  // A raster query that returns a dated series hands the choice of scene to the
+  // map's own time widget.
+  useRasterTimeline({ store, isReady, rasters });
+
+  // A WMS query hands the same widget the service's own dates, and pins which
+  // of the service's layers is drawn.
+  useWmsTimeline({ store, isReady, layers: wms });
+
+  // A Zarr query hands the widget the moments the store holds, and the label
+  // each one answers to.
+  useZarrTimeline({ store, isReady, layers: zarrLayers });
 
   // A saved config already names a base map, so it wins over the panel option.
   useEffect(() => {

@@ -41,7 +41,7 @@ a separate visgl project that the plugin bundles (Apache-2.0). That is why its s
 adaptive scales, _Max Top Flows_ — have no equivalent anywhere else in kepler, and why the deck.gl
 documentation will not help you with them.
 
-### Layers a query cannot drive
+### Layers configured with a URL
 
 | kepler layer | deck.gl layer                         | Package                |
 | ------------ | ------------------------------------- | ---------------------- |
@@ -52,8 +52,10 @@ documentation will not help you with them.
 | bitmap       | `BitmapLayer`                         | `@deck.gl/layers`      |
 | 3D           | `ScenegraphLayer`                     | `@deck.gl/mesh-layers` |
 
-These take a URL rather than data, so no query can produce one. See
-[Layers a query cannot drive](../layers/url-configured).
+These take a URL rather than data. Two of them a query can supply that URL for — `rasterTile` from a
+`raster_url` column and `wms` from a service and layer name — and the other four are added by hand.
+See [Rasters](../guide/data/rasters), [WMS services](../guide/data/wms) and
+[Layers configured with a URL](../layers/url-configured).
 
 ## What follows from it
 

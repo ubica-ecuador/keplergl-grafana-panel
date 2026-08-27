@@ -178,3 +178,54 @@ describe('detectFields — wind', () => {
     expect(roles).toMatchObject({ speed: 'wind_speed_10m', direction: 'wind_direction_10m' });
   });
 });
+
+describe('detectFields — raster', () => {
+  it('recognises a COG url column by name', () => {
+    const frame = toDataFrame({
+      fields: [{ name: 'raster_url', type: FieldType.string, values: ['https://example.org/scene/TCI.tif'] }],
+    });
+
+    expect(detectFields(frame).rasterUrl).toBe('raster_url');
+  });
+
+  it('does not let the raster candidates shadow an existing role', () => {
+    // `href` is a raster candidate and `geometry` is a geometry candidate: a
+    // frame carrying both must still be detected as geometry-bearing.
+    const frame = toDataFrame({
+      fields: [
+        { name: 'href', type: FieldType.string, values: ['https://example.org/a.tif'] },
+        { name: 'geometry', type: FieldType.string, values: ['POINT(1 2)'] },
+      ],
+    });
+
+    expect(detectFields(frame)).toEqual({ rasterUrl: 'href', geometry: 'geometry' });
+  });
+});
+
+describe('detectFields — zarr', () => {
+  it('recognises a store, a variable and an index label', () => {
+    const frame = toDataFrame({
+      fields: [
+        { name: 'zarr_url', type: FieldType.string, values: ['https://example.org/store.zarr'] },
+        { name: 'zarr_variable', type: FieldType.string, values: ['precip'] },
+        { name: 'zarr_time_label', type: FieldType.string, values: ['1996-10-01T00:00:00.000000000'] },
+      ],
+    });
+
+    expect(detectFields(frame)).toMatchObject({
+      zarrUrl: 'zarr_url',
+      zarrVariable: 'zarr_variable',
+      zarrTimeLabel: 'zarr_time_label',
+    });
+  });
+
+  it('does not let `variable` alone claim the zarr variable role', () => {
+    // `variable` is an ordinary column name in a long-format table, and a
+    // frame of unrelated measurements must not be read as a Zarr store.
+    const frame = toDataFrame({
+      fields: [{ name: 'variable', type: FieldType.string, values: ['temperature'] }],
+    });
+
+    expect(detectFields(frame).zarrVariable).toBeUndefined();
+  });
+});

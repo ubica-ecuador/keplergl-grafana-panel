@@ -1,0 +1,241 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Precipitación diaria de CHIRPS sobre Sudamérica: el timeline recorre los días y el mapa pinta la lluvia de cada uno, con las curvas que dicen dónde mirar.",
+  "editable": true,
+  "id": null,
+  "links": [],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": [
+    "kepler",
+    "raster",
+    "multitemporal",
+    "clima"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "2023-12-25T00:00:00.000Z",
+    "to": "2024-03-05T00:00:00.000Z"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Lluvia — CHIRPS diario sobre Sudamérica",
+  "uid": "precip-time",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "options": {
+        "mode": "markdown",
+        "content": "# Lluvia diaria sobre Sudamérica\n\nSesenta días de precipitación satelital (**CHIRPS**, 0.05°), uno por barra del timeline. Arrástralo y el mapa muestra la lluvia de ese día; las curvas de la derecha te dicen dónde mirar, porque un pico en **intensidad** o en **área con lluvia** es un día que merece la pena abrir.\n\nNada de esto se descargó entero: CHIRPS publica un COG por día y DuckDB leyó por HTTP solo las nueve teselas que cubren el continente, las recortó y las dejó listas para el mapa.\n\n**Dos cosas que conviene saber de lo que ves.** La lámina está cuantizada —0 a 30 mm sobre un entero— porque kepler no dibuja rásters de coma flotante: **por encima de 30 mm en un día el tono ya no distingue**, aunque las cifras de la derecha, calculadas sobre los datos originales, sí llegan a los 300 mm que caen algunos días. Y se pinta **todo**, también lo que no llovió, con el tono más claro: un campo dibujado solo donde llueve se lee como ruido, no como tiempo. El océano entra en ese mismo tono claro aunque CHIRPS no mida sobre el mar — enmascararlo exigiría un recorte con la línea de costa."
+      }
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Un COG por día. El timeline elige cuál se pinta y el relevo entre escenas se solapa, así que no hay parpadeo al arrastrar.",
+      "gridPos": {
+        "h": 20,
+        "w": 15,
+        "x": 0,
+        "y": 7
+      },
+      "id": 2,
+      "type": "ubica-keplergl-panel",
+      "options": {
+        "showSidePanel": false,
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -15.0,
+              "longitude": -60.0,
+              "zoom": 2.6,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        },
+        "rasterColormap": "blues",
+        "rasterServerUrl": "http://localhost:8088"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Una fila por día: la fecha, el COG de ese día y las tres cifras que lo\n-- resumen. El mismo resultado alimenta el timeline, el mapa y las curvas, así\n-- que arrastrar la barra no pide nada al servidor.\nSELECT\n  dia::TIMESTAMPTZ                    AS time,\n  raster_url,\n  round(intensidad_mm, 1)             AS intensidad_mm,\n  round(fraccion_con_lluvia * 100, 1) AS area_con_lluvia_pct,\n  round(max_mm, 0)                    AS max_mm\nFROM read_parquet('/derived/chirps-index.parquet')\nORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "title": "Lluvia del día · arrastra la barra de tiempo"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Calculado sobre los rásters originales en coma flotante, antes de cuantizar: la intensidad es la media de las celdas que registraron lluvia, no de toda la región.",
+      "gridPos": {
+        "h": 11,
+        "w": 9,
+        "x": 15,
+        "y": 7
+      },
+      "id": 3,
+      "type": "timeseries",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never"
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "max_mm"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "intensidad_mm"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "mm donde llovió"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "area_con_lluvia_pct"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "% del área con lluvia"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Una fila por día: la fecha, el COG de ese día y las tres cifras que lo\n-- resumen. El mismo resultado alimenta el timeline, el mapa y las curvas, así\n-- que arrastrar la barra no pide nada al servidor.\nSELECT\n  dia::TIMESTAMPTZ                    AS time,\n  raster_url,\n  round(intensidad_mm, 1)             AS intensidad_mm,\n  round(fraccion_con_lluvia * 100, 1) AS area_con_lluvia_pct,\n  round(max_mm, 0)                    AS max_mm\nFROM read_parquet('/derived/chirps-index.parquet')\nORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "title": "Cómo llovió cada día"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "El mismo calendario en cifras. El máximo es el de una sola celda de 5 km, así que sube mucho más que la media.",
+      "gridPos": {
+        "h": 9,
+        "w": 9,
+        "x": 15,
+        "y": 18
+      },
+      "id": 4,
+      "type": "table",
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "raster_url"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Una fila por día: la fecha, el COG de ese día y las tres cifras que lo\n-- resumen. El mismo resultado alimenta el timeline, el mapa y las curvas, así\n-- que arrastrar la barra no pide nada al servidor.\nSELECT\n  dia::TIMESTAMPTZ                    AS time,\n  raster_url,\n  round(intensidad_mm, 1)             AS intensidad_mm,\n  round(fraccion_con_lluvia * 100, 1) AS area_con_lluvia_pct,\n  round(max_mm, 0)                    AS max_mm\nFROM read_parquet('/derived/chirps-index.parquet')\nORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "title": "El calendario en cifras"
+    }
+  ]
+}

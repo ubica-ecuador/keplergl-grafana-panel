@@ -52,7 +52,7 @@ GROUP BY 1, 2;
 
 ::: warning These four roles are autodetect-only
 `originH3`, `destH3` and the two velocity pairs are **not** exposed in the Field mapping editor,
-which offers twelve of the eighteen roles. If your H3 columns are called something the list above
+which offers twelve of the twenty-one roles. If your H3 columns are called something the list above
 does not cover, alias them in the query — `SELECT h3_pickup AS origin_h3` — rather than looking for
 a dropdown. See [Field roles](../../reference/field-roles).
 :::

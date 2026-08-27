@@ -9,9 +9,18 @@ import { VariableSyncEditor } from './editors/VariableSyncEditor';
 import { TimeVariableEditor } from './editors/TimeVariableEditor';
 import { AreaVariableEditor } from './editors/AreaVariableEditor';
 import { ViewportVariablesEditor } from './editors/ViewportVariablesEditor';
+import { DEFAULT_RASTER_SERVER_URL } from './panel/constants';
 
 export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelOptions((builder) =>
   builder
+    .addTextInput({
+      path: 'zarrRescale',
+      name: 'Zarr value range',
+      description:
+        'Range a Zarr variable is stretched over, as min,max in the store\u2019s own units \u2014 0,30 for mm/day of rainfall, 270,305 for kelvin. Left empty, each tile is stretched over its own extremes and neighbouring tiles disagree about what a colour means. The ramp above is shared with rasters.',
+      category: ['Map'],
+      settings: { placeholder: '0,30' },
+    })
     .addCustomEditor({
       id: 'fieldMappings',
       path: 'fieldMappings',
@@ -138,6 +147,35 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       category: ['Map'],
       settings: { placeholder: 'https://tiles.internal/style.json' },
       showIf: (config) => config.basemap === 'custom',
+    })
+    .addTextInput({
+      path: 'rasterServerUrl',
+      name: 'Raster tile server',
+      description:
+        'TiTiler-compatible server that turns a COG into tiles, for queries returning a raster_url column. It reads the imagery on the map\u2019s behalf, so it must be able to reach it \u2014 the public default cannot see anything private, and is given the url you point it at. A .pmtiles url needs no server and ignores this.',
+      category: ['Map'],
+      settings: { placeholder: DEFAULT_RASTER_SERVER_URL },
+    })
+    .addSelect({
+      path: 'rasterColormap',
+      name: 'Raster colour ramp',
+      description:
+        "Colour ramp for rasters a query produces. kepler's default is built for drone NDVI and steps through unrelated colours, which reads as noise on a continuous field.",
+      category: ['Map'],
+      defaultValue: '',
+      settings: {
+        options: [
+          { value: '', label: "kepler's default (Cfastie)" },
+          { value: 'blues', label: 'Blues — white to blue' },
+          { value: 'greens', label: 'Greens' },
+          { value: 'reds', label: 'Reds' },
+          { value: 'viridis', label: 'Viridis' },
+          { value: 'magma', label: 'Magma' },
+          { value: 'greys', label: 'Greys' },
+          { value: 'rdylbu', label: 'Red–yellow–blue (diverging)' },
+          { value: 'spectral', label: 'Spectral (diverging)' },
+        ],
+      },
     })
     .addCustomEditor({
       id: 'variableMappings',

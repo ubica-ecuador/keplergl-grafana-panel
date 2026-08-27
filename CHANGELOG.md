@@ -5,6 +5,151 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Added: a query can draw a Zarr store, live, and the map's clock can walk its slices.** Return
+  `zarr_url` and `zarr_variable` and the panel builds a tileset from a store published as-is on
+  object storage — no download, no conversion, no ETL. The premise this started from turned out to
+  be backwards: DuckDB's `raster` extension carries GDAL's Zarr driver but **not blosc**, which is
+  what xarray writes by default, so the three public stores tried all failed at decompression. The
+  server that could already do it was the one in the compose file — `titiler:2.2.1` ships
+  `titiler-xarray` and mounts a `/zarr` router — so this needed no new service and no change to the
+  deployment at all. Handing the store to a server rather than to the browser also settles CORS,
+  which many public stores send none of: the one fetching chunks is the server. The moment travels
+  as the store's **own index label**, because TiTiler passes it to xarray's `.sel`, which matches
+  literally and has no nearest-neighbour fallback — a store stamped at 09:00 answers `500` to the
+  date-only spelling of its own dates, so `zarr_time_label` is a role of its own and the panel only
+  guesses when the query says nothing. Moving the timeline rewrites one URL parameter: no dataset is
+  rebuilt and no query re-run. Set **Zarr value range** — a scientific store holds physical units
+  and nothing in it says which slice deserves a colour; left empty each tile stretches over its own
+  extremes and the map reads as patchwork. Two things worth knowing before pointing this at a large
+  store: a Zarr has no overviews unless it was written with them, and chunks spanning the whole time
+  axis mean one day pulls every day in the block — measured on GPCP, tiles came back in 1.2 s to
+  17.5 s apiece, so a cache in front of the tile server earns its keep. Which brings the next point.
+- **Added: a pyramided Zarr is drawn at the zoom's own level, which is four to ten times quicker.**
+  Say how deep the store's `multiscales` pyramid is with `zarr_levels` and every zoom asks for its
+  own level instead of reading native resolution and resampling. Measured against the same server:
+  CarbonPlan's pyramided demo answers in 0.22–2.2 s and stays **flat across zoom**, where GPCP
+  without a pyramid takes 2.1–9.0 s and gets worse the further you zoom out. Writing the same data
+  locally both ways settles what the cost really is — a well-chunked Zarr read in 0.06 s against a
+  COG's 0.023 s, the same data in one big chunk 0.16 s — so this is the store's layout talking, not
+  the format's ceiling. The panel has to pick the level because the server will not: `titiler.xarray`
+  does not read the `multiscales` convention at all. It does take a `group` parameter, and a pyramid
+  written by ndpyramid names its groups by zoom, so the tile template carries `group={z}` and deck
+  substitutes it — which works only because deck's substitution is a global replace, and only if the
+  braces are kept out of the URL encoder. Declaring the depth also caps the request: past the
+  deepest level deck reuses what it holds instead of asking for a group the store does not have and
+  collecting a `500` on every tile. And `zarr_sel` pins the other non-spatial axes — a store may
+  have a band *and* a month, and each travels as its own `sel`. And `zarr_time_dim` lets the clock
+  walk an axis that is neither called `time` nor spelled as dates — CarbonPlan's demo holds twelve
+  months as `month=1..12`, integers, and the map's timeline walks them by mapping each moment of the
+  clock to the label the store knows. Naming an axis switches off the timestamp fallback on purpose:
+  a store holding months answers to `7` and never to a datetime, so guessing there would be a `500`
+  on every tile.
+- **Added: a Zarr can be measured, not only drawn — over a polygon you draw on the map.** The
+  `/zarr` router mirrors `/cog` route for route (`statistics`, `point`, `feature`) and takes
+  `variable`, `sel` and `group` alongside, so the number beside the map is about the slice on the
+  map rather than some default the server picked. No plugin code was needed: the panel already
+  publishes a drawn figure to a dashboard variable. What the documentation now carries is the four
+  things that each cost an iteration to find. The figure travels as **WKT** and TiTiler wants
+  **GeoJSON**, so a query variable converts it — and inside a *variable* query this data source does
+  **not** add the quotes it adds inside a panel query, which surfaces as a parser error pointing at
+  a comma rather than at the variable; `ST_AsGeoJSON` also needs an explicit `::VARCHAR` or the
+  scan fails on a Go type name. The numbers only follow the clock under **Slider writes variables**,
+  because that is the only mode where the window is published at all — under any other, a statistic
+  quietly reports the newest slice however you move the slider. And panels sharing one request
+  through the `-- Dashboard --` data source turn three identical POSTs into one, after which another
+  number costs nothing. The store's layout decides the cost here as much as it does for drawing: the
+  same polygon takes 1.0–1.5 s on a pyramided store and 6.9–21.1 s on one chunked 200 days deep.
+  Note that the DuckDB route documented for a COG does **not** transfer — its GDAL has the Zarr
+  driver but not blosc, so for a Zarr the tile server is the only one of the three that works.
+
+- **Added: a query can draw a WMS, and the map's clock can walk its dates.** Return `wms_url` and
+  `wms_layer` and the panel builds the layer — no tile server anywhere, which is what makes this
+  work on a Grafana with nothing behind it. kepler 3.3.0-alpha.7 draws a WMS but has no notion of
+  its time dimension, so a time-aware service answered with its default slice for ever; the date now
+  reaches the request, and moving the time widget re-asks the service for one image without re-running
+  the query or rebuilding the dataset. Where the dates come from is a choice the query makes by
+  saying nothing: with a time column those rows are the timeline, without one the panel reads the
+  layer's `<Dimension name="time">` from the service's own `GetCapabilities` — the version that
+  stays correct as a server gains new passes. Note for strict-CSP installs: a WMS image is fetched
+  and parsed as data, so the host belongs in `connect-src` and **not** `img-src`, and the symptom of
+  getting that wrong is a map that draws nothing without a word about images. Clicking a queryable
+  layer asks the service what is under the pixel, on the date being shown, and a click mapping on
+  `wms_value` puts that number in a dashboard variable. And where the same GeoServer publishes a WCS
+  over the coverage, the imagery on screen can be *read* rather than only drawn: the provisioned
+  dashboard cuts it to the polygon you draw on the map and reports the zonal mean, in one query,
+  with no ETL and no second source.
+
+- **Added: a query can draw a satellite scene.** Return a column named `raster_url` — or `cog_url`,
+  `cog`, `asset_href`, `href` — and the panel builds a raster dataset from it and lets kepler draw
+  it with the `RasterTileLayer` that 3.3.0-alpha.7 already registers but has no server for. What was
+  missing was a tile server and the path from a query to the layer, and both are now here: the
+  **Raster tile server** panel option names a TiTiler-compatible service, which reads the imagery on
+  the map's behalf — so it, not the browser, is what has to be able to reach the file, and a private
+  raster therefore needs a server of your own. The option defaults to `https://titiler.xyz`, which
+  is what kepler itself falls back to for a lone COG: enough to draw a public scene out of the box,
+  and no use for anything private, since it is handed the URL signature and all. A catalogue query
+  makes the imagery follow the dashboard — parameterise a STAC search by `$__timeFrom()` and
+  `$__timeTo()` and the scene changes with the range, without moving the frame or restyling the
+  layer; a range with no scene under the cloud threshold returns no rows and the raster leaves the
+  map with them, because showing the previous one would be showing imagery from outside the range.
+  Two notes for anyone debugging this: the tiles arrive over XHR, so a strict CSP wants the tile
+  server's host in `connect-src` and **not** `img-src`, and kepler swallows a STAC document it
+  rejects — the symptom is an empty layer and no error at all, checkable by reading
+  `metadata.stac_version` on the dataset. The 71 colormap PNGs kepler loads from Foursquare's CDN
+  are now vendored with the plugin, because the panel repoints kepler's `cdnUrl` at itself and the
+  colormap is fetched in the same `Promise.all` as the tile: a 404 there took down **the whole
+  tile**, not just its colours.
+
+- **Added: the map's clock walks a series of scenes.** Return one row per date and the query stops
+  being an answer and becomes a small catalogue: the time widget shows a bar per capture and draws
+  the most recent scene *inside* the window — not the nearest one, because an image captured after
+  the moment you dragged to was not on the ground then. Dragging costs no query at all, since the
+  series is already in the browser. The scene changes **on the layer that is already drawing**
+  rather than by replacing the dataset, which is what keeps the layer's id, its name and everything
+  you styled through a date change, and deck.gl keeps the previous image on screen while the new
+  tiles refine — measured across eight captures during a change, with no bare frame among them. A
+  window containing no scene **hides** the layer instead of dropping it: playback crosses gaps on
+  every loop, and rebuilding on the far side handed back a layer with default styling each time,
+  which reads as styling that resets itself. Note for anyone tempted by the obvious alternative:
+  coupling this through dashboard variables does not work. The imagery query would read variables
+  the panel itself publishes, so moving the window re-runs every query on the panel including the
+  one feeding the filter, which resets and republishes. The loop was measured, not theorised.
+
+- **Added: PMTiles — the same imagery with no server at all.** A URL containing `.pmtiles` takes a
+  different path entirely: kepler reads the archive itself over range requests, and the tile server
+  option is ignored. That is the answer for an install with nowhere to run a service — all the file
+  needs is somewhere static with CORS and byte ranges. It is decided by the data rather than by
+  configuration, so both kinds can sit on one dashboard and a COG with no server is discarded
+  without taking the archive beside it down. The cost is one thing: an archive holds **pictures**,
+  so the colours were baked when it was built and kepler's layer panel offers opacity and nothing
+  else. Sixty days of CHIRPS rainfall came to 26.4 MB against ~37 MB of COG, with zero requests to
+  any server while drawing and animating. Scene changes take a rebuild here rather than a
+  re-pointing, because kepler's archive path gives deck.gl no way to learn its tiles have expired —
+  a failure with a good disguise, since the network shows requests against the new file that are
+  its header and directory and never a tile.
+
+- **Added: a colour ramp for rasters a query produces.** kepler's default is `cfastie`, which was
+  built for drone NDVI and is not monotonic — it steps through black, grey, white, green, yellow,
+  red and magenta, so on a continuous field like rainfall neighbouring cells of similar value land
+  on unrelated colours and the map reads as confetti. The **Raster colour ramp** option imposes one
+  of eight ramps instead, and left empty imposes nothing. Related, from drawing rainfall: a
+  continuous field should be painted over its whole extent with the dry end at the palest tone,
+  because a field drawn only where there is something reads as noise.
+
+- **Added: the raster can be measured, not only drawn.** Three ways, all of which produce a table,
+  which is what a Grafana panel eats — and none of which vectorises pixels in order to draw them.
+  A TiTiler-compatible server answers `/cog/statistics` for a whole scene or, with a GeoJSON in the
+  body, for one polygon, and `/cog/point/{lon},{lat}` for a single coordinate; the Infinity data
+  source calls those directly, and since the panel already publishes the clicked coordinate and any
+  polygon you draw, clicking the map moves the number. Inside DuckDB, the `raster` community
+  extension does what the tile server cannot: `RT_CubeClip` plus `RT_CubeStats_Agg` with a
+  `GROUP BY` joins imagery to your own tables, so four thousand zones is one query rather than four
+  thousand HTTP requests. And `COPY … FORMAT RASTER` writes a COG, so an index computed in SQL is
+  drawn through the same path as a Sentinel scene. The finding that costs the most time if you meet
+  it blind: **kepler cannot draw a float32 raster** — it has no maximum value to rescale a float
+  against and gives up, requesting no tiles and reporting nothing. `uint8` draws flat; `uint16` is
+  what works.
+
 - **Changed: the panel is now "Kepler Geospatial Maps".** "Maps by Kepler.gl" put the plugin's
   identity in the authorship slot: the catalog card credits UBICA while the name reads as if the
   kepler.gl project had published it, and Grafana's plugin policy asks that you hold the rights to
@@ -16,6 +161,31 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   slug. Keywords pruned from 18 to 13, since `spatial`, `temporal` and `spatio-temporal` were one
   term spelled three ways and `panel` only repeats the plugin type, and `info.links` now carries the
   documentation and source-code URLs.
+
+- **Fixed: the growing-window animation now reaches the last of the data before looping.** With the
+  playback set to an incremental window — the start anchored, the end advancing — kepler discarded
+  the final step instead of clamping it: the moment one more increment would pass the end of the
+  domain, the window jumped back to the anchor. Measured on the provisioned rainfall calendar of
+  2026-08-20…26, the window end climbed to 2026-08-25T23:58:38 and restarted, a minute and a half
+  short, so the last day's image was never drawn and its histogram bar never lit up. Clamping to the
+  last timestamp is not enough on its own, because a time filter's domain *ends* on the newest row:
+  a window stopping there would reach the final scene for one animation frame, too briefly to fetch
+  the image, let alone see it. So the sweep now runs to the end of the last histogram bin — the span
+  the slider already draws, since it pads its display range by one bin so the edge bars are not
+  clipped — and the last scene gets the same turn as every other. The visible consequence is that
+  the end of the window travels one bin past the newest timestamp on its way out, which is what
+  kepler's sliding-window mode has always done. Free, point and interval playback are unchanged.
+
+- **Fixed: the time slider is drawn on top of its histogram, not under it.** kepler renders the
+  brush — the shaded window and the two drag handles — as a child of the plot, and its unmasked
+  histogram puts that group *before* the bars. SVG has no z-index, so siblings paint in document
+  order and every bar covered the handles: on a dense demo histogram they fall in the gaps and the
+  flaw goes unseen, but on a daily series, where a handful of bars fill the width, each handle sat
+  half-buried and the selected window disappeared entirely. The bars carry `pointer-events: none`,
+  so dragging never stopped working — the slider was invisible, not inert, which is why it read as a
+  styling bug. The defect is upstream and unfixed on kepler's master, and no stylesheet can answer
+  it, so the panel lifts the group to the end of the enclosing `<svg>` after each commit, which is
+  where kepler's own masked histogram already puts it.
 
 - **Fixed: the cross-filtering hooks no longer re-subscribe to the map on every render.** The
   mappings reached the map as `options.variableMappings ?? []`, and all four sync hooks — filter,

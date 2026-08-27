@@ -52,12 +52,17 @@ Everything you set here lives in kepler's store. It survives a query refresh —
 underneath your layers rather than rebuilding them — but **not a page reload**, until you capture it
 with **Map configuration → Save current map**. See [Map configuration](../map/map-configuration).
 
-## Layers a query cannot drive
+## Layers configured with a URL
 
 Six of kepler's layer types are configured with a URL rather than with data: vector tile, raster
-tile, WMS, 3D tiles, bitmap, and 3D models. No query can drive them, so the panel never builds one.
-You can still add them by hand if you have a URL — and on a hardened Grafana you will need its host
-in `connect-src`. See [Layers a query cannot drive](../../layers/url-configured).
+tile, WMS, 3D tiles, bitmap, and 3D models.
+
+Two of those a query can reach after all, because a URL is a string like any other: a `raster_url`
+column draws a raster tile layer, and a `wms_url`/`wms_layer` pair draws a WMS. See
+[Rasters](../data/rasters) and [WMS services](../data/wms).
+
+The other four you add by hand — and on a hardened Grafana you will need the host in `connect-src`
+either way. See [Layers configured with a URL](../../layers/url-configured).
 
 ---
 

@@ -4,9 +4,12 @@ import { useTheme2 } from '@grafana/ui';
 
 import { KeplerPanelOptions } from '../types';
 import { framesToDatasets } from '../data/framesToDatasets';
+import { framesToRasters } from '../data/rasterDataset';
+import { framesToWms } from '../data/wmsDataset';
+import { framesToZarr } from '../data/zarrDataset';
 import { toKeplerTheme } from '../data/keplerTheme';
 import { SavedMapConfig } from '../data/mapConfig';
-import { CUSTOM_BASEMAP_ID } from './constants';
+import { CUSTOM_BASEMAP_ID, DEFAULT_RASTER_SERVER_URL } from './constants';
 import { LazyKeplerMap } from './LazyKeplerMap';
 import { useStableValue } from './useStableValue';
 import type { VariableMapping } from './variableSync';
@@ -69,6 +72,39 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
     ]
   );
 
+  // Rasters travel separately from the row datasets all the way to the adapter:
+  // a scene has no rows, and `processRowObject([])` returns null, so anything
+  // riding in the row list is dropped on the way into kepler.
+  const rasters = useMemo(
+    () =>
+      framesToRasters(data.series, fieldMappings, {
+        tileServerUrls: [(options.rasterServerUrl || DEFAULT_RASTER_SERVER_URL).trim()],
+        colormap: options.rasterColormap || undefined,
+      }),
+    [data.series, fieldMappings, options.rasterServerUrl, options.rasterColormap]
+  );
+
+  // A WMS travels the same separate road, and for the same reason: what the
+  // query describes is a service, not rows. Nothing about it needs a tile
+  // server — the service renders its own pictures.
+  const wmsLayers = useMemo(() => framesToWms(data.series, fieldMappings), [data.series, fieldMappings]);
+
+  // A Zarr travels that same road again, and needs the tile server the raster
+  // path needs — the same option, deliberately. Both mean "the TiTiler this
+  // panel draws through", and a second option saying the same thing would only
+  // be one more place to get it wrong. The colour ramp is shared for the same
+  // reason: TiTiler's colormap names are the vocabulary that option already
+  // speaks.
+  const zarrLayers = useMemo(
+    () =>
+      framesToZarr(data.series, fieldMappings, {
+        serverUrl: (options.rasterServerUrl || DEFAULT_RASTER_SERVER_URL).trim(),
+        colormap: options.rasterColormap || undefined,
+        rescale: options.zarrRescale || undefined,
+      }),
+    [data.series, fieldMappings, options.rasterServerUrl, options.rasterColormap, options.zarrRescale]
+  );
+
   const keplerTheme = useMemo(() => toKeplerTheme(grafanaTheme), [grafanaTheme]);
   const followTheme = options.followGrafanaTheme ?? true;
 
@@ -96,6 +132,9 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
         width={width}
         height={height}
         datasets={datasets}
+        rasters={rasters}
+        wmsLayers={wmsLayers}
+        zarrLayers={zarrLayers}
         mapConfig={options.mapConfig}
         theme={followTheme ? keplerTheme : undefined}
         basemapId={basemapId}
