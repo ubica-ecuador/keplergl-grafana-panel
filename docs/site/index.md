@@ -49,3 +49,25 @@ features:
     link: /reference/differences-from-kepler
     linkText: What differs here
 ---
+
+## Dashboards built with it
+
+Six of them, each one a Grafana dashboard and nothing else — no external service, no account, no
+Mapbox token. Every picture here is the panel drawing rows a query returned.
+
+<Showcase />
+
+<div class="showcase-cta">
+
+[Build one in ten minutes →](./guide/quickstart)
+
+</div>
+
+<style scoped>
+.showcase-cta {
+  max-width: 1152px;
+  margin: 32px auto 0;
+  padding: 0 24px;
+  text-align: center;
+}
+</style>

@@ -2,6 +2,7 @@ import DefaultTheme from 'vitepress/theme';
 import { h } from 'vue';
 
 import Banner from './Banner.vue';
+import Showcase from './Showcase.vue';
 
 /**
  * The stock theme, with one addition: a banner under the home page hero.
@@ -17,5 +18,9 @@ export default {
     return h(DefaultTheme.Layout, null, {
       'home-hero-after': () => h(Banner),
     });
+  },
+  enhanceApp({ app }) {
+    // Global, so a markdown page can drop <Showcase /> in without importing.
+    app.component('Showcase', Showcase);
   },
 };
