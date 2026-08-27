@@ -8,6 +8,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import type { PanelDataset } from '../data/framesToDatasets';
 import type { RasterDataset } from '../data/rasterDataset';
 import type { WmsDataset } from '../data/wmsDataset';
+import type { ZarrDataset } from '../data/zarrDataset';
 import type { SavedMapConfig } from '../data/mapConfig';
 import type { KeplerThemeOverride } from '../data/keplerTheme';
 import { KEPLER_INSTANCE_ID } from './constants';
@@ -19,9 +20,11 @@ import {
   loadDatasets,
   loadRasters,
   loadWms,
+  loadZarr,
   refreshDatasets,
   refreshRasters,
   refreshWms,
+  refreshZarr,
   setBasemap,
   setSidePanel,
 } from './keplerAdapter';
@@ -40,6 +43,7 @@ import { useCenterSync } from './useCenterSync';
 import { useRasterTimeline } from './useRasterTimeline';
 import { useWmsCalendar } from './useWmsCalendar';
 import { useWmsTimeline } from './useWmsTimeline';
+import { useZarrTimeline } from './useZarrTimeline';
 import { useViewportGuard } from './useViewportGuard';
 import { savedViewportOf } from './viewportGuard';
 import { useViewportSync } from './useViewportSync';
@@ -85,6 +89,12 @@ export interface KeplerMapProps {
    * one needs a tile server, the other *is* one.
    */
   wmsLayers: WmsDataset[];
+  /**
+   * Zarr variables the queries name. Separate again, and for a third reason:
+   * unlike a COG this is not one picture but a store of them, so what identifies
+   * it is a store plus a variable plus — as the clock moves — an index label.
+   */
+  zarrLayers: ZarrDataset[];
   mapConfig?: SavedMapConfig | null;
   theme?: KeplerThemeOverride;
   /** Resolved base map style id, or null to leave kepler's default alone. */
@@ -135,6 +145,7 @@ export function KeplerMap({
   datasets,
   rasters,
   wmsLayers,
+  zarrLayers,
   mapConfig,
   theme,
   basemapId,
@@ -181,7 +192,11 @@ export function KeplerMap({
     // for rows it will never get would leave it permanently blank.
     if (
       !isReady ||
-      (datasets.length === 0 && rasters.length === 0 && wms.length === 0 && !mapConfig?.datasets?.length)
+      (datasets.length === 0 &&
+        rasters.length === 0 &&
+        wms.length === 0 &&
+        zarrLayers.length === 0 &&
+        !mapConfig?.datasets?.length)
     ) {
       return;
     }
@@ -209,6 +224,7 @@ export function KeplerMap({
       loadDatasets(store.dispatch, datasets, {}, mapConfig);
       loadRasters(store.dispatch, rasters);
       loadWms(store.dispatch, wms);
+      loadZarr(store.dispatch, zarrLayers);
       // The viewport this load intends is not safe yet — kepler's internal
       // view state echo can overwrite it — so arm the guard that defends it.
       setGuardArm((n) => n + 1);
@@ -224,8 +240,11 @@ export function KeplerMap({
       // A WMS is only rebuilt when the query names a different service or
       // layer; moving through time never reaches here at all.
       refreshWms(store, store.dispatch, wms);
+      // A Zarr is only rebuilt when the query names a different store or
+      // variable; moving through time never reaches here either.
+      refreshZarr(store, store.dispatch, zarrLayers);
     }
-  }, [isReady, datasets, rasters, wms, mapConfig, store]);
+  }, [isReady, datasets, rasters, wms, zarrLayers, mapConfig, store]);
 
   useViewportGuard({ store, isReady, mapConfig, arm: guardArm });
 
@@ -236,6 +255,10 @@ export function KeplerMap({
   // A WMS query hands the same widget the service's own dates, and pins which
   // of the service's layers is drawn.
   useWmsTimeline({ store, isReady, layers: wms });
+
+  // A Zarr query hands the widget the moments the store holds, and the label
+  // each one answers to.
+  useZarrTimeline({ store, isReady, layers: zarrLayers });
 
   // A saved config already names a base map, so it wins over the panel option.
   useEffect(() => {

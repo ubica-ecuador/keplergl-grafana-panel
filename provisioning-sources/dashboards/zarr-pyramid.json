@@ -1,0 +1,80 @@
+{
+  "uid": "zarr-pyramid",
+  "title": "Zarr — pirámide y meses",
+  "description": "Un Zarr escrito para mapas: el zoom pide su propio nivel y el reloj recorre un eje que no son fechas.",
+  "tags": [
+    "zarr",
+    "raster"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "time": {
+    "from": "2020-01-01T00:00:00.000Z",
+    "to": "2020-12-31T23:59:59.000Z"
+  },
+  "panels": [
+    {
+      "type": "text",
+      "id": 1,
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "# Zarr piramidado y temporal\n\nTemperatura media mensual, del demo climático de CarbonPlan: un Zarr escrito **para mapas** —\npirámide `multiscales` de 6 niveles, chunks de 128×128, ya en Web Mercator.\n\n**Aleja y acerca**: el coste no cambia, porque cada zoom pide su propio nivel (`group={z}`).\n**Arrastra la barra de tiempo** —o mueve el rango del dashboard—: recorre los doce meses.\n\nEl eje temporal de este store no son fechas sino enteros del 1 al 12 en una dimensión llamada\n`month`. El reloj de kepler sí trabaja en tiempo real, así que la consulta declara las dos cosas\n—`zarr_time_dim` y `zarr_time_label`— y el panel traduce.\n\n| | z=2 | z=3 | z=5 |\n|---|---|---|---|\n| Este store, piramidado | 0,43–2,2 s | 0,53–2,0 s | 0,22–1,9 s |\n| GPCP, sin pirámide | 2,8–9,0 s | 2,1–5,2 s | peor al alejar |\n"
+      }
+    },
+    {
+      "type": "ubica-keplergl-panel",
+      "id": 2,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "title": "Temperatura media mensual · aleja, acerca y arrastra el tiempo",
+      "gridPos": {
+        "h": 18,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawSql": "-- Una fila por mes. El reloj del mapa se mueve en tiempo real (`time`), pero el\n-- store no guarda fechas: guarda un eje `month` con enteros del 1 al 12. Por eso\n-- la consulta dice AMBAS cosas — que el eje se llama `month` y como se llama\n-- cada momento dentro de el— y el panel traduce del uno al otro.\nSELECT\n  make_timestamp(2020, m, 1, 0, 0, 0)::TIMESTAMPTZ AS time,\n  'https://carbonplan-maps.s3.us-west-2.amazonaws.com/v2/demo/4d/tavg-prec-month' AS zarr_url,\n  'climate'   AS zarr_variable,\n  6           AS zarr_levels,\n  'band=tavg' AS zarr_sel,\n  'month'     AS zarr_time_dim,\n  m::TEXT     AS zarr_time_label\nFROM generate_series(1, 12) t(m)\nORDER BY time",
+          "format": 1,
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "timeSync": "toMap",
+        "rasterServerUrl": "http://localhost:8088",
+        "rasterColormap": "magma",
+        "zarrRescale": "-20,40",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": 10,
+              "longitude": 0,
+              "zoom": 1.5,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "uid": "zarr-pyramid",
+  "title": "Zarr — pirámide y meses",
+  "tags": [
+    "zarr"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "time": {
+    "from": "2019-12-15T00:00:00.000Z",
+    "to": "2020-03-15T00:00:00.000Z"
+  },
+  "panels": [
+    {
+      "type": "text",
+      "id": 1,
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "# Zarr piramidado y temporal\n\nPirámide `multiscales` de 6 niveles: cada zoom pide su propio nivel por `group`, y más allá del más\nprofundo deck reutiliza lo que tiene. El eje temporal del store no son fechas sino enteros en una\ndimensión llamada `month`, así que la consulta declara ambas cosas y el panel traduce.\n"
+      }
+    },
+    {
+      "type": "ubica-keplergl-panel",
+      "id": 2,
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "title": "Pirámide · el zoom elige el nivel, el reloj el mes",
+      "gridPos": {
+        "h": 18,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\": {\"fields\": [{\"name\": \"time\", \"type\": \"time\"}, {\"name\": \"zarr_url\", \"type\": \"string\"}, {\"name\": \"zarr_variable\", \"type\": \"string\"}, {\"name\": \"zarr_levels\", \"type\": \"number\"}, {\"name\": \"zarr_sel\", \"type\": \"string\"}, {\"name\": \"zarr_time_dim\", \"type\": \"string\"}, {\"name\": \"zarr_time_label\", \"type\": \"string\"}]}, \"data\": {\"values\": [[1577836800000, 1580515200000, 1583020800000], [\"https://example.test/pyramid.zarr\", \"https://example.test/pyramid.zarr\", \"https://example.test/pyramid.zarr\"], [\"climate\", \"climate\", \"climate\"], [6, 6, 6], [\"band=tavg\", \"band=tavg\", \"band=tavg\"], [\"month\", \"month\", \"month\"], [\"1\", \"2\", \"3\"]]}}]"
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "timeSync": "toMap",
+        "rasterServerUrl": "http://titiler.test",
+        "rasterColormap": "magma",
+        "zarrRescale": "-20,40",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": 10,
+              "longitude": 0,
+              "zoom": 3,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        }
+      }
+    }
+  ]
+}

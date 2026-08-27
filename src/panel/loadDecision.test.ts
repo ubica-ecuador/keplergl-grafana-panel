@@ -1,4 +1,4 @@
-import { decideLoadAction, splitRasterRefresh, splitRefresh, splitWmsRefresh } from './loadDecision';
+import { decideLoadAction, splitRasterRefresh, splitRefresh, splitWmsRefresh, splitZarrRefresh } from './loadDecision';
 
 /**
  * The panel has to choose between two very different kepler calls on every
@@ -217,5 +217,52 @@ describe('splitWmsRefresh', () => {
     const { remove } = splitWmsRefresh([], [wms('grafana-A-wms'), wms('someones-own-wms'), wms('grafana-A-raster')]);
 
     expect(remove).toEqual(['grafana-A-wms']);
+  });
+});
+
+describe('splitZarrRefresh', () => {
+  const zarr = (id: string, variable = 'precip', storeUrl = 'https://data.test/gpcp.zarr') => ({
+    id,
+    storeUrl,
+    variable,
+  });
+
+  it('adds what kepler does not have yet', () => {
+    const { add, replace, keep } = splitZarrRefresh([zarr('grafana-A-zarr')], []);
+
+    expect(add.map((d) => d.id)).toEqual(['grafana-A-zarr']);
+    expect(replace).toEqual([]);
+    expect(keep).toEqual([]);
+  });
+
+  it('keeps a variable the query re-describes unchanged, so a refresh does not blink', () => {
+    const { keep, replace } = splitZarrRefresh([zarr('grafana-A-zarr')], [zarr('grafana-A-zarr')]);
+
+    expect(keep.map((d) => d.id)).toEqual(['grafana-A-zarr']);
+    expect(replace).toEqual([]);
+  });
+
+  it('rebuilds when the variable changes under the same store', () => {
+    const { replace } = splitZarrRefresh([zarr('grafana-A-zarr', 'error')], [zarr('grafana-A-zarr', 'precip')]);
+
+    expect(replace.map((d) => d.variable)).toEqual(['error']);
+  });
+
+  it('rebuilds when the store changes under the same variable', () => {
+    const { replace } = splitZarrRefresh(
+      [zarr('grafana-A-zarr', 'precip', 'https://other.test/mur.zarr')],
+      [zarr('grafana-A-zarr', 'precip')]
+    );
+
+    expect(replace.map((d) => d.storeUrl)).toEqual(['https://other.test/mur.zarr']);
+  });
+
+  it('removes only the ids the panel minted', () => {
+    const { remove } = splitZarrRefresh(
+      [],
+      [zarr('grafana-A-zarr'), zarr('someones-own-zarr'), zarr('grafana-A-wms')]
+    );
+
+    expect(remove).toEqual(['grafana-A-zarr']);
   });
 });

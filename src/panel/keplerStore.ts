@@ -1,14 +1,16 @@
-import { LayerClasses } from '@kepler.gl/layers';
+import { Layer, LayerClasses } from '@kepler.gl/layers';
 import { keplerGlReducer, enhanceReduxMiddleware } from '@kepler.gl/reducers';
 import { applyMiddleware, combineReducers, legacy_createStore, Store } from 'redux';
 
 import { withTripGpuFilterFix } from './tripLayerFix';
 import { buildTimedWmsLayer } from './wmsDeckLayer';
 import { withWmsTime } from './wmsTimeLayer';
+import { buildZarrDeckLayer } from './zarrDeckLayer';
+import { makeZarrLayer } from './zarrTileLayer';
 
 /**
- * kepler's layer classes, with the Trip layer repaired and the WMS layer taught
- * to ask for a date.
+ * kepler's layer classes, with the Trip layer repaired, the WMS layer taught to
+ * ask for a date, and a Zarr layer added that kepler has no equivalent of.
  *
  * kepler builds layers from `visState.layerClasses`, so replacing an entry here
  * is the whole of the change — see `tripLayerFix.ts` for what is wrong with the
@@ -20,6 +22,13 @@ const layerClasses = {
   ...LayerClasses,
   trip: withTripGpuFilterFix(LayerClasses.trip),
   wms: withWmsTime(LayerClasses.wms, buildTimedWmsLayer),
+  // Not a repair but an addition: kepler ships no generic raster tileset —
+  // `RemoteTileFormat` is mvt, pmtiles or wms, and its raster path is wired to
+  // STAC and PMTiles — so a Zarr rendered by TiTiler has nothing upstream to
+  // wrap. Built on the base `Layer` rather than on a concrete one, which is
+  // where `RasterTileLayer` starts from too: a tileset has no rows, so every
+  // concrete layer's column handling would be dead weight at best.
+  zarr: makeZarrLayer(Layer as never, buildZarrDeckLayer),
 };
 
 /**

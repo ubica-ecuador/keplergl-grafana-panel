@@ -85,6 +85,18 @@ export interface KeplerPanelOptions {
    */
   rasterServerUrl?: string;
 
+  /**
+   * Value range a Zarr variable is stretched over, as `min,max`.
+   *
+   * Needed where a raster's is not, because a COG the panel draws was written
+   * for drawing and a scientific Zarr was not: the store holds physical units —
+   * kelvin, mm/day, a reflectance — and nothing in it says which slice of that
+   * range is worth a colour. Left empty, TiTiler stretches each tile over its
+   * own extremes, and neighbouring tiles then disagree about what a colour
+   * means, which reads as patchwork.
+   */
+  zarrRescale?: string;
+
   /** Follow the dashboard theme. Off leaves kepler with its own dark styling. */
   followGrafanaTheme?: boolean;
 

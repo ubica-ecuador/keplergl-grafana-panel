@@ -1,6 +1,7 @@
 import { SavedMapConfig } from '../data/mapConfig';
 import { isPanelRasterId } from '../data/rasterDataset';
 import { isPanelWmsId } from '../data/wmsDataset';
+import { isPanelZarrId } from '../data/zarrDataset';
 
 export type LoadAction = 'rebuild' | 'refresh' | 'none';
 
@@ -183,6 +184,47 @@ export function splitWmsRefresh<T extends { id: string; serviceUrl: string; laye
   // Only ids the panel minted: a WMS someone added through kepler's own Add
   // Data lives in the same store and must survive every refresh the query does.
   const remove = known.map((dataset) => dataset.id).filter((id) => !ids.has(id) && isPanelWmsId(id));
+
+  return { add, replace, keep, remove };
+}
+
+/**
+ * Splits a Zarr refresh the same four ways, on a third identity.
+ *
+ * What makes two Zarr layers the same thing is the store **and** the variable.
+ * Either can change while the other stands: a dashboard variable moving from
+ * `precip` to `error` is pointing at the same store and must still be rebuilt,
+ * and the same variable name means nothing across two stores.
+ *
+ * What is *not* here is the moment. Moving through the timeline rewrites one
+ * query parameter of the tile url — a `visConfig` change on the layer — so a
+ * refresh never sees it, and a query re-run returning the same store and
+ * variable with a hundred new dates is a `keep`.
+ */
+export function splitZarrRefresh<T extends { id: string; storeUrl: string; variable: string }>(
+  wanted: T[],
+  known: ReadonlyArray<{ id: string; storeUrl?: string; variable?: string }>
+): { add: T[]; replace: T[]; keep: T[]; remove: string[] } {
+  const identity = (dataset: { storeUrl?: string; variable?: string }) =>
+    `${dataset.storeUrl ?? ''}|${dataset.variable ?? ''}`;
+  const byId = new Map(known.map((dataset) => [dataset.id, identity(dataset)]));
+  const ids = new Set(wanted.map((dataset) => dataset.id));
+
+  const add: T[] = [];
+  const replace: T[] = [];
+  const keep: T[] = [];
+
+  for (const dataset of wanted) {
+    if (!byId.has(dataset.id)) {
+      add.push(dataset);
+    } else if (byId.get(dataset.id) === identity(dataset)) {
+      keep.push(dataset);
+    } else {
+      replace.push(dataset);
+    }
+  }
+
+  const remove = known.map((dataset) => dataset.id).filter((id) => !ids.has(id) && isPanelZarrId(id));
 
   return { add, replace, keep, remove };
 }

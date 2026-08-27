@@ -5,6 +5,46 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Added: a query can draw a Zarr store, live, and the map's clock can walk its slices.** Return
+  `zarr_url` and `zarr_variable` and the panel builds a tileset from a store published as-is on
+  object storage — no download, no conversion, no ETL. The premise this started from turned out to
+  be backwards: DuckDB's `raster` extension carries GDAL's Zarr driver but **not blosc**, which is
+  what xarray writes by default, so the three public stores tried all failed at decompression. The
+  server that could already do it was the one in the compose file — `titiler:2.2.1` ships
+  `titiler-xarray` and mounts a `/zarr` router — so this needed no new service and no change to the
+  deployment at all. Handing the store to a server rather than to the browser also settles CORS,
+  which many public stores send none of: the one fetching chunks is the server. The moment travels
+  as the store's **own index label**, because TiTiler passes it to xarray's `.sel`, which matches
+  literally and has no nearest-neighbour fallback — a store stamped at 09:00 answers `500` to the
+  date-only spelling of its own dates, so `zarr_time_label` is a role of its own and the panel only
+  guesses when the query says nothing. Moving the timeline rewrites one URL parameter: no dataset is
+  rebuilt and no query re-run. Set **Zarr value range** — a scientific store holds physical units
+  and nothing in it says which slice deserves a colour; left empty each tile stretches over its own
+  extremes and the map reads as patchwork. Two things worth knowing before pointing this at a large
+  store: a Zarr has no overviews unless it was written with them, and chunks spanning the whole time
+  axis mean one day pulls every day in the block — measured on GPCP, tiles came back in 1.2 s to
+  17.5 s apiece, so a cache in front of the tile server earns its keep. Which brings the next point.
+- **Added: a pyramided Zarr is drawn at the zoom's own level, which is four to ten times quicker.**
+  Say how deep the store's `multiscales` pyramid is with `zarr_levels` and every zoom asks for its
+  own level instead of reading native resolution and resampling. Measured against the same server:
+  CarbonPlan's pyramided demo answers in 0.22–2.2 s and stays **flat across zoom**, where GPCP
+  without a pyramid takes 2.1–9.0 s and gets worse the further you zoom out. Writing the same data
+  locally both ways settles what the cost really is — a well-chunked Zarr read in 0.06 s against a
+  COG's 0.023 s, the same data in one big chunk 0.16 s — so this is the store's layout talking, not
+  the format's ceiling. The panel has to pick the level because the server will not: `titiler.xarray`
+  does not read the `multiscales` convention at all. It does take a `group` parameter, and a pyramid
+  written by ndpyramid names its groups by zoom, so the tile template carries `group={z}` and deck
+  substitutes it — which works only because deck's substitution is a global replace, and only if the
+  braces are kept out of the URL encoder. Declaring the depth also caps the request: past the
+  deepest level deck reuses what it holds instead of asking for a group the store does not have and
+  collecting a `500` on every tile. And `zarr_sel` pins the other non-spatial axes — a store may
+  have a band *and* a month, and each travels as its own `sel`. And `zarr_time_dim` lets the clock
+  walk an axis that is neither called `time` nor spelled as dates — CarbonPlan's demo holds twelve
+  months as `month=1..12`, integers, and the map's timeline walks them by mapping each moment of the
+  clock to the label the store knows. Naming an axis switches off the timestamp fallback on purpose:
+  a store holding months answers to `7` and never to a datetime, so guessing there would be a `500`
+  on every tile.
+
 - **Added: a query can draw a WMS, and the map's clock can walk its dates.** Return `wms_url` and
   `wms_layer` and the panel builds the layer — no tile server anywhere, which is what makes this
   work on a Grafana with nothing behind it. kepler 3.3.0-alpha.7 draws a WMS but has no notion of

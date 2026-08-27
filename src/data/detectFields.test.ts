@@ -201,3 +201,31 @@ describe('detectFields — raster', () => {
     expect(detectFields(frame)).toEqual({ rasterUrl: 'href', geometry: 'geometry' });
   });
 });
+
+describe('detectFields — zarr', () => {
+  it('recognises a store, a variable and an index label', () => {
+    const frame = toDataFrame({
+      fields: [
+        { name: 'zarr_url', type: FieldType.string, values: ['https://example.org/store.zarr'] },
+        { name: 'zarr_variable', type: FieldType.string, values: ['precip'] },
+        { name: 'zarr_time_label', type: FieldType.string, values: ['1996-10-01T00:00:00.000000000'] },
+      ],
+    });
+
+    expect(detectFields(frame)).toMatchObject({
+      zarrUrl: 'zarr_url',
+      zarrVariable: 'zarr_variable',
+      zarrTimeLabel: 'zarr_time_label',
+    });
+  });
+
+  it('does not let `variable` alone claim the zarr variable role', () => {
+    // `variable` is an ordinary column name in a long-format table, and a
+    // frame of unrelated measurements must not be read as a Zarr store.
+    const frame = toDataFrame({
+      fields: [{ name: 'variable', type: FieldType.string, values: ['temperature'] }],
+    });
+
+    expect(detectFields(frame).zarrVariable).toBeUndefined();
+  });
+});

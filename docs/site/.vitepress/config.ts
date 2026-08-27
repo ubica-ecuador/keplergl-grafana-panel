@@ -76,6 +76,7 @@ export default defineConfig({
           { text: 'Velocity fields', link: '/guide/data/velocity-fields' },
           { text: 'Rasters', link: '/guide/data/rasters' },
           { text: 'WMS services', link: '/guide/data/wms' },
+          { text: 'Zarr stores', link: '/guide/data/zarr' },
           { text: 'Imagery over time', link: '/guide/data/imagery-over-time' },
         ],
       },

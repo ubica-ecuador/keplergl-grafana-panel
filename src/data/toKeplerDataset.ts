@@ -15,11 +15,25 @@ export type KeplerRow = Record<string, unknown>;
  *
  * `rasterUrl` is absent for the same reason: it becomes a dataset of its own,
  * whose substance is a metadata url rather than any row. So are `wmsUrl` and
- * `wmsLayer`, which name a service rather than describe a row.
+ * `wmsLayer`, which name a service rather than describe a row, and the three
+ * `zarr*` roles, which name a store, one array inside it, and the label that
+ * array answers to — a tile request, not a column anyone reads.
  */
 type RenamedRole = Exclude<
   keyof FieldRoles,
-  'u' | 'v' | 'speed' | 'direction' | 'rasterUrl' | 'wmsUrl' | 'wmsLayer'
+  | 'u'
+  | 'v'
+  | 'speed'
+  | 'direction'
+  | 'rasterUrl'
+  | 'wmsUrl'
+  | 'wmsLayer'
+  | 'zarrUrl'
+  | 'zarrVariable'
+  | 'zarrTimeLabel'
+  | 'zarrLevels'
+  | 'zarrSel'
+  | 'zarrTimeDim'
 >;
 
 /**

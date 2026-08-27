@@ -29,6 +29,7 @@ import type { Dispatch, Store } from 'redux';
 import type { PanelDataset } from '../data/framesToDatasets';
 import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
 import { isPanelWmsId, wmsCalendarDatasetId, type WmsDataset } from '../data/wmsDataset';
+import { zarrCalendarDatasetId, type ZarrDataset } from '../data/zarrDataset';
 import { rowFieldValue, wmsFeatureValues } from './clickSync';
 import type { FlowLayerConfig } from '../data/buildFlows';
 import type { TripLayerConfig } from '../data/buildTripLayer';
@@ -48,7 +49,7 @@ import {
   type TimeRangeMs,
 } from './timeSync';
 import { supersededTripLayerIds } from './autoLayers';
-import { splitRasterRefresh, splitRefresh, splitWmsRefresh } from './loadDecision';
+import { splitRasterRefresh, splitRefresh, splitWmsRefresh, splitZarrRefresh } from './loadDecision';
 import { KEPLER_INSTANCE_ID } from './constants';
 
 /**
@@ -570,12 +571,34 @@ interface WmsServiceLayer {
  * re-query that returns the same calendar changes nothing.
  */
 export function syncWmsCalendar(store: Store, dispatch: Dispatch, wms: WmsDataset): void {
-  if (wms.times.length === 0) {
+  syncCalendarDataset(store, dispatch, {
+    id: wmsCalendarDatasetId(wms.id),
+    label: wms.label,
+    times: wms.times,
+  });
+}
+
+/**
+ * Puts a calendar of dates on the map as a dataset of rows.
+ *
+ * Shared by the WMS and Zarr paths, and shared rather than copied because what
+ * they need here is identical down to the fingerprint: neither carries rows of
+ * its own, kepler's time filter can only hang off a column, and both are
+ * reconciled from a hook that runs on every store change. The two `split*Refresh`
+ * functions stay apart because what makes two layers *the same layer* differs
+ * between them; nothing differs here.
+ */
+export function syncCalendarDataset(
+  store: Store,
+  dispatch: Dispatch,
+  calendar: { id: string; label: string; times: number[] }
+): void {
+  if (calendar.times.length === 0) {
     return;
   }
 
-  const id = wmsCalendarDatasetId(wms.id);
-  const fingerprint = `${wms.times.length}|${wms.times[0]}|${wms.times[wms.times.length - 1]}`;
+  const { id, times } = calendar;
+  const fingerprint = `${times.length}|${times[0]}|${times[times.length - 1]}`;
   const existing = getVisState(store)?.datasets[id];
   if (existing) {
     const held = (existing.metadata as { calendarFingerprint?: string } | undefined)?.calendarFingerprint;
@@ -584,12 +607,12 @@ export function syncWmsCalendar(store: Store, dispatch: Dispatch, wms: WmsDatase
     }
   }
 
-  const data = processRowObject(wms.times.map((time) => ({ time })));
+  const data = processRowObject(times.map((time) => ({ time })));
   if (!data) {
     return;
   }
   const proto = {
-    info: { id, label: `${wms.label} · dates`, format: 'row' },
+    info: { id, label: `${calendar.label} · dates`, format: 'row' },
     data,
     metadata: { calendarFingerprint: fingerprint },
   } as unknown as ProtoDataset;
@@ -811,7 +834,7 @@ interface VisStateLike {
     config?: {
       dataId?: string;
       isVisible?: boolean;
-      visConfig?: { useSTACSearching?: boolean; wmsLayer?: unknown; wmsTime?: unknown };
+      visConfig?: { useSTACSearching?: boolean; wmsLayer?: unknown; wmsTime?: unknown; zarrLabel?: unknown };
     };
     meta?: { bounds?: number[] };
     /** Resolves a picked deck.gl object to its row — what the tooltip uses. */
@@ -1484,4 +1507,146 @@ export function setBasemap(dispatch: Dispatch, styleId: string): void {
  */
 export function setSidePanel(dispatch: Dispatch, visible: boolean): void {
   dispatch(wrapTo(KEPLER_INSTANCE_ID, toggleSidePanel(visible ? 'layer' : null)));
+}
+
+/**
+ * The dataset type the panel mints for a Zarr variable.
+ *
+ * Not one of kepler's own — `DatasetType` knows local, vector-tile,
+ * raster-tile, wms-tile, tile-3d and bitmap, and none of them describes a store
+ * of named arrays rendered on demand. Making one up is safe because the only
+ * code that asks is `matchDatasetType`, which compares strings, and
+ * `refreshRemoteData` falls through to `null` for a type it does not recognise —
+ * so kepler will not try to refresh metadata the panel owns.
+ */
+const ZARR_TILE_TYPE = 'zarr';
+
+/**
+ * A Zarr variable in the shape the panel's own layer reads.
+ *
+ * Everything the layer needs to build a tile url lives in `metadata`, because
+ * that is what survives kepler's dataset machinery untouched: there are no rows
+ * here, and no upstream code that would rewrite these keys the way the WMS
+ * capabilities refresh rewrites `layers`.
+ *
+ * The server travels with the dataset rather than being read at draw time, for
+ * the reason the raster path gives: two panels on one dashboard may render from
+ * different TiTilers, and a dataset that reads a global at draw time cannot.
+ */
+function zarrProtoDataset(zarr: ZarrDataset) {
+  return {
+    info: { id: zarr.id, label: zarr.label, type: ZARR_TILE_TYPE, format: 'rows' },
+    data: { fields: [], rows: [] },
+    metadata: {
+      serverUrl: zarr.serverUrl,
+      storeUrl: zarr.storeUrl,
+      variable: zarr.variable,
+      selectors: zarr.selectors,
+      levels: zarr.levels,
+      dimension: zarr.dimension,
+      colormap: zarr.colormap,
+      rescale: zarr.rescale,
+    },
+    disableDataOperation: true,
+  } as unknown as ProtoDataset;
+}
+
+/**
+ * Adds Zarr variables to the map, one dataset and one layer each.
+ *
+ * Separate from `loadDatasets` for the reason `loadRasters` and `loadWms` are:
+ * no rows, and `processRowObject([])` returns null, so the row path drops it
+ * without a word.
+ *
+ * `centerMap` defaults to false. A climate store is global, and framing the map
+ * to it would throw away wherever the user was looking — and pull a great many
+ * tiles from a server that makes each one from scratch.
+ */
+export function loadZarr(dispatch: Dispatch, layers: ZarrDataset[], options: { centerMap?: boolean } = {}): void {
+  if (layers.length === 0) {
+    return;
+  }
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      updateVisData(layers.map(zarrProtoDataset), {
+        keepExistingConfig: true,
+        centerMap: options.centerMap ?? false,
+      })
+    )
+  );
+}
+
+/**
+ * Refresh path for Zarr variables: add, rebuild, drop, leave the rest alone.
+ *
+ * Rebuilding is rare by design, and the moment never reaches here — it is a
+ * `visConfig` change on the layer. What does reach here is a query that starts
+ * naming a different store or variable, and one that stops naming any.
+ */
+export function refreshZarr(store: Store, dispatch: Dispatch, layers: ZarrDataset[]): void {
+  const { add, replace, remove } = splitZarrRefresh(layers, readZarrDatasets(store));
+
+  for (const id of remove) {
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(id)));
+  }
+
+  for (const zarr of replace) {
+    dispatch(
+      wrapTo(
+        KEPLER_INSTANCE_ID,
+        replaceDataInMap({
+          datasetToReplaceId: zarr.id,
+          datasetToUse: zarrProtoDataset(zarr),
+          options: { centerMap: false, keepExistingConfig: true },
+        })
+      )
+    );
+  }
+
+  loadZarr(dispatch, add);
+}
+
+/** The Zarr datasets kepler holds, as the identity the refresh compares on. */
+function readZarrDatasets(store: Store): Array<{ id: string; storeUrl?: string; variable?: string }> {
+  const visState = getVisState(store);
+  return Object.entries(visState?.datasets ?? {})
+    .filter(([, dataset]) => dataset.type === ZARR_TILE_TYPE)
+    .map(([id, dataset]) => {
+      const metadata = dataset.metadata as { storeUrl?: string; variable?: string } | undefined;
+      return { id, storeUrl: metadata?.storeUrl, variable: metadata?.variable };
+    });
+}
+
+/** Puts a Zarr variable's calendar on the map, so the clock has a column. */
+export function syncZarrCalendar(store: Store, dispatch: Dispatch, zarr: ZarrDataset): void {
+  syncCalendarDataset(store, dispatch, {
+    id: zarrCalendarDatasetId(zarr.id),
+    label: zarr.label,
+    times: zarr.times,
+  });
+}
+
+/**
+ * Points a Zarr layer at a moment, by its own index label.
+ *
+ * The label rather than a timestamp, because TiTiler hands it straight to
+ * xarray's `.sel`, which matches exactly and offers no nearest-neighbour
+ * fallback: a store stamped at 09:00 answers 500 to the date-only spelling of
+ * its own dates.
+ *
+ * One dispatch and no dataset touched: the label lands in `visConfig`,
+ * `zarrTileLayer` builds a new tile url from it, and deck refetches only the
+ * tiles on screen. Quiet when the layer already shows that moment, which is most
+ * of the time — a drag of the widget between two dates arrives here and stops.
+ */
+export function applyZarrLabel(store: Store, dispatch: Dispatch, dataId: string, label: string): boolean {
+  const layer = getVisState(store)?.layers.find((candidate) => candidate.config?.dataId === dataId);
+  if (!layer) {
+    return false;
+  }
+  if (layer.config?.visConfig?.zarrLabel === label) {
+    return true;
+  }
+  return applyLayerVisConfig(store, dispatch, dataId, { zarrLabel: label });
 }

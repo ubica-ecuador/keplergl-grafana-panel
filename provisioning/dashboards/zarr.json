@@ -1,0 +1,78 @@
+{
+  "uid": "zarr",
+  "title": "Zarr — teselas por TiTiler",
+  "description": "Una variable de un store Zarr, dibujada por el router /zarr de TiTiler y recorrida con el reloj.",
+  "tags": [
+    "zarr"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "time": {
+    "from": "2026-08-22T00:00:00.000Z",
+    "to": "2026-08-26T00:00:00.000Z"
+  },
+  "panels": [
+    {
+      "type": "text",
+      "id": 1,
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "# Zarr por teselas de TiTiler\n\nTres días de una tienda inventada. El panel no lee el Zarr: pide teselas ya pintadas al\nrouter `/zarr` del servidor de teselas, y la fecha viaja en el parámetro `sel`.\n\nLa columna `zarr_time_label` existe porque `sel` se compara **literalmente** contra el índice\ndel store: aquí los sellos van a medianoche y las etiquetas a las 09:00, como en MUR SST.\nDerivar la etiqueta del timestamp daría 00:00 y el servidor respondería 500.\n"
+      }
+    },
+    {
+      "type": "ubica-keplergl-panel",
+      "id": 2,
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "title": "Lluvia · la fecha viaja en sel",
+      "gridPos": {
+        "h": 18,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\": {\"fields\": [{\"name\": \"time\", \"type\": \"time\"}, {\"name\": \"zarr_url\", \"type\": \"string\"}, {\"name\": \"zarr_variable\", \"type\": \"string\"}, {\"name\": \"zarr_time_label\", \"type\": \"string\"}]}, \"data\": {\"values\": [[1787443200000, 1787529600000, 1787616000000], [\"https://example.test/gpcp.zarr\", \"https://example.test/gpcp.zarr\", \"https://example.test/gpcp.zarr\"], [\"precip\", \"precip\", \"precip\"], [\"2026-08-23T09:00:00.000000000\", \"2026-08-24T09:00:00.000000000\", \"2026-08-25T09:00:00.000000000\"]]}}]"
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "timeSync": "toMap",
+        "rasterServerUrl": "http://titiler.test",
+        "rasterColormap": "blues",
+        "zarrRescale": "0,30",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -2.9,
+              "longitude": -79.0,
+              "zoom": 4,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        }
+      }
+    }
+  ]
+}

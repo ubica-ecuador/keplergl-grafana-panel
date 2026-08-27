@@ -31,6 +31,12 @@ are autodetect-only and are marked below.
 | Raster URL      | ❌     | `raster_url`, `cog_url`, `cog`, `asset_href`, `href`                                                                                                                                                            | not renamed |
 | WMS URL         | ❌     | `wms_url`, `wms`, `service_url`                                                                                                                                                                                 | not renamed |
 | WMS layer       | ❌     | `wms_layer`, `layer`, `layer_name`                                                                                                                                                                              | not renamed |
+| Zarr URL        | ❌     | `zarr_url`, `zarr`, `store_url`                                                                                                                                                                                 | not renamed |
+| Zarr variable   | ❌     | `zarr_variable`, `zarr_var`                                                                                                                                                                                     | not renamed |
+| Zarr time label | ❌     | `zarr_time_label`, `zarr_label`                                                                                                                                                                                 | not renamed |
+| Zarr levels     | ❌     | `zarr_levels`, `zarr_pyramid`                                                                                                                                                                                   | not renamed |
+| Zarr selectors  | ❌     | `zarr_sel`, `zarr_select`                                                                                                                                                                                       | not renamed |
+| Zarr time axis  | ❌     | `zarr_time_dim`, `zarr_dim`                                                                                                                                                                                     | not renamed |
 
 ::: warning Nine roles cannot be mapped by hand
 `originH3`, `destH3`, `u`, `v`, `speed`, `direction`, `rasterUrl`, `wmsUrl` and `wmsLayer` are

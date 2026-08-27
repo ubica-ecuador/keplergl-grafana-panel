@@ -13,6 +13,14 @@ import { DEFAULT_RASTER_SERVER_URL } from './panel/constants';
 
 export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelOptions((builder) =>
   builder
+    .addTextInput({
+      path: 'zarrRescale',
+      name: 'Zarr value range',
+      description:
+        'Range a Zarr variable is stretched over, as min,max in the store\u2019s own units \u2014 0,30 for mm/day of rainfall, 270,305 for kelvin. Left empty, each tile is stretched over its own extremes and neighbouring tiles disagree about what a colour means. The ramp above is shared with rasters.',
+      category: ['Map'],
+      settings: { placeholder: '0,30' },
+    })
     .addCustomEditor({
       id: 'fieldMappings',
       path: 'fieldMappings',
