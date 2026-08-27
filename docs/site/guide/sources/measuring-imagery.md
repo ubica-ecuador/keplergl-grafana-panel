@@ -44,6 +44,80 @@ measured at 5.9 s alone, 11.6 s competing, and 4.7 s with four workers, against 
 timeout.
 :::
 
+## Measuring a Zarr {#zarr}
+
+The `/zarr` router mirrors `/cog` route for route — `statistics`, `point`, `feature` — and takes
+`variable`, `sel` and `group` alongside. That last part is what matters: the same parameters that
+select what the layer *draws* select what the statistic *measures*, so a number beside the map is
+about the slice on the map, not about some default the server chose.
+
+```
+POST /zarr/statistics?url=…&variable=precip&sel=time%3D2000-01-05
+     body: {"type": "Feature", "properties": {}, "geometry": {…}}
+```
+
+**DuckDB is not an alternative here.** The next section is the escape hatch for a COG, and it does
+not transfer: DuckDB's `raster` extension carries GDAL's Zarr driver but not **blosc**, which is
+what xarray writes by default, so it cannot open the stores you will actually meet. For a Zarr, the
+tile server is the only one of the three routes on this page that works.
+
+### Bridging the drawn polygon
+
+The map publishes what you draw as **WKT**; TiTiler wants **GeoJSON**. A query variable converts it,
+and the conversion is the one place DuckDB still earns its keep on this path:
+
+```sql
+LOAD spatial;
+SELECT ST_AsGeoJSON(ST_GeomFromText(
+  coalesce(nullif('${area}', ''), 'POLYGON((…fallback…))')))::VARCHAR
+```
+
+Two details, each of which costs an iteration:
+
+- **The `::VARCHAR` is not cosmetic.** `ST_AsGeoJSON` returns a JSON value, and without the cast the
+  data source fails with `unsupported Scan, storing driver.Value type map[string]interface{}`.
+- **Quote the variable yourself.** Inside a *variable* query this data source does **not** add the
+  quotes it adds inside a panel query: `$area` interpolates to nothing at all, and the error points
+  at a comma — `syntax error at or near ","` over a `nullif(, '')` — rather than at the variable.
+
+Then Infinity sends `{"type": "Feature", "properties": {}, "geometry": ${zona}}` as the body.
+
+### Make the numbers follow the clock
+
+A statistic that reads the map's window needs the map to publish one, and that only happens under
+**Time range sync: Slider writes variables**. Under any other mode the window variables are never
+written, the statistic falls back to the end of the dashboard range, and the symptom is a panel that
+measures the newest slice however you move the slider.
+
+Worth knowing while testing: the **west** handle moves the start of the window, and the slice being
+drawn is the newest one *inside* it — so it is the **east** handle that changes the picture.
+
+### One request, many panels
+
+Every panel with its own Infinity target makes its own POST, and a mean, a minimum and a maximum
+over one polygon are the same request three times. Point the extra panels at the first one instead:
+
+```json
+"targets": [{"datasource": {"type": "datasource", "uid": "-- Dashboard --"}, "panelId": 5}],
+"options": {"reduceOptions": {"fields": "/^media$/", "calcs": ["lastNotNull"]}}
+```
+
+Each panel picks its field out of the shared frame with `reduceOptions.fields`. Three POSTs become
+one, and a fourth number afterwards costs nothing.
+
+### The store's layout decides the cost
+
+As with drawing, and by the same margin. The same polygon, the same server:
+
+| Store                                   | One zonal statistic |
+| --------------------------------------- | ------------------- |
+| pyramided, 128×128 chunks               | **1.0 – 1.5 s**     |
+| chunked 200 days × whole globe          | 6.9 – 21.1 s        |
+
+Asking a coarser pyramid level (`group=2` rather than `4`) is cheaper again, at the price of fewer
+cells behind the number. And `coord_crs` is not needed for a lat/lon polygon against a store in Web
+Mercator — TiTiler handles that itself.
+
 ## Compute it in DuckDB
 
 What a tile server cannot do is **cross the imagery with your own tables**. DuckDB's `raster`
@@ -156,6 +230,7 @@ dashboard: compute it once, and let the panels read what is there.
 | You want                                   | Use                       |
 | ------------------------------------------ | ------------------------- |
 | a number about one scene, or one polygon   | the tile server, via Infinity |
+| anything at all about a **Zarr**           | the tile server — [see above](#zarr) |
 | the value under a click                    | the tile server, via Infinity |
 | one row per zone, over thousands of zones  | DuckDB `raster`           |
 | the imagery joined to your own tables      | DuckDB `raster`           |

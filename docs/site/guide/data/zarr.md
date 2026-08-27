@@ -161,6 +161,13 @@ Leave `zarr_levels` out for a store with no pyramid — it answers at any zoom, 
 
 [ndpyramid]: https://github.com/carbonplan/ndpyramid
 
+## Measuring, not only drawing
+
+The same server answers questions about the store as well as painting it, over a polygon you draw on
+the map or a coordinate you click — and with the same `variable`, `sel` and `group`, so the number
+is about the slice on screen. That has a page of its own:
+[Measuring imagery](../sources/measuring-imagery#zarr).
+
 ## What is left when the store is right
 
 A cache in front of the tile server is still worth having: nothing is reused between requests, so

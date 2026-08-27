@@ -44,6 +44,23 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   clock to the label the store knows. Naming an axis switches off the timestamp fallback on purpose:
   a store holding months answers to `7` and never to a datetime, so guessing there would be a `500`
   on every tile.
+- **Added: a Zarr can be measured, not only drawn — over a polygon you draw on the map.** The
+  `/zarr` router mirrors `/cog` route for route (`statistics`, `point`, `feature`) and takes
+  `variable`, `sel` and `group` alongside, so the number beside the map is about the slice on the
+  map rather than some default the server picked. No plugin code was needed: the panel already
+  publishes a drawn figure to a dashboard variable. What the documentation now carries is the four
+  things that each cost an iteration to find. The figure travels as **WKT** and TiTiler wants
+  **GeoJSON**, so a query variable converts it — and inside a *variable* query this data source does
+  **not** add the quotes it adds inside a panel query, which surfaces as a parser error pointing at
+  a comma rather than at the variable; `ST_AsGeoJSON` also needs an explicit `::VARCHAR` or the
+  scan fails on a Go type name. The numbers only follow the clock under **Slider writes variables**,
+  because that is the only mode where the window is published at all — under any other, a statistic
+  quietly reports the newest slice however you move the slider. And panels sharing one request
+  through the `-- Dashboard --` data source turn three identical POSTs into one, after which another
+  number costs nothing. The store's layout decides the cost here as much as it does for drawing: the
+  same polygon takes 1.0–1.5 s on a pyramided store and 6.9–21.1 s on one chunked 200 days deep.
+  Note that the DuckDB route documented for a COG does **not** transfer — its GDAL has the Zarr
+  driver but not blosc, so for a Zarr the tile server is the only one of the three that works.
 
 - **Added: a query can draw a WMS, and the map's clock can walk its dates.** Return `wms_url` and
   `wms_layer` and the panel builds the layer — no tile server anywhere, which is what makes this
