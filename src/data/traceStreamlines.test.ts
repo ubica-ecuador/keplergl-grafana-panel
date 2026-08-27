@@ -14,22 +14,20 @@ function uniformField(u: number, v: number): WindField {
   };
 }
 
-/** Parse the `_geojson` column of a produced row back into an object. */
-const geojson = (row: Record<string, unknown>) => JSON.parse(row._geojson as string);
+/** The vertices of a traced streamline. */
+const coords = (line: { path: number[][] }): number[][] => line.path;
 
 describe('traceStreamlines', () => {
-  it('traces a streamline as a LineString of [lng, lat, alt, ts] coordinates', () => {
+  it('traces a streamline as a path of [lng, lat, alt, ts] vertices', () => {
     const rows = traceStreamlines(uniformField(10, 0), { count: 1, seed: 1, baseMs: 1_000_000 });
 
     expect(rows).toHaveLength(1);
+    expect(rows[0].speed).toBeGreaterThan(0);
 
-    const feature = geojson(rows[0]);
-    expect(feature.geometry.type).toBe('LineString');
-
-    const coordinates: number[][] = feature.geometry.coordinates;
+    const coordinates: number[][] = coords(rows[0]);
     expect(coordinates.length).toBeGreaterThan(1);
-    // kepler only builds a Trip layer when *every* coordinate has four values
-    // and the fourth parses as a time — see `isTripGeoJsonField`.
+    // deck's TripsLayer reads the fourth value of each vertex as its timestamp,
+    // so a vertex short of one animates as if it were at the epoch.
     expect(coordinates.every((c) => c.length === 4)).toBe(true);
 
     // A purely eastward wind moves the particle east at constant latitude.
@@ -48,8 +46,8 @@ describe('traceStreamlines', () => {
     // cross a segment — which is what makes fast streamlines animate fast.
     const opts = { count: 1, seed: 7, baseMs: 0, segmentMeters: 9_000 };
 
-    const slow = geojson(traceStreamlines(uniformField(2, 0), opts)[0]).geometry.coordinates;
-    const fast = geojson(traceStreamlines(uniformField(20, 0), opts)[0]).geometry.coordinates;
+    const slow = coords(traceStreamlines(uniformField(2, 0), opts)[0]);
+    const fast = coords(traceStreamlines(uniformField(20, 0), opts)[0]);
 
     const gap = (c: number[][]) => c[1][3] - c[0][3];
     expect(gap(slow) / gap(fast)).toBeCloseTo(10, 6);
@@ -74,7 +72,7 @@ describe('traceStreamlines', () => {
     const rows = traceStreamlines(narrow, { count: 5, seed: 3, baseMs: 0, maxVertices: 30 });
 
     for (const row of rows) {
-      const coordinates: number[][] = geojson(row).geometry.coordinates;
+      const coordinates: number[][] = coords(row);
       expect(coordinates.length).toBeLessThan(30);
       expect(coordinates.every((c) => c[0] >= 0 && c[0] <= 1)).toBe(true);
     }
@@ -106,7 +104,7 @@ describe('traceStreamlines', () => {
       staggerMs: 60_000,
     });
 
-    const starts = rows.map((r) => geojson(r).geometry.coordinates[0][3] as number);
+    const starts = rows.map((r) => coords(r)[0][3] as number);
 
     expect(new Set(starts).size).toBeGreaterThan(10);
     expect(Math.max(...starts) - Math.min(...starts)).toBeGreaterThan(20_000);
@@ -127,7 +125,7 @@ describe('traceStreamlines', () => {
     });
 
     const durations = rows.map((r) => {
-      const c: number[][] = geojson(r).geometry.coordinates;
+      const c: number[][] = coords(r);
       return c[c.length - 1][3] - c[0][3];
     });
     const median = [...durations].sort((a, b) => a - b)[Math.floor(durations.length / 2)];
@@ -146,7 +144,7 @@ describe('traceStreamlines', () => {
       viewport: { west: -1, south: -1, east: 1, north: 1, widthPx: 800, heightPx: 800 },
     });
 
-    const starts = rows.map((r) => geojson(r).geometry.coordinates[0] as number[]);
+    const starts = rows.map((r) => coords(r)[0] as number[]);
     expect(starts.length).toBeGreaterThan(0);
 
     // Expanded by the default factor, so lines exist slightly beyond the edge
@@ -174,7 +172,7 @@ describe('traceStreamlines', () => {
     });
 
     const spanDegrees = (rows: ReturnType<typeof traceStreamlines>) => {
-      const c: number[][] = geojson(rows[0]).geometry.coordinates;
+      const c: number[][] = coords(rows[0]);
       return Math.abs(c[c.length - 1][0] - c[0][0]);
     };
 
@@ -197,7 +195,7 @@ describe('traceStreamlines', () => {
 
     expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) {
-      const [lon, lat] = geojson(row).geometry.coordinates[0] as number[];
+      const [lon, lat] = coords(row)[0] as number[];
       expect(Math.abs(lon)).toBeLessThanOrEqual(10);
       expect(Math.abs(lat)).toBeLessThanOrEqual(10);
     }
@@ -244,7 +242,7 @@ describe('traceStreamlines', () => {
     expect(rows.length).toBeGreaterThan(1);
 
     for (const row of rows) {
-      const times = (geojson(row).geometry.coordinates as number[][]).map((c) => c[3]);
+      const times = coords(row).map((c) => c[3]);
       expect(times[0]).toBe(5_000);
       expect(times[times.length - 1]).toBe(65_000);
     }
@@ -268,7 +266,7 @@ describe('traceStreamlines', () => {
         stepLat: 120,
       };
       const [row] = traceStreamlines(field, { count: 1, seed: 5, baseMs: 0, cycleMs: 30_000 });
-      const c: number[][] = geojson(row).geometry.coordinates;
+      const c: number[][] = coords(row);
       return Math.abs(c[c.length - 1][0] - c[0][0]);
     };
 
@@ -291,15 +289,15 @@ describe('traceStreamlines', () => {
     };
 
     const [row] = traceStreamlines(varying, { count: 1, seed: 2, baseMs: 0, cycleMs: 10_000 });
-    const coords = geojson(row).geometry.coordinates as number[][];
+    const c = coords(row);
 
-    const gapAt = (i: number) => Math.abs(coords[i + 1][0] - coords[i][0]);
+    const gapAt = (i: number) => Math.abs(c[i + 1][0] - c[i][0]);
 
-    expect(gapAt(coords.length - 2)).toBeGreaterThan(gapAt(0));
+    expect(gapAt(c.length - 2)).toBeGreaterThan(gapAt(0));
 
     // Y los intervalos de tiempo sí son uniformes, que es lo que mantiene a
     // todas las líneas vivas durante el mismo ciclo.
-    const times = coords.map((c) => c[3]);
+    const times = c.map((vertex) => vertex[3]);
     expect(times[1] - times[0]).toBe(times[times.length - 1] - times[times.length - 2]);
   });
 });
@@ -318,9 +316,9 @@ describe('traceStreamlines — continuous respawn', () => {
       lifeFraction: 0.5,
     });
 
-    const starts = rows.map((r) => geojson(r).geometry.coordinates[0][3] as number);
+    const starts = rows.map((r) => coords(r)[0][3] as number);
     const ends = rows.map((r) => {
-      const c = geojson(r).geometry.coordinates as number[][];
+      const c = coords(r) as number[][];
       return c[c.length - 1][3] as number;
     });
 
@@ -337,7 +335,7 @@ describe('traceStreamlines — continuous respawn', () => {
     const rows = traceStreamlines(uniformField(10, 2), { count: 10, seed: 3, baseMs: 0, cycleMs: 60_000 });
 
     for (const row of rows) {
-      const c = geojson(row).geometry.coordinates as number[][];
+      const c = coords(row) as number[][];
       expect(c[0][3]).toBe(0);
       expect(c[c.length - 1][3]).toBe(60_000);
     }
@@ -379,7 +377,7 @@ describe('traceStreamlines — travel stays inside small patches', () => {
         viewport: { west: -1, east: 1, south: -0.5, north: 1.5, widthPx: 1000, heightPx: 1000 },
       });
 
-      const c: number[][] = JSON.parse(row._geojson as string).geometry.coordinates;
+      const c: number[][] = coords(row);
       return Math.abs(c[c.length - 1][0] - c[0][0]);
     };
 

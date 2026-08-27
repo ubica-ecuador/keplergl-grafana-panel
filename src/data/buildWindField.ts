@@ -1,4 +1,14 @@
-import { DataFrame } from '@grafana/data';
+/**
+ * The little of a Grafana `DataFrame` this module reads.
+ *
+ * Named rather than imported so a kepler `DataContainer` can pose as one: the
+ * field is built inside the layer now, from the columns kepler holds, and a real
+ * `DataFrame` satisfies this shape without being told to.
+ */
+export interface GridFrame {
+  length: number;
+  fields: Array<{ name: string; values: ArrayLike<unknown> }>;
+}
 
 /** A velocity field discretised on a regular lat/lon grid. */
 export interface WindField {
@@ -22,12 +32,12 @@ export interface WindFieldColumns {
   direction?: string;
   /**
    * When the query spans several timesteps, the column that separates them.
-   * Only the earliest is used — see `rowsToUse`.
+   * Only the earliest is used — see `earliestTimestepRows`.
    */
   time?: string;
 }
 
-export function buildWindField(frame: DataFrame, columns: WindFieldColumns): WindField | null {
+export function buildWindField(frame: GridFrame, columns: WindFieldColumns): WindField | null {
   const field = (name?: string) => (name ? frame.fields.find((f) => f.name === name) : undefined);
 
   const latField = field(columns.latitude);
@@ -50,7 +60,7 @@ export function buildWindField(frame: DataFrame, columns: WindFieldColumns): Win
     : (i: number): [number, number] =>
         speedDirToUV(Number(speedField!.values[i]), Number(directionField!.values[i]));
 
-  const indices = rowsToUse(frame, columns.time);
+  const indices = earliestTimestepRows(frame, columns.time);
 
   const lats = axisOf(indices.map((i) => Number(latField.values[i])));
   const lons = axisOf(indices.map((i) => Number(lonField.values[i])));
@@ -179,7 +189,7 @@ function blurAlong(field: WindField, kernel: number[], horizontal: boolean): Win
  * The earliest is chosen because it is deterministic and matches the start of
  * the window the query asked for.
  */
-function rowsToUse(frame: DataFrame, timeColumn?: string): number[] {
+export function earliestTimestepRows(frame: GridFrame, timeColumn?: string): number[] {
   const all = Array.from({ length: frame.length }, (_, i) => i);
 
   const timeField = timeColumn ? frame.fields.find((f) => f.name === timeColumn) : undefined;

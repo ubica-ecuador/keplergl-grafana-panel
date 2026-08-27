@@ -1,5 +1,19 @@
 import { sampleWindField, WindField } from './buildWindField';
-import { KeplerRow } from './toKeplerDataset';
+
+/**
+ * One traced path, in the shape deck's `TripsLayer` reads.
+ *
+ * A plain array rather than a GeoJSON string: the streamlines used to be handed
+ * to kepler as rows of a `_geojson` column, so every trace stringified nine
+ * thousand features for kepler to parse straight back. The layer now draws them
+ * itself, and nothing in between needs them spelled as text.
+ */
+export interface Streamline {
+  /** `[lon, lat, altitude, epochMs]` per vertex. */
+  path: Array<[number, number, number, number]>;
+  /** Mean speed along the line, in m/s — what the colour ramp reads. */
+  speed: number;
+}
 
 /** What the map is currently showing: a geographic extent and its size on screen. */
 export interface Viewport {
@@ -60,6 +74,40 @@ export interface StreamlineOptions {
 }
 
 const METRES_PER_DEGREE = 111_320;
+
+/**
+ * How much of the view's width a stack of levels should rise to.
+ *
+ * Below about a tenth the levels sit on top of each other; much above a fifth
+ * the stack stops reading as a map and starts reading as a wall.
+ */
+const STACK_SHARE_OF_VIEW = 0.15;
+
+/**
+ * How much to stretch the vertical so a stack of levels reads on screen.
+ *
+ * Pressure levels a few kilometres apart are invisible over a country hundreds
+ * of kilometres wide — 1000 to 700 hPa is 2.9 km over ~650 km, four parts in a
+ * thousand — and a camera tilt compresses the vertical further still. The stack
+ * is scaled to a share of the view instead, which is the only way one number can
+ * serve every zoom.
+ *
+ * `tallest` is the highest level on the map rather than this layer's own, so the
+ * levels keep their real proportion to each other. Returns 1 with no viewport or
+ * no height, so nothing is invented when there is nothing to stack.
+ */
+export function stackExaggeration(tallest: number, viewport?: Viewport): number {
+  if (!viewport || tallest <= 0) {
+    return 1;
+  }
+
+  const metresAcross =
+    (viewport.east - viewport.west) *
+    METRES_PER_DEGREE *
+    Math.cos((((viewport.south + viewport.north) / 2) * Math.PI) / 180);
+
+  return (metresAcross * STACK_SHARE_OF_VIEW) / tallest;
+}
 
 const DEFAULTS = {
   segmentMeters: 9_000,
@@ -145,18 +193,18 @@ function viewportSettings(
 }
 
 /**
- * Traces streamlines through a wind field and returns them as trip rows.
+ * Traces streamlines through a wind field.
  *
  * A streamline is the path a massless particle takes when released into the
- * field. Emitting them as GeoJSON LineStrings whose vertices carry a timestamp
- * is what lets kepler's own Trip layer animate them — no custom layer and no
- * shaders. Adapted from Esri's `animated-flow-ts` (Apache-2.0).
+ * field. Each vertex carries a timestamp, which is what lets a trips layer
+ * animate a trail running along it. Adapted from Esri's `animated-flow-ts`
+ * (Apache-2.0).
  *
  * The step is a **fixed arc length**, not a fixed time step. That spaces the
  * vertices evenly along the line, and makes the time between them inversely
  * proportional to the speed — which is what makes fast wind animate fast.
  */
-export function traceStreamlines(field: WindField, options: StreamlineOptions): KeplerRow[] {
+export function traceStreamlines(field: WindField, options: StreamlineOptions): Streamline[] {
   const base = { ...DEFAULTS, ...options };
 
   const extent: Box = {
@@ -233,16 +281,10 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
         : (p: Vertex) => options.baseMs + offsetFor(id) + Math.round(p.seconds * 1000 * scale);
 
     return {
-      streamline_id: id,
+      path: vertices.map(
+        (p) => [p.lon, p.lat, settings.altitudeMeters, timeAt(p)] as [number, number, number, number]
+      ),
       speed: Number(meanSpeed.toFixed(2)),
-      _geojson: JSON.stringify({
-        type: 'Feature',
-        properties: { streamline_id: id, speed: Number(meanSpeed.toFixed(2)) },
-        geometry: {
-          type: 'LineString',
-          coordinates: vertices.map((p) => [p.lon, p.lat, settings.altitudeMeters, timeAt(p)]),
-        },
-      }),
     };
   });
 

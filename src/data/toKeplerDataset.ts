@@ -68,8 +68,13 @@ export const KEPLER_COLUMN: Record<RenamedRole, string> = {
  * these rows into a kepler dataset. Columns carrying a role are renamed to
  * kepler's expected names; every other column is passed through untouched so it
  * remains available in tooltips and filters.
+ *
+ * `indices` narrows the frame to a subset of its rows. Only a velocity grid uses
+ * it, to keep the one timestep it draws: the rest of a forecast would overwrite
+ * each cell with a later hour, and a query returning every hour is the ordinary
+ * case rather than the odd one.
  */
-export function toKeplerRows(frame: DataFrame, roles: FieldRoles): KeplerRow[] {
+export function toKeplerRows(frame: DataFrame, roles: FieldRoles, indices?: number[]): KeplerRow[] {
   const renames = new Map<string, string>();
   for (const [role, sourceName] of Object.entries(roles)) {
     const target = KEPLER_COLUMN[role as RenamedRole];
@@ -82,7 +87,9 @@ export function toKeplerRows(frame: DataFrame, roles: FieldRoles): KeplerRow[] {
   const geometrySource = roles.geometry;
   const rows: KeplerRow[] = [];
 
-  for (let i = 0; i < frame.length; i++) {
+  const wanted = indices ?? Array.from({ length: frame.length }, (_, i) => i);
+
+  for (const i of wanted) {
     const row: KeplerRow = {};
     for (const field of frame.fields) {
       const name = renames.get(field.name) ?? field.name;

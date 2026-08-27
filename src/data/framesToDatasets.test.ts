@@ -163,7 +163,7 @@ describe('framesToDatasets', () => {
   });
 });
 
-describe('framesToDatasets — wind', () => {
+describe('framesToDatasets — velocity grids', () => {
   /** A 4×4 grid at 1° spacing carrying a steady eastward wind. */
   const windFrame = () => {
     const lat: number[] = [];
@@ -185,19 +185,20 @@ describe('framesToDatasets — wind', () => {
     });
   };
 
-  it('turns a wind grid into animated streamlines', () => {
-    const [dataset] = framesToDatasets([windFrame()], {}, { windBaseMs: 1_000_000 });
+  it('hands kepler the grid itself and adds a flow field layer over it', () => {
+    // The rows are the samples the query returned, not the lines drawn from
+    // them: what gets painted exists nowhere in the data, and is traced by the
+    // layer at draw time, from the viewport.
+    const [dataset] = framesToDatasets([windFrame()]);
 
-    expect(dataset.rows.length).toBeGreaterThan(0);
+    expect(dataset.rows).toHaveLength(16);
+    expect(dataset.rows[0]).toEqual({ latitude: 0, longitude: 0, u: 12, v: 0 });
 
-    // The rows are trip geometry, not the grid: kepler detects the Trip layer
-    // from `_geojson` on its own, so no layer config rides along.
+    expect(dataset.flowFieldLayer?.type).toBe('flowfield');
+    expect(dataset.flowFieldLayer?.config.columnMode).toBe('components');
+    // kepler guesses a Point layer from the same coordinates; nothing else.
     expect(dataset.tripLayer).toBeUndefined();
     expect(dataset.flowLayer).toBeUndefined();
-
-    const feature = JSON.parse(dataset.rows[0]._geojson as string);
-    expect(feature.geometry.type).toBe('LineString');
-    expect(feature.geometry.coordinates.every((c: number[]) => c.length === 4)).toBe(true);
   });
 
   it('leaves a trajectory that happens to carry speed alone', () => {
@@ -218,15 +219,14 @@ describe('framesToDatasets — wind', () => {
     const [dataset] = framesToDatasets([frame], {}, {});
 
     expect(dataset.rows).toHaveLength(2);
+    expect(dataset.flowFieldLayer).toBeUndefined();
     expect(dataset.tripLayer).toBeDefined();
   });
 });
 
-describe('framesToDatasets — wind with several timesteps', () => {
-  it('uses the earliest timestep instead of mixing them', () => {
-    // A real wind table carries every hour of the forecast. Left alone, each
-    // cell would be overwritten by whichever row happened to come last, which
-    // silently draws the wrong hour — here, the wind reversed.
+describe('framesToDatasets — a velocity grid with several timesteps', () => {
+  /** Two hours of a reversing wind over the same 4×4 grid. */
+  const forecast = () => {
     const lat: number[] = [];
     const lon: number[] = [];
     const time: number[] = [];
@@ -246,7 +246,7 @@ describe('framesToDatasets — wind with several timesteps', () => {
       }
     }
 
-    const frame = toDataFrame({
+    return toDataFrame({
       refId: 'A',
       fields: [
         { name: 'lat', type: FieldType.number, values: lat },
@@ -256,215 +256,59 @@ describe('framesToDatasets — wind with several timesteps', () => {
         { name: 'v', type: FieldType.number, values: u.map(() => 0) },
       ],
     });
+  };
 
-    const [dataset] = framesToDatasets([frame], {}, { windBaseMs: 0 });
-    const coordinates: number[][] = JSON.parse(dataset.rows[0]._geojson as string).geometry.coordinates;
+  it('keeps the earliest hour instead of mixing them', () => {
+    // Left alone, each cell would be overwritten by whichever row came last,
+    // which for a reversing wind means drawing the opposite of the truth.
+    const [dataset] = framesToDatasets([forecast()]);
 
-    // The earliest hour blows east, so longitude must increase along the line.
-    expect(coordinates[1][0]).toBeGreaterThan(coordinates[0][0]);
+    expect(dataset.rows).toHaveLength(16);
+    expect(dataset.rows.every((row) => row.u === 12)).toBe(true);
+  });
+
+  it('drops the time column with the hours it belonged to', () => {
+    // A grid reaching kepler with a timestamp grows a time filter over rows
+    // nobody filters — the layer reads the whole dataset — leaving a widget on
+    // the map that moves and changes nothing.
+    const [dataset] = framesToDatasets([forecast()]);
+
+    expect(dataset.rows[0].time).toBeUndefined();
+    expect(Object.keys(dataset.rows[0])).toEqual(['latitude', 'longitude', 'u', 'v']);
   });
 });
 
-describe('framesToDatasets — re-tracing on viewport change', () => {
-  const windFrame = () => {
-    const lat: number[] = [];
-    const lon: number[] = [];
-    for (let j = 0; j < 8; j++) {
-      for (let i = 0; i < 8; i++) {
-        lat.push(j);
-        lon.push(i);
-      }
-    }
-    return toDataFrame({
+describe('framesToDatasets — velocity grid columns', () => {
+  const polarFrame = () =>
+    toDataFrame({
       refId: 'A',
       fields: [
-        { name: 'lat', type: FieldType.number, values: lat },
-        { name: 'lon', type: FieldType.number, values: lon },
-        { name: 'u', type: FieldType.number, values: lat.map(() => 12) },
-        { name: 'v', type: FieldType.number, values: lat.map(() => 0) },
-      ],
-    });
-  };
-
-  it('exposes the field and the clock so the viewport hook can re-trace', () => {
-    // Re-tracing must not need the DataFrame again: the viewport changes far
-    // more often than the query runs, and rebuilding from the frame each time
-    // would tie redraws to Grafana's query lifecycle.
-    const [dataset] = framesToDatasets([windFrame()], {}, { windBaseMs: 7_000 });
-
-    expect(dataset.wind?.field.columns).toBe(8);
-    expect(dataset.wind?.baseMs).toBe(7_000);
-  });
-
-  it('draws denser lines over a smaller viewport', () => {
-    // The point of the whole exercise: zooming in must not thin the lines out.
-    const frame = windFrame();
-    const at = (west: number, east: number) =>
-      framesToDatasets([frame], {}, {
-        windBaseMs: 0,
-        viewport: { west, south: 0, east, north: east - west, widthPx: 800, heightPx: 800 },
-      })[0];
-
-    const spanOf = (dataset: ReturnType<typeof at>) => {
-      const c: number[][] = JSON.parse(dataset.rows[0]._geojson as string).geometry.coordinates;
-      return Math.abs(c[c.length - 1][0] - c[0][0]);
-    };
-
-    expect(spanOf(at(0, 8)) / spanOf(at(0, 2))).toBeCloseTo(4, 1);
-  });
-});
-
-describe('framesToDatasets — several wind layers at once', () => {
-  const windFrame = (refId: string) => {
-    const lat: number[] = [];
-    const lon: number[] = [];
-    for (let j = 0; j < 8; j++) {
-      for (let i = 0; i < 8; i++) {
-        lat.push(j);
-        lon.push(i);
-      }
-    }
-    return toDataFrame({
-      refId,
-      fields: [
-        { name: 'lat', type: FieldType.number, values: lat },
-        { name: 'lon', type: FieldType.number, values: lon },
-        { name: 'u', type: FieldType.number, values: lat.map(() => 12) },
-        { name: 'v', type: FieldType.number, values: lat.map(() => 0) },
-      ],
-    });
-  };
-
-  it('shares the line budget between the wind layers on screen', () => {
-    // The count is a budget for the *screen*, not for each query. Three levels
-    // drawing a full allowance each put three times Esri's whole line count into
-    // the same pixels, and the levels become impossible to tell apart.
-    const [alone] = framesToDatasets([windFrame('A')], {}, { windBaseMs: 0 });
-    const three = framesToDatasets([windFrame('A'), windFrame('B'), windFrame('C')], {}, { windBaseMs: 0 });
-
-    expect(three).toHaveLength(3);
-    for (const dataset of three) {
-      expect(dataset.rows.length).toBeCloseTo(alone.rows.length / 3, -2);
-    }
-  });
-
-  it('leaves a lone wind layer its whole allowance', () => {
-    const [only] = framesToDatasets([windFrame('A'), toDataFrame({ refId: 'B', fields: [] })], {}, { windBaseMs: 0 });
-    const [alone] = framesToDatasets([windFrame('A')], {}, { windBaseMs: 0 });
-
-    expect(only.rows.length).toBe(alone.rows.length);
-  });
-
-  it('takes the budget from the panel option, still shared between the layers', () => {
-    // There is no density that suits every map, so it belongs in the UI rather
-    // than in a constant here — a country and a three-kilometre patch around a
-    // weather station want very different counts. Sharing has to survive it:
-    // an option read per layer would put the whole budget on each level.
-    const two = framesToDatasets([windFrame('A'), windFrame('B')], {}, { windBaseMs: 0, windDensity: 1200 });
-
-    expect(two).toHaveLength(2);
-    for (const dataset of two) {
-      expect(dataset.rows.length).toBeCloseTo(600, -2);
-    }
-  });
-});
-
-describe('framesToDatasets — wind at altitude', () => {
-  it('lifts the streamlines to the mapped altitude', () => {
-    // Stacking levels only reads as height if the geometry actually carries it.
-    // The tracer emits its own third coordinate, so the altitude role has to be
-    // handed to it — the column alone does nothing, and every level ends up
-    // coplanar on the ground.
-    const lat: number[] = [];
-    const lon: number[] = [];
-    for (let j = 0; j < 6; j++) {
-      for (let i = 0; i < 6; i++) {
-        lat.push(j);
-        lon.push(i);
-      }
-    }
-
-    const frame = toDataFrame({
-      refId: 'A',
-      fields: [
-        { name: 'lat', type: FieldType.number, values: lat },
-        { name: 'lon', type: FieldType.number, values: lon },
-        { name: 'u', type: FieldType.number, values: lat.map(() => 10) },
-        { name: 'v', type: FieldType.number, values: lat.map(() => 0) },
-        { name: 'alt', type: FieldType.number, values: lat.map(() => 37_500) },
+        { name: 'lat', type: FieldType.number, values: [0, 1] },
+        { name: 'lon', type: FieldType.number, values: [0, 1] },
+        { name: 'wind_speed_10m', type: FieldType.number, values: [4, 5] },
+        { name: 'wind_direction_10m', type: FieldType.number, values: [90, 90] },
+        { name: 'alt', type: FieldType.number, values: [850, 850] },
       ],
     });
 
-    const [dataset] = framesToDatasets([frame], { A: { altitude: 'alt' } }, { windBaseMs: 0 });
-    const coords: number[][] = JSON.parse(dataset.rows[0]._geojson as string).geometry.coordinates;
+  it('points the layer at the speed/direction columns the query used', () => {
+    const [dataset] = framesToDatasets([polarFrame()]);
 
-    expect(coords.every((c) => c[2] === 37_500)).toBe(true);
-  });
-});
-
-describe('framesToDatasets — stacked levels keep their separation at any zoom', () => {
-  const level = (refId: string, altitude: number) => {
-    const lat: number[] = [];
-    const lon: number[] = [];
-    for (let j = 0; j < 8; j++) {
-      for (let i = 0; i < 8; i++) {
-        lat.push(j);
-        lon.push(i);
-      }
-    }
-    return toDataFrame({
-      refId,
-      fields: [
-        { name: 'lat', type: FieldType.number, values: lat },
-        { name: 'lon', type: FieldType.number, values: lon },
-        { name: 'u', type: FieldType.number, values: lat.map(() => 12) },
-        { name: 'v', type: FieldType.number, values: lat.map(() => 0) },
-        { name: 'alt', type: FieldType.number, values: lat.map(() => altitude) },
-      ],
+    expect(dataset.flowFieldLayer?.config.columnMode).toBe('polar');
+    expect(dataset.flowFieldLayer?.config.columns).toEqual({
+      lat: 'latitude',
+      lng: 'longitude',
+      speed: 'wind_speed_10m',
+      direction: 'wind_direction_10m',
     });
-  };
-
-  const mappings = { A: { altitude: 'alt' }, B: { altitude: 'alt' } };
-
-  const drawnHeightOfTop = (halfWidth: number) => {
-    const [, top] = framesToDatasets([level('A', 110), level('B', 3000)], mappings, {
-      windBaseMs: 0,
-      viewport: {
-        west: 4 - halfWidth,
-        east: 4 + halfWidth,
-        south: 4 - halfWidth,
-        north: 4 + halfWidth,
-        widthPx: 800,
-        heightPx: 800,
-      },
-    });
-    return JSON.parse(top.rows[0]._geojson as string).geometry.coordinates[0][2] as number;
-  };
-
-  it('scales the stack with the view, so it reads the same close up and far out', () => {
-    // A fixed exaggeration cannot serve every zoom: the height that separates the
-    // levels nicely over a country is half the screen over a city. Deriving it
-    // from the viewport keeps the stack at the same share of the view wherever
-    // the user is looking.
-    const wide = drawnHeightOfTop(4);
-    const close = drawnHeightOfTop(1);
-
-    expect(wide / close).toBeCloseTo(4, 1);
   });
 
-  it('keeps the levels in proportion to each other', () => {
-    // The exaggeration is one factor for the whole stack, so 110 m and 3000 m
-    // stay in their real ratio — otherwise the levels would be evenly spaced
-    // regardless of how far apart they actually are.
-    const viewport = { west: 0, east: 8, south: 0, north: 8, widthPx: 800, heightPx: 800 };
-    const [bottom, top] = framesToDatasets([level('A', 110), level('B', 3000)], mappings, {
-      windBaseMs: 0,
-      viewport,
-    });
+  it('binds the altitude column when the mapping names one', () => {
+    // Height stays opt-in: an `elevation` column mapped by accident lifts a
+    // level kilometres into the air, where it vanishes as the camera descends.
+    const [dataset] = framesToDatasets([polarFrame()], { A: { altitude: 'alt' } });
 
-    const heightOf = (d: (typeof bottom)) =>
-      JSON.parse(d.rows[0]._geojson as string).geometry.coordinates[0][2] as number;
-
-    expect(heightOf(top) / heightOf(bottom)).toBeCloseTo(3000 / 110, 1);
+    expect(dataset.flowFieldLayer?.config.columns.altitude).toBe('altitude');
+    expect(dataset.rows[0].altitude).toBe(850);
   });
 });

@@ -19,10 +19,12 @@ interface Params {
 
 /**
  * Adds the layers kepler does not create by itself: a flow layer for each
- * origin-destination dataset, and a trip layer for each trajectory one.
+ * origin-destination dataset, a trip layer for each trajectory one, and a flow
+ * field for each grid of velocities.
  *
- * Without this an OD query renders nothing at all, and a trajectory query
- * renders as loose points with no path. Like the time filter, a layer can only
+ * Without this an OD query renders nothing at all, a trajectory query renders as
+ * loose points with no path, and a velocity grid renders as the lattice of dots
+ * it literally is. Like the time filter, a layer can only
  * be added once its dataset has actually landed in the store — kepler ingests
  * data asynchronously — so this reconciles from a store subscription and adds
  * each layer the moment its dataset appears. A per-layer `added` set makes it
@@ -44,7 +46,7 @@ export function useAutoLayers({ store, isReady, datasets, enabled }: Params): vo
       return;
     }
     for (const dataset of datasetsRef.current) {
-      for (const layer of [dataset.tripLayer, dataset.flowLayer]) {
+      for (const layer of [dataset.tripLayer, dataset.flowLayer, dataset.flowFieldLayer]) {
         if (!layer || added.current.has(layer.id)) {
           continue;
         }

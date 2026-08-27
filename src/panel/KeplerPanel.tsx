@@ -54,22 +54,8 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
       framesToDatasets(data.series, fieldMappings, {
         flowRenderMode: options.flowRenderMode,
         tripLayerMode: options.tripLayerMode,
-        // Wind streamlines carry a synthetic clock. Starting it at the dashboard
-        // range means the animation lands inside the window the user is looking
-        // at; started at "now" it runs into the future, and the default time
-        // sync — which pushes that range onto the map as a filter — hides the
-        // whole layer.
-        windBaseMs: grafanaRange.from,
-        windDensity: options.windDensity,
       }),
-    [
-      data.series,
-      fieldMappings,
-      options.flowRenderMode,
-      options.tripLayerMode,
-      options.windDensity,
-      grafanaRange.from,
-    ]
+    [data.series, fieldMappings, options.flowRenderMode, options.tripLayerMode]
   );
 
   // Rasters travel separately from the row datasets all the way to the adapter:

@@ -34,7 +34,8 @@ import { replaceRangeBrush } from './rangeBrushFix';
 import { replaceAnimationController } from './animationSweepFix';
 import { useTimeRangeSync } from './useTimeRangeSync';
 import { useAutoLayers } from './useAutoLayers';
-import { useWindViewport } from './useWindViewport';
+import { useFlowFieldContext } from './useFlowFieldContext';
+import { useFlowFieldAnimationDomain } from './useFlowFieldAnimationDomain';
 import { usePeerTimeSync } from './usePeerTimeSync';
 import { useVariableSync } from './useVariableSync';
 import { useClickSync } from './useClickSync';
@@ -305,9 +306,15 @@ export function KeplerMap({
   // layers.
   useAutoLayers({ store, isReady, datasets, enabled: !mapConfig });
 
-  // Wind streamlines follow the view: traced once in geographic space they thin
-  // out on zooming in and mat together on zooming out.
-  useWindViewport(store, datasets, isReady);
+  // Flow fields follow the view: traced once in geographic space the streamlines
+  // thin out on zooming in and mat together on zooming out. The clock they run
+  // on starts at the dashboard range, so the animation lands inside the window
+  // the user is looking at rather than in the future.
+  useFlowFieldContext({ store, isReady, baseMs: grafanaRange.from });
+
+  // And the clock at the bottom has to be told about the window they traced in;
+  // nothing in kepler republishes it for a `visConfig` change.
+  useFlowFieldAnimationDomain({ store, isReady });
 
   // Declared after the dashboard sync so the dashboard range wins on load and
   // the maps only trade the clock between themselves afterwards.

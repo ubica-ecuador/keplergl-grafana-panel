@@ -31,6 +31,7 @@ import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
 import { isPanelWmsId, wmsCalendarDatasetId, type WmsDataset } from '../data/wmsDataset';
 import { zarrCalendarDatasetId, type ZarrDataset } from '../data/zarrDataset';
 import { rowFieldValue, wmsFeatureValues } from './clickSync';
+import type { FlowFieldLayerConfig } from '../data/buildFlowField';
 import type { FlowLayerConfig } from '../data/buildFlows';
 import type { TripLayerConfig } from '../data/buildTripLayer';
 import {
@@ -48,7 +49,9 @@ import {
   TIME_FILTER_TYPE,
   type TimeRangeMs,
 } from './timeSync';
-import { supersededTripLayerIds } from './autoLayers';
+import { supersededLayerIds } from './autoLayers';
+import type { FlowFieldLayerState } from './flowFieldContext';
+import type { FlowFieldContext } from './flowFieldLayer';
 import { splitRasterRefresh, splitRefresh, splitWmsRefresh, splitZarrRefresh } from './loadDecision';
 import { KEPLER_INSTANCE_ID } from './constants';
 
@@ -409,6 +412,122 @@ export function applyLayerVisConfig(
     )
   );
   return true;
+}
+
+/**
+ * Merges values into the `visConfig` of one named layer.
+ *
+ * The by-dataset variant above picks whichever layer draws a dataset, which is
+ * right when the panel minted both. A velocity grid is an ordinary table, so it
+ * can carry any number of layers the user cares to add, and the flow field is
+ * only one of them.
+ */
+export function applyLayerVisConfigById(
+  store: Store,
+  dispatch: Dispatch,
+  layerId: string,
+  visConfig: Record<string, unknown>
+): boolean {
+  const layer = getVisState(store)?.layers.find((candidate) => candidate.id === layerId);
+  if (!layer) {
+    return false;
+  }
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      layerVisConfigChange(layer as unknown as Parameters<typeof layerVisConfigChange>[0], visConfig)
+    )
+  );
+  return true;
+}
+
+/** The layer type the panel registers for a grid of velocities. */
+export const FLOW_FIELD_TYPE = 'flowfield';
+
+/**
+ * The flow field layers on the map, with the height of the level each draws.
+ *
+ * The height is read here, from the rows kepler holds, rather than carried from
+ * the query: the user can point the layer's altitude column somewhere else, and
+ * the stack has to follow that choice rather than the one autodetection made.
+ * It is a constant per query — one query is one pressure level — so the first
+ * finite value is the whole answer.
+ */
+export function readFlowFieldLayers(store: Store): FlowFieldLayerState[] {
+  const visState = getVisState(store);
+  if (!visState) {
+    return [];
+  }
+
+  return visState.layers
+    .filter((layer) => (layer as { type?: string }).type === FLOW_FIELD_TYPE)
+    .map((layer) => {
+      const config = layer.config as {
+        dataId?: string;
+        columns?: Record<string, { value?: string | null; fieldIdx?: number }>;
+        visConfig?: { flowContext?: FlowFieldContext };
+      };
+      const dataset = config.dataId ? visState.datasets?.[config.dataId] : undefined;
+      return {
+        id: layer.id,
+        altitudeMeters: constantAt(dataset, config.columns?.altitude?.fieldIdx),
+        context: config.visConfig?.flowContext,
+        domain: (layer.config as { animation?: { domain?: [number, number] | null } }).animation?.domain ?? null,
+      };
+    });
+}
+
+/**
+ * Makes kepler notice that a layer's animation window has moved.
+ *
+ * `layerVisConfigChange` recomputes the layer's data but never republishes the
+ * animation domain — only a change of `columns` or of `isVisible` does
+ * (`vis-state-updaters.js`). So a flow field that has just been told where the
+ * map is, or whose cycle the user has just lengthened, ends up with a window the
+ * clock at the bottom of the map knows nothing about: the widget shows the old
+ * one, or never appears at all.
+ *
+ * Re-asserting the visibility it already has is the cheapest of the two doors:
+ * `isVisible` is in kepler's own list of properties that do not affect layer
+ * data, so nothing is recalculated on the way through.
+ */
+export function republishAnimationDomain(store: Store, dispatch: Dispatch, layerId: string): boolean {
+  const layer = getVisState(store)?.layers.find((candidate) => candidate.id === layerId);
+  if (!layer) {
+    return false;
+  }
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      layerConfigChange(layer as unknown as Parameters<typeof layerConfigChange>[0], {
+        isVisible: (layer.config as { isVisible?: boolean }).isVisible,
+      })
+    )
+  );
+  return true;
+}
+
+/** The animation window `animationConfig` is currently showing. */
+export function readAnimationDomain(store: Store): [number, number] | null {
+  const domain = getVisState(store)?.animationConfig?.domain;
+  return Array.isArray(domain) && domain.length === 2 ? (domain as [number, number]) : null;
+}
+
+/** The first finite value of a column, or 0 when there is no such column. */
+function constantAt(dataset: unknown, fieldIdx?: number): number {
+  const container = (dataset as { dataContainer?: { numRows(): number; valueAt(r: number, c: number): unknown } })
+    ?.dataContainer;
+  if (!container || fieldIdx === undefined || fieldIdx < 0) {
+    return 0;
+  }
+  const rows = container.numRows();
+  for (let row = 0; row < rows; row++) {
+    const value = Number(container.valueAt(row, fieldIdx));
+    if (Number.isFinite(value)) {
+      return value;
+    }
+  }
+  return 0;
 }
 
 /** kepler's `DatasetType.WMS_TILE`: a dataset that is a service, not rows. */
@@ -1394,24 +1513,25 @@ export function autoLayerStatus(
  * kepler computed for it, or null.
  *
  * kepler auto-creates default layers for points and geometry, but not for flows
- * (it has no detection for them at all) and not for the panel's trips (its
- * detection insists on a column named `id`). Both configs — from `buildFlows`
- * and `buildTripLayer` — are parsed by kepler because they carry
- * `visualChannels`. kepler computes the layer's data bounds while adding it,
- * synchronously, which the caller uses to frame the map on an OD dataset:
+ * (it has no detection for them at all), not for the panel's trips (its
+ * detection insists on a column named `id`) and not for a flow field (whose
+ * whole subject is absent from the rows). All three configs — from `buildFlows`,
+ * `buildTripLayer` and `buildFlowField` — are parsed by kepler because they
+ * carry `visualChannels`. kepler computes the layer's data bounds while adding
+ * it, synchronously, which the caller uses to frame the map on an OD dataset:
  * `addDataToMap` could not, having had no flow layer to measure.
  */
 export function addAutoLayer(
   store: Store,
   dispatch: Dispatch,
-  layer: FlowLayerConfig | TripLayerConfig,
+  layer: FlowLayerConfig | TripLayerConfig | FlowFieldLayerConfig,
   dataId: string
 ): MapBounds | null {
   dispatch(wrapTo(KEPLER_INSTANCE_ID, addLayer(layer, dataId)));
 
-  // kepler may have guessed a Trip layer of its own for this dataset; ours,
-  // built from the mapped trip id, replaces it.
-  for (const id of supersededTripLayerIds(getVisState(store)?.layers ?? [], {
+  // kepler may have guessed a layer of its own for this dataset; ours, built
+  // from the mapped roles, replaces it.
+  for (const id of supersededLayerIds(getVisState(store)?.layers ?? [], {
     id: layer.id,
     type: layer.type,
     dataId,

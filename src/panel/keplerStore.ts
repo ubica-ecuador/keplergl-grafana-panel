@@ -2,6 +2,8 @@ import { Layer, LayerClasses } from '@kepler.gl/layers';
 import { keplerGlReducer, enhanceReduxMiddleware } from '@kepler.gl/reducers';
 import { applyMiddleware, combineReducers, legacy_createStore, Store } from 'redux';
 
+import { buildFlowFieldDeckLayer } from './flowFieldDeckLayer';
+import { makeFlowFieldLayer } from './flowFieldLayer';
 import { withTripGpuFilterFix } from './tripLayerFix';
 import { buildTimedWmsLayer } from './wmsDeckLayer';
 import { withWmsTime } from './wmsTimeLayer';
@@ -10,7 +12,7 @@ import { makeZarrLayer } from './zarrTileLayer';
 
 /**
  * kepler's layer classes, with the Trip layer repaired, the WMS layer taught to
- * ask for a date, and a Zarr layer added that kepler has no equivalent of.
+ * ask for a date, and two layers added that kepler has no equivalent of.
  *
  * kepler builds layers from `visState.layerClasses`, so replacing an entry here
  * is the whole of the change — see `tripLayerFix.ts` for what is wrong with the
@@ -29,6 +31,13 @@ const layerClasses = {
   // where `RasterTileLayer` starts from too: a tileset has no rows, so every
   // concrete layer's column handling would be dead weight at best.
   zarr: makeZarrLayer(Layer as never, buildZarrDeckLayer),
+  // Also an addition, and for a stranger reason than the Zarr one: what this
+  // layer draws is in no dataset. The rows are a lattice of velocity samples and
+  // what is painted are the paths a particle would take through them — geometry
+  // computed at draw time, from the viewport. Built on the base `Layer` because
+  // the Trip layer it ultimately paints is all about turning rows into paths,
+  // and every part of that would have to be overridden.
+  flowfield: makeFlowFieldLayer(Layer as never, buildFlowFieldDeckLayer),
 };
 
 /**

@@ -13,21 +13,33 @@ interface AddedLayer {
 }
 
 /**
- * Layers kepler guessed that the panel's own layer supersedes.
+ * What kepler guesses that each of the panel's own layers supersedes.
  *
- * Only trips can collide. kepler has no flow detection at all, but it does
- * build a default Trip layer whenever a dataset carries a column named `id`
- * next to coordinates and a timestamp — which `SELECT *` on a trajectory table
- * usually does. It then groups by that per-row id, turning every GPS ping into
- * a one-point trip, and the result sits in the layer list next to the layer the
- * panel built from the actual trip id.
+ * Two collisions, for two different reasons.
+ *
+ * kepler builds a default **Trip** layer whenever a dataset carries a column
+ * named `id` next to coordinates and a timestamp — which `SELECT *` on a
+ * trajectory table usually does. It then groups by that per-row id, turning
+ * every GPS ping into a one-point trip, and the result sits in the layer list
+ * next to the layer the panel built from the actual trip id.
+ *
+ * And it builds a **Point** layer from any pair of coordinates, which a velocity
+ * grid is: a lattice of lat/lon samples. The dots are the grid, honestly drawn
+ * and completely beside the point — what the query describes is the flow through
+ * them, which is what the flow field layer draws.
  */
-export function supersededTripLayerIds(layers: LayerLike[], added: AddedLayer): string[] {
-  if (added.type !== 'trip') {
+const SUPERSEDES: Record<string, string> = {
+  trip: 'trip',
+  flowfield: 'point',
+};
+
+export function supersededLayerIds(layers: LayerLike[], added: AddedLayer): string[] {
+  const guessed = SUPERSEDES[added.type];
+  if (!guessed) {
     return [];
   }
 
   return layers
-    .filter((l) => l.id !== added.id && l.type === 'trip' && l.config?.dataId === added.dataId)
+    .filter((l) => l.id !== added.id && l.type === guessed && l.config?.dataId === added.dataId)
     .map((l) => l.id);
 }
