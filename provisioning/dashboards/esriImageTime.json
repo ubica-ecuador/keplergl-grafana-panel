@@ -18,6 +18,20 @@
   },
   "panels": [
     {
+      "id": 9,
+      "type": "text",
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "# Un servicio, muchos años\n\nTres años de un servicio **inventado**. Como sus hermanos `zarr` y `cogPainted`, este tablero\napunta a un host que no existe (`imagery.test`): existe para que el e2e intercepte sus\npeticiones, así que **abierto a mano el mapa se queda vacío, y es lo correcto**.\n\nLo que fija es que la regla de mosaico —la que elige el año— la ponga el reloj del mapa, sin\nreconstruir la capa.\n\nPara verlo funcionando de verdad, contra el servicio real de Impact Observatory, están\n`esri-image` y `esri-identify` en el banco de fuentes (`:3002`).\n"
+      }
+    },
+    {
       "id": 1,
       "type": "ubica-keplergl-panel",
       "title": "Un servicio, muchos años",
@@ -26,10 +40,10 @@
         "uid": "trlxrdZVk"
       },
       "gridPos": {
-        "h": 20,
+        "h": 16,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 6
       },
       "options": {
         "showSidePanel": false,
@@ -82,5 +96,6 @@
         }
       ]
     }
-  ]
+  ],
+  "description": "Tres años de un servicio inventado, con el host de pruebas `imagery.test`: el mapa sólo dibuja cuando el e2e intercepta sus peticiones. Los tableros que funcionan contra el servicio real están en el banco de fuentes."
 }
