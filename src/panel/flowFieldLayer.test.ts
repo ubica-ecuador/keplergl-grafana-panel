@@ -3,6 +3,7 @@ import {
   fieldBounds,
   FlowFieldContext,
   makeFlowFieldLayer,
+  setting,
   speedDomainOf,
   traceSignature,
 } from './flowFieldLayer';
@@ -135,6 +136,17 @@ describe('flow field layer — tracing', () => {
     const [line] = layer.formatLayerData({ 'grafana-A': dataset }).data;
 
     expect(line.path[1][0]).toBeGreaterThan(line.path[0][0]);
+  });
+
+  it('traces the grid as it came when the smoothing is turned off', () => {
+    // Zero has to survive as zero: read as "missing" it would silently smooth,
+    // and the two pictures differ most exactly where the field is roughest.
+    const dataset = eastwardGrid(6);
+    const smoothed = layerOver(dataset, COMPONENTS).formatLayerData({ 'grafana-A': dataset });
+    const raw = layerOver(dataset, COMPONENTS, { smoothing: 0 }).formatLayerData({ 'grafana-A': dataset });
+
+    expect(raw.data.length).toBeGreaterThan(0);
+    expect(smoothed.data.length).toBeGreaterThan(0);
   });
 
   it('draws nothing from rows that are not a lattice', () => {
@@ -310,6 +322,10 @@ describe('flow field layer — height', () => {
   it('scales the whole stack by the exaggeration the user asked for', () => {
     expect(heightOf(3000, 3000, 2) / heightOf(3000, 3000, 1)).toBeCloseTo(2, 5);
   });
+
+  it('flattens the stack when the exaggeration is turned down to zero', () => {
+    expect(heightOf(3000, 3000, 0)).toBe(0);
+  });
 });
 
 describe('flow field layer — drawing', () => {
@@ -390,6 +406,21 @@ describe('fieldBounds', () => {
     };
 
     expect(fieldBounds(field)).toEqual([-79.75, -3.5, -78.75, -3]);
+  });
+});
+
+describe('setting', () => {
+  it('keeps a zero the user actually chose', () => {
+    // Zero is a real answer to two of these: no smoothing, and a flat stack.
+    expect(setting(0, 3)).toBe(0);
+  });
+
+  it('falls back when the layer carries no answer', () => {
+    // `Number(undefined)` is NaN, which `??` does not catch — and a NaN
+    // exaggeration puts every vertex at NaN metres and the layer nowhere.
+    expect(setting(undefined, 3)).toBe(3);
+    expect(setting(null, 3)).toBe(3);
+    expect(setting('twelve', 3)).toBe(3);
   });
 });
 

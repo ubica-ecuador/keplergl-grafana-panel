@@ -313,6 +313,25 @@ function constantOf(frame: GridFrame, column?: string | null): number {
   return 0;
 }
 
+/**
+ * A knob's value, or its default when the layer is carrying no answer.
+ *
+ * Neither of the obvious spellings is right. `Number(x) ?? d` never falls back,
+ * because `Number(undefined)` is `NaN` and `??` only catches null — the value
+ * then poisons whatever it is multiplied into, which for the exaggeration means
+ * every vertex at `NaN` metres and an invisible layer. `Number(x) || d` falls
+ * back on **zero**, and zero is a real answer to two of these: no smoothing, and
+ * a flat stack. Absence is checked before the parse rather than after it, since
+ * `Number(null)` is zero and would be read as an answer.
+ */
+export function setting(value: unknown, fallback: number): number {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 /** The speed range the traced lines span, never zero-width. */
 export function speedDomainOf(lines: Streamline[]): [number, number] {
   if (lines.length === 0) {
@@ -425,8 +444,8 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       const signature = traceSignature(this.config);
       const visConfig = this.config.visConfig ?? {};
       const context = (visConfig.flowContext ?? {}) as FlowFieldContext;
-      const baseMs = Number(context.baseMs) || 0;
-      const cycleMs = (Number(visConfig.cycleSeconds) || 60) * 1000;
+      const baseMs = setting(context.baseMs, 0);
+      const cycleMs = setting(visConfig.cycleSeconds, 60) * 1000;
 
       // The domain is put back even on a cache hit: it costs a comparison, and
       // getting it wrong leaves the map with a clock that runs somewhere the
@@ -465,8 +484,8 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       const rawAltitude = constantOf(frame, columns.altitude?.value);
       const altitudeMeters =
         rawAltitude *
-        stackExaggeration(Number(context.tallest) || rawAltitude, context.viewport) *
-        (Number(visConfig.elevationScale) ?? 1);
+        stackExaggeration(setting(context.tallest, rawAltitude), context.viewport) *
+        setting(visConfig.elevationScale, 1);
 
       const data = traceStreamlines(field, {
         // Traced from zero rather than from `baseMs`: deck holds a vertex time
@@ -474,10 +493,10 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
         // `renderLayer` subtracts the same base from the playhead.
         baseMs: 0,
         seed: 1,
-        count: Math.round(Number(visConfig.density) || 9000),
-        maxVertices: Math.round(Number(visConfig.lineLength) || 30),
+        count: Math.round(setting(visConfig.density, 9000)),
+        maxVertices: Math.round(setting(visConfig.lineLength, 30)),
         cycleMs,
-        lifeFraction: Number(visConfig.lifeFraction) || 0.55,
+        lifeFraction: setting(visConfig.lifeFraction, 0.55),
         viewport: context.viewport,
         altitudeMeters,
       });
@@ -511,7 +530,7 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       // A 0.25° grid carries detail the tracer cannot use: adjacent cells
       // disagree enough to make a particle jitter between them, and the line
       // comes out wobbly rather than flowing.
-      const smoothing = Math.round(Number(visConfig.smoothing) ?? 3);
+      const smoothing = Math.round(setting(visConfig.smoothing, 3));
       return smoothing > 0 ? smoothWindField(raw, smoothing) : raw;
     }
 
@@ -525,7 +544,7 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       }
 
       const visConfig = this.config.visConfig ?? {};
-      const cycleMs = (Number(visConfig.cycleSeconds) || 60) * 1000;
+      const cycleMs = setting(visConfig.cycleSeconds, 60) * 1000;
       const domain0 = this.config.animation?.domain?.[0] ?? 0;
       const currentTime = opts?.animationConfig?.currentTime;
       if (!Number.isFinite(currentTime)) {
@@ -544,9 +563,9 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
           // The vertices were traced from zero, so the playhead is offset by the
           // same base the domain starts at.
           currentTime: (currentTime as number) - domain0,
-          trailLength: (cycleMs * (Number(visConfig.trailShare) || 4)) / 100,
-          getWidth: Number(visConfig.thickness) || 2,
-          opacity: Number(visConfig.opacity ?? 1),
+          trailLength: (cycleMs * setting(visConfig.trailShare, 4)) / 100,
+          getWidth: setting(visConfig.thickness, 2),
+          opacity: setting(visConfig.opacity, 1),
           getColor: (line: Streamline) =>
             bySpeed ? colorForSpeed(colors, speedDomain, line.speed) : flat,
           updateTriggers: {
