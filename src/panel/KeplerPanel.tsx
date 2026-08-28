@@ -4,6 +4,7 @@ import { useTheme2 } from '@grafana/ui';
 
 import { KeplerPanelOptions } from '../types';
 import { framesToDatasets } from '../data/framesToDatasets';
+import { framesToEsri } from '../data/esriDataset';
 import { framesToRasters } from '../data/rasterDataset';
 import { framesToWms } from '../data/wmsDataset';
 import { framesToZarr } from '../data/zarrDataset';
@@ -76,6 +77,11 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
   // server — the service renders its own pictures.
   const wmsLayers = useMemo(() => framesToWms(data.series, fieldMappings), [data.series, fieldMappings]);
 
+  // An ArcGIS Image Service travels the same separate road, and needs no tile
+  // server at all: it is a mosaic dataset that renders its own pictures, for
+  // any extent, out of however many rasters it holds.
+  const esriLayers = useMemo(() => framesToEsri(data.series, fieldMappings), [data.series, fieldMappings]);
+
   // A Zarr travels that same road again, and needs the tile server the raster
   // path needs — the same option, deliberately. Both mean "the TiTiler this
   // panel draws through", and a second option saying the same thing would only
@@ -122,6 +128,7 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
         rasters={rasters}
         wmsLayers={wmsLayers}
         zarrLayers={zarrLayers}
+        esriLayers={esriLayers}
         mapConfig={options.mapConfig}
         theme={followTheme ? keplerTheme : undefined}
         basemapId={basemapId}

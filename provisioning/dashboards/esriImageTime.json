@@ -1,0 +1,86 @@
+{
+  "uid": "esriimagetime",
+  "title": "ArcGIS Image Service — multitemporal",
+  "tags": [
+    "arcgis",
+    "raster",
+    "multitemporal"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": {
+    "from": "2020-06-01T00:00:00.000Z",
+    "to": "2023-06-01T00:00:00.000Z"
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "ubica-keplergl-panel",
+      "title": "Un servicio, muchos años",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "showSidePanel": false,
+        "timeSync": "toMap",
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "latitude": 0.0,
+              "longitude": 0.0,
+              "pitch": 0,
+              "zoom": 2.0
+            },
+            "visState": {
+              "filters": [],
+              "layers": [],
+              "layerOrder": [],
+              "layerBlending": "normal",
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": false
+                },
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false
+                }
+              }
+            }
+          },
+          "datasets": [],
+          "version": "v1"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\": {\"fields\": [{\"name\": \"time\", \"type\": \"time\"}, {\"name\": \"esri_url\", \"type\": \"string\"}, {\"name\": \"mosaic_rule\", \"type\": \"string\"}]}, \"data\": {\"values\": [[1609459200000, 1640995200000, 1672531200000], [\"https://imagery.test/arcgis/rest/services/LandCover/ImageServer\", \"https://imagery.test/arcgis/rest/services/LandCover/ImageServer\", \"https://imagery.test/arcgis/rest/services/LandCover/ImageServer\"], [\"{\\\"mosaicMethod\\\":\\\"esriMosaicAttribute\\\",\\\"where\\\":\\\"Year=2021\\\"}\", \"{\\\"mosaicMethod\\\":\\\"esriMosaicAttribute\\\",\\\"where\\\":\\\"Year=2022\\\"}\", \"{\\\"mosaicMethod\\\":\\\"esriMosaicAttribute\\\",\\\"where\\\":\\\"Year=2023\\\"}\"]]}}]"
+        }
+      ]
+    }
+  ]
+}

@@ -8,6 +8,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import type { PanelDataset } from '../data/framesToDatasets';
 import type { RasterDataset } from '../data/rasterDataset';
 import type { WmsDataset } from '../data/wmsDataset';
+import type { EsriDataset } from '../data/esriDataset';
 import type { ZarrDataset } from '../data/zarrDataset';
 import type { SavedMapConfig } from '../data/mapConfig';
 import type { KeplerThemeOverride } from '../data/keplerTheme';
@@ -20,10 +21,12 @@ import {
   loadDatasets,
   loadRasters,
   loadWms,
+  loadEsri,
   loadZarr,
   refreshDatasets,
   refreshRasters,
   refreshWms,
+  refreshEsri,
   refreshZarr,
   setBasemap,
   setSidePanel,
@@ -45,6 +48,7 @@ import { useCenterSync } from './useCenterSync';
 import { useRasterTimeline } from './useRasterTimeline';
 import { useWmsCalendar } from './useWmsCalendar';
 import { useWmsTimeline } from './useWmsTimeline';
+import { useEsriTimeline } from './useEsriTimeline';
 import { useZarrTimeline } from './useZarrTimeline';
 import { useViewportGuard } from './useViewportGuard';
 import { savedViewportOf } from './viewportGuard';
@@ -100,6 +104,7 @@ export interface KeplerMapProps {
    * it is a store plus a variable plus — as the clock moves — an index label.
    */
   zarrLayers: ZarrDataset[];
+  esriLayers: EsriDataset[];
   mapConfig?: SavedMapConfig | null;
   theme?: KeplerThemeOverride;
   /** Resolved base map style id, or null to leave kepler's default alone. */
@@ -151,6 +156,7 @@ export function KeplerMap({
   rasters,
   wmsLayers,
   zarrLayers,
+  esriLayers,
   mapConfig,
   theme,
   basemapId,
@@ -202,6 +208,7 @@ export function KeplerMap({
         rasters.length === 0 &&
         wms.length === 0 &&
         zarrLayers.length === 0 &&
+        esriLayers.length === 0 &&
         !mapConfig?.datasets?.length)
     ) {
       return;
@@ -231,6 +238,7 @@ export function KeplerMap({
       loadRasters(store.dispatch, rasters);
       loadWms(store.dispatch, wms);
       loadZarr(store.dispatch, zarrLayers);
+      loadEsri(store.dispatch, esriLayers);
       // The viewport this load intends is not safe yet — kepler's internal
       // view state echo can overwrite it — so arm the guard that defends it.
       setGuardArm((n) => n + 1);
@@ -249,8 +257,11 @@ export function KeplerMap({
       // A Zarr is only rebuilt when the query names a different store or
       // variable; moving through time never reaches here either.
       refreshZarr(store, store.dispatch, zarrLayers);
+      // An Image Service is only rebuilt when the query names a different
+      // endpoint or renderer; changing the year moves a `visConfig` instead.
+      refreshEsri(store, store.dispatch, esriLayers);
     }
-  }, [isReady, datasets, rasters, wms, zarrLayers, mapConfig, store]);
+  }, [isReady, datasets, rasters, wms, zarrLayers, esriLayers, mapConfig, store]);
 
   useViewportGuard({ store, isReady, mapConfig, arm: guardArm });
 
@@ -265,6 +276,7 @@ export function KeplerMap({
   // A Zarr query hands the widget the moments the store holds, and the label
   // each one answers to.
   useZarrTimeline({ store, isReady, layers: zarrLayers });
+  useEsriTimeline({ store, isReady, layers: esriLayers });
 
   // A saved config already names a base map, so it wins over the panel option.
   useEffect(() => {

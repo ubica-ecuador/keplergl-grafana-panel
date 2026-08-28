@@ -1,3 +1,4 @@
+import { isPanelEsriId } from '../data/esriDataset';
 import { SavedMapConfig } from '../data/mapConfig';
 import { isPanelRasterId } from '../data/rasterDataset';
 import { isPanelWmsId } from '../data/wmsDataset';
@@ -225,6 +226,46 @@ export function splitZarrRefresh<T extends { id: string; storeUrl: string; varia
   }
 
   const remove = known.map((dataset) => dataset.id).filter((id) => !ids.has(id) && isPanelZarrId(id));
+
+  return { add, replace, keep, remove };
+}
+
+/**
+ * Splits an Image Service refresh the same four ways, on a fourth identity.
+ *
+ * What makes two Image Service layers the same thing is the **endpoint** and
+ * what it is told to draw — the rendering rule. Deliberately *not* the mosaic
+ * rule, and that omission is the whole point of a separate function: the mosaic
+ * rule is which rasters to show, which on a multi-temporal service is the
+ * *year*, and a year changes constantly. It rides in the layer's `visConfig`
+ * exactly as the Zarr layer's time label does, so a query re-run that returns
+ * the same service with another year is a `keep` rather than a rebuild — and
+ * the layer the user had named, faded or reordered survives the step.
+ */
+export function splitEsriRefresh<T extends { id: string; serviceUrl: string; renderingRule?: string }>(
+  wanted: T[],
+  known: ReadonlyArray<{ id: string; serviceUrl?: string; renderingRule?: string }>
+): { add: T[]; replace: T[]; keep: T[]; remove: string[] } {
+  const identity = (dataset: { serviceUrl?: string; renderingRule?: string }) =>
+    `${dataset.serviceUrl ?? ''}|${dataset.renderingRule ?? ''}`;
+  const byId = new Map(known.map((dataset) => [dataset.id, identity(dataset)]));
+  const ids = new Set(wanted.map((dataset) => dataset.id));
+
+  const add: T[] = [];
+  const replace: T[] = [];
+  const keep: T[] = [];
+
+  for (const dataset of wanted) {
+    if (!byId.has(dataset.id)) {
+      add.push(dataset);
+    } else if (byId.get(dataset.id) === identity(dataset)) {
+      keep.push(dataset);
+    } else {
+      replace.push(dataset);
+    }
+  }
+
+  const remove = known.map((dataset) => dataset.id).filter((id) => !ids.has(id) && isPanelEsriId(id));
 
   return { add, replace, keep, remove };
 }

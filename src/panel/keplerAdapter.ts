@@ -29,6 +29,7 @@ import type { Dispatch, Store } from 'redux';
 import type { PanelDataset } from '../data/framesToDatasets';
 import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
 import { isPanelWmsId, wmsCalendarDatasetId, type WmsDataset } from '../data/wmsDataset';
+import { type EsriDataset } from '../data/esriDataset';
 import { zarrCalendarDatasetId, type ZarrDataset } from '../data/zarrDataset';
 import { rowFieldValue, wmsFeatureValues } from './clickSync';
 import type { FlowFieldLayerConfig } from '../data/buildFlowField';
@@ -53,7 +54,8 @@ import { supersededLayerIds } from './autoLayers';
 import type { FlowFieldLayerState } from './flowFieldContext';
 import { levelHeight, type FlowFieldContext } from './flowFieldLayer';
 import { COG_PAINTED_TYPE } from './cogPaintedLayer';
-import { splitRasterRefresh, splitRefresh, splitWmsRefresh, splitZarrRefresh } from './loadDecision';
+import { ESRI_IMAGE_TYPE } from './esriImageLayer';
+import { splitEsriRefresh, splitRasterRefresh, splitRefresh, splitWmsRefresh, splitZarrRefresh } from './loadDecision';
 import { KEPLER_INSTANCE_ID } from './constants';
 
 /**
@@ -1806,4 +1808,118 @@ export function applyZarrLabel(store: Store, dispatch: Dispatch, dataId: string,
     return true;
   }
   return applyLayerVisConfig(store, dispatch, dataId, { zarrLabel: label });
+}
+
+/** The dataset type the panel mints for an ArcGIS Image Service. */
+const ESRI_TILE_TYPE = ESRI_IMAGE_TYPE;
+
+/**
+ * An Image Service in the shape the panel's own layer reads.
+ *
+ * `rows: []` for the same reason every tileset here has none: the substance is
+ * the metadata. Nothing fetches a document from it either — unlike a COG, whose
+ * STAC kepler goes and reads — because a service needs only its endpoint and
+ * the rules for what to draw.
+ */
+function esriProtoDataset(service: EsriDataset) {
+  return {
+    info: { id: service.id, label: service.label, type: ESRI_TILE_TYPE, format: 'rows' },
+    data: { fields: [], rows: [] },
+    metadata: {
+      serviceUrl: service.serviceUrl,
+      ...(service.mosaicRule ? { mosaicRule: service.mosaicRule } : {}),
+      ...(service.renderingRule ? { renderingRule: service.renderingRule } : {}),
+    },
+    disableDataOperation: true,
+  } as unknown as ProtoDataset;
+}
+
+/** Adds Image Services to the map, one dataset and one layer each. */
+export function loadEsri(dispatch: Dispatch, services: EsriDataset[], options: { centerMap?: boolean } = {}): void {
+  if (services.length === 0) {
+    return;
+  }
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      updateVisData(services.map(esriProtoDataset), {
+        keepExistingConfig: true,
+        centerMap: options.centerMap ?? false,
+      })
+    )
+  );
+}
+
+/**
+ * Refresh path for Image Services: add, rebuild, drop, and move the year.
+ *
+ * The last of those is what makes this different from its siblings. A change of
+ * mosaic rule is a `keep` — see `splitEsriRefresh` — so nothing here rebuilds
+ * for it; instead the new rule is pushed into the layer's `visConfig`, which is
+ * both what the layer reads and what deck watches to expire its tiles. The
+ * layer the user styled survives every step of a timeline.
+ */
+export function refreshEsri(store: Store, dispatch: Dispatch, services: EsriDataset[]): void {
+  const { add, replace, keep, remove } = splitEsriRefresh(services, readEsriDatasets(store));
+
+  for (const id of remove) {
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(id)));
+  }
+
+  for (const service of replace) {
+    dispatch(
+      wrapTo(
+        KEPLER_INSTANCE_ID,
+        replaceDataInMap({
+          datasetToReplaceId: service.id,
+          datasetToUse: esriProtoDataset(service),
+          options: { centerMap: false, keepExistingConfig: true },
+        })
+      )
+    );
+  }
+
+  loadEsri(dispatch, add);
+
+  // Only the ones that stayed: a rebuild already carries the rule in its new
+  // metadata, and an addition has not drawn yet.
+  for (const service of keep) {
+    // A dated query leaves the choice to the clock — see `useEsriTimeline` — so
+    // only an undated one has its rule reconciled here. Pushing the opening
+    // moment on every refresh would drag the timeline back to the newest year
+    // each time any query re-ran.
+    if (!service.moments?.length) {
+      applyEsriMosaicRule(store, dispatch, service.id, service.mosaicRule ?? '');
+    }
+  }
+}
+
+/**
+ * Points a layer at another slice of the mosaic, in place.
+ *
+ * Guarded on the value it already holds, because this runs on every refresh and
+ * kepler recomputes a layer for any `visConfig` change: dispatching the rule it
+ * is already drawing would refetch every tile for nothing.
+ */
+export function applyEsriMosaicRule(store: Store, dispatch: Dispatch, dataId: string, rule: string): boolean {
+  const layer = getVisState(store)?.layers.find((candidate) => candidate.config?.dataId === dataId);
+  if (!layer) {
+    return false;
+  }
+  const current = (layer.config?.visConfig as { esriMosaicRule?: unknown } | undefined)?.esriMosaicRule;
+  if ((typeof current === 'string' ? current : '') === rule) {
+    return false;
+  }
+
+  return applyLayerVisConfig(store, dispatch, dataId, { esriMosaicRule: rule });
+}
+
+/** The Image Service datasets kepler holds, as the identity the refresh compares on. */
+function readEsriDatasets(store: Store): Array<{ id: string; serviceUrl?: string; renderingRule?: string }> {
+  return Object.entries(getVisState(store)?.datasets ?? {})
+    .filter(([, dataset]) => dataset.type === ESRI_TILE_TYPE)
+    .map(([id, dataset]) => {
+      const metadata = dataset.metadata as { serviceUrl?: string; renderingRule?: string } | undefined;
+      return { id, serviceUrl: metadata?.serviceUrl, renderingRule: metadata?.renderingRule };
+    });
 }

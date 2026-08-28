@@ -47,6 +47,22 @@ export interface FieldRoles {
   wmsUrl?: string;
   wmsLayer?: string;
   /**
+   * An ArcGIS Image Service, and the rules that say what to draw from it.
+   *
+   * Not a file but a **mosaic dataset**: a catalogue of rasters, a rule for
+   * choosing between them, and a pyramid over the whole thing. That is what
+   * lets one url answer for any extent at any zoom, where a COG collection cut
+   * into 200 files needs one query per file.
+   *
+   * The mosaic rule is how a year is chosen — the same JSON the land-cover
+   * dashboard already sends to `computeHistograms` — and the rendering rule how
+   * it is drawn. Both are the service's own vocabulary, passed through
+   * untouched rather than modelled here.
+   */
+  esriUrl?: string;
+  esriMosaicRule?: string;
+  esriRenderingRule?: string;
+  /**
    * A Zarr store, the one array of it to draw, and — when that array has a time
    * axis — the exact index label of each moment.
    *
@@ -186,6 +202,11 @@ const NAME_CANDIDATES: Record<string, string[]> = {
   // OGC calls the endpoint.
   wmsUrl: ['wms_url', 'wms', 'service_url'],
   wmsLayer: ['wms_layer', 'layer', 'layer_name'],
+  // ArcGIS Image Service. Deliberately narrow: `esri` alone is not accepted,
+  // because an ArcGIS shop has columns called that about anything.
+  esriUrl: ['esri_url', 'image_service_url', 'imageserver_url'],
+  esriMosaicRule: ['esri_mosaic_rule', 'mosaic_rule'],
+  esriRenderingRule: ['esri_rendering_rule', 'rendering_rule'],
   // Zarr. Deliberately narrow: `variable` on its own is an ordinary column name
   // in any long-format table, and claiming it would read a frame of unrelated
   // measurements as a Zarr store.

@@ -1,0 +1,99 @@
+{
+  "uid": "esriimage",
+  "title": "ArcGIS Image Service por teselas",
+  "tags": [
+    "arcgis",
+    "raster"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "# Un servicio, no un fichero\n\nEl panel no descarga ningún ráster: pide al ImageServer que dibuje cada tesela\npor su extensión. La regla de mosaico elige el año, y el formato `png32` es lo\nque hace que el nodata llegue transparente en vez de negro.\n"
+      }
+    },
+    {
+      "id": 2,
+      "type": "ubica-keplergl-panel",
+      "title": "Cobertura del suelo",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 18,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "options": {
+        "showSidePanel": false,
+        "timeSync": "off",
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "latitude": 0.0,
+              "longitude": 0.0,
+              "pitch": 0,
+              "zoom": 2.0
+            },
+            "visState": {
+              "filters": [],
+              "layers": [],
+              "layerOrder": [],
+              "layerBlending": "normal",
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": false
+                },
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false
+                }
+              }
+            }
+          },
+          "datasets": [],
+          "version": "v1"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\": {\"fields\": [{\"name\": \"esri_url\", \"type\": \"string\"}, {\"name\": \"mosaic_rule\", \"type\": \"string\"}]}, \"data\": {\"values\": [[\"https://imagery.test/arcgis/rest/services/LandCover/ImageServer\"], [\"{\\\"mosaicMethod\\\":\\\"esriMosaicAttribute\\\",\\\"where\\\":\\\"Year=2023\\\"}\"]]}}]"
+        }
+      ]
+    }
+  ]
+}

@@ -4,6 +4,8 @@ import { applyMiddleware, combineReducers, legacy_createStore, Store } from 'red
 
 import { buildCogPaintedDeckLayer } from './cogPaintedDeckLayer';
 import { makeCogPaintedLayer } from './cogPaintedLayer';
+import { buildEsriImageDeckLayer } from './esriImageDeckLayer';
+import { makeEsriImageLayer } from './esriImageLayer';
 import { buildFlowFieldDeckLayer } from './flowFieldDeckLayer';
 import { makeFlowFieldLayer } from './flowFieldLayer';
 import { withTripGpuFilterFix } from './tripLayerFix';
@@ -41,6 +43,12 @@ const layerClasses = {
   // separate class rather than a mode of the stock one so nothing changes for
   // the imagery that path already draws well.
   cogPainted: makeCogPaintedLayer(Layer as never, buildCogPaintedDeckLayer),
+  // A fourth addition, and the one that needs no file at all. An ArcGIS Image
+  // Service is a mosaic dataset behind an endpoint: it holds the catalogue, the
+  // rule for choosing among its rasters and a pyramid over the whole thing, so
+  // it answers for any extent at any zoom. Where the COG paths need one query
+  // per file — 200 of them for a global 10 m collection — this needs one.
+  esriImage: makeEsriImageLayer(Layer as never, buildEsriImageDeckLayer),
   // Also an addition, and for a stranger reason than the Zarr one: what this
   // layer draws is in no dataset. The rows are a lattice of velocity samples and
   // what is painted are the paths a particle would take through them — geometry

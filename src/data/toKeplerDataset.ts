@@ -17,7 +17,9 @@ export type KeplerRow = Record<string, unknown>;
  * whose substance is a metadata url rather than any row. So are `wmsUrl` and
  * `wmsLayer`, which name a service rather than describe a row, and the three
  * `zarr*` roles, which name a store, one array inside it, and the label that
- * array answers to — a tile request, not a column anyone reads.
+ * array answers to — a tile request, not a column anyone reads. The `esri*`
+ * roles are absent for the same reason again: they name a service and the rules
+ * it should draw by.
  */
 type RenamedRole = Exclude<
   keyof FieldRoles,
@@ -34,6 +36,9 @@ type RenamedRole = Exclude<
   | 'zarrLevels'
   | 'zarrSel'
   | 'zarrTimeDim'
+  | 'esriUrl'
+  | 'esriMosaicRule'
+  | 'esriRenderingRule'
 >;
 
 /**
