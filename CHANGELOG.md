@@ -5,6 +5,36 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Changed: a velocity grid is now a kepler layer type, configured on the map rather than in the
+  panel options.** Until now a wind query was traced by the data path — the panel built the field,
+  traced nine thousand streamlines and handed kepler their geometry as rows of a `_geojson` column,
+  which it drew as an ordinary Trip layer. Nothing said "velocity field" anywhere in the interface,
+  the density was a panel option, and everything else about the drawing was a constant in the
+  source: a sixty-second cycle, a lifetime of 0.55 of it, thirty vertices, three cells of smoothing.
+  There is now a **Flow field** layer with a panel of its own: lines per screen, stroke width, trail
+  length, line length, cycle, lifetime, smoothing and vertical exaggeration, next to a colour ramp
+  applied to each line's mean speed. The dataset now holds the lattice the query returned rather
+  than the lines drawn from it — forty-nine rows instead of nine thousand, in the tutorial's case —
+  and the four velocity columns can be re-pointed from the layer, which is what finally gives
+  `u`/`v`/`speed`/`direction` a place in the interface: they were autodetect-only before, because
+  they never reached kepler as columns at all. Panning is cheaper too: what travels on a re-trace is
+  a viewport, not a dataset, so playback is no longer stopped and the playhead no longer restored on
+  every drag. **`windDensity` is gone** — a dashboard that set it keeps working, and the layer opens
+  at the same 9,000. Three things about kepler this rests on, each of which cost an afternoon: layer
+  data is recomputed on *every frame* of the animation for any animatable layer whose type is not
+  `trip`, so the trace is kept behind a signature; `layerVisConfigChange` never republishes the
+  animation domain, so the clock has to be nudged, without which the time widget never appears at
+  all; and both `centerMap` and the viewport guard frame the map from layer bounds, which the Point
+  layer used to carry and this layer supersedes.
+- **Fixed: a map that took more than six seconds to load could silently return to San Francisco.**
+  kepler seeds its internal view state with its own default at mount and writes it back on a
+  debounce, so a slow load lands that echo *after* the panel has framed the map on the data. The
+  guard that exists for exactly this watched a six-second window; the echo was measured arriving at
+  seven. The window is now fifteen seconds, and it is re-armed whenever the panel adds a layer that
+  moved the viewport. Invisible on most maps — the base map is simply somewhere else — but a flow
+  field draws its lines in proportion to the share of the screen its data covers, so a field left
+  off-screen drew nothing at all, with nothing logged.
+
 - **Added: a query can draw a Zarr store, live, and the map's clock can walk its slices.** Return
   `zarr_url` and `zarr_variable` and the panel builds a tileset from a store published as-is on
   object storage — no download, no conversion, no ETL. The premise this started from turned out to

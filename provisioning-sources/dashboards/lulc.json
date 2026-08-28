@@ -1,0 +1,2925 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "El ráster global de cobertura del suelo de Sentinel-2 a 10 m dentro del panel, sobre el COG original de Impact Observatory, con las cifras recalculadas sobre la vista.",
+  "editable": true,
+  "id": 2239669715451904,
+  "links": [],
+  "panels": [
+    {
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "# Cobertura y uso del suelo — Sentinel-2 10 m\n\nLas cifras salen de `computeHistograms`, que cuenta píxeles por clase sobre **la extensión que el mapa\nestá mostrando**: mueve o acerca el mapa, en cualquier parte del mundo, y todo lo de abajo se recalcula\nen medio segundo. El mapa dibuja el **ráster de cobertura a 10 m** — el archivo original, no una copia\nhorneada. El servicio de imágenes no publica teselas de ninguna forma —ni caché, ni WMS, ni WMTS—, pero\nlos COG de los que se alimenta sí son públicos, y el panel los pinta como capa ráster.\n\n| | |\n|---|---|\n| Fuente | [Sentinel-2 10m Land Use/Land Cover Time Series](https://www.arcgis.com/home/item.html?id=cfcb7609de5f478eb7666240902d4d3d) · **Impact Observatory, Microsoft y Esri**. Licencia CC BY 4.0, acceso anónimo |\n| Cobertura | Mundial, 10 m, nueve clases |\n| Detalle | El **COG original a 10 m**, una zona UTM por archivo, firmado en vuelo |\n| Cómo llega | Cifras: `computeHistograms` → Infinity → ~120 B por año. Fondo: consulta DuckDB → COG firmado en Planetary Computer → titiler → teselas |\n\n**Cuatro archivos, no uno.** Un COG de esta colección cubre una zona UTM: 6° de longitud por 8° de\nlatitud. Ecuador no cabe en uno, así que el mapa pinta el **bloque de 2×2 zonas** que arranca en la que\nelijas — con `17M` salen 17M, 17N, 18M y 18N, que es justo el país. Pon `30T` en «Zona MGRS del fondo»\ny el bloque se muda a la península ibérica. Una zona sin COG —mar abierto, o un año aún sin publicar—\nsimplemente no se dibuja.\n\n**Los años los pone la fuente.** El selector no lleva una lista escrita a mano: le pregunta a la\ncolección qué años tiene publicados, y ofrece ésos. Hoy son 2017-2023; el día que Impact Observatory\npublique 2024, aparecerá solo. Las cifras van por su cuenta y cubren 2017-2025, porque el servicio de\nimágenes va por delante de los COG.\n\n**Lo que hay que saber para no leer mal las cifras:**\n\n- **Impact Observatory desaconseja la comparación píxel a píxel entre años.** Cada año se clasifica por\n  separado y el modelo cambia; parte de la diferencia interanual es método, no territorio. Por eso este\n  tablero lidera con el **cambio relativo**, que es lo que mejor aguanta.\n- **El muestreo va en rejilla Web Mercator, así que el área está sesgada por latitud.** Cada muestra\n  cubre `(escala·cos φ)²` de suelo real: a 60° de latitud, la cuarta parte que en el ecuador. Los km²\n  son **aproximados** y tanto más optimistas para las clases de latitud alta cuanto más alta sea la\n  vista. Los porcentajes de composición arrastran el mismo sesgo. El **cambio relativo no lo arrastra**,\n  porque los nueve años se miden con la misma rejilla.\n- **La clase «Nubes» es el termómetro de calidad del año.** Cuando sube, el resto de las clases de ese\n  año valen menos. En las pruebas oscila entre 0,2 % y 1,8 % según el año y la región.\n- **Las cifras no dependen del fondo.** Se recalculan sobre la vista, a la resolución más fina que\n  quepa, hasta los 10 m nativos, en cualquier parte del mundo — aunque el fondo no llegue hasta allí.\n\n**Acotar dibujando.** La herramienta de dibujo del mapa (polígono o rectángulo) sustituye la extensión\nde la vista por la figura: las cifras pasan a describir sólo lo que la figura encierra, a la resolución\nmás fina que el servicio admita. Borra la figura para volver a la vista.\n\n*El servicio corta a 4000 px de lado y a ~13 M de celdas. Por encima de 4000 devuelve\n`{\"histograms\":[]}` **sin error**; por encima de 13 M devuelve un 400 explícito. La variable oculta\n`escala` mantiene la petición en 3500 px de lado, así que ninguno de los dos techos debería alcanzarse.*",
+        "mode": "markdown"
+      },
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "El fondo es el ráster de 10 m de Azuay, teselado por titiler sobre los GeoTIFF de `testdata/lulc/`; el selector «Año del ráster» lo cambia. Encima, apagadas, nueve capas `bitmap` con el planeta entero a ~10 km por píxel: enciende una para salir de Azuay, apágalas para volver al detalle.",
+      "gridPos": {
+        "h": 22,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 2,
+      "options": {
+        "areaVariable": "area",
+        "followGrafanaTheme": true,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "latitude": -1.5,
+              "longitude": -78.6,
+              "pitch": 0,
+              "zoom": 6.0
+            },
+            "visState": {
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": true,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": false,
+                  "fieldsToShow": {}
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [],
+              "layers": []
+            }
+          },
+          "datasets": [],
+          "version": "v1"
+        },
+        "showSidePanel": true,
+        "timeSync": "off",
+        "viewportVariables": {
+          "east": "mapEast",
+          "north": "mapNorth",
+          "south": "mapSouth",
+          "west": "mapWest"
+        },
+        "rasterServerUrl": "http://localhost:8088"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "-- El COG original de Impact Observatory, firmado en vuelo. Esta consulta cubre\n-- UNA zona UTM; el panel lleva cuatro como esta --el bloque 2x2 que arranca en\n-- la zona elegida-- porque un COG mide 6 grados de longitud por 8 de latitud y\n-- un pais no cabe en uno solo. Ecuador son 17M, 17N, 18M y 18N.\n--\n-- OJO con las variables: este datasource las entrecomilla por su cuenta, asi\n-- que van desnudas y concatenadas.\nWITH base AS (\n  SELECT CAST($zona AS VARCHAR) AS z, CAST($anio AS VARCHAR) AS anio\n),\npartes AS (\n  SELECT anio,\n         CAST(substr(z, 1, 2) AS INT)                        AS zona_num,\n         strpos('CDEFGHJKLMNPQRSTUVWX', substr(z, 3, 1))     AS banda_idx\n  FROM base\n),\ndestino AS (\n  -- Desplazamiento respecto de la zona elegida. Las zonas dan la vuelta al\n  -- mundo (60 -> 1); las bandas no, y pasarse por arriba deja una cadena vacia\n  -- que el servicio rechaza con 404. Eso es correcto: no hay COG que pintar.\n  SELECT anio,\n         lpad(CAST(((zona_num - 1 + 0) % 60) + 1 AS VARCHAR), 2, '0')\n         || substr('CDEFGHJKLMNPQRSTUVWX', banda_idx + 0, 1) AS mgrs\n  FROM partes\n),\nitem AS (\n  SELECT mgrs, anio,\n         http_get('https://planetarycomputer.microsoft.com/api/stac/v1/collections/'\n                  || 'io-lulc-annual-v02/items/' || mgrs || '-' || anio) AS resp\n  FROM destino\n),\nfirma AS (\n  -- Token SAS anonimo y gratuito: el contenedor no admite acceso publico, pero\n  -- Planetary Computer firma a quien lo pida. Caduca en ~45 min y se vuelve a\n  -- pedir en cada refresco, asi que la URL nunca viaja vencida.\n  SELECT (http_get('https://planetarycomputer.microsoft.com/api/sas/v1/token/io-lulc')->>'body') AS cuerpo\n)\n-- Sin fila no hay capa: una zona sin COG --oceano, o un ano aun sin publicar--\n-- responde 404 y simplemente no se dibuja.\nSELECT\n  ((item.resp->>'body')::JSON->'assets'->'data'->>'href')\n    || '?' || ((firma.cuerpo)::JSON->>'token') AS raster_url\nFROM item, firma\nWHERE (item.resp->>'status') = '200'"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "-- El COG original de Impact Observatory, firmado en vuelo. Esta consulta cubre\n-- UNA zona UTM; el panel lleva cuatro como esta --el bloque 2x2 que arranca en\n-- la zona elegida-- porque un COG mide 6 grados de longitud por 8 de latitud y\n-- un pais no cabe en uno solo. Ecuador son 17M, 17N, 18M y 18N.\n--\n-- OJO con las variables: este datasource las entrecomilla por su cuenta, asi\n-- que van desnudas y concatenadas.\nWITH base AS (\n  SELECT CAST($zona AS VARCHAR) AS z, CAST($anio AS VARCHAR) AS anio\n),\npartes AS (\n  SELECT anio,\n         CAST(substr(z, 1, 2) AS INT)                        AS zona_num,\n         strpos('CDEFGHJKLMNPQRSTUVWX', substr(z, 3, 1))     AS banda_idx\n  FROM base\n),\ndestino AS (\n  -- Desplazamiento respecto de la zona elegida. Las zonas dan la vuelta al\n  -- mundo (60 -> 1); las bandas no, y pasarse por arriba deja una cadena vacia\n  -- que el servicio rechaza con 404. Eso es correcto: no hay COG que pintar.\n  SELECT anio,\n         lpad(CAST(((zona_num - 1 + 0) % 60) + 1 AS VARCHAR), 2, '0')\n         || substr('CDEFGHJKLMNPQRSTUVWX', banda_idx + 1, 1) AS mgrs\n  FROM partes\n),\nitem AS (\n  SELECT mgrs, anio,\n         http_get('https://planetarycomputer.microsoft.com/api/stac/v1/collections/'\n                  || 'io-lulc-annual-v02/items/' || mgrs || '-' || anio) AS resp\n  FROM destino\n),\nfirma AS (\n  -- Token SAS anonimo y gratuito: el contenedor no admite acceso publico, pero\n  -- Planetary Computer firma a quien lo pida. Caduca en ~45 min y se vuelve a\n  -- pedir en cada refresco, asi que la URL nunca viaja vencida.\n  SELECT (http_get('https://planetarycomputer.microsoft.com/api/sas/v1/token/io-lulc')->>'body') AS cuerpo\n)\n-- Sin fila no hay capa: una zona sin COG --oceano, o un ano aun sin publicar--\n-- responde 404 y simplemente no se dibuja.\nSELECT\n  ((item.resp->>'body')::JSON->'assets'->'data'->>'href')\n    || '?' || ((firma.cuerpo)::JSON->>'token') AS raster_url\nFROM item, firma\nWHERE (item.resp->>'status') = '200'"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "-- El COG original de Impact Observatory, firmado en vuelo. Esta consulta cubre\n-- UNA zona UTM; el panel lleva cuatro como esta --el bloque 2x2 que arranca en\n-- la zona elegida-- porque un COG mide 6 grados de longitud por 8 de latitud y\n-- un pais no cabe en uno solo. Ecuador son 17M, 17N, 18M y 18N.\n--\n-- OJO con las variables: este datasource las entrecomilla por su cuenta, asi\n-- que van desnudas y concatenadas.\nWITH base AS (\n  SELECT CAST($zona AS VARCHAR) AS z, CAST($anio AS VARCHAR) AS anio\n),\npartes AS (\n  SELECT anio,\n         CAST(substr(z, 1, 2) AS INT)                        AS zona_num,\n         strpos('CDEFGHJKLMNPQRSTUVWX', substr(z, 3, 1))     AS banda_idx\n  FROM base\n),\ndestino AS (\n  -- Desplazamiento respecto de la zona elegida. Las zonas dan la vuelta al\n  -- mundo (60 -> 1); las bandas no, y pasarse por arriba deja una cadena vacia\n  -- que el servicio rechaza con 404. Eso es correcto: no hay COG que pintar.\n  SELECT anio,\n         lpad(CAST(((zona_num - 1 + 1) % 60) + 1 AS VARCHAR), 2, '0')\n         || substr('CDEFGHJKLMNPQRSTUVWX', banda_idx + 0, 1) AS mgrs\n  FROM partes\n),\nitem AS (\n  SELECT mgrs, anio,\n         http_get('https://planetarycomputer.microsoft.com/api/stac/v1/collections/'\n                  || 'io-lulc-annual-v02/items/' || mgrs || '-' || anio) AS resp\n  FROM destino\n),\nfirma AS (\n  -- Token SAS anonimo y gratuito: el contenedor no admite acceso publico, pero\n  -- Planetary Computer firma a quien lo pida. Caduca en ~45 min y se vuelve a\n  -- pedir en cada refresco, asi que la URL nunca viaja vencida.\n  SELECT (http_get('https://planetarycomputer.microsoft.com/api/sas/v1/token/io-lulc')->>'body') AS cuerpo\n)\n-- Sin fila no hay capa: una zona sin COG --oceano, o un ano aun sin publicar--\n-- responde 404 y simplemente no se dibuja.\nSELECT\n  ((item.resp->>'body')::JSON->'assets'->'data'->>'href')\n    || '?' || ((firma.cuerpo)::JSON->>'token') AS raster_url\nFROM item, firma\nWHERE (item.resp->>'status') = '200'"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "-- El COG original de Impact Observatory, firmado en vuelo. Esta consulta cubre\n-- UNA zona UTM; el panel lleva cuatro como esta --el bloque 2x2 que arranca en\n-- la zona elegida-- porque un COG mide 6 grados de longitud por 8 de latitud y\n-- un pais no cabe en uno solo. Ecuador son 17M, 17N, 18M y 18N.\n--\n-- OJO con las variables: este datasource las entrecomilla por su cuenta, asi\n-- que van desnudas y concatenadas.\nWITH base AS (\n  SELECT CAST($zona AS VARCHAR) AS z, CAST($anio AS VARCHAR) AS anio\n),\npartes AS (\n  SELECT anio,\n         CAST(substr(z, 1, 2) AS INT)                        AS zona_num,\n         strpos('CDEFGHJKLMNPQRSTUVWX', substr(z, 3, 1))     AS banda_idx\n  FROM base\n),\ndestino AS (\n  -- Desplazamiento respecto de la zona elegida. Las zonas dan la vuelta al\n  -- mundo (60 -> 1); las bandas no, y pasarse por arriba deja una cadena vacia\n  -- que el servicio rechaza con 404. Eso es correcto: no hay COG que pintar.\n  SELECT anio,\n         lpad(CAST(((zona_num - 1 + 1) % 60) + 1 AS VARCHAR), 2, '0')\n         || substr('CDEFGHJKLMNPQRSTUVWX', banda_idx + 1, 1) AS mgrs\n  FROM partes\n),\nitem AS (\n  SELECT mgrs, anio,\n         http_get('https://planetarycomputer.microsoft.com/api/stac/v1/collections/'\n                  || 'io-lulc-annual-v02/items/' || mgrs || '-' || anio) AS resp\n  FROM destino\n),\nfirma AS (\n  -- Token SAS anonimo y gratuito: el contenedor no admite acceso publico, pero\n  -- Planetary Computer firma a quien lo pida. Caduca en ~45 min y se vuelve a\n  -- pedir en cada refresco, asi que la URL nunca viaja vencida.\n  SELECT (http_get('https://planetarycomputer.microsoft.com/api/sas/v1/token/io-lulc')->>'body') AS cuerpo\n)\n-- Sin fila no hay capa: una zona sin COG --oceano, o un ano aun sin publicar--\n-- responde 404 y simplemente no se dibuja.\nSELECT\n  ((item.resp->>'body')::JSON->'assets'->'data'->>'href')\n    || '?' || ((firma.cuerpo)::JSON->>'token') AS raster_url\nFROM item, firma\nWHERE (item.resp->>'status') = '200'"
+        }
+      ],
+      "title": "Cobertura del suelo — el COG original a 10 m",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "description": "Las tres primeras son cambio relativo entre el primer y el último año. «Nubes» es el mismo cálculo aplicado a la clase de nubes: si se dispara, la comparación de ese par de años vale menos.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1,
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "sin dato"
+                }
+              },
+              "type": "special"
+            },
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "index": 1,
+                  "text": "sin dato"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "arboles"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Árboles"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#358221",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pastizal"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Pastizal/Matorral"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#EFCFA8",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cultivos"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Cultivos"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FFDB5C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "construido"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Área construida"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#ED022A",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "suelo_desnudo"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Suelo desnudo"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#EDE9E4",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "agua"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Agua"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#1A5BAB",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "veg_inundada"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Vegetación inundada"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#87D19E",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "nieve"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Nieve/Hielo"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2FAFF",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "nubes"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Nubes"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#C8C8C8",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "diffperc"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 4,
+          "refId": "A",
+          "withTransforms": false
+        }
+      ],
+      "title": "Lo esencial en la vista actual, 2017 → 2025",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "construido",
+                "arboles",
+                "cultivos",
+                "nubes"
+              ]
+            }
+          }
+        }
+      ],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "description": "Reparto de las muestras entre las nueve clases. El eje está normalizado al 100 %, así que lo que se lee es la proporción, no la superficie. Arrastra el sesgo de latitud descrito en la cabecera.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMin": 0,
+            "fillOpacity": 90,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 0
+          },
+          "decimals": 1,
+          "max": 100,
+          "min": 0,
+          "unit": "percent"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "anio"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Año"
+              },
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pct_arboles"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Árboles"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#358221",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pct_pastizal"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Pastizal/Matorral"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#EFCFA8",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pct_cultivos"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Cultivos"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FFDB5C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pct_construido"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Área construida"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#ED022A",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pct_suelo_desnudo"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Suelo desnudo"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#EDE9E4",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pct_agua"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Agua"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#1A5BAB",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pct_veg_inundada"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Vegetación inundada"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#87D19E",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pct_nieve"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Nieve/Hielo"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2FAFF",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pct_nubes"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Nubes"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#C8C8C8",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 43
+      },
+      "id": 4,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.9,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "orientation": "vertical",
+        "showValue": "never",
+        "stacking": "normal",
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        },
+        "xField": "anio",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "counts.2",
+              "text": "arboles",
+              "type": "number"
+            },
+            {
+              "selector": "counts.11",
+              "text": "pastizal",
+              "type": "number"
+            },
+            {
+              "selector": "counts.5",
+              "text": "cultivos",
+              "type": "number"
+            },
+            {
+              "selector": "counts.7",
+              "text": "construido",
+              "type": "number"
+            },
+            {
+              "selector": "counts.8",
+              "text": "suelo_desnudo",
+              "type": "number"
+            },
+            {
+              "selector": "counts.1",
+              "text": "agua",
+              "type": "number"
+            },
+            {
+              "selector": "counts.4",
+              "text": "veg_inundada",
+              "type": "number"
+            },
+            {
+              "selector": "counts.9",
+              "text": "nieve",
+              "type": "number"
+            },
+            {
+              "selector": "counts.10",
+              "text": "nubes",
+              "type": "number"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "2017",
+              "text": "anio"
+            },
+            {
+              "selector": "arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes",
+              "text": "muestras"
+            },
+            {
+              "selector": "arboles * ${areaPx:raw}",
+              "text": "km2_arboles"
+            },
+            {
+              "selector": "pastizal * ${areaPx:raw}",
+              "text": "km2_pastizal"
+            },
+            {
+              "selector": "cultivos * ${areaPx:raw}",
+              "text": "km2_cultivos"
+            },
+            {
+              "selector": "construido * ${areaPx:raw}",
+              "text": "km2_construido"
+            },
+            {
+              "selector": "suelo_desnudo * ${areaPx:raw}",
+              "text": "km2_suelo_desnudo"
+            },
+            {
+              "selector": "agua * ${areaPx:raw}",
+              "text": "km2_agua"
+            },
+            {
+              "selector": "veg_inundada * ${areaPx:raw}",
+              "text": "km2_veg_inundada"
+            },
+            {
+              "selector": "nieve * ${areaPx:raw}",
+              "text": "km2_nieve"
+            },
+            {
+              "selector": "nubes * ${areaPx:raw}",
+              "text": "km2_nubes"
+            },
+            {
+              "selector": "arboles * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_arboles"
+            },
+            {
+              "selector": "pastizal * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_pastizal"
+            },
+            {
+              "selector": "cultivos * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_cultivos"
+            },
+            {
+              "selector": "construido * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_construido"
+            },
+            {
+              "selector": "suelo_desnudo * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_suelo_desnudo"
+            },
+            {
+              "selector": "agua * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_agua"
+            },
+            {
+              "selector": "veg_inundada * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_veg_inundada"
+            },
+            {
+              "selector": "nieve * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nieve"
+            },
+            {
+              "selector": "nubes * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nubes"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "format": "table",
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "histograms",
+          "source": "url",
+          "type": "json",
+          "url": "https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer/computeHistograms",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "geometry",
+                "value": "${geom:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "${geomTipo:raw}"
+              },
+              {
+                "key": "mosaicRule",
+                "value": "{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=2017\"}"
+              },
+              {
+                "key": "pixelSize",
+                "value": "{\"x\":${escala:raw},\"y\":${escala:raw},\"spatialReference\":{\"wkid\":102100}}"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "counts.2",
+              "text": "arboles",
+              "type": "number"
+            },
+            {
+              "selector": "counts.11",
+              "text": "pastizal",
+              "type": "number"
+            },
+            {
+              "selector": "counts.5",
+              "text": "cultivos",
+              "type": "number"
+            },
+            {
+              "selector": "counts.7",
+              "text": "construido",
+              "type": "number"
+            },
+            {
+              "selector": "counts.8",
+              "text": "suelo_desnudo",
+              "type": "number"
+            },
+            {
+              "selector": "counts.1",
+              "text": "agua",
+              "type": "number"
+            },
+            {
+              "selector": "counts.4",
+              "text": "veg_inundada",
+              "type": "number"
+            },
+            {
+              "selector": "counts.9",
+              "text": "nieve",
+              "type": "number"
+            },
+            {
+              "selector": "counts.10",
+              "text": "nubes",
+              "type": "number"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "2018",
+              "text": "anio"
+            },
+            {
+              "selector": "arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes",
+              "text": "muestras"
+            },
+            {
+              "selector": "arboles * ${areaPx:raw}",
+              "text": "km2_arboles"
+            },
+            {
+              "selector": "pastizal * ${areaPx:raw}",
+              "text": "km2_pastizal"
+            },
+            {
+              "selector": "cultivos * ${areaPx:raw}",
+              "text": "km2_cultivos"
+            },
+            {
+              "selector": "construido * ${areaPx:raw}",
+              "text": "km2_construido"
+            },
+            {
+              "selector": "suelo_desnudo * ${areaPx:raw}",
+              "text": "km2_suelo_desnudo"
+            },
+            {
+              "selector": "agua * ${areaPx:raw}",
+              "text": "km2_agua"
+            },
+            {
+              "selector": "veg_inundada * ${areaPx:raw}",
+              "text": "km2_veg_inundada"
+            },
+            {
+              "selector": "nieve * ${areaPx:raw}",
+              "text": "km2_nieve"
+            },
+            {
+              "selector": "nubes * ${areaPx:raw}",
+              "text": "km2_nubes"
+            },
+            {
+              "selector": "arboles * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_arboles"
+            },
+            {
+              "selector": "pastizal * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_pastizal"
+            },
+            {
+              "selector": "cultivos * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_cultivos"
+            },
+            {
+              "selector": "construido * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_construido"
+            },
+            {
+              "selector": "suelo_desnudo * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_suelo_desnudo"
+            },
+            {
+              "selector": "agua * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_agua"
+            },
+            {
+              "selector": "veg_inundada * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_veg_inundada"
+            },
+            {
+              "selector": "nieve * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nieve"
+            },
+            {
+              "selector": "nubes * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nubes"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "format": "table",
+          "parser": "backend",
+          "refId": "B",
+          "root_selector": "histograms",
+          "source": "url",
+          "type": "json",
+          "url": "https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer/computeHistograms",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "geometry",
+                "value": "${geom:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "${geomTipo:raw}"
+              },
+              {
+                "key": "mosaicRule",
+                "value": "{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=2018\"}"
+              },
+              {
+                "key": "pixelSize",
+                "value": "{\"x\":${escala:raw},\"y\":${escala:raw},\"spatialReference\":{\"wkid\":102100}}"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "counts.2",
+              "text": "arboles",
+              "type": "number"
+            },
+            {
+              "selector": "counts.11",
+              "text": "pastizal",
+              "type": "number"
+            },
+            {
+              "selector": "counts.5",
+              "text": "cultivos",
+              "type": "number"
+            },
+            {
+              "selector": "counts.7",
+              "text": "construido",
+              "type": "number"
+            },
+            {
+              "selector": "counts.8",
+              "text": "suelo_desnudo",
+              "type": "number"
+            },
+            {
+              "selector": "counts.1",
+              "text": "agua",
+              "type": "number"
+            },
+            {
+              "selector": "counts.4",
+              "text": "veg_inundada",
+              "type": "number"
+            },
+            {
+              "selector": "counts.9",
+              "text": "nieve",
+              "type": "number"
+            },
+            {
+              "selector": "counts.10",
+              "text": "nubes",
+              "type": "number"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "2019",
+              "text": "anio"
+            },
+            {
+              "selector": "arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes",
+              "text": "muestras"
+            },
+            {
+              "selector": "arboles * ${areaPx:raw}",
+              "text": "km2_arboles"
+            },
+            {
+              "selector": "pastizal * ${areaPx:raw}",
+              "text": "km2_pastizal"
+            },
+            {
+              "selector": "cultivos * ${areaPx:raw}",
+              "text": "km2_cultivos"
+            },
+            {
+              "selector": "construido * ${areaPx:raw}",
+              "text": "km2_construido"
+            },
+            {
+              "selector": "suelo_desnudo * ${areaPx:raw}",
+              "text": "km2_suelo_desnudo"
+            },
+            {
+              "selector": "agua * ${areaPx:raw}",
+              "text": "km2_agua"
+            },
+            {
+              "selector": "veg_inundada * ${areaPx:raw}",
+              "text": "km2_veg_inundada"
+            },
+            {
+              "selector": "nieve * ${areaPx:raw}",
+              "text": "km2_nieve"
+            },
+            {
+              "selector": "nubes * ${areaPx:raw}",
+              "text": "km2_nubes"
+            },
+            {
+              "selector": "arboles * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_arboles"
+            },
+            {
+              "selector": "pastizal * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_pastizal"
+            },
+            {
+              "selector": "cultivos * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_cultivos"
+            },
+            {
+              "selector": "construido * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_construido"
+            },
+            {
+              "selector": "suelo_desnudo * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_suelo_desnudo"
+            },
+            {
+              "selector": "agua * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_agua"
+            },
+            {
+              "selector": "veg_inundada * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_veg_inundada"
+            },
+            {
+              "selector": "nieve * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nieve"
+            },
+            {
+              "selector": "nubes * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nubes"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "format": "table",
+          "parser": "backend",
+          "refId": "C",
+          "root_selector": "histograms",
+          "source": "url",
+          "type": "json",
+          "url": "https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer/computeHistograms",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "geometry",
+                "value": "${geom:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "${geomTipo:raw}"
+              },
+              {
+                "key": "mosaicRule",
+                "value": "{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=2019\"}"
+              },
+              {
+                "key": "pixelSize",
+                "value": "{\"x\":${escala:raw},\"y\":${escala:raw},\"spatialReference\":{\"wkid\":102100}}"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "counts.2",
+              "text": "arboles",
+              "type": "number"
+            },
+            {
+              "selector": "counts.11",
+              "text": "pastizal",
+              "type": "number"
+            },
+            {
+              "selector": "counts.5",
+              "text": "cultivos",
+              "type": "number"
+            },
+            {
+              "selector": "counts.7",
+              "text": "construido",
+              "type": "number"
+            },
+            {
+              "selector": "counts.8",
+              "text": "suelo_desnudo",
+              "type": "number"
+            },
+            {
+              "selector": "counts.1",
+              "text": "agua",
+              "type": "number"
+            },
+            {
+              "selector": "counts.4",
+              "text": "veg_inundada",
+              "type": "number"
+            },
+            {
+              "selector": "counts.9",
+              "text": "nieve",
+              "type": "number"
+            },
+            {
+              "selector": "counts.10",
+              "text": "nubes",
+              "type": "number"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "2020",
+              "text": "anio"
+            },
+            {
+              "selector": "arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes",
+              "text": "muestras"
+            },
+            {
+              "selector": "arboles * ${areaPx:raw}",
+              "text": "km2_arboles"
+            },
+            {
+              "selector": "pastizal * ${areaPx:raw}",
+              "text": "km2_pastizal"
+            },
+            {
+              "selector": "cultivos * ${areaPx:raw}",
+              "text": "km2_cultivos"
+            },
+            {
+              "selector": "construido * ${areaPx:raw}",
+              "text": "km2_construido"
+            },
+            {
+              "selector": "suelo_desnudo * ${areaPx:raw}",
+              "text": "km2_suelo_desnudo"
+            },
+            {
+              "selector": "agua * ${areaPx:raw}",
+              "text": "km2_agua"
+            },
+            {
+              "selector": "veg_inundada * ${areaPx:raw}",
+              "text": "km2_veg_inundada"
+            },
+            {
+              "selector": "nieve * ${areaPx:raw}",
+              "text": "km2_nieve"
+            },
+            {
+              "selector": "nubes * ${areaPx:raw}",
+              "text": "km2_nubes"
+            },
+            {
+              "selector": "arboles * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_arboles"
+            },
+            {
+              "selector": "pastizal * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_pastizal"
+            },
+            {
+              "selector": "cultivos * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_cultivos"
+            },
+            {
+              "selector": "construido * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_construido"
+            },
+            {
+              "selector": "suelo_desnudo * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_suelo_desnudo"
+            },
+            {
+              "selector": "agua * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_agua"
+            },
+            {
+              "selector": "veg_inundada * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_veg_inundada"
+            },
+            {
+              "selector": "nieve * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nieve"
+            },
+            {
+              "selector": "nubes * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nubes"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "format": "table",
+          "parser": "backend",
+          "refId": "D",
+          "root_selector": "histograms",
+          "source": "url",
+          "type": "json",
+          "url": "https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer/computeHistograms",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "geometry",
+                "value": "${geom:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "${geomTipo:raw}"
+              },
+              {
+                "key": "mosaicRule",
+                "value": "{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=2020\"}"
+              },
+              {
+                "key": "pixelSize",
+                "value": "{\"x\":${escala:raw},\"y\":${escala:raw},\"spatialReference\":{\"wkid\":102100}}"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "counts.2",
+              "text": "arboles",
+              "type": "number"
+            },
+            {
+              "selector": "counts.11",
+              "text": "pastizal",
+              "type": "number"
+            },
+            {
+              "selector": "counts.5",
+              "text": "cultivos",
+              "type": "number"
+            },
+            {
+              "selector": "counts.7",
+              "text": "construido",
+              "type": "number"
+            },
+            {
+              "selector": "counts.8",
+              "text": "suelo_desnudo",
+              "type": "number"
+            },
+            {
+              "selector": "counts.1",
+              "text": "agua",
+              "type": "number"
+            },
+            {
+              "selector": "counts.4",
+              "text": "veg_inundada",
+              "type": "number"
+            },
+            {
+              "selector": "counts.9",
+              "text": "nieve",
+              "type": "number"
+            },
+            {
+              "selector": "counts.10",
+              "text": "nubes",
+              "type": "number"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "2021",
+              "text": "anio"
+            },
+            {
+              "selector": "arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes",
+              "text": "muestras"
+            },
+            {
+              "selector": "arboles * ${areaPx:raw}",
+              "text": "km2_arboles"
+            },
+            {
+              "selector": "pastizal * ${areaPx:raw}",
+              "text": "km2_pastizal"
+            },
+            {
+              "selector": "cultivos * ${areaPx:raw}",
+              "text": "km2_cultivos"
+            },
+            {
+              "selector": "construido * ${areaPx:raw}",
+              "text": "km2_construido"
+            },
+            {
+              "selector": "suelo_desnudo * ${areaPx:raw}",
+              "text": "km2_suelo_desnudo"
+            },
+            {
+              "selector": "agua * ${areaPx:raw}",
+              "text": "km2_agua"
+            },
+            {
+              "selector": "veg_inundada * ${areaPx:raw}",
+              "text": "km2_veg_inundada"
+            },
+            {
+              "selector": "nieve * ${areaPx:raw}",
+              "text": "km2_nieve"
+            },
+            {
+              "selector": "nubes * ${areaPx:raw}",
+              "text": "km2_nubes"
+            },
+            {
+              "selector": "arboles * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_arboles"
+            },
+            {
+              "selector": "pastizal * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_pastizal"
+            },
+            {
+              "selector": "cultivos * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_cultivos"
+            },
+            {
+              "selector": "construido * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_construido"
+            },
+            {
+              "selector": "suelo_desnudo * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_suelo_desnudo"
+            },
+            {
+              "selector": "agua * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_agua"
+            },
+            {
+              "selector": "veg_inundada * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_veg_inundada"
+            },
+            {
+              "selector": "nieve * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nieve"
+            },
+            {
+              "selector": "nubes * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nubes"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "format": "table",
+          "parser": "backend",
+          "refId": "E",
+          "root_selector": "histograms",
+          "source": "url",
+          "type": "json",
+          "url": "https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer/computeHistograms",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "geometry",
+                "value": "${geom:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "${geomTipo:raw}"
+              },
+              {
+                "key": "mosaicRule",
+                "value": "{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=2021\"}"
+              },
+              {
+                "key": "pixelSize",
+                "value": "{\"x\":${escala:raw},\"y\":${escala:raw},\"spatialReference\":{\"wkid\":102100}}"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "counts.2",
+              "text": "arboles",
+              "type": "number"
+            },
+            {
+              "selector": "counts.11",
+              "text": "pastizal",
+              "type": "number"
+            },
+            {
+              "selector": "counts.5",
+              "text": "cultivos",
+              "type": "number"
+            },
+            {
+              "selector": "counts.7",
+              "text": "construido",
+              "type": "number"
+            },
+            {
+              "selector": "counts.8",
+              "text": "suelo_desnudo",
+              "type": "number"
+            },
+            {
+              "selector": "counts.1",
+              "text": "agua",
+              "type": "number"
+            },
+            {
+              "selector": "counts.4",
+              "text": "veg_inundada",
+              "type": "number"
+            },
+            {
+              "selector": "counts.9",
+              "text": "nieve",
+              "type": "number"
+            },
+            {
+              "selector": "counts.10",
+              "text": "nubes",
+              "type": "number"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "2022",
+              "text": "anio"
+            },
+            {
+              "selector": "arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes",
+              "text": "muestras"
+            },
+            {
+              "selector": "arboles * ${areaPx:raw}",
+              "text": "km2_arboles"
+            },
+            {
+              "selector": "pastizal * ${areaPx:raw}",
+              "text": "km2_pastizal"
+            },
+            {
+              "selector": "cultivos * ${areaPx:raw}",
+              "text": "km2_cultivos"
+            },
+            {
+              "selector": "construido * ${areaPx:raw}",
+              "text": "km2_construido"
+            },
+            {
+              "selector": "suelo_desnudo * ${areaPx:raw}",
+              "text": "km2_suelo_desnudo"
+            },
+            {
+              "selector": "agua * ${areaPx:raw}",
+              "text": "km2_agua"
+            },
+            {
+              "selector": "veg_inundada * ${areaPx:raw}",
+              "text": "km2_veg_inundada"
+            },
+            {
+              "selector": "nieve * ${areaPx:raw}",
+              "text": "km2_nieve"
+            },
+            {
+              "selector": "nubes * ${areaPx:raw}",
+              "text": "km2_nubes"
+            },
+            {
+              "selector": "arboles * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_arboles"
+            },
+            {
+              "selector": "pastizal * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_pastizal"
+            },
+            {
+              "selector": "cultivos * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_cultivos"
+            },
+            {
+              "selector": "construido * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_construido"
+            },
+            {
+              "selector": "suelo_desnudo * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_suelo_desnudo"
+            },
+            {
+              "selector": "agua * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_agua"
+            },
+            {
+              "selector": "veg_inundada * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_veg_inundada"
+            },
+            {
+              "selector": "nieve * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nieve"
+            },
+            {
+              "selector": "nubes * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nubes"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "format": "table",
+          "parser": "backend",
+          "refId": "F",
+          "root_selector": "histograms",
+          "source": "url",
+          "type": "json",
+          "url": "https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer/computeHistograms",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "geometry",
+                "value": "${geom:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "${geomTipo:raw}"
+              },
+              {
+                "key": "mosaicRule",
+                "value": "{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=2022\"}"
+              },
+              {
+                "key": "pixelSize",
+                "value": "{\"x\":${escala:raw},\"y\":${escala:raw},\"spatialReference\":{\"wkid\":102100}}"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "counts.2",
+              "text": "arboles",
+              "type": "number"
+            },
+            {
+              "selector": "counts.11",
+              "text": "pastizal",
+              "type": "number"
+            },
+            {
+              "selector": "counts.5",
+              "text": "cultivos",
+              "type": "number"
+            },
+            {
+              "selector": "counts.7",
+              "text": "construido",
+              "type": "number"
+            },
+            {
+              "selector": "counts.8",
+              "text": "suelo_desnudo",
+              "type": "number"
+            },
+            {
+              "selector": "counts.1",
+              "text": "agua",
+              "type": "number"
+            },
+            {
+              "selector": "counts.4",
+              "text": "veg_inundada",
+              "type": "number"
+            },
+            {
+              "selector": "counts.9",
+              "text": "nieve",
+              "type": "number"
+            },
+            {
+              "selector": "counts.10",
+              "text": "nubes",
+              "type": "number"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "2023",
+              "text": "anio"
+            },
+            {
+              "selector": "arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes",
+              "text": "muestras"
+            },
+            {
+              "selector": "arboles * ${areaPx:raw}",
+              "text": "km2_arboles"
+            },
+            {
+              "selector": "pastizal * ${areaPx:raw}",
+              "text": "km2_pastizal"
+            },
+            {
+              "selector": "cultivos * ${areaPx:raw}",
+              "text": "km2_cultivos"
+            },
+            {
+              "selector": "construido * ${areaPx:raw}",
+              "text": "km2_construido"
+            },
+            {
+              "selector": "suelo_desnudo * ${areaPx:raw}",
+              "text": "km2_suelo_desnudo"
+            },
+            {
+              "selector": "agua * ${areaPx:raw}",
+              "text": "km2_agua"
+            },
+            {
+              "selector": "veg_inundada * ${areaPx:raw}",
+              "text": "km2_veg_inundada"
+            },
+            {
+              "selector": "nieve * ${areaPx:raw}",
+              "text": "km2_nieve"
+            },
+            {
+              "selector": "nubes * ${areaPx:raw}",
+              "text": "km2_nubes"
+            },
+            {
+              "selector": "arboles * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_arboles"
+            },
+            {
+              "selector": "pastizal * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_pastizal"
+            },
+            {
+              "selector": "cultivos * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_cultivos"
+            },
+            {
+              "selector": "construido * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_construido"
+            },
+            {
+              "selector": "suelo_desnudo * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_suelo_desnudo"
+            },
+            {
+              "selector": "agua * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_agua"
+            },
+            {
+              "selector": "veg_inundada * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_veg_inundada"
+            },
+            {
+              "selector": "nieve * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nieve"
+            },
+            {
+              "selector": "nubes * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nubes"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "format": "table",
+          "parser": "backend",
+          "refId": "G",
+          "root_selector": "histograms",
+          "source": "url",
+          "type": "json",
+          "url": "https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer/computeHistograms",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "geometry",
+                "value": "${geom:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "${geomTipo:raw}"
+              },
+              {
+                "key": "mosaicRule",
+                "value": "{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=2023\"}"
+              },
+              {
+                "key": "pixelSize",
+                "value": "{\"x\":${escala:raw},\"y\":${escala:raw},\"spatialReference\":{\"wkid\":102100}}"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "counts.2",
+              "text": "arboles",
+              "type": "number"
+            },
+            {
+              "selector": "counts.11",
+              "text": "pastizal",
+              "type": "number"
+            },
+            {
+              "selector": "counts.5",
+              "text": "cultivos",
+              "type": "number"
+            },
+            {
+              "selector": "counts.7",
+              "text": "construido",
+              "type": "number"
+            },
+            {
+              "selector": "counts.8",
+              "text": "suelo_desnudo",
+              "type": "number"
+            },
+            {
+              "selector": "counts.1",
+              "text": "agua",
+              "type": "number"
+            },
+            {
+              "selector": "counts.4",
+              "text": "veg_inundada",
+              "type": "number"
+            },
+            {
+              "selector": "counts.9",
+              "text": "nieve",
+              "type": "number"
+            },
+            {
+              "selector": "counts.10",
+              "text": "nubes",
+              "type": "number"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "2024",
+              "text": "anio"
+            },
+            {
+              "selector": "arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes",
+              "text": "muestras"
+            },
+            {
+              "selector": "arboles * ${areaPx:raw}",
+              "text": "km2_arboles"
+            },
+            {
+              "selector": "pastizal * ${areaPx:raw}",
+              "text": "km2_pastizal"
+            },
+            {
+              "selector": "cultivos * ${areaPx:raw}",
+              "text": "km2_cultivos"
+            },
+            {
+              "selector": "construido * ${areaPx:raw}",
+              "text": "km2_construido"
+            },
+            {
+              "selector": "suelo_desnudo * ${areaPx:raw}",
+              "text": "km2_suelo_desnudo"
+            },
+            {
+              "selector": "agua * ${areaPx:raw}",
+              "text": "km2_agua"
+            },
+            {
+              "selector": "veg_inundada * ${areaPx:raw}",
+              "text": "km2_veg_inundada"
+            },
+            {
+              "selector": "nieve * ${areaPx:raw}",
+              "text": "km2_nieve"
+            },
+            {
+              "selector": "nubes * ${areaPx:raw}",
+              "text": "km2_nubes"
+            },
+            {
+              "selector": "arboles * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_arboles"
+            },
+            {
+              "selector": "pastizal * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_pastizal"
+            },
+            {
+              "selector": "cultivos * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_cultivos"
+            },
+            {
+              "selector": "construido * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_construido"
+            },
+            {
+              "selector": "suelo_desnudo * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_suelo_desnudo"
+            },
+            {
+              "selector": "agua * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_agua"
+            },
+            {
+              "selector": "veg_inundada * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_veg_inundada"
+            },
+            {
+              "selector": "nieve * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nieve"
+            },
+            {
+              "selector": "nubes * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nubes"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "format": "table",
+          "parser": "backend",
+          "refId": "H",
+          "root_selector": "histograms",
+          "source": "url",
+          "type": "json",
+          "url": "https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer/computeHistograms",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "geometry",
+                "value": "${geom:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "${geomTipo:raw}"
+              },
+              {
+                "key": "mosaicRule",
+                "value": "{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=2024\"}"
+              },
+              {
+                "key": "pixelSize",
+                "value": "{\"x\":${escala:raw},\"y\":${escala:raw},\"spatialReference\":{\"wkid\":102100}}"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "counts.2",
+              "text": "arboles",
+              "type": "number"
+            },
+            {
+              "selector": "counts.11",
+              "text": "pastizal",
+              "type": "number"
+            },
+            {
+              "selector": "counts.5",
+              "text": "cultivos",
+              "type": "number"
+            },
+            {
+              "selector": "counts.7",
+              "text": "construido",
+              "type": "number"
+            },
+            {
+              "selector": "counts.8",
+              "text": "suelo_desnudo",
+              "type": "number"
+            },
+            {
+              "selector": "counts.1",
+              "text": "agua",
+              "type": "number"
+            },
+            {
+              "selector": "counts.4",
+              "text": "veg_inundada",
+              "type": "number"
+            },
+            {
+              "selector": "counts.9",
+              "text": "nieve",
+              "type": "number"
+            },
+            {
+              "selector": "counts.10",
+              "text": "nubes",
+              "type": "number"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "2025",
+              "text": "anio"
+            },
+            {
+              "selector": "arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes",
+              "text": "muestras"
+            },
+            {
+              "selector": "arboles * ${areaPx:raw}",
+              "text": "km2_arboles"
+            },
+            {
+              "selector": "pastizal * ${areaPx:raw}",
+              "text": "km2_pastizal"
+            },
+            {
+              "selector": "cultivos * ${areaPx:raw}",
+              "text": "km2_cultivos"
+            },
+            {
+              "selector": "construido * ${areaPx:raw}",
+              "text": "km2_construido"
+            },
+            {
+              "selector": "suelo_desnudo * ${areaPx:raw}",
+              "text": "km2_suelo_desnudo"
+            },
+            {
+              "selector": "agua * ${areaPx:raw}",
+              "text": "km2_agua"
+            },
+            {
+              "selector": "veg_inundada * ${areaPx:raw}",
+              "text": "km2_veg_inundada"
+            },
+            {
+              "selector": "nieve * ${areaPx:raw}",
+              "text": "km2_nieve"
+            },
+            {
+              "selector": "nubes * ${areaPx:raw}",
+              "text": "km2_nubes"
+            },
+            {
+              "selector": "arboles * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_arboles"
+            },
+            {
+              "selector": "pastizal * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_pastizal"
+            },
+            {
+              "selector": "cultivos * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_cultivos"
+            },
+            {
+              "selector": "construido * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_construido"
+            },
+            {
+              "selector": "suelo_desnudo * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_suelo_desnudo"
+            },
+            {
+              "selector": "agua * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_agua"
+            },
+            {
+              "selector": "veg_inundada * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_veg_inundada"
+            },
+            {
+              "selector": "nieve * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nieve"
+            },
+            {
+              "selector": "nubes * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nubes"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "format": "table",
+          "parser": "backend",
+          "refId": "I",
+          "root_selector": "histograms",
+          "source": "url",
+          "type": "json",
+          "url": "https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer/computeHistograms",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "geometry",
+                "value": "${geom:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "${geomTipo:raw}"
+              },
+              {
+                "key": "mosaicRule",
+                "value": "{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=2025\"}"
+              },
+              {
+                "key": "pixelSize",
+                "value": "{\"x\":${escala:raw},\"y\":${escala:raw},\"spatialReference\":{\"wkid\":102100}}"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          }
+        }
+      ],
+      "title": "Composición de la cobertura, por año",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "anio",
+                "pct_arboles",
+                "pct_pastizal",
+                "pct_cultivos",
+                "pct_construido",
+                "pct_suelo_desnudo",
+                "pct_agua",
+                "pct_veg_inundada",
+                "pct_nieve",
+                "pct_nubes"
+              ]
+            }
+          }
+        }
+      ],
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "description": "Diferencia porcentual entre el primer y el último año de la serie, clase a clase, sobre la vista actual. Es la cifra que menos sufre el sesgo de latitud: los nueve años se miden con la misma rejilla, así que el factor se cancela.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1,
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "sin dato"
+                }
+              },
+              "type": "special"
+            },
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "index": 1,
+                  "text": "sin dato"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "max": 100,
+          "min": -100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#5794F2",
+                "value": null
+              },
+              {
+                "color": "#E0B400",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 43
+      },
+      "id": 5,
+      "options": {
+        "displayMode": "basic",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "",
+          "values": true
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 4,
+          "refId": "A",
+          "withTransforms": false
+        }
+      ],
+      "title": "Cambio relativo por clase, 2017 → 2025",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "arboles",
+                "pastizal",
+                "cultivos",
+                "construido",
+                "suelo_desnudo",
+                "agua",
+                "veg_inundada",
+                "nieve",
+                "nubes"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "agua": "Agua",
+              "arboles": "Árboles",
+              "construido": "Área construida",
+              "cultivos": "Cultivos",
+              "nieve": "Nieve/Hielo",
+              "nubes": "Nubes",
+              "pastizal": "Pastizal/Matorral",
+              "suelo_desnudo": "Suelo desnudo",
+              "veg_inundada": "Vegetación inundada"
+            }
+          }
+        },
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "diffperc"
+            ]
+          }
+        }
+      ],
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "description": "«Muestras» es el conteo bruto de píxeles muestreados; los km² son ese conteo por el área media de una muestra, y por tanto aproximados — exactos cuando la vista abarca poca latitud, optimistas para las clases de latitud alta cuando abarca mucha.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false,
+            "inspect": false
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "suffix: km²"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "anio"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Año"
+              },
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "muestras"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Muestras"
+              },
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "km2_arboles"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Árboles"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#358221",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "km2_pastizal"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Pastizal/Matorral"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#EFCFA8",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "km2_cultivos"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Cultivos"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FFDB5C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "km2_construido"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Área construida"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#ED022A",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "km2_suelo_desnudo"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Suelo desnudo"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#EDE9E4",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "km2_agua"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Agua"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#1A5BAB",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "km2_veg_inundada"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Vegetación inundada"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#87D19E",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "km2_nieve"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Nieve/Hielo"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2FAFF",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "km2_nubes"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Nubes"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#C8C8C8",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 54
+      },
+      "id": 6,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "Año"
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 4,
+          "refId": "A",
+          "withTransforms": false
+        }
+      ],
+      "title": "Detalle por año, en la vista actual",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "anio",
+                "muestras",
+                "km2_arboles",
+                "km2_pastizal",
+                "km2_cultivos",
+                "km2_construido",
+                "km2_suelo_desnudo",
+                "km2_agua",
+                "km2_veg_inundada",
+                "km2_nieve",
+                "km2_nubes"
+              ]
+            }
+          }
+        }
+      ],
+      "type": "table"
+    }
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": [
+    "kepler",
+    "landcover",
+    "sentinel-2",
+    "arcgis",
+    "impact-observatory"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "-180",
+          "value": "-180"
+        },
+        "hide": 2,
+        "label": "Vista · oeste",
+        "name": "mapWest",
+        "options": [],
+        "query": "-180",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "-80.0134",
+          "value": "-80.0134"
+        },
+        "hide": 2,
+        "label": "Vista · sur",
+        "name": "mapSouth",
+        "options": [],
+        "query": "-80.0134",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "180",
+          "value": "180"
+        },
+        "hide": 2,
+        "label": "Vista · este",
+        "name": "mapEast",
+        "options": [],
+        "query": "180",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "84.0326",
+          "value": "84.0326"
+        },
+        "hide": 2,
+        "label": "Vista · norte",
+        "name": "mapNorth",
+        "options": [],
+        "query": "84.0326",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "2023",
+          "value": "2023"
+        },
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "definition": "Años que la colección io-lulc-annual-v02 publica hoy",
+        "description": "Sale de la propia colección, no de una lista escrita a mano.",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Año del ráster",
+        "multi": false,
+        "name": "anio",
+        "options": [],
+        "query": "WITH ext AS (\n  SELECT (http_get('https://planetarycomputer.microsoft.com/api/stac/v1/collections/io-lulc-annual-v02')->>'body') AS cuerpo\n),\nrango AS (\n  SELECT CAST(substr((cuerpo::JSON->'extent'->'temporal'->'interval'->0->>0), 1, 4) AS INT) AS y0,\n         CAST(substr((cuerpo::JSON->'extent'->'temporal'->'interval'->0->>1), 1, 4) AS INT) AS y1\n  FROM ext\n)\nSELECT CAST(y AS VARCHAR) AS anio\nFROM rango, generate_series(y0, y1 - 1) AS t(y)\nORDER BY y DESC",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "17M",
+          "value": "17M"
+        },
+        "description": "Zona UTM/MGRS del COG que dibuja el fondo. 17M es Azuay; 30T, Madrid.",
+        "hide": 0,
+        "label": "Zona MGRS del fondo",
+        "name": "zona",
+        "options": [
+          {
+            "selected": true,
+            "text": "17M",
+            "value": "17M"
+          }
+        ],
+        "query": "17M",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "label": "Área dibujada (WKT)",
+        "name": "area",
+        "options": [],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "hide": 2,
+        "includeAll": false,
+        "label": "Escala de muestreo (m)",
+        "multi": false,
+        "name": "escala",
+        "options": [],
+        "query": "WITH v AS (\n  SELECT length('$area') > 8 AS dibujado,\n         try_cast('$mapWest' AS DOUBLE) AS w, try_cast('$mapEast' AS DOUBLE) AS e,\n         try_cast('$mapSouth' AS DOUBLE) AS s, try_cast('$mapNorth' AS DOUBLE) AS n\n), c AS (\n  SELECT dibujado,\n         CASE WHEN dibujado THEN ST_XMin(ST_GeomFromText('$area'))\n              WHEN coalesce(e,180.0) <= coalesce(w,-180.0) THEN -180.0 ELSE coalesce(w,-180.0) END AS w0,\n         CASE WHEN dibujado THEN ST_XMax(ST_GeomFromText('$area'))\n              WHEN coalesce(e,180.0) <= coalesce(w,-180.0) THEN  180.0 ELSE coalesce(e, 180.0) END AS e0,\n         CASE WHEN dibujado THEN greatest(-80.0134, ST_YMin(ST_GeomFromText('$area')))\n              ELSE greatest(-80.0134, least(84.0326, coalesce(s,-80.0134))) END AS s0,\n         CASE WHEN dibujado THEN least(84.0326, ST_YMax(ST_GeomFromText('$area')))\n              ELSE greatest(-80.0134, least(84.0326, coalesce(n, 84.0326))) END AS n0\n  FROM v\n), d AS (\n  SELECT dibujado, w0, e0, s0, n0,\n         CASE WHEN e0 <= w0 THEN 360.0 ELSE least(360.0, e0 - w0) END AS dlon,\n         (ln(tan((90 + greatest(n0, s0 + 0.0005)) * pi()/360))\n          - ln(tan((90 + s0) * pi()/360))) / (pi()/180) AS dmerc\n  FROM c\n), e AS (\n  SELECT *, greatest(dlon * 111319.490793 / 3500, dmerc * 111319.490793 / 3500, 10.0) AS escala FROM d\n)\nSELECT printf('%.4f', escala) AS escala FROM e",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "hide": 2,
+        "includeAll": false,
+        "label": "Área por muestra (km²)",
+        "multi": false,
+        "name": "areaPx",
+        "options": [],
+        "query": "WITH v AS (\n  SELECT length('$area') > 8 AS dibujado,\n         try_cast('$mapWest' AS DOUBLE) AS w, try_cast('$mapEast' AS DOUBLE) AS e,\n         try_cast('$mapSouth' AS DOUBLE) AS s, try_cast('$mapNorth' AS DOUBLE) AS n\n), c AS (\n  SELECT dibujado,\n         CASE WHEN dibujado THEN ST_XMin(ST_GeomFromText('$area'))\n              WHEN coalesce(e,180.0) <= coalesce(w,-180.0) THEN -180.0 ELSE coalesce(w,-180.0) END AS w0,\n         CASE WHEN dibujado THEN ST_XMax(ST_GeomFromText('$area'))\n              WHEN coalesce(e,180.0) <= coalesce(w,-180.0) THEN  180.0 ELSE coalesce(e, 180.0) END AS e0,\n         CASE WHEN dibujado THEN greatest(-80.0134, ST_YMin(ST_GeomFromText('$area')))\n              ELSE greatest(-80.0134, least(84.0326, coalesce(s,-80.0134))) END AS s0,\n         CASE WHEN dibujado THEN least(84.0326, ST_YMax(ST_GeomFromText('$area')))\n              ELSE greatest(-80.0134, least(84.0326, coalesce(n, 84.0326))) END AS n0\n  FROM v\n), d AS (\n  SELECT dibujado, w0, e0, s0, n0,\n         CASE WHEN e0 <= w0 THEN 360.0 ELSE least(360.0, e0 - w0) END AS dlon,\n         (ln(tan((90 + greatest(n0, s0 + 0.0005)) * pi()/360))\n          - ln(tan((90 + s0) * pi()/360))) / (pi()/180) AS dmerc\n  FROM c\n), e AS (\n  SELECT *, greatest(dlon * 111319.490793 / 3500, dmerc * 111319.490793 / 3500, 10.0) AS escala FROM d\n)\nSELECT printf('%.12f', 6371007.0 * escala * escala\n                       * (sin(radians(n0)) - sin(radians(s0)))\n                       / (dmerc * 111319.490793) / 1e6) AS area_px FROM e",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "hide": 2,
+        "includeAll": false,
+        "label": "Geometría (Esri JSON)",
+        "multi": false,
+        "name": "geom",
+        "options": [],
+        "query": "WITH v AS (\n  SELECT length('$area') > 8 AS dibujado,\n         try_cast('$mapWest' AS DOUBLE) AS w, try_cast('$mapEast' AS DOUBLE) AS e,\n         try_cast('$mapSouth' AS DOUBLE) AS s, try_cast('$mapNorth' AS DOUBLE) AS n\n), c AS (\n  SELECT dibujado,\n         CASE WHEN dibujado THEN ST_XMin(ST_GeomFromText('$area'))\n              WHEN coalesce(e,180.0) <= coalesce(w,-180.0) THEN -180.0 ELSE coalesce(w,-180.0) END AS w0,\n         CASE WHEN dibujado THEN ST_XMax(ST_GeomFromText('$area'))\n              WHEN coalesce(e,180.0) <= coalesce(w,-180.0) THEN  180.0 ELSE coalesce(e, 180.0) END AS e0,\n         CASE WHEN dibujado THEN greatest(-80.0134, ST_YMin(ST_GeomFromText('$area')))\n              ELSE greatest(-80.0134, least(84.0326, coalesce(s,-80.0134))) END AS s0,\n         CASE WHEN dibujado THEN least(84.0326, ST_YMax(ST_GeomFromText('$area')))\n              ELSE greatest(-80.0134, least(84.0326, coalesce(n, 84.0326))) END AS n0\n  FROM v\n), d AS (\n  SELECT dibujado, w0, e0, s0, n0,\n         CASE WHEN e0 <= w0 THEN 360.0 ELSE least(360.0, e0 - w0) END AS dlon,\n         (ln(tan((90 + greatest(n0, s0 + 0.0005)) * pi()/360))\n          - ln(tan((90 + s0) * pi()/360))) / (pi()/180) AS dmerc\n  FROM c\n), e AS (\n  SELECT *, greatest(dlon * 111319.490793 / 3500, dmerc * 111319.490793 / 3500, 10.0) AS escala FROM d\n)\nSELECT CASE WHEN dibujado\n       THEN '{\"rings\":' || json_extract(ST_AsGeoJSON(ST_GeomFromText('$area')), '$.coordinates')::VARCHAR\n            || ',\"spatialReference\":{\"wkid\":4326}}'\n       ELSE '{\"xmin\":' || w0 || ',\"ymin\":' || s0 || ',\"xmax\":' || e0 || ',\"ymax\":' || n0\n            || ',\"spatialReference\":{\"wkid\":4326}}'\n       END AS geom FROM e",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "hide": 2,
+        "includeAll": false,
+        "label": "Tipo de geometría",
+        "multi": false,
+        "name": "geomTipo",
+        "options": [],
+        "query": "SELECT CASE WHEN length('$area') > 8 THEN 'esriGeometryPolygon' ELSE 'esriGeometryEnvelope' END AS tipo",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Cobertura y uso del suelo — Sentinel-2 10 m (2017-2025)",
+  "uid": "lulc-mundial",
+  "version": 10,
+  "weekStart": ""
+}

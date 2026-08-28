@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Provider } from 'react-redux';
 import { StyleSheetManager } from 'styled-components';
 import { injectComponents } from '@kepler.gl/components';
@@ -173,6 +173,7 @@ export function KeplerMap({
   const [isReady, setIsReady] = useState(false);
   // Bumped on every rebuild; arms the viewport guard for the load window.
   const [guardArm, setGuardArm] = useState(0);
+  const rearmViewportGuard = useCallback(() => setGuardArm((n) => n + 1), []);
 
   const hasLoaded = useRef(false);
   const appliedConfig = useRef<SavedMapConfig | null | undefined>(undefined);
@@ -306,9 +307,10 @@ export function KeplerMap({
     onChangeGrafanaRange,
   });
 
-  // Auto-add trip and flow layers only on a fresh map; a saved config owns its
-  // layers.
-  useAutoLayers({ store, isReady, datasets, enabled: !mapConfig });
+  // Auto-add trip, flow and flow field layers only on a fresh map; a saved
+  // config owns its layers. Adding one can move the viewport, which then needs
+  // the same defending the initial load gets.
+  useAutoLayers({ store, isReady, datasets, enabled: !mapConfig, onLayerAdded: rearmViewportGuard });
 
   // Flow fields follow the view: traced once in geographic space the streamlines
   // thin out on zooming in and mat together on zooming out. The clock they run

@@ -30,8 +30,23 @@ export interface SavedViewport {
 /** kepler's `INITIAL_MAP_STATE` triple — the fingerprint of the clobber. */
 const KEPLER_DEFAULT = { latitude: 37.75043, longitude: -122.34679, zoom: 9 };
 
-/** How long after a rebuild the guard keeps watching. */
-export const GUARD_WINDOW_MS = 6000;
+/**
+ * How long after a rebuild the guard keeps watching.
+ *
+ * Bounded by how late kepler's echo can be, which is not a constant: the write
+ * back is debounced off deck's view-state changes, and deck emits one when the
+ * map finishes its first real render. On a machine rendering WebGL in software
+ * — CI, and the e2e suite — that has been measured at seven seconds after the
+ * data landed, which a six-second window missed by a second: the map framed
+ * itself on the data, then silently returned to San Francisco.
+ *
+ * The window is not what makes the guard safe. It only ever acts on a viewport
+ * that is *exactly* kepler's default triple, to a millionth of a degree, and
+ * never more than `GUARD_MAX_ATTEMPTS` times — a map a user has framed
+ * themselves does not match, and one they left on the default is put back where
+ * the data is, which is what they asked for by having no saved viewport.
+ */
+export const GUARD_WINDOW_MS = 15_000;
 
 /** How many restores the guard will attempt before standing down. */
 export const GUARD_MAX_ATTEMPTS = 3;

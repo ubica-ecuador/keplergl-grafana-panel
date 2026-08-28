@@ -1,4 +1,4 @@
-import { decideViewportGuard, isKeplerDefaultViewport, savedViewportOf } from './viewportGuard';
+import { decideViewportGuard, GUARD_WINDOW_MS, isKeplerDefaultViewport, savedViewportOf } from './viewportGuard';
 import type { SavedMapConfig } from '../data/mapConfig';
 
 /**
@@ -97,7 +97,7 @@ describe('decideViewportGuard', () => {
 
   it('disarms once the load window has passed', () => {
     expect(
-      decideViewportGuard({ elapsedMs: 6001, attempts: 0, mapState: KEPLER_DEFAULT, saved: WORLD, bounds: null })
+      decideViewportGuard({ elapsedMs: GUARD_WINDOW_MS + 1, attempts: 0, mapState: KEPLER_DEFAULT, saved: WORLD, bounds: null })
     ).toEqual({ kind: 'disarm' });
   });
 

@@ -1,9 +1,9 @@
 # Wind and other velocity fields
 
-A query that returns a **regular grid of velocities** becomes an animated field of streamlines — the
-paths a massless particle would take through it. Nothing to configure: give the panel coordinates
-and a velocity and it builds the field, smooths it, traces the lines and hands them to kepler's own
-Trip layer.
+A query that returns a **regular grid of velocities** becomes a **Flow field** layer: an animated
+field of streamlines, the paths a massless particle would take through the grid. Nothing to
+configure to get one — give the panel coordinates and a velocity and the layer appears — and
+everything to configure once you have it, in the layer's own panel inside the map.
 
 ```sql
 SELECT ts AS "time", lat, lon, speed, direction
@@ -15,13 +15,21 @@ ORDER BY lat, lon;
 ## This one is not a table of places
 
 Every other layer draws your rows. This one does not. The rows describe a **grid of vectors**, and
-what gets drawn are paths traced _through_ that grid — geometry the panel computes, which your
-query never contained. kepler receives those paths as a `_geojson` column and builds a Trip layer
-from them; it never sees your `speed` or `u` columns at all.
+what gets drawn are paths traced _through_ that grid — geometry the layer computes at draw time,
+which your query never contained.
+
+Your rows do reach the map: the dataset holds the lattice the query returned, columns and all, and
+the layer is pointed at the ones that carry the velocity. What it draws is not in them.
 
 That has a few consequences worth holding on to: the number of lines has nothing to do with the
-number of rows, the lines are recomputed when you pan or zoom, and a tooltip on a line shows the
-line's properties rather than a row of your table.
+number of rows, the lines are recomputed when you pan or zoom, and there is nothing to hover — a
+streamline is not a row.
+
+::: tip The dots are the grid
+kepler also guesses a Point layer from the same coordinates. The panel removes it: those dots are
+the lattice itself, honestly drawn and not what the query is about. Add one back from **Add Layer**
+if you want to see where your samples are.
+:::
 
 ## Two ways to give velocity
 
@@ -50,9 +58,10 @@ oceanographic convention (the direction of travel), add 180 in the query.
 `ugrd` and `vgrd` are the GRIB2 short names GFS ships, so a table converted straight from a GRIB
 file needs no renaming at all.
 
-::: warning These four roles are autodetect-only
-None of `u`, `v`, `speed` or `direction` appears in the Field mapping editor. Alias them in the
-query if your names are not in the lists above.
+::: tip The columns are the layer's, not the panel's
+Autodetection only picks the layer's opening guess. The four velocity columns are chosen in the
+layer's own **Columns** section, which also carries the switch between the two spellings — so a
+query whose names are in neither list above needs no aliasing, just a different column picked.
 :::
 
 ## What disqualifies a query
@@ -94,31 +103,33 @@ WHERE level_hpa = 700
 
 ### Smoothing
 
-The field is blurred over a **3-cell radius** before tracing, once, when the data arrives — the
-same smoothing Esri's own wind demo applies. At a 0.25° grid that is roughly 28 km per cell, so the
-blur averages over about a synoptic feature: enough to stop the tracer jittering between adjacent
-cells, not enough to erase anything a 25 km model actually resolves.
+The field is blurred before tracing, over a radius of **3 cells** by default — the same smoothing
+Esri's own wind demo applies. At a 0.25° grid that is roughly 28 km per cell, so the blur averages
+over about a synoptic feature: enough to stop the tracer jittering between adjacent cells, not
+enough to erase anything a 25 km model actually resolves.
+
+**Smoothing (cells)** under **Field** changes it. Zero traces the grid as it came, which on a coarse
+lattice makes the lines visibly wobble between cells.
 
 ## The lines follow the view
 
 ::: tip Nothing is drawn until you press play
-Streamlines are a Trip layer underneath, so at the start of the animation window every trail has
-zero length. A paused field is a blank map — press play on the timeline.
+At the start of the animation window every trail has zero length. A paused field is a blank map —
+press play on the timeline.
 :::
 
 Density and on-screen length hold steady as you zoom, because the field is **re-traced whenever the
 map settles** — a fixed budget of lines per screen, each a fixed number of pixels long. Only the
 share of the screen your data actually covers gets drawn.
 
-Re-tracing uses the stored field rather than re-reading the query, so panning costs no database
-work. The animation clock travels with it, so a re-trace does not jump the playhead.
+Re-tracing reads the grid already in the browser, so panning costs no database work, and it does not
+touch the dataset — the playhead keeps running through it.
 
-## Wind line density
+## Density
 
-The budget is **9,000 lines per full screen by default**, adjustable from 500 to 20,000, and it is
-**shared between the velocity-field layers on the same map**. Three pressure levels in one panel get
-3,000 each — not 9,000 each, which would put three times the line count into the same pixels and
-make the levels impossible to tell apart.
+**Lines per screen** under **Streamlines**: 9,000 by default, from 500 to 20,000, and per layer.
+Stack three pressure levels and each asks for its own allowance, so lower them together if the
+levels stop being tellable apart.
 
 There is no figure that suits every map:
 
@@ -129,8 +140,7 @@ There is no figure that suits every map:
   country.
 
 Lower it when the field looks matted; raise it when it looks sparse. For reference, Esri's own demo
-spends 6,000 on a single field, so the default is deliberately generous — at 2,000 per level the
-field read as sparse in testing.
+spends 6,000 on a single field, so the default is deliberately generous.
 
 ## Several levels at once
 
@@ -143,18 +153,36 @@ column mapped by accident lifts a layer kilometres into the air.
 The exaggeration is computed for you, and it is not a fixed factor. Pressure levels a few kilometres
 apart are invisible over a country hundreds of kilometres wide — 1000 to 700 hPa is 2.9 km over
 about 650 km, four parts in a thousand — so the stack is scaled to a **share of the current view**
-instead, about 15% of its width. One factor is used for the whole stack, so the levels keep their
-real proportions to each other, and the stack occupies the same share of the screen at every zoom.
+instead, about 15% of its width. It is derived from the **tallest level on the map**, not from each
+layer's own height, so the levels keep their real proportions to each other and the stack occupies
+the same share of the screen at every zoom.
+
+**Vertical exaggeration** under **Field** multiplies that. Leave it at 1 unless the stack reads
+wrong; set it the same on every level, or they stop being in proportion.
 
 ## Styling
 
-Colour, width and **Trail Length** live in kepler's own layer settings, because these are Trip
-layers underneath.
+Every knob is in the layer's own panel, grouped as **Colour**, **Streamlines**, **Animation** and
+**Field**.
 
-Trail length is the one that changes the character of the map most. Short reads as drifting
-particles; long reads as complete streamlines, closer to a classic wind chart. Every line carries
-its mean `speed`, so **Color Based On → speed** works.
+| Knob | Where | Does what |
+| --- | --- | --- |
+| Colour by speed | Colour | On, each line takes its colour from its mean speed through the ramp below. Off, the whole field is one colour. |
+| Lines per screen | Streamlines | The density budget. |
+| Stroke width | Streamlines | Line width in **pixels**, so it holds as you zoom. |
+| Trail length | Streamlines | How much of the cycle the moving trail spans, as a percentage. |
+| Line length | Streamlines | Vertices per streamline — how far a line reaches, not how much of it is lit. |
+| Cycle | Animation | The length of the loop, in seconds. |
+| Line lifetime | Animation | The share of the cycle one line lives for. |
+| Smoothing | Field | Blur radius in cells. |
+| Vertical exaggeration | Field | Multiplies the automatic stack factor. |
 
-The animation runs on a 60-second loop in which each line lives for a little over half the cycle,
-with staggered births — so trails appear and fade continuously, rather than the whole field
-restarting in unison every time the loop comes round.
+**Trail length** is the one that changes the character of the map most: short reads as drifting
+particles, long as complete streamlines, closer to a classic wind chart. It is a *share of the
+cycle* rather than an absolute number, so lengthening the cycle does not silently shorten every
+trail.
+
+Every line lives for a little over half the cycle by default, with births scattered through it — so
+trails appear and fade continuously, rather than the whole field restarting in unison every time the
+loop comes round. Raise **Line lifetime** to 1 and they all restart together, which is visible as a
+blink.

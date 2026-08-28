@@ -48,9 +48,10 @@ SELECT h3_pickup AS origin_h3, h3_drop AS dest_h3, COUNT(*) AS trips
 FROM journeys GROUP BY 1, 2;
 ```
 
-The four velocity roles are never renamed for kepler in any case, because a velocity field is
-consumed to trace streamlines and never reaches kepler as columns at all. Neither are the raster and
-WMS roles, for the same kind of reason: each becomes a dataset of its own.
+The four velocity roles are never renamed, because the flow field layer is pointed at whatever the
+query called them — and once the layer exists, they can be re-pointed from its own **Columns**
+section. The raster and WMS roles are not renamed either, for a different reason: each becomes a
+dataset of its own.
 :::
 
 ## The WMS roles make a second dataset too

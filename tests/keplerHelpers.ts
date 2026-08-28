@@ -66,6 +66,58 @@ export async function readKepler(map: Locator): Promise<KeplerSummary> {
   });
 }
 
+/** What the flow field spec asserts about a traced layer. */
+export interface FlowFieldSummary {
+  /** The animation window the layer settled on, in epoch ms. */
+  domain: [number, number] | null;
+  /** The window kepler's own clock is showing — the two must agree. */
+  animationDomain: [number, number] | null;
+  /** How many streamlines the layer traced. */
+  lines: number;
+  /** The knobs, as the layer panel left them. */
+  visConfig: Record<string, unknown>;
+}
+
+/**
+ * The first flow field layer's state, including the geometry it traced.
+ *
+ * Its own reader rather than a field of `KeplerSummary`: what is worth
+ * asserting here lives in `layerData`, which no other spec looks at, and which
+ * for this layer is the whole subject — the rows are a lattice of samples and
+ * the lines are computed from them.
+ */
+export async function readFlowField(map: Locator): Promise<FlowFieldSummary | null> {
+  return map.evaluate((node) => {
+    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
+    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
+    let store = null;
+    while (fiber) {
+      const candidate = fiber.memoizedProps && fiber.memoizedProps.store;
+      if (candidate && typeof candidate.getState === 'function') {
+        store = candidate;
+        break;
+      }
+      fiber = fiber.return;
+    }
+    if (!store) {
+      throw new Error('kepler store not found from map node');
+    }
+    const entry = Object.values(store.getState().keplerGl ?? {})[0] as any;
+    const visState = entry?.visState;
+    const index = (visState?.layers ?? []).findIndex((l: { type?: string }) => l.type === 'flowfield');
+    if (index < 0) {
+      return null;
+    }
+    const layer = visState.layers[index];
+    return {
+      domain: layer.config?.animation?.domain ?? null,
+      animationDomain: visState.animationConfig?.domain ?? null,
+      lines: visState.layerData?.[index]?.data?.length ?? 0,
+      visConfig: layer.config?.visConfig ?? {},
+    };
+  });
+}
+
 /** A dataset row with where it sits on screen and what it holds. */
 export interface ProjectedRow {
   x: number;

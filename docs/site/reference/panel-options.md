@@ -21,12 +21,16 @@ JSON, which is what you need for dashboards-as-code.
 | Sync time with other maps      | `peerTimeSync`        | `false`    | Shares the time filter and trip playhead with the other maps on the dashboard that have this on, in the browser. See [Peer time sync](../guide/dashboard/peer-time-sync).                                         |
 | Trip layer                     | `tripLayerMode`       | `table`    | `table` keeps one row per point and every column with it; `geojson` folds each trip into one row and keeps only the path. See [Trajectories](../guide/data/trajectories).                                         |
 | Flow line style                | `flowRenderMode`      | `straight` | `straight`, `curved`, `animated-straight`. See [Origin–destination flows](../guide/data/flows).                                                                                                                   |
-| Wind line density              | `windDensity`         | `9000`     | Streamlines per full screen, shared between the velocity-field layers on it. Range 500–20,000, step 500. See [Velocity fields](../guide/data/velocity-fields).                                                    |
 | Base map                       | `basemap`             | `auto`     | `auto`, `dark-matter`, `positron`, `voyager`, `grafana-satellite`, `grafana-satellite-terrain`, `grafana-topographic-terrain`, `custom`. See [Base maps and relief](../guide/map/basemaps-and-relief).            |
 | Style URL                      | `customBasemapUrl`    | —          | **Only shown when `basemap` is `custom`.** A MapLibre `style.json` served from your own network.                                                                                                                  |
 | Raster tile server             | `rasterServerUrl`     | `https://titiler.xyz` | TiTiler-compatible server that turns a COG into tiles, for queries returning a `raster_url` column. It reads the imagery on the map's behalf, so it has to be able to reach it — the public default cannot see anything private, and is handed the URL you point it at. A `.pmtiles` URL needs no server and ignores this. See [Rasters](../guide/data/rasters). |
 | Raster colour ramp             | `rasterColormap`      | —          | Colour ramp for rasters a query produces: `blues`, `greens`, `reds`, `viridis`, `magma`, `greys`, `rdylbu`, `spectral`. Empty leaves kepler's own `cfastie`, which is built for drone NDVI and is not monotonic — on a continuous field it reads as confetti. Applies to single-band rasters; a true-colour scene is drawn from its bands. See [Rasters](../guide/data/rasters#colour). |
 | Zarr value range               | `zarrRescale`         | —          | Range a Zarr variable is stretched over, as `min,max` in the store's own units — `0,30` for mm/day of rain, `270,305` for kelvin. Empty stretches each tile over its own extremes, so neighbouring tiles disagree about what a colour means and the map reads as patchwork. The ramp above is shared. See [Zarr stores](../guide/data/zarr#the-colour-range-is-not-optional). |
+
+::: tip Velocity fields are configured on the layer
+There is no wind option here. A flow field's density, trail, cycle and smoothing live in its own
+panel inside the map, beside its colour — see [Velocity fields](../guide/data/velocity-fields).
+:::
 
 ## Cross-filtering
 

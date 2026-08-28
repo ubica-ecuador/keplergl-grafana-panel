@@ -49,17 +49,19 @@ carrying only the path: far less data, nothing else survives.
 
 Backed by deck.gl's `TripsLayer`, plus `ScenegraphLayer` when a 3D model rides the head of the trip.
 
-## Velocity fields are Trip layers
+## Velocity fields run on the same clock
 
 ![Trajectories on the spike dashboard](/img/guide-trips.jpg)
 
-A query returning a grid of wind or current vectors does not produce a layer type of its own. The
-panel traces streamlines through the field — the paths a massless particle would take — and hands
-kepler their geometry, which kepler renders as a Trip layer.
+A query returning a grid of wind or current vectors produces a **Flow field** layer, which traces
+streamlines through the field — the paths a massless particle would take — and animates a trail
+along each of them.
 
-So everything on this page applies to a wind map too: trail length, playback, the animation clock.
-What differs is that the geometry is computed rather than queried, and re-computed whenever the map
-settles, so density and on-screen line length stay constant as you zoom.
+So the playback on this page applies to a wind map too: the same clock, the same play button, the
+same blank map when it is paused. What differs is that the geometry is computed rather than queried,
+and re-computed whenever the map settles, so density and on-screen line length stay constant as you
+zoom — and that its trail, cycle and density are the layer's own settings rather than the Trip
+layer's.
 
 See [Wind and other velocity fields](../guide/data/velocity-fields).
 

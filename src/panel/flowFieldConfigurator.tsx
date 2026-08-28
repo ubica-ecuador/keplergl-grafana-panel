@@ -60,13 +60,15 @@ function FlowFieldLayerConfig({ layer, visConfiguratorProps, layerConfiguratorPr
         <ConfigGroupCollapsibleContent>{slider('opacity')}</ConfigGroupCollapsibleContent>
       </LayerConfigGroup>
 
+      {/* Density, width and trail are the three the field is actually shaped
+          with, so none of them is behind the group's expander: a trail hidden
+          one click away is the difference between drifting particles and a
+          classic wind chart, and kepler's own default for it draws dots. */}
       <LayerConfigGroup label={'flowfield.group.streamlines'} collapsible>
         {slider('density')}
-        <ConfigGroupCollapsibleContent>
-          {slider('lineLength')}
-          {slider('thickness')}
-          {slider('trailShare')}
-        </ConfigGroupCollapsibleContent>
+        {slider('thickness')}
+        {slider('trailShare')}
+        <ConfigGroupCollapsibleContent>{slider('lineLength')}</ConfigGroupCollapsibleContent>
       </LayerConfigGroup>
 
       <LayerConfigGroup label={'flowfield.group.animation'} collapsible>

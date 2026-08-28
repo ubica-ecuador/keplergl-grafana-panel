@@ -29,6 +29,15 @@ export const FLOW_FIELD_MESSAGES: Record<string, string> = {
   'flowfield.smoothing': 'Smoothing (cells)',
   'flowfield.elevationScale': 'Vertical exaggeration',
   'flowfield.colorBySpeed': 'Colour by speed',
+
+  // The column pickers kepler renders for this layer's two column modes. It
+  // knows `lat`, `lng` and `altitude` already; the four that name a velocity
+  // have never been columns of anything before — until now they were read from
+  // the query and consumed to trace, and never reached kepler as columns at all.
+  'columns.u': 'u (eastward)',
+  'columns.v': 'v (northward)',
+  'columns.speed': 'speed',
+  'columns.direction': 'direction (from)',
 };
 
 /**

@@ -25,9 +25,10 @@ tutorials, a layer gallery and a complete option reference.
 - **Automatic trip animation** — a query with a trip id and a time becomes an animated kepler Trip
   layer with a playback timeline, no manual layer setup.
 - **Origin-destination flow layers**, automatic — an OD query becomes an animated flow map.
-- **Animated wind and current fields** — a grid of velocities becomes a field of streamlines that
-  follows the view, keeping its density and line length steady as you zoom. Several levels can be
-  stacked in one map.
+- **Animated wind and current fields** — a grid of velocities becomes a Flow field layer that traces
+  streamlines through it, following the view so its density and line length hold steady as you zoom.
+  Density, trail, cycle and smoothing are set on the layer itself. Several levels can be stacked in
+  one map.
 - **Dashboard time range synced with the map** — one-way, both ways, or published to variables so
   the map keeps its whole dataset while the slider drives the other panels.
 - **Cross-filtering, both ways** — a filter set on the map drives a dashboard variable, and changing

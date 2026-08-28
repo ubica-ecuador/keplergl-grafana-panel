@@ -95,11 +95,23 @@ kepler auto-detects layers from column names, but not all of them:
 | ------------------ | ----------------------------------------------------------------------------------------------- |
 | **Trip**           | kepler's own heuristic insists on a column literally named `id`                                 |
 | **Flow**           | kepler does not auto-detect flows at all                                                        |
-| **Velocity field** | not a layer type — the panel traces streamlines and hands kepler their geometry as a Trip layer |
+| **Flow field**     | a layer type kepler does not have — the panel registers it, and it traces its own streamlines through a grid of velocities |
 | **Raster tile**    | kepler builds one from its own tileset form, but not from a query — the panel turns a `raster_url` column into the dataset it needs |
 | **WMS**            | likewise, from a `wms_url` and `wms_layer` pair                                                 |
 
 See [How a query becomes a map](../guide/data/how-a-query-becomes-a-map).
+
+## Two layer types kepler does not ship
+
+**Zarr** and **Flow field** are registered by the panel into kepler's own layer registry, so they
+appear in the layer list and in the type selector alongside the rest. Nothing upstream corresponds
+to either: kepler's remote tile formats are MVT, PMTiles and WMS, none of which is a store of
+compressed arrays; and a velocity grid has no layer at all, because what it draws is in none of its
+rows.
+
+The flow field also carries a settings panel of its own — density, stroke, trail, cycle, smoothing
+and the vertical exaggeration of a stack of levels — which kepler renders through a layer
+configurator the panel extends. See [Velocity fields](../guide/data/velocity-fields).
 
 ## A WMS gets a clock it does not have upstream
 

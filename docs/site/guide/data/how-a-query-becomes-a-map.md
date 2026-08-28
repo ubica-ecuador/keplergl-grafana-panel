@@ -123,9 +123,9 @@ See [Origin–destination flows](./flows).
 ## The one query that is not a table of places
 
 A **velocity field** is different in kind. Its rows describe a grid of vectors, and what gets drawn
-is not the rows but the paths traced _through_ them. The panel consumes the grid, smooths it, traces
-streamlines, and hands kepler their geometry — so kepler detects a Trip layer from `_geojson` and
-never sees your `u`/`v` or `speed`/`direction` columns at all. See
+is not the rows but the paths traced _through_ them. The rows travel to kepler as they came — one
+timestep of the lattice, columns and all — and a **Flow field** layer over them builds the field,
+smooths it and traces the streamlines, at draw time, from the current viewport. See
 [Wind and other velocity fields](./velocity-fields).
 
 A query qualifies when it has coordinates and a velocity **and no trip id**. That last condition

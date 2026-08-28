@@ -144,19 +144,6 @@ export interface KeplerPanelOptions {
   flowRenderMode?: FlowRenderMode;
 
   /**
-   * How many wind streamlines to draw across a full screen, shared between the
-   * velocity-field layers on it.
-   *
-   * There is no value that suits every map. A country covering a third of the
-   * view wants more than a pair of three-kilometre patches around two weather
-   * stations, and a field of parallel arrows reads as a solid block at a density
-   * a swirling one reads well at, and zooming into a single station's patch
-   * fills the screen with what was a comfortable count across a country.
-   * Defaults to `9000`.
-   */
-  windDensity?: number;
-
-  /**
    * Which of kepler's two Trip layer shapes a trajectory query loads as.
    * Defaults to `table`, which keeps one row per point and with it every column
    * the query returned.

@@ -102,8 +102,7 @@ nothing.
 ## 5. Press play
 
 ::: warning The map looks empty until the clock runs
-Streamlines are a Trip layer underneath, and at the start of the animation window every trail has
-zero length. A paused field is a blank map.
+At the start of the animation window every trail has zero length, so a paused field is a blank map.
 
 Press **play** on the timeline at the bottom. The window is 60 seconds long and loops.
 :::
@@ -111,12 +110,14 @@ Press **play** on the timeline at the bottom. The window is 60 seconds long and 
 This catches everyone once, including the person who wrote this page: the panel reported 4,826
 traced lines and drew nothing at all, because the playhead was parked at the start.
 
-## 6. Tune the density
+## 6. Tune it, on the layer
 
-**Panel options → Wind line density**, default 9,000 lines per full screen.
+Open the layer in the side panel — it is called **Flow field**. Everything about how the field is
+drawn is in there, in four groups.
 
-Zoom in and out. The density and the on-screen line length hold steady, because the field is
-re-traced whenever the map settles — a fixed budget of lines per _screen_, not per dataset.
+Start with **Streamlines → Lines per screen**, 9,000 by default. Zoom in and out: the density and
+the on-screen line length hold steady, because the field is re-traced whenever the map settles — a
+fixed budget of lines per _screen_, not per dataset.
 
 There is no value that suits every map. A field over a whole country wants more lines than a pair of
 three-kilometre patches around two weather stations, and a field of parallel arrows reads as a solid
@@ -125,21 +126,25 @@ it looks sparse.
 
 ## 7. Style it
 
-These are Trip layers, so the controls are the Trip layer's.
+Two knobs decide the character of the map, both under **Streamlines**:
 
-**Trail Length** decides the character: short reads as drifting particles, long as complete
-streamlines closer to a classic wind chart.
+- **Trail length** — how much of the cycle the moving trail spans. Short reads as drifting
+  particles, long as complete streamlines closer to a classic wind chart.
+- **Stroke width** — in pixels, so it holds as you zoom.
 
-Every line carries its mean speed, so **Color Based On → speed** works.
+Colour comes from speed by default: each line is coloured by its own mean, through the ramp under
+**Colour**. Turn **Colour by speed** off for a single flat colour.
+
+**Animation → Cycle** is the length of the loop. The clock at the bottom follows it.
 
 ## 8. Two levels at once
 
 Add a second query for another height — `wind_speed_80m` and `wind_direction_80m` from the same
-endpoint. Each query becomes its own layer, and the density budget is **shared between them**: two
-levels get half the lines each, rather than twice the lines in the same pixels.
+endpoint. Each query becomes its own layer, with its own density: two levels asking for 9,000 each
+put 18,000 lines in the same pixels, so lower both if they stop being tellable apart.
 
-To separate them vertically, return a constant height column and map it to **Field mapping →
-Altitude**, then tilt with the 3D control.
+To separate them vertically, return a constant height column and bind it to the layer's **altitude**
+column, then tilt with the 3D control.
 
 Height is opt-in on purpose — an `elevation` column mapped by accident lifts a layer kilometres into
 the air. Expect to need a lot of exaggeration; the panel computes it from the viewport, scaling the
@@ -163,7 +168,7 @@ half-broken grid produces a patchy map rather than a smooth wrong one.
   destroy that. Round, and space wider than the snapping error.
 - A field with no lines and no error is the signature of a failed grid inference.
 - Streamlines draw nothing until you press play.
-- Density is a per-screen budget shared between layers.
+- Density is a per-screen budget, and it lives on the layer along with everything else.
 
 ## Where to go from here
 
