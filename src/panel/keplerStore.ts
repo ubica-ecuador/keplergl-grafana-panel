@@ -1,4 +1,4 @@
-import { Layer, LayerClasses } from '@kepler.gl/layers';
+import { Layer, LayerClasses, RasterTileIcon } from '@kepler.gl/layers';
 import { keplerGlReducer, enhanceReduxMiddleware } from '@kepler.gl/reducers';
 import { applyMiddleware, combineReducers, legacy_createStore, Store } from 'redux';
 
@@ -13,6 +13,30 @@ import { buildTimedWmsLayer } from './wmsDeckLayer';
 import { withWmsTime } from './wmsTimeLayer';
 import { buildZarrDeckLayer } from './zarrDeckLayer';
 import { makeZarrLayer } from './zarrTileLayer';
+
+/**
+ * The icon a stock layer shows, borrowed for one of ours.
+ *
+ * Read off the class rather than imported: kepler exports the raster tile icon
+ * from its package index but not the arc one, and the only other way to it is a
+ * path into `dist/esm` that the next release is free to move. `layerIcon` is a
+ * getter on the prototype returning a constant, so it can be read without
+ * building a layer.
+ *
+ * Returns undefined if kepler ever stops exposing it, and the factories fall
+ * back to the base class's placeholder — a missing icon is not worth a crash.
+ */
+export function iconOf(LayerClass: unknown): unknown {
+  const prototype = (LayerClass as { prototype?: object } | undefined)?.prototype;
+  if (!prototype) {
+    return undefined;
+  }
+  const descriptor = Object.getOwnPropertyDescriptor(prototype, 'layerIcon');
+  return descriptor?.get?.call(prototype);
+}
+
+/** The arc layer's icon, which the flow field borrows: both draw curves. */
+const ARC_ICON = iconOf(LayerClasses.arc);
 
 /**
  * kepler's layer classes, with the Trip layer repaired, the WMS layer taught to
@@ -34,7 +58,7 @@ const layerClasses = {
   // wrap. Built on the base `Layer` rather than on a concrete one, which is
   // where `RasterTileLayer` starts from too: a tileset has no rows, so every
   // concrete layer's column handling would be dead weight at best.
-  zarr: makeZarrLayer(Layer as never, buildZarrDeckLayer),
+  zarr: makeZarrLayer(Layer as never, buildZarrDeckLayer, RasterTileIcon),
   // A third addition, and the narrowest: it draws the same COGs kepler's own
   // raster layer draws, but asks the server for a finished picture instead of
   // raw arrays. kepler's layer cannot colour a *classified* raster — it rescales
@@ -42,20 +66,20 @@ const layerClasses = {
   // colour — while TiTiler reads the palette the file carries. Kept as a
   // separate class rather than a mode of the stock one so nothing changes for
   // the imagery that path already draws well.
-  cogPainted: makeCogPaintedLayer(Layer as never, buildCogPaintedDeckLayer),
+  cogPainted: makeCogPaintedLayer(Layer as never, buildCogPaintedDeckLayer, RasterTileIcon),
   // A fourth addition, and the one that needs no file at all. An ArcGIS Image
   // Service is a mosaic dataset behind an endpoint: it holds the catalogue, the
   // rule for choosing among its rasters and a pyramid over the whole thing, so
   // it answers for any extent at any zoom. Where the COG paths need one query
   // per file — 200 of them for a global 10 m collection — this needs one.
-  esriImage: makeEsriImageLayer(Layer as never, buildEsriImageDeckLayer),
+  esriImage: makeEsriImageLayer(Layer as never, buildEsriImageDeckLayer, RasterTileIcon),
   // Also an addition, and for a stranger reason than the Zarr one: what this
   // layer draws is in no dataset. The rows are a lattice of velocity samples and
   // what is painted are the paths a particle would take through them — geometry
   // computed at draw time, from the viewport. Built on the base `Layer` because
   // the Trip layer it ultimately paints is all about turning rows into paths,
   // and every part of that would have to be overridden.
-  flowfield: makeFlowFieldLayer(Layer as never, buildFlowFieldDeckLayer, makeScreenCamera),
+  flowfield: makeFlowFieldLayer(Layer as never, buildFlowFieldDeckLayer, makeScreenCamera, ARC_ICON),
 };
 
 /**

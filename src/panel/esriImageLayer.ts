@@ -1,3 +1,4 @@
+import type { LayerIcon } from './cogPaintedLayer';
 import { esriImageUrl, type TileBounds } from '../data/esriImageUrl';
 
 /**
@@ -41,6 +42,8 @@ type Constructor<T> = new (...args: any[]) => T;
 /** The members of kepler's base layer this subclass touches. */
 interface EsriImageLayerLike {
   id: string;
+  /** kepler's placeholder, when the factory was handed no icon of its own. */
+  readonly layerIcon?: unknown;
   config: { visConfig?: { opacity?: number; esriMosaicRule?: unknown } };
 }
 
@@ -103,7 +106,8 @@ export function esriDeckProps(args: {
  */
 export function makeEsriImageLayer<C extends Constructor<object>>(
   BaseLayer: C,
-  buildDeckLayer: EsriImageDeckLayerFactory
+  buildDeckLayer: EsriImageDeckLayerFactory,
+  icon?: LayerIcon
 ): C {
   class EsriImageLayer extends (BaseLayer as Constructor<EsriImageLayerLike>) {
     constructor(...args: any[]) {
@@ -116,6 +120,14 @@ export function makeEsriImageLayer<C extends Constructor<object>>(
       (this as unknown as { registerVisConfig(configs: Record<string, string>): void }).registerVisConfig({
         opacity: 'opacity',
       });
+    }
+
+
+    get layerIcon(): unknown {
+      // Left to the base class when none was handed in, rather than reported as
+      // undefined: kepler draws a placeholder for a layer with no icon, and an
+      // undefined one would leave a blank where that should be.
+      return icon ?? super.layerIcon;
     }
 
     get type(): string {

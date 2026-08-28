@@ -28,6 +28,18 @@ export interface CogPaintedMetadata {
   sourceUrl: string;
 }
 
+
+/**
+ * What kepler draws beside the layer's name.
+ *
+ * Handed in rather than imported, for the same reason the base class and the
+ * deck factory are: this module stays free of kepler so it can be exercised
+ * with stubs. Omitted, the base class's placeholder stands — which is what
+ * every layer this plugin adds used to show, all four indistinguishable from
+ * each other in the layer list and in "Add Layer".
+ */
+export type LayerIcon = unknown;
+
 /** Builds the deck layer — see `cogPaintedDeckLayer.ts`. */
 export type CogPaintedDeckLayerFactory = (props: Record<string, unknown>) => unknown;
 
@@ -38,6 +50,8 @@ type Constructor<T> = new (...args: any[]) => T;
 /** The members of kepler's base layer this subclass touches. */
 interface CogPaintedLayerLike {
   id: string;
+  /** kepler's placeholder, when the factory was handed no icon of its own. */
+  readonly layerIcon?: unknown;
   config: { visConfig?: { opacity?: number; cogScene?: unknown } };
 }
 
@@ -97,7 +111,8 @@ export function cogPaintedDeckProps(args: {
  */
 export function makeCogPaintedLayer<C extends Constructor<object>>(
   BaseLayer: C,
-  buildDeckLayer: CogPaintedDeckLayerFactory
+  buildDeckLayer: CogPaintedDeckLayerFactory,
+  icon?: LayerIcon
 ): C {
   class CogPaintedLayer extends (BaseLayer as Constructor<CogPaintedLayerLike>) {
     constructor(...args: any[]) {
@@ -109,6 +124,14 @@ export function makeCogPaintedLayer<C extends Constructor<object>>(
       (this as unknown as { registerVisConfig(configs: Record<string, string>): void }).registerVisConfig({
         opacity: 'opacity',
       });
+    }
+
+
+    get layerIcon(): unknown {
+      // Left to the base class when none was handed in, rather than reported as
+      // undefined: kepler draws a placeholder for a layer with no icon, and an
+      // undefined one would leave a blank where that should be.
+      return icon ?? super.layerIcon;
     }
 
     get type(): string {

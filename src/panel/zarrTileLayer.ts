@@ -1,3 +1,4 @@
+import type { LayerIcon } from './cogPaintedLayer';
 import { zarrTileTemplate } from '../data/zarrTileUrl';
 
 /**
@@ -38,6 +39,8 @@ type Constructor<T> = new (...args: any[]) => T;
 /** The members of kepler's base layer this subclass touches. */
 interface ZarrLayerLike {
   id: string;
+  /** kepler's placeholder, when the factory was handed no icon of its own. */
+  readonly layerIcon?: unknown;
   config: { visConfig?: { opacity?: number; zarrLabel?: unknown } };
 }
 
@@ -109,9 +112,18 @@ export function zarrDeckProps(args: {
  */
 export function makeZarrLayer<C extends Constructor<object>>(
   BaseLayer: C,
-  buildDeckLayer: ZarrDeckLayerFactory
+  buildDeckLayer: ZarrDeckLayerFactory,
+  icon?: LayerIcon
 ): C {
   class ZarrTileLayer extends (BaseLayer as Constructor<ZarrLayerLike>) {
+
+    get layerIcon(): unknown {
+      // Left to the base class when none was handed in, rather than reported as
+      // undefined: kepler draws a placeholder for a layer with no icon, and an
+      // undefined one would leave a blank where that should be.
+      return icon ?? super.layerIcon;
+    }
+
     get type(): string {
       return 'zarr';
     }

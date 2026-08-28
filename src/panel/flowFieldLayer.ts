@@ -1,3 +1,4 @@
+import type { LayerIcon } from './cogPaintedLayer';
 import {
   buildWindField,
   GridFrame,
@@ -252,6 +253,8 @@ interface LayerColumn {
 /** The members of kepler's base layer this subclass touches. */
 interface FlowFieldLayerLike {
   id: string;
+  /** kepler's placeholder, when the factory was handed no icon of its own. */
+  readonly layerIcon?: unknown;
   config: {
     dataId?: string;
     columns?: Record<string, LayerColumn>;
@@ -481,12 +484,20 @@ export function colorForSpeed(
 export function makeFlowFieldLayer<C extends Constructor<object>>(
   BaseLayer: C,
   buildDeckLayer: FlowFieldDeckLayerFactory,
-  makeCamera: ScreenCameraFactory
+  makeCamera: ScreenCameraFactory,
+  icon?: LayerIcon
 ): C {
   class FlowFieldLayer extends (BaseLayer as Constructor<FlowFieldLayerLike>) {
     constructor(props?: Record<string, unknown>) {
       super(props);
       this.registerVisConfig(FLOW_FIELD_VIS_CONFIGS as unknown as Record<string, unknown>);
+    }
+
+    get layerIcon(): unknown {
+      // Left to the base class when none was handed in, rather than reported as
+      // undefined: kepler draws a placeholder for a layer with no icon, and an
+      // undefined one would leave a blank where that should be.
+      return icon ?? super.layerIcon;
     }
 
     get type(): string {
