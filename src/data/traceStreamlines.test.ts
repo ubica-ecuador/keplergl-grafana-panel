@@ -387,3 +387,63 @@ describe('traceStreamlines — travel stays inside small patches', () => {
     expect(parchePequeno).toBeLessThan(parcheGrande / 3);
   });
 });
+
+describe('traceStreamlines — carrying the flow across the loop', () => {
+  const CYCLE = 30_000;
+
+  const lines = (seamless: boolean) =>
+    traceStreamlines(uniformField(10, 2), {
+      count: 400,
+      seed: 4,
+      baseMs: 0,
+      cycleMs: CYCLE,
+      lifeFraction: 0.55,
+      seamless,
+    });
+
+  /** How many lines are mid-flight at a moment of the cycle. */
+  const aliveAt = (drawn: Array<{ path: number[][] }>, t: number) =>
+    drawn.filter((l) => l.path[0][3] <= t && t <= l.path[l.path.length - 1][3]).length;
+
+  it('keeps the same number of lines alive from one end of the cycle to the other', () => {
+    // The defect this exists for: with births clamped so no line outlives the
+    // cycle, none is born in its last stretch and none has been alive long at
+    // the start, so the field empties into the loop and refills out of it.
+    const drawn = lines(true);
+    const counts = [0, 0.25, 0.5, 0.75, 1].map((f) => aliveAt(drawn, f * CYCLE));
+
+    expect(Math.min(...counts)).toBeGreaterThan(0.7 * Math.max(...counts));
+  });
+
+  it('empties at both ends without it, which is what it looks like', () => {
+    const drawn = lines(false);
+
+    expect(aliveAt(drawn, 0)).toBe(0);
+    expect(aliveAt(drawn, CYCLE)).toBeLessThan(0.05 * aliveAt(drawn, CYCLE / 2));
+  });
+
+  it('draws the crossing lines twice, a whole cycle apart', () => {
+    // The two are the same geometry either side of the loop: the first is
+    // finishing as the playhead reaches the end, the second already mid-flight
+    // the moment it wraps. deck reads a path's times as increasing, so one path
+    // cannot do both.
+    const drawn = lines(true);
+    const ghosts = drawn.filter((l) => l.path[0][3] < 0);
+
+    expect(ghosts.length).toBeGreaterThan(0);
+
+    const twin = drawn.find(
+      (l) => l.path[0][3] === ghosts[0].path[0][3] + CYCLE && l.speed === ghosts[0].speed
+    );
+    expect(twin).toBeDefined();
+    // Same places, only the clock differs.
+    expect(twin!.path.map((v) => [v[0], v[1]])).toEqual(ghosts[0].path.map((v) => [v[0], v[1]]));
+  });
+
+  it('spreads the births over the whole cycle rather than its first half', () => {
+    const births = lines(true).map((l) => l.path[0][3]);
+    const inLateCycle = births.filter((b) => b > 0.6 * CYCLE).length;
+
+    expect(inLateCycle).toBeGreaterThan(0);
+  });
+});

@@ -53,6 +53,11 @@ export interface StreamlineOptions {
    */
   lifeFraction?: number;
   /**
+   * Carry a line whose life runs past the end of the cycle round to the start of
+   * it, so the field never empties and never refills — see `emit`.
+   */
+  seamless?: boolean;
+  /**
    * Rescale times so the median streamline lasts this long. Omit to keep
    * physical time.
    */
@@ -260,55 +265,71 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
 
   const scale = timeScale(traced, options.targetLifetimeMs);
 
-  return traced.map((vertices, id) => {
-    const total = vertices[vertices.length - 1].seconds;
-    const meanSpeed = vertices.reduce((sum, p) => sum + p.speed, 0) / vertices.length;
-
-    /**
-     * When a cycle is given, every streamline is stretched onto the same window
-     * so all of them are drawn at all times — the earth.nullschool look, where
-     * what moves is a short trail rather than the whole line appearing and
-     * vanishing.
-     *
-     * Only the *total* is normalised. The spacing of the vertices inside the
-     * line keeps following the local wind, so a trail still slows through slack
-     * air. What is lost is the speed contrast *between* lines; that moves to
-     * colour, which is why `speed` rides along on every row.
-     */
-    const timeAt =
-      options.cycleMs !== undefined && total > 0
-        ? cycleClock(options.baseMs, options.cycleMs, options.lifeFraction, total, random)
-        : (p: Vertex) => options.baseMs + offsetFor(id) + Math.round(p.seconds * 1000 * scale);
-
-    return {
-      path: vertices.map(
-        (p) => [p.lon, p.lat, settings.altitudeMeters, timeAt(p)] as [number, number, number, number]
-      ),
-      speed: Number(meanSpeed.toFixed(2)),
-    };
-  });
+  return traced.flatMap((vertices, id) => emit(vertices, id));
 
   /**
-   * Maps a streamline's own elapsed seconds onto the shared animation cycle.
+   * One traced polyline as the streamlines that draw it — usually one, and two
+   * when it has to cross the loop.
    *
-   * With no life fraction the line fills the cycle exactly, which keeps the
-   * whole field on screen but makes every trail restart together when kepler
-   * loops — a visible blink. A fraction below 1 shortens each line's window and
-   * scatters its birth through the cycle, so trails come and go continuously,
-   * the way a patch that is genuinely simulating flow should look. Births are
-   * clamped so nothing runs past the end of the cycle, which would stretch
-   * kepler's animation domain past the loop point.
+   * When a cycle is given, every streamline is stretched onto the same window,
+   * so what moves is a short trail rather than the whole line appearing and
+   * vanishing — the earth.nullschool look. Only the *total* is normalised: the
+   * spacing of the vertices inside the line keeps following the local wind, so a
+   * trail still slows through slack air. What is lost is the speed contrast
+   * *between* lines; that moves to colour, which is why `speed` rides along.
+   *
+   * A line whose life runs past the end of the cycle is emitted a second time,
+   * with every vertex time a whole cycle earlier. The two are the same geometry
+   * seen either side of the loop: as the playhead reaches the end the first is
+   * finishing, and the moment it wraps to the start the second is already
+   * mid-flight, at the same place, with the same trail behind it. deck reads a
+   * path's timestamps as increasing, so a line that wraps cannot be one path —
+   * and without the second the field visibly empties into the loop and refills
+   * out of it.
    */
-  function cycleClock(
-    baseMs: number,
-    cycleMs: number,
-    lifeFraction: number | undefined,
-    totalSeconds: number,
-    nextRandom: () => number
-  ): (p: Vertex) => number {
-    const life = Math.min(1, Math.max(0.05, lifeFraction ?? 1)) * cycleMs;
-    const birth = lifeFraction === undefined ? 0 : Math.round(nextRandom() * (cycleMs - life));
-    return (p: Vertex) => baseMs + birth + Math.round((p.seconds / totalSeconds) * life);
+  function emit(vertices: Vertex[], id: number): Streamline[] {
+    const total = vertices[vertices.length - 1].seconds;
+    const meanSpeed = vertices.reduce((sum, p) => sum + p.speed, 0) / vertices.length;
+    const speed = Number(meanSpeed.toFixed(2));
+    const pathOf = (timeAt: (p: Vertex) => number): Streamline['path'] =>
+      vertices.map((p) => [p.lon, p.lat, settings.altitudeMeters, timeAt(p)] as [number, number, number, number]);
+
+    if (options.cycleMs === undefined || total <= 0) {
+      return [
+        {
+          path: pathOf((p) => options.baseMs + offsetFor(id) + Math.round(p.seconds * 1000 * scale)),
+          speed,
+        },
+      ];
+    }
+
+    const cycleMs = options.cycleMs;
+    const life = Math.min(1, Math.max(0.05, options.lifeFraction ?? 1)) * cycleMs;
+    const birth = birthWithin(cycleMs, life);
+    const timeAt = (shift: number) => (p: Vertex) =>
+      options.baseMs + birth - shift + Math.round((p.seconds / total) * life);
+
+    const lines = [{ path: pathOf(timeAt(0)), speed }];
+    if (options.seamless && birth + life > cycleMs) {
+      lines.push({ path: pathOf(timeAt(cycleMs)), speed });
+    }
+    return lines;
+  }
+
+  /**
+   * When in the cycle a line is born.
+   *
+   * Seamless, the whole cycle is fair game and the overrun is carried round by
+   * the second emission. Without it the birth has to be clamped so the line ends
+   * before the loop does — which is exactly why the field then empties towards
+   * the end of every cycle, and starts each one from nothing: no line is born in
+   * the last `life` of the window, and none has been alive long at the start.
+   */
+  function birthWithin(cycleMs: number, life: number): number {
+    if (options.seamless) {
+      return Math.round(random() * cycleMs);
+    }
+    return options.lifeFraction === undefined ? 0 : Math.round(random() * (cycleMs - life));
   }
 
   function offsetFor(_id: number): number {

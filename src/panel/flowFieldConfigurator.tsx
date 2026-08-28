@@ -71,9 +71,13 @@ function FlowFieldLayerConfig({ layer, visConfiguratorProps, layerConfiguratorPr
         <ConfigGroupCollapsibleContent>{slider('lineLength')}</ConfigGroupCollapsibleContent>
       </LayerConfigGroup>
 
+      {/* The lifetime is out in the open now that the seamless loop is what
+          decides the pulsing: with it on, the lifetime says only how much of the
+          field is lit at once, which is a thing worth reaching for. */}
       <LayerConfigGroup label={'flowfield.group.animation'} collapsible>
         {slider('cycleSeconds')}
-        <ConfigGroupCollapsibleContent>{slider('lifeFraction')}</ConfigGroupCollapsibleContent>
+        {slider('lifeFraction')}
+        <VisConfigSwitch {...settings.seamlessLoop} {...visConfiguratorProps} />
       </LayerConfigGroup>
 
       {/* Both height knobs are in plain sight, and they are not two spellings of

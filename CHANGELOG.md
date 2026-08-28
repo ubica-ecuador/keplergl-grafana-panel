@@ -31,6 +31,18 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   animation domain, so the clock has to be nudged, without which the time widget never appears at
   all; and both `centerMap` and the viewport guard frame the map from layer bounds, which the Point
   layer used to carry and this layer supersedes.
+- **Fixed: the field emptied at the end of every animation cycle and refilled at the start of the
+  next.** A streamline's birth was clamped so its life ended before the cycle did, which meant no
+  line was born in the window's last stretch and none had been alive long at its start: measured on
+  a field of two thousand lines, none was mid-flight at either end of the cycle and all two thousand
+  were at its midpoint. What the map showed was a wave, not a flow. A line that overruns is now
+  drawn a second time a whole cycle earlier, so the same geometry is already mid-flight the moment
+  the playhead wraps — deck reads a path's timestamps as increasing, so a line that crosses the loop
+  cannot be one path. Measured on the canvas over a full cycle, the amount of line on screen now
+  varies by 3%, against a factor of two before. **Seamless loop**, on by default, because the second
+  drawing is not free: about half again as many lines at the default lifetime, nearly double at a
+  lifetime of 1. With it on, **Line lifetime** finally means only what it says — how much of the
+  field is lit at once — rather than also deciding the pulse.
 - **Fixed: a map that took more than six seconds to load could silently return to San Francisco.**
   kepler seeds its internal view state with its own default at mount and writes it back on a
   debounce, so a slow load lands that echo *after* the panel has framed the map on the data. The

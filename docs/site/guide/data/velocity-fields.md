@@ -191,7 +191,8 @@ Every knob is in the layer's own panel, grouped as **Colour**, **Streamlines**, 
 | Trail length | Streamlines | How much of the cycle the moving trail spans, as a percentage. |
 | Line length | Streamlines | Vertices per streamline — how far a line reaches, not how much of it is lit. |
 | Cycle | Animation | The length of the loop, in seconds. |
-| Line lifetime | Animation | The share of the cycle one line lives for. |
+| Line lifetime | Animation | The share of the cycle one line lives for, and so how much of the field is lit at once. |
+| Seamless loop | Animation | Carries a line whose life runs past the end of the cycle round to the start of it. On by default. |
 | Smoothing | Field | Blur radius in cells. |
 | Height (m) | Field | What this level *is*, when no altitude column is bound. Counts against the other levels. |
 | Vertical exaggeration | Field | How tall the stack is drawn. The one that moves a lone layer. |
@@ -201,7 +202,21 @@ particles, long as complete streamlines, closer to a classic wind chart. It is a
 cycle* rather than an absolute number, so lengthening the cycle does not silently shorten every
 trail.
 
-Every line lives for a little over half the cycle by default, with births scattered through it — so
-trails appear and fade continuously, rather than the whole field restarting in unison every time the
-loop comes round. Raise **Line lifetime** to 1 and they all restart together, which is visible as a
-blink.
+Every line lives for a little over half the cycle by default, with births scattered through it, so
+trails appear and fade continuously rather than the whole field restarting in unison.
+
+::: warning Turning the seamless loop off brings back a visible wave
+Without it a line has to end before the cycle does. Nothing is then born in the window's last
+stretch and nothing has been alive long at its start, so the field **empties into the loop and
+refills out of it** — measured on the map, the amount of line on screen swings by a factor of two
+through the cycle, against 3% with it on.
+
+What it costs is a second drawing of every line that crosses the seam: about half again as many
+lines at the default lifetime, and nearly double at a lifetime of 1. That is the reason it can be
+switched off at all — a very dense field on a modest machine.
+:::
+
+With the seamless loop on, **Line lifetime** says only how much of the field is lit at once: at 0.55
+a little over half the lines are mid-flight at any instant, and at 1 all of them are. Raise it for a
+fuller field, lower it for scattered particles. Either way the density holds steady through the
+cycle.

@@ -223,6 +223,21 @@ describe('flow field layer — reusing the trace', () => {
     expect(second).not.toBe(first);
   });
 
+  it('re-traces when the seamless loop is switched off', () => {
+    // It changes the geometry, not the painting: the lines that would cross the
+    // loop stop being drawn a second time, and every birth moves.
+    const dataset = eastwardGrid(6);
+    const layer = layerOver(dataset, COMPONENTS);
+
+    const first = layer.formatLayerData({ 'grafana-A': dataset });
+    layer.config.visConfig = { ...layer.config.visConfig, seamlessLoop: false };
+    const second = layer.formatLayerData({ 'grafana-A': dataset }, first);
+
+    expect(second).not.toBe(first);
+    // Fewer lines drawn, because none is drawn twice any more.
+    expect(second.data.length).toBeLessThan(first.data.length);
+  });
+
   it('leaves the trace alone when only the trail length changed', () => {
     // Trail length is drawn, not traced. Re-tracing on it would make the
     // slider feel like a rebuild of the map.
@@ -255,7 +270,11 @@ describe('flow field layer — the clock', () => {
     const { data } = layer.formatLayerData({ 'grafana-A': dataset });
     const times = data.flatMap((line: { path: number[][] }) => line.path.map((vertex) => vertex[3]));
 
-    expect(times.every((t: number) => t >= 0 && t <= 30_000)).toBe(true);
+    // Within a cycle either side of it, rather than exactly inside it: a line
+    // carried across the loop is drawn a whole cycle early, so its times are
+    // negative. What matters is that they are thousands rather than the 1.7e12
+    // of an epoch, which is the number float32 cannot tell apart.
+    expect(times.every((t: number) => Math.abs(t) <= 60_000)).toBe(true);
   });
 });
 

@@ -26,6 +26,7 @@ export const FLOW_FIELD_MESSAGES: Record<string, string> = {
   'flowfield.trailShare': 'Trail length (% of cycle)',
   'flowfield.cycleSeconds': 'Cycle (seconds)',
   'flowfield.lifeFraction': 'Line lifetime (share of cycle)',
+  'flowfield.seamlessLoop': 'Seamless loop',
   'flowfield.smoothing': 'Smoothing (cells)',
   'flowfield.heightMeters': 'Height (m), when no column',
   'flowfield.elevationScale': 'Vertical exaggeration',

@@ -66,9 +66,17 @@ export interface FlowFieldContext {
  *
  * `cycleSeconds` runs every streamline over one shared window, so the whole
  * field is on screen at all times and what moves is a short trail — the
- * earth.nullschool look. `lifeFraction` below 1 scatters the births through
- * that window, so trails appear and fade continuously instead of every line
- * restarting together when the animation loops.
+ * earth.nullschool look. `lifeFraction` is how much of that window one line
+ * lives for, and so how much of the field is lit at once.
+ *
+ * `seamlessLoop` is what makes `lifeFraction` mean only that. Without it a line
+ * has to end before the cycle does, so none is born in the window's last
+ * stretch and none has been alive long at its start: the field measurably
+ * empties into the loop and refills out of it — nothing alive at either end,
+ * everything alive in the middle. With it, a line that overruns is drawn a
+ * second time a cycle earlier and carries straight across the seam. The cost is
+ * that second drawing: about half again as many lines at the default lifetime,
+ * and nearly double at a lifetime of 1.
  *
  * The trail is a **share of the cycle** rather than kepler's own `trailLength`,
  * which is an absolute number with a default of 180. The vertex times here are
@@ -168,6 +176,13 @@ export const FLOW_FIELD_VIS_CONFIGS = {
     group: 'color',
     property: 'colorBySpeed',
   },
+  seamlessLoop: {
+    type: 'boolean',
+    defaultValue: true,
+    label: 'flowfield.seamlessLoop',
+    group: 'display',
+    property: 'seamlessLoop',
+  },
 } as const;
 
 /**
@@ -265,6 +280,7 @@ export function traceSignature(config: FlowFieldLayerLike['config']): string {
     visConfig.lineLength,
     visConfig.cycleSeconds,
     visConfig.lifeFraction,
+    visConfig.seamlessLoop,
     visConfig.smoothing,
     visConfig.heightMeters,
     visConfig.elevationScale,
@@ -542,6 +558,7 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
         maxVertices: Math.round(setting(visConfig.lineLength, 30)),
         cycleMs,
         lifeFraction: setting(visConfig.lifeFraction, 0.55),
+        seamless: visConfig.seamlessLoop !== false,
         viewport: context.viewport,
         altitudeMeters,
       });
