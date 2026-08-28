@@ -400,6 +400,37 @@ describe('flow field layer — drawing', () => {
     expect(layer.renderLayer({ data, animationConfig: {} })).toEqual([]);
   });
 
+  it('switches itself off when the layer is hidden', () => {
+    // kepler hands deck every layer, visible or not, and expects each one to
+    // read this prop. A layer that ignores it cannot be switched off at all —
+    // the eye in the layer panel changes the state and nothing on the map.
+    const layer = layerOver(dataset, COMPONENTS);
+    const data = layer.formatLayerData({ 'grafana-A': dataset });
+    layer.config.isVisible = false;
+
+    layer.renderLayer({ data, animationConfig: { currentTime: 5_000 } });
+
+    expect(built[0].visible).toBe(false);
+  });
+
+  it('stays out of the split map panel it was not put in', () => {
+    const layer = layerOver(dataset, COMPONENTS);
+    const data = layer.formatLayerData({ 'grafana-A': dataset });
+
+    layer.renderLayer({ data, animationConfig: { currentTime: 5_000 }, visible: false });
+
+    expect(built[0].visible).toBe(false);
+  });
+
+  it('draws when it is visible and this panel is its panel', () => {
+    const layer = layerOver(dataset, COMPONENTS);
+    const data = layer.formatLayerData({ 'grafana-A': dataset });
+
+    layer.renderLayer({ data, animationConfig: { currentTime: 5_000 }, visible: true });
+
+    expect(built[0].visible).toBe(true);
+  });
+
   it('draws nothing when the field traced no lines', () => {
     const layer = layerOver(dataset, COMPONENTS);
 

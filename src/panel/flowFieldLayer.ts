@@ -206,6 +206,7 @@ interface FlowFieldLayerLike {
     columns?: Record<string, LayerColumn>;
     columnMode?: string;
     color?: [number, number, number];
+    isVisible?: boolean;
     animation?: { enabled?: boolean; domain?: [number, number] | null };
     visConfig?: Record<string, unknown>;
   };
@@ -581,6 +582,8 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
     renderLayer(opts?: {
       data?: FlowFieldLayerData;
       animationConfig?: { currentTime?: number; domain?: [number, number] | null };
+      /** The split map's verdict: shown in this panel, or the other one. */
+      visible?: boolean;
     }): unknown[] {
       const lines = opts?.data?.data;
       if (!lines || lines.length === 0) {
@@ -604,6 +607,13 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
         buildDeckLayer({
           id: `${this.id}-flowfield`,
           data: lines,
+          // A layer switches *itself* off. kepler hands every layer to deck
+          // whether or not it is visible — `prepareLayersForDeck` says so in as
+          // many words upstream — and expects each one to read this prop, which
+          // is what `getDefaultDeckLayerProps` sets for the layers that use it.
+          // Build the props by hand, as this layer does, and the eye in the
+          // layer panel changes the state and switches nothing off.
+          visible: this.config.isVisible !== false && opts?.visible !== false,
           // The vertices were traced from zero, so the playhead is offset by the
           // same base the domain starts at.
           currentTime: (currentTime as number) - domain0,

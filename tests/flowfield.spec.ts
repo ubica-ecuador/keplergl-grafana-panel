@@ -105,3 +105,68 @@ test('re-traces the field when the layer panel asks for fewer lines', async ({
 
   await expect.poll(async () => (await readFlowField(map))?.lines ?? 0, { timeout: 30_000 }).toBeLessThan(before / 2);
 });
+
+/**
+ * How much of the field is on the canvas right now.
+ *
+ * Counted rather than compared against a reference image: the streamlines move,
+ * so any two frames differ, and what is being asserted is only "something warm
+ * is drawn" against "nothing is". The base map is grey, the ramp is warm, so a
+ * red channel well above the blue one is the field and nothing else.
+ */
+async function litPixels(page: import('@playwright/test').Page): Promise<number> {
+  return page.evaluate(() => {
+    const canvases = [...document.querySelectorAll('canvas')];
+    const deck = canvases.find((c) => c.width > 400) ?? canvases[0];
+    const off = document.createElement('canvas');
+    off.width = deck.width;
+    off.height = deck.height;
+    const ctx = off.getContext('2d');
+    if (!ctx) {
+      return -1;
+    }
+    ctx.drawImage(deck, 0, 0);
+    const pixels = ctx.getImageData(0, 0, off.width, off.height).data;
+    let lit = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      if (pixels[i] > 90 && pixels[i] - pixels[i + 2] > 40) {
+        lit++;
+      }
+    }
+    return lit;
+  });
+}
+
+test('is switched off by the eye in the layer panel', async ({
+  gotoPanelEditPage,
+  readProvisionedDashboard,
+  page,
+}) => {
+  // kepler hands deck every layer, visible or not — `prepareLayersForDeck` says
+  // so upstream in as many words — and expects each one to read the `visible`
+  // prop that `getDefaultDeckLayerProps` sets. A layer building its deck props
+  // by hand, as this one does, silently ignores the eye until it reads it too.
+  const dashboard = await readProvisionedDashboard({ fileName: 'flowfield.json' });
+  const panelEditPage = await gotoPanelEditPage({ dashboard, id: '1' });
+
+  const map = panelEditPage.panel.locator.locator('canvas').first();
+  await expect(map).toBeVisible({ timeout: 60_000 });
+  await settle(page);
+  await expect.poll(async () => (await readFlowField(map))?.lines ?? 0, { timeout: 60_000 }).toBeGreaterThan(100);
+
+  // A paused field is a blank map, so there has to be something on screen
+  // before its absence means anything. Dispatched rather than clicked: the panel
+  // editor leaves the map narrow enough for kepler's own map controls to sit
+  // over the timeline, and they swallow the pointer.
+  await page.locator('button:has(svg.data-ex-icons-play)').first().dispatchEvent('click');
+  await expect.poll(() => litPixels(page), { timeout: 60_000 }).toBeGreaterThan(0);
+
+  const eye = page.locator('.layer__visibility-toggle').first();
+  await page.locator('.layer-panel__header').first().hover();
+  await eye.click();
+  await expect.poll(() => litPixels(page), { timeout: 30_000 }).toBe(0);
+
+  await page.locator('.layer-panel__header').first().hover();
+  await eye.click();
+  await expect.poll(() => litPixels(page), { timeout: 30_000 }).toBeGreaterThan(0);
+});
