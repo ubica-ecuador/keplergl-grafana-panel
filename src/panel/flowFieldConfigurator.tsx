@@ -61,9 +61,9 @@ function FlowFieldLayerConfig({ layer, visConfiguratorProps, layerConfiguratorPr
       </LayerConfigGroup>
 
       {/* Density, width and trail are the three the field is actually shaped
-          with, so none of them is behind the group's expander: a trail hidden
-          one click away is the difference between drifting particles and a
-          classic wind chart, and kepler's own default for it draws dots. */}
+          with, so none of them sits behind the group's expander. The trail
+          especially: it is the difference between drifting particles and a
+          classic wind chart, which is not a choice to hide one click away. */}
       <LayerConfigGroup label={'flowfield.group.streamlines'} collapsible>
         {slider('density')}
         {slider('thickness')}

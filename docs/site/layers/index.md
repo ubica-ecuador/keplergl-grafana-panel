@@ -1,7 +1,9 @@
 # Layer gallery
 
 Every layer type the panel can build from query rows, with the query that produces it. Thirteen of
-kepler's nineteen registered layer types can be driven by data.
+kepler's nineteen registered layer types can be driven by data — and the panel registers two more
+that kepler does not have: a [flow field](../guide/data/velocity-fields) for a grid of velocities,
+and a [Zarr tileset](../guide/data/zarr) for a store of arrays.
 
 Of the six that take a URL instead, two can now be driven by one as well — a query that returns a
 link to imagery draws a `rasterTile` layer, and one that names a service draws a `wms` layer. See
@@ -52,16 +54,17 @@ adding any of them by hand, are on [Layers configured with a URL](./url-configur
 
 ## Which ones you get without asking
 
-Four of the thirteen are built for you when the columns are right. The rest you add by hand in
-kepler's layer panel, choosing the dataset and pointing the layer's columns at it.
+Some are built for you when the columns are right. The rest you add by hand in kepler's layer panel,
+choosing the dataset and pointing the layer's columns at it.
 
-| Built automatically | Trigger                                     |
-| ------------------- | ------------------------------------------- |
-| point               | a latitude/longitude pair                   |
-| geojson             | a geometry column                           |
-| hexagonId (H3)      | a column whose values are valid H3 indices  |
-| trip                | a trip id **and** a time **and** a position |
-| flow                | origin and destination columns              |
+| Built automatically | Trigger                                                    |
+| ------------------- | ---------------------------------------------------------- |
+| point               | a latitude/longitude pair                                  |
+| geojson             | a geometry column                                          |
+| hexagonId (H3)      | a column whose values are valid H3 indices                 |
+| trip                | a trip id **and** a time **and** a position                |
+| flow                | origin and destination columns                             |
+| flowfield           | a position **and** a velocity, **and no trip id** — a layer type this plugin adds, which kepler does not have. See [Velocity fields](../guide/data/velocity-fields). |
 
 See [How a query becomes a map](../guide/data/how-a-query-becomes-a-map).
 
