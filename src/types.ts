@@ -84,6 +84,8 @@ export interface KeplerPanelOptions {
    * docker-compose, which is right for development and wrong everywhere else.
    */
   rasterServerUrl?: string;
+  /** Ask the tile server for painted tiles instead of raw arrays. */
+  rasterPainted?: boolean;
 
   /**
    * Value range a Zarr variable is stretched over, as `min,max`.

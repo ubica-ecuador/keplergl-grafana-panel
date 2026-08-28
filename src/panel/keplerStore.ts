@@ -2,6 +2,8 @@ import { Layer, LayerClasses } from '@kepler.gl/layers';
 import { keplerGlReducer, enhanceReduxMiddleware } from '@kepler.gl/reducers';
 import { applyMiddleware, combineReducers, legacy_createStore, Store } from 'redux';
 
+import { buildCogPaintedDeckLayer } from './cogPaintedDeckLayer';
+import { makeCogPaintedLayer } from './cogPaintedLayer';
 import { buildFlowFieldDeckLayer } from './flowFieldDeckLayer';
 import { makeFlowFieldLayer } from './flowFieldLayer';
 import { withTripGpuFilterFix } from './tripLayerFix';
@@ -31,6 +33,14 @@ const layerClasses = {
   // where `RasterTileLayer` starts from too: a tileset has no rows, so every
   // concrete layer's column handling would be dead weight at best.
   zarr: makeZarrLayer(Layer as never, buildZarrDeckLayer),
+  // A third addition, and the narrowest: it draws the same COGs kepler's own
+  // raster layer draws, but asks the server for a finished picture instead of
+  // raw arrays. kepler's layer cannot colour a *classified* raster — it rescales
+  // the class numbers over the whole dtype range and every class lands on one
+  // colour — while TiTiler reads the palette the file carries. Kept as a
+  // separate class rather than a mode of the stock one so nothing changes for
+  // the imagery that path already draws well.
+  cogPainted: makeCogPaintedLayer(Layer as never, buildCogPaintedDeckLayer),
   // Also an addition, and for a stranger reason than the Zarr one: what this
   // layer draws is in no dataset. The rows are a lattice of velocity samples and
   // what is painted are the paths a particle would take through them — geometry

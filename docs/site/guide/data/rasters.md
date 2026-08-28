@@ -71,7 +71,47 @@ Two more things about it:
 
 - It is applied **once per layer**, when the layer appears. After that the ramp is yours: change it
   in kepler's layer panel and the panel will not put its own back over your choice.
-- It does nothing to a **PMTiles** archive, which has no ramp to set.
+- It does nothing to a **PMTiles** archive, which has no ramp to set, nor to a raster the
+  [tile server paints](#painted), which has its own palette.
+
+## A classified raster: let the server paint {#painted}
+
+Everything above assumes the colours are a **choice** — a ramp over measurements, yours to change.
+For a classified raster they are not. Land cover, soil types, an ecoregion map: the pixel values are
+class numbers, and the file usually carries the one correct palette inside it as a colour table.
+
+kepler cannot draw that. It asks the tile server for **raw arrays** (`.npy`) and colours them in a
+shader, and the shader rescales the values over the whole range of their data type. Measured on the
+nine-class Impact Observatory land-cover COG, whose classes are numbered 1 to 11 in a `uint8`: every
+class lands in the same slot of the 256-entry colour texture, and the map draws **one flat slab**.
+Its categorical mode does not rescue it — the class values collide there too, and passing them
+unshifted overflows the texture outright.
+
+The **Let the tile server paint** panel option takes the drawing away from the browser. Tiles are
+requested as `.png` from the same server, which opens the file, reads the colour table it carries and
+returns a finished picture. Nine classes, nine colours, the ones the publisher chose.
+
+```sql
+-- Nothing about the query changes: it still returns an address.
+SELECT 'https://example.org/landcover/2023.tif' AS raster_url
+```
+
+The cost is the PMTiles cost, and for the same reason — what arrives is already drawn:
+
+- The layer panel offers **opacity** and nothing else. No ramp, no rescaling, no picking a band.
+- The **Raster colour ramp** option does nothing here. The file's own palette is the point.
+
+Everything else is unchanged: a series of dated rows still becomes a timeline, and moving the window
+still swaps the picture in place without rebuilding the layer.
+
+Leave it **off** for imagery. A true-colour scene wants its stretch decided where you can see it.
+
+::: tip One file, one footprint
+Classified rasters are often published cut into tiles of a grid — the land-cover collection above is
+one COG per UTM zone, 6° by 8°. A map showing more than one zone needs **one query per file**, each
+in its own `refId`, and each becomes its own layer. Tiles outside a given file's footprint are
+answered 404 by the server and simply not drawn, which is what makes the layers stack cleanly.
+:::
 
 ## Or no server at all: PMTiles {#pmtiles}
 

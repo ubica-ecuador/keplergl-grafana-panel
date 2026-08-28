@@ -143,8 +143,12 @@ Add a second query for another height — `wind_speed_80m` and `wind_direction_8
 endpoint. Each query becomes its own layer, with its own density: two levels asking for 9,000 each
 put 18,000 lines in the same pixels, so lower both if they stop being tellable apart.
 
-To separate them vertically, return a constant height column and bind it to the layer's **altitude**
-column, then tilt with the 3D control.
+To separate them vertically, set **Field → Height (m)** on each layer — 10 m for the 10 m wind, 80 m
+for the 80 m one — and tilt with the 3D control. (A height column bound to the layer's optional
+`altitude` column does the same job, for queries that return one.)
+
+The exaggeration is worked out from the taller of the two, so what the metres decide is the
+**proportion**: how tall the stack is drawn is **Vertical exaggeration**, right below.
 
 Height is opt-in on purpose — an `elevation` column mapped by accident lifts a layer kilometres into
 the air. Expect to need a lot of exaggeration; the panel computes it from the viewport, scaling the

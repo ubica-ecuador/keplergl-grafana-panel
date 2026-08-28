@@ -76,9 +76,15 @@ function FlowFieldLayerConfig({ layer, visConfiguratorProps, layerConfiguratorPr
         <ConfigGroupCollapsibleContent>{slider('lifeFraction')}</ConfigGroupCollapsibleContent>
       </LayerConfigGroup>
 
+      {/* Both height knobs are in plain sight, and they are not two spellings of
+          the same thing. The metres say what this level *is*, which only counts
+          against the other levels on the map; the exaggeration says how tall the
+          stack is drawn, and is the one that moves a lone layer. Hiding either
+          would leave the other looking broken. */}
       <LayerConfigGroup label={'flowfield.group.field'} collapsible>
         {slider('smoothing')}
-        <ConfigGroupCollapsibleContent>{slider('elevationScale')}</ConfigGroupCollapsibleContent>
+        {slider('heightMeters')}
+        {slider('elevationScale')}
       </LayerConfigGroup>
     </div>
   );

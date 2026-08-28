@@ -66,8 +66,9 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
       framesToRasters(data.series, fieldMappings, {
         tileServerUrls: [(options.rasterServerUrl || DEFAULT_RASTER_SERVER_URL).trim()],
         colormap: options.rasterColormap || undefined,
+        painted: options.rasterPainted,
       }),
-    [data.series, fieldMappings, options.rasterServerUrl, options.rasterColormap]
+    [data.series, fieldMappings, options.rasterServerUrl, options.rasterColormap, options.rasterPainted]
   );
 
   // A WMS travels the same separate road, and for the same reason: what the

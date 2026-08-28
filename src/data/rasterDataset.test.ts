@@ -39,6 +39,42 @@ describe('framesToRasters', () => {
     expect(raster.metadataUrl).not.toContain('&X-Amz-Signature');
   });
 
+  it('marks the raster painted when the panel asked the server to do the colouring', () => {
+    // kepler's own raster layer cannot draw a classified image: it fetches raw
+    // arrays and rescales 1-11 over the whole uint8 range, so every class lands
+    // on one colour. Painted rasters go to the layer that asks the tile server
+    // for a PNG instead.
+    const [raster] = framesToRasters([rasterFrame(COG)], {}, { tileServerUrls: [SERVER], painted: true });
+
+    expect(raster.kind).toBe('painted');
+  });
+
+  it('needs no STAC document when the server paints', () => {
+    // Nothing fetches metadata on that path — the tile url is built from the
+    // image url directly — so the identity a refresh compares on is the image.
+    const [raster] = framesToRasters([rasterFrame(COG)], {}, { tileServerUrls: [SERVER], painted: true });
+
+    expect(raster.metadataUrl).toBe(COG);
+  });
+
+  it('leaves a PMTiles archive alone when painting is asked for', () => {
+    // An archive is already drawn tiles; it never wanted a server, and routing
+    // it through one would ask for a COG that does not exist.
+    const archive = 'https://bucket.example/lulc.pmtiles';
+    const [raster] = framesToRasters([rasterFrame(archive)], {}, { tileServerUrls: [SERVER], painted: true });
+
+    expect(raster.kind).toBe('pmtiles');
+  });
+
+  it('drops a painted raster when there is no server to paint it', () => {
+    // Painting is the server's job on this path, so with nowhere to send the
+    // request there is no layer to build. Left in, every tile of every zoom
+    // would ask a malformed url and answer 404, in silence.
+    const rasters = framesToRasters([rasterFrame(COG)], {}, { tileServerUrls: [], painted: true });
+
+    expect(rasters).toHaveLength(0);
+  });
+
   it('takes the first row when a query returns several scenes', () => {
     const frame = toDataFrame({
       refId: 'A',

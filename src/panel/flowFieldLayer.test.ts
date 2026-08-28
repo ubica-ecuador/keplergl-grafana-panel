@@ -2,6 +2,7 @@ import {
   colorForSpeed,
   fieldBounds,
   FlowFieldContext,
+  levelHeight,
   makeFlowFieldLayer,
   setting,
   speedDomainOf,
@@ -319,6 +320,39 @@ describe('flow field layer — height', () => {
     expect(line.path.every((vertex: number[]) => vertex[2] === 0)).toBe(true);
   });
 
+  it('lifts a level set by hand when the query returns no height column', () => {
+    // The ordinary case: nothing autodetects an altitude, and a level's height
+    // is a property of the query rather than of its rows. With `tallest` at
+    // zero the automatic factor is 1, so the metres arrive on the geometry
+    // unchanged and can be read straight off it.
+    const dataset = eastwardGrid(8);
+    const layer = layerOver(dataset, COMPONENTS, { flowContext: contextWith(0), heightMeters: 2500 });
+    const [line] = layer.formatLayerData({ 'grafana-A': dataset }).data;
+
+    expect(line.path.every((vertex: number[]) => vertex[2] === 2500)).toBe(true);
+  });
+
+  it('lets the column win over the knob when both are there', () => {
+    const dataset = eastwardGrid(8, 12, 900);
+    const layer = layerOver(
+      dataset,
+      { ...COMPONENTS, altitude: 'altitude' },
+      { flowContext: contextWith(0), heightMeters: 2500 }
+    );
+    const [line] = layer.formatLayerData({ 'grafana-A': dataset }).data;
+
+    expect(line.path[0][2]).toBe(900);
+  });
+
+  it('re-traces when the height set by hand changes', () => {
+    const dataset = eastwardGrid(8);
+    const layer = layerOver(dataset, COMPONENTS, { flowContext: contextWith(0) });
+    const first = layer.formatLayerData({ 'grafana-A': dataset });
+    layer.config.visConfig = { ...layer.config.visConfig, heightMeters: 2500 };
+
+    expect(layer.formatLayerData({ 'grafana-A': dataset }, first)).not.toBe(first);
+  });
+
   it('scales the whole stack by the exaggeration the user asked for', () => {
     expect(heightOf(3000, 3000, 2) / heightOf(3000, 3000, 1)).toBeCloseTo(2, 5);
   });
@@ -406,6 +440,21 @@ describe('fieldBounds', () => {
     };
 
     expect(fieldBounds(field)).toEqual([-79.75, -3.5, -78.75, -3]);
+  });
+});
+
+describe('levelHeight', () => {
+  it('reads the column when one is bound', () => {
+    expect(levelHeight('altitude', 900, { heightMeters: 2500 })).toBe(900);
+  });
+
+  it('falls back to the knob when no column is bound', () => {
+    expect(levelHeight(null, 0, { heightMeters: 2500 })).toBe(2500);
+    expect(levelHeight(undefined, 0, { heightMeters: 2500 })).toBe(2500);
+  });
+
+  it('leaves a layer on the ground when neither says anything', () => {
+    expect(levelHeight(null, 0, {})).toBe(0);
   });
 });
 

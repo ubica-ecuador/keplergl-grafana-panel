@@ -56,6 +56,14 @@ export interface FlowFieldContext {
  * before any of this existed comes back looking the same. Two of them earn a
  * word:
  *
+ * `heightMeters` and `elevationScale` are not two spellings of the same thing, and the difference
+ * is worth stating because the first looks inert on its own. The automatic
+ * exaggeration normalises the **tallest level on the map** to a share of the
+ * view, so with a single layer the metres decide only whether it is on the
+ * ground or lifted — how *high* it is drawn is `elevationScale`. The metres earn
+ * their keep the moment there is a second level: they are what puts 850 hPa and
+ * 700 hPa in their real proportion to each other.
+ *
  * `cycleSeconds` runs every streamline over one shared window, so the whole
  * field is on screen at all times and what moves is a short trail — the
  * earth.nullschool look. `lifeFraction` below 1 scatters the births through
@@ -132,6 +140,16 @@ export const FLOW_FIELD_VIS_CONFIGS = {
     step: 1,
     group: 'display',
     property: 'smoothing',
+  },
+  heightMeters: {
+    type: 'number',
+    defaultValue: 0,
+    label: 'flowfield.heightMeters',
+    isRanged: false,
+    range: [0, 20000],
+    step: 100,
+    group: 'display',
+    property: 'heightMeters',
   },
   elevationScale: {
     type: 'number',
@@ -247,6 +265,7 @@ export function traceSignature(config: FlowFieldLayerLike['config']): string {
     visConfig.cycleSeconds,
     visConfig.lifeFraction,
     visConfig.smoothing,
+    visConfig.heightMeters,
     visConfig.elevationScale,
     context.baseMs,
     context.tallest,
@@ -296,6 +315,27 @@ export function fieldBounds(field: WindField): [number, number, number, number] 
     field.west + (field.columns - 1) * field.stepLon,
     field.south + (field.rows - 1) * field.stepLat,
   ];
+}
+
+/**
+ * How high this level is, in metres.
+ *
+ * A bound altitude column wins, and the knob answers for a query that returns no
+ * height at all — which is the ordinary case, since nothing autodetects an
+ * altitude and a level's height is usually a property of the query rather than
+ * of its rows.
+ *
+ * Shared with the adapter on purpose. The exaggeration is derived from the
+ * tallest level *on the map*, so the reader that finds that tallest has to
+ * answer this question exactly as the layer does; two spellings drifting apart
+ * would flatten a stack for reasons nobody could see.
+ */
+export function levelHeight(
+  columnValue: string | null | undefined,
+  fromColumn: number,
+  visConfig: Record<string, unknown>
+): number {
+  return columnValue ? fromColumn : setting(visConfig.heightMeters, 0);
 }
 
 /** The value of a column that is the same for every row — a level's height. */
@@ -481,7 +521,11 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       // few kilometres apart are invisible over a region hundreds of kilometres
       // wide, and a factor that reads over a country puts the top level off the
       // screen over a city.
-      const rawAltitude = constantOf(frame, columns.altitude?.value);
+      const rawAltitude = levelHeight(
+        columns.altitude?.value,
+        constantOf(frame, columns.altitude?.value),
+        visConfig
+      );
       const altitudeMeters =
         rawAltitude *
         stackExaggeration(setting(context.tallest, rawAltitude), context.viewport) *

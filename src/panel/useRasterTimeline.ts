@@ -97,7 +97,9 @@ export function useRasterTimeline({ store, isReady, rasters }: Params): void {
       // Nothing to dress on an archive: its tiles are images already drawn, so
       // kepler offers opacity and nothing else for them. The ramp was chosen
       // when the file was built.
-      if (!raster.colormap || raster.kind === 'pmtiles') {
+      // Neither an archive nor a painted COG is coloured in the browser: both
+      // arrive as finished pictures, so kepler's colormap has nothing to act on.
+      if (!raster.colormap || raster.kind === 'pmtiles' || raster.kind === 'painted') {
         continue;
       }
       const layerId = readRasterLayerId(store, raster.id);

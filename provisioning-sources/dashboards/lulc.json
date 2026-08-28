@@ -91,7 +91,8 @@
           "south": "mapSouth",
           "west": "mapWest"
         },
-        "rasterServerUrl": "http://localhost:8088"
+        "rasterServerUrl": "http://localhost:8088",
+        "rasterPainted": true
       },
       "targets": [
         {

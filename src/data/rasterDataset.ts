@@ -66,10 +66,21 @@ export interface RasterDataset {
  * answer for an install with nowhere to run a server — but the colours were
  * decided when the archive was built, so the layer panel offers only opacity.
  *
- * Which one a query means is read off its url, the same way kepler reads it:
- * the format is a property of the file, not a setting to keep in step with it.
+ * `painted` is the same GeoTIFF as `cog`, drawn by the tile server instead of
+ * by the browser. kepler's own raster layer fetches raw arrays and colours them
+ * in a shader, which suits imagery and cannot draw a *classified* raster at
+ * all: measured on a nine-class land-cover COG, values 1-11 get rescaled over
+ * the whole `uint8` range and every class lands on the same colour, so the map
+ * draws one flat slab. Asking the server for a PNG lets it read the palette the
+ * file carries. The cost is the PMTiles cost — the colours are decided before
+ * they arrive, so the layer panel offers only opacity.
+ *
+ * Which of the first two a query means is read off its url, the same way kepler
+ * reads it: the format is a property of the file, not a setting to keep in step
+ * with it. `painted` is the exception, because it is not a property of the file
+ * but a decision about how to draw it, so it comes from a panel option.
  */
-export type RasterKind = 'cog' | 'pmtiles';
+export type RasterKind = 'cog' | 'pmtiles' | 'painted';
 
 /** One dated image in a raster query's result. */
 export interface RasterScene {
@@ -174,7 +185,7 @@ export function isPanelRasterId(id: string): boolean {
 export function framesToRasters(
   frames: DataFrame[],
   overrides: Record<string, FieldRoleOverrides> = {},
-  opts: { tileServerUrls: string[]; colormap?: string }
+  opts: { tileServerUrls: string[]; colormap?: string; painted?: boolean }
 ): RasterDataset[] {
   const rasters: RasterDataset[] = [];
 
@@ -198,8 +209,8 @@ export function framesToRasters(
     // layer's tile fetch, where it surfaces as a layer that draws nothing
     // rather than as anything anyone can act on. An archive beside it is
     // unaffected: it never wanted a server.
-    const kind = rasterKind(opening.sourceUrl);
-    if (kind === 'cog' && opts.tileServerUrls.length === 0) {
+    const kind = rasterKind(opening.sourceUrl, opts.painted);
+    if (kind !== 'pmtiles' && opts.tileServerUrls.length === 0) {
       return;
     }
 
@@ -227,13 +238,21 @@ export function framesToRasters(
  * data modules stay free of kepler imports — the panel would otherwise drag
  * deck.gl into the main chunk to answer a question about a file name.
  */
-export function rasterKind(url: string): RasterKind {
-  return url.includes('.pmtiles') ? 'pmtiles' : 'cog';
+export function rasterKind(url: string, painted = false): RasterKind {
+  if (url.includes('.pmtiles')) {
+    // An archive is already drawn tiles: it never wanted a server, and routing
+    // it through one would ask for a COG that does not exist.
+    return 'pmtiles';
+  }
+  return painted ? 'painted' : 'cog';
 }
 
 /** Where kepler should ask about a scene, given how that scene is served. */
 function metadataUrlForScene(kind: RasterKind, tileServerUrl: string | undefined, sourceUrl: string): string {
-  return kind === 'pmtiles' ? sourceUrl : metadataUrlFor(tileServerUrl ?? '', sourceUrl);
+  // Neither an archive nor a painted COG has a STAC document in the picture:
+  // the first carries its own header, and the second is addressed by url alone.
+  // So for both the image *is* the identity a refresh compares on.
+  return kind === 'pmtiles' || kind === 'painted' ? sourceUrl : metadataUrlFor(tileServerUrl ?? '', sourceUrl);
 }
 
 /**

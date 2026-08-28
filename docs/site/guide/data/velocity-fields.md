@@ -146,9 +146,17 @@ spends 6,000 on a single field, so the default is deliberately generous.
 
 One query per level, in the same panel. Each becomes its own layer.
 
-To separate them in the vertical, return a height column and map it to **Altitude** under Field
-mapping, then tilt the camera with the 3D control. Height is opt-in on purpose: an `elevation`
-column mapped by accident lifts a layer kilometres into the air.
+To separate them in the vertical, give each layer a height and tilt the camera with the 3D control.
+Two ways, and the layer takes the first that applies:
+
+1. **A height column** — return one and bind it to the layer's optional `altitude` column. Its first
+   value is the level's height; one query is one level, so it is read as a constant.
+2. **Height (m), when no column** — under **Field**. For the ordinary case, where the height of a
+   level is a property of the query rather than of its rows and there is no column to return.
+
+Height is opt-in either way. Nothing autodetects an altitude: an `elevation` column picked up by
+accident lifts a layer kilometres into the air, where it vanishes as soon as the camera descends
+below it.
 
 The exaggeration is computed for you, and it is not a fixed factor. Pressure levels a few kilometres
 apart are invisible over a country hundreds of kilometres wide — 1000 to 700 hPa is 2.9 km over
@@ -157,8 +165,18 @@ instead, about 15% of its width. It is derived from the **tallest level on the m
 layer's own height, so the levels keep their real proportions to each other and the stack occupies
 the same share of the screen at every zoom.
 
-**Vertical exaggeration** under **Field** multiplies that. Leave it at 1 unless the stack reads
-wrong; set it the same on every level, or they stop being in proportion.
+**Vertical exaggeration** under **Field** multiplies that. Set it the same on every level, or they
+stop being in proportion.
+
+::: tip The two height knobs do different jobs
+Because the exaggeration normalises the **tallest level on the map**, the metres of a *single* layer
+decide only whether it sits on the ground or is lifted — not how high it is drawn. That is the
+exaggeration's job.
+
+The metres earn their keep with a second level: they are what puts 850 hPa and 700 hPa in their real
+proportion to each other. One layer at 3,000 m and one at 500 m draw six times apart; one layer at
+3,000 m on its own draws exactly where one at 500 m would.
+:::
 
 ## Styling
 
@@ -175,7 +193,8 @@ Every knob is in the layer's own panel, grouped as **Colour**, **Streamlines**, 
 | Cycle | Animation | The length of the loop, in seconds. |
 | Line lifetime | Animation | The share of the cycle one line lives for. |
 | Smoothing | Field | Blur radius in cells. |
-| Vertical exaggeration | Field | Multiplies the automatic stack factor. |
+| Height (m) | Field | What this level *is*, when no altitude column is bound. Counts against the other levels. |
+| Vertical exaggeration | Field | How tall the stack is drawn. The one that moves a lone layer. |
 
 **Trail length** is the one that changes the character of the map most: short reads as drifting
 particles, long as complete streamlines, closer to a classic wind chart. It is a *share of the

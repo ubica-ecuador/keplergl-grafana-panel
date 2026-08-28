@@ -12,8 +12,13 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   the density was a panel option, and everything else about the drawing was a constant in the
   source: a sixty-second cycle, a lifetime of 0.55 of it, thirty vertices, three cells of smoothing.
   There is now a **Flow field** layer with a panel of its own: lines per screen, stroke width, trail
-  length, line length, cycle, lifetime, smoothing and vertical exaggeration, next to a colour ramp
-  applied to each line's mean speed. The dataset now holds the lattice the query returned rather
+  length, line length, cycle, lifetime, smoothing, height and vertical exaggeration, next to a colour
+  ramp applied to each line's mean speed. A level can be lifted **without a height column**, which is
+  the ordinary case — a level's height is a property of the query, not of its rows, and nothing
+  autodetects an altitude. The two height knobs do different jobs and both are in plain sight for
+  that reason: the exaggeration normalises the tallest level on the map to a share of the view, so a
+  lone layer's metres decide only ground-or-lifted while the exaggeration decides how high; the
+  metres are what put two levels in their real proportion. The dataset now holds the lattice the query returned rather
   than the lines drawn from it — forty-nine rows instead of nine thousand, in the tutorial's case —
   and the four velocity columns can be re-pointed from the layer, which is what finally gives
   `u`/`v`/`speed`/`direction` a place in the interface: they were autodetect-only before, because

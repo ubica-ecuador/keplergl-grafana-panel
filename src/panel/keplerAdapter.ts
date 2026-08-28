@@ -51,7 +51,8 @@ import {
 } from './timeSync';
 import { supersededLayerIds } from './autoLayers';
 import type { FlowFieldLayerState } from './flowFieldContext';
-import type { FlowFieldContext } from './flowFieldLayer';
+import { levelHeight, type FlowFieldContext } from './flowFieldLayer';
+import { COG_PAINTED_TYPE } from './cogPaintedLayer';
 import { splitRasterRefresh, splitRefresh, splitWmsRefresh, splitZarrRefresh } from './loadDecision';
 import { KEPLER_INSTANCE_ID } from './constants';
 
@@ -154,7 +155,12 @@ const RASTER_TILE_TYPE = 'raster-tile';
  */
 function rasterProtoDataset(raster: RasterDataset) {
   return {
-    info: { id: raster.id, label: raster.label, type: RASTER_TILE_TYPE, format: 'rows' },
+    info: {
+      id: raster.id,
+      label: raster.label,
+      type: raster.kind === 'painted' ? COG_PAINTED_TYPE : RASTER_TILE_TYPE,
+      format: 'rows',
+    },
     data: { fields: [], rows: [] },
     metadata: rasterMetadata(raster),
     disableDataOperation: true,
@@ -172,6 +178,13 @@ function rasterProtoDataset(raster: RasterDataset) {
  * carrying them would only suggest a server is involved.
  */
 function rasterMetadata(raster: RasterDataset) {
+  // A painted COG is addressed by url alone: the panel's own layer builds the
+  // tile request from these two values and nothing fetches a STAC document, so
+  // none of the `rasterServer*` settings below apply to it.
+  if (raster.kind === 'painted') {
+    return { serverUrl: raster.tileServerUrls[0] ?? '', sourceUrl: raster.sourceUrl };
+  }
+
   if (raster.kind === 'pmtiles') {
     return { metadataUrl: raster.metadataUrl, pmtilesType: PMTilesType.RASTER };
   }
@@ -259,8 +272,17 @@ export function refreshRasters(store: Store, dispatch: Dispatch, rasters: Raster
 /** The raster datasets kepler holds, as the identity the refresh compares on. */
 function readRasterDatasets(store: Store): Array<{ id: string; metadataUrl?: string }> {
   return Object.entries(getVisState(store)?.datasets ?? {})
-    .filter(([, dataset]) => dataset.type === RASTER_TILE_TYPE)
-    .map(([id, dataset]) => ({ id, metadataUrl: dataset.metadata?.metadataUrl }));
+    .filter(([, dataset]) => dataset.type === RASTER_TILE_TYPE || dataset.type === COG_PAINTED_TYPE)
+    .map(([id, dataset]) => ({
+      // A painted COG keeps no `metadataUrl` — there is no document to fetch —
+      // so its image url stands as the identity, which is what
+      // `metadataUrlForScene` already hands back for it.
+      id,
+      metadataUrl:
+        dataset.type === COG_PAINTED_TYPE
+          ? (dataset.metadata as { sourceUrl?: string } | undefined)?.sourceUrl
+          : dataset.metadata?.metadataUrl,
+    }));
 }
 
 /**
@@ -300,6 +322,14 @@ export function swapRasterScene(store: Store, dispatch: Dispatch, raster: Raster
   // new tile source and buys a scene that actually changes.
   if (raster.kind === 'pmtiles') {
     return false;
+  }
+
+  // A painted COG swaps more simply than either: the whole request is the url,
+  // so parking the new scene in `visConfig` is enough. The layer reads it on
+  // the next render and repeats it in `updateTriggers.getTileData`, which is
+  // what actually expires deck's tiles. Same shape as the Zarr layer's label.
+  if (raster.kind === 'painted') {
+    return applyLayerVisConfig(store, dispatch, raster.id, { cogScene: raster.sourceUrl });
   }
 
   const visState = getVisState(store);
@@ -451,7 +481,9 @@ export const FLOW_FIELD_TYPE = 'flowfield';
  * the query: the user can point the layer's altitude column somewhere else, and
  * the stack has to follow that choice rather than the one autodetection made.
  * It is a constant per query — one query is one pressure level — so the first
- * finite value is the whole answer.
+ * finite value is the whole answer. A layer with no column bound answers with
+ * its own height knob instead, through the same `levelHeight` the layer uses, so
+ * a level set by hand takes its place in the stack like any other.
  */
 export function readFlowFieldLayers(store: Store): FlowFieldLayerState[] {
   const visState = getVisState(store);
@@ -465,12 +497,17 @@ export function readFlowFieldLayers(store: Store): FlowFieldLayerState[] {
       const config = layer.config as {
         dataId?: string;
         columns?: Record<string, { value?: string | null; fieldIdx?: number }>;
-        visConfig?: { flowContext?: FlowFieldContext };
+        visConfig?: Record<string, unknown> & { flowContext?: FlowFieldContext };
       };
       const dataset = config.dataId ? visState.datasets?.[config.dataId] : undefined;
+      const altitude = config.columns?.altitude;
       return {
         id: layer.id,
-        altitudeMeters: constantAt(dataset, config.columns?.altitude?.fieldIdx),
+        altitudeMeters: levelHeight(
+          altitude?.value,
+          constantAt(dataset, altitude?.fieldIdx),
+          config.visConfig ?? {}
+        ),
         context: config.visConfig?.flowContext,
         domain: (layer.config as { animation?: { domain?: [number, number] | null } }).animation?.domain ?? null,
       };

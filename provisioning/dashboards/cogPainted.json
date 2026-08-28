@@ -1,0 +1,77 @@
+{
+  "uid": "cogpainted",
+  "title": "COG pintado por TiTiler",
+  "description": "Una variable de un store Zarr, dibujada por el router /zarr de TiTiler y recorrida con el reloj.",
+  "tags": [
+    "zarr"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": {
+    "from": "2026-08-22T00:00:00.000Z",
+    "to": "2026-08-26T00:00:00.000Z"
+  },
+  "panels": [
+    {
+      "type": "text",
+      "id": 1,
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "# COG pintado por el servidor\n\nDos escenas de un COG inventado. A diferencia de la capa ráster de kepler, que pide `.npy`\ny colorea en el navegador, aquí el panel pide `.png` al router `/cog` y el servidor aplica\nla paleta que el fichero lleva dentro.\n\nEs lo único que sirve para un ráster **clasificado**: con nueve clases numeradas 1-11, el\nreescalado del shader las lleva todas al mismo color y el mapa sale de un color liso.\n"
+      }
+    },
+    {
+      "type": "ubica-keplergl-panel",
+      "id": 2,
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "title": "COG pintado",
+      "gridPos": {
+        "h": 18,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\": {\"fields\": [{\"name\": \"time\", \"type\": \"time\"}, {\"name\": \"raster_url\", \"type\": \"string\"}]}, \"data\": {\"values\": [[1787443200000, 1787529600000], [\"https://example.test/lulc-2022.tif\", \"https://example.test/lulc-2023.tif\"]]}}]"
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "timeSync": "toMap",
+        "rasterServerUrl": "http://titiler.test",
+        "rasterPainted": true,
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -2.9,
+              "longitude": -79.0,
+              "zoom": 4,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        }
+      }
+    }
+  ],
+  "id": null
+}
