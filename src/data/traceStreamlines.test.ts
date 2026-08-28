@@ -387,3 +387,133 @@ describe('traceStreamlines — travel stays inside small patches', () => {
     expect(parchePequeno).toBeLessThan(parcheGrande / 3);
   });
 });
+
+describe('traceStreamlines — carrying the flow across the loop', () => {
+  const CYCLE = 30_000;
+
+  const lines = (seamless: boolean) =>
+    traceStreamlines(uniformField(10, 2), {
+      count: 400,
+      seed: 4,
+      baseMs: 0,
+      cycleMs: CYCLE,
+      lifeFraction: 0.55,
+      seamless,
+    });
+
+  /** How many lines are mid-flight at a moment of the cycle. */
+  const aliveAt = (drawn: Array<{ path: number[][] }>, t: number) =>
+    drawn.filter((l) => l.path[0][3] <= t && t <= l.path[l.path.length - 1][3]).length;
+
+  it('keeps the same number of lines alive from one end of the cycle to the other', () => {
+    // The defect this exists for: with births clamped so no line outlives the
+    // cycle, none is born in its last stretch and none has been alive long at
+    // the start, so the field empties into the loop and refills out of it.
+    const drawn = lines(true);
+    const counts = [0, 0.25, 0.5, 0.75, 1].map((f) => aliveAt(drawn, f * CYCLE));
+
+    expect(Math.min(...counts)).toBeGreaterThan(0.7 * Math.max(...counts));
+  });
+
+  it('empties at both ends without it, which is what it looks like', () => {
+    const drawn = lines(false);
+
+    expect(aliveAt(drawn, 0)).toBe(0);
+    expect(aliveAt(drawn, CYCLE)).toBeLessThan(0.05 * aliveAt(drawn, CYCLE / 2));
+  });
+
+  it('draws the crossing lines twice, a whole cycle apart', () => {
+    // The two are the same geometry either side of the loop: the first is
+    // finishing as the playhead reaches the end, the second already mid-flight
+    // the moment it wraps. deck reads a path's times as increasing, so one path
+    // cannot do both.
+    const drawn = lines(true);
+    const ghosts = drawn.filter((l) => l.path[0][3] < 0);
+
+    expect(ghosts.length).toBeGreaterThan(0);
+
+    const twin = drawn.find(
+      (l) => l.path[0][3] === ghosts[0].path[0][3] + CYCLE && l.speed === ghosts[0].speed
+    );
+    expect(twin).toBeDefined();
+    // Same places, only the clock differs.
+    expect(twin!.path.map((v) => [v[0], v[1]])).toEqual(ghosts[0].path.map((v) => [v[0], v[1]]));
+  });
+
+  it('spreads the births over the whole cycle rather than its first half', () => {
+    const births = lines(true).map((l) => l.path[0][3]);
+    const inLateCycle = births.filter((b) => b > 0.6 * CYCLE).length;
+
+    expect(inLateCycle).toBeGreaterThan(0);
+  });
+});
+
+describe('traceStreamlines — seeding through the camera', () => {
+  /** A camera looking straight down at a box, mapping the screen onto it. */
+  const cameraShowing = (box: { west: number; east: number; south: number; north: number }) => ({
+    widthPx: 800,
+    heightPx: 800,
+    bounds: box,
+    metresPerPixel: ((box.east - box.west) * 111_320) / 800,
+    unproject: (x: number, y: number): [number, number] => [
+      box.west + (x / 800) * (box.east - box.west),
+      box.south + (1 - y / 800) * (box.north - box.south),
+    ],
+  });
+
+  const field = uniformField(10, 2);
+  const trace = (camera: ReturnType<typeof cameraShowing>, zoomResponse?: number) =>
+    traceStreamlines(field, { count: 400, seed: 7, baseMs: 0, camera, zoomResponse });
+
+  it('starts lines wherever the camera is looking, not where a flat box would be', () => {
+    // The whole point of seeding by pixel: tilt the camera and the ground on
+    // screen stops being a rectangle around the centre. Here the camera looks
+    // at the top-right quarter of the field, and nothing should be seeded
+    // outside it.
+    const drawn = trace(cameraShowing({ west: 5, east: 9, south: 5, north: 9 }));
+
+    expect(drawn.length).toBeGreaterThan(0);
+    for (const line of drawn) {
+      expect(line.path[0][0]).toBeGreaterThanOrEqual(5);
+      expect(line.path[0][1]).toBeGreaterThanOrEqual(5);
+    }
+  });
+
+  it('keeps the budget for the screen when the zoom response is 0', () => {
+    // Esri's model, and what this drew before the knob existed: the same number
+    // of lines whether the screen shows the whole field or a corner of it.
+    const wide = trace(cameraShowing({ west: 0, east: 9, south: 0, north: 9 }), 0);
+    const close = trace(cameraShowing({ west: 4, east: 6, south: 4, north: 6 }), 0);
+
+    expect(close.length).toBeGreaterThan(0.8 * wide.length);
+  });
+
+  it('spends the budget on the whole field when the zoom response is 1', () => {
+    // Zooming in then shows only the share of the field that is on screen, so
+    // the lines thin out and separate — what a person means by zooming in.
+    const wide = trace(cameraShowing({ west: 0, east: 9, south: 0, north: 9 }), 1);
+    const close = trace(cameraShowing({ west: 4, east: 6, south: 4, north: 6 }), 1);
+
+    // A twentieth of the field's area is on screen, so a twentieth of the lines.
+    expect(close.length).toBeLessThan(0.2 * wide.length);
+  });
+
+  it('never asks for more than the budget when zoomed out past the field', () => {
+    const beyond = trace(cameraShowing({ west: -20, east: 30, south: -20, north: 30 }), 1);
+    const exact = trace(cameraShowing({ west: 0, east: 9, south: 0, north: 9 }), 1);
+
+    expect(beyond.length).toBeLessThanOrEqual(exact.length);
+  });
+
+  it('draws nothing from a camera that shows no ground at all', () => {
+    const sky = {
+      widthPx: 800,
+      heightPx: 800,
+      bounds: { west: 0, east: 9, south: 0, north: 9 },
+      metresPerPixel: 100,
+      unproject: () => null,
+    };
+
+    expect(traceStreamlines(field, { count: 100, seed: 1, baseMs: 0, camera: sky })).toEqual([]);
+  });
+});

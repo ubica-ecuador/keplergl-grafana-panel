@@ -3,11 +3,13 @@ import { test, expect } from '@grafana/plugin-e2e';
 import { readFlowField, readKepler, settle } from './keplerHelpers';
 
 /**
- * The default thirty seconds is not enough here: a full kepler map under
- * swiftshader takes most of it to appear, and the field is only traced once the
- * layer has been added on top of a dataset kepler has finished ingesting.
+ * The default thirty seconds is nowhere near enough: a full kepler map under
+ * swiftshader takes most of it just to appear, the field is only traced once the
+ * layer has been added on top of a dataset kepler has finished ingesting, and
+ * the seamless loop draws every line that crosses the seam a second time — about
+ * half as much geometry again for the software renderer to get through.
  */
-test.describe.configure({ timeout: 120_000 });
+test.describe.configure({ timeout: 180_000 });
 
 /**
  * A velocity grid must become a flow field layer, and nothing else.
@@ -107,33 +109,35 @@ test('re-traces the field when the layer panel asks for fewer lines', async ({
 });
 
 /**
- * How much of the field is on the canvas right now.
+ * What this layer would hand deck right now, asked of the layer itself.
  *
- * Counted rather than compared against a reference image: the streamlines move,
- * so any two frames differ, and what is being asserted is only "something warm
- * is drawn" against "nothing is". The base map is grey, the ramp is warm, so a
- * red channel well above the blue one is the field and nothing else.
+ * Not measured off the canvas, though that was the first instinct. Under the
+ * software renderer the animation advances about a tenth of a second of its own
+ * clock per second of real time, so the playhead never leaves the start of the
+ * window — where every trail has zero length and the map is legitimately blank.
+ * A pixel count there measures the renderer's speed, not the layer's decision.
  */
-async function litPixels(page: import('@playwright/test').Page): Promise<number> {
-  return page.evaluate(() => {
-    const canvases = [...document.querySelectorAll('canvas')];
-    const deck = canvases.find((c) => c.width > 400) ?? canvases[0];
-    const off = document.createElement('canvas');
-    off.width = deck.width;
-    off.height = deck.height;
-    const ctx = off.getContext('2d');
-    if (!ctx) {
-      return -1;
-    }
-    ctx.drawImage(deck, 0, 0);
-    const pixels = ctx.getImageData(0, 0, off.width, off.height).data;
-    let lit = 0;
-    for (let i = 0; i < pixels.length; i += 4) {
-      if (pixels[i] > 90 && pixels[i] - pixels[i + 2] > 40) {
-        lit++;
+async function deckVisibility(map: import('@playwright/test').Locator): Promise<boolean | undefined> {
+  return map.evaluate((node) => {
+    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
+    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
+    let store = null;
+    while (fiber) {
+      const candidate = fiber.memoizedProps && fiber.memoizedProps.store;
+      if (candidate && typeof candidate.getState === 'function') {
+        store = candidate;
+        break;
       }
+      fiber = fiber.return;
     }
-    return lit;
+    const entry = Object.values(store.getState().keplerGl ?? {})[0] as any;
+    const visState = entry?.visState;
+    const index = (visState?.layers ?? []).findIndex((l: { type?: string }) => l.type === 'flowfield');
+    const built = visState.layers[index].renderLayer({
+      data: visState.layerData[index],
+      animationConfig: visState.animationConfig,
+    });
+    return built[0]?.props?.visible;
   });
 }
 
@@ -154,19 +158,17 @@ test('is switched off by the eye in the layer panel', async ({
   await settle(page);
   await expect.poll(async () => (await readFlowField(map))?.lines ?? 0, { timeout: 60_000 }).toBeGreaterThan(100);
 
-  // A paused field is a blank map, so there has to be something on screen
-  // before its absence means anything. Dispatched rather than clicked: the panel
-  // editor leaves the map narrow enough for kepler's own map controls to sit
-  // over the timeline, and they swallow the pointer.
-  await page.locator('button:has(svg.data-ex-icons-play)').first().dispatchEvent('click');
-  await expect.poll(() => litPixels(page), { timeout: 60_000 }).toBeGreaterThan(0);
+  expect(await deckVisibility(map)).toBe(true);
 
+  // A real click, not a dispatched one: the handler is on an inner node, so an
+  // event fired at the container never reaches it. Nothing is animating here,
+  // so the panel holds still enough for the pointer.
   const eye = page.locator('.layer__visibility-toggle').first();
   await page.locator('.layer-panel__header').first().hover();
   await eye.click();
-  await expect.poll(() => litPixels(page), { timeout: 30_000 }).toBe(0);
+  await expect.poll(() => deckVisibility(map), { timeout: 30_000 }).toBe(false);
 
   await page.locator('.layer-panel__header').first().hover();
   await eye.click();
-  await expect.poll(() => litPixels(page), { timeout: 30_000 }).toBeGreaterThan(0);
+  await expect.poll(() => deckVisibility(map), { timeout: 30_000 }).toBe(true);
 });

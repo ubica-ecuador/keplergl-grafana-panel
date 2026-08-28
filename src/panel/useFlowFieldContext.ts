@@ -3,7 +3,7 @@ import type { Store } from 'redux';
 
 import { applyLayerVisConfigById, readFlowFieldLayers, readMapState } from './keplerAdapter';
 import { outdatedFlowContexts } from './flowFieldContext';
-import { MapStateLike, sameMapState, viewportFromMapState } from './windViewport';
+import { cameraFromMapState, MapStateLike, sameCamera } from './windViewport';
 
 /**
  * How long the view must hold still before the streamlines are traced again.
@@ -63,7 +63,7 @@ export function useFlowFieldContext({ store, isReady, baseMs }: Params): void {
     let lastSeen: MapStateLike | null = null;
 
     const pending = () =>
-      outdatedFlowContexts(readFlowFieldLayers(store), viewportFromMapState(readMapState(store)), baseRef.current);
+      outdatedFlowContexts(readFlowFieldLayers(store), cameraFromMapState(readMapState(store)), baseRef.current);
 
     const publish = () => {
       timer = null;
@@ -77,14 +77,15 @@ export function useFlowFieldContext({ store, isReady, baseMs }: Params): void {
     const onChange = () => {
       const mapState = readMapState(store);
 
-      // Only a change to the *view* restarts the settle timer.
+      // Only a change to the *camera* restarts the settle timer — tilt and
+      // rotation included, since both change which ground is on screen.
       //
       // Restarting it on any store notification looks equivalent and is not:
       // while the animation plays, kepler advances the playhead on every frame,
       // so the store changes sixty times a second and a timer that resets on
       // each one never fires. Panning with the animation running would then
       // never re-trace at all.
-      if (!sameMapState(mapState, lastSeen)) {
+      if (!sameCamera(mapState, lastSeen)) {
         lastSeen = mapState;
         if (timer) {
           clearTimeout(timer);

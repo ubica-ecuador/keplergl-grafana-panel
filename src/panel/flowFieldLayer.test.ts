@@ -52,7 +52,45 @@ const fakeBuild = (props: Record<string, unknown>) => {
   return { props };
 };
 
-const FlowFieldLayer = makeFlowFieldLayer(FakeBaseLayer, fakeBuild) as unknown as new (
+/**
+ * A camera looking straight down at a box of ground, which is the whole of what
+ * the layer asks a camera for.
+ *
+ * The box rides on the camera rather than being derived from its zoom: what is
+ * under test here is that the layer hands the tracer a camera and honours what
+ * it says, not the projection maths — that belongs to deck, and
+ * `flowFieldDeckLayer.ts` is where it is asked for.
+ */
+type TestCamera = { latitude: number; longitude: number; zoom: number; pitch: number; bearing: number; width: number; height: number; box: { west: number; east: number; south: number; north: number } };
+
+const cameraShowing = (box: TestCamera['box'], width = 800, height = 800): TestCamera => ({
+  latitude: (box.south + box.north) / 2,
+  longitude: (box.west + box.east) / 2,
+  zoom: 8,
+  pitch: 0,
+  bearing: 0,
+  width,
+  height,
+  box,
+});
+
+const fakeCamera = (camera: any) => {
+  const box = (camera as TestCamera).box;
+  const spanLng = box.east - box.west;
+  const spanLat = box.north - box.south;
+  return {
+    widthPx: camera.width,
+    heightPx: camera.height,
+    bounds: box,
+    metresPerPixel: (spanLng * 111_320) / camera.width,
+    unproject: (x: number, y: number): [number, number] => [
+      box.west + (x / camera.width) * spanLng,
+      box.south + (1 - y / camera.height) * spanLat,
+    ],
+  };
+};
+
+const FlowFieldLayer = makeFlowFieldLayer(FakeBaseLayer, fakeBuild, fakeCamera as never) as unknown as new (
   props?: Record<string, unknown>
 ) => any;
 
@@ -203,10 +241,7 @@ describe('flow field layer — reusing the trace', () => {
     const first = layer.formatLayerData({ 'grafana-A': dataset });
     layer.config.visConfig = {
       ...layer.config.visConfig,
-      flowContext: {
-        ...CONTEXT,
-        viewport: { west: 0, east: 4, south: 0, north: 4, widthPx: 800, heightPx: 800 },
-      },
+      flowContext: { ...CONTEXT, camera: cameraShowing({ west: 0, east: 4, south: 0, north: 4 }) },
     };
     const second = layer.formatLayerData({ 'grafana-A': dataset }, first);
 
@@ -221,6 +256,21 @@ describe('flow field layer — reusing the trace', () => {
     const second = layer.formatLayerData({ 'grafana-A': eastwardGrid(6) }, first);
 
     expect(second).not.toBe(first);
+  });
+
+  it('re-traces when the seamless loop is switched off', () => {
+    // It changes the geometry, not the painting: the lines that would cross the
+    // loop stop being drawn a second time, and every birth moves.
+    const dataset = eastwardGrid(6);
+    const layer = layerOver(dataset, COMPONENTS);
+
+    const first = layer.formatLayerData({ 'grafana-A': dataset });
+    layer.config.visConfig = { ...layer.config.visConfig, seamlessLoop: false };
+    const second = layer.formatLayerData({ 'grafana-A': dataset }, first);
+
+    expect(second).not.toBe(first);
+    // Fewer lines drawn, because none is drawn twice any more.
+    expect(second.data.length).toBeLessThan(first.data.length);
   });
 
   it('leaves the trace alone when only the trail length changed', () => {
@@ -255,7 +305,11 @@ describe('flow field layer — the clock', () => {
     const { data } = layer.formatLayerData({ 'grafana-A': dataset });
     const times = data.flatMap((line: { path: number[][] }) => line.path.map((vertex) => vertex[3]));
 
-    expect(times.every((t: number) => t >= 0 && t <= 30_000)).toBe(true);
+    // Within a cycle either side of it, rather than exactly inside it: a line
+    // carried across the loop is drawn a whole cycle early, so its times are
+    // negative. What matters is that they are thousands rather than the 1.7e12
+    // of an epoch, which is the number float32 cannot tell apart.
+    expect(times.every((t: number) => Math.abs(t) <= 60_000)).toBe(true);
   });
 });
 
@@ -266,14 +320,12 @@ describe('flow field layer — following the view', () => {
     const layer = layerOver(dataset, COMPONENTS, {
       flowContext: {
         ...CONTEXT,
-        viewport: {
+        camera: cameraShowing({
           west: 4 - halfWidth,
           east: 4 + halfWidth,
           south: 4 - halfWidth,
           north: 4 + halfWidth,
-          widthPx: 800,
-          heightPx: 800,
-        },
+        }),
       },
     });
     const [line] = layer.formatLayerData({ 'grafana-A': dataset }).data;
@@ -291,7 +343,7 @@ describe('flow field layer — height', () => {
   const contextWith = (tallest: number) => ({
     ...CONTEXT,
     tallest,
-    viewport: { west: 0, east: 8, south: 0, north: 8, widthPx: 800, heightPx: 800 },
+    camera: cameraShowing({ west: 0, east: 8, south: 0, north: 8 }),
   });
 
   const heightOf = (altitude: number, tallest: number, elevationScale = 1) => {

@@ -135,7 +135,12 @@ Two knobs decide the character of the map, both under **Streamlines**:
 Colour comes from speed by default: each line is coloured by its own mean, through the ramp under
 **Colour**. Turn **Colour by speed** off for a single flat colour.
 
-**Animation → Cycle** is the length of the loop. The clock at the bottom follows it.
+**Animation → Cycle** is the length of the loop; the clock at the bottom follows it. **Line
+lifetime** next to it is how much of the field is lit at once — raise it for a fuller map.
+
+Leave **Seamless loop** on. Off, the field visibly empties as the animation reaches the end and
+refills as it starts again; on, a line that runs past the end is carried round to the beginning and
+the density holds steady.
 
 ## 8. Two levels at once
 

@@ -1,0 +1,103 @@
+{
+  "uid": "esri-image",
+  "title": "ArcGIS Image Service — el mundo en una capa",
+  "description": "Prueba de la capa esriImage: un solo servicio, sin fichero, sin firma y sin servidor de teselas propio, cubriendo el planeta a cualquier zoom.",
+  "tags": [
+    "arcgis",
+    "kepler",
+    "raster"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 0,
+  "editable": true,
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "2023",
+          "value": "2023"
+        },
+        "label": "Año del ráster",
+        "name": "anio",
+        "type": "custom",
+        "query": "2017, 2018, 2019, 2020, 2021, 2022, 2023",
+        "options": [],
+        "hide": 0,
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "ubica-keplergl-panel",
+      "title": "Cobertura del suelo — servida por el ImageServer",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "followGrafanaTheme": true,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "latitude": 5.0,
+              "longitude": -30.0,
+              "pitch": 0,
+              "zoom": 2.0
+            },
+            "visState": {
+              "filters": [],
+              "layers": [],
+              "layerOrder": [],
+              "layerBlending": "normal",
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": false
+                },
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false
+                }
+              }
+            }
+          },
+          "datasets": [],
+          "version": "v1"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "-- Un servicio, no un fichero. No hace falta servidor de teselas propio ni\n-- firma: el ImageServer es un mosaic dataset --catalogo, regla de eleccion y\n-- piramide sobre el conjunto-- y responde para cualquier extension y zoom.\n--\n-- La regla de mosaico es la que elige el ano, y es la misma que este banco ya\n-- le manda a computeHistograms para las cifras.\nSELECT\n  'https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer' AS esri_url,\n  '{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=' || CAST($anio AS VARCHAR) || '\"}' AS mosaic_rule\n"
+        }
+      ]
+    }
+  ]
+}

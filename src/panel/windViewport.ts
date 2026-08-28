@@ -1,4 +1,5 @@
 import { Viewport } from '../data/traceStreamlines';
+import type { CameraState } from './flowFieldLayer';
 
 /** The slice of kepler's map state the viewport is derived from. */
 export interface MapStateLike {
@@ -7,6 +8,8 @@ export interface MapStateLike {
   zoom?: number;
   width?: number;
   height?: number;
+  pitch?: number;
+  bearing?: number;
 }
 
 /**
@@ -42,6 +45,48 @@ export function sameMapState(a: MapStateLike | null, b: MapStateLike | null): bo
     a.width === b.width &&
     a.height === b.height
   );
+}
+
+/**
+ * Whether two map states describe the same *camera*, tilt and rotation included.
+ *
+ * Separate from `sameMapState` because the two have different jobs. What is
+ * published to the dashboard variables is a bounding box, and a box does not
+ * change when the camera merely tilts; what the flow field draws does, because
+ * tilting turns a rectangle of ground into a trapezoid reaching for the horizon.
+ * Comparing on the box is why tilting the map used to leave the field alone.
+ */
+export function sameCamera(a: MapStateLike | null, b: MapStateLike | null): boolean {
+  if (!a || !b) {
+    return a === b;
+  }
+  return sameMapState(a, b) && a.pitch === b.pitch && a.bearing === b.bearing;
+}
+
+/**
+ * kepler's map state as a camera, or null before the map has a size.
+ *
+ * Barely a conversion — the numbers are kepler's own — but the validation is
+ * the point: kepler reports a zero-sized map until its layout settles, and a
+ * camera built from that projects every pixel to nowhere.
+ */
+export function cameraFromMapState(mapState: MapStateLike | null | undefined): CameraState | null {
+  if (!mapState) {
+    return null;
+  }
+  const { latitude, longitude, zoom, width, height, pitch, bearing } = mapState;
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(zoom) || !width || !height) {
+    return null;
+  }
+  return {
+    latitude: latitude!,
+    longitude: longitude!,
+    zoom: zoom!,
+    pitch: Number.isFinite(pitch) ? pitch! : 0,
+    bearing: Number.isFinite(bearing) ? bearing! : 0,
+    width,
+    height,
+  };
 }
 
 /**

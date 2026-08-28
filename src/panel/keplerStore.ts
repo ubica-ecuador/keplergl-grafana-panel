@@ -6,7 +6,7 @@ import { buildCogPaintedDeckLayer } from './cogPaintedDeckLayer';
 import { makeCogPaintedLayer } from './cogPaintedLayer';
 import { buildEsriImageDeckLayer } from './esriImageDeckLayer';
 import { makeEsriImageLayer } from './esriImageLayer';
-import { buildFlowFieldDeckLayer } from './flowFieldDeckLayer';
+import { buildFlowFieldDeckLayer, makeScreenCamera } from './flowFieldDeckLayer';
 import { makeFlowFieldLayer } from './flowFieldLayer';
 import { withTripGpuFilterFix } from './tripLayerFix';
 import { buildTimedWmsLayer } from './wmsDeckLayer';
@@ -55,7 +55,7 @@ const layerClasses = {
   // computed at draw time, from the viewport. Built on the base `Layer` because
   // the Trip layer it ultimately paints is all about turning rows into paths,
   // and every part of that would have to be overridden.
-  flowfield: makeFlowFieldLayer(Layer as never, buildFlowFieldDeckLayer),
+  flowfield: makeFlowFieldLayer(Layer as never, buildFlowFieldDeckLayer, makeScreenCamera),
 };
 
 /**

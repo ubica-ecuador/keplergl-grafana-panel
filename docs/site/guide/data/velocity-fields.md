@@ -122,6 +122,12 @@ Density and on-screen length hold steady as you zoom, because the field is **re-
 map settles** — a fixed budget of lines per screen, each a fixed number of pixels long. Only the
 share of the screen your data actually covers gets drawn.
 
+The lines are seeded by picking points **on the screen** and asking the camera what ground is under
+them, so a tilted or rotated map is covered to its edges. That matters more than it sounds: tilt the
+camera and the ground on screen stops being a rectangle and becomes a trapezoid reaching towards the
+horizon — measured at a pitch of 50°, two and a half times deeper up-range than the flat rectangle
+is tall. A field seeded into the rectangle simply stops halfway up the screen.
+
 Re-tracing reads the grid already in the browser, so panning costs no database work, and it does not
 touch the dataset — the playhead keeps running through it.
 
@@ -130,6 +136,24 @@ touch the dataset — the playhead keeps running through it.
 **Lines per screen** under **Streamlines**: 9,000 by default, from 500 to 20,000, and per layer.
 Stack three pressure levels and each asks for its own allowance, so lower them together if the
 levels stop being tellable apart.
+
+### What the budget is *for*
+
+**Zoom response**, next to it, decides that — and it is what to reach for when zooming in does not
+feel like zooming in.
+
+At **0**, the default and what this drew before the knob existed, the budget is for the **screen**:
+the same number of lines whether the screen shows the whole field or a corner of it, so the map
+looks the same at every scale. That is Esri's model, and it is the right one for a map that is
+looked at at one scale.
+
+At **1** the budget is for the **field**: zooming in shows only the share of it that is on screen,
+so the lines thin out and separate as you go in. Measured on the tutorial's grid, a map holding
+3,100 lines zoomed out drops to 930 zoomed three levels in — the field opens up instead of staying
+uniformly busy.
+
+In between the two are blended, which is usually where a map that is read across several scales
+wants to sit.
 
 There is no figure that suits every map:
 
@@ -187,11 +211,13 @@ Every knob is in the layer's own panel, grouped as **Colour**, **Streamlines**, 
 | --- | --- | --- |
 | Colour by speed | Colour | On, each line takes its colour from its mean speed through the ramp below. Off, the whole field is one colour. |
 | Lines per screen | Streamlines | The density budget. |
+| Zoom response | Streamlines | Whether that budget is for the screen (0) or for the whole field (1). |
 | Stroke width | Streamlines | Line width in **pixels**, so it holds as you zoom. |
 | Trail length | Streamlines | How much of the cycle the moving trail spans, as a percentage. |
 | Line length | Streamlines | Vertices per streamline — how far a line reaches, not how much of it is lit. |
 | Cycle | Animation | The length of the loop, in seconds. |
-| Line lifetime | Animation | The share of the cycle one line lives for. |
+| Line lifetime | Animation | The share of the cycle one line lives for, and so how much of the field is lit at once. |
+| Seamless loop | Animation | Carries a line whose life runs past the end of the cycle round to the start of it. On by default. |
 | Smoothing | Field | Blur radius in cells. |
 | Height (m) | Field | What this level *is*, when no altitude column is bound. Counts against the other levels. |
 | Vertical exaggeration | Field | How tall the stack is drawn. The one that moves a lone layer. |
@@ -201,7 +227,21 @@ particles, long as complete streamlines, closer to a classic wind chart. It is a
 cycle* rather than an absolute number, so lengthening the cycle does not silently shorten every
 trail.
 
-Every line lives for a little over half the cycle by default, with births scattered through it — so
-trails appear and fade continuously, rather than the whole field restarting in unison every time the
-loop comes round. Raise **Line lifetime** to 1 and they all restart together, which is visible as a
-blink.
+Every line lives for a little over half the cycle by default, with births scattered through it, so
+trails appear and fade continuously rather than the whole field restarting in unison.
+
+::: warning Turning the seamless loop off brings back a visible wave
+Without it a line has to end before the cycle does. Nothing is then born in the window's last
+stretch and nothing has been alive long at its start, so the field **empties into the loop and
+refills out of it** — measured on the map, the amount of line on screen swings by a factor of two
+through the cycle, against 3% with it on.
+
+What it costs is a second drawing of every line that crosses the seam: about half again as many
+lines at the default lifetime, and nearly double at a lifetime of 1. That is the reason it can be
+switched off at all — a very dense field on a modest machine.
+:::
+
+With the seamless loop on, **Line lifetime** says only how much of the field is lit at once: at 0.55
+a little over half the lines are mid-flight at any instant, and at 1 all of them are. Raise it for a
+fuller field, lower it for scattered particles. Either way the density holds steady through the
+cycle.

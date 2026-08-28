@@ -5,7 +5,7 @@ import {
   WindField,
   WindFieldColumns,
 } from '../data/buildWindField';
-import { stackExaggeration, Streamline, traceStreamlines, Viewport } from '../data/traceStreamlines';
+import { Box, ScreenCamera, stackExaggeration, Streamline, traceStreamlines } from '../data/traceStreamlines';
 
 /**
  * The kepler layer that draws a grid of velocities as animated streamlines.
@@ -26,6 +26,26 @@ import { stackExaggeration, Streamline, traceStreamlines, Viewport } from '../da
 export type FlowFieldDeckLayerFactory = (props: Record<string, unknown>) => unknown;
 
 /**
+ * Where the map is looking from, in the plain numbers kepler keeps.
+ *
+ * A camera and not a rectangle of ground, because those stop being the same
+ * thing the moment the map is tilted — see `ScreenCamera`. Plain numbers because
+ * this travels through `visConfig`, which is saved with the dashboard.
+ */
+export interface CameraState {
+  latitude: number;
+  longitude: number;
+  zoom: number;
+  pitch: number;
+  bearing: number;
+  width: number;
+  height: number;
+}
+
+/** Turns that into something that can unproject — see `flowFieldDeckLayer.ts`. */
+export type ScreenCameraFactory = (camera: CameraState) => ScreenCamera | null;
+
+/**
  * What the panel knows and the layer cannot work out for itself.
  *
  * Written into `visConfig` by `useFlowFieldContext`, and deliberately absent
@@ -34,8 +54,8 @@ export type FlowFieldDeckLayerFactory = (props: Record<string, unknown>) => unkn
  * without touching its dataset, the same road `visConfig.zarrLabel` takes.
  */
 export interface FlowFieldContext {
-  /** What the map is showing, so seeding and step length follow the screen. */
-  viewport?: Viewport;
+  /** Where the map is looking from, so seeding and step length follow the screen. */
+  camera?: CameraState;
   /** Epoch ms the animation starts from — the dashboard range's start. */
   baseMs: number;
   /**
@@ -56,6 +76,12 @@ export interface FlowFieldContext {
  * before any of this existed comes back looking the same. Two of them earn a
  * word:
  *
+ * `zoomResponse` decides what the line count is a budget *for*. At 0 it is a
+ * budget for the screen, so the field looks the same at every scale — Esri's
+ * model, and what this drew before the knob existed. At 1 it is a budget for the
+ * whole field, so zooming in shows only the share of it that is on screen and
+ * the lines separate, which is what a person means by zooming into something.
+ *
  * `heightMeters` and `elevationScale` are not two spellings of the same thing, and the difference
  * is worth stating because the first looks inert on its own. The automatic
  * exaggeration normalises the **tallest level on the map** to a share of the
@@ -66,9 +92,17 @@ export interface FlowFieldContext {
  *
  * `cycleSeconds` runs every streamline over one shared window, so the whole
  * field is on screen at all times and what moves is a short trail — the
- * earth.nullschool look. `lifeFraction` below 1 scatters the births through
- * that window, so trails appear and fade continuously instead of every line
- * restarting together when the animation loops.
+ * earth.nullschool look. `lifeFraction` is how much of that window one line
+ * lives for, and so how much of the field is lit at once.
+ *
+ * `seamlessLoop` is what makes `lifeFraction` mean only that. Without it a line
+ * has to end before the cycle does, so none is born in the window's last
+ * stretch and none has been alive long at its start: the field measurably
+ * empties into the loop and refills out of it — nothing alive at either end,
+ * everything alive in the middle. With it, a line that overruns is drawn a
+ * second time a cycle earlier and carries straight across the seam. The cost is
+ * that second drawing: about half again as many lines at the default lifetime,
+ * and nearly double at a lifetime of 1.
  *
  * The trail is a **share of the cycle** rather than kepler's own `trailLength`,
  * which is an absolute number with a default of 180. The vertex times here are
@@ -168,6 +202,23 @@ export const FLOW_FIELD_VIS_CONFIGS = {
     group: 'color',
     property: 'colorBySpeed',
   },
+  seamlessLoop: {
+    type: 'boolean',
+    defaultValue: true,
+    label: 'flowfield.seamlessLoop',
+    group: 'display',
+    property: 'seamlessLoop',
+  },
+  zoomResponse: {
+    type: 'number',
+    defaultValue: 0,
+    label: 'flowfield.zoomResponse',
+    isRanged: false,
+    range: [0, 1],
+    step: 0.05,
+    group: 'display',
+    property: 'zoomResponse',
+  },
 } as const;
 
 /**
@@ -265,12 +316,14 @@ export function traceSignature(config: FlowFieldLayerLike['config']): string {
     visConfig.lineLength,
     visConfig.cycleSeconds,
     visConfig.lifeFraction,
+    visConfig.seamlessLoop,
     visConfig.smoothing,
     visConfig.heightMeters,
     visConfig.elevationScale,
+    visConfig.zoomResponse,
     context.baseMs,
     context.tallest,
-    context.viewport,
+    context.camera,
   ]);
 }
 
@@ -427,7 +480,8 @@ export function colorForSpeed(
  */
 export function makeFlowFieldLayer<C extends Constructor<object>>(
   BaseLayer: C,
-  buildDeckLayer: FlowFieldDeckLayerFactory
+  buildDeckLayer: FlowFieldDeckLayerFactory,
+  makeCamera: ScreenCameraFactory
 ): C {
   class FlowFieldLayer extends (BaseLayer as Constructor<FlowFieldLayerLike>) {
     constructor(props?: Record<string, unknown>) {
@@ -527,9 +581,11 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
         constantOf(frame, columns.altitude?.value),
         visConfig
       );
+      const camera = context.camera ? makeCamera(context.camera) : null;
+      const ground: Box | undefined = camera?.bounds;
       const altitudeMeters =
         rawAltitude *
-        stackExaggeration(setting(context.tallest, rawAltitude), context.viewport) *
+        stackExaggeration(setting(context.tallest, rawAltitude), ground) *
         setting(visConfig.elevationScale, 1);
 
       const data = traceStreamlines(field, {
@@ -542,7 +598,9 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
         maxVertices: Math.round(setting(visConfig.lineLength, 30)),
         cycleMs,
         lifeFraction: setting(visConfig.lifeFraction, 0.55),
-        viewport: context.viewport,
+        seamless: visConfig.seamlessLoop !== false,
+        camera: camera ?? undefined,
+        zoomResponse: setting(visConfig.zoomResponse, 0),
         altitudeMeters,
       });
 

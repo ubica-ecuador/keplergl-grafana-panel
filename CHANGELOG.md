@@ -31,6 +31,34 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   animation domain, so the clock has to be nudged, without which the time widget never appears at
   all; and both `centerMap` and the viewport guard frame the map from layer bounds, which the Point
   layer used to carry and this layer supersedes.
+- **Added: the line count can follow the ground instead of the screen.** **Zoom response** under
+  Streamlines, 0 by default. At 0 the budget is for the screen and the field looks the same at every
+  scale, which is what it drew before and the right answer for a map read at one scale; at 1 the
+  budget is for the whole field, so zooming in shows only the share of it on screen and the lines
+  separate — measured on the tutorial's grid, 3,100 lines zoomed out against 930 three levels in.
+  For a map that is zoomed about, the old behaviour gave no sense of zooming at all.
+- **Fixed: a tilted map was only drawn as far as a flat one would reach.** The seeding area was a
+  rectangle of ground worked out from the centre, the zoom and the panel's pixel size — which is
+  what the screen shows only when the map looks straight down. Tilt it and the ground on screen
+  becomes a trapezoid reaching towards the horizon, measured at two and a half times deeper up-range
+  at a pitch of 50°, so the field stopped halfway up the screen and read as badly clipped. Worse,
+  neither pitch nor bearing was compared when deciding the view had moved, so tilting or rotating
+  did not even count as a change: the field was never re-traced for the ground the camera had turned
+  towards. Lines are now seeded by picking points on the screen and asking deck's own viewport what
+  ground is under them, which is right at any pitch, bearing and zoom by construction rather than by
+  arithmetic that holds only from directly above.
+- **Fixed: the field emptied at the end of every animation cycle and refilled at the start of the
+  next.** A streamline's birth was clamped so its life ended before the cycle did, which meant no
+  line was born in the window's last stretch and none had been alive long at its start: measured on
+  a field of two thousand lines, none was mid-flight at either end of the cycle and all two thousand
+  were at its midpoint. What the map showed was a wave, not a flow. A line that overruns is now
+  drawn a second time a whole cycle earlier, so the same geometry is already mid-flight the moment
+  the playhead wraps — deck reads a path's timestamps as increasing, so a line that crosses the loop
+  cannot be one path. Measured on the canvas over a full cycle, the amount of line on screen now
+  varies by 3%, against a factor of two before. **Seamless loop**, on by default, because the second
+  drawing is not free: about half again as many lines at the default lifetime, nearly double at a
+  lifetime of 1. With it on, **Line lifetime** finally means only what it says — how much of the
+  field is lit at once — rather than also deciding the pulse.
 - **Fixed: a map that took more than six seconds to load could silently return to San Francisco.**
   kepler seeds its internal view state with its own default at mount and writes it back on a
   debounce, so a slow load lands that echo *after* the panel has framed the map on the data. The
