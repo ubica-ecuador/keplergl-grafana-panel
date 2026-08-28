@@ -5,7 +5,7 @@ import {
   WindField,
   WindFieldColumns,
 } from '../data/buildWindField';
-import { stackExaggeration, Streamline, traceStreamlines, Viewport } from '../data/traceStreamlines';
+import { Box, ScreenCamera, stackExaggeration, Streamline, traceStreamlines } from '../data/traceStreamlines';
 
 /**
  * The kepler layer that draws a grid of velocities as animated streamlines.
@@ -26,6 +26,26 @@ import { stackExaggeration, Streamline, traceStreamlines, Viewport } from '../da
 export type FlowFieldDeckLayerFactory = (props: Record<string, unknown>) => unknown;
 
 /**
+ * Where the map is looking from, in the plain numbers kepler keeps.
+ *
+ * A camera and not a rectangle of ground, because those stop being the same
+ * thing the moment the map is tilted — see `ScreenCamera`. Plain numbers because
+ * this travels through `visConfig`, which is saved with the dashboard.
+ */
+export interface CameraState {
+  latitude: number;
+  longitude: number;
+  zoom: number;
+  pitch: number;
+  bearing: number;
+  width: number;
+  height: number;
+}
+
+/** Turns that into something that can unproject — see `flowFieldDeckLayer.ts`. */
+export type ScreenCameraFactory = (camera: CameraState) => ScreenCamera | null;
+
+/**
  * What the panel knows and the layer cannot work out for itself.
  *
  * Written into `visConfig` by `useFlowFieldContext`, and deliberately absent
@@ -34,8 +54,8 @@ export type FlowFieldDeckLayerFactory = (props: Record<string, unknown>) => unkn
  * without touching its dataset, the same road `visConfig.zarrLabel` takes.
  */
 export interface FlowFieldContext {
-  /** What the map is showing, so seeding and step length follow the screen. */
-  viewport?: Viewport;
+  /** Where the map is looking from, so seeding and step length follow the screen. */
+  camera?: CameraState;
   /** Epoch ms the animation starts from — the dashboard range's start. */
   baseMs: number;
   /**
@@ -55,6 +75,12 @@ export interface FlowFieldContext {
  * The defaults are the constants this layer replaced, so a map that was drawn
  * before any of this existed comes back looking the same. Two of them earn a
  * word:
+ *
+ * `zoomResponse` decides what the line count is a budget *for*. At 0 it is a
+ * budget for the screen, so the field looks the same at every scale — Esri's
+ * model, and what this drew before the knob existed. At 1 it is a budget for the
+ * whole field, so zooming in shows only the share of it that is on screen and
+ * the lines separate, which is what a person means by zooming into something.
  *
  * `heightMeters` and `elevationScale` are not two spellings of the same thing, and the difference
  * is worth stating because the first looks inert on its own. The automatic
@@ -183,6 +209,16 @@ export const FLOW_FIELD_VIS_CONFIGS = {
     group: 'display',
     property: 'seamlessLoop',
   },
+  zoomResponse: {
+    type: 'number',
+    defaultValue: 0,
+    label: 'flowfield.zoomResponse',
+    isRanged: false,
+    range: [0, 1],
+    step: 0.05,
+    group: 'display',
+    property: 'zoomResponse',
+  },
 } as const;
 
 /**
@@ -284,9 +320,10 @@ export function traceSignature(config: FlowFieldLayerLike['config']): string {
     visConfig.smoothing,
     visConfig.heightMeters,
     visConfig.elevationScale,
+    visConfig.zoomResponse,
     context.baseMs,
     context.tallest,
-    context.viewport,
+    context.camera,
   ]);
 }
 
@@ -443,7 +480,8 @@ export function colorForSpeed(
  */
 export function makeFlowFieldLayer<C extends Constructor<object>>(
   BaseLayer: C,
-  buildDeckLayer: FlowFieldDeckLayerFactory
+  buildDeckLayer: FlowFieldDeckLayerFactory,
+  makeCamera: ScreenCameraFactory
 ): C {
   class FlowFieldLayer extends (BaseLayer as Constructor<FlowFieldLayerLike>) {
     constructor(props?: Record<string, unknown>) {
@@ -543,9 +581,11 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
         constantOf(frame, columns.altitude?.value),
         visConfig
       );
+      const camera = context.camera ? makeCamera(context.camera) : null;
+      const ground: Box | undefined = camera?.bounds;
       const altitudeMeters =
         rawAltitude *
-        stackExaggeration(setting(context.tallest, rawAltitude), context.viewport) *
+        stackExaggeration(setting(context.tallest, rawAltitude), ground) *
         setting(visConfig.elevationScale, 1);
 
       const data = traceStreamlines(field, {
@@ -559,7 +599,8 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
         cycleMs,
         lifeFraction: setting(visConfig.lifeFraction, 0.55),
         seamless: visConfig.seamlessLoop !== false,
-        viewport: context.viewport,
+        camera: camera ?? undefined,
+        zoomResponse: setting(visConfig.zoomResponse, 0),
         altitudeMeters,
       });
 

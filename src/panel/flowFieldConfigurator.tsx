@@ -66,6 +66,7 @@ function FlowFieldLayerConfig({ layer, visConfiguratorProps, layerConfiguratorPr
           classic wind chart, which is not a choice to hide one click away. */}
       <LayerConfigGroup label={'flowfield.group.streamlines'} collapsible>
         {slider('density')}
+        {slider('zoomResponse')}
         {slider('thickness')}
         {slider('trailShare')}
         <ConfigGroupCollapsibleContent>{slider('lineLength')}</ConfigGroupCollapsibleContent>

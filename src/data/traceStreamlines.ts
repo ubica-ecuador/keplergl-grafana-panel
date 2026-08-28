@@ -70,12 +70,52 @@ export interface StreamlineOptions {
   /**
    * What the map is showing. Supply it and both the seeding and the step size
    * follow the screen instead of the ground — see `viewportSettings`.
+   *
+   * Superseded by `camera` where one is available: a viewport is a rectangle of
+   * ground, which is only what the screen shows when the map is looking straight
+   * down.
    */
   viewport?: Viewport;
+  /**
+   * The camera the map is looking through, which is not the same thing as a
+   * rectangle of ground — see `ScreenCamera`.
+   */
+  camera?: ScreenCamera;
+  /**
+   * How much the line count follows the ground rather than the screen, from 0 to
+   * 1 — see `zoomFactor`.
+   */
+  zoomResponse?: number;
   /** Step length in screen pixels when a viewport is given. */
   segmentPixels?: number;
   /** How far past the edge of the screen to seed, as a multiple of the extent. */
   expandFactor?: number;
+}
+
+/**
+ * The camera the map is looking through.
+ *
+ * A `Viewport` is a rectangle of ground, and that is only what the screen shows
+ * when the map looks straight down. Tilt it and the ground on screen becomes a
+ * trapezoid reaching towards the horizon — several times deeper up-range than
+ * the flat rectangle is tall — and rotating it turns that trapezoid on the
+ * compass as well. Seeding the rectangle then leaves the top half of the screen
+ * bare, which reads as the field being clipped.
+ *
+ * So the tracer is handed the camera rather than a box, and seeds by picking
+ * pixels and asking what ground is under them. The density it aims for is a
+ * count per *screen*, and this makes that true by construction at any pitch,
+ * bearing and zoom, instead of true only when looking straight down.
+ */
+export interface ScreenCamera {
+  widthPx: number;
+  heightPx: number;
+  /** The ground under a screen pixel, or null where the pixel shows sky. */
+  unproject(x: number, y: number): [number, number] | null;
+  /** The ground the screen shows at all, as a box around the trapezoid. */
+  bounds: Box;
+  /** Metres per pixel at the centre of the view. */
+  metresPerPixel: number;
 }
 
 const METRES_PER_DEGREE = 111_320;
@@ -98,18 +138,18 @@ const STACK_SHARE_OF_VIEW = 0.15;
  * serve every zoom.
  *
  * `tallest` is the highest level on the map rather than this layer's own, so the
- * levels keep their real proportion to each other. Returns 1 with no viewport or
+ * levels keep their real proportion to each other. Returns 1 with no ground or
  * no height, so nothing is invented when there is nothing to stack.
  */
-export function stackExaggeration(tallest: number, viewport?: Viewport): number {
-  if (!viewport || tallest <= 0) {
+export function stackExaggeration(tallest: number, ground?: Box): number {
+  if (!ground || tallest <= 0) {
     return 1;
   }
 
   const metresAcross =
-    (viewport.east - viewport.west) *
+    (ground.east - ground.west) *
     METRES_PER_DEGREE *
-    Math.cos((((viewport.south + viewport.north) / 2) * Math.PI) / 180);
+    Math.cos((((ground.south + ground.north) / 2) * Math.PI) / 180);
 
   return (metresAcross * STACK_SHARE_OF_VIEW) / tallest;
 }
@@ -142,7 +182,8 @@ const DEFAULTS = {
  * an arc length: how many metres a pixel covers depends on the zoom, so a step
  * of five pixels is a different number of metres at every scale.
  */
-interface Box {
+/** A rectangle of ground. */
+export interface Box {
   west: number;
   east: number;
   south: number;
@@ -157,6 +198,36 @@ const intersect = (a: Box, b: Box): Box => ({
 });
 
 const area = (box: Box) => Math.max(0, box.east - box.west) * Math.max(0, box.north - box.south);
+
+/**
+ * What the tracer needs, worked out from the camera.
+ *
+ * `coverage` is the whole of the zoom response, and the two ends of it are
+ * different questions. At 0 the count is a budget for the *screen*: the field
+ * looks the same at every scale, which is Esri's model and what this drew
+ * before. At 1 it is a budget for the *field*: zooming in shows only the share
+ * of it that is on screen, so the lines thin out and separate — what a person
+ * means by zooming into something. In between the two are blended, which is
+ * usually where a map that is looked at across several scales wants to sit.
+ *
+ * The share is capped at 1 so that zooming out past the data never asks for more
+ * lines than the budget, only for the whole of it.
+ */
+function cameraSettings(camera: ScreenCamera, extent: Box, segmentPixels: number, zoomResponse = 0) {
+  const whole = area(extent);
+  const onScreen = area(intersect(camera.bounds, extent));
+  const share = whole > 0 ? Math.min(1, onScreen / whole) : 1;
+  const response = Math.min(1, Math.max(0, zoomResponse));
+
+  return {
+    // Only used to sample typical speeds; the seeds themselves come from the
+    // screen, so this needs to be where the data and the view overlap.
+    seedArea: intersect(camera.bounds, extent),
+    coverage: Math.pow(share, response),
+    segmentMeters: camera.metresPerPixel * segmentPixels,
+    metresPerPixel: camera.metresPerPixel,
+  };
+}
 
 function viewportSettings(
   viewport: Viewport,
@@ -219,11 +290,13 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
     north: field.south + (field.rows - 1) * field.stepLat,
   };
 
-  // With a viewport the seeding area and the step follow the screen; without
-  // one they fall back to the whole field and a fixed distance on the ground.
-  const scaled = options.viewport
-    ? viewportSettings(options.viewport, extent, base.segmentPixels, base.expandFactor)
-    : { seedArea: extent, coverage: 1, segmentMeters: base.segmentMeters, metresPerPixel: 0 };
+  // Three ways to decide where to start lines and how long a step is, in
+  // descending order of how much they know about what the user is looking at.
+  const scaled = options.camera
+    ? cameraSettings(options.camera, extent, base.segmentPixels, options.zoomResponse)
+    : options.viewport
+      ? viewportSettings(options.viewport, extent, base.segmentPixels, base.expandFactor)
+      : { seedArea: extent, coverage: 1, segmentMeters: base.segmentMeters, metresPerPixel: 0 };
 
   const wanted = Math.round(options.count * scaled.coverage);
   if (wanted < 1 || area(scaled.seedArea) <= 0) {
@@ -249,17 +322,41 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
   const random = seededRandom(options.seed);
   const traced: Vertex[][] = [];
 
-  // More attempts than lines asked for: some seeds land in calm air, in a hole
-  // or next to the edge, and yield nothing usable.
-  const maxAttempts = wanted * 4;
+  const camera = options.camera;
+  if (camera) {
+    /**
+     * One attempt per line asked for, and whatever traces is the field.
+     *
+     * No retrying towards a target here, unlike the path below. Seeding the
+     * screen already answers the question the retry was compensating for: a
+     * field covering a third of the view gets a third of the lines because two
+     * thirds of the seeds land where there is no data, which is the honest
+     * answer. Retrying to reach the count would refill that third to the
+     * density of a full screen.
+     */
+    for (let attempt = 0; attempt < wanted; attempt++) {
+      const at = camera.unproject(random() * camera.widthPx, random() * camera.heightPx);
+      if (!at) {
+        continue;
+      }
+      const vertices = trace(field, at[0], at[1], settings);
+      if (vertices) {
+        traced.push(vertices);
+      }
+    }
+  } else {
+    // More attempts than lines asked for: some seeds land in calm air, in a hole
+    // or next to the edge, and yield nothing usable.
+    const maxAttempts = wanted * 4;
 
-  for (let attempt = 0; attempt < maxAttempts && traced.length < wanted; attempt++) {
-    const lon = scaled.seedArea.west + random() * (scaled.seedArea.east - scaled.seedArea.west);
-    const lat = scaled.seedArea.south + random() * (scaled.seedArea.north - scaled.seedArea.south);
+    for (let attempt = 0; attempt < maxAttempts && traced.length < wanted; attempt++) {
+      const lon = scaled.seedArea.west + random() * (scaled.seedArea.east - scaled.seedArea.west);
+      const lat = scaled.seedArea.south + random() * (scaled.seedArea.north - scaled.seedArea.south);
 
-    const vertices = trace(field, lon, lat, settings);
-    if (vertices) {
-      traced.push(vertices);
+      const vertices = trace(field, lon, lat, settings);
+      if (vertices) {
+        traced.push(vertices);
+      }
     }
   }
 

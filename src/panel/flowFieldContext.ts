@@ -1,5 +1,4 @@
-import type { Viewport } from '../data/traceStreamlines';
-import type { FlowFieldContext } from './flowFieldLayer';
+import type { CameraState, FlowFieldContext } from './flowFieldLayer';
 
 /**
  * Deciding what a flow field layer should be told about the map, kept free of
@@ -38,7 +37,7 @@ export interface FlowContextPatch {
  */
 export function outdatedFlowContexts(
   layers: FlowFieldLayerState[],
-  viewport: Viewport | null,
+  camera: CameraState | null,
   baseMs: number
 ): FlowContextPatch[] {
   if (layers.length === 0) {
@@ -46,7 +45,7 @@ export function outdatedFlowContexts(
   }
 
   const context: FlowFieldContext = {
-    viewport: viewport ?? undefined,
+    camera: camera ?? undefined,
     baseMs,
     tallest: Math.max(0, ...layers.map((layer) => layer.altitudeMeters)),
   };
@@ -59,19 +58,28 @@ export function sameContext(a: FlowFieldContext | undefined, b: FlowFieldContext
   if (!a) {
     return false;
   }
-  return a.baseMs === b.baseMs && a.tallest === b.tallest && sameViewport(a.viewport, b.viewport);
+  return a.baseMs === b.baseMs && a.tallest === b.tallest && sameCameraState(a.camera, b.camera);
 }
 
-function sameViewport(a?: Viewport, b?: Viewport): boolean {
+/**
+ * Whether two cameras see the same thing.
+ *
+ * Pitch and bearing count, and that is not a detail: they were absent from the
+ * comparison this replaces, so tilting or rotating the map did not even count
+ * as a change of view — the field was never re-traced for the ground the camera
+ * had just turned towards.
+ */
+function sameCameraState(a?: CameraState, b?: CameraState): boolean {
   if (!a || !b) {
     return a === b;
   }
   return (
-    a.west === b.west &&
-    a.east === b.east &&
-    a.south === b.south &&
-    a.north === b.north &&
-    a.widthPx === b.widthPx &&
-    a.heightPx === b.heightPx
+    a.latitude === b.latitude &&
+    a.longitude === b.longitude &&
+    a.zoom === b.zoom &&
+    a.pitch === b.pitch &&
+    a.bearing === b.bearing &&
+    a.width === b.width &&
+    a.height === b.height
   );
 }

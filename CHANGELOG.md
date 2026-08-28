@@ -31,6 +31,22 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   animation domain, so the clock has to be nudged, without which the time widget never appears at
   all; and both `centerMap` and the viewport guard frame the map from layer bounds, which the Point
   layer used to carry and this layer supersedes.
+- **Added: the line count can follow the ground instead of the screen.** **Zoom response** under
+  Streamlines, 0 by default. At 0 the budget is for the screen and the field looks the same at every
+  scale, which is what it drew before and the right answer for a map read at one scale; at 1 the
+  budget is for the whole field, so zooming in shows only the share of it on screen and the lines
+  separate — measured on the tutorial's grid, 3,100 lines zoomed out against 930 three levels in.
+  For a map that is zoomed about, the old behaviour gave no sense of zooming at all.
+- **Fixed: a tilted map was only drawn as far as a flat one would reach.** The seeding area was a
+  rectangle of ground worked out from the centre, the zoom and the panel's pixel size — which is
+  what the screen shows only when the map looks straight down. Tilt it and the ground on screen
+  becomes a trapezoid reaching towards the horizon, measured at two and a half times deeper up-range
+  at a pitch of 50°, so the field stopped halfway up the screen and read as badly clipped. Worse,
+  neither pitch nor bearing was compared when deciding the view had moved, so tilting or rotating
+  did not even count as a change: the field was never re-traced for the ground the camera had turned
+  towards. Lines are now seeded by picking points on the screen and asking deck's own viewport what
+  ground is under them, which is right at any pitch, bearing and zoom by construction rather than by
+  arithmetic that holds only from directly above.
 - **Fixed: the field emptied at the end of every animation cycle and refilled at the start of the
   next.** A streamline's birth was clamped so its life ended before the cycle did, which meant no
   line was born in the window's last stretch and none had been alive long at its start: measured on
