@@ -13,6 +13,7 @@ import {
   setRasterLayerVisible,
   syncZarrCalendar,
 } from './keplerAdapter';
+import { makeSettler, SETTLE_MS } from './settle';
 import { SliceWatcher } from './sliceWatcher';
 
 interface Params {
@@ -103,17 +104,21 @@ export function useZarrTimeline({ store, isReady, layers }: Params): void {
     }
   });
 
-  const pending = useRef(false);
-  const schedule = useRef(() => {
-    if (pending.current) {
-      return;
-    }
-    pending.current = true;
-    void Promise.resolve().then(() => {
-      pending.current = false;
-      reconcile.current();
-    });
-  });
+  // Waits for the window to hold still before acting on it. A drag walks the
+  // clock across every bin between where it started and where it ends, and
+  // each of those is a scene that would otherwise be fetched in full — see
+  // `settle.ts` for the measurements. Also keeps the dispatch off kepler's own
+  // stack, which is what the microtask this replaces was for: dispatching
+  // while kepler is mid-dispatch re-enters its reducer and overflows.
+  const settler = useRef(makeSettler(SETTLE_MS, () => reconcile.current()));
+  // Paced only once the map has opened. The opening frames are a conversation —
+  // find the filter, widen it to its domain, let the range sync land — and
+  // spacing them out reorders it, so the map comes up on the newest scene
+  // instead of the one the dashboard's range asked for. Dragging is the burst
+  // worth pacing, and it cannot happen before the widget is on screen.
+  const schedule = useRef(() =>
+    opened.current ? settler.current.schedule() : settler.current.scheduleNow()
+  );
 
   const watcher = useRef(new SliceWatcher());
   const onStoreChange = useRef(() => {
@@ -121,6 +126,15 @@ export function useZarrTimeline({ store, isReady, layers }: Params): void {
       schedule.current();
     }
   });
+
+
+  // Cancelled on unmount and nowhere else. Hanging it off the subscription
+  // effect looked tidier and starved the reconcile outright: that effect
+  // re-runs whenever its inputs change identity — which Grafana's deep clone of
+  // the panel data makes frequent — so the pending run was cancelled and
+  // rescheduled faster than it could ever fire, and the clock stopped moving
+  // the map at all.
+  useEffect(() => () => settler.current.cancel(), []);
 
   useEffect(() => {
     if (!isReady) {
