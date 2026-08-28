@@ -100,6 +100,17 @@ export function makeCogPaintedLayer<C extends Constructor<object>>(
   buildDeckLayer: CogPaintedDeckLayerFactory
 ): C {
   class CogPaintedLayer extends (BaseLayer as Constructor<CogPaintedLayerLike>) {
+    constructor(...args: any[]) {
+      super(...args);
+      // Without this the layer panel shows nothing at all: kepler's base class
+      // starts with an empty `visConfigSettings`, and a layer that registers no
+      // control gets none. The colours are baked on this path, so opacity is
+      // the only thing left to offer — and it has to actually be offered.
+      (this as unknown as { registerVisConfig(configs: Record<string, string>): void }).registerVisConfig({
+        opacity: 'opacity',
+      });
+    }
+
     get type(): string {
       return COG_PAINTED_TYPE;
     }

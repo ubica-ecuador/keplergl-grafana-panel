@@ -98,7 +98,10 @@ SELECT 'https://example.org/landcover/2023.tif' AS raster_url
 
 The cost is the PMTiles cost, and for the same reason — what arrives is already drawn:
 
-- The layer panel offers **opacity** and nothing else. No ramp, no rescaling, no picking a band.
+- The layer panel offers **no controls yet**. kepler builds a layer's settings from a method named
+  after its type, and there is none for a type this plugin adds, so the panel shows the layer and its
+  data source and stops there. The layer does register an opacity setting for a configurator to pick
+  up; wiring one in is [an open item](#open). Turning the layer off with the eye works.
 - The **Raster colour ramp** option does nothing here. The file's own palette is the point.
 
 Everything else is unchanged: a series of dated rows still becomes a timeline, and moving the window
@@ -106,11 +109,26 @@ still swaps the picture in place without rebuilding the layer.
 
 Leave it **off** for imagery. A true-colour scene wants its stretch decided where you can see it.
 
+### Open {#open}
+
+kepler renders a layer's controls from `_render<Type>LayerConfig` on its configurator, and adds none
+for a plugin's own types — which is why this layer, the Zarr layer and the flow field all show a bare
+panel. Injecting a configurator would fix all of them at once, and is not done yet.
+
 ::: tip One file, one footprint
 Classified rasters are often published cut into tiles of a grid — the land-cover collection above is
 one COG per UTM zone, 6° by 8°. A map showing more than one zone needs **one query per file**, each
 in its own `refId`, and each becomes its own layer. Tiles outside a given file's footprint are
 answered 404 by the server and simply not drawn, which is what makes the layers stack cleanly.
+:::
+
+::: tip One file is one footprint — a service is not
+Everything on this page addresses a **file**, and global collections are published cut into a grid:
+the land-cover product above is one COG per UTM zone, so a country takes several queries and the
+world takes two hundred. An [ArcGIS Image Service](./arcgis-image-service) is a mosaic of those same
+rasters behind one endpoint, with its own pyramid, and answers for any extent at any zoom from a
+single query. Different trade-off — it is someone else's server — but it is the answer when what you
+want is the whole world in one layer.
 :::
 
 ## Or no server at all: PMTiles {#pmtiles}

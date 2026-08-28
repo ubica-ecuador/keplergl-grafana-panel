@@ -151,7 +151,7 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       path: 'rasterPainted',
       name: 'Let the tile server paint',
       description:
-        'Ask the server for finished pictures instead of raw values. Needed for a classified raster \u2014 land cover, soils \u2014 whose colours are a fact of the data: the ramp below cannot express nine named classes, and the browser rescales the class numbers over the whole data-type range, which lands every class on the same colour. The server reads the palette the file carries instead. The layer then offers only opacity, as PMTiles does. Leave off for imagery.',
+        'Ask the server for finished pictures instead of raw values. Needed for a classified raster \u2014 land cover, soils \u2014 whose colours are a fact of the data: the ramp below cannot express nine named classes, and the browser rescales the class numbers over the whole data-type range, which lands every class on the same colour. The server reads the palette the file carries instead. What arrives is already drawn, so nothing about its colour can be changed afterwards. Leave off for imagery.',
       category: ['Map'],
       defaultValue: false,
     })

@@ -55,7 +55,19 @@ class FakeBaseLayer {
     isVisible: true,
   };
   id = 'layer-1';
+  /** What the subclass asked kepler to put in the layer panel. */
+  visConfigSettings: Record<string, unknown> = {};
   constructor(_props?: unknown) {}
+
+  /**
+   * kepler's own contract, reproduced: a layer declares the controls it wants
+   * and the base class turns each into a panel entry with its default.
+   */
+  registerVisConfig(configs: Record<string, string>) {
+    for (const [key, preset] of Object.entries(configs)) {
+      this.visConfigSettings[key] = { preset };
+    }
+  }
 
   /**
    * kepler's own verdict, reproduced: `hasLayerData` demands `data.length`, so
@@ -83,6 +95,15 @@ describe('makeCogPaintedLayer', () => {
 
   it('answers to the type the dataset asks for', () => {
     expect(make().type).toBe('cogPainted');
+  });
+
+  it('registers an opacity setting, the half of the control it owns', () => {
+    // Half, and the half this module can do anything about. kepler renders a
+    // layer's controls from a method named `_render<Type>LayerConfig` on its
+    // configurator, and there is none for a custom type, so no slider appears
+    // yet however this is declared. Registering it is still the prerequisite:
+    // a configurator has nothing to render from an empty `visConfigSettings`.
+    expect(make().visConfigSettings.opacity).toBeDefined();
   });
 
   it('renders one deck layer when it knows an image', () => {

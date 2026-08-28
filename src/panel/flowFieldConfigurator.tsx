@@ -9,6 +9,8 @@ import {
   VisConfigSwitch,
 } from '@kepler.gl/components';
 
+import { PaintedTilesetConfig } from './paintedTilesetConfigurator';
+
 /**
  * The layer panel for the flow field.
  *
@@ -102,6 +104,22 @@ function CustomLayerConfiguratorFactory(...deps: Parameters<typeof LayerConfigur
     // type + `LayerConfig`. Rename the layer type and this must follow.
     _renderFlowfieldLayerConfig(args: ConfiguratorArgs) {
       return <FlowFieldLayerConfig {...args} />;
+    }
+
+    // The three layers whose picture arrives already drawn share one panel —
+    // see `paintedTilesetConfigurator.tsx`. Same naming rule as above, and
+    // `paintedTilesetConfigurator.test.tsx` derives these names from the layer
+    // types so a rename fails a test rather than emptying a panel in silence.
+    _renderCogPaintedLayerConfig(args: ConfiguratorArgs) {
+      return <PaintedTilesetConfig {...args} />;
+    }
+
+    _renderEsriImageLayerConfig(args: ConfiguratorArgs) {
+      return <PaintedTilesetConfig {...args} />;
+    }
+
+    _renderZarrLayerConfig(args: ConfiguratorArgs) {
+      return <PaintedTilesetConfig {...args} />;
     }
   }
 
