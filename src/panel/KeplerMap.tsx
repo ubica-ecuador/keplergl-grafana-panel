@@ -3,6 +3,8 @@ import { Provider } from 'react-redux';
 import { StyleSheetManager } from 'styled-components';
 import { injectComponents } from '@kepler.gl/components';
 
+import { keplerRecipes } from './keplerRecipes';
+
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import type { PanelDataset } from '../data/framesToDatasets';
@@ -32,10 +34,6 @@ import {
   setSidePanel,
 } from './keplerAdapter';
 import { decideLoadAction } from './loadDecision';
-import { replaceMapControl } from './effectsMapControl';
-import { replaceLayerConfigurator } from './flowFieldConfigurator';
-import { replaceRangeBrush } from './rangeBrushFix';
-import { replaceAnimationController } from './animationSweepFix';
 import { useTimeRangeSync } from './useTimeRangeSync';
 import { useAutoLayers } from './useAutoLayers';
 import { useFlowFieldContext } from './useFlowFieldContext';
@@ -76,12 +74,7 @@ configureKepler();
 // built once — recreating it per render would remount the whole map. The
 // published d.ts declares `injectComponents(recipes?: never[])` — the recipe
 // tuple type is lost in compilation — so the list needs a cast.
-const KeplerGl = injectComponents([
-  replaceMapControl(),
-  replaceRangeBrush(),
-  replaceAnimationController(),
-  replaceLayerConfigurator(),
-] as unknown as never[]);
+const KeplerGl = injectComponents(keplerRecipes() as unknown as never[]);
 
 export interface KeplerMapProps {
   width: number;
