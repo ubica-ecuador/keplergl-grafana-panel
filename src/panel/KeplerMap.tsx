@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Provider } from 'react-redux';
 import { StyleSheetManager } from 'styled-components';
 import { injectComponents } from '@kepler.gl/components';
+import { messages as keplerMessages } from '@kepler.gl/localization';
 
 import { keplerRecipes } from './keplerRecipes';
+import { withOwnLayerLabels } from './localeMessages';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -75,6 +77,9 @@ configureKepler();
 // published d.ts declares `injectComponents(recipes?: never[])` — the recipe
 // tuple type is lost in compilation — so the list needs a cast.
 const KeplerGl = injectComponents(keplerRecipes() as unknown as never[]);
+
+/** kepler's catalogue with this plugin's layer names in it — see `localeMessages.ts`. */
+const localeMessages = withOwnLayerLabels(keplerMessages as unknown as Record<string, Record<string, string>>);
 
 export interface KeplerMapProps {
   width: number;
@@ -387,6 +392,10 @@ export function KeplerMap({
                  side panel names the library the map comes from, and calling
                  it "Grafana" claimed credit for someone else's work. */
               theme={theme}
+              /* kepler ships translations for its own layer types only, so the
+                 four this plugin adds showed as `Layer.Type.Esriimage` and the
+                 like wherever a layer is named. */
+              localeMessages={localeMessages}
               mapStyles={mapStyles}
               /* Drops kepler's own list, which is half Mapbox styles that
                  cannot load without an account — see REPLACES_DEFAULT_MAP_STYLES. */

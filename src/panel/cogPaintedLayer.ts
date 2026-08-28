@@ -168,7 +168,14 @@ export function makeCogPaintedLayer<C extends Constructor<object>>(
       if (dataset?.type !== COG_PAINTED_TYPE) {
         return { props: [] };
       }
-      return { props: [{ dataId: dataset.id, label: dataset.label ?? 'Raster', isVisible: true }] };
+      // A deterministic id, derived from the dataset. kepler mints a random
+      // hash when none is given, and a random id cannot be written down —
+      // which is what kept a saved configuration from naming this layer at
+      // all, `splitMaps` included, so a dashboard could not open already
+      // split.
+      return {
+        props: [{ id: `${dataset.id}-layer`, dataId: dataset.id, label: dataset.label ?? 'Raster', isVisible: true }],
+      };
     }
 
     /**

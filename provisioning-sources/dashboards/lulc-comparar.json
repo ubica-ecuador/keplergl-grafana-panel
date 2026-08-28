@@ -214,14 +214,14 @@
       "id": 1,
       "type": "text",
       "gridPos": {
-        "h": 7,
+        "h": 9,
         "w": 24,
         "x": 0,
         "y": 0
       },
       "options": {
         "mode": "markdown",
-        "content": "# Comparar dos años de cobertura del suelo\n\nDos capas sobre el mismo encuadre: **Año A** abajo, **Año B** encima. Abre el panel lateral, despliega\nla capa de arriba y **baja su opacidad** — el año anterior aparece por debajo, en el mismo sitio y a la\nmisma escala. El ojo del panel también la apaga del todo, para alternar.\n\nComparar no cuesta nada extra: el servicio dibuja cada año a demanda, así que no hay descarga, ni\nficheros por zona, ni un segundo juego de teselas que preparar. Las cifras miden **los dos años\nelegidos** sobre la extensión que el mapa está mostrando; mueve el mapa y se recalculan.\n\n> **Impact Observatory desaconseja la comparación píxel a píxel entre años.** Cada año se clasifica por\n> separado y el modelo cambia, así que parte de la diferencia es método y no territorio. Compara\n> **proporciones**, no recuentos absolutos; y mira la clase «Nubes» antes de creerte un año, porque\n> cuando sube el resto de sus clases valen menos.\n"
+        "content": "# Comparar dos años de cobertura del suelo\n\nDos capas sobre el mismo encuadre: **Año A** abajo, **Año B** encima. Hay dos formas de compararlas, y\nlas dos van en el mapa.\n\n**Fundiendo.** Abre el panel lateral, despliega la capa de arriba y **baja su opacidad**: el año\nanterior aparece por debajo, en el mismo sitio y a la misma escala. El ojo la apaga del todo, para\nalternar de golpe.\n\n**Partiendo la pantalla.** El primer botón de la columna de controles del mapa ofrece **Dual** y\n**Swipe**. Al dividir, kepler enciende **las dos capas en los dos lados** — por eso al principio se ven\niguales. Cada mitad tiene su **propia leyenda**, abajo a la derecha, con un ojo por capa: apaga *Año B*\nen la izquierda y *Año A* en la derecha, y cada lado queda con su año. **Swipe** hace lo mismo con una\ncortina que arrastras.\n\nComparar no cuesta nada extra: el servicio dibuja cada año a demanda, así que no hay descarga, ni\nficheros por zona, ni un segundo juego de teselas que preparar. Las cifras miden **los dos años\nelegidos** sobre la extensión que el mapa está mostrando; mueve el mapa y se recalculan.\n\n> **Impact Observatory desaconseja la comparación píxel a píxel entre años.** Cada año se clasifica por\n> separado y el modelo cambia, así que parte de la diferencia es método y no territorio. Compara\n> **proporciones**, no recuentos absolutos; y mira la clase «Nubes» antes de creerte un año, porque\n> cuando sube el resto de sus clases valen menos.\n"
       }
     },
     {
@@ -234,7 +234,7 @@
         "h": 22,
         "w": 24,
         "x": 0,
-        "y": 7
+        "y": 9
       },
       "id": 2,
       "options": {
@@ -323,7 +323,7 @@
         "h": 13,
         "w": 14,
         "x": 0,
-        "y": 29
+        "y": 31
       },
       "targets": [
         {
@@ -781,7 +781,7 @@
         "h": 13,
         "w": 10,
         "x": 14,
-        "y": 29
+        "y": 31
       },
       "targets": [
         {
