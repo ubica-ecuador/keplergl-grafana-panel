@@ -193,7 +193,7 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "",
+          "fields": "/^clase$/",
           "values": false
         },
         "textMode": "value",
