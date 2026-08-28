@@ -1,0 +1,867 @@
+{
+  "uid": "lulc-comparar",
+  "title": "Cobertura del suelo — comparar dos años",
+  "description": "Dos años del ImageServer sobre el mismo encuadre, uno encima del otro, y las cifras de ambos sobre la vista actual.",
+  "tags": [
+    "arcgis",
+    "kepler",
+    "landcover",
+    "sentinel-2",
+    "comparacion"
+  ],
+  "timezone": "",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "-180",
+          "value": "-180"
+        },
+        "hide": 2,
+        "label": "Vista · oeste",
+        "name": "mapWest",
+        "options": [],
+        "query": "-180",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "-80.0134",
+          "value": "-80.0134"
+        },
+        "hide": 2,
+        "label": "Vista · sur",
+        "name": "mapSouth",
+        "options": [],
+        "query": "-80.0134",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "180",
+          "value": "180"
+        },
+        "hide": 2,
+        "label": "Vista · este",
+        "name": "mapEast",
+        "options": [],
+        "query": "180",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "84.0326",
+          "value": "84.0326"
+        },
+        "hide": 2,
+        "label": "Vista · norte",
+        "name": "mapNorth",
+        "options": [],
+        "query": "84.0326",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "2017",
+          "value": "2017"
+        },
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "definition": "Años que publica el catálogo del ImageServer",
+        "description": "Sale del propio servicio, no de una lista escrita a mano.",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Año A (fondo)",
+        "multi": false,
+        "name": "anioA",
+        "options": [],
+        "query": "-- Los años los publica el propio servicio: su catálogo es una tabla y lleva\n-- un campo `Year`. Nueve hoy, los mismos que miden las cifras.\nWITH resp AS (\n  SELECT http_get(\n    'https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer/query'\n    || '?where=1%3D1&outFields=Year&returnDistinctValues=true'\n    || '&returnGeometry=false&orderByFields=Year&f=json'\n  ) AS r\n),\nfilas AS (SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp)\nSELECT DISTINCT CAST(f->'attributes'->>'Year' AS VARCHAR) AS anio\nFROM filas\nWHERE f->'attributes'->>'Year' IS NOT NULL\nORDER BY anio DESC\n",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "2025",
+          "value": "2025"
+        },
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "definition": "Años que publica el catálogo del ImageServer",
+        "description": "Sale del propio servicio, no de una lista escrita a mano.",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Año B (encima)",
+        "multi": false,
+        "name": "anioB",
+        "options": [],
+        "query": "-- Los años los publica el propio servicio: su catálogo es una tabla y lleva\n-- un campo `Year`. Nueve hoy, los mismos que miden las cifras.\nWITH resp AS (\n  SELECT http_get(\n    'https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer/query'\n    || '?where=1%3D1&outFields=Year&returnDistinctValues=true'\n    || '&returnGeometry=false&orderByFields=Year&f=json'\n  ) AS r\n),\nfilas AS (SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp)\nSELECT DISTINCT CAST(f->'attributes'->>'Year' AS VARCHAR) AS anio\nFROM filas\nWHERE f->'attributes'->>'Year' IS NOT NULL\nORDER BY anio DESC\n",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "label": "Área dibujada (WKT)",
+        "name": "area",
+        "options": [],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "hide": 2,
+        "includeAll": false,
+        "label": "Escala de muestreo (m)",
+        "multi": false,
+        "name": "escala",
+        "options": [],
+        "query": "WITH v AS (\n  SELECT length('$area') > 8 AS dibujado,\n         try_cast('$mapWest' AS DOUBLE) AS w, try_cast('$mapEast' AS DOUBLE) AS e,\n         try_cast('$mapSouth' AS DOUBLE) AS s, try_cast('$mapNorth' AS DOUBLE) AS n\n), c AS (\n  SELECT dibujado,\n         CASE WHEN dibujado THEN ST_XMin(ST_GeomFromText('$area'))\n              WHEN coalesce(e,180.0) <= coalesce(w,-180.0) THEN -180.0 ELSE coalesce(w,-180.0) END AS w0,\n         CASE WHEN dibujado THEN ST_XMax(ST_GeomFromText('$area'))\n              WHEN coalesce(e,180.0) <= coalesce(w,-180.0) THEN  180.0 ELSE coalesce(e, 180.0) END AS e0,\n         CASE WHEN dibujado THEN greatest(-80.0134, ST_YMin(ST_GeomFromText('$area')))\n              ELSE greatest(-80.0134, least(84.0326, coalesce(s,-80.0134))) END AS s0,\n         CASE WHEN dibujado THEN least(84.0326, ST_YMax(ST_GeomFromText('$area')))\n              ELSE greatest(-80.0134, least(84.0326, coalesce(n, 84.0326))) END AS n0\n  FROM v\n), d AS (\n  SELECT dibujado, w0, e0, s0, n0,\n         CASE WHEN e0 <= w0 THEN 360.0 ELSE least(360.0, e0 - w0) END AS dlon,\n         (ln(tan((90 + greatest(n0, s0 + 0.0005)) * pi()/360))\n          - ln(tan((90 + s0) * pi()/360))) / (pi()/180) AS dmerc\n  FROM c\n), e AS (\n  SELECT *, greatest(dlon * 111319.490793 / 3500, dmerc * 111319.490793 / 3500, 10.0) AS escala FROM d\n)\nSELECT printf('%.4f', escala) AS escala FROM e",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "hide": 2,
+        "includeAll": false,
+        "label": "Área por muestra (km²)",
+        "multi": false,
+        "name": "areaPx",
+        "options": [],
+        "query": "WITH v AS (\n  SELECT length('$area') > 8 AS dibujado,\n         try_cast('$mapWest' AS DOUBLE) AS w, try_cast('$mapEast' AS DOUBLE) AS e,\n         try_cast('$mapSouth' AS DOUBLE) AS s, try_cast('$mapNorth' AS DOUBLE) AS n\n), c AS (\n  SELECT dibujado,\n         CASE WHEN dibujado THEN ST_XMin(ST_GeomFromText('$area'))\n              WHEN coalesce(e,180.0) <= coalesce(w,-180.0) THEN -180.0 ELSE coalesce(w,-180.0) END AS w0,\n         CASE WHEN dibujado THEN ST_XMax(ST_GeomFromText('$area'))\n              WHEN coalesce(e,180.0) <= coalesce(w,-180.0) THEN  180.0 ELSE coalesce(e, 180.0) END AS e0,\n         CASE WHEN dibujado THEN greatest(-80.0134, ST_YMin(ST_GeomFromText('$area')))\n              ELSE greatest(-80.0134, least(84.0326, coalesce(s,-80.0134))) END AS s0,\n         CASE WHEN dibujado THEN least(84.0326, ST_YMax(ST_GeomFromText('$area')))\n              ELSE greatest(-80.0134, least(84.0326, coalesce(n, 84.0326))) END AS n0\n  FROM v\n), d AS (\n  SELECT dibujado, w0, e0, s0, n0,\n         CASE WHEN e0 <= w0 THEN 360.0 ELSE least(360.0, e0 - w0) END AS dlon,\n         (ln(tan((90 + greatest(n0, s0 + 0.0005)) * pi()/360))\n          - ln(tan((90 + s0) * pi()/360))) / (pi()/180) AS dmerc\n  FROM c\n), e AS (\n  SELECT *, greatest(dlon * 111319.490793 / 3500, dmerc * 111319.490793 / 3500, 10.0) AS escala FROM d\n)\nSELECT printf('%.12f', 6371007.0 * escala * escala\n                       * (sin(radians(n0)) - sin(radians(s0)))\n                       / (dmerc * 111319.490793) / 1e6) AS area_px FROM e",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "hide": 2,
+        "includeAll": false,
+        "label": "Geometría (Esri JSON)",
+        "multi": false,
+        "name": "geom",
+        "options": [],
+        "query": "WITH v AS (\n  SELECT length('$area') > 8 AS dibujado,\n         try_cast('$mapWest' AS DOUBLE) AS w, try_cast('$mapEast' AS DOUBLE) AS e,\n         try_cast('$mapSouth' AS DOUBLE) AS s, try_cast('$mapNorth' AS DOUBLE) AS n\n), c AS (\n  SELECT dibujado,\n         CASE WHEN dibujado THEN ST_XMin(ST_GeomFromText('$area'))\n              WHEN coalesce(e,180.0) <= coalesce(w,-180.0) THEN -180.0 ELSE coalesce(w,-180.0) END AS w0,\n         CASE WHEN dibujado THEN ST_XMax(ST_GeomFromText('$area'))\n              WHEN coalesce(e,180.0) <= coalesce(w,-180.0) THEN  180.0 ELSE coalesce(e, 180.0) END AS e0,\n         CASE WHEN dibujado THEN greatest(-80.0134, ST_YMin(ST_GeomFromText('$area')))\n              ELSE greatest(-80.0134, least(84.0326, coalesce(s,-80.0134))) END AS s0,\n         CASE WHEN dibujado THEN least(84.0326, ST_YMax(ST_GeomFromText('$area')))\n              ELSE greatest(-80.0134, least(84.0326, coalesce(n, 84.0326))) END AS n0\n  FROM v\n), d AS (\n  SELECT dibujado, w0, e0, s0, n0,\n         CASE WHEN e0 <= w0 THEN 360.0 ELSE least(360.0, e0 - w0) END AS dlon,\n         (ln(tan((90 + greatest(n0, s0 + 0.0005)) * pi()/360))\n          - ln(tan((90 + s0) * pi()/360))) / (pi()/180) AS dmerc\n  FROM c\n), e AS (\n  SELECT *, greatest(dlon * 111319.490793 / 3500, dmerc * 111319.490793 / 3500, 10.0) AS escala FROM d\n)\nSELECT CASE WHEN dibujado\n       THEN '{\"rings\":' || json_extract(ST_AsGeoJSON(ST_GeomFromText('$area')), '$.coordinates')::VARCHAR\n            || ',\"spatialReference\":{\"wkid\":4326}}'\n       ELSE '{\"xmin\":' || w0 || ',\"ymin\":' || s0 || ',\"xmax\":' || e0 || ',\"ymax\":' || n0\n            || ',\"spatialReference\":{\"wkid\":4326}}'\n       END AS geom FROM e",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "hide": 2,
+        "includeAll": false,
+        "label": "Tipo de geometría",
+        "multi": false,
+        "name": "geomTipo",
+        "options": [],
+        "query": "SELECT CASE WHEN length('$area') > 8 THEN 'esriGeometryPolygon' ELSE 'esriGeometryEnvelope' END AS tipo",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "# Comparar dos años de cobertura del suelo\n\nDos capas sobre el mismo encuadre: **Año A** abajo, **Año B** encima. Abre el panel lateral, despliega\nla capa de arriba y **baja su opacidad** — el año anterior aparece por debajo, en el mismo sitio y a la\nmisma escala. El ojo del panel también la apaga del todo, para alternar.\n\nComparar no cuesta nada extra: el servicio dibuja cada año a demanda, así que no hay descarga, ni\nficheros por zona, ni un segundo juego de teselas que preparar. Las cifras miden **los dos años\nelegidos** sobre la extensión que el mapa está mostrando; mueve el mapa y se recalculan.\n\n> **Impact Observatory desaconseja la comparación píxel a píxel entre años.** Cada año se clasifica por\n> separado y el modelo cambia, así que parte de la diferencia es método y no territorio. Compara\n> **proporciones**, no recuentos absolutos; y mira la clase «Nubes» antes de creerte un año, porque\n> cuando sube el resto de sus clases valen menos.\n"
+      }
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "El fondo es el ráster de 10 m de Azuay, teselado por titiler sobre los GeoTIFF de `testdata/lulc/`; el selector «Año del ráster» lo cambia. Encima, apagadas, nueve capas `bitmap` con el planeta entero a ~10 km por píxel: enciende una para salir de Azuay, apágalas para volver al detalle.",
+      "gridPos": {
+        "h": 22,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "id": 2,
+      "options": {
+        "areaVariable": "area",
+        "followGrafanaTheme": true,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "latitude": -1.5,
+              "longitude": -78.6,
+              "pitch": 0,
+              "zoom": 6.0
+            },
+            "visState": {
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": true,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": false,
+                  "fieldsToShow": {}
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [],
+              "layers": []
+            }
+          },
+          "datasets": [],
+          "version": "v1"
+        },
+        "showSidePanel": true,
+        "timeSync": "off",
+        "viewportVariables": {
+          "east": "mapEast",
+          "north": "mapNorth",
+          "south": "mapSouth",
+          "west": "mapWest"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "-- La capa de anioA. Dos consultas, dos capas: el panel lateral las apila y\n-- el deslizador de opacidad las funde. Ninguna descarga nada -- el servicio\n-- dibuja cada año a demanda, así que comparar cuesta lo mismo que mirar.\nSELECT\n  'https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer' AS esri_url,\n  '{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=' || CAST($anioA AS VARCHAR) || '\"}' AS mosaic_rule\n"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "-- La capa de anioB. Dos consultas, dos capas: el panel lateral las apila y\n-- el deslizador de opacidad las funde. Ninguna descarga nada -- el servicio\n-- dibuja cada año a demanda, así que comparar cuesta lo mismo que mirar.\nSELECT\n  'https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer' AS esri_url,\n  '{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=' || CAST($anioB AS VARCHAR) || '\"}' AS mosaic_rule\n"
+        }
+      ],
+      "title": "Dos años, una vista — funde la capa de encima para comparar",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "id": 4,
+      "type": "barchart",
+      "title": "Composición de la cobertura, los dos años elegidos",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 14,
+        "x": 0,
+        "y": 29
+      },
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "counts.2",
+              "text": "arboles",
+              "type": "number"
+            },
+            {
+              "selector": "counts.11",
+              "text": "pastizal",
+              "type": "number"
+            },
+            {
+              "selector": "counts.5",
+              "text": "cultivos",
+              "type": "number"
+            },
+            {
+              "selector": "counts.7",
+              "text": "construido",
+              "type": "number"
+            },
+            {
+              "selector": "counts.8",
+              "text": "suelo_desnudo",
+              "type": "number"
+            },
+            {
+              "selector": "counts.1",
+              "text": "agua",
+              "type": "number"
+            },
+            {
+              "selector": "counts.4",
+              "text": "veg_inundada",
+              "type": "number"
+            },
+            {
+              "selector": "counts.9",
+              "text": "nieve",
+              "type": "number"
+            },
+            {
+              "selector": "counts.10",
+              "text": "nubes",
+              "type": "number"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "${anioA:raw}",
+              "text": "anio",
+              "type": "string"
+            },
+            {
+              "selector": "arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes",
+              "text": "muestras"
+            },
+            {
+              "selector": "arboles * ${areaPx:raw}",
+              "text": "km2_arboles"
+            },
+            {
+              "selector": "pastizal * ${areaPx:raw}",
+              "text": "km2_pastizal"
+            },
+            {
+              "selector": "cultivos * ${areaPx:raw}",
+              "text": "km2_cultivos"
+            },
+            {
+              "selector": "construido * ${areaPx:raw}",
+              "text": "km2_construido"
+            },
+            {
+              "selector": "suelo_desnudo * ${areaPx:raw}",
+              "text": "km2_suelo_desnudo"
+            },
+            {
+              "selector": "agua * ${areaPx:raw}",
+              "text": "km2_agua"
+            },
+            {
+              "selector": "veg_inundada * ${areaPx:raw}",
+              "text": "km2_veg_inundada"
+            },
+            {
+              "selector": "nieve * ${areaPx:raw}",
+              "text": "km2_nieve"
+            },
+            {
+              "selector": "nubes * ${areaPx:raw}",
+              "text": "km2_nubes"
+            },
+            {
+              "selector": "arboles * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_arboles"
+            },
+            {
+              "selector": "pastizal * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_pastizal"
+            },
+            {
+              "selector": "cultivos * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_cultivos"
+            },
+            {
+              "selector": "construido * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_construido"
+            },
+            {
+              "selector": "suelo_desnudo * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_suelo_desnudo"
+            },
+            {
+              "selector": "agua * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_agua"
+            },
+            {
+              "selector": "veg_inundada * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_veg_inundada"
+            },
+            {
+              "selector": "nieve * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nieve"
+            },
+            {
+              "selector": "nubes * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nubes"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "format": "table",
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "histograms",
+          "source": "url",
+          "type": "json",
+          "url": "https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer/computeHistograms",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "geometry",
+                "value": "${geom:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "${geomTipo:raw}"
+              },
+              {
+                "key": "mosaicRule",
+                "value": "{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=${anioA:raw}\"}"
+              },
+              {
+                "key": "pixelSize",
+                "value": "{\"x\":${escala:raw},\"y\":${escala:raw},\"spatialReference\":{\"wkid\":102100}}"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          }
+        },
+        {
+          "columns": [
+            {
+              "selector": "counts.2",
+              "text": "arboles",
+              "type": "number"
+            },
+            {
+              "selector": "counts.11",
+              "text": "pastizal",
+              "type": "number"
+            },
+            {
+              "selector": "counts.5",
+              "text": "cultivos",
+              "type": "number"
+            },
+            {
+              "selector": "counts.7",
+              "text": "construido",
+              "type": "number"
+            },
+            {
+              "selector": "counts.8",
+              "text": "suelo_desnudo",
+              "type": "number"
+            },
+            {
+              "selector": "counts.1",
+              "text": "agua",
+              "type": "number"
+            },
+            {
+              "selector": "counts.4",
+              "text": "veg_inundada",
+              "type": "number"
+            },
+            {
+              "selector": "counts.9",
+              "text": "nieve",
+              "type": "number"
+            },
+            {
+              "selector": "counts.10",
+              "text": "nubes",
+              "type": "number"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "${anioB:raw}",
+              "text": "anio",
+              "type": "string"
+            },
+            {
+              "selector": "arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes",
+              "text": "muestras"
+            },
+            {
+              "selector": "arboles * ${areaPx:raw}",
+              "text": "km2_arboles"
+            },
+            {
+              "selector": "pastizal * ${areaPx:raw}",
+              "text": "km2_pastizal"
+            },
+            {
+              "selector": "cultivos * ${areaPx:raw}",
+              "text": "km2_cultivos"
+            },
+            {
+              "selector": "construido * ${areaPx:raw}",
+              "text": "km2_construido"
+            },
+            {
+              "selector": "suelo_desnudo * ${areaPx:raw}",
+              "text": "km2_suelo_desnudo"
+            },
+            {
+              "selector": "agua * ${areaPx:raw}",
+              "text": "km2_agua"
+            },
+            {
+              "selector": "veg_inundada * ${areaPx:raw}",
+              "text": "km2_veg_inundada"
+            },
+            {
+              "selector": "nieve * ${areaPx:raw}",
+              "text": "km2_nieve"
+            },
+            {
+              "selector": "nubes * ${areaPx:raw}",
+              "text": "km2_nubes"
+            },
+            {
+              "selector": "arboles * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_arboles"
+            },
+            {
+              "selector": "pastizal * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_pastizal"
+            },
+            {
+              "selector": "cultivos * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_cultivos"
+            },
+            {
+              "selector": "construido * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_construido"
+            },
+            {
+              "selector": "suelo_desnudo * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_suelo_desnudo"
+            },
+            {
+              "selector": "agua * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_agua"
+            },
+            {
+              "selector": "veg_inundada * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_veg_inundada"
+            },
+            {
+              "selector": "nieve * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nieve"
+            },
+            {
+              "selector": "nubes * 100.0 / (arboles + pastizal + cultivos + construido + suelo_desnudo + agua + veg_inundada + nieve + nubes)",
+              "text": "pct_nubes"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "format": "table",
+          "parser": "backend",
+          "refId": "B",
+          "root_selector": "histograms",
+          "source": "url",
+          "type": "json",
+          "url": "https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer/computeHistograms",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "geometry",
+                "value": "${geom:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "${geomTipo:raw}"
+              },
+              {
+                "key": "mosaicRule",
+                "value": "{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=${anioB:raw}\"}"
+              },
+              {
+                "key": "pixelSize",
+                "value": "{\"x\":${escala:raw},\"y\":${escala:raw},\"spatialReference\":{\"wkid\":102100}}"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          }
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "anio",
+                "destinationType": "string"
+              }
+            ]
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "anio",
+                "arboles",
+                "pastizal",
+                "cultivos",
+                "construido",
+                "suelo_desnudo",
+                "agua",
+                "veg_inundada",
+                "nieve",
+                "nubes"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {
+              "anio": 0,
+              "arboles": 1,
+              "pastizal": 2,
+              "cultivos": 3,
+              "construido": 4,
+              "suelo_desnudo": 5,
+              "agua": 6,
+              "veg_inundada": 7,
+              "nieve": 8,
+              "nubes": 9
+            },
+            "renameByName": {
+              "arboles": "Árboles",
+              "pastizal": "Pastizal",
+              "cultivos": "Cultivos",
+              "construido": "Área construida",
+              "suelo_desnudo": "Suelo desnudo",
+              "agua": "Agua",
+              "veg_inundada": "Vegetación inundada",
+              "nieve": "Nieve y hielo",
+              "nubes": "Nubes",
+              "anio": "Año"
+            }
+          }
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "xField": "Año",
+        "stacking": "none",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "axisPlacement": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Año"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Detalle por año, en la vista actual",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 10,
+        "x": 14,
+        "y": 29
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 4
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "anio",
+                "destinationType": "string"
+              }
+            ]
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "anio",
+                "arboles",
+                "pastizal",
+                "cultivos",
+                "construido",
+                "suelo_desnudo",
+                "agua",
+                "veg_inundada",
+                "nieve",
+                "nubes"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {
+              "anio": 0,
+              "arboles": 1,
+              "pastizal": 2,
+              "cultivos": 3,
+              "construido": 4,
+              "suelo_desnudo": 5,
+              "agua": 6,
+              "veg_inundada": 7,
+              "nieve": 8,
+              "nubes": 9
+            },
+            "renameByName": {
+              "arboles": "Árboles",
+              "pastizal": "Pastizal",
+              "cultivos": "Cultivos",
+              "construido": "Área construida",
+              "suelo_desnudo": "Suelo desnudo",
+              "agua": "Agua",
+              "veg_inundada": "Vegetación inundada",
+              "nieve": "Nieve y hielo",
+              "nubes": "Nubes",
+              "anio": "Año"
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    }
+  ]
+}

@@ -2,7 +2,7 @@
   "annotations": {
     "list": []
   },
-  "description": "El ráster global de cobertura del suelo de Sentinel-2 a 10 m dentro del panel, sobre el COG original de Impact Observatory, con las cifras recalculadas sobre la vista.",
+  "description": "El ráster global de cobertura del suelo de Sentinel-2 a 10 m, dibujado por el propio ImageServer que mide las cifras: una fuente leída dos veces.",
   "editable": true,
   "id": 2239669715451904,
   "links": [],
@@ -21,7 +21,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "# Cobertura y uso del suelo — Sentinel-2 10 m\n\nLas cifras salen de `computeHistograms`, que cuenta píxeles por clase sobre **la extensión que el mapa\nestá mostrando**: mueve o acerca el mapa, en cualquier parte del mundo, y todo lo de abajo se recalcula\nen medio segundo. El mapa dibuja el **ráster de cobertura a 10 m** — el archivo original, no una copia\nhorneada. El servicio de imágenes no publica teselas de ninguna forma —ni caché, ni WMS, ni WMTS—, pero\nlos COG de los que se alimenta sí son públicos, y el panel los pinta como capa ráster.\n\n| | |\n|---|---|\n| Fuente | [Sentinel-2 10m Land Use/Land Cover Time Series](https://www.arcgis.com/home/item.html?id=cfcb7609de5f478eb7666240902d4d3d) · **Impact Observatory, Microsoft y Esri**. Licencia CC BY 4.0, acceso anónimo |\n| Cobertura | Mundial, 10 m, nueve clases |\n| Detalle | El **COG original a 10 m**, una zona UTM por archivo, firmado en vuelo |\n| Cómo llega | Cifras: `computeHistograms` → Infinity → ~120 B por año. Fondo: consulta DuckDB → COG firmado en Planetary Computer → titiler → teselas |\n\n**Cuatro archivos, no uno.** Un COG de esta colección cubre una zona UTM: 6° de longitud por 8° de\nlatitud. Ecuador no cabe en uno, así que el mapa pinta el **bloque de 2×2 zonas** que arranca en la que\nelijas — con `17M` salen 17M, 17N, 18M y 18N, que es justo el país. Pon `30T` en «Zona MGRS del fondo»\ny el bloque se muda a la península ibérica. Una zona sin COG —mar abierto, o un año aún sin publicar—\nsimplemente no se dibuja.\n\n**Los años los pone la fuente.** El selector no lleva una lista escrita a mano: le pregunta a la\ncolección qué años tiene publicados, y ofrece ésos. Hoy son 2017-2023; el día que Impact Observatory\npublique 2024, aparecerá solo. Las cifras van por su cuenta y cubren 2017-2025, porque el servicio de\nimágenes va por delante de los COG.\n\n**Lo que hay que saber para no leer mal las cifras:**\n\n- **Impact Observatory desaconseja la comparación píxel a píxel entre años.** Cada año se clasifica por\n  separado y el modelo cambia; parte de la diferencia interanual es método, no territorio. Por eso este\n  tablero lidera con el **cambio relativo**, que es lo que mejor aguanta.\n- **El muestreo va en rejilla Web Mercator, así que el área está sesgada por latitud.** Cada muestra\n  cubre `(escala·cos φ)²` de suelo real: a 60° de latitud, la cuarta parte que en el ecuador. Los km²\n  son **aproximados** y tanto más optimistas para las clases de latitud alta cuanto más alta sea la\n  vista. Los porcentajes de composición arrastran el mismo sesgo. El **cambio relativo no lo arrastra**,\n  porque los nueve años se miden con la misma rejilla.\n- **La clase «Nubes» es el termómetro de calidad del año.** Cuando sube, el resto de las clases de ese\n  año valen menos. En las pruebas oscila entre 0,2 % y 1,8 % según el año y la región.\n- **Las cifras no dependen del fondo.** Se recalculan sobre la vista, a la resolución más fina que\n  quepa, hasta los 10 m nativos, en cualquier parte del mundo — aunque el fondo no llegue hasta allí.\n\n**Acotar dibujando.** La herramienta de dibujo del mapa (polígono o rectángulo) sustituye la extensión\nde la vista por la figura: las cifras pasan a describir sólo lo que la figura encierra, a la resolución\nmás fina que el servicio admita. Borra la figura para volver a la vista.\n\n*El servicio corta a 4000 px de lado y a ~13 M de celdas. Por encima de 4000 devuelve\n`{\"histograms\":[]}` **sin error**; por encima de 13 M devuelve un 400 explícito. La variable oculta\n`escala` mantiene la petición en 3500 px de lado, así que ninguno de los dos techos debería alcanzarse.*",
+        "content": "# Cobertura y uso del suelo — Sentinel-2 10 m\n\nLas cifras salen de `computeHistograms`, que cuenta píxeles por clase sobre **la extensión que el mapa\nestá mostrando**: mueve o acerca el mapa, en cualquier parte del mundo, y todo lo de abajo se recalcula\nen medio segundo.\n\n**Y ahora el mapa sale de ese mismo servicio.** El fondo es el ImageServer dibujando la cobertura a\ndemanda, no una copia: mapa y números leen una sola fuente, así que no pueden desacompasarse.\n\n| | |\n|---|---|\n| Fuente | [Sentinel-2 10m Land Use/Land Cover Time Series](https://www.arcgis.com/home/item.html?id=cfcb7609de5f478eb7666240902d4d3d) · **Impact Observatory, Microsoft y Esri**. Licencia CC BY 4.0, acceso anónimo |\n| Cobertura | Mundial, 10 m, nueve clases, 2017-2025 |\n| Cómo llega | Cifras: `computeHistograms` → Infinity. Fondo: `exportImage`, una petición por tesela, con la paleta del propio servicio |\n\n**Un servicio, no doscientos ficheros.** Un ImageServer es un *mosaic dataset*: el catálogo de sus\nrásteres, la regla para elegir entre ellos y una pirámide construida sobre el conjunto. Por eso\nresponde para cualquier extensión a cualquier zoom desde un único punto final — el planeta entero en\nuna capa, en poco más de un segundo por tesela. La misma colección repartida en COG son unos\ndoscientos ficheros por año, uno por zona UTM.\n\n**Los años los pone la fuente.** El selector no lleva lista escrita a mano: le pregunta al catálogo\ndel servicio qué años publica. Son los mismos nueve que miden las cifras, sin desfase.\n\n**Lo que hay que saber para no leer mal las cifras:**\n\n- **Impact Observatory desaconseja la comparación píxel a píxel entre años.** Cada año se clasifica por\n  separado y el modelo cambia; parte de la diferencia interanual es método, no territorio. Por eso este\n  tablero lidera con el **cambio relativo**, que es lo que mejor aguanta.\n- **El muestreo va en rejilla Web Mercator, así que el área está sesgada por latitud.** Cada muestra\n  cubre `(escala·cos φ)²` de suelo real: a 60° de latitud, la cuarta parte que en el ecuador. Los km²\n  son **aproximados** y tanto más optimistas para las clases de latitud alta cuanto más alta sea la\n  vista. El **cambio relativo no lo arrastra**, porque los nueve años se miden con la misma rejilla.\n- **La clase «Nubes» es el termómetro de calidad del año.** Cuando sube, el resto de las clases de ese\n  año valen menos. En las pruebas oscila entre 0,2 % y 1,8 % según el año y la región.\n\n**Acotar dibujando.** La herramienta de dibujo del mapa (polígono o rectángulo) sustituye la extensión\nde la vista por la figura: las cifras pasan a describir sólo lo que la figura encierra, a la resolución\nmás fina que el servicio admita. Borra la figura para volver a la vista.\n\n*El servicio corta a 4000 px de lado y a ~13 M de celdas. Por encima de 4000 devuelve\n`{\"histograms\":[]}` **sin error**; por encima de 13 M devuelve un 400 explícito. La variable oculta\n`escala` mantiene la petición en 3500 px de lado, así que ninguno de los dos techos debería alcanzarse.*\n",
         "mode": "markdown"
       },
       "title": "",
@@ -90,9 +90,7 @@
           "north": "mapNorth",
           "south": "mapSouth",
           "west": "mapWest"
-        },
-        "rasterServerUrl": "http://localhost:8088",
-        "rasterPainted": true
+        }
       },
       "targets": [
         {
@@ -102,37 +100,10 @@
             "uid": "duckdb"
           },
           "format": 1,
-          "rawSql": "-- El COG original de Impact Observatory, firmado en vuelo. Esta consulta cubre\n-- UNA zona UTM; el panel lleva cuatro como esta --el bloque 2x2 que arranca en\n-- la zona elegida-- porque un COG mide 6 grados de longitud por 8 de latitud y\n-- un pais no cabe en uno solo. Ecuador son 17M, 17N, 18M y 18N.\n--\n-- OJO con las variables: este datasource las entrecomilla por su cuenta, asi\n-- que van desnudas y concatenadas.\nWITH base AS (\n  SELECT CAST($zona AS VARCHAR) AS z, CAST($anio AS VARCHAR) AS anio\n),\npartes AS (\n  SELECT anio,\n         CAST(substr(z, 1, 2) AS INT)                        AS zona_num,\n         strpos('CDEFGHJKLMNPQRSTUVWX', substr(z, 3, 1))     AS banda_idx\n  FROM base\n),\ndestino AS (\n  -- Desplazamiento respecto de la zona elegida. Las zonas dan la vuelta al\n  -- mundo (60 -> 1); las bandas no, y pasarse por arriba deja una cadena vacia\n  -- que el servicio rechaza con 404. Eso es correcto: no hay COG que pintar.\n  SELECT anio,\n         lpad(CAST(((zona_num - 1 + 0) % 60) + 1 AS VARCHAR), 2, '0')\n         || substr('CDEFGHJKLMNPQRSTUVWX', banda_idx + 0, 1) AS mgrs\n  FROM partes\n),\nitem AS (\n  SELECT mgrs, anio,\n         http_get('https://planetarycomputer.microsoft.com/api/stac/v1/collections/'\n                  || 'io-lulc-annual-v02/items/' || mgrs || '-' || anio) AS resp\n  FROM destino\n),\nfirma AS (\n  -- Token SAS anonimo y gratuito: el contenedor no admite acceso publico, pero\n  -- Planetary Computer firma a quien lo pida. Caduca en ~45 min y se vuelve a\n  -- pedir en cada refresco, asi que la URL nunca viaja vencida.\n  SELECT (http_get('https://planetarycomputer.microsoft.com/api/sas/v1/token/io-lulc')->>'body') AS cuerpo\n)\n-- Sin fila no hay capa: una zona sin COG --oceano, o un ano aun sin publicar--\n-- responde 404 y simplemente no se dibuja.\nSELECT\n  ((item.resp->>'body')::JSON->'assets'->'data'->>'href')\n    || '?' || ((firma.cuerpo)::JSON->>'token') AS raster_url\nFROM item, firma\nWHERE (item.resp->>'status') = '200'"
-        },
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "format": 1,
-          "rawSql": "-- El COG original de Impact Observatory, firmado en vuelo. Esta consulta cubre\n-- UNA zona UTM; el panel lleva cuatro como esta --el bloque 2x2 que arranca en\n-- la zona elegida-- porque un COG mide 6 grados de longitud por 8 de latitud y\n-- un pais no cabe en uno solo. Ecuador son 17M, 17N, 18M y 18N.\n--\n-- OJO con las variables: este datasource las entrecomilla por su cuenta, asi\n-- que van desnudas y concatenadas.\nWITH base AS (\n  SELECT CAST($zona AS VARCHAR) AS z, CAST($anio AS VARCHAR) AS anio\n),\npartes AS (\n  SELECT anio,\n         CAST(substr(z, 1, 2) AS INT)                        AS zona_num,\n         strpos('CDEFGHJKLMNPQRSTUVWX', substr(z, 3, 1))     AS banda_idx\n  FROM base\n),\ndestino AS (\n  -- Desplazamiento respecto de la zona elegida. Las zonas dan la vuelta al\n  -- mundo (60 -> 1); las bandas no, y pasarse por arriba deja una cadena vacia\n  -- que el servicio rechaza con 404. Eso es correcto: no hay COG que pintar.\n  SELECT anio,\n         lpad(CAST(((zona_num - 1 + 0) % 60) + 1 AS VARCHAR), 2, '0')\n         || substr('CDEFGHJKLMNPQRSTUVWX', banda_idx + 1, 1) AS mgrs\n  FROM partes\n),\nitem AS (\n  SELECT mgrs, anio,\n         http_get('https://planetarycomputer.microsoft.com/api/stac/v1/collections/'\n                  || 'io-lulc-annual-v02/items/' || mgrs || '-' || anio) AS resp\n  FROM destino\n),\nfirma AS (\n  -- Token SAS anonimo y gratuito: el contenedor no admite acceso publico, pero\n  -- Planetary Computer firma a quien lo pida. Caduca en ~45 min y se vuelve a\n  -- pedir en cada refresco, asi que la URL nunca viaja vencida.\n  SELECT (http_get('https://planetarycomputer.microsoft.com/api/sas/v1/token/io-lulc')->>'body') AS cuerpo\n)\n-- Sin fila no hay capa: una zona sin COG --oceano, o un ano aun sin publicar--\n-- responde 404 y simplemente no se dibuja.\nSELECT\n  ((item.resp->>'body')::JSON->'assets'->'data'->>'href')\n    || '?' || ((firma.cuerpo)::JSON->>'token') AS raster_url\nFROM item, firma\nWHERE (item.resp->>'status') = '200'"
-        },
-        {
-          "refId": "C",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "format": 1,
-          "rawSql": "-- El COG original de Impact Observatory, firmado en vuelo. Esta consulta cubre\n-- UNA zona UTM; el panel lleva cuatro como esta --el bloque 2x2 que arranca en\n-- la zona elegida-- porque un COG mide 6 grados de longitud por 8 de latitud y\n-- un pais no cabe en uno solo. Ecuador son 17M, 17N, 18M y 18N.\n--\n-- OJO con las variables: este datasource las entrecomilla por su cuenta, asi\n-- que van desnudas y concatenadas.\nWITH base AS (\n  SELECT CAST($zona AS VARCHAR) AS z, CAST($anio AS VARCHAR) AS anio\n),\npartes AS (\n  SELECT anio,\n         CAST(substr(z, 1, 2) AS INT)                        AS zona_num,\n         strpos('CDEFGHJKLMNPQRSTUVWX', substr(z, 3, 1))     AS banda_idx\n  FROM base\n),\ndestino AS (\n  -- Desplazamiento respecto de la zona elegida. Las zonas dan la vuelta al\n  -- mundo (60 -> 1); las bandas no, y pasarse por arriba deja una cadena vacia\n  -- que el servicio rechaza con 404. Eso es correcto: no hay COG que pintar.\n  SELECT anio,\n         lpad(CAST(((zona_num - 1 + 1) % 60) + 1 AS VARCHAR), 2, '0')\n         || substr('CDEFGHJKLMNPQRSTUVWX', banda_idx + 0, 1) AS mgrs\n  FROM partes\n),\nitem AS (\n  SELECT mgrs, anio,\n         http_get('https://planetarycomputer.microsoft.com/api/stac/v1/collections/'\n                  || 'io-lulc-annual-v02/items/' || mgrs || '-' || anio) AS resp\n  FROM destino\n),\nfirma AS (\n  -- Token SAS anonimo y gratuito: el contenedor no admite acceso publico, pero\n  -- Planetary Computer firma a quien lo pida. Caduca en ~45 min y se vuelve a\n  -- pedir en cada refresco, asi que la URL nunca viaja vencida.\n  SELECT (http_get('https://planetarycomputer.microsoft.com/api/sas/v1/token/io-lulc')->>'body') AS cuerpo\n)\n-- Sin fila no hay capa: una zona sin COG --oceano, o un ano aun sin publicar--\n-- responde 404 y simplemente no se dibuja.\nSELECT\n  ((item.resp->>'body')::JSON->'assets'->'data'->>'href')\n    || '?' || ((firma.cuerpo)::JSON->>'token') AS raster_url\nFROM item, firma\nWHERE (item.resp->>'status') = '200'"
-        },
-        {
-          "refId": "D",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "format": 1,
-          "rawSql": "-- El COG original de Impact Observatory, firmado en vuelo. Esta consulta cubre\n-- UNA zona UTM; el panel lleva cuatro como esta --el bloque 2x2 que arranca en\n-- la zona elegida-- porque un COG mide 6 grados de longitud por 8 de latitud y\n-- un pais no cabe en uno solo. Ecuador son 17M, 17N, 18M y 18N.\n--\n-- OJO con las variables: este datasource las entrecomilla por su cuenta, asi\n-- que van desnudas y concatenadas.\nWITH base AS (\n  SELECT CAST($zona AS VARCHAR) AS z, CAST($anio AS VARCHAR) AS anio\n),\npartes AS (\n  SELECT anio,\n         CAST(substr(z, 1, 2) AS INT)                        AS zona_num,\n         strpos('CDEFGHJKLMNPQRSTUVWX', substr(z, 3, 1))     AS banda_idx\n  FROM base\n),\ndestino AS (\n  -- Desplazamiento respecto de la zona elegida. Las zonas dan la vuelta al\n  -- mundo (60 -> 1); las bandas no, y pasarse por arriba deja una cadena vacia\n  -- que el servicio rechaza con 404. Eso es correcto: no hay COG que pintar.\n  SELECT anio,\n         lpad(CAST(((zona_num - 1 + 1) % 60) + 1 AS VARCHAR), 2, '0')\n         || substr('CDEFGHJKLMNPQRSTUVWX', banda_idx + 1, 1) AS mgrs\n  FROM partes\n),\nitem AS (\n  SELECT mgrs, anio,\n         http_get('https://planetarycomputer.microsoft.com/api/stac/v1/collections/'\n                  || 'io-lulc-annual-v02/items/' || mgrs || '-' || anio) AS resp\n  FROM destino\n),\nfirma AS (\n  -- Token SAS anonimo y gratuito: el contenedor no admite acceso publico, pero\n  -- Planetary Computer firma a quien lo pida. Caduca en ~45 min y se vuelve a\n  -- pedir en cada refresco, asi que la URL nunca viaja vencida.\n  SELECT (http_get('https://planetarycomputer.microsoft.com/api/sas/v1/token/io-lulc')->>'body') AS cuerpo\n)\n-- Sin fila no hay capa: una zona sin COG --oceano, o un ano aun sin publicar--\n-- responde 404 y simplemente no se dibuja.\nSELECT\n  ((item.resp->>'body')::JSON->'assets'->'data'->>'href')\n    || '?' || ((firma.cuerpo)::JSON->>'token') AS raster_url\nFROM item, firma\nWHERE (item.resp->>'status') = '200'"
+          "rawSql": "-- Un servicio, no doscientos ficheros.\n--\n-- El ImageServer es un mosaic dataset: el catálogo de sus rásteres, la regla\n-- para elegir entre ellos y una pirámide sobre el conjunto. Responde para\n-- cualquier extensión y cualquier zoom desde un solo punto final, así que\n-- desaparecen el bloque de zonas UTM, la firma SAS y el servidor de teselas.\n--\n-- Y es el MISMO servicio del que salen las cifras de abajo, de modo que mapa y\n-- números no pueden desacompasarse: son una fuente leída dos veces.\nSELECT\n  'https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer' AS esri_url,\n  '{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=' || CAST($anio AS VARCHAR) || '\"}' AS mosaic_rule\n"
         }
       ],
-      "title": "Cobertura del suelo — el COG original a 10 m",
+      "title": "Cobertura del suelo — servida por el ImageServer",
       "type": "ubica-keplergl-panel"
     },
     {
@@ -2780,47 +2751,27 @@
       },
       {
         "current": {
-          "text": "2023",
-          "value": "2023"
+          "text": "2025",
+          "value": "2025"
         },
         "datasource": {
           "type": "motherduck-duckdb-datasource",
           "uid": "duckdb"
         },
-        "definition": "Años que la colección io-lulc-annual-v02 publica hoy",
-        "description": "Sale de la propia colección, no de una lista escrita a mano.",
+        "definition": "Años que publica el catálogo del ImageServer",
+        "description": "Sale del propio servicio, no de una lista escrita a mano.",
         "hide": 0,
         "includeAll": false,
         "label": "Año del ráster",
         "multi": false,
         "name": "anio",
         "options": [],
-        "query": "WITH ext AS (\n  SELECT (http_get('https://planetarycomputer.microsoft.com/api/stac/v1/collections/io-lulc-annual-v02')->>'body') AS cuerpo\n),\nrango AS (\n  SELECT CAST(substr((cuerpo::JSON->'extent'->'temporal'->'interval'->0->>0), 1, 4) AS INT) AS y0,\n         CAST(substr((cuerpo::JSON->'extent'->'temporal'->'interval'->0->>1), 1, 4) AS INT) AS y1\n  FROM ext\n)\nSELECT CAST(y AS VARCHAR) AS anio\nFROM rango, generate_series(y0, y1 - 1) AS t(y)\nORDER BY y DESC",
+        "query": "-- Los años los publica el propio servicio: su catálogo es una tabla y lleva\n-- un campo `Year`. Nueve hoy, los mismos que miden las cifras.\nWITH resp AS (\n  SELECT http_get(\n    'https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer/query'\n    || '?where=1%3D1&outFields=Year&returnDistinctValues=true'\n    || '&returnGeometry=false&orderByFields=Year&f=json'\n  ) AS r\n),\nfilas AS (SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp)\nSELECT DISTINCT CAST(f->'attributes'->>'Year' AS VARCHAR) AS anio\nFROM filas\nWHERE f->'attributes'->>'Year' IS NOT NULL\nORDER BY anio DESC\n",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
         "sort": 0,
         "type": "query"
-      },
-      {
-        "current": {
-          "text": "17M",
-          "value": "17M"
-        },
-        "description": "Zona UTM/MGRS del COG que dibuja el fondo. 17M es Azuay; 30T, Madrid.",
-        "hide": 0,
-        "label": "Zona MGRS del fondo",
-        "name": "zona",
-        "options": [
-          {
-            "selected": true,
-            "text": "17M",
-            "value": "17M"
-          }
-        ],
-        "query": "17M",
-        "skipUrlSync": false,
-        "type": "textbox"
       },
       {
         "current": {
