@@ -1,4 +1,5 @@
 import { cogTileTemplate } from '../data/cogTileUrl';
+import { shownInPane } from './paneVisibility';
 
 /**
  * The kepler layer that draws a COG the *tile server* has already coloured.
@@ -52,7 +53,7 @@ interface CogPaintedLayerLike {
   id: string;
   /** kepler's placeholder, when the factory was handed no icon of its own. */
   readonly layerIcon?: unknown;
-  config: { visConfig?: { opacity?: number; cogScene?: unknown } };
+  config: { isVisible?: boolean; visConfig?: { opacity?: number; cogScene?: unknown } };
 }
 
 /** What kepler's `formatLayerData` hands back to `renderLayer`. */
@@ -187,7 +188,7 @@ export function makeCogPaintedLayer<C extends Constructor<object>>(
      * logged. `RasterTileLayer` overrides this for exactly the same reason.
      */
     shouldRenderLayer(): boolean {
-      return Boolean(this.type && (this.config as { isVisible?: boolean }).isVisible);
+      return Boolean(this.type && this.config.isVisible);
     }
 
     /** The metadata travels whole; there is no row to reshape. */
@@ -201,7 +202,12 @@ export function makeCogPaintedLayer<C extends Constructor<object>>(
       return { metadata: dataset?.metadata };
     }
 
-    renderLayer(opts?: { data?: CogPaintedLayerData }): unknown[] {
+    renderLayer(opts?: {
+      data?: CogPaintedLayerData;
+      /** The split map's verdict: shown in this pane, or the other one. */
+      visible?: boolean;
+    }): unknown[] {
+      const visible = this.config.isVisible !== false && shownInPane(opts);
       const visConfig = this.config?.visConfig;
       const chosen = visConfig?.cogScene;
       const props = cogPaintedDeckProps({
@@ -211,7 +217,7 @@ export function makeCogPaintedLayer<C extends Constructor<object>>(
         opacity: visConfig?.opacity,
       });
 
-      return props ? [buildDeckLayer(props)] : [];
+      return props ? [buildDeckLayer({ ...props, visible })] : [];
     }
   }
 

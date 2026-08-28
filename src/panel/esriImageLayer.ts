@@ -1,5 +1,6 @@
 import type { LayerIcon } from './cogPaintedLayer';
 import { esriImageUrl, type TileBounds } from '../data/esriImageUrl';
+import { shownInPane } from './paneVisibility';
 
 /**
  * The kepler layer that draws an ArcGIS Image Service.
@@ -44,7 +45,7 @@ interface EsriImageLayerLike {
   id: string;
   /** kepler's placeholder, when the factory was handed no icon of its own. */
   readonly layerIcon?: unknown;
-  config: { visConfig?: { opacity?: number; esriMosaicRule?: unknown } };
+  config: { isVisible?: boolean; visConfig?: { opacity?: number; esriMosaicRule?: unknown } };
 }
 
 /** What kepler's `formatLayerData` hands back to `renderLayer`. */
@@ -185,7 +186,7 @@ export function makeEsriImageLayer<C extends Constructor<object>>(
      * exactly the same reason.
      */
     shouldRenderLayer(): boolean {
-      return Boolean(this.type && (this.config as { isVisible?: boolean }).isVisible);
+      return Boolean(this.type && this.config.isVisible);
     }
 
     /** The metadata travels whole; there is no row to reshape. */
@@ -199,7 +200,12 @@ export function makeEsriImageLayer<C extends Constructor<object>>(
       return { metadata: dataset?.metadata };
     }
 
-    renderLayer(opts?: { data?: EsriImageLayerData }): unknown[] {
+    renderLayer(opts?: {
+      data?: EsriImageLayerData;
+      /** The split map's verdict: shown in this pane, or the other one. */
+      visible?: boolean;
+    }): unknown[] {
+      const visible = this.config.isVisible !== false && shownInPane(opts);
       const visConfig = this.config?.visConfig;
       const chosen = visConfig?.esriMosaicRule;
       const props = esriDeckProps({
@@ -209,7 +215,7 @@ export function makeEsriImageLayer<C extends Constructor<object>>(
         opacity: visConfig?.opacity,
       });
 
-      return props ? [buildDeckLayer(props)] : [];
+      return props ? [buildDeckLayer({ ...props, visible })] : [];
     }
   }
 

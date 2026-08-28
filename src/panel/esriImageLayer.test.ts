@@ -135,6 +135,17 @@ describe('makeEsriImageLayer', () => {
     expect(layer.shouldRenderLayer()).toBe(false);
   });
 
+  it('switches itself off in the split-map pane it was hidden in', () => {
+    // kepler hands every layer to deck whether or not the pane shows it:
+    // `renderDeckGlLayer` works out `visible` from `splitMaps[i].layers` and
+    // passes it in, leaving each layer to apply it. Ignore it and the legend's
+    // per-pane eyes change the state and switch nothing off — which is exactly
+    // what a split screen meant to compare two years cannot afford.
+        make().renderLayer({ data: { metadata: META }, visible: false });
+
+    expect(built[0].visible).toBe(false);
+  });
+
   it('renders nothing at all when it has no service yet', () => {
     expect(make().renderLayer({ data: { metadata: undefined } })).toEqual([]);
   });

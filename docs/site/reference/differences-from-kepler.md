@@ -161,9 +161,27 @@ kepler.gl's public documentation describes the **3.2 stable line**. This plugin 
 
 See [Upstream documentation](./upstream-docs) for the pinned versions in one place.
 
+## Splitting the map works
+
+kepler ships two split implementations and, with its own defaults, the working one is unreachable.
+`enableSwipeMode` is on upstream, which turns the split button into a Single/Dual/Swipe menu whose
+entries dispatch `setMapSplitMode` — an action that writes `mapState` and nothing else. But
+`KeplerGl` decides how many panes to draw from `visState.splitMaps`, and only the older
+`TOGGLE_SPLIT_MAP` fills that array. Picking **Dual** therefore did nothing at all: one map went on
+drawing every layer. The panel turns swipe mode off, which restores the button to the toggle that
+actually splits the view. The cost is the swipe curtain, which never worked here anyway.
+
+Kepler then gives the left pane every layer and, in its own words, leaves the right one empty. It
+reads that list back as `!mapLayers || mapLayers[layer.id]`, so a layer the empty pane never listed
+comes out `undefined` rather than `false` — and deck reads undefined as its default, visible. The
+pane meant to open empty draws everything, so the two halves start identical and the per-pane eyes
+need two clicks before the first one bites. The layers this panel builds read that verdict as
+written: not listed means not drawn. A split opens with the left half carrying the layers and the
+right half empty, and one click per eye is enough to give each half its own layer.
+
 ## What is _not_ different
 
 Worth stating plainly, because the list above can give the wrong impression. The layer types and
 their attributes, colour palettes and scales, filters, the tooltip and brush interactions, map
-settings, 3D and globe, split maps, playback, the draw tool, the legend, saving and exporting — all
+settings, 3D and globe, playback, the draw tool, the legend, saving and exporting — all
 of that is stock kepler.gl, behaving as its own documentation describes.

@@ -91,6 +91,20 @@ describe('makeZarrLayer', () => {
     built.length = 0;
   });
 
+  it('switches itself off in the split-map pane it was hidden in', () => {
+    // kepler hands every layer to deck whether or not the pane shows it:
+    // `renderDeckGlLayer` works out `visible` from `splitMaps[i].layers` and
+    // passes it in, leaving each layer to apply it. Ignore it and the legend's
+    // per-pane eyes change the state and switch nothing off — which is exactly
+    // what a split screen meant to compare two years cannot afford.
+    new (ZarrLayer as never as new (p?: unknown) => any)().renderLayer({
+      data: { metadata: META },
+      visible: false,
+    });
+
+    expect(built[0].visible).toBe(false);
+  });
+
   /** Renders the way kepler does: the formatted layer data arrives in `opts`. */
   function render(metadata: ZarrTileMetadata | undefined, label?: string) {
     const layer = new (ZarrLayer as never as new (p?: unknown) => any)();
