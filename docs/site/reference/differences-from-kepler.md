@@ -161,23 +161,27 @@ kepler.gl's public documentation describes the **3.2 stable line**. This plugin 
 
 See [Upstream documentation](./upstream-docs) for the pinned versions in one place.
 
-## Splitting the map works
+## Split maps: the layers here read the pane they are drawn for
 
-kepler ships two split implementations and, with its own defaults, the working one is unreachable.
-`enableSwipeMode` is on upstream, which turns the split button into a Single/Dual/Swipe menu whose
-entries dispatch `setMapSplitMode` — an action that writes `mapState` and nothing else. But
-`KeplerGl` decides how many panes to draw from `visState.splitMaps`, and only the older
-`TOGGLE_SPLIT_MAP` fills that array. Picking **Dual** therefore did nothing at all: one map went on
-drawing every layer. The panel turns swipe mode off, which restores the button to the toggle that
-actually splits the view. The cost is the swipe curtain, which never worked here anyway.
+Splitting the view is kepler's own feature and works as its documentation describes — the map
+control's first button offers Single, Dual and a Swipe curtain you drag. What did not work were the
+layers this panel builds.
 
-Kepler then gives the left pane every layer and, in its own words, leaves the right one empty. It
-reads that list back as `!mapLayers || mapLayers[layer.id]`, so a layer the empty pane never listed
-comes out `undefined` rather than `false` — and deck reads undefined as its default, visible. The
-pane meant to open empty draws everything, so the two halves start identical and the per-pane eyes
-need two clicks before the first one bites. The layers this panel builds read that verdict as
-written: not listed means not drawn. A split opens with the left half carrying the layers and the
-right half empty, and one click per eye is enough to give each half its own layer.
+`renderDeckGlLayer` decides whether the pane being drawn shows a layer, working it out from
+`splitMaps[i].layers`, and passes the answer to `renderLayer` for each layer to apply — which the
+stock layers do inside `getDefaultDeckLayerProps`. The tileset layers here build their deck props by
+hand and never read it, so every pane drew every layer: a split screen came up with both halves
+identical and the legend's per-pane eyes changed the state without switching anything off.
+
+They now apply it, through `shownInPane`. That verdict has three shapes rather than two, which is
+where the one deliberate difference lives. Kepler gives the left pane every layer and, in its own
+words, leaves the right one empty; it then reads the list back as `!mapLayers || mapLayers[layer.id]`,
+so a layer the empty pane never listed comes out `undefined` rather than `false`, and deck reads
+undefined as its default, visible. Upstream, the pane meant to open empty therefore draws
+everything and its eyes need two clicks before the first one bites. The layers here read it as
+written — not listed, not drawn — so **Dual** opens with the layers on the left and an empty right,
+one click per eye. **Swipe** is unaffected either way: it duplicates the list into both panes, so
+both halves start with everything and one click hides a layer on one side of the curtain.
 
 ## What is _not_ different
 

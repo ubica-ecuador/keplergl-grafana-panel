@@ -66,16 +66,6 @@ export function configureKepler(): void {
     // rather than the 3.2.6 stable. Stated explicitly so a change in the
     // upstream default cannot silently remove it.
     enableFlowLayer: true,
-    // kepler has two split-map implementations and only one of them draws a
-    // second pane. With swipe mode on — kepler's default — the split button
-    // opens a Single/Dual/Swipe menu whose entries dispatch `setMapSplitMode`,
-    // and that action writes `mapState` alone. `KeplerGl` builds its panes from
-    // `visState.splitMaps`, which only the older `TOGGLE_SPLIT_MAP` fills, so
-    // picking Dual changed nothing: one map went on drawing every layer.
-    // Switching swipe mode off turns the button back into that older toggle,
-    // which fills `splitMaps` and so gives both the second pane and the
-    // per-pane eyes the legend already renders from the same array.
-    enableSwipeMode: false,
   });
 
   // The flow field is a layer kepler does not ship, so its words are in no
