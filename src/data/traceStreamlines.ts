@@ -138,18 +138,22 @@ const STACK_SHARE_OF_VIEW = 0.15;
  * serve every zoom.
  *
  * `tallest` is the highest level on the map rather than this layer's own, so the
- * levels keep their real proportion to each other. Returns 1 with no ground or
- * no height, so nothing is invented when there is nothing to stack.
+ * levels keep their real proportion to each other. Returns 1 with no width or no
+ * height, so nothing is invented when there is nothing to stack.
+ *
+ * The width is measured **across the middle of the screen** — metres per pixel
+ * times the panel's width — and not from the ground the camera can see. Those
+ * two are the same thing looking straight down and wildly different once the map
+ * is tilted, where the visible ground runs to the horizon: measured over
+ * Ecuador at a pitch of 50, the trapezoid was twelve times wider than the view,
+ * which lifted a 3 km level to 600 km and threw the whole stack off the north of
+ * the screen. What a person means by "how wide is this view" does not change
+ * when they tilt the camera, and neither does this.
  */
-export function stackExaggeration(tallest: number, ground?: Box): number {
-  if (!ground || tallest <= 0) {
+export function stackExaggeration(tallest: number, metresAcross?: number): number {
+  if (!metresAcross || tallest <= 0) {
     return 1;
   }
-
-  const metresAcross =
-    (ground.east - ground.west) *
-    METRES_PER_DEGREE *
-    Math.cos((((ground.south + ground.north) / 2) * Math.PI) / 180);
 
   return (metresAcross * STACK_SHARE_OF_VIEW) / tallest;
 }

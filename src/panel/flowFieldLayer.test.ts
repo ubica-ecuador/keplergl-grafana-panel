@@ -61,7 +61,15 @@ const fakeBuild = (props: Record<string, unknown>) => {
  * it says, not the projection maths — that belongs to deck, and
  * `flowFieldDeckLayer.ts` is where it is asked for.
  */
-type TestCamera = { latitude: number; longitude: number; zoom: number; pitch: number; bearing: number; width: number; height: number; box: { west: number; east: number; south: number; north: number } };
+type Ground = { west: number; east: number; south: number; north: number };
+type TestCamera = {
+  latitude: number; longitude: number; zoom: number; pitch: number; bearing: number;
+  width: number; height: number;
+  /** The ground on screen. */
+  box: Ground;
+  /** What sets metres per pixel, when it is not the box — a tilted camera. */
+  scaleBox?: Ground;
+};
 
 const cameraShowing = (box: TestCamera['box'], width = 800, height = 800): TestCamera => ({
   latitude: (box.south + box.north) / 2,
@@ -76,13 +84,19 @@ const cameraShowing = (box: TestCamera['box'], width = 800, height = 800): TestC
 
 const fakeCamera = (camera: any) => {
   const box = (camera as TestCamera).box;
+  // The scale and the visible ground are two different questions, and deck
+  // answers them separately: metres per pixel falls out of the zoom, while the
+  // ground on screen is sampled and grows as the camera tilts. A double that
+  // ties them together cannot see the difference — which is exactly the bug
+  // that got past it once.
+  const scale = (camera as TestCamera).scaleBox ?? box;
   const spanLng = box.east - box.west;
   const spanLat = box.north - box.south;
   return {
     widthPx: camera.width,
     heightPx: camera.height,
     bounds: box,
-    metresPerPixel: (spanLng * 111_320) / camera.width,
+    metresPerPixel: ((scale.east - scale.west) * 111_320) / camera.width,
     unproject: (x: number, y: number): [number, number] => [
       box.west + (x / camera.width) * spanLng,
       box.south + (1 - y / camera.height) * spanLat,
@@ -407,6 +421,26 @@ describe('flow field layer — height', () => {
 
   it('scales the whole stack by the exaggeration the user asked for', () => {
     expect(heightOf(3000, 3000, 2) / heightOf(3000, 3000, 1)).toBeCloseTo(2, 5);
+  });
+
+  it('does not lift the stack when the camera merely tilts', () => {
+    // The regression this exists for. Tilting turns the ground on screen into a
+    // trapezoid running to the horizon, and measuring the view by *that* made a
+    // 3 km level draw at 600 km — the whole stack slid off the top of the map.
+    // How wide a view is does not change when you tilt the camera.
+    const dataset = eastwardGrid(8, 12, 3000);
+    const columns = { ...COMPONENTS, altitude: 'altitude' };
+    const flatBox = { west: 0, east: 8, south: 0, north: 8 };
+
+    const heightWith = (bounds: typeof flatBox) => {
+      // Same zoom, so the same metres per pixel; only the ground on screen grows.
+      const camera = { ...cameraShowing(flatBox), box: bounds, scaleBox: flatBox };
+      const layer = layerOver(dataset, columns, { flowContext: { ...CONTEXT, tallest: 3000, camera } });
+      return layer.formatLayerData({ 'grafana-A': dataset }).data[0].path[0][2] as number;
+    };
+
+    // The same camera, but seeing ground stretching four times further away.
+    expect(heightWith({ west: -8, east: 16, south: 0, north: 32 })).toBeCloseTo(heightWith(flatBox), 5);
   });
 
   it('flattens the stack when the exaggeration is turned down to zero', () => {

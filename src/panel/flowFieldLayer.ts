@@ -6,7 +6,7 @@ import {
   WindField,
   WindFieldColumns,
 } from '../data/buildWindField';
-import { Box, ScreenCamera, stackExaggeration, Streamline, traceStreamlines } from '../data/traceStreamlines';
+import { ScreenCamera, stackExaggeration, Streamline, traceStreamlines } from '../data/traceStreamlines';
 import { shownInPane } from './paneVisibility';
 
 /**
@@ -594,10 +594,13 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
         visConfig
       );
       const camera = context.camera ? makeCamera(context.camera) : null;
-      const ground: Box | undefined = camera?.bounds;
+      // How wide the view is across its middle, which is what a person means by
+      // it — and unlike the ground the camera can see, it does not balloon when
+      // the map is tilted.
+      const metresAcross = camera ? camera.metresPerPixel * camera.widthPx : undefined;
       const altitudeMeters =
         rawAltitude *
-        stackExaggeration(setting(context.tallest, rawAltitude), ground) *
+        stackExaggeration(setting(context.tallest, rawAltitude), metresAcross) *
         setting(visConfig.elevationScale, 1);
 
       const data = traceStreamlines(field, {
