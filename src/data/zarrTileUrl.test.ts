@@ -81,6 +81,32 @@ describe('zarrTileTemplate', () => {
     expect(paramsOf(template)).toMatchObject({ rescale: '0,30', colormap_name: 'blues' });
   });
 
+  it('sends a whole ramp as `colormap`, keeping `colormap_name` for names', () => {
+    // A named ramp is opaque from end to end, so a field that is mostly near
+    // zero — smoke, most of the time — paints an opaque sheet over the whole
+    // basemap. Alpha has to come from the ramp itself, which means sending the
+    // ramp rather than naming one, and TiTiler spells that `colormap`.
+    const ramp = JSON.stringify([
+      [[0, 128], [255, 244, 240, 0]],
+      [[128, 256], [152, 0, 67, 255]],
+    ]);
+
+    const params = paramsOf(built({ serverUrl: SERVER, storeUrl: STORE, variable: 'precip', colormap: ramp }));
+
+    expect(params.colormap).toBe(ramp);
+    expect(params.colormap_name).toBeUndefined();
+  });
+
+  it('treats a name that merely looks like punctuation as a name', () => {
+    // The test is whether it parses as a ramp, not whether it starts with a
+    // bracket: a name that fails to parse is a name, and naming it `colormap`
+    // would answer 500 rather than draw.
+    const params = paramsOf(built({ serverUrl: SERVER, storeUrl: STORE, variable: 'precip', colormap: '[broken' }));
+
+    expect(params.colormap_name).toBe('[broken');
+    expect(params.colormap).toBeUndefined();
+  });
+
   it('omits the ramp and range when unset, so TiTiler picks its own', () => {
     const params = paramsOf(built({ serverUrl: SERVER, storeUrl: STORE, variable: 'precip' }));
 

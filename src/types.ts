@@ -70,6 +70,12 @@ export interface KeplerPanelOptions {
    * magenta. On a continuous field like rainfall or temperature, neighbouring
    * cells of similar value land on unrelated colours and the map reads as
    * confetti. Left empty, nothing is imposed and kepler's default stands.
+   *
+   * A whole ramp may be given instead of a name, as TiTiler's own interval
+   * JSON. That is the only way to get transparency out of the low end, which a
+   * field that is mostly near zero needs: every named ramp is opaque end to
+   * end, so such a field paints a sheet over the basemap in the palest tone it
+   * has. Only the Zarr path reads the JSON form.
    */
   rasterColormap?: string;
 

@@ -159,10 +159,11 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       path: 'rasterColormap',
       name: 'Raster colour ramp',
       description:
-        "Colour ramp for rasters a query produces. kepler's default is built for drone NDVI and steps through unrelated colours, which reads as noise on a continuous field.",
+        "Colour ramp for rasters a query produces. kepler's default is built for drone NDVI and steps through unrelated colours, which reads as noise on a continuous field. A whole ramp can be typed in as JSON \u2014 TiTiler's own intervals \u2014 which is the only way to make the low end transparent, as a field that is mostly near zero needs.",
       category: ['Map'],
       defaultValue: '',
       settings: {
+        allowCustomValue: true,
         options: [
           { value: '', label: "kepler's default (Cfastie)" },
           { value: 'blues', label: 'Blues — white to blue' },

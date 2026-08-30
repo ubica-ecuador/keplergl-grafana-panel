@@ -204,8 +204,16 @@ services:
   # The image listens on 80 and is published on 8088 because the browser talks
   # to it directly — kepler builds these URLs client-side, so a compose-network
   # name would not resolve.
+  #
+  # Built from ./docker/titiler rather than pulled directly: that is the same
+  # pinned 2.2.1 image with one comparison in rio-tiler given a tolerance, so a
+  # global 0.4° store whose south edge misses by 4e-13 degrees stops answering
+  # 500 to every tile. The Dockerfile explains it; the patch beside it is the
+  # whole change.
   titiler:
-    image: ghcr.io/developmentseed/titiler:2.2.1
+    build:
+      context: ./docker/titiler
+    image: ubica-keplergl-panel-titiler:2.2.1-bounds-tolerance
     container_name: 'ubica-keplergl-panel-titiler'
     ports:
       - '8088:80/tcp'

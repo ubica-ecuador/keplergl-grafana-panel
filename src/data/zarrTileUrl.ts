@@ -63,7 +63,17 @@ export interface ZarrTileSpec {
   levels?: number;
   /** `min,max` for the colour stretch. TiTiler's own spelling. */
   rescale?: string;
-  /** A TiTiler colormap name — the same vocabulary as the panel's raster ramp. */
+  /**
+   * How to colour it: a TiTiler ramp name, or a whole ramp as JSON.
+   *
+   * A name is the common case and the same vocabulary as the panel's raster
+   * ramp. The JSON form exists for one reason: every named ramp is opaque from
+   * end to end, and a field that is mostly near zero — smoke away from a fire,
+   * most of the map most of the time — then paints an opaque sheet over the
+   * basemap in the palest tone of the ramp. Alpha has to come from the ramp
+   * itself, so the ramp travels whole. TiTiler takes it under a different
+   * parameter, which is the only reason this is not one string either way.
+   */
   colormap?: string;
 }
 
@@ -106,7 +116,7 @@ export function zarrTileTemplate(spec: ZarrTileSpec): string | null {
     params.set('rescale', spec.rescale);
   }
   if (spec.colormap) {
-    params.set('colormap_name', spec.colormap);
+    params.set(isRampDefinition(spec.colormap) ? 'colormap' : 'colormap_name', spec.colormap);
   }
 
   // Appended raw rather than through `URLSearchParams`, and that is the whole
@@ -115,4 +125,25 @@ export function zarrTileTemplate(spec: ZarrTileSpec): string | null {
   const group = spec.levels && spec.levels > 0 ? '&group={z}' : '';
 
   return `${serverUrl}/zarr/tiles/${TILE_MATRIX_SET}/{z}/{x}/{y}.png?${params}${group}`;
+}
+
+/**
+ * Whether a colour ramp is a definition rather than the name of one.
+ *
+ * Decided by parsing rather than by the first character, because the cost of
+ * guessing wrong is a 500 on every tile: TiTiler reads `colormap` as JSON and
+ * `colormap_name` from its own register, and neither forgives the other's
+ * argument. Anything that parses to an object or an array is a ramp; everything
+ * else, punctuation included, is a name.
+ */
+function isRampDefinition(colormap: string): boolean {
+  const trimmed = colormap.trim();
+  if (!trimmed.startsWith('[') && !trimmed.startsWith('{')) {
+    return false;
+  }
+  try {
+    return typeof JSON.parse(trimmed) === 'object';
+  } catch {
+    return false;
+  }
 }
