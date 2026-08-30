@@ -21,7 +21,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "# Cobertura y uso del suelo — Sentinel-2 10 m\n\nLas cifras salen de `computeHistograms`, que cuenta píxeles por clase sobre **la extensión que el mapa\nestá mostrando**: mueve o acerca el mapa, en cualquier parte del mundo, y todo lo de abajo se recalcula\nen medio segundo.\n\n**Y ahora el mapa sale de ese mismo servicio.** El fondo es el ImageServer dibujando la cobertura a\ndemanda, no una copia: mapa y números leen una sola fuente, así que no pueden desacompasarse.\n\n| | |\n|---|---|\n| Fuente | [Sentinel-2 10m Land Use/Land Cover Time Series](https://www.arcgis.com/home/item.html?id=cfcb7609de5f478eb7666240902d4d3d) · **Impact Observatory, Microsoft y Esri**. Licencia CC BY 4.0, acceso anónimo |\n| Cobertura | Mundial, 10 m, nueve clases, 2017-2025 |\n| Cómo llega | Cifras: `computeHistograms` → Infinity. Fondo: `exportImage`, una petición por tesela, con la paleta del propio servicio |\n\n**Un servicio, no doscientos ficheros.** Un ImageServer es un *mosaic dataset*: el catálogo de sus\nrásteres, la regla para elegir entre ellos y una pirámide construida sobre el conjunto. Por eso\nresponde para cualquier extensión a cualquier zoom desde un único punto final — el planeta entero en\nuna capa, en poco más de un segundo por tesela. La misma colección repartida en COG son unos\ndoscientos ficheros por año, uno por zona UTM.\n\n**Los años los pone la fuente.** El selector no lleva lista escrita a mano: le pregunta al catálogo\ndel servicio qué años publica. Son los mismos nueve que miden las cifras, sin desfase.\n\n**Lo que hay que saber para no leer mal las cifras:**\n\n- **Impact Observatory desaconseja la comparación píxel a píxel entre años.** Cada año se clasifica por\n  separado y el modelo cambia; parte de la diferencia interanual es método, no territorio. Por eso este\n  tablero lidera con el **cambio relativo**, que es lo que mejor aguanta.\n- **El muestreo va en rejilla Web Mercator, así que el área está sesgada por latitud.** Cada muestra\n  cubre `(escala·cos φ)²` de suelo real: a 60° de latitud, la cuarta parte que en el ecuador. Los km²\n  son **aproximados** y tanto más optimistas para las clases de latitud alta cuanto más alta sea la\n  vista. El **cambio relativo no lo arrastra**, porque los nueve años se miden con la misma rejilla.\n- **La clase «Nubes» es el termómetro de calidad del año.** Cuando sube, el resto de las clases de ese\n  año valen menos. En las pruebas oscila entre 0,2 % y 1,8 % según el año y la región.\n\n**Acotar dibujando.** La herramienta de dibujo del mapa (polígono o rectángulo) sustituye la extensión\nde la vista por la figura: las cifras pasan a describir sólo lo que la figura encierra, a la resolución\nmás fina que el servicio admita. Borra la figura para volver a la vista.\n\n*El servicio corta a 4000 px de lado y a ~13 M de celdas. Por encima de 4000 devuelve\n`{\"histograms\":[]}` **sin error**; por encima de 13 M devuelve un 400 explícito. La variable oculta\n`escala` mantiene la petición en 3500 px de lado, así que ninguno de los dos techos debería alcanzarse.*\n",
+        "content": "# Cobertura y uso del suelo — Sentinel-2 10 m\n\nLas cifras salen de `computeHistograms`, que cuenta píxeles por clase sobre **la extensión que el mapa\nestá mostrando**: mueve o acerca el mapa, en cualquier parte del mundo, y todo lo de abajo se recalcula\nen medio segundo.\n\n**Y ahora el mapa sale de ese mismo servicio.** El fondo es el ImageServer dibujando la cobertura a\ndemanda, no una copia: mapa y números leen una sola fuente, así que no pueden desacompasarse.\n\n| | |\n|---|---|\n| Fuente | [Sentinel-2 10m Land Use/Land Cover Time Series](https://www.arcgis.com/home/item.html?id=cfcb7609de5f478eb7666240902d4d3d) · **Impact Observatory, Microsoft y Esri**. Licencia CC BY 4.0, acceso anónimo |\n| Cobertura | Mundial, 10 m, nueve clases, 2017-2025 |\n| Cómo llega | Cifras: `computeHistograms` → Infinity. Fondo: `exportImage`, una petición por tesela, con la paleta del propio servicio |\n\n**Un servicio, no doscientos ficheros.** Un ImageServer es un *mosaic dataset*: el catálogo de sus\nrásteres, la regla para elegir entre ellos y una pirámide construida sobre el conjunto. Por eso\nresponde para cualquier extensión a cualquier zoom desde un único punto final — el planeta entero en\nuna capa, en poco más de un segundo por tesela. La misma colección repartida en COG son unos\ndoscientos ficheros por año, uno por zona UTM.\n\n**Los años los pone la fuente.** El selector no lleva lista escrita a mano: le pregunta al catálogo\ndel servicio qué años publica. Son los mismos nueve que miden las cifras, sin desfase.\n\n**Lo que hay que saber para no leer mal las cifras:**\n\n- **Impact Observatory desaconseja la comparación píxel a píxel entre años.** Cada año se clasifica por\n  separado y el modelo cambia; parte de la diferencia interanual es método, no territorio. Por eso este\n  tablero lidera con el **cambio relativo**, que es lo que mejor aguanta.\n- **El muestreo va en rejilla Web Mercator, así que el área está sesgada por latitud.** Cada muestra\n  cubre `(escala·cos φ)²` de suelo real: a 60° de latitud, la cuarta parte que en el ecuador. Los km²\n  son **aproximados** y tanto más optimistas para las clases de latitud alta cuanto más alta sea la\n  vista. El **cambio relativo no lo arrastra**, porque los nueve años se miden con la misma rejilla.\n- **La clase «Nubes» es el termómetro de calidad del año.** Cuando sube, el resto de las clases de ese\n  año valen menos. En las pruebas oscila entre 0,2 % y 1,8 % según el año y la región.\n\n**Acotar dibujando.** La herramienta de dibujo del mapa (polígono o rectángulo) sustituye la extensión\nde la vista por la figura: las cifras pasan a describir sólo lo que la figura encierra, a la resolución\nmás fina que el servicio admita. Borra la figura para volver a la vista.\n\n*El servicio corta a 4000 px de lado y a ~13 M de celdas. Por encima de 4000 devuelve\n`{\"histograms\":[]}` **sin error**; por encima de 13 M devuelve un 400 explícito. La variable oculta\n`escala` mantiene la petición en 3500 px de lado, así que ninguno de los dos techos debería alcanzarse.*\n\n\n**Una sola clase, con un clic.** El desplegable **Clase de cobertura** —o un clic sobre la\nclase en el medidor de cambio relativo o en la tabla de detalle— deja el mapa mostrando esa cobertura sola. No la dibuja\nel panel: el servicio publica una función de render por clase, y lo que llega es la clase con su\ncolor y el resto del ráster **transparente**, así que lo que se ve por debajo es el mapa base, no\nun hueco. Las cifras no se mueven: siguen midiendo **todas** las clases, para que aislar sirva\npara mirar y no se confunda con filtrar. Vuelve a *Todas* para recuperar el mapa completo.",
         "mode": "markdown"
       },
       "title": "",
@@ -100,7 +100,7 @@
             "uid": "duckdb"
           },
           "format": 1,
-          "rawSql": "-- Un servicio, no doscientos ficheros.\n--\n-- El ImageServer es un mosaic dataset: el catálogo de sus rásteres, la regla\n-- para elegir entre ellos y una pirámide sobre el conjunto. Responde para\n-- cualquier extensión y cualquier zoom desde un solo punto final, así que\n-- desaparecen el bloque de zonas UTM, la firma SAS y el servidor de teselas.\n--\n-- Y es el MISMO servicio del que salen las cifras de abajo, de modo que mapa y\n-- números no pueden desacompasarse: son una fuente leída dos veces.\nSELECT\n  'https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer' AS esri_url,\n  '{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=' || CAST($anio AS VARCHAR) || '\"}' AS mosaic_rule\n"
+          "rawSql": "-- Un servicio, no doscientos ficheros.\n--\n-- El ImageServer es un mosaic dataset: el catálogo de sus rásteres, la regla\n-- para elegir entre ellos y una pirámide sobre el conjunto. Responde para\n-- cualquier extensión y cualquier zoom desde un solo punto final, así que\n-- desaparecen el bloque de zonas UTM, la firma SAS y el servidor de teselas.\n--\n-- Y es el MISMO servicio del que salen las cifras de abajo, de modo que mapa y\n-- números no pueden desacompasarse: son una fuente leída dos veces.\nSELECT\n  'https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer' AS esri_url,\n  '{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=' || CAST($anio AS VARCHAR) || '\"}' AS mosaic_rule,\n\n  -- Y así es como se aísla una clase: el propio servicio publica una función\n  -- «Isolate …» por cobertura, que devuelve esa clase con su color y TODO lo\n  -- demás transparente. No se filtra nada aquí ni se recorta el ráster; se le\n  -- pide otro dibujo. Vacío quiere decir «la cartográfica», que es la de siempre.\n  --\n  -- `$clase` va sin comillas: este datasource ya entrecomilla las variables, y\n  -- '$clase' saldría como ''pct_arboles'' y sería un error de sintaxis. Se acepta\n  -- Se le quita el prefijo porque cada panel nombra sus campos a su manera\n  -- (`pct_` en el gráfico, `km2_` en la tabla), y se acepta además la etiqueta en\n  -- español, que es lo que manda el clic en el medidor de cambio relativo.\n  CASE\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('arboles', 'Árboles')\n      THEN '{\"rasterFunction\":\"Isolate Trees for Visualization and Analysis\"}'\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('pastizal', 'Pastizal/Matorral')\n      THEN '{\"rasterFunction\":\"Isolate Rangelands Areas for Visualization and Analysis\"}'\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('cultivos', 'Cultivos')\n      THEN '{\"rasterFunction\":\"Isolate Crops for Visualization and Analysis\"}'\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('construido', 'Área construida')\n      THEN '{\"rasterFunction\":\"Isolate Built Areas for Visualization and Analysis\"}'\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('suelo_desnudo', 'Suelo desnudo')\n      THEN '{\"rasterFunction\":\"Isolate Bare Ground Areas for Visualization and Analysis\"}'\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('agua', 'Agua')\n      THEN '{\"rasterFunction\":\"Isolate Water Areas for Visualization and Analysis\"}'\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('veg_inundada', 'Vegetación inundada')\n      THEN '{\"rasterFunction\":\"Isolate Flooded Vegeation Areas for Visualization and Analysis\"}'\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('nieve', 'Nieve/Hielo')\n      THEN '{\"rasterFunction\":\"Isolate Snow or Ice for Visualization and Analysis\"}'\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('nubes', 'Nubes')\n      THEN '{\"rasterFunction\":\"Isolate Clouds for Visualization and Analysis\"}'\n    WHEN $clase IN ('convertidas', 'Tierras convertidas')\n      THEN '{\"rasterFunction\":\"Isolate Converted Lands for Visualization and Analysis\"}'\n    ELSE ''\n  END AS rendering_rule"
         }
       ],
       "title": "Cobertura del suelo — servida por el ImageServer",
@@ -2217,7 +2217,14 @@
               }
             ]
           },
-          "unit": "percent"
+          "unit": "percent",
+          "links": [
+            {
+              "title": "Ver sólo esta clase en el mapa",
+              "oneClick": true,
+              "url": "d/lulc-mundial/cobertura-del-suelo?var-clase=${__data.fields.Field}&var-anio=${anio}&var-area=${area}&var-mapWest=${mapWest}&var-mapSouth=${mapSouth}&var-mapEast=${mapEast}&var-mapNorth=${mapNorth}"
+            }
+          ]
         },
         "overrides": []
       },
@@ -2414,6 +2421,16 @@
                   "fixedColor": "#358221",
                   "mode": "fixed"
                 }
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Ver sólo esta clase en el mapa",
+                    "oneClick": true,
+                    "url": "d/lulc-mundial/cobertura-del-suelo?var-clase=${__field.displayName}&var-anio=${anio}&var-area=${area}&var-mapWest=${mapWest}&var-mapSouth=${mapSouth}&var-mapEast=${mapEast}&var-mapNorth=${mapNorth}"
+                  }
+                ]
               }
             ]
           },
@@ -2439,6 +2456,16 @@
                   "fixedColor": "#EFCFA8",
                   "mode": "fixed"
                 }
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Ver sólo esta clase en el mapa",
+                    "oneClick": true,
+                    "url": "d/lulc-mundial/cobertura-del-suelo?var-clase=${__field.displayName}&var-anio=${anio}&var-area=${area}&var-mapWest=${mapWest}&var-mapSouth=${mapSouth}&var-mapEast=${mapEast}&var-mapNorth=${mapNorth}"
+                  }
+                ]
               }
             ]
           },
@@ -2464,6 +2491,16 @@
                   "fixedColor": "#FFDB5C",
                   "mode": "fixed"
                 }
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Ver sólo esta clase en el mapa",
+                    "oneClick": true,
+                    "url": "d/lulc-mundial/cobertura-del-suelo?var-clase=${__field.displayName}&var-anio=${anio}&var-area=${area}&var-mapWest=${mapWest}&var-mapSouth=${mapSouth}&var-mapEast=${mapEast}&var-mapNorth=${mapNorth}"
+                  }
+                ]
               }
             ]
           },
@@ -2489,6 +2526,16 @@
                   "fixedColor": "#ED022A",
                   "mode": "fixed"
                 }
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Ver sólo esta clase en el mapa",
+                    "oneClick": true,
+                    "url": "d/lulc-mundial/cobertura-del-suelo?var-clase=${__field.displayName}&var-anio=${anio}&var-area=${area}&var-mapWest=${mapWest}&var-mapSouth=${mapSouth}&var-mapEast=${mapEast}&var-mapNorth=${mapNorth}"
+                  }
+                ]
               }
             ]
           },
@@ -2514,6 +2561,16 @@
                   "fixedColor": "#EDE9E4",
                   "mode": "fixed"
                 }
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Ver sólo esta clase en el mapa",
+                    "oneClick": true,
+                    "url": "d/lulc-mundial/cobertura-del-suelo?var-clase=${__field.displayName}&var-anio=${anio}&var-area=${area}&var-mapWest=${mapWest}&var-mapSouth=${mapSouth}&var-mapEast=${mapEast}&var-mapNorth=${mapNorth}"
+                  }
+                ]
               }
             ]
           },
@@ -2539,6 +2596,16 @@
                   "fixedColor": "#1A5BAB",
                   "mode": "fixed"
                 }
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Ver sólo esta clase en el mapa",
+                    "oneClick": true,
+                    "url": "d/lulc-mundial/cobertura-del-suelo?var-clase=${__field.displayName}&var-anio=${anio}&var-area=${area}&var-mapWest=${mapWest}&var-mapSouth=${mapSouth}&var-mapEast=${mapEast}&var-mapNorth=${mapNorth}"
+                  }
+                ]
               }
             ]
           },
@@ -2564,6 +2631,16 @@
                   "fixedColor": "#87D19E",
                   "mode": "fixed"
                 }
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Ver sólo esta clase en el mapa",
+                    "oneClick": true,
+                    "url": "d/lulc-mundial/cobertura-del-suelo?var-clase=${__field.displayName}&var-anio=${anio}&var-area=${area}&var-mapWest=${mapWest}&var-mapSouth=${mapSouth}&var-mapEast=${mapEast}&var-mapNorth=${mapNorth}"
+                  }
+                ]
               }
             ]
           },
@@ -2589,6 +2666,16 @@
                   "fixedColor": "#F2FAFF",
                   "mode": "fixed"
                 }
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Ver sólo esta clase en el mapa",
+                    "oneClick": true,
+                    "url": "d/lulc-mundial/cobertura-del-suelo?var-clase=${__field.displayName}&var-anio=${anio}&var-area=${area}&var-mapWest=${mapWest}&var-mapSouth=${mapSouth}&var-mapEast=${mapEast}&var-mapNorth=${mapNorth}"
+                  }
+                ]
               }
             ]
           },
@@ -2614,6 +2701,16 @@
                   "fixedColor": "#C8C8C8",
                   "mode": "fixed"
                 }
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Ver sólo esta clase en el mapa",
+                    "oneClick": true,
+                    "url": "d/lulc-mundial/cobertura-del-suelo?var-clase=${__field.displayName}&var-anio=${anio}&var-area=${area}&var-mapWest=${mapWest}&var-mapSouth=${mapSouth}&var-mapEast=${mapEast}&var-mapNorth=${mapNorth}"
+                  }
+                ]
               }
             ]
           }
@@ -2772,6 +2869,78 @@
         "skipUrlSync": false,
         "sort": 0,
         "type": "query"
+      },
+      {
+        "current": {
+          "text": "Todas",
+          "value": "Todas"
+        },
+        "description": "El servicio publica una función «Isolate …» por clase; ésta elige cuál aplicar.",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Clase de cobertura",
+        "multi": false,
+        "name": "clase",
+        "options": [
+          {
+            "selected": true,
+            "text": "Todas",
+            "value": "Todas"
+          },
+          {
+            "selected": false,
+            "text": "Árboles",
+            "value": "Árboles"
+          },
+          {
+            "selected": false,
+            "text": "Pastizal/Matorral",
+            "value": "Pastizal/Matorral"
+          },
+          {
+            "selected": false,
+            "text": "Cultivos",
+            "value": "Cultivos"
+          },
+          {
+            "selected": false,
+            "text": "Área construida",
+            "value": "Área construida"
+          },
+          {
+            "selected": false,
+            "text": "Suelo desnudo",
+            "value": "Suelo desnudo"
+          },
+          {
+            "selected": false,
+            "text": "Agua",
+            "value": "Agua"
+          },
+          {
+            "selected": false,
+            "text": "Vegetación inundada",
+            "value": "Vegetación inundada"
+          },
+          {
+            "selected": false,
+            "text": "Nieve/Hielo",
+            "value": "Nieve/Hielo"
+          },
+          {
+            "selected": false,
+            "text": "Nubes",
+            "value": "Nubes"
+          },
+          {
+            "selected": false,
+            "text": "Tierras convertidas",
+            "value": "Tierras convertidas"
+          }
+        ],
+        "query": "Todas,Árboles,Pastizal/Matorral,Cultivos,Área construida,Suelo desnudo,Agua,Vegetación inundada,Nieve/Hielo,Nubes,Tierras convertidas",
+        "skipUrlSync": false,
+        "type": "custom"
       },
       {
         "current": {
