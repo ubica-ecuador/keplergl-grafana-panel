@@ -15,9 +15,9 @@ datasources:
     jsonData:
       path: ''
       # The spatial extension is not built in: without it ST_GeomFromWKB and
-      # ST_AsGeoJSON are undefined. v0.4.5 runs this per connection, which
-      # supersedes the note in docs/duckdb-geoparquet-findings.md that there is
-      # no datasource-level init SQL — that was true of the version tested then.
+      # ST_AsGeoJSON are undefined. v0.4.5 runs this per connection; the earlier
+      # version this bench was first built against had no datasource-level init
+      # SQL at all, which is why the extension used to be loaded per query.
       #
       # `http_client` is a community extension and carries the STAC catalogue
       # search: `http_get` is an ordinary scalar function, so the search URL can
