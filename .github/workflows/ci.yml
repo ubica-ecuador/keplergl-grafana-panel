@@ -46,6 +46,28 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      # Second, independent line of defence against the proprietary
+      # mapbox-gl@3.x/2.x (Mapbox TOS, not Apache-2.0) re-entering the
+      # published archive — see the IgnorePlugin comment in
+      # webpack.config.ts for the exclusion this backstops. mapbox-gl is
+      # not a direct dependency (it's a hoisting artifact of react-map-gl's
+      # peer dependency), so a lockfile change alone could re-nest it
+      # somewhere the exclusion's node_modules walk no longer catches. This
+      # step doesn't rely on that walk: it greps the actual built output
+      # for "sky-atmosphere", a mapbox-gl style-spec token that ships only
+      # in the proprietary 2.x-and-later line — confirmed present in the
+      # excluded 3.28.1 build, confirmed absent from both the BSD-3
+      # mapbox-gl@1.13.1 nested under @kepler.gl/utils (the copy this
+      # plugin is allowed to ship) and from maplibre-gl (the basemap
+      # library this plugin actually uses).
+      - name: Guard against proprietary mapbox-gl re-entering the bundle
+        run: |
+          if grep -l "sky-atmosphere" dist/*.js; then
+            echo "::error::Proprietary mapbox-gl (Mapbox TOS — not Apache-2.0, cannot ship in this plugin's archive) has re-entered dist/, most likely because a lockfile/hoisting change moved it somewhere the exclusion in webpack.config.ts no longer walks to. See the IgnorePlugin comment there: mapbox-gl is not a direct dependency of this plugin (check package.json — it isn't listed), it only appears because npm hoists it as a peer dependency of react-map-gl, and the exclusion has to find whichever copy resolves for each import('mapbox-gl') call site and check ITS version. Find where mapbox-gl now sits ('npm ls mapbox-gl'), confirm resolvesToProprietaryMapboxGl's directory walk actually reaches it from the real issuer, and fix the walk or the exclusion accordingly."
+            exit 1
+          fi
+          echo "No proprietary mapbox-gl marker found in dist/ - clean."
+
       - name: Check for backend
         id: check-for-backend
         run: |

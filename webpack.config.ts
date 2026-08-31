@@ -9,20 +9,43 @@ import grafanaConfig, { type Env } from './.config/webpack/webpack.config';
 /*
  * Walks up from `context` (the directory of the file issuing a bare
  * `require('mapbox-gl')` / `import('mapbox-gl')`) the same way Node's
- * module resolution does, and reports whether the *first* `node_modules`
- * that contains a `mapbox-gl` directory is the top-level one at the repo
- * root. Two copies of the package exist in this tree under the same name
- * (see the IgnorePlugin comment below), and this is what tells them apart:
- * not the request text, which is identical for both, but which physical
- * copy that request would actually resolve to from its issuer's location.
+ * module resolution does, finds the *first* `node_modules/mapbox-gl` on
+ * that path, and reports whether ITS version is the proprietary line —
+ * major version 2 or above, which is where Mapbox moved off BSD-3 onto
+ * its own TOS. 1.x is the last open-source line, so major < 2 is let through.
+ *
+ * The test is deliberately on the resolved package's *version*, not on
+ * whether its path equals some known top-level location. `mapbox-gl` is
+ * not a direct dependency of this plugin — it doesn't appear in
+ * package.json at all — it sits wherever npm's hoisting happens to park
+ * it, currently the repo root, as a side effect of react-map-gl's peer
+ * dependency on it. A path-based test ("is this the top-level copy?")
+ * would silently stop excluding the proprietary copy the moment an
+ * unrelated lockfile change re-nests it somewhere else (say, under
+ * @hubble.gl/react, if a version conflict ever forces that) — the
+ * exclusion would keep compiling, keep passing every existing test, and
+ * the Mapbox-TOS code would quietly come back into the published
+ * archive with nothing here to notice. Testing the version instead is
+ * immune to hoisting: wherever npm parks the 2.x-or-later copy, this
+ * excludes it; wherever the BSD-3 1.13.1 copy lives, this leaves it
+ * alone. (See the CI step "Guard against proprietary mapbox-gl
+ * re-entering the bundle" for the second, independent line of defence —
+ * a build-time content check in case this one is ever bypassed too.)
  */
-const resolvesToTopLevelMapboxGl = (context: string): boolean => {
-  const topLevel = path.resolve(process.cwd(), 'node_modules', 'mapbox-gl');
+const resolvesToProprietaryMapboxGl = (context: string): boolean => {
   let dir = context;
   for (;;) {
     const candidate = path.join(dir, 'node_modules', 'mapbox-gl');
     if (fs.existsSync(candidate)) {
-      return candidate === topLevel;
+      try {
+        const pkg = JSON.parse(fs.readFileSync(path.join(candidate, 'package.json'), 'utf8')) as {
+          version?: string;
+        };
+        const major = Number.parseInt(pkg.version ?? '', 10);
+        return Number.isFinite(major) && major >= 2;
+      } catch {
+        return false; // can't read/parse its package.json — don't touch it
+      }
     }
     const parent = path.dirname(dir);
     if (parent === dir) {
@@ -117,27 +140,30 @@ const config = async (env: Env): Promise<Configuration> => {
        * chunk regardless of whether the code path that awaits it executes.
        *
        * Two unrelated copies of the package sit in the tree under the same
-       * name "mapbox-gl": the top-level 3.28.1 above, and a second,
-       * license-clean 1.13.1 (BSD-3-Clause) that npm nested under
+       * name "mapbox-gl": the proprietary 3.28.1 above (a hoisting
+       * artifact of react-map-gl's peer dependency — not in package.json
+       * at all, currently the repo root but not pinned there), and a
+       * second, license-clean 1.13.1 (BSD-3-Clause) that npm nested under
        * @kepler.gl/{utils,components}/node_modules because it satisfies
        * kepler's own pinned dependency there. Both are reached by the
        * identical bare specifier, resolved to different files only by
        * which directory the importing file sits in (Node's node_modules
        * walk finds kepler's own nested copy first for kepler's files, and
-       * falls through to this top-level copy for anything importing
-       * "mapbox-gl" without a nested copy of its own). A plain
+       * falls through to whichever copy npm hoisted for anything
+       * importing "mapbox-gl" without a nested copy of its own). A plain
        * `resolve.alias: {'mapbox-gl$': false}` matches on the specifier
        * text, not on which file it resolves to — tried and verified empirically
        * that it silently takes out BOTH: dist/32.js (the BSD-3 copy) and
        * dist/662.js (this one) both collapsed to near-empty stub chunks.
        * IgnorePlugin's `checkResource` instead runs with the *issuing*
-       * file's directory as `context`, so `resolvesToTopLevelMapboxGl`
+       * file's directory as `context`, so `resolvesToProprietaryMapboxGl`
        * (above) can redo that same node_modules walk per call site and
-       * ignore the request only when it would land on this top-level
-       * copy — leaving the nested 1.13.1, and dist/32.js, untouched.
+       * ignore the request only when the copy it lands on reports itself
+       * as major version 2+ — leaving the nested 1.13.1, and dist/32.js,
+       * untouched regardless of where npm's hoisting puts either copy.
        */
       new webpack.IgnorePlugin({
-        checkResource: (resource, context) => resource === 'mapbox-gl' && resolvesToTopLevelMapboxGl(context),
+        checkResource: (resource, context) => resource === 'mapbox-gl' && resolvesToProprietaryMapboxGl(context),
       }),
     ],
     resolve: {
