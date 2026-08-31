@@ -42,9 +42,14 @@ const resolvesToProprietaryMapboxGl = (context: string): boolean => {
           version?: string;
         };
         const major = Number.parseInt(pkg.version ?? '', 10);
-        return Number.isFinite(major) && major >= 2;
+        // Fail closed on an unrecognisable version: uncertainty here must
+        // never resolve in favour of bundling proprietary code. Excluding
+        // a BSD-3 copy by mistake fails loudly — a map breaks, someone
+        // notices in testing — while including a proprietary copy by
+        // mistake fails silently: it just ships.
+        return !Number.isFinite(major) || major >= 2;
       } catch {
-        return false; // can't read/parse its package.json — don't touch it
+        return true; // package.json missing/corrupt/unreadable — fail closed, see above
       }
     }
     const parent = path.dirname(dir);
