@@ -77,3 +77,8 @@ ci/
 # megabytes — in the repository root, alongside the archive it validates.
 /.cache/
 /ubica-keplergl-panel-*.zip
+
+# Scratch of the subagent-driven-development skill: ledger, task briefs,
+# implementer reports and review packages. Regenerable, and none of it belongs
+# in a repository that is about to be published.
+/.superpowers/
