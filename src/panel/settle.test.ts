@@ -1,4 +1,4 @@
-import { makeSettler } from './settle';
+import { makeSettler, pacingFor } from './settle';
 
 /** Lets the queued microtask run while fake timers hold the clock still. */
 const flush = () => Promise.resolve().then(() => undefined);
@@ -93,5 +93,26 @@ describe('makeSettler', () => {
     jest.advanceTimersByTime(1000);
 
     expect(run).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('pacingFor', () => {
+  it('paces a drag: only the bin it ends on is worth fetching', () => {
+    expect(pacingFor({ opened: true, animating: false })).toBe('paced');
+  });
+
+  it('lets playback through, because every bin it crosses is the point', () => {
+    // The pacing that swallows a drag swallows an animation whole: the window
+    // moves every frame, so the cooldown restarts before it can ever expire and
+    // the scene changes only when the play button is pressed again. Measured on
+    // the smoke layer: twelve seconds of playback asked for one date.
+    expect(pacingFor({ opened: true, animating: true })).toBe('immediate');
+  });
+
+  it('leaves the opening frames unpaced, animating or not', () => {
+    // The opening is a conversation — find the filter, widen it to its domain,
+    // let the range sync land — and spacing it out reorders it.
+    expect(pacingFor({ opened: false, animating: false })).toBe('immediate');
+    expect(pacingFor({ opened: false, animating: true })).toBe('immediate');
   });
 });

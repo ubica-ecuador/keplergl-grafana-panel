@@ -6,13 +6,14 @@ import { pickLatestWithin } from '../data/timeWindow';
 import {
   applyEsriMosaicRule,
   ensureTimeFilter,
+  isTimeFilterAnimating,
   pushTimeRange,
   readSyncSlices,
   readTimeDomain,
   readTimeRange,
   setRasterLayerVisible,
 } from './keplerAdapter';
-import { makeSettler, SETTLE_MS } from './settle';
+import { makeSettler, pacingFor, SETTLE_MS } from './settle';
 import { SliceWatcher } from './sliceWatcher';
 
 interface Params {
@@ -109,8 +110,13 @@ export function useEsriTimeline({ store, isReady, layers }: Params): void {
   // spacing them out reorders it, so the map comes up on the newest scene
   // instead of the one the dashboard's range asked for. Dragging is the burst
   // worth pacing, and it cannot happen before the widget is on screen.
+  // Playback is the exception: pacing it swallows the animation whole, and it
+  // costs nothing to let through because the reconcile above dispatches only
+  // when the scene actually changes. See `pacingFor`.
   const schedule = useRef(() =>
-    opened.current ? settler.current.schedule() : settler.current.scheduleNow()
+    pacingFor({ opened: opened.current, animating: isTimeFilterAnimating(store) }) === 'paced'
+      ? settler.current.schedule()
+      : settler.current.scheduleNow()
   );
 
   const watcher = useRef(new SliceWatcher());

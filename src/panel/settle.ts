@@ -65,6 +65,39 @@ export interface Settler {
  */
 export const SETTLE_MS = 200;
 
+/**
+ * Whether a change to the map's clock should be paced or acted on at once.
+ *
+ * Two things move the window, and they want opposite treatment:
+ *
+ * - A **drag** passes through every bin between where it starts and where it
+ *   ends, and only the one it lands on is ever seen. Pacing swallows the rest —
+ *   which is the whole point of `makeSettler`.
+ * - **Playback** passes through the same bins, and every one of them is the
+ *   thing being watched. Pacing swallows the animation whole: the window moves
+ *   every frame, so the cooldown restarts before it can expire, and the scene
+ *   changes only when the play button is pressed again. Measured on the smoke
+ *   layer: twelve seconds of playback asked the tile server for one date, and
+ *   the second one arrived three seconds after pausing.
+ *
+ * Letting playback through costs nothing it does not already spend, because the
+ * reconcile it triggers is idempotent: `applyZarrLabel` and
+ * `setRasterLayerVisible` both return early when the layer already shows what
+ * was asked for. So a frame that lands inside the same bin dispatches nothing,
+ * and the scene changes exactly once per bin crossed — at whatever speed the
+ * animation is set to, which is the user's own control rather than a constant
+ * invented here.
+ *
+ * Before the map has opened, nothing is paced either: those frames are a
+ * conversation rather than a burst — see `scheduleNow`.
+ *
+ * Kept here, taking plain booleans, so the rule can be read and tested without
+ * a store: the timelines are the ones that know how to ask kepler.
+ */
+export function pacingFor({ opened, animating }: { opened: boolean; animating: boolean }): 'paced' | 'immediate' {
+  return opened && !animating ? 'paced' : 'immediate';
+}
+
 /** Runs `job` at the start of a burst of calls and once more at its end. */
 export function makeSettler(waitMs: number, job: () => void): Settler {
   let cooldown: ReturnType<typeof setTimeout> | null = null;
