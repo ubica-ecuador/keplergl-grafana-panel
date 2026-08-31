@@ -120,4 +120,35 @@ describe('useAreaSync', () => {
 
     expect(partial).toHaveBeenCalledWith({ 'var-area': '' }, true);
   });
+
+  it('resumes publishing after the effect tears down and re-arms for a new variable', async () => {
+    const store = makeStore([]);
+    const { rerender } = renderHook(
+      ({ variable }: { variable: string }) => useAreaSync({ store: store as never, isReady: true, variable }),
+      { initialProps: { variable: 'area' } }
+    );
+
+    // First pass adopts, then a figure is drawn and published under `area` —
+    // the live, published state the teardown-and-rearm below must not retire.
+    await flushMicrotasks();
+    jest.advanceTimersByTime(500);
+    store.setFeatures([feature('a', 0)]);
+    await flushMicrotasks();
+    jest.advanceTimersByTime(500);
+    expect(partial).toHaveBeenCalledTimes(1);
+    partial.mockClear();
+
+    // A different `variable` prop tears the effect down (cleanup runs, same as
+    // unmount) and re-arms it for the new mapping — the effect must reset
+    // `disposed` back to false, or the hook stays retired for good.
+    rerender({ variable: 'zone' });
+    await flushMicrotasks();
+    jest.advanceTimersByTime(500);
+
+    store.setFeatures([feature('a', 0), feature('b', 5)]);
+    await flushMicrotasks();
+    jest.advanceTimersByTime(500);
+
+    expect(partial).toHaveBeenCalledWith({ 'var-zone': expect.any(String) }, true);
+  });
 });
