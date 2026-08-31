@@ -1,19 +1,19 @@
 # Kepler Geospatial Maps
 
-![The Amazon basin drawn as a velocity field: every tributary traced by streamlines over a dark basemap](src/img/banner.png)
+![The Amazon basin drawn as a velocity field: every tributary traced by streamlines over a dark basemap](https://raw.githubusercontent.com/ubica-ecuador/keplergl-grafana-panel/main/src/img/banner.png)
 
 Interactive [kepler.gl](https://kepler.gl) maps inside Grafana dashboards, fed by any Grafana data
 source. Built for spatio-temporal mobility data — points, trajectories and origin-destination flows.
 
 An open source alternative to the Foursquare Studio panel, which renders its map in an iframe against
 `studio.foursquare.com` and therefore needs a Foursquare account. This one runs kepler.gl inside the
-panel: no external service, no account, no Mapbox token.
+panel: no account, no Mapbox token, no hosted service rendering your map.
 
 **📖 [Full documentation](https://ubica-ecuador.github.io/keplergl-grafana-panel/)** — guides,
 tutorials, a layer gallery and a complete option reference.
 
-> **Status: v0.3.** Usable, and pinned to a kepler.gl pre-release because the Flow layer exists
-> nowhere else. Not yet in the Grafana catalog — see [Roadmap](#roadmap).
+> **Status: v1.0.** In the Grafana plugin catalog. Pinned to a kepler.gl pre-release because the
+> Flow layer exists nowhere else — see [Compatibility](https://ubica-ecuador.github.io/keplergl-grafana-panel/reference/compatibility.html).
 
 ## What it does today
 
@@ -50,42 +50,42 @@ tutorials, a layer gallery and a complete option reference.
 
 ## Dashboards built with it
 
-Each one is a Grafana dashboard and nothing else — no external service, no account, no Mapbox
-token. Every picture is the panel drawing rows a query returned.
+Each one is a Grafana dashboard: no account, no Mapbox token, no hosted service rendering the map.
+Every picture is the panel drawing rows a query returned.
 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/site/public/img/showcase/zarr-stats.jpg" alt="Zarr, drawn and measured" width="100%">
+      <img src="https://raw.githubusercontent.com/ubica-ecuador/keplergl-grafana-panel/main/docs/site/public/img/showcase/zarr-stats.jpg" alt="Zarr, drawn and measured" width="100%">
       <p><b>Zarr, drawn and measured</b><br>
       <sub>A Zarr store rendered live, and the rectangle you draw measured in the month the layer is showing.</sub></p>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/site/public/img/showcase/chirps-rain.jpg" alt="Daily rainfall, and its clock" width="100%">
+      <img src="https://raw.githubusercontent.com/ubica-ecuador/keplergl-grafana-panel/main/docs/site/public/img/showcase/chirps-rain.jpg" alt="Daily rainfall, and its clock" width="100%">
       <p><b>Daily rainfall, and its clock</b><br>
       <sub>One cloud-optimised GeoTIFF per day. The time bar changes the picture without re-running the query.</sub></p>
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/site/public/img/showcase/earthquakes.jpg" alt="Seismicity in three dimensions" width="100%">
+      <img src="https://raw.githubusercontent.com/ubica-ecuador/keplergl-grafana-panel/main/docs/site/public/img/showcase/earthquakes.jpg" alt="Seismicity in three dimensions" width="100%">
       <p><b>Seismicity in three dimensions</b><br>
       <sub>Magnitude as height and colour, kepler's own layer panel open, a click publishing its coordinate.</sub></p>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/site/public/img/showcase/fires.jpg" alt="Active fires, ranked as you pan" width="100%">
+      <img src="https://raw.githubusercontent.com/ubica-ecuador/keplergl-grafana-panel/main/docs/site/public/img/showcase/fires.jpg" alt="Active fires, ranked as you pan" width="100%">
       <p><b>Active fires, ranked as you pan</b><br>
       <sub>Hotspots on a 0.1° grid, with the table beside it ranking whatever is in view.</sub></p>
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/site/public/img/showcase/water-risk.jpg" alt="Polygons straight from the database" width="100%">
+      <img src="https://raw.githubusercontent.com/ubica-ecuador/keplergl-grafana-panel/main/docs/site/public/img/showcase/water-risk.jpg" alt="Polygons straight from the database" width="100%">
       <p><b>Polygons straight from the database</b><br>
       <sub>WRI Aqueduct basins as GeoJSON, coloured by score over a satellite base map.</sub></p>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/site/public/img/showcase/severe-weather.jpg" alt="Reports, filtered both ways" width="100%">
+      <img src="https://raw.githubusercontent.com/ubica-ecuador/keplergl-grafana-panel/main/docs/site/public/img/showcase/severe-weather.jpg" alt="Reports, filtered both ways" width="100%">
       <p><b>Reports, filtered both ways</b><br>
       <sub>NOAA storm reports by type. The variables filter the map, and the map filters the counts.</sub></p>
     </td>
@@ -101,14 +101,14 @@ Requires **Grafana `>=12.0.10 <12.1 || >=12.1.7 <12.2 || >=12.2.5`**. Those floo
 Grafana only added `react/jsx-runtime` to its module import map in those patches, and the plugin
 fails to load below them.
 
-The plugin is unsigned while it is pre-1.0, so allow it explicitly:
+Install it from the Grafana plugin catalog, from the command line:
 
-```ini
-[plugins]
-allow_loading_unsigned_plugins = ubica-keplergl-panel
+```bash
+grafana cli plugins install ubica-keplergl-panel
 ```
 
-Then restart Grafana. Full instructions, including Docker and a hardened Grafana, are in the
+or from **Administration → Plugins** inside Grafana. Then restart Grafana. Full instructions,
+including Docker and a hardened Grafana, are in the
 [install guide](https://ubica-ecuador.github.io/keplergl-grafana-panel/guide/install.html).
 
 ### Hardened Grafana
@@ -118,13 +118,21 @@ blocks the base map. MapLibre fetches styles, sprites, glyphs and tiles over XHR
 under that directive:
 
 ```ini
-content_security_policy_template = """...connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com ...;"""
+content_security_policy_template = """...connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com https://titiler.xyz ...;"""
 ```
 
 Each host serves only what its name suggests: Carto the three default base maps, Esri the satellite
-and topographic ones, Mapterhorn the elevation tiles behind the two relief styles. Leave out the ones
-whose base maps you never select — or point **Base map** at a `style.json` on your own network and
-skip this entirely.
+and topographic ones, Mapterhorn the elevation tiles behind the two relief styles, and `titiler.xyz`
+the default raster tile server, described next. Leave out the ones you never use — or point
+**Base map** and **Raster tile server** at infrastructure of your own and skip this entirely.
+
+> **The raster tile server.** A query that returns imagery — a COG, a Zarr store, a WMS — is drawn
+> by a tile server, not by the browser. The **Raster tile server** option starts at
+> `https://titiler.xyz`, Development Seed's public demo, so that a fresh install draws a public COG
+> without being configured first. It reads the imagery on the map's behalf, which means the URL you
+> point it at is handed to a third party, and it cannot see anything private. Point the option at a
+> TiTiler of your own for anything that matters, and add that host to `connect-src` instead. A
+> `.pmtiles` archive needs no server at all.
 
 ## A first map
 
@@ -194,12 +202,15 @@ The [contributing guide](https://ubica-ecuador.github.io/keplergl-grafana-panel/
 covers the three benches, the provisioned dashboards, the browser verification scripts and how the
 documentation screenshots are regenerated.
 
-## Roadmap
+## Releases
 
-- **v0.2** _(done)_ — automatic trip layers; dashboard time range synced with kepler's timeline,
-  one-way or both ways.
-- **v0.3** _(done)_ — origin-destination flow layers; map filters driving dashboard variables.
-- **v1.0** — move to kepler.gl 3.3.0 stable, sign, and submit to the Grafana catalog.
+- **v1.0** — cloud-native imagery on the dashboard clock (COG, PMTiles, Zarr, WMS, ArcGIS Image
+  Services), animated velocity fields as a layer, and the five cross-filtering channels.
+- **v0.3** — origin-destination flow layers; map filters driving dashboard variables.
+- **v0.2** — automatic trip layers; dashboard time range synced with kepler's timeline.
+
+The full history is in the
+[changelog](https://github.com/ubica-ecuador/keplergl-grafana-panel/blob/main/CHANGELOG.md).
 
 ## Licence
 
