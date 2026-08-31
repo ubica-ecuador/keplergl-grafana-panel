@@ -47,6 +47,15 @@ export const TOPOGRAPHIC_TERRAIN_BASEMAP_ID = 'grafana-topographic-terrain';
  * handed to a third party, and it is a demo endpoint with no guarantees.
  * Anything private needs a server of one's own.
  *
+ * Two consequences worth knowing before debugging a tile that never arrives:
+ *
+ *  - Pasting a bare `.tif` into kepler's own Add Data → Tileset form ignores
+ *    this setting entirely. kepler decides a URL is a COG from its pathname and
+ *    hardcodes `titiler.xyz` for both metadata and tiles, with no form override.
+ *    Workaround: paste the STAC URL instead — `<server>/cog/stac?url=<cog>`.
+ *  - Grafana's strict CSP must allow this host under `connect-src`, not
+ *    `img-src`. The tiles are NumPy arrays fetched over XHR, not images.
+ *
  * Here rather than in `keplerConfig` because `KeplerPanel` reads it, and that
  * module is deliberately free of kepler imports — pulling one in would drag
  * deck.gl and MapLibre into the main chunk and undo the code splitting.
