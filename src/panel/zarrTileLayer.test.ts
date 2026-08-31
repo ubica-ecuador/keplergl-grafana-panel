@@ -66,7 +66,18 @@ describe('zarrDeckProps', () => {
 class FakeBaseLayer {
   config: { visConfig: Record<string, unknown>; isVisible?: boolean } = { visConfig: {}, isVisible: true };
   id = 'layer-1';
+  visConfigSettings: Record<string, unknown> = {};
   constructor(_props?: unknown) {}
+
+  /**
+   * kepler's own contract, reproduced: a layer declares the controls it wants
+   * and the base class turns each into a panel entry with its default.
+   */
+  registerVisConfig(configs: Record<string, string>) {
+    for (const [key, preset] of Object.entries(configs)) {
+      this.visConfigSettings[key] = { preset };
+    }
+  }
 
   /**
    * kepler's own verdict, reproduced: `hasLayerData` demands `data.length`, so
@@ -89,6 +100,17 @@ describe('makeZarrLayer', () => {
 
   beforeEach(() => {
     built.length = 0;
+  });
+
+  it('registers an opacity setting, or the panel has nothing to show', () => {
+    // The layer already *applies* `visConfig.opacity` — `zarrDeckProps` passes it
+    // straight to deck — but kepler builds the panel from `visConfigSettings`,
+    // and a layer that registers nothing gets an empty one. The configurator for
+    // this type exists already (`_renderZarrLayerConfig`), so this declaration is
+    // the whole of what was missing between a working knob and a reachable one.
+    const layer = new (ZarrLayer as never as new (p?: unknown) => any)();
+
+    expect(layer.visConfigSettings.opacity).toBeDefined();
   });
 
   it('switches itself off in the split-map pane it was hidden in', () => {

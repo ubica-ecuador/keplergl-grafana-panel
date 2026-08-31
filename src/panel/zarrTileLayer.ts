@@ -117,6 +117,18 @@ export function makeZarrLayer<C extends Constructor<object>>(
   icon?: LayerIcon
 ): C {
   class ZarrTileLayer extends (BaseLayer as Constructor<ZarrLayerLike>) {
+    constructor(...args: any[]) {
+      super(...args);
+      // The layer already *applies* this — `zarrDeckProps` hands it to deck —
+      // but kepler builds the panel from `visConfigSettings`, and a layer that
+      // registers nothing gets an empty one. So without this line the opacity
+      // is settable from a saved configuration and unreachable from the map:
+      // the tiles arrive already coloured, which leaves how strongly the field
+      // sits over the base map as the only thing a viewer can still decide.
+      (this as unknown as { registerVisConfig(configs: Record<string, string>): void }).registerVisConfig({
+        opacity: 'opacity',
+      });
+    }
 
     get layerIcon(): unknown {
       // Left to the base class when none was handed in, rather than reported as
