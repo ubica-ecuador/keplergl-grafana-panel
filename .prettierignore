@@ -2,3 +2,7 @@
 # how to lay out coordinate arrays, so formatting these would put every run of
 # testdata/make-testdata.py permanently at odds with the committed files.
 testdata/
+
+# Managed by create-plugin; this project's constraints forbid modifying it, and
+# regenerating it would discard any formatting applied here anyway.
+/.config/

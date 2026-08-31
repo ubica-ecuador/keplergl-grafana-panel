@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to this plugin are documented here. 1.0.0 is the first release published in the
+All notable changes to this plugin are documented here. 1.0.0 is the first release submitted to the
 Grafana plugin catalog.
 
 ## 1.0.0 (2026-08-31)

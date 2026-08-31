@@ -21,6 +21,7 @@ compiled third-party code and vendored assets. Their notices follow.
 | mjolnir.js | 3.0.1 | MIT | Copyright (c) 2017 Uber Technologies, Inc. |
 | react-map-gl | 8.1.2 | MIT | Copyright Vis.gl contributors. |
 | @vis.gl/react-maplibre | 8.1.1 | MIT | Copyright Vis.gl contributors. |
+| maplibre-gl | 4.7.1 | BSD-3-Clause | Copyright (c) 2023, MapLibre contributors |
 | mapbox-gl (the 1.13.1 copy nested under `@kepler.gl/utils`) | 1.13.1 | BSD-3-Clause | Copyright (c) 2020, Mapbox |
 | lodash, lodash-es | 4.17.21, 4.18.1 | MIT | Copyright OpenJS Foundation and other contributors \<https://openjsf.org/\> |
 | d3-array, d3-axis, d3-brush, d3-color, d3-dispatch, d3-drag, d3-dsv, d3-format, d3-geo, d3-interpolate, d3-path, d3-scale, d3-scale-chromatic, d3-selection, d3-shape, d3-time, d3-time-format, d3-timer, d3-transition (19 packages) | 3.0.0 – 4.1.0 | ISC | Copyright 2010–20XX Mike Bostock (end year varies by package/release, holder and licence text identical) |
