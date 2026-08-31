@@ -13,32 +13,51 @@ There is no backend component and nothing to install on the server beyond the pl
 
 ## Installing the plugin
 
-The plugin is **not yet in the Grafana catalog** — that is planned for 1.0, together with signing.
-Until then, install it from the release archive.
+The plugin is **submitted** to the
+[Grafana plugin catalog](https://grafana.com/grafana/plugins/ubica-keplergl-panel/) and is awaiting
+review. Once accepted, install it like any other catalog plugin:
 
-1. Download the release zip and unpack it into Grafana's plugin directory, so that you end up with
-   a `ubica-keplergl-panel` folder there. The default location is `/var/lib/grafana/plugins` on a
-   package install, and `data/plugins` relative to the working directory otherwise; whatever your
-   `paths.plugins` setting says wins.
-2. Because it is unsigned while it is pre-1.0, allow it explicitly in `grafana.ini`:
+```bash
+grafana cli plugins install ubica-keplergl-panel
+```
 
-   ```ini
-   [plugins]
-   allow_loading_unsigned_plugins = ubica-keplergl-panel
-   ```
+or from **Administration → Plugins** inside Grafana.
 
-3. Restart Grafana.
-4. Confirm it loaded under **Administration → Plugins**, and that **Kepler Geospatial Maps** appears in
-   the visualisation picker when you edit a panel.
+1. Restart Grafana.
+2. Confirm it loaded under **Administration → Plugins**, and that **Kepler Geospatial Maps** appears
+   in the visualisation picker when you edit a panel.
 
-::: warning An unsigned plugin is a decision, not a formality
-`allow_loading_unsigned_plugins` disables a real check. Only list plugins you obtained from a
-source you trust, and prefer verifying the archive's checksum against the release page.
+::: tip Installing while the review is pending
+Until the catalog listing goes live, `grafana cli plugins install` and the in-app installer will not
+find it. Download the release archive from
+[GitHub Releases](https://github.com/ubica-ecuador/keplergl-grafana-panel/releases), unpack it into
+Grafana's plugin directory — so that you end up with a `ubica-keplergl-panel` folder there; the
+default location is `/var/lib/grafana/plugins` on a package install, and `data/plugins` relative to
+the working directory otherwise, whatever your `paths.plugins` setting says wins — and allow it
+explicitly, since it is unsigned until the review signs it:
+
+```ini
+[plugins]
+allow_loading_unsigned_plugins = ubica-keplergl-panel
+```
+
+That entry becomes unnecessary once the catalog listing is live. `allow_loading_unsigned_plugins`
+disables a real check in the meantime, so only list plugins you obtained from a source you trust,
+and prefer verifying the archive's checksum against the release page.
 :::
 
 ### With Docker
 
-Mount the unpacked plugin and set the same allowance as an environment variable:
+```yaml
+services:
+  grafana:
+    image: grafana/grafana:12.0.10
+    environment:
+      GF_INSTALL_PLUGINS: ubica-keplergl-panel
+```
+
+While the review is pending, mount the unpacked release archive instead and set the same allowance
+as an environment variable:
 
 ```yaml
 services:
@@ -52,8 +71,8 @@ services:
 
 ### Grafana Cloud
 
-Unsigned plugins cannot be installed on Grafana Cloud. A Cloud install has to wait for the signed
-catalog release.
+A signed community plugin is installable on Grafana Cloud once it is published there. This plugin
+is awaiting review, so a Cloud install is not available yet.
 
 ## Hardened Grafana
 
@@ -62,16 +81,17 @@ goes blank: MapLibre fetches styles, sprites, glyphs and tiles over XHR, so ever
 under `connect-src`.
 
 ```ini
-content_security_policy_template = """… connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com …;"""
+content_security_policy_template = """… connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com https://titiler.xyz …;"""
 ```
 
 Each host serves only what its name suggests:
 
-| Host                        | What it serves                                      |
-| --------------------------- | --------------------------------------------------- |
-| `basemaps.cartocdn.com`     | Carto's Dark Matter, Positron and Voyager base maps |
-| `services.arcgisonline.com` | Esri's satellite and topographic imagery            |
-| `tiles.mapterhorn.com`      | Elevation tiles behind the two relief styles        |
+| Host                        | What it serves                                       |
+| --------------------------- | ------------------------------------------------------ |
+| `basemaps.cartocdn.com`     | Carto's Dark Matter, Positron and Voyager base maps   |
+| `services.arcgisonline.com` | Esri's satellite and topographic imagery              |
+| `tiles.mapterhorn.com`      | Elevation tiles behind the two relief styles          |
+| `titiler.xyz`                | The default **Raster tile server** — see next section |
 
 Leave out the ones whose base maps you never select — or point **Base map** at a `style.json` on
 your own network and skip the list entirely. See [Base maps and relief](./map/basemaps-and-relief).

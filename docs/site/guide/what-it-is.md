@@ -12,8 +12,12 @@ hundreds of thousands of features and animate them.
 ## What runs where
 
 The whole library runs **in the panel**, in your browser, against the rows your data source
-returned. There is no iframe, no hosted service, no account, and no call to any vendor: the plugin
-even ships kepler's own icon library so that nothing is fetched from a CDN at runtime.
+returned. There is no iframe and no hosted service rendering the map: the browser draws it directly.
+It does still reach outward for pixels — Carto, Esri and Mapterhorn for the default base maps, and
+`https://titiler.xyz` by default for raster tiles — see [Install → Hardened
+Grafana](./install#hardened-grafana) for the exact hosts and how to point every one of them at
+infrastructure of your own instead. kepler's own icon library ships with the plugin, so that piece
+at least is never fetched from a CDN at runtime.
 
 That matters for three kinds of install. An **air-gapped** Grafana can serve its own `style.json`
 and never reach the internet. A Grafana with `content_security_policy = true` needs a handful of
@@ -47,7 +51,7 @@ does not do.
 | Geometry input           | GeoJSON       | GeoJSON, WKT, raw WKB/EWKB                            |
 | Layer styling            | Panel options | kepler's full layer panel, saved with the dashboard   |
 | 3D                       | —             | Extrusion, tilt, and base maps with real elevation    |
-| In the catalog           | Built in      | Not yet — see [Install](./install)                    |
+| In the catalog           | Built in      | Submitted, awaiting review — see [Install](./install) |
 
 Geomap is the lighter tool and it is already there. This one is what you want when the data is
 moving, when there is a lot of it, or when the styling has to go further than a panel option list.
@@ -62,7 +66,7 @@ column conventions onto ours and covers bringing a saved map configuration acros
 
 ## Status
 
-Version 0.3, and pinned to a kepler.gl pre-release because the Flow layer exists nowhere else.
-Usable, and not yet in the Grafana catalog — so it installs unsigned. See
-[Compatibility](../reference/compatibility) for the supported Grafana versions and what is planned
-for 1.0.
+Version 1.0, submitted to the Grafana plugin catalog and awaiting review, and pinned to a kepler.gl
+pre-release because the Flow layer exists nowhere else. See
+[Compatibility](../reference/compatibility) for the supported Grafana versions and the catalog and
+signing status.

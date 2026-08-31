@@ -31,7 +31,7 @@ The rest use one of two data sources, both covered in [the recipes](../guide/sou
   the way through, which tutorial 6 depends on.
 
 ::: warning You need the panel installed first
-All six assume **Kepler Geospatial Maps** is installed and allowed, on a Grafana in the supported range.
+All six assume **Kepler Geospatial Maps** is installed, on a Grafana in the supported range.
 See [Install](../guide/install).
 :::
 

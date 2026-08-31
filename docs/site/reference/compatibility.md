@@ -18,20 +18,16 @@ or operating system beyond the browser.
 
 ### Grafana Cloud
 
-Not yet. Unsigned plugins cannot be installed on Grafana Cloud, and the plugin is unsigned until
-1.0. See below.
+A signed community plugin is installable on Grafana Cloud once it is published there. This plugin
+is submitted and awaiting review, so a Cloud install is not available yet. See below.
 
 ## Signing and the catalog
 
-The plugin is **unsigned** while it is pre-1.0, so it needs to be allowed explicitly:
-
-```ini
-[plugins]
-allow_loading_unsigned_plugins = ubica-keplergl-panel
-```
-
-Signing and catalog submission are what **v1.0** is, together with moving from the kepler.gl 3.3.0
-pre-release to the stable release when it lands.
+The plugin is **submitted** to the
+[Grafana plugin catalog](https://grafana.com/grafana/plugins/ubica-keplergl-panel/) and is awaiting
+review — it is not signed yet. Once accepted it installs like any other catalog plugin, with no
+`allow_loading_unsigned_plugins` entry needed. See [Install](../guide/install) for both the intended
+catalog flow and the release-archive install that works while the review is pending.
 
 ## Bundled libraries
 
@@ -45,8 +41,8 @@ pre-release to the stable release when it lands.
 ### Why a kepler pre-release
 
 The **Flow layer** — the whole of the origin–destination support — exists nowhere in the 3.2 stable
-line. Pinning the pre-release is what makes that feature possible, and it is the single reason the
-plugin has not gone to 1.0.
+line. Pinning the pre-release is what makes that feature possible. There is still no stable 3.3.0
+release to move to, so the pin stays exact rather than a caret range.
 
 The practical consequence for you is that kepler's public documentation describes a version older
 than the one you are running: it lists fifteen layer types where the bundled build registers
@@ -104,10 +100,13 @@ public service, and has to be repointed at one of your own — or sidestepped en
 [`.pmtiles` archive](../guide/data/rasters#pmtiles), which needs no server at all, only somewhere
 static to be served from.
 
-## Roadmap
+## Releases
 
-| Version | Status                                                                         |
-| ------- | ------------------------------------------------------------------------------ |
-| 0.2     | done — automatic trip layers, dashboard time range coupling                    |
-| 0.3     | done — origin–destination flow layers, map filters driving dashboard variables |
-| **1.0** | kepler.gl 3.3.0 stable, signed, submitted to the Grafana catalog               |
+| Version   | Shipped                                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 0.2       | automatic trip layers, dashboard time range coupling                                                                                   |
+| 0.3       | origin–destination flow layers, map filters driving dashboard variables                                                                |
+| **1.0**   | cloud-native imagery on the dashboard clock (COG, PMTiles, Zarr, WMS, ArcGIS Image Services), animated velocity fields as a layer, and the five cross-filtering channels |
+
+The full history is in the
+[changelog](https://github.com/ubica-ecuador/keplergl-grafana-panel/blob/main/CHANGELOG.md).

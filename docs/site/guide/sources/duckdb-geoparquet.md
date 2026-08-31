@@ -17,7 +17,8 @@ The DuckDB data source is linked against glibc and will **not run on an Alpine-b
 image**. Use a Debian or Ubuntu one — `grafana/grafana:12.0.10-ubuntu`.
 
 It is also not in the Grafana catalog, so it installs from a release zip and is unsigned. It needs
-listing in `allow_loading_unsigned_plugins` alongside this panel.
+its own listing in `allow_loading_unsigned_plugins` — see [Install](../install) for this panel's own
+catalog and signing status, which is independent of DuckDB's.
 :::
 
 Leave the data source's **path** blank for an in-memory database. That is all you need for

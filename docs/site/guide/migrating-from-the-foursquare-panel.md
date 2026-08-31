@@ -2,7 +2,7 @@
 
 Foursquare publishes its own Grafana panel, which renders its map in an **iframe against
 `studio.foursquare.com`** and therefore requires a Foursquare account. This plugin runs kepler.gl
-inside the panel instead: no external service, no account, no token.
+inside the panel instead: no account, no token, no hosted service rendering the map.
 
 If you are coming from there, this page maps one onto the other.
 
@@ -96,7 +96,9 @@ kepler's layer panel, then **Save current map**. After that it is stable.
 ### Neither
 
 Grafana Cloud. Their documentation notes the plugin is unavailable to new Grafana Cloud users;
-ours cannot be installed there either while it is unsigned. Both are self-hosted propositions today.
+ours is submitted to the Grafana plugin catalog and awaiting review, and a signed community plugin
+only becomes installable on Grafana Cloud once it is published there. Both are self-hosted
+propositions today.
 
 ## A fair summary
 

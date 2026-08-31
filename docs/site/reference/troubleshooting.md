@@ -13,14 +13,16 @@ Two causes, in order of likelihood.
 module import map in those patches; below them the plugin cannot load. A 12.0.**5** install will
 fail even though it is "Grafana 12".
 
-**The plugin is unsigned.** Pre-1.0 it needs to be allowed explicitly:
+**The catalog listing is still pending review.** The plugin is submitted and not yet signed, so
+until it is accepted, installing from the release archive needs it allowed explicitly:
 
 ```ini
 [plugins]
 allow_loading_unsigned_plugins = ubica-keplergl-panel
 ```
 
-Then restart Grafana. See [Install](../guide/install).
+Then restart Grafana. Once the catalog listing goes live, `grafana cli plugins install` needs no
+such entry. See [Install](../guide/install).
 
 ## The map is there but the base map is blank
 
