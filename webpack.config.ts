@@ -1,9 +1,36 @@
 import CopyWebpackPlugin from 'copy-webpack-plugin';
+import fs from 'fs';
 import path from 'path';
 import webpack, { type Configuration } from 'webpack';
 import { merge } from 'webpack-merge';
 
 import grafanaConfig, { type Env } from './.config/webpack/webpack.config';
+
+/*
+ * Walks up from `context` (the directory of the file issuing a bare
+ * `require('mapbox-gl')` / `import('mapbox-gl')`) the same way Node's
+ * module resolution does, and reports whether the *first* `node_modules`
+ * that contains a `mapbox-gl` directory is the top-level one at the repo
+ * root. Two copies of the package exist in this tree under the same name
+ * (see the IgnorePlugin comment below), and this is what tells them apart:
+ * not the request text, which is identical for both, but which physical
+ * copy that request would actually resolve to from its issuer's location.
+ */
+const resolvesToTopLevelMapboxGl = (context: string): boolean => {
+  const topLevel = path.resolve(process.cwd(), 'node_modules', 'mapbox-gl');
+  let dir = context;
+  for (;;) {
+    const candidate = path.join(dir, 'node_modules', 'mapbox-gl');
+    if (fs.existsSync(candidate)) {
+      return candidate === topLevel;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      return false; // reached the filesystem root without finding a mapbox-gl at all
+    }
+    dir = parent;
+  }
+};
 
 const config = async (env: Env): Promise<Configuration> => {
   const baseConfig = await grafanaConfig(env);
@@ -71,6 +98,46 @@ const config = async (env: Env): Promise<Configuration> => {
         if (issuer.includes('@kepler.gl')) {
           resource.request = path.resolve(process.cwd(), 'src', 'panel', 'portaledBodyMount.tsx');
         }
+      }),
+      /*
+       * `mapbox-gl` 3.x is proprietary: its LICENSE.txt puts it "under the
+       * Mapbox TOS for use only with the relevant Mapbox product(s) ...
+       * requires a current active Mapbox account", which cannot be
+       * redistributed inside this Apache-2.0 plugin on Grafana's catalog.
+       *
+       * It reaches the bundle only through kepler's lazy base-map-library
+       * loader — `baseMapLibraryConfig.mapbox.getMapLib: () =>
+       * import('mapbox-gl')` in @kepler.gl/utils/application-config.js —
+       * which map-container.js only calls when the *selected* map style
+       * declares Mapbox as its base map library. This plugin ships MapLibre
+       * styles only (see src/panel/basemaps.ts and constants.ts) and never
+       * selects a Mapbox-backed one, so that branch never runs. webpack
+       * doesn't know that at build time, though: it still follows the
+       * static `import('mapbox-gl')` and emits the package as its own
+       * chunk regardless of whether the code path that awaits it executes.
+       *
+       * Two unrelated copies of the package sit in the tree under the same
+       * name "mapbox-gl": the top-level 3.28.1 above, and a second,
+       * license-clean 1.13.1 (BSD-3-Clause) that npm nested under
+       * @kepler.gl/{utils,components}/node_modules because it satisfies
+       * kepler's own pinned dependency there. Both are reached by the
+       * identical bare specifier, resolved to different files only by
+       * which directory the importing file sits in (Node's node_modules
+       * walk finds kepler's own nested copy first for kepler's files, and
+       * falls through to this top-level copy for anything importing
+       * "mapbox-gl" without a nested copy of its own). A plain
+       * `resolve.alias: {'mapbox-gl$': false}` matches on the specifier
+       * text, not on which file it resolves to — tried and verified empirically
+       * that it silently takes out BOTH: dist/32.js (the BSD-3 copy) and
+       * dist/662.js (this one) both collapsed to near-empty stub chunks.
+       * IgnorePlugin's `checkResource` instead runs with the *issuing*
+       * file's directory as `context`, so `resolvesToTopLevelMapboxGl`
+       * (above) can redo that same node_modules walk per call site and
+       * ignore the request only when it would land on this top-level
+       * copy — leaving the nested 1.13.1, and dist/32.js, untouched.
+       */
+      new webpack.IgnorePlugin({
+        checkResource: (resource, context) => resource === 'mapbox-gl' && resolvesToTopLevelMapboxGl(context),
       }),
     ],
     resolve: {
