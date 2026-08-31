@@ -105,13 +105,19 @@ export function useZarrTimeline({ store, isReady, layers }: Params): void {
     }
   });
 
-  // Waits for the window to hold still before acting on it. A drag walks the
-  // clock across every bin between where it started and where it ends, and
-  // each of those is a scene that would otherwise be fetched in full — see
-  // `settle.ts` for the measurements. Also keeps the dispatch off kepler's own
-  // stack, which is what the microtask this replaces was for: dispatching
-  // while kepler is mid-dispatch re-enters its reducer and overflows.
-  const settler = useRef(makeSettler(SETTLE_MS, () => reconcile.current()));
+  // Built on first use rather than during render. `makeSettler` is an ordinary
+  // function call, and handing it a closure over `reconcile` at render time is
+  // what `react-hooks/refs` flags: it cannot see that the job is only ever run
+  // from a timeout. Constructed once and kept, so the cooldown a drag is
+  // building up survives the re-renders Grafana's deep clone of the panel data
+  // causes.
+  const settlerRef = useRef<ReturnType<typeof makeSettler> | null>(null);
+  const settler = useRef(() => {
+    if (settlerRef.current === null) {
+      settlerRef.current = makeSettler(SETTLE_MS, () => reconcile.current());
+    }
+    return settlerRef.current;
+  });
   // Paced only once the map has opened. The opening frames are a conversation —
   // find the filter, widen it to its domain, let the range sync land — and
   // spacing them out reorders it, so the map comes up on the newest scene
@@ -122,8 +128,8 @@ export function useZarrTimeline({ store, isReady, layers }: Params): void {
   // when the scene actually changes. See `pacingFor`.
   const schedule = useRef(() =>
     pacingFor({ opened: opened.current, animating: isTimeFilterAnimating(store) }) === 'paced'
-      ? settler.current.schedule()
-      : settler.current.scheduleNow()
+      ? settler.current().schedule()
+      : settler.current().scheduleNow()
   );
 
   const watcher = useRef(new SliceWatcher());
@@ -140,7 +146,7 @@ export function useZarrTimeline({ store, isReady, layers }: Params): void {
   // the panel data makes frequent — so the pending run was cancelled and
   // rescheduled faster than it could ever fire, and the clock stopped moving
   // the map at all.
-  useEffect(() => () => settler.current.cancel(), []);
+  useEffect(() => () => settlerRef.current?.cancel(), []);
 
   useEffect(() => {
     if (!isReady) {
