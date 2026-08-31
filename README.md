@@ -12,8 +12,8 @@ panel: no account, no Mapbox token, no hosted service rendering your map.
 **📖 [Full documentation](https://ubica-ecuador.github.io/keplergl-grafana-panel/)** — guides,
 tutorials, a layer gallery and a complete option reference.
 
-> **Status: v1.0.** In the Grafana plugin catalog. Pinned to a kepler.gl pre-release because the
-> Flow layer exists nowhere else — see [Compatibility](https://ubica-ecuador.github.io/keplergl-grafana-panel/reference/compatibility.html).
+> **Status: v1.0.** The first release submitted to the Grafana plugin catalog. Pinned to a kepler.gl
+> pre-release because the Flow layer exists nowhere else — see [Compatibility](https://ubica-ecuador.github.io/keplergl-grafana-panel/reference/compatibility.html).
 
 ## What it does today
 
