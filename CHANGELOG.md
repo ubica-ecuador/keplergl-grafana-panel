@@ -5,11 +5,102 @@ Grafana plugin catalog.
 
 ## 1.0.0 (2026-08-31)
 
-Cloud-native imagery — COG, PMTiles, Zarr and WMS, each one walked by the dashboard clock and, for
-COG and Zarr, measured over a drawn polygon with no second query — animated velocity fields as a
-kepler layer of their own, and the cross-filtering design's five channels: a numeric range, an
-entity click, a clicked coordinate, a drawn area and the map's own viewport, each writing to a
-dashboard variable for the rest of the dashboard to read.
+Cloud-native imagery — COG, PMTiles, Zarr, WMS and ArcGIS Image Services, each one walked by the
+dashboard clock and, for COG and Zarr, measured over a drawn polygon with no second query —
+animated velocity fields as a kepler layer of their own, and the cross-filtering design's five
+channels: a numeric range, an entity click, a clicked coordinate, a drawn area and the map's own
+viewport, each writing to a dashboard variable for the rest of the dashboard to read.
+
+- **Fixed: the drawn-area variable was cleared whenever the panel left the screen, not just when
+  the shape it held was deleted.** kepler tears down a map's store entry on unmount before React
+  runs this hook's own cleanup, so the reconcile that notification schedules ran after teardown,
+  found no figures left, and read the absence as the user deleting the published shape — clearing
+  the variable on a tab switch or anything else that unmounts the panel, not only on a real
+  deletion. A `disposed` flag now silences both the pending write and the reconcile once the panel
+  has actually gone, and is reset when the hook re-arms, so a change of the mapped variable does
+  not retire it for good.
+- **Fixed: playback on a WMS, raster or Zarr timeline showed one scene and only moved to the next
+  when paused.** The pacing added to stop a drag from fetching every bin it crosses restarts its
+  cooldown on every call, and playback moves the window every frame, so the cooldown never
+  expired — the run that actually changes the scene landed 200 ms after the last frame, which in
+  practice meant when the play button was pressed again. Measured on the CAMS smoke layer: twelve
+  seconds of playback asked the tile server for one date, and the second arrived three seconds
+  after pausing. A drag and a playback now get different treatment: the timelines ask kepler's own
+  `isTimeFilterAnimating` flag, and playback is let straight through rather than paced, since every
+  bin it crosses on the way is one the user is meant to see.
+- **Fixed: a Zarr layer's opacity slider was missing from the map, even though a saved
+  configuration could still set it.** kepler builds a layer's panel from the controls it
+  registers, and the Zarr layer registered none — the tiles arrive already coloured, which makes
+  opacity the one thing left to offer, and it still has to be declared to be reachable. Now
+  registered, alongside the painted COG and ArcGIS Image Service layers, which got the same fix a
+  couple of days earlier.
+- **Added: the raster colour ramp can be given as a whole ramp, not only a name, for a Zarr
+  layer.** A named ramp is opaque from end to end, and a field that is mostly near zero — smoke
+  away from a fire, most of a forecast most of the time — then paints an opaque sheet over the base
+  map in the ramp's palest colour. **Raster colour ramp** now also accepts a TiTiler interval
+  definition typed in as JSON, which is the only way to put alpha at the low end; only the Zarr
+  path reads it.
+- **Fixed: splitting the map into two panes drew every layer on both, and dragging the swipe
+  curtain did nothing.** kepler counts a split's panes from `visState.splitMaps`, which only its
+  own `TOGGLE_SPLIT_MAP` action fills — the Single/Dual/Swipe menu the split button opens dispatches
+  a different action that fills `mapState` instead — and the tileset layers built here worked out
+  their own visibility by hand rather than reading kepler's per-pane verdict, so even a correctly
+  split view drew each layer in both panes regardless. An attempt to fix the first half by turning
+  kepler's swipe mode off cost the drag bar for nothing: the menu itself was never the problem, a
+  probe measuring it had clicked the wrong element in a menu where every option appears twice.
+  Swipe mode stays on, and the tileset layers now read the pane they are being drawn for, like
+  kepler's own layers do. Measured with the curtain restored: hiding a year in one pane changes
+  only that pane (19.7% of pixels against 0.0% on the other), and dragging the handle moves the
+  boundary (14.5% across the strip it sweeps).
+- **Fixed: a tilted flow field's vertical exaggeration read the wrong span, lifting a level
+  hundreds of kilometres above where it belonged.** The exaggeration scales a stack of levels to a
+  share of how wide the view is, and since streamlines started seeding through the camera it had
+  been measuring the ground visible under a tilted camera instead — the same thing looking straight
+  down, wildly different once the camera tilts towards the horizon. Measured over Ecuador at a
+  pitch of 50°: the span came out twelve times wider than the view, which lifted a 3 km level to
+  600 km and slid the whole stack off-screen. Metres-per-pixel times the panel's width is what
+  stays constant as the camera tilts, and is what the exaggeration now uses.
+- **Fixed: the plugin's own layer types showed as raw, untranslated ids — `Layer.Type.Esriimage`,
+  `Layer.Type.Zarr` — wherever kepler names a layer.** kepler translates a layer's type through
+  `intl`, under `layer.type.<type>`, and ships names for its own types only; a plugin's types fell
+  through to react-intl's rendering of the missing key. The four types this plugin registers now
+  carry real names, in every locale kepler ships.
+- **Added: the plugin's three tileset layers — painted COG, ArcGIS Image Service and Zarr —
+  propose a deterministic layer id, derived from their dataset, instead of the random one kepler
+  mints when none is given.** A random id cannot be written into a saved configuration, which is
+  the prerequisite for addressing one of these layers from a saved map at all — styling it, or
+  putting it on one side of a split.
+- **Added: the plugin's own layer types carry a recognisable icon, instead of all four sharing
+  kepler's placeholder.** The three that draw a tileset — painted COG, ArcGIS Image Service and
+  Zarr — now show kepler's own raster-tile icon in the layer list and in "Add Layer"; the flow
+  field shows the arc layer's, the closest thing kepler has to a drawn curve.
+- **Fixed: dragging the map's clock across a raster, Zarr or ArcGIS Image Service timeline fetched
+  every scene it crossed, not just the one it landed on.** A drag over seven years of an Image
+  Service timeline asked the tile server for 126 tiles spread across all seven, and since kepler
+  does not pass deck's abort signal through to the fetch, none of them were ever cancelled — the
+  map simply took a long time to show the one scene actually asked for. The timelines now pace
+  their requests to one run at the start of a drag and one at the end; the same drag now costs 18
+  tiles for the one year it stopped on.
+- **Fixed: the painted COG and ArcGIS Image Service layers had no layer panel at all — not even an
+  opacity slider.** kepler renders a layer's settings from a method it looks up by the layer's
+  type, and ships none for a type a plugin contributes, so both layers showed their data source and
+  nothing else, with an already-registered opacity control sitting unreachable behind it. Both now
+  share one panel offering opacity, which is the only control left to offer a layer whose picture
+  arrives already drawn — by the file's own palette, or by the service's own renderer.
+- **Added: a query can draw an ArcGIS Image Service, and the map's clock can walk its dates.** A
+  raster is a file with one footprint, so a global collection cut into a grid — the Sentinel-2
+  land-cover product is one COG per UTM zone — takes several queries to cover a country and is out
+  of the question for the world. An Image Service is not a file: it is a mosaic dataset, a
+  catalogue of rasters with a rule for choosing among them and a pyramid built once over the whole
+  thing, so one request returns a finished picture at whatever zoom asked for it — measured flat
+  across zoom on a public land-cover service, 0.77–1.35 s a tile from zoom 1 to zoom 8. A query
+  returning `esri_url` draws the layer; `mosaic_rule` and `rendering_rule` are the service's own
+  JSON, passed through untouched. One row per moment lets the map's clock walk them, which costs no
+  query and no rebuild, since the rule changes only the tiles fetched, not the layer built. Two
+  things cost real testing time to learn: `format=png` returns nodata as opaque black regardless of
+  `transparent=true`, and only `png32` carries a working alpha channel; and the service wants its
+  bounds in metres, not degrees, or the picture arrives shifted the further it sits from the
+  equator.
 
 - **Added: a Zarr query can carry its own colour ramp and value range.** Both were panel options,
   and a panel option is one value for every layer the panel holds — the right answer at one layer
