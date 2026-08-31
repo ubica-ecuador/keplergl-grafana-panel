@@ -17,6 +17,8 @@ SELECT 'https://ncsa.osn.xsede.org/Pangeo/pangeo-forge/gpcp-feedstock/gpcp.zarr'
 | Zarr levels     | `zarr_levels`, `zarr_pyramid`       |
 | Zarr selectors  | `zarr_sel`, `zarr_select`           |
 | Zarr time axis  | `zarr_time_dim`, `zarr_dim`         |
+| Zarr ramp       | `zarr_colormap`, `zarr_ramp`        |
+| Zarr range      | `zarr_rescale`, `zarr_range`        |
 
 The first two go together: a store holds many arrays, so a URL without a variable is not a picture.
 **Both must be present or neither role applies.** As with the raster and WMS roles, none of them
@@ -55,6 +57,42 @@ Left empty, each tile is stretched over its own extremes, so neighbouring tiles 
 a colour means and the map reads as patchwork. Set **Zarr value range** to the range you actually
 want to see: `0,30` for mm/day of rain, `270,305` for sea-surface kelvin. The **Raster colour ramp**
 option above it is shared with the raster path.
+
+### A style per layer, when one panel is not enough
+
+Those two options are one value for every layer the panel holds, which is the right answer while it
+holds one. It stops being the right answer at two: physical units differ, so a range that suits an
+aerosol optical depth of `0,1` leaves a field of kelvin flat — a uniform sheet, which reads as bad
+data rather than as bad styling.
+
+So the query may carry its own, and it wins over the panel:
+
+```sql
+-- A: smoke
+'omaod550' AS zarr_variable, '0,1'     AS zarr_rescale, 'purd'   AS zarr_colormap
+-- B: temperature at 2 m
+'t2m'      AS zarr_variable, '270,315' AS zarr_rescale, 'rdylbu' AS zarr_colormap
+```
+
+Both are optional and both fall back on their own: leave a long interval ramp in the panel option,
+where it is pleasant to edit, and put only the range in the query beside the variable it describes.
+
+`zarr_colormap` takes the same two spellings the panel option takes — a ramp name, or a whole ramp
+as TiTiler's interval JSON. Only the JSON form can fade the low end to nothing, which a field that
+is mostly near zero needs; every named ramp is opaque end to end, so such a field paints a sheet
+over the basemap in the palest tone it has. The intervals are in **`0–255`, not in the store's own
+units**: the range above rescales the data onto the byte first, and the ramp colours bytes.
+
+```sql
+'[[[0,8],[255,244,240,16]],[[8,16],[254,238,235,48]], … ]' AS zarr_colormap
+```
+
+A ramp of any length is unpleasant to read inside a `SELECT`. A CTE keeps the query legible:
+
+```sql
+WITH style AS (SELECT '[[[0,8],[255,244,240,16]], … ]' AS ramp)
+SELECT …, style.ramp AS zarr_colormap FROM …, style
+```
 
 ## The clock, and the label that goes with it
 

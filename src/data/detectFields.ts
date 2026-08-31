@@ -93,6 +93,21 @@ export interface FieldRoles {
    * called there.
    */
   zarrTimeDim?: string;
+  /**
+   * How to colour this variable, and the range to stretch it over.
+   *
+   * Both exist as panel options too, and those remain the fallback. What the
+   * query adds is that a panel drawing two stores can style each of them: the
+   * panel option is one value for every layer it holds, and two variables in
+   * one panel hold different physical units. A range that suits an aerosol
+   * depth of 0 to 1 leaves a field of kelvin flat — a uniform sheet, which
+   * reads as bad data rather than as bad styling.
+   *
+   * The ramp takes a name or a whole ramp as TiTiler's interval JSON, the same
+   * two spellings the panel option takes.
+   */
+  zarrColormap?: string;
+  zarrRescale?: string;
 }
 
 /**
@@ -216,6 +231,8 @@ const NAME_CANDIDATES: Record<string, string[]> = {
   zarrLevels: ['zarr_levels', 'zarr_pyramid'],
   zarrSel: ['zarr_sel', 'zarr_select'],
   zarrTimeDim: ['zarr_time_dim', 'zarr_dim'],
+  zarrColormap: ['zarr_colormap', 'zarr_ramp'],
+  zarrRescale: ['zarr_rescale', 'zarr_range'],
 };
 
 /**

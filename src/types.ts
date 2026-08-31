@@ -76,6 +76,9 @@ export interface KeplerPanelOptions {
    * field that is mostly near zero needs: every named ramp is opaque end to
    * end, so such a field paints a sheet over the basemap in the palest tone it
    * has. Only the Zarr path reads the JSON form.
+   *
+   * One value for every layer the panel holds. A Zarr query may return its own
+   * as `zarr_colormap`, which wins.
    */
   rasterColormap?: string;
 
@@ -102,6 +105,11 @@ export interface KeplerPanelOptions {
    * range is worth a colour. Left empty, TiTiler stretches each tile over its
    * own extremes, and neighbouring tiles then disagree about what a colour
    * means, which reads as patchwork.
+   *
+   * One value for every layer the panel holds, which stops being enough at two:
+   * kelvin and an aerosol optical depth cannot share a stretch, and the loser is
+   * drawn as a flat sheet. A query may return its own as `zarr_rescale`, which
+   * wins.
    */
   zarrRescale?: string;
 

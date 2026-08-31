@@ -36,6 +36,8 @@ type RenamedRole = Exclude<
   | 'zarrLevels'
   | 'zarrSel'
   | 'zarrTimeDim'
+  | 'zarrColormap'
+  | 'zarrRescale'
   | 'esriUrl'
   | 'esriMosaicRule'
   | 'esriRenderingRule'

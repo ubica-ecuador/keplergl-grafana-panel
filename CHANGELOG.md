@@ -5,6 +5,15 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
 
 ## Unreleased
 
+- **Added: a Zarr query can carry its own colour ramp and value range.** Both were panel options,
+  and a panel option is one value for every layer the panel holds — the right answer at one layer
+  and the wrong one at two, because physical units differ: a range that suits an aerosol optical
+  depth of `0,1` leaves a field of kelvin flat, a uniform sheet that reads as bad data rather than
+  as bad styling. A query returning `zarr_colormap` or `zarr_rescale` now styles its own layer, and
+  each falls back on the panel option by itself, so a long interval ramp can stay where it is
+  pleasant to edit while only the range travels beside the variable it describes. Nothing changes
+  for a dashboard that returns neither.
+
 - **Changed: a velocity grid is now a kepler layer type, configured on the map rather than in the
   panel options.** Until now a wind query was traced by the data path — the panel built the field,
   traced nine thousand streamlines and handed kepler their geometry as rows of a `_geojson` column,

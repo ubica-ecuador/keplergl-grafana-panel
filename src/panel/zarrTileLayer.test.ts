@@ -1,3 +1,6 @@
+import { FieldType, toDataFrame } from '@grafana/data';
+
+import { framesToZarr } from '../data/zarrDataset';
 import { makeZarrLayer, zarrDeckProps, ZarrTileMetadata } from './zarrTileLayer';
 
 const META: ZarrTileMetadata = {
@@ -32,6 +35,53 @@ describe('zarrDeckProps', () => {
 
     expect(triggerOf(first)).toBeDefined();
     expect(triggerOf(first)).not.toEqual(triggerOf(second));
+  });
+
+  it('carries a query\u2019s own style all the way into the tile url', () => {
+    // The whole chain in one assertion, because every hop of it has dropped a
+    // field at some point: the query names a ramp and a range, `framesToZarr`
+    // reads them, the adapter copies them onto the dataset's metadata, and only
+    // then do they reach the url TiTiler is asked for. A test of any single hop
+    // passes while the picture stays the colour the panel chose.
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'zarr_url', type: FieldType.string, values: ['https://data.test/cams.zarr'] },
+        { name: 'zarr_variable', type: FieldType.string, values: ['omaod550'] },
+        { name: 'zarr_colormap', type: FieldType.string, values: ['magma'] },
+        { name: 'zarr_rescale', type: FieldType.string, values: ['0,1'] },
+      ],
+    });
+
+    const [dataset] = framesToZarr(
+      [frame],
+      {},
+      { serverUrl: 'http://localhost:8088', colormap: 'blues', rescale: '0,30' }
+    );
+    const props = zarrDeckProps({ id: 'layer-1', metadata: dataset });
+
+    expect(String(props?.data)).toContain('colormap_name=magma');
+    expect(String(props?.data)).toContain('rescale=0%2C1');
+    expect(String(props?.data)).not.toContain('blues');
+  });
+
+  it('sends a written-out ramp under the parameter that parses it', () => {
+    // A name and a definition go to different parameters, and neither forgives
+    // the other's argument: the wrong one is a 500 on every tile.
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'zarr_url', type: FieldType.string, values: ['https://data.test/cams.zarr'] },
+        { name: 'zarr_variable', type: FieldType.string, values: ['omaod550'] },
+        { name: 'zarr_colormap', type: FieldType.string, values: ['[[[0,8],[255,244,240,16]]]'] },
+      ],
+    });
+
+    const [dataset] = framesToZarr([frame], {}, { serverUrl: 'http://localhost:8088' });
+    const url = String(zarrDeckProps({ id: 'layer-1', metadata: dataset })?.data);
+
+    expect(url).toContain('colormap=%5B%5B%5B0%2C8%5D');
+    expect(url).not.toContain('colormap_name');
   });
 
   it('draws nothing when the store names no variable', () => {

@@ -40,10 +40,13 @@ are autodetect-only and are marked below.
 | Zarr levels     | ❌     | `zarr_levels`, `zarr_pyramid`                                                                                                                                                                                   | not renamed |
 | Zarr selectors  | ❌     | `zarr_sel`, `zarr_select`                                                                                                                                                                                       | not renamed |
 | Zarr time axis  | ❌     | `zarr_time_dim`, `zarr_dim`                                                                                                                                                                                     | not renamed |
+| Zarr ramp       | ❌     | `zarr_colormap`, `zarr_ramp`                                                                                                                                                                                    | not renamed |
+| Zarr range      | ❌     | `zarr_rescale`, `zarr_range`                                                                                                                                                                                    | not renamed |
 
-::: warning Nine roles cannot be mapped by hand
-`originH3`, `destH3`, `u`, `v`, `speed`, `direction`, `rasterUrl`, `wmsUrl` and `wmsLayer` are
-detected but have no entry in the Field mapping editor. If your columns are named something the lists do not cover, **alias them
+::: warning Some roles cannot be mapped by hand
+The editor offers the twelve roles a table of rows needs. The other twenty — `originH3`, `destH3`,
+`u`, `v`, `speed`, `direction`, and every `raster*`, `wms*`, `esri*` and `zarr*` role — are
+detected but have no entry in it. If your columns are named something the lists do not cover, **alias them
 in the query**:
 
 ```sql

@@ -138,8 +138,12 @@ export function framesToZarr(
       dimension,
       selectors: readSelectors(frame, roles.zarrSel),
       levels: readLevels(frame, roles.zarrLevels),
-      colormap: options.colormap,
-      rescale: options.rescale,
+      // The query first, the panel option as the fallback, and field by field:
+      // a long interval ramp is unpleasant to write in SQL and pleasant to
+      // leave in the panel, while the range it stretches over is short and
+      // belongs beside the variable it describes.
+      colormap: firstText(frame, roles.zarrColormap) ?? options.colormap,
+      rescale: firstText(frame, roles.zarrRescale) ?? options.rescale,
     });
   });
 

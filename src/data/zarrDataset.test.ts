@@ -11,6 +11,9 @@ import {
 
 const SERVER = 'http://localhost:8088';
 const STORE = 'https://ncsa.osn.xsede.org/Pangeo/pangeo-forge/gpcp-feedstock/gpcp.zarr';
+// A ramp written out rather than named: TiTiler's interval form, which is the
+// only one that can fade the low end to nothing.
+const SMOKE_RAMP = '[[[0,8],[255,244,240,16]],[[8,16],[254,238,235,48]],[[16,256],[247,104,161,255]]]';
 const DAY_ONE = Date.UTC(1996, 9, 1);
 const DAY_TWO = Date.UTC(1996, 9, 2);
 
@@ -108,6 +111,110 @@ describe('framesToZarr', () => {
     const [zarr] = framesToZarr([zarrFrame()], {}, { serverUrl: SERVER, colormap: 'blues', rescale: '0,30' });
 
     expect(zarr).toMatchObject({ colormap: 'blues', rescale: '0,30' });
+  });
+
+  it('lets the query choose its own ramp and range', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'zarr_url', type: FieldType.string, values: [STORE] },
+        { name: 'zarr_variable', type: FieldType.string, values: ['precip'] },
+        { name: 'zarr_colormap', type: FieldType.string, values: [SMOKE_RAMP] },
+        { name: 'zarr_rescale', type: FieldType.string, values: ['0,1'] },
+      ],
+    });
+
+    expect(framesToZarr([frame], {}, { serverUrl: SERVER })[0]).toMatchObject({
+      colormap: SMOKE_RAMP,
+      rescale: '0,1',
+    });
+  });
+
+  it('prefers the query’s style to the panel’s', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'zarr_url', type: FieldType.string, values: [STORE] },
+        { name: 'zarr_variable', type: FieldType.string, values: ['precip'] },
+        { name: 'zarr_colormap', type: FieldType.string, values: ['magma'] },
+        { name: 'zarr_rescale', type: FieldType.string, values: ['0,1'] },
+      ],
+    });
+
+    expect(framesToZarr([frame], {}, { serverUrl: SERVER, colormap: 'blues', rescale: '0,30' })[0]).toMatchObject({
+      colormap: 'magma',
+      rescale: '0,1',
+    });
+  });
+
+  it('falls back to the panel option field by field', () => {
+    // The two are independent: a long interval ramp is unpleasant to write in
+    // SQL and pleasant to leave in the panel, while the range it stretches over
+    // is short and belongs with the variable it describes.
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'zarr_url', type: FieldType.string, values: [STORE] },
+        { name: 'zarr_variable', type: FieldType.string, values: ['precip'] },
+        { name: 'zarr_rescale', type: FieldType.string, values: ['0,1'] },
+      ],
+    });
+
+    expect(framesToZarr([frame], {}, { serverUrl: SERVER, colormap: 'blues', rescale: '0,30' })[0]).toMatchObject({
+      colormap: 'blues',
+      rescale: '0,1',
+    });
+  });
+
+  it('gives two variables in one panel a style each', () => {
+    // The case the panel option cannot express, and the reason these roles
+    // exist. Two stores in one panel hold different physical units, so one
+    // shared range leaves the other layer flat — a uniform sheet that reads as
+    // bad data rather than as bad styling.
+    const smoke = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'zarr_url', type: FieldType.string, values: [STORE] },
+        { name: 'zarr_variable', type: FieldType.string, values: ['omaod550'] },
+        { name: 'zarr_colormap', type: FieldType.string, values: [SMOKE_RAMP] },
+        { name: 'zarr_rescale', type: FieldType.string, values: ['0,1'] },
+      ],
+    });
+    const temperature = toDataFrame({
+      refId: 'B',
+      fields: [
+        { name: 'zarr_url', type: FieldType.string, values: [STORE] },
+        { name: 'zarr_variable', type: FieldType.string, values: ['t2m'] },
+        { name: 'zarr_colormap', type: FieldType.string, values: ['rdylbu'] },
+        { name: 'zarr_rescale', type: FieldType.string, values: ['270,315'] },
+      ],
+    });
+
+    const [first, second] = framesToZarr([smoke, temperature], {}, { serverUrl: SERVER });
+    expect(first).toMatchObject({ colormap: SMOKE_RAMP, rescale: '0,1' });
+    expect(second).toMatchObject({ colormap: 'rdylbu', rescale: '270,315' });
+  });
+
+  it('leaves the style alone when neither the query nor the panel names one', () => {
+    const [zarr] = framesToZarr([zarrFrame()], {}, { serverUrl: SERVER });
+
+    expect(zarr.colormap).toBeUndefined();
+    expect(zarr.rescale).toBeUndefined();
+  });
+
+  it('lets an override point the style roles at other columns', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'zarr_url', type: FieldType.string, values: [STORE] },
+        { name: 'zarr_variable', type: FieldType.string, values: ['precip'] },
+        { name: 'paleta', type: FieldType.string, values: ['magma'] },
+      ],
+    });
+
+    expect(framesToZarr([frame], { A: { zarrColormap: 'paleta' } }, { serverUrl: SERVER })[0]).toMatchObject({
+      colormap: 'magma',
+    });
   });
 
   it('lets an override point the role at another column', () => {
