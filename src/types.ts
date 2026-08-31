@@ -86,11 +86,13 @@ export interface KeplerPanelOptions {
    * Base URL of the TiTiler-compatible server that turns a COG into tiles, for
    * queries that return a link to imagery rather than rows.
    *
-   * There is no useful public default. A tile server reads the raster on the
-   * panel's behalf, so it is the one piece that has to be able to reach the
-   * imagery: private rasters are exactly what a public service cannot serve.
-   * Left empty, the panel falls back to the server in this repository's
-   * docker-compose, which is right for development and wrong everywhere else.
+   * Left empty, the panel uses `DEFAULT_RASTER_SERVER_URL` — Development
+   * Seed's public demo, which is also what kepler.gl itself falls back to. A
+   * default that exists is what lets a freshly installed plugin draw a public
+   * COG without being configured first. Its limits are real: it can only read
+   * imagery that is public, the url — signature and all — is handed to a third
+   * party, and it is a demo endpoint with no guarantees. Anything private
+   * needs a server of one's own. See `constants.ts` for the full rationale.
    */
   rasterServerUrl?: string;
   /** Ask the tile server for painted tiles instead of raw arrays. */

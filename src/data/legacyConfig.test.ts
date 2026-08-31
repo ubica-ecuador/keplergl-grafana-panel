@@ -8,7 +8,7 @@ import { parseMapConfigJson } from './mapConfig';
  *
  * The panel invites users to paste configs exported from kepler.gl, Foursquare
  * Studio or Dekart — and Dekart is still on kepler 3.2.6. This pins whether the
- * pinned 3.3.0-alpha.3 can still read those, so a regression in kepler's
+ * pinned 3.3.0-alpha.7 can still read those, so a regression in kepler's
  * migration path shows up here rather than as a broken paste in someone's
  * dashboard.
  *
