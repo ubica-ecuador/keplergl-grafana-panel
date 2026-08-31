@@ -17,13 +17,22 @@ export default defineConfig<PluginOptions>({
   testDir: './tests',
   /* Run tests in files in parallel */
   fullyParallel: true,
-  // Two locally, one on CI. Each test mounts a full kepler.gl WebGL map
-  // rendered by SwiftShader — CPU-bound and memory-hungry — and the GitHub
-  // Actions runner has two cores. Measured 2026-08-31 on a loaded developer
-  // machine: at two workers 44/48 passed, with all four failures in
-  // `flowfield.spec` and all four on the same assertion; the same spec alone
-  // at one worker gave 5/5. The flow field traces thousands of streamlines and
-  // is the first thing to starve, so it is the canary rather than the culprit.
+  // Each test mounts a full kepler.gl WebGL map, rendered by SwiftShader —
+  // CPU-bound and memory-hungry — which is the mechanism behind both numbers
+  // below.
+  //
+  // Two locally, not four: at four workers the suite was non-deterministic, a
+  // different trio of failures every run, each one passing in isolation. Two
+  // keeps it deterministic at roughly the same wall-clock, since the
+  // bottleneck is the CPU the maps share rather than the number of tests in
+  // flight.
+  //
+  // One on CI: the GitHub Actions runner has two cores. Measured 2026-08-31 on
+  // a loaded developer machine: at two workers 44/48 passed, with all four
+  // failures in `flowfield.spec.ts` and all four on the same assertion; that
+  // spec alone at one worker gave 5/5. The flow field traces thousands of
+  // streamlines and is the first thing to starve, so it is the canary rather
+  // than the culprit.
   workers: process.env.CI ? 1 : 2,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
