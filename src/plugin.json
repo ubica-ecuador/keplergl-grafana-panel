@@ -11,15 +11,11 @@
       "spatio-temporal",
       "kepler.gl",
       "deck.gl",
-      "mobility",
       "trips",
       "flows",
-      "geojson",
-      "h3",
-      "postgis",
-      "geoparquet"
+      "geojson"
     ],
-    "description": "Spatio-temporal maps for Grafana dashboards — trajectories, origin-destination flows and velocity fields from any data source. Runs kepler.gl inside the panel: no external service, no account, no Mapbox token.",
+    "description": "Spatio-temporal maps for Grafana dashboards — trajectories, origin-destination flows and velocity fields from any data source. Runs kepler.gl inside the panel: no account, no Mapbox token, no hosted service rendering your map.",
     "author": {
       "name": "UBICA"
     },

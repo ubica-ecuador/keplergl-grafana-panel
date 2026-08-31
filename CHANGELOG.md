@@ -1,9 +1,15 @@
 # Changelog
 
-All notable changes to this plugin are documented here. Versions before 1.0 ship as GitHub
-releases; 1.0 is the first Grafana catalog submission and is blocked on a stable kepler.gl 3.3.0.
+All notable changes to this plugin are documented here. 1.0.0 is the first release published in the
+Grafana plugin catalog.
 
-## Unreleased
+## 1.0.0 (2026-08-31)
+
+Cloud-native imagery — COG, PMTiles, Zarr and WMS, each one walked by the dashboard clock and, for
+COG and Zarr, measured over a drawn polygon with no second query — animated velocity fields as a
+kepler layer of their own, and the cross-filtering design's five channels: a numeric range, an
+entity click, a clicked coordinate, a drawn area and the map's own viewport, each writing to a
+dashboard variable for the rest of the dashboard to read.
 
 - **Added: a Zarr query can carry its own colour ramp and value range.** Both were panel options,
   and a panel option is one value for every layer the panel holds — the right answer at one layer
@@ -669,7 +675,7 @@ releases; 1.0 is the first Grafana catalog submission and is blocked on a stable
   auto-mapped to the path's third coordinate, and deck.gl reads that as height above ground: a trace
   through Cuenca at 2,650 m was drawn 2.65 km up and fell out of the camera's view past about zoom 15. Altitude is now opt-in through the field mapping editor.
 
-## 0.3.0
+## 0.3.0 (2026-07-24)
 
 Origin-destination flows and cross-filtering.
 
@@ -684,7 +690,7 @@ Origin-destination flows and cross-filtering.
 function`) by deduplicating deck.gl/luma.gl to a single ESM instance in webpack — the bundle was
   carrying both the ESM and CommonJS builds.
 
-## 0.2.0
+## 0.2.0 (2026-07-24)
 
 Time and trajectories.
 
@@ -693,7 +699,7 @@ Time and trajectories.
 - **Time range sync.** The dashboard time range drives the map's time filter (`toMap`, the default),
   optionally both ways (`bidirectional`), or not at all (`off`).
 
-## 0.1.0
+## 0.1.0 (2026-07-23)
 
 Data to the map.
 
