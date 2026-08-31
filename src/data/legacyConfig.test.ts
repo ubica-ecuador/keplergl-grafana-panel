@@ -1,6 +1,6 @@
 import KeplerGlSchema from '@kepler.gl/schemas';
 
-import legacyConfig from './__fixtures__/kepler-v1-saved-config.json';
+import legacyConfig from '../../testdata/kepler-configs/kepler-v1-saved-config.json';
 import { parseMapConfigJson } from './mapConfig';
 
 /**

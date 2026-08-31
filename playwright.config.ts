@@ -17,20 +17,14 @@ export default defineConfig<PluginOptions>({
   testDir: './tests',
   /* Run tests in files in parallel */
   fullyParallel: true,
-  /*
-   * Each test mounts a full kepler.gl WebGL map, rendered by swiftshader in
-   * headless Chromium — CPU-bound and memory-hungry. Left uncapped, Playwright
-   * spawns one worker per core and the maps starve each other, tipping the
-   * heaviest test (save → apply → remount) past its timeout. Cap the workers so
-   * every map has room to render.
-   *
-   * Two, not four: the cross-filter specs grew the suite by half, and at four
-   * workers the surviving failures were pure contention — a different trio
-   * every run, each passing on its own. Two keeps the suite deterministic at
-   * roughly the same wall-clock, since the bottleneck is the CPU the maps
-   * share rather than the number of tests in flight.
-   */
-  workers: 2,
+  // Two locally, one on CI. Each test mounts a full kepler.gl WebGL map
+  // rendered by SwiftShader — CPU-bound and memory-hungry — and the GitHub
+  // Actions runner has two cores. Measured 2026-08-31 on a loaded developer
+  // machine: at two workers 44/48 passed, with all four failures in
+  // `flowfield.spec` and all four on the same assertion; the same spec alone
+  // at one worker gave 5/5. The flow field traces thousands of streamlines and
+  // is the first thing to starve, so it is the canary rather than the culprit.
+  workers: process.env.CI ? 1 : 2,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
