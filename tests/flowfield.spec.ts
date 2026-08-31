@@ -12,6 +12,18 @@ import { readFlowField, readKepler, settle } from './keplerHelpers';
 test.describe.configure({ timeout: 180_000 });
 
 /**
+ * Every test below also calls `test.slow()`, tripling that budget again on top
+ * of the 180s above. The flow field traces thousands of streamlines per frame
+ * under software rendering and is the first test in the bench to starve when
+ * the machine is under load: measured 2026-08-31, a full suite run at a single
+ * worker was otherwise green and this file's first test was the only failure,
+ * while the same spec run alone passed 5/5. The fixed timeout was enough on an
+ * idle machine but not once something else was competing for the CPU these
+ * maps share, which is exactly the condition a two-core CI runner puts every
+ * test in.
+ */
+
+/**
  * A velocity grid must become a flow field layer, and nothing else.
  *
  * The provisioned "flow field" panel feeds a 7 × 7 quarter-degree lattice over
@@ -29,6 +41,7 @@ test('draws a velocity grid as a flow field, superseding the point layer', async
   readProvisionedDashboard,
   page,
 }) => {
+  test.slow();
   const dashboard = await readProvisionedDashboard({ fileName: 'flowfield.json' });
   const panelEditPage = await gotoPanelEditPage({ dashboard, id: '1' });
 
@@ -52,6 +65,7 @@ test('runs the streamlines on a clock kepler agrees with', async ({
   readProvisionedDashboard,
   page,
 }) => {
+  test.slow();
   // `layerVisConfigChange` recomputes a layer's data but never republishes the
   // animation domain, so without the nudge in `useFlowFieldAnimationDomain` the
   // window the lines were traced in is one the clock knows nothing about — and
@@ -78,6 +92,7 @@ test('re-traces the field when the layer panel asks for fewer lines', async ({
   readProvisionedDashboard,
   page,
 }) => {
+  test.slow();
   const dashboard = await readProvisionedDashboard({ fileName: 'flowfield.json' });
   const panelEditPage = await gotoPanelEditPage({ dashboard, id: '1' });
 
@@ -146,6 +161,7 @@ test('is switched off by the eye in the layer panel', async ({
   readProvisionedDashboard,
   page,
 }) => {
+  test.slow();
   // kepler hands deck every layer, visible or not — `prepareLayersForDeck` says
   // so upstream in as many words — and expects each one to read the `visible`
   // prop that `getDefaultDeckLayerProps` sets. A layer building its deck props
