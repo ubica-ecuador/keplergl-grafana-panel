@@ -31,6 +31,15 @@ const config = async (env: Env): Promise<Configuration> => {
         patterns: [
           { from: 'images', to: 'images' },
           { from: 'raster', to: 'raster' },
+          /*
+           * The notices for the compiled third-party code in the bundle. The
+           * scaffold copies LICENSE, README and CHANGELOG from the repository
+           * root; this one is ours to place. `dist/LICENSE.txt` is terser's
+           * extraction of banner comments and covers only the packages that
+           * happen to carry one — kepler.gl, deck.gl and the vendored assets
+           * do not.
+           */
+          { from: '../THIRD-PARTY-LICENSES.md', to: 'THIRD-PARTY-LICENSES.md' },
         ],
       }),
       /*
