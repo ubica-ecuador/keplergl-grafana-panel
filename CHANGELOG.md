@@ -11,6 +11,15 @@ animated velocity fields as a kepler layer of their own, and the cross-filtering
 channels: a numeric range, an entity click, a clicked coordinate, a drawn area and the map's own
 viewport, each writing to a dashboard variable for the rest of the dashboard to read.
 
+- **Fixed: a vulnerable transitive `d3-color@2.0.0` was bundled alongside the current one.**
+  `@hubble.gl/react` pulls an old `@kepler.gl/constants@3.1.0` in beside the pinned one, and its
+  own `d3-color@2.0.0` — carrying GHSA-36jr-mh4h-2g58, a regular-expression denial-of-service
+  advisory rated High — reached `dist/264.js`, not just `node_modules`. There is no known path to
+  it through the panel; the advisory is about a regular expression in a colour parser. An
+  `overrides` entry collapses it onto `d3-color@3.1.0`, which the tree already resolved for
+  `@grafana/data`, `@grafana/ui`, the current `@kepler.gl/constants` and `@flowmap.gl/data` — so
+  nothing new was introduced, a stale copy was removed. Verified after: exactly one `d3-color`
+  installed, and zero references to the old copy in any emitted bundle.
 - **Fixed: the drawn-area variable was cleared whenever the panel left the screen, not just when
   the shape it held was deleted.** kepler tears down a map's store entry on unmount before React
   runs this hook's own cleanup, so the reconcile that notification schedules ran after teardown,
