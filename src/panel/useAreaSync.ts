@@ -49,6 +49,20 @@ export function useAreaSync({ store, isReady, variable }: Params): void {
     variableRef.current = variable;
   });
 
+  /**
+   * False while this panel is live; true from the moment it tears down.
+   *
+   * kepler deletes its store entry as the panel unmounts, and that
+   * notification reaches this hook's subscriber before React runs the cleanup
+   * below. The reconcile it schedules therefore fires *after* teardown, finds
+   * no figures left, and reads that absence as the user deleting the published
+   * one — clearing a variable nobody touched. Cancelling the pending write in
+   * the cleanup is not enough: the timer is armed by that late reconcile, on a
+   * microtask, after the cleanup has already run. Reset when the effect
+   * re-arms, so a change of variable does not retire the hook for good.
+   */
+  const disposed = useRef(false);
+
   /** id → WKT observed on the previous pass; null until the first adopts. */
   const lastSeen = useRef<Record<string, string> | null>(null);
   const publishedId = useRef<string | null>(null);
@@ -60,7 +74,7 @@ export function useAreaSync({ store, isReady, variable }: Params): void {
     publishTimer.current = null;
     const pending = pendingWrite.current;
     pendingWrite.current = null;
-    if (!pending || !variableRef.current) {
+    if (!pending || !variableRef.current || disposed.current) {
       return;
     }
     locationService.partial({ [`var-${variableRef.current}`]: pending.value }, true);
@@ -86,6 +100,9 @@ export function useAreaSync({ store, isReady, variable }: Params): void {
   });
 
   const reconcile = useRef(() => {
+    if (disposed.current) {
+      return;
+    }
     const candidates = readDrawnAreas(store);
     const decision = decideAreaPublish({
       candidates,
@@ -130,10 +147,12 @@ export function useAreaSync({ store, isReady, variable }: Params): void {
     // Captured rather than read in the cleanup: the ref is assigned once, but
     // reading it on teardown is what the exhaustive-deps rule warns about.
     const cancel = cancelPublish.current;
+    disposed.current = false;
 
     schedule.current();
     const unsubscribe = store.subscribe(onStoreChange.current);
     return () => {
+      disposed.current = true;
       unsubscribe();
       cancel();
     };
