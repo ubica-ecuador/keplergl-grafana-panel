@@ -38,11 +38,12 @@ tutorials, a layer gallery and a complete option reference.
 - **Saved map configuration** stored with the dashboard, and configs pasted from kepler.gl,
   Foursquare Studio or Dekart are accepted.
 - **Follows the dashboard theme**, base map included.
-- **No account needed for any base map.** Carto's three, Esri's satellite and topographic ones, and
-  two of those with **real elevation** — tilt the camera and the ground has relief. Every one can be
-  swapped for a self-hosted `style.json`; kepler's icon library ships with the plugin. The base maps
-  that require a Mapbox account are not offered at all, rather than sitting in the picker blanking
-  the map when clicked.
+- **No account needed for any base map.** Carto's three, and Esri's three — flat satellite imagery,
+  plus satellite and topographic with **real elevation**: tilt the camera and the ground has relief.
+  Topographic exists only in this relief form; there is no flat version. Every one can be swapped for
+  a self-hosted `style.json`; kepler's icon library ships with the plugin. The base maps that require
+  a Mapbox account are not offered at all, rather than sitting in the picker blanking the map when
+  clicked.
 
 > **Esri's terms of use.** The satellite and topographic imagery come from Esri's public
 > `services.arcgisonline.com` endpoint, whose terms ask for an ArcGIS account for production use.

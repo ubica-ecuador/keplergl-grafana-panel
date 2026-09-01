@@ -62,9 +62,10 @@ PMTiles, Zarr, WMS, and ArcGIS Image Services.**
 - Return one row per date, or per moment, and the dashboard clock walks the series: dragging the
   timeline changes the picture in place, without re-running the query or rebuilding the layer — a
   scene, a Zarr slice, a WMS date, or an ArcGIS Image Service mosaic rule alike.
-- A polygon or rectangle drawn on the map can be **measured**, not only drawn, over a COG or a
-  Zarr store, with no second query — the same tile server that draws the imagery also answers
-  statistics over the shape you drew or the point you clicked.
+- A polygon or rectangle drawn on the map, or a coordinate clicked on it, publishes to a dashboard
+  variable — and a separate panel can turn that into a number over a COG or a Zarr store: an
+  Infinity query calling the same tile server's statistics route, with no ETL, no database, and no
+  second copy of the data.
 - Colour: eight named ramps, or a whole TiTiler interval definition typed in as JSON — the only way
   to fade the low end to transparent, which a field that is mostly near zero needs. A classified
   raster — land cover, soils — can be handed to the tile server to paint instead, since its colours
@@ -72,9 +73,10 @@ PMTiles, Zarr, WMS, and ArcGIS Image Services.**
 
 ### The map
 
-- Base maps with **no account needed**: Carto's three, Esri satellite and topographic, and two of
-  those with real elevation — tilt the camera and the ground rises. The Mapbox-only styles that
-  would blank the map on click are not offered at all.
+- Base maps with **no account needed**: Carto's three, and Esri's three — flat satellite imagery,
+  and satellite and topographic imagery over real elevation, where tilting the camera lifts the
+  ground; topographic exists only in this relief form, with no flat version. The Mapbox-only
+  styles that would blank the map on click are not offered at all.
 - A self-hosted MapLibre `style.json`, for an air-gapped install or to skip Esri's and Carto's
   terms of use entirely.
 - Follows the dashboard theme, base map included.
