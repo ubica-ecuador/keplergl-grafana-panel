@@ -52,7 +52,7 @@ describe('the satellite style document', () => {
   });
 
   it('credits Esri on every source', () => {
-    // Not metadata only: as of kepler 3.3.0-alpha.7 the attribution bar reads
+    // Not metadata only: as of kepler 3.3.0-alpha.9 the attribution bar reads
     // each source's `attribution`, which is what puts the credit Esri's terms
     // require on screen. The panel used to render that credit itself; doing
     // both showed it twice.

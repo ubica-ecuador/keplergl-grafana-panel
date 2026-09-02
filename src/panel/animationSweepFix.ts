@@ -37,7 +37,7 @@ import { AnimationControllerFactory } from '@kepler.gl/components';
  * on its way past.
  *
  * Nothing else changes: free, point and interval windows are handed straight
- * back to kepler. The defect is upstream in 3.3.0-alpha.7; delete this module
+ * back to kepler. The defect is upstream in 3.3.0-alpha.9; delete this module
  * when the pin moves to a kepler.gl whose incremental step ends on the data.
  */
 

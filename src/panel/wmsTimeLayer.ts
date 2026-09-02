@@ -1,7 +1,7 @@
 /**
  * Makes kepler's WMS layer able to ask for a date.
  *
- * kepler 3.3.0-alpha.7 draws a WMS, but always the same picture: the layer
+ * kepler 3.3.0-alpha.9 draws a WMS, but always the same picture: the layer
  * hands deck.gl `metadata.tilesetDataUrl` as a plain string, and the request it
  * builds from that carries no `TIME`. A time-aware service — a GeoServer over
  * an ImageMosaic, which is how most environmental data in the region is

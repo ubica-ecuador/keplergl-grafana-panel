@@ -61,7 +61,7 @@ import { KEPLER_INSTANCE_ID } from './constants';
 /**
  * The ONLY module that talks to the kepler.gl API.
  *
- * kepler.gl is pinned to a pre-release (3.3.0-alpha.7) because the Flow layer
+ * kepler.gl is pinned to a pre-release (3.3.0-alpha.9) because the Flow layer
  * exists nowhere else. Funnelling every kepler call through here means the
  * alpha -> stable upgrade touches one file instead of the whole tree.
  */

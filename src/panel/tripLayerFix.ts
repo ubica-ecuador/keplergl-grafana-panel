@@ -23,7 +23,7 @@
  * Categorical filters are unaffected because kepler filters those on the CPU and
  * never reaches this accessor.
  *
- * This is upstream, in kepler.gl 3.3.0-alpha.7, not in the panel. Rather than
+ * This is upstream, in kepler.gl 3.3.0-alpha.9, not in the panel. Rather than
  * give up the time filter — CPU filtering would cost a re-scan of every row on
  * each frame of a playing time slider — the layer class is wrapped so the
  * accessor takes the argument kepler actually passes it. Delete this module when
