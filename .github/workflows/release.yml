@@ -19,11 +19,34 @@ jobs:
         with:
           persist-credentials: false
 
+      # Wired for both sides of the catalog review, so this file does not have
+      # to be edited on the day the answer arrives.
+      #
+      # A plugin that has never been published *cannot* be signed: the signature
+      # level is something the review grants, not something a token buys. Grafana
+      # says so in both directions — "you don't need to sign a plugin ... when you
+      # submit a plugin for review for the first time", and "the Grafana team
+      # needs to review public plugins before you can sign them ... you're granted
+      # a plugin signature level. You need this signature level to proceed". The
+      # plugin validator agrees: for a new plugin it reports "unsigned plugin" as
+      # a warning whose own detail reads "This is expected during the initial
+      # review process."
+      #
+      # So an unsigned archive is not a defect right now, it is the required
+      # state, and the release this workflow builds is exactly what the
+      # submission form asks for: it publishes the zip (the form's **URL**) and
+      # its sha1 (the form's **SHA1**) onto a GitHub Release.
+      #
+      # `policy_token` is passed unconditionally anyway because the action's own
+      # sign step is guarded by `if: inputs.policy_token != ''`, and GitHub
+      # substitutes an empty string for a secret that does not exist. Before
+      # approval the secret is unset, the sign step is skipped with a warning,
+      # and the archive comes out unsigned — which is what has to be submitted.
+      # After approval, adding GRAFANA_ACCESS_POLICY_TOKEN to the repository
+      # secrets turns signing on with no change here: the next tag is signed.
+      #
+      # To generate the token once the level is granted:
+      # https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin#generate-an-access-policy-token
       - uses: grafana/plugin-actions/build-plugin@build-plugin/v1.0.2
-        # Uncomment to enable plugin signing
-        # (For more info on how to generate the access policy token see https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin#generate-an-access-policy-token)
-        #with:
-          # Make sure to save the token in your repository secrets
-          #policy_token: $
-          # Usage of GRAFANA_API_KEY is deprecated, prefer `policy_token` option above
-          #grafana_token: $
+        with:
+          policy_token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
