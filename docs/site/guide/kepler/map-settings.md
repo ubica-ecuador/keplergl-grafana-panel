@@ -68,5 +68,5 @@ with more layers each.
 **Upstream:** [Map settings](https://docs.kepler.gl/docs/user-guides/m-map-settings) ·
 [Map styles](https://docs.kepler.gl/docs/user-guides/f-map-styles)
 
-Written against **kepler.gl 3.3.0-alpha.7**. See
+Written against **kepler.gl 3.3.0-alpha.9**. See
 [Upstream documentation](../../reference/upstream-docs).

@@ -8,7 +8,7 @@ page is the link hub, with the versions each link was written against.
 
 | Library        | Version bundled          |
 | -------------- | ------------------------ |
-| kepler.gl      | **3.3.0-alpha.7**        |
+| kepler.gl      | **3.3.0-alpha.9**        |
 | deck.gl        | **9.3.10**               |
 | MapLibre GL JS | **4** (pinned by kepler) |
 | React          | 18.3.1                   |
@@ -18,7 +18,7 @@ kepler.gl's public documentation describes the **3.2 stable line**. The plugin p
 pre-release, because the **Flow layer** — which the origin–destination support is built on — exists
 nowhere in 3.2.
 
-So upstream lists fifteen layer types where the bundled version registers nineteen, and a few
+So upstream lists fifteen layer types where the bundled version registers twenty-one, and a few
 attributes present in the UI have no upstream entry. Where that matters, it is called out on the
 page that sends you there.
 :::

@@ -58,5 +58,5 @@ that panel as the starting point for new maps.
 **Upstream:** [Color palettes](https://docs.kepler.gl/docs/user-guides/l-color-attributes) ·
 [Layer attributes](https://docs.kepler.gl/docs/user-guides/d-layer-attributes)
 
-Written against **kepler.gl 3.3.0-alpha.7**. See
+Written against **kepler.gl 3.3.0-alpha.9**. See
 [Upstream documentation](../../reference/upstream-docs).

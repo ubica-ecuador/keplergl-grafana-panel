@@ -4,6 +4,54 @@
 for it to be a change against — the entry below lists what the plugin **does**, not what changed to
 get it there. From 1.0.0 onwards, each release documents what changed since the one before it.
 
+## Unreleased
+
+### Changed
+
+- **kepler.gl moves from `3.3.0-alpha.7` to `3.3.0-alpha.9`**, which is now the `latest` tag on npm.
+  There is still no stable 3.3.0, so the pin stays exact. What it brings: kepler registers a
+  twenty-first layer type, `geohash`, alongside the `a5` grid-index layer it already had — neither
+  is detected from a column, so both are added by hand like the URL-configured layers; kepler's own
+  packages drop their nested `lodash` copies for `es-toolkit`; and deck.gl and loaders.gl advance by
+  a patch. The declared dependency set is otherwise unchanged, and the bundle is the same size to
+  within a tenth of a megabyte.
+
+  What it does **not** bring is a fix for any of the four upstream defects this plugin works around.
+  All four were re-read in the installed alpha.9 and are unchanged: the Trip layer's value accessor
+  still takes the feature alone (`tripLayerFix`), the incremental animation still discards the
+  remainder instead of clamping (`animationSweepFix`), the histogram still paints its brush before
+  its bars (`rangeBrushFix`), and the WMS layer still hands deck a plain url with no `TIME`
+  (`wmsTimeLayer`). The four modules stay, and so do the notes saying when to delete them.
+
+### Added
+
+- **A Grafana 13 bench on port 3003** (`grafana-13` in `docker-compose.yaml`). `grafanaDependency`
+  has no upper bound, so every 13.x install offers this plugin, and 13 is where React 18 becomes
+  React 19 — which `@grafana/react-detect` reports the plugin as incompatible with, entirely because
+  of packages inside kepler's tree that are in the built archive. The other three benches all sit at
+  the floor of the supported range; this one is the ceiling, so the claim can be tested rather than
+  assumed.
+
+  It is now tested: the full end-to-end suite passes **48/48** against Grafana 13.2.1, so the
+  react-detect report is a false positive in practice. The one gap is react-color's `defaultProps`,
+  the only finding that is a real behavioural change rather than a legacy API React 19 merely
+  ignores — no spec opens kepler's colour picker, so it was opened by hand instead; it renders and
+  throws nothing.
+
+- **Signing wired into the release workflow for both sides of the catalog review.** A plugin that
+  has never been published cannot be signed — the signature level is granted by the review — so the
+  archive submitted for review has to be unsigned, and is. The token is passed unconditionally
+  regardless, because the action skips its own sign step on an empty one; adding
+  `GRAFANA_ACCESS_POLICY_TOKEN` to the repository secrets after approval turns signing on with no
+  further edit.
+
+### Fixed
+
+- The documentation said kepler registers **nineteen** layer types. It registered twenty at
+  `alpha.7` and registers twenty-one at `alpha.9` — the count had never accounted for `a5`. The
+  arithmetic on the layer pages now closes: thirteen driven from query columns, six configured with
+  a URL, two grid-index layers the panel does not detect.
+
 ## 1.0.0 (2026-09-01)
 
 Interactive kepler.gl maps inside Grafana dashboards, fed by any Grafana data source: points,

@@ -57,5 +57,5 @@ clearly returns — check the filter panel before checking the query.
 
 **Upstream:** [Filters](https://docs.kepler.gl/docs/user-guides/e-filters)
 
-Written against **kepler.gl 3.3.0-alpha.7**. See
+Written against **kepler.gl 3.3.0-alpha.9**. See
 [Upstream documentation](../../reference/upstream-docs).

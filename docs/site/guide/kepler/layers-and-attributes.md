@@ -41,7 +41,7 @@ points can read as an empty map. This is the first thing to change, not the last
 
 **High-precision rendering when zooming in closely.** kepler's documentation lists this on point,
 arc, line, icon, geojson, hexagon and grid layers. **It is not there in the version this plugin
-ships.** The setting survives as a constant and a type in kepler 3.3.0-alpha.7, but no layer
+ships.** The setting survives as a constant and a type in kepler 3.3.0-alpha.9, but no layer
 declares or reads it — deck.gl retired the separate 64-bit path years ago and its current
 precision handling is always on. Do not go looking for the switch. See
 [Under the hood](../../reference/under-the-hood).
@@ -70,6 +70,6 @@ either way. See [Layers configured with a URL](../../layers/url-configured).
 [Layer attributes](https://docs.kepler.gl/docs/user-guides/d-layer-attributes) ·
 [The kepler.gl workflow](https://docs.kepler.gl/docs/user-guides/b-kepler-gl-workflow)
 
-Written against **kepler.gl 3.3.0-alpha.7**, which is what this plugin bundles. kepler's public
+Written against **kepler.gl 3.3.0-alpha.9**, which is what this plugin bundles. kepler's public
 documentation describes the 3.2 stable line and lists fifteen layer types; the pre-release registers
 nineteen, the Flow layer among them. See [Upstream documentation](../../reference/upstream-docs).

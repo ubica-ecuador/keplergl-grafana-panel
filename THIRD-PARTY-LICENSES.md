@@ -7,7 +7,7 @@ compiled third-party code and vendored assets. Their notices follow.
 
 | Library | Version | Licence | Copyright |
 | --- | --- | --- | --- |
-| kepler.gl and its `@kepler.gl/*` packages | 3.3.0-alpha.7 | MIT | Copyright contributors to the kepler.gl project |
+| kepler.gl and its `@kepler.gl/*` packages | 3.3.0-alpha.9 | MIT | Copyright contributors to the kepler.gl project |
 | @deck.gl/core, /layers, /geo-layers and the rest | 9.3.10 | MIT | Copyright Vis.gl contributors. |
 | @luma.gl/core and the rest | 9.3.6 | MIT | Copyright (c) 2020 vis.gl contributors |
 | @deck.gl-community/editable-layers | 9.3.8 | MIT | Copyright (c) 2020 vis.gl a Series of LF Projects, LLC |

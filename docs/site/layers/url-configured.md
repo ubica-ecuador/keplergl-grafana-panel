@@ -1,8 +1,10 @@
 # Layers configured with a URL
 
-kepler.gl 3.3.0-alpha.7 registers nineteen layer types. Thirteen are in [the gallery](./). The other
-six are configured with a **URL** rather than with data, so a Grafana query cannot describe one the
-way it describes a table of points.
+kepler.gl 3.3.0-alpha.9 registers twenty-one layer types. Thirteen are in [the gallery](./), and two
+more — `a5` and `geohash`, kepler's other two grid-index layers — the panel does not detect from a
+column, so they are added by hand like the ones below. The other six are configured with a **URL**
+rather than with data, so a Grafana query cannot describe one the way it describes a table of
+points.
 
 Two of the six are exceptions now, and they are covered elsewhere: a query that returns a link to a
 cloud-optimised GeoTIFF produces a `rasterTile` layer, and one that names a WMS service produces a

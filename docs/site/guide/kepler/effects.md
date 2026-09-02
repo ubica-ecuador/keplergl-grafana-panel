@@ -50,5 +50,5 @@ open with its lighting already set. See [Map configuration](../map/map-configura
 **Upstream:** kepler documents effects in its repository rather than on the docs site —
 [Effects guide](https://github.com/keplergl/kepler.gl/blob/master/docs/user-guides/effects.md).
 
-Written against **kepler.gl 3.3.0-alpha.7**. See
+Written against **kepler.gl 3.3.0-alpha.9**. See
 [Upstream documentation](../../reference/upstream-docs).

@@ -96,6 +96,6 @@ aggregate harder in SQL — before suspecting detection.
 ## Why this needs a pre-release kepler
 
 The Flow layer arrived in kepler.gl's 3.3.0 line and exists nowhere in the 3.2 stable release. That
-is the reason the plugin pins `3.3.0-alpha.7` rather than the stable version, and the reason the
+is the reason the plugin pins `3.3.0-alpha.9` rather than the stable version, and the reason the
 layer is enabled explicitly at startup rather than relying on the upstream default. See
 [Differences from stock kepler.gl](../../reference/differences-from-kepler).

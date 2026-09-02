@@ -16,6 +16,22 @@ though it is nominally "Grafana 12".
 There is **no backend component**, so there is nothing to match against your Grafana's architecture
 or operating system beyond the browser.
 
+### Grafana 13 and React 19
+
+The range has no upper bound, so **13.x installs this plugin** — and 13 is where Grafana moved from
+React 18 to React 19. That is tested, not assumed: the full end-to-end suite runs against a
+provisioned Grafana **13.2.1** bench (`grafana-13` in `docker-compose.yaml`, port 3003) and passes
+**48/48**.
+
+`@grafana/react-detect` does report the plugin as incompatible. Every one of its findings sits in a
+package inside kepler's dependency tree — `react-color`, `react-virtualized`, `react-modal`,
+`react-json-pretty`, `@kepler.gl/components`, `preact` — and none in this plugin's own code. In
+practice they are false positives: React 19 ignores `propTypes` rather than failing on them, and
+preact is not React. The one finding that is a real behavioural change is react-color's
+`defaultProps` on function components; kepler's colour picker opens and throws nothing on 13.2.1,
+though a default going silently missing would not throw, so treat that one as evidence rather than
+proof.
+
 ### Grafana Cloud
 
 A signed community plugin is installable on Grafana Cloud once it is published there. This plugin
@@ -33,7 +49,7 @@ catalog flow and the release-archive install that works while the review is pend
 
 | Library        | Version                  |
 | -------------- | ------------------------ |
-| kepler.gl      | **3.3.0-alpha.7**        |
+| kepler.gl      | **3.3.0-alpha.9**        |
 | deck.gl        | **9.3.10**               |
 | MapLibre GL JS | **4** (pinned by kepler) |
 | React          | 18.3.1                   |
@@ -46,7 +62,7 @@ release to move to, so the pin stays exact rather than a caret range.
 
 The practical consequence for you is that kepler's public documentation describes a version older
 than the one you are running: it lists fifteen layer types where the bundled build registers
-nineteen. See [Upstream documentation](./upstream-docs).
+twenty-one. See [Upstream documentation](./upstream-docs).
 
 ## Browser and hardware
 
