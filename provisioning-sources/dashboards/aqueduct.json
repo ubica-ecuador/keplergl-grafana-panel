@@ -1,0 +1,1059 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Prueba de concepto: la capa Aqueduct 4.0 de WRI servida en vivo desde ArcGIS Online al panel kepler.gl, sin descarga previa. Recortada a Sudamérica porque global (61.488 polígonos, 58 MiB, 171 s) no cabe en un dashboard. La paginación del mapa usa el modo `replace` con marcadores ${__pagination.*} en la URL para esquivar un bug de aliasing de Infinity 4.0.0 que hace que el modo `query` devuelva la misma página N veces — ver docs/aqueduct-arcgis-findings.md.",
+  "editable": true,
+  "id": null,
+  "links": [],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": [
+    "kepler",
+    "aqueduct",
+    "agua"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "indicador",
+        "label": "Indicador",
+        "type": "custom",
+        "hide": 0,
+        "multi": false,
+        "includeAll": false,
+        "skipUrlSync": false,
+        "query": "Riesgo hídrico global : w_awr_def_tot, Estrés hídrico base : bws, Agotamiento de agua : bwd, Riesgo de inundación fluvial : rfr, Riesgo de sequía : drr, Agua potable no mejorada : udw, Saneamiento no mejorado : usa",
+        "options": [
+          {
+            "text": "Riesgo hídrico global",
+            "value": "w_awr_def_tot",
+            "selected": true
+          },
+          {
+            "text": "Estrés hídrico base",
+            "value": "bws",
+            "selected": false
+          },
+          {
+            "text": "Agotamiento de agua",
+            "value": "bwd",
+            "selected": false
+          },
+          {
+            "text": "Riesgo de inundación fluvial",
+            "value": "rfr",
+            "selected": false
+          },
+          {
+            "text": "Riesgo de sequía",
+            "value": "drr",
+            "selected": false
+          },
+          {
+            "text": "Agua potable no mejorada",
+            "value": "udw",
+            "selected": false
+          },
+          {
+            "text": "Saneamiento no mejorado",
+            "value": "usa",
+            "selected": false
+          }
+        ],
+        "current": {
+          "text": "Riesgo hídrico global",
+          "value": "w_awr_def_tot",
+          "selected": true
+        }
+      },
+      {
+        "name": "pais",
+        "label": "Países",
+        "type": "custom",
+        "hide": 0,
+        "multi": true,
+        "includeAll": true,
+        "skipUrlSync": false,
+        "query": "Argentina,Bolivia,Brazil,Chile,Colombia,Ecuador,Guyana,Paraguay,Peru,Suriname,Uruguay,Venezuela,French Guiana",
+        "options": [
+          {
+            "text": "All",
+            "value": "$__all",
+            "selected": true
+          },
+          {
+            "text": "Argentina",
+            "value": "Argentina",
+            "selected": false
+          },
+          {
+            "text": "Bolivia",
+            "value": "Bolivia",
+            "selected": false
+          },
+          {
+            "text": "Brazil",
+            "value": "Brazil",
+            "selected": false
+          },
+          {
+            "text": "Chile",
+            "value": "Chile",
+            "selected": false
+          },
+          {
+            "text": "Colombia",
+            "value": "Colombia",
+            "selected": false
+          },
+          {
+            "text": "Ecuador",
+            "value": "Ecuador",
+            "selected": false
+          },
+          {
+            "text": "Guyana",
+            "value": "Guyana",
+            "selected": false
+          },
+          {
+            "text": "Paraguay",
+            "value": "Paraguay",
+            "selected": false
+          },
+          {
+            "text": "Peru",
+            "value": "Peru",
+            "selected": false
+          },
+          {
+            "text": "Suriname",
+            "value": "Suriname",
+            "selected": false
+          },
+          {
+            "text": "Uruguay",
+            "value": "Uruguay",
+            "selected": false
+          },
+          {
+            "text": "Venezuela",
+            "value": "Venezuela",
+            "selected": false
+          },
+          {
+            "text": "French Guiana",
+            "value": "French Guiana",
+            "selected": false
+          }
+        ],
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ],
+          "selected": true
+        }
+      },
+      {
+        "name": "detalle",
+        "label": "Detalle geométrico",
+        "type": "custom",
+        "hide": 0,
+        "multi": false,
+        "includeAll": false,
+        "skipUrlSync": false,
+        "query": "Media — 9 páginas, ~2 s : 0.02, Fina — más nítida, más lenta : 0.01, Gruesa — más rápida : 0.05",
+        "options": [
+          {
+            "text": "Media — 9 páginas, ~2 s",
+            "value": "0.02",
+            "selected": true
+          },
+          {
+            "text": "Fina — más nítida, más lenta",
+            "value": "0.01",
+            "selected": false
+          },
+          {
+            "text": "Gruesa — más rápida",
+            "value": "0.05",
+            "selected": false
+          }
+        ],
+        "current": {
+          "text": "Media — 9 páginas, ~2 s",
+          "value": "0.02",
+          "selected": true
+        }
+      },
+      {
+        "name": "area",
+        "label": "Área dibujada (WKT)",
+        "type": "textbox",
+        "hide": 0,
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "query": "",
+        "skipUrlSync": false
+      },
+      {
+        "name": "areaRings",
+        "label": "Área (Esri JSON)",
+        "type": "query",
+        "hide": 2,
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "query": "SELECT coalesce((SELECT '{\"rings\":' || json_extract(ST_AsGeoJSON(ST_GeomFromText(wkt)), '$.coordinates')::VARCHAR || ',\"spatialReference\":{\"wkid\":4326}}' FROM (SELECT '$area' AS wkt) WHERE length(wkt) > 8), '') AS rings",
+        "refresh": 1,
+        "multi": false,
+        "includeAll": false,
+        "skipUrlSync": false,
+        "current": {},
+        "options": [],
+        "regex": "",
+        "sort": 0
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Riesgo hídrico — WRI Aqueduct 4.0 (Sudamérica)",
+  "uid": "aqueduct-sa",
+  "version": 2,
+  "weekStart": "",
+  "panels": [
+    {
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "mode": "markdown",
+        "content": "# Riesgo hídrico — WRI Aqueduct 4.0\n\nLos polígonos son cuencas de **HydroBASINS nivel 6 cortadas por provincia**, servidas en vivo desde el\nFeature Service de ArcGIS Online, **sin descarga previa ni ETL**. Cambiar el indicador o el país vuelve a\nconsultar el servicio.\n\n| | |\n|---|---|\n| Fuente | [Aqueduct 4.0 Water Risk](https://www.arcgis.com/home/item.html?id=c784f4ebddaf43c8b816612fb62e7e5b) · **Aqueduct 4.0, World Resources Institute (WRI)**, alojado por Esri. Licencia CC BY 4.0 |\n| Cobertura | 13 países de Sudamérica · 6.469 unidades con dato para estrés hídrico (de 6.717) |\n| Cómo llega | Infinity → `f=geojson` → columna `geojson` → el panel la detecta y kepler la dibuja |\n\n**Tres cosas que hay que saber para no leer mal el mapa:**\n\n- **Los huecos son «No Data».** Aqueduct codifica la ausencia de dato como `-9999`, y un solo `-9999`\n  arruinaría la escala de color, así que se filtran en origen (`${indicador}_score >= 0`). Lo que falta en\n  el mapa es dato que no existe, no riesgo cero.\n- **«Arid and Low Water Use» puntúa alto por convención**, no por estrés medido: son 493 unidades áridas\n  con poco uso de agua. Aparecen en rojo sin que haya competencia por el recurso.\n- **El nivel 6 es grueso.** Sirve para lectura nacional o regional. No sirve para escala municipal.\n\n**Filtrar dibujando sobre el mapa.** Con la herramienta de dibujo del mapa (polígono o rectángulo)\npuedes acotar el análisis: el ranking por país, la tabla y el contador «En selección» pasan a describir\nsolo las cuencas que toque la figura. **El mapa a propósito no se filtra** — se queda mostrando todo el\námbito como contexto, porque si su propia consulta dependiera de la figura, al encoger el dataset ya no\npodría volver a ensancharse desde el mapa. Para volver al total, borra la figura.\n\n*Si «Con dato» y el número de polígonos del mapa no coinciden, la paginación de Infinity está\ntruncando: requiere `GF_PLUGIN_PAGINATION_MAX_PAGES` en el contenedor.*"
+      },
+      "transparent": true
+    },
+    {
+      "type": "ubica-keplergl-panel",
+      "title": "$indicador — cuencas de Sudamérica",
+      "gridPos": {
+        "h": 20,
+        "w": 17,
+        "x": 0,
+        "y": 9
+      },
+      "id": 2,
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/aqueduct_water_risk/FeatureServer/1/query?resultOffset=${__pagination.resultOffset}&resultRecordCount=${__pagination.resultRecordCount}",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "name_0 IN (${pais:sqlstring}) AND ${indicador}_score >= 0"
+              },
+              {
+                "key": "outFields",
+                "value": "pfaf_id,name_0,name_1,area_km2,bws_score,bws_label,bwd_score,bwd_label,rfr_score,rfr_label,drr_score,drr_label,udw_score,udw_label,usa_score,usa_label,w_awr_def_tot_score,w_awr_def_tot_label"
+              },
+              {
+                "key": "orderByFields",
+                "value": "OBJECTID"
+              },
+              {
+                "key": "returnGeometry",
+                "value": "true"
+              },
+              {
+                "key": "maxAllowableOffset",
+                "value": "$detalle"
+              },
+              {
+                "key": "f",
+                "value": "geojson"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "properties.pfaf_id",
+              "text": "pfaf_id",
+              "type": "number"
+            },
+            {
+              "selector": "properties.name_0",
+              "text": "pais",
+              "type": "string"
+            },
+            {
+              "selector": "properties.name_1",
+              "text": "provincia",
+              "type": "string"
+            },
+            {
+              "selector": "properties.area_km2",
+              "text": "area_km2",
+              "type": "number"
+            },
+            {
+              "selector": "geometry",
+              "text": "geojson",
+              "type": "string"
+            },
+            {
+              "selector": "properties.bws_score",
+              "text": "bws_score",
+              "type": "number"
+            },
+            {
+              "selector": "properties.bwd_score",
+              "text": "bwd_score",
+              "type": "number"
+            },
+            {
+              "selector": "properties.rfr_score",
+              "text": "rfr_score",
+              "type": "number"
+            },
+            {
+              "selector": "properties.drr_score",
+              "text": "drr_score",
+              "type": "number"
+            },
+            {
+              "selector": "properties.udw_score",
+              "text": "udw_score",
+              "type": "number"
+            },
+            {
+              "selector": "properties.usa_score",
+              "text": "usa_score",
+              "type": "number"
+            },
+            {
+              "selector": "properties.w_awr_def_tot_score",
+              "text": "w_awr_def_tot_score",
+              "type": "number"
+            },
+            {
+              "selector": "properties.bws_label",
+              "text": "bws_label",
+              "type": "string"
+            },
+            {
+              "selector": "properties.bwd_label",
+              "text": "bwd_label",
+              "type": "string"
+            },
+            {
+              "selector": "properties.rfr_label",
+              "text": "rfr_label",
+              "type": "string"
+            },
+            {
+              "selector": "properties.drr_label",
+              "text": "drr_label",
+              "type": "string"
+            },
+            {
+              "selector": "properties.udw_label",
+              "text": "udw_label",
+              "type": "string"
+            },
+            {
+              "selector": "properties.usa_label",
+              "text": "usa_label",
+              "type": "string"
+            },
+            {
+              "selector": "properties.w_awr_def_tot_label",
+              "text": "w_awr_def_tot_label",
+              "type": "string"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "${indicador}_score",
+              "text": "score"
+            },
+            {
+              "selector": "${indicador}_label",
+              "text": "categoria"
+            }
+          ],
+          "pagination_mode": "offset",
+          "pagination_max_pages": 9,
+          "pagination_param_size_field_name": "resultRecordCount",
+          "pagination_param_size_field_type": "replace",
+          "pagination_param_size_value": 750,
+          "pagination_param_offset_field_name": "resultOffset",
+          "pagination_param_offset_field_type": "replace",
+          "pagination_param_offset_value": 0
+        }
+      ],
+      "options": {
+        "showSidePanel": true,
+        "followGrafanaTheme": true,
+        "basemap": "dark-matter",
+        "timeSync": "off",
+        "areaVariable": "area",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -18.5,
+              "longitude": -60.0,
+              "zoom": 2.45,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "visState": {
+              "filters": [],
+              "layerBlending": "normal",
+              "layers": [
+                {
+                  "id": "aqueduct",
+                  "type": "geojson",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Riesgo hídrico",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "opacity": 0.85,
+                      "filled": true,
+                      "stroked": true,
+                      "thickness": 0.1,
+                      "strokeOpacity": 0.25,
+                      "strokeColor": [
+                        15,
+                        15,
+                        15
+                      ],
+                      "colorRange": {
+                        "name": "Aqueduct",
+                        "type": "sequential",
+                        "category": "Custom",
+                        "colors": [
+                          "#fdf3c8",
+                          "#fbd989",
+                          "#f7a44f",
+                          "#e8642f",
+                          "#bf2626",
+                          "#7a0d1e"
+                        ]
+                      },
+                      "enable3d": false,
+                      "wireframe": false
+                    },
+                    "color": [
+                      231,
+                      159,
+                      79
+                    ]
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "score",
+                      "type": "real"
+                    },
+                    "colorScale": "quantize"
+                  }
+                }
+              ],
+              "layerOrder": [
+                "aqueduct"
+              ],
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": true,
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "pais"
+                      },
+                      {
+                        "name": "provincia"
+                      },
+                      {
+                        "name": "categoria"
+                      },
+                      {
+                        "name": "score"
+                      },
+                      {
+                        "name": "area_km2"
+                      }
+                    ]
+                  }
+                },
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "coordinate": {
+                  "enabled": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Unidades",
+      "id": 3,
+      "gridPos": {
+        "h": 5,
+        "w": 7,
+        "x": 17,
+        "y": 9
+      },
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "targets": [
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/aqueduct_water_risk/FeatureServer/1/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "name_0 IN (${pais:sqlstring}) AND ${indicador}_score >= 0"
+              },
+              {
+                "key": "outStatistics",
+                "value": "[{\"statisticType\": \"count\", \"onStatisticField\": \"OBJECTID\", \"outStatisticFieldName\": \"n\"}]"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.n",
+              "text": "Unidades",
+              "type": "number"
+            }
+          ]
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/aqueduct_water_risk/FeatureServer/1/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "name_0 IN (${pais:sqlstring}) AND ${indicador}_score >= 0"
+              },
+              {
+                "key": "outStatistics",
+                "value": "[{\"statisticType\": \"count\", \"onStatisticField\": \"OBJECTID\", \"outStatisticFieldName\": \"n\"}]"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              },
+              {
+                "key": "geometry",
+                "value": "${areaRings:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "esriGeometryPolygon"
+              },
+              {
+                "key": "spatialRel",
+                "value": "esriSpatialRelIntersects"
+              },
+              {
+                "key": "inSR",
+                "value": "4326"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.n",
+              "text": "En selección",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "description": "Izquierda: recuento autoritativo de todo el ámbito, calculado por ArcGIS sin paginar — es el contraste que delata un truncado de paginación en el mapa. Derecha: lo que encierra el polígono dibujado. Sin figura, coinciden.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto"
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Score medio por país",
+      "id": 4,
+      "gridPos": {
+        "h": 15,
+        "w": 7,
+        "x": 17,
+        "y": 14
+      },
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "targets": [
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/aqueduct_water_risk/FeatureServer/1/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "name_0 IN (${pais:sqlstring}) AND ${indicador}_score >= 0"
+              },
+              {
+                "key": "groupByFieldsForStatistics",
+                "value": "name_0"
+              },
+              {
+                "key": "outStatistics",
+                "value": "[{\"statisticType\": \"avg\", \"onStatisticField\": \"${indicador}_score\", \"outStatisticFieldName\": \"score_medio\"}, {\"statisticType\": \"count\", \"onStatisticField\": \"OBJECTID\", \"outStatisticFieldName\": \"n\"}]"
+              },
+              {
+                "key": "orderByFields",
+                "value": "score_medio DESC"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              },
+              {
+                "key": "geometry",
+                "value": "${areaRings:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "esriGeometryPolygon"
+              },
+              {
+                "key": "spatialRel",
+                "value": "esriSpatialRelIntersects"
+              },
+              {
+                "key": "inSR",
+                "value": "4326"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.name_0",
+              "text": "País",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.score_medio",
+              "text": "Score medio",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "description": "Agregado en el servidor de ArcGIS: una petición, ~2 KB, sin paginación.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-YlRd"
+          },
+          "min": 0,
+          "max": 5,
+          "decimals": 2,
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "País",
+        "showValue": "auto",
+        "stacking": "none",
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "barWidth": 0.8,
+        "groupWidth": 0.7,
+        "fullHighlight": false
+      }
+    },
+    {
+      "type": "table",
+      "title": "Las 20 unidades con peor $indicador",
+      "id": 5,
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 29
+      },
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "targets": [
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/aqueduct_water_risk/FeatureServer/1/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "name_0 IN (${pais:sqlstring}) AND ${indicador}_score >= 0"
+              },
+              {
+                "key": "outFields",
+                "value": "pfaf_id,name_0,name_1,area_km2,bws_score,bws_label,bwd_score,bwd_label,rfr_score,rfr_label,drr_score,drr_label,udw_score,udw_label,usa_score,usa_label,w_awr_def_tot_score,w_awr_def_tot_label"
+              },
+              {
+                "key": "orderByFields",
+                "value": "${indicador}_score DESC"
+              },
+              {
+                "key": "resultRecordCount",
+                "value": "20"
+              },
+              {
+                "key": "returnGeometry",
+                "value": "false"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              },
+              {
+                "key": "geometry",
+                "value": "${areaRings:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "esriGeometryPolygon"
+              },
+              {
+                "key": "spatialRel",
+                "value": "esriSpatialRelIntersects"
+              },
+              {
+                "key": "inSR",
+                "value": "4326"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.name_0",
+              "text": "País",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.name_1",
+              "text": "Provincia",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.pfaf_id",
+              "text": "Cuenca (pfaf_id)",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.bws_score",
+              "text": "bws_score",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.bwd_score",
+              "text": "bwd_score",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.rfr_score",
+              "text": "rfr_score",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.drr_score",
+              "text": "drr_score",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.udw_score",
+              "text": "udw_score",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.usa_score",
+              "text": "usa_score",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.w_awr_def_tot_score",
+              "text": "w_awr_def_tot_score",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.bws_label",
+              "text": "bws_label",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.bwd_label",
+              "text": "bwd_label",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.rfr_label",
+              "text": "rfr_label",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.drr_label",
+              "text": "drr_label",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.udw_label",
+              "text": "udw_label",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.usa_label",
+              "text": "usa_label",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.w_awr_def_tot_label",
+              "text": "w_awr_def_tot_label",
+              "type": "string"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "${indicador}_score",
+              "text": "Score"
+            },
+            {
+              "selector": "${indicador}_label",
+              "text": "Categoría"
+            }
+          ]
+        }
+      ],
+      "description": "Ordenado por el servicio (`orderByFields`), 20 filas, sin geometría ni paginación.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Score"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-YlRd"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 5
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "bws_score": true,
+              "bws_label": true,
+              "bwd_score": true,
+              "bwd_label": true,
+              "rfr_score": true,
+              "rfr_label": true,
+              "drr_score": true,
+              "drr_label": true,
+              "udw_score": true,
+              "udw_label": true,
+              "usa_score": true,
+              "usa_label": true,
+              "w_awr_def_tot_score": true,
+              "w_awr_def_tot_label": true
+            },
+            "indexByName": {
+              "País": 0,
+              "Provincia": 1,
+              "Cuenca (pfaf_id)": 2,
+              "Score": 3,
+              "Categoría": 4
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      }
+    }
+  ]
+}

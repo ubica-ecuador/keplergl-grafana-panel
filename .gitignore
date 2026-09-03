@@ -82,3 +82,14 @@ ci/
 # implementer reports and review packages. Regenerable, and none of it belongs
 # in a repository that is about to be published.
 /.superpowers/
+
+# The two per-country series the fire-emissions dashboard needs, derived from
+# CAMS's own published data by testdata/make-firedata.py. Everything else that
+# dashboard draws is read live from ECMWF; these exist only because DuckDB
+# cannot read gzipped Arrow IPC over HTTP, and they regenerate in a minute.
+#
+# This rule is load-bearing rather than tidy. An earlier copy of these files was
+# committed and had to be removed from every commit with git-filter-repo before
+# the repository could go public — 61 MB in four blobs. Without the rule a
+# single run of the recipe puts them back, untracked and easy to `git add -A`.
+testdata/fire/

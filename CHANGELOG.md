@@ -47,6 +47,25 @@ get it there. From 1.0.0 onwards, each release documents what changed since the 
 
 ### Fixed
 
+Two in the **Base map** option, which in different ways did not do what it says. Both were found
+running against the published instance at `grafana.ubica.ec` and are ported from its deployment
+branch.
+
+- **A self-hosted `style.json` could use neither a dashboard variable nor a relative path.** Panel
+  options are not interpolated by Grafana unless a plugin asks, so `${tilesBase}/style-${year}.json`
+  was fetched literally; and because kepler fetches the style itself, a path like
+  `/public/plugins/…/style.json` came back as Grafana's own SPA shell. The second failed silently —
+  `Map style response is empty` in the console and a quiet fall back to the default base map, with
+  nothing pointing at the option. Both are resolved now, and a variable that expands to nothing
+  counts as no URL rather than as a broken one.
+
+- **A saved map configuration killed the option even when it named no base map.** Any stored
+  configuration outranked it, but a configuration pasted into **Import configuration** — one written
+  by hand to place a layer, say — commonly carries no `mapStyle` at all. For those the option was
+  skipped and nothing set a style in its place, so the map kept kepler's default. A configuration
+  that does name a style still wins, exactly as before; configurations this panel saves always name
+  one, so their behaviour is unchanged.
+
 - The documentation said kepler registers **nineteen** layer types. It registered twenty at
   `alpha.7` and registers twenty-one at `alpha.9` — the count had never accounted for `a5`. The
   arithmetic on the layer pages now closes: thirteen driven from query columns, six configured with

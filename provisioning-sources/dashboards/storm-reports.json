@@ -1,0 +1,2127 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "A replica of Esri's USA Severe Weather Reports dashboard on the kepler panel, over the same public NOAA/NWS Feature Service. Adds what ArcGIS does not give: a time player that recalculates the indicators, density hexbins and a human-impact layer. One request per query — `maxRecordCountFactor` raises the service's 1000-record ceiling and makes pagination unnecessary.",
+  "editable": true,
+  "id": null,
+  "links": [],
+  "preload": false,
+  "refresh": "15m",
+  "schemaVersion": 39,
+  "tags": ["kepler", "noaa", "severe-weather", "arcgis"],
+  "templating": {
+    "list": [
+      {
+        "type": "query",
+        "name": "type",
+        "label": "Event type",
+        "description": "Filled from the service itself, so the map can never write a value that is not in the list. kepler's filter on `type` and this variable are one state, in two directions.",
+        "datasource": {
+          "type": "yesoreyeram-infinity-datasource",
+          "uid": "infinity"
+        },
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": null,
+        "hide": 0,
+        "sort": 1,
+        "current": {
+          "text": ["All"],
+          "value": ["$__all"],
+          "selected": true
+        },
+        "options": [],
+        "definition": "distinct INCIDENT_TYPE on layer 4",
+        "query": {
+          "queryType": "infinity",
+          "query": "",
+          "infinityQuery": {
+            "refId": "var",
+            "datasource": {
+              "type": "yesoreyeram-infinity-datasource",
+              "uid": "infinity"
+            },
+            "type": "json",
+            "source": "url",
+            "parser": "backend",
+            "format": "table",
+            "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_storm_reports_v1/FeatureServer/4/query",
+            "url_options": {
+              "method": "GET",
+              "params": [
+                {
+                  "key": "where",
+                  "value": "INCIDENT_DATETIME IS NOT NULL"
+                },
+                {
+                  "key": "groupByFieldsForStatistics",
+                  "value": "INCIDENT_TYPE"
+                },
+                {
+                  "key": "outStatistics",
+                  "value": "[{\"statisticType\":\"count\",\"onStatisticField\":\"OBJECTID\",\"outStatisticFieldName\":\"n\"}]"
+                },
+                {
+                  "key": "orderByFields",
+                  "value": "INCIDENT_TYPE"
+                },
+                {
+                  "key": "f",
+                  "value": "json"
+                }
+              ]
+            },
+            "root_selector": "features",
+            "columns": [
+              {
+                "selector": "attributes.INCIDENT_TYPE",
+                "text": "key",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "query",
+        "name": "state",
+        "label": "State",
+        "description": "Same as the type: the state chart writes here and the map mirrors it back.",
+        "datasource": {
+          "type": "yesoreyeram-infinity-datasource",
+          "uid": "infinity"
+        },
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": null,
+        "hide": 0,
+        "sort": 1,
+        "current": {
+          "text": ["All"],
+          "value": ["$__all"],
+          "selected": true
+        },
+        "options": [],
+        "definition": "distinct STATE on layer 4",
+        "query": {
+          "queryType": "infinity",
+          "query": "",
+          "infinityQuery": {
+            "refId": "var",
+            "datasource": {
+              "type": "yesoreyeram-infinity-datasource",
+              "uid": "infinity"
+            },
+            "type": "json",
+            "source": "url",
+            "parser": "backend",
+            "format": "table",
+            "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_storm_reports_v1/FeatureServer/4/query",
+            "url_options": {
+              "method": "GET",
+              "params": [
+                {
+                  "key": "where",
+                  "value": "INCIDENT_DATETIME IS NOT NULL"
+                },
+                {
+                  "key": "groupByFieldsForStatistics",
+                  "value": "STATE"
+                },
+                {
+                  "key": "outStatistics",
+                  "value": "[{\"statisticType\":\"count\",\"onStatisticField\":\"OBJECTID\",\"outStatisticFieldName\":\"n\"}]"
+                },
+                {
+                  "key": "orderByFields",
+                  "value": "STATE"
+                },
+                {
+                  "key": "f",
+                  "value": "json"
+                }
+              ]
+            },
+            "root_selector": "features",
+            "columns": [
+              {
+                "selector": "attributes.STATE",
+                "text": "key",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "textbox",
+        "name": "mapFrom",
+        "label": "From",
+        "hide": 2,
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
+        "type": "textbox",
+        "name": "mapTo",
+        "label": "To",
+        "hide": 2,
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
+        "type": "textbox",
+        "name": "west",
+        "label": "West",
+        "hide": 2,
+        "query": "-170",
+        "current": {
+          "text": "-170",
+          "value": "-170"
+        },
+        "options": [
+          {
+            "text": "-170",
+            "value": "-170",
+            "selected": true
+          }
+        ],
+        "skipUrlSync": false
+      },
+      {
+        "type": "textbox",
+        "name": "south",
+        "label": "South",
+        "hide": 2,
+        "query": "15",
+        "current": {
+          "text": "15",
+          "value": "15"
+        },
+        "options": [
+          {
+            "text": "15",
+            "value": "15",
+            "selected": true
+          }
+        ],
+        "skipUrlSync": false
+      },
+      {
+        "type": "textbox",
+        "name": "east",
+        "label": "East",
+        "hide": 2,
+        "query": "-60",
+        "current": {
+          "text": "-60",
+          "value": "-60"
+        },
+        "options": [
+          {
+            "text": "-60",
+            "value": "-60",
+            "selected": true
+          }
+        ],
+        "skipUrlSync": false
+      },
+      {
+        "type": "textbox",
+        "name": "north",
+        "label": "North",
+        "hide": 2,
+        "query": "72",
+        "current": {
+          "text": "72",
+          "value": "72"
+        },
+        "options": [
+          {
+            "text": "72",
+            "value": "72",
+            "selected": true
+          }
+        ],
+        "skipUrlSync": false
+      },
+      {
+        "type": "textbox",
+        "name": "lat",
+        "label": "Lat",
+        "hide": 2,
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
+        "type": "textbox",
+        "name": "lng",
+        "label": "Lng",
+        "hide": 2,
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {
+    "hidden": true
+  },
+  "timezone": "browser",
+  "title": "Severe weather reports — NOAA/NWS",
+  "uid": "noaa-storm-reports",
+  "version": 2,
+  "weekStart": "",
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "gridPos": {
+        "h": 8,
+        "w": 20,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "# Severe weather reports — NOAA / National Weather Service\n\nA replica on this panel of [Esri's ArcGIS dashboard](https://www.arcgis.com/apps/dashboards/94054353efa943b781cc5d6176ca8283),\non the same data and live: the *Local Storm Reports* that the 122 forecast offices of the NWS\npublish every day, aggregated by Esri into a public Feature Service.\n\n| | |\n| --- | --- |\n| **Source** | `NOAA_storm_reports_v1/FeatureServer/4` — *ALL Storm Reports (past week)*, no token |\n| **Pipeline** | Infinity → `f=json` → `latitude`/`longitude`/`time` columns → the panel detects them and kepler draws |\n| **Coverage** | rolling 7-day window · one request, no pagination |\n| **Licence** | public domain (NOAA); service hosted by Esri |\n\n**Everything beside and below the map is computed for what is on screen** — pan or zoom and the\ncounts follow. The time player under the map narrows them further. `MAGNITUDE` mixes units by type\n(inches, knots, EF number), so it is in the tooltip and drives no point size.\n"
+      }
+    },
+    {
+      "id": 2,
+      "type": "ubica-keplergl-panel",
+      "title": "Severe weather reports — last 7 days",
+      "description": "Always fetches the whole week. It reads neither the extent variables nor the player's: if it did, zooming out would not bring the rows back — the dataset would no longer hold them. The extent and the brush are masks over data that stays whole.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "gridPos": {
+        "h": 24,
+        "w": 17,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_storm_reports_v1/FeatureServer/4/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "INCIDENT_DATETIME IS NOT NULL"
+              },
+              {
+                "key": "outFields",
+                "value": "OBJECTID,INCIDENT_DATETIME,INCIDENT_TYPE,MAGNITUDE,MEASUREMENT,LOCATION,COUNTY,STATE,LATITUDE,LONGITUDE,SOURCE,OFFICE,FATALITIES,INJURIES,HOURS_OLD,COMMENTS"
+              },
+              {
+                "key": "orderByFields",
+                "value": "OBJECTID"
+              },
+              {
+                "key": "returnGeometry",
+                "value": "false"
+              },
+              {
+                "key": "maxRecordCountFactor",
+                "value": "10"
+              },
+              {
+                "key": "resultRecordCount",
+                "value": "10000"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.LATITUDE",
+              "text": "latitude",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.LONGITUDE",
+              "text": "longitude",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.INCIDENT_DATETIME",
+              "text": "time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "attributes.INCIDENT_TYPE",
+              "text": "type",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.LOCATION",
+              "text": "location",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.COUNTY",
+              "text": "county",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.STATE",
+              "text": "state",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.MAGNITUDE",
+              "text": "mag",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.MEASUREMENT",
+              "text": "measurement",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.SOURCE",
+              "text": "source",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.OFFICE",
+              "text": "office",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.FATALITIES",
+              "text": "deaths",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.INJURIES",
+              "text": "injuries",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.HOURS_OLD",
+              "text": "hours",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.COMMENTS",
+              "text": "comment",
+              "type": "string"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "deaths + injuries",
+              "text": "casualties"
+            }
+          ]
+        },
+        {
+          "refId": "I",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_storm_reports_v1/FeatureServer/4/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "(FATALITIES > 0 OR INJURIES > 0) AND INCIDENT_DATETIME IS NOT NULL"
+              },
+              {
+                "key": "outFields",
+                "value": "OBJECTID,INCIDENT_DATETIME,INCIDENT_TYPE,MAGNITUDE,MEASUREMENT,LOCATION,COUNTY,STATE,LATITUDE,LONGITUDE,SOURCE,OFFICE,FATALITIES,INJURIES,HOURS_OLD,COMMENTS"
+              },
+              {
+                "key": "orderByFields",
+                "value": "OBJECTID"
+              },
+              {
+                "key": "returnGeometry",
+                "value": "false"
+              },
+              {
+                "key": "maxRecordCountFactor",
+                "value": "10"
+              },
+              {
+                "key": "resultRecordCount",
+                "value": "10000"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.LATITUDE",
+              "text": "latitude",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.LONGITUDE",
+              "text": "longitude",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.INCIDENT_DATETIME",
+              "text": "time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "attributes.INCIDENT_TYPE",
+              "text": "type",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.LOCATION",
+              "text": "location",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.COUNTY",
+              "text": "county",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.STATE",
+              "text": "state",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.MAGNITUDE",
+              "text": "mag",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.MEASUREMENT",
+              "text": "measurement",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.SOURCE",
+              "text": "source",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.OFFICE",
+              "text": "office",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.FATALITIES",
+              "text": "deaths",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.INJURIES",
+              "text": "injuries",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.HOURS_OLD",
+              "text": "hours",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.COMMENTS",
+              "text": "comment",
+              "type": "string"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "deaths + injuries",
+              "text": "casualties"
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showSidePanel": false,
+        "followGrafanaTheme": true,
+        "basemap": "positron",
+        "timeSync": "variables",
+        "timeVariables": {
+          "from": "mapFrom",
+          "to": "mapTo"
+        },
+        "publishWhilePlaying": false,
+        "peerTimeSync": false,
+        "tripLayerMode": "table",
+        "flowRenderMode": "straight",
+        "windDensity": 9000,
+        "variableMappings": [
+          {
+            "field": "type",
+            "variable": "type",
+            "source": "filter"
+          },
+          {
+            "field": "state",
+            "variable": "state",
+            "source": "filter"
+          },
+          {
+            "field": "",
+            "variable": "lat",
+            "variableTo": "lng",
+            "source": "center",
+            "zoom": 9
+          }
+        ],
+        "viewportVariables": {
+          "west": "west",
+          "south": "south",
+          "east": "east",
+          "north": "north"
+        },
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": 38.5,
+              "longitude": -96.0,
+              "zoom": 3.5,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "visState": {
+              "layerBlending": "normal",
+              "filters": [
+                {
+                  "dataId": ["grafana-A", "grafana-I"],
+                  "id": "window",
+                  "name": ["time", "time"],
+                  "type": "timeRange",
+                  "value": [1000000000000, 1000000000001],
+                  "plotType": {
+                    "type": "histogram"
+                  },
+                  "animationWindow": "free",
+                  "yAxis": null,
+                  "view": "enlarged",
+                  "speed": 1,
+                  "enabled": true
+                }
+              ],
+              "layers": [
+                {
+                  "id": "reports",
+                  "type": "point",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Reports",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "radius": 6,
+                      "opacity": 0.8,
+                      "outline": false,
+                      "filled": true,
+                      "radiusRange": [3, 40],
+                      "colorRange": {
+                        "name": "NOAA severe weather",
+                        "type": "custom",
+                        "category": "Custom",
+                        "colors": [
+                          "#1f5fa9",
+                          "#6baed6",
+                          "#8c6bb1",
+                          "#e7b416",
+                          "#d62728",
+                          "#e8642f",
+                          "#2b8c5d",
+                          "#7fcaa0"
+                        ],
+                        "colorMap": [
+                          ["Flash Flood", "#1f5fa9"],
+                          ["Flood", "#6baed6"],
+                          ["Hail", "#8c6bb1"],
+                          ["Lightning", "#e7b416"],
+                          ["Tornado", "#d62728"],
+                          ["Wildfire", "#e8642f"],
+                          ["Wind Damage", "#2b8c5d"],
+                          ["Wind Gust", "#7fcaa0"]
+                        ]
+                      }
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "type",
+                      "type": "string"
+                    },
+                    "colorScale": "customOrdinal"
+                  }
+                },
+                {
+                  "id": "density",
+                  "type": "hexagon",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Density (hexbins)",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "isVisible": false,
+                    "visConfig": {
+                      "worldUnitSize": 25,
+                      "opacity": 0.7,
+                      "coverage": 0.9,
+                      "colorAggregation": "count",
+                      "enable3d": false
+                    }
+                  },
+                  "visualChannels": {
+                    "colorScale": "quantile"
+                  }
+                },
+                {
+                  "id": "impact",
+                  "type": "point",
+                  "config": {
+                    "dataId": "grafana-I",
+                    "label": "Human impact",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "isVisible": true,
+                    "color": [193, 18, 31],
+                    "visConfig": {
+                      "radius": 18,
+                      "opacity": 0.9,
+                      "outline": true,
+                      "thickness": 2,
+                      "strokeColor": [255, 255, 255],
+                      "filled": true,
+                      "radiusRange": [14, 28]
+                    }
+                  },
+                  "visualChannels": {
+                    "sizeField": {
+                      "name": "casualties",
+                      "type": "integer"
+                    },
+                    "sizeScale": "linear"
+                  }
+                }
+              ],
+              "layerOrder": ["impact", "reports", "density"],
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": true,
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "type"
+                      },
+                      {
+                        "name": "location"
+                      },
+                      {
+                        "name": "county"
+                      },
+                      {
+                        "name": "state"
+                      },
+                      {
+                        "name": "time"
+                      },
+                      {
+                        "name": "mag"
+                      },
+                      {
+                        "name": "measurement"
+                      },
+                      {
+                        "name": "deaths"
+                      },
+                      {
+                        "name": "injuries"
+                      }
+                    ],
+                    "grafana-I": [
+                      {
+                        "name": "type"
+                      },
+                      {
+                        "name": "location"
+                      },
+                      {
+                        "name": "county"
+                      },
+                      {
+                        "name": "state"
+                      },
+                      {
+                        "name": "time"
+                      },
+                      {
+                        "name": "deaths"
+                      },
+                      {
+                        "name": "injuries"
+                      },
+                      {
+                        "name": "casualties"
+                      }
+                    ]
+                  }
+                },
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "coordinate": {
+                  "enabled": false
+                }
+              }
+            }
+          }
+        },
+        "saveRequest": 0
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Last 24 hours",
+      "description": "The 24-hour column of the ArcGIS dashboard, in a single request: six `CASE` expressions inside `outStatistics`. A type with no events returns 0 rather than disappearing.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 7,
+        "x": 17,
+        "y": 8
+      },
+      "targets": [
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_storm_reports_v1/FeatureServer/4/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "HOURS_OLD <= 24 AND LONGITUDE BETWEEN $west AND $east AND LATITUDE BETWEEN $south AND $north AND INCIDENT_TYPE IN (${type:sqlstring}) AND STATE IN (${state:sqlstring})"
+              },
+              {
+                "key": "outStatistics",
+                "value": "[{\"statisticType\":\"sum\",\"onStatisticField\":\"CASE WHEN INCIDENT_TYPE = 'Tornado' THEN 1 ELSE 0 END\",\"outStatisticFieldName\":\"tornado\"},{\"statisticType\":\"sum\",\"onStatisticField\":\"CASE WHEN INCIDENT_TYPE = 'Hail' THEN 1 ELSE 0 END\",\"outStatisticFieldName\":\"hail\"},{\"statisticType\":\"sum\",\"onStatisticField\":\"CASE WHEN INCIDENT_TYPE IN ('Wind Damage', 'Wind Gust') THEN 1 ELSE 0 END\",\"outStatisticFieldName\":\"wind\"},{\"statisticType\":\"sum\",\"onStatisticField\":\"CASE WHEN INCIDENT_TYPE LIKE '%Flood%' THEN 1 ELSE 0 END\",\"outStatisticFieldName\":\"flood\"},{\"statisticType\":\"sum\",\"onStatisticField\":\"CASE WHEN INCIDENT_TYPE = 'Lightning' THEN 1 ELSE 0 END\",\"outStatisticFieldName\":\"lightning\"},{\"statisticType\":\"sum\",\"onStatisticField\":\"CASE WHEN INCIDENT_TYPE = 'Wildfire' THEN 1 ELSE 0 END\",\"outStatisticFieldName\":\"wildfire\"}]"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.tornado",
+              "text": "tornado",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.hail",
+              "text": "hail",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.wind",
+              "text": "wind",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.flood",
+              "text": "flood",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.lightning",
+              "text": "lightning",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.wildfire",
+              "text": "wildfire",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "decimals": 0,
+          "unit": "none",
+          "mappings": [],
+          "noValue": "0"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "tornado"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Tornadoes"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d62728"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hail"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Hail"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8c6bb1"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "wind"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Wind"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2b8c5d"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "flood"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Flood"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#1f5fa9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "lightning"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Lightning"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e7b416"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "wildfire"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Wildfire"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e8642f"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "percentChangeColorMode": "standard"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "In the player's window",
+      "description": "The same, for the span the map's time brush marks. With no brush the `mapFrom` / `mapTo` guards span everything and the block shows the whole week.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 7,
+        "x": 17,
+        "y": 16
+      },
+      "targets": [
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_storm_reports_v1/FeatureServer/4/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "INCIDENT_DATETIME BETWEEN COALESCE(NULLIF('$mapFrom', ''), '1970-01-01T00:00:00.000Z') AND COALESCE(NULLIF('$mapTo', ''), '2100-01-01T00:00:00.000Z') AND LONGITUDE BETWEEN $west AND $east AND LATITUDE BETWEEN $south AND $north AND INCIDENT_TYPE IN (${type:sqlstring}) AND STATE IN (${state:sqlstring})"
+              },
+              {
+                "key": "outStatistics",
+                "value": "[{\"statisticType\":\"sum\",\"onStatisticField\":\"CASE WHEN INCIDENT_TYPE = 'Tornado' THEN 1 ELSE 0 END\",\"outStatisticFieldName\":\"tornado\"},{\"statisticType\":\"sum\",\"onStatisticField\":\"CASE WHEN INCIDENT_TYPE = 'Hail' THEN 1 ELSE 0 END\",\"outStatisticFieldName\":\"hail\"},{\"statisticType\":\"sum\",\"onStatisticField\":\"CASE WHEN INCIDENT_TYPE IN ('Wind Damage', 'Wind Gust') THEN 1 ELSE 0 END\",\"outStatisticFieldName\":\"wind\"},{\"statisticType\":\"sum\",\"onStatisticField\":\"CASE WHEN INCIDENT_TYPE LIKE '%Flood%' THEN 1 ELSE 0 END\",\"outStatisticFieldName\":\"flood\"},{\"statisticType\":\"sum\",\"onStatisticField\":\"CASE WHEN INCIDENT_TYPE = 'Lightning' THEN 1 ELSE 0 END\",\"outStatisticFieldName\":\"lightning\"},{\"statisticType\":\"sum\",\"onStatisticField\":\"CASE WHEN INCIDENT_TYPE = 'Wildfire' THEN 1 ELSE 0 END\",\"outStatisticFieldName\":\"wildfire\"}]"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.tornado",
+              "text": "tornado",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.hail",
+              "text": "hail",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.wind",
+              "text": "wind",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.flood",
+              "text": "flood",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.lightning",
+              "text": "lightning",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.wildfire",
+              "text": "wildfire",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "decimals": 0,
+          "unit": "none",
+          "mappings": [],
+          "noValue": "0"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "tornado"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Tornadoes"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d62728"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hail"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Hail"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8c6bb1"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "wind"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Wind"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2b8c5d"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "flood"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Flood"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#1f5fa9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "lightning"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Lightning"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e7b416"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "wildfire"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Wildfire"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e8642f"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "percentChangeColorMode": "standard"
+      }
+    },
+    {
+      "id": 5,
+      "type": "barchart",
+      "title": "Reports by type",
+      "description": "Click a bar, then *Filter the dashboard by this value* in the menu Grafana opens — that is how a data link on a chart behaves. It filters the map and every other panel by that type. kepler's own filter on `type` writes to the same variable, so the channel runs both ways.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 7,
+        "x": 17,
+        "y": 24
+      },
+      "targets": [
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_storm_reports_v1/FeatureServer/4/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "LONGITUDE BETWEEN $west AND $east AND LATITUDE BETWEEN $south AND $north AND INCIDENT_DATETIME BETWEEN COALESCE(NULLIF('$mapFrom', ''), '1970-01-01T00:00:00.000Z') AND COALESCE(NULLIF('$mapTo', ''), '2100-01-01T00:00:00.000Z') AND STATE IN (${state:sqlstring})"
+              },
+              {
+                "key": "groupByFieldsForStatistics",
+                "value": "INCIDENT_TYPE"
+              },
+              {
+                "key": "outStatistics",
+                "value": "[{\"statisticType\":\"count\",\"onStatisticField\":\"OBJECTID\",\"outStatisticFieldName\":\"n\"}]"
+              },
+              {
+                "key": "orderByFields",
+                "value": "n DESC"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.INCIDENT_TYPE",
+              "text": "key",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.n",
+              "text": "n",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#5a7fa8"
+          },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Filter the dashboard by this value",
+              "url": "/d/noaa-storm-reports?var-type=${__data.fields.key}&${type:queryparam}&${state:queryparam}&var-mapFrom=${mapFrom}&var-mapTo=${mapTo}&var-west=${west}&var-south=${south}&var-east=${east}&var-north=${north}"
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "key"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": " "
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "n"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Reports"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "key",
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.7,
+        "barWidth": 0.8,
+        "barRadius": 0,
+        "fullHighlight": false,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "barchart",
+      "title": "States with most reports",
+      "description": "The chart the ArcGIS *State Chart* promises in its title and does not deliver.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 9,
+        "x": 0,
+        "y": 32
+      },
+      "targets": [
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_storm_reports_v1/FeatureServer/4/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "LONGITUDE BETWEEN $west AND $east AND LATITUDE BETWEEN $south AND $north AND INCIDENT_DATETIME BETWEEN COALESCE(NULLIF('$mapFrom', ''), '1970-01-01T00:00:00.000Z') AND COALESCE(NULLIF('$mapTo', ''), '2100-01-01T00:00:00.000Z') AND INCIDENT_TYPE IN (${type:sqlstring})"
+              },
+              {
+                "key": "groupByFieldsForStatistics",
+                "value": "STATE"
+              },
+              {
+                "key": "outStatistics",
+                "value": "[{\"statisticType\":\"count\",\"onStatisticField\":\"OBJECTID\",\"outStatisticFieldName\":\"n\"}]"
+              },
+              {
+                "key": "orderByFields",
+                "value": "n DESC"
+              },
+              {
+                "key": "resultRecordCount",
+                "value": "15"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.STATE",
+              "text": "key",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.n",
+              "text": "n",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#5a7fa8"
+          },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Filter the dashboard by this value",
+              "url": "/d/noaa-storm-reports?var-state=${__data.fields.key}&${type:queryparam}&${state:queryparam}&var-mapFrom=${mapFrom}&var-mapTo=${mapTo}&var-west=${west}&var-south=${south}&var-east=${east}&var-north=${north}"
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "key"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": " "
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "n"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Reports"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "key",
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.7,
+        "barWidth": 0.8,
+        "barRadius": 0,
+        "fullHighlight": false,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Most recent reports",
+      "description": "The list widget of the ArcGIS dashboard. Every row is a link that centres the map on that report: it writes `lat` and `lng`, and the panel's *Center* mapping reads them. Follows the extent, the player's window and both pickers.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 15,
+        "x": 9,
+        "y": 32
+      },
+      "targets": [
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_storm_reports_v1/FeatureServer/4/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "INCIDENT_DATETIME BETWEEN COALESCE(NULLIF('$mapFrom', ''), '1970-01-01T00:00:00.000Z') AND COALESCE(NULLIF('$mapTo', ''), '2100-01-01T00:00:00.000Z') AND LONGITUDE BETWEEN $west AND $east AND LATITUDE BETWEEN $south AND $north AND INCIDENT_TYPE IN (${type:sqlstring}) AND STATE IN (${state:sqlstring})"
+              },
+              {
+                "key": "outFields",
+                "value": "OBJECTID,INCIDENT_DATETIME,INCIDENT_TYPE,MAGNITUDE,MEASUREMENT,LOCATION,COUNTY,STATE,LATITUDE,LONGITUDE,SOURCE,OFFICE,FATALITIES,INJURIES,HOURS_OLD,COMMENTS"
+              },
+              {
+                "key": "orderByFields",
+                "value": "INCIDENT_DATETIME DESC"
+              },
+              {
+                "key": "resultRecordCount",
+                "value": "200"
+              },
+              {
+                "key": "returnGeometry",
+                "value": "false"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.LATITUDE",
+              "text": "latitude",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.LONGITUDE",
+              "text": "longitude",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.INCIDENT_DATETIME",
+              "text": "time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "attributes.INCIDENT_TYPE",
+              "text": "type",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.LOCATION",
+              "text": "location",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.COUNTY",
+              "text": "county",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.STATE",
+              "text": "state",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.MAGNITUDE",
+              "text": "mag",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.MEASUREMENT",
+              "text": "measurement",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.HOURS_OLD",
+              "text": "hours",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "renameByName": {
+              "time": "Date and time",
+              "type": "Type",
+              "location": "Location",
+              "county": "County",
+              "state": "State",
+              "mag": "Magnitude",
+              "measurement": "Measured as",
+              "hours": "Hours old"
+            },
+            "indexByName": {
+              "time": 0,
+              "type": 1,
+              "location": 2,
+              "county": 3,
+              "state": 4,
+              "mag": 5,
+              "measurement": 6,
+              "hours": 7,
+              "latitude": 8,
+              "longitude": 9
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "filterable": false
+          },
+          "mappings": [],
+          "links": [
+            {
+              "title": "Centre the map on this report",
+              "url": "/d/noaa-storm-reports?var-lat=${__data.fields.latitude}&var-lng=${__data.fields.longitude}&${type:queryparam}&${state:queryparam}&var-mapFrom=${mapFrom}&var-mapTo=${mapTo}&var-west=${west}&var-south=${south}&var-east=${east}&var-north=${north}"
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "latitude"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "longitude"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": ["sum"],
+          "countRows": false,
+          "fields": ""
+        },
+        "sortBy": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Reports this week",
+      "description": "Authoritative count: one request, no extent, no pickers. If this number disagrees with the map's point count, the map is truncating — which is exactly the contrast that made the pagination bug visible on the Aqueduct dashboard.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_storm_reports_v1/FeatureServer/4/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "INCIDENT_DATETIME IS NOT NULL"
+              },
+              {
+                "key": "outStatistics",
+                "value": "[{\"statisticType\":\"count\",\"onStatisticField\":\"OBJECTID\",\"outStatisticFieldName\":\"n\"}]"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.n",
+              "text": "n",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "decimals": 0,
+          "unit": "none",
+          "mappings": [],
+          "noValue": "0"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "n"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Total"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "percentChangeColorMode": "standard"
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Deaths and injuries per day",
+      "description": "Reported casualties, summed per day on the server — `CAST(INCIDENT_DATETIME AS DATE)` as the group, so this costs one 300-byte request rather than bucketing 1.951 rows in the browser. **Expect it to be empty most weeks**: casualties appear on roughly 6 reports in 2.000, and a flat zero line here is the true answer, not a broken panel. Follows the map's extent and both pickers; deliberately *not* the player's window, so the brush has a shape to move over. Day buckets are UTC and the finest the service offers.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 43
+      },
+      "targets": [
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_storm_reports_v1/FeatureServer/4/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "LONGITUDE BETWEEN $west AND $east AND LATITUDE BETWEEN $south AND $north AND INCIDENT_TYPE IN (${type:sqlstring}) AND STATE IN (${state:sqlstring})"
+              },
+              {
+                "key": "groupByFieldsForStatistics",
+                "value": "CAST(INCIDENT_DATETIME AS DATE)"
+              },
+              {
+                "key": "outStatistics",
+                "value": "[{\"statisticType\":\"sum\",\"onStatisticField\":\"FATALITIES\",\"outStatisticFieldName\":\"deaths\"},{\"statisticType\":\"sum\",\"onStatisticField\":\"INJURIES\",\"outStatisticFieldName\":\"injuries\"}]"
+              },
+              {
+                "key": "orderByFields",
+                "value": "CAST(INCIDENT_DATETIME AS DATE)"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.EXPR_1",
+              "text": "time",
+              "type": "timestamp_epoch"
+            },
+            {
+              "selector": "attributes.deaths",
+              "text": "deaths",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.injuries",
+              "text": "injuries",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 1,
+            "fillOpacity": 70,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "barWidthFactor": 0.6,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "insertNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "unit": "none",
+          "min": 0,
+          "mappings": [],
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deaths"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Deaths"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c1121f"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "injuries"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Injuries"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e8862f"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": ["sum"]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none",
+          "hideZeros": false
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 53
+      },
+      "options": {
+        "mode": "markdown",
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "**Source:** National Weather Service (NOAA) · service aggregated and hosted by Esri ·\n[USA Storm Reports](https://www.arcgis.com/home/item.html?id=e109e8fd9c5a495c813b5cbaee9c7d9b)\nin the ArcGIS Living Atlas. The reports are **preliminary**; the verified ones live at NOAA's NCEI.\n\n**Deliberate differences from the ArcGIS dashboard.** Its chart is called *State Chart* but groups\nby event type; both are here. Its *Rain* indicator queries `INCIDENT_TYPE = 'Heavy Rain'`, a string\nthat is not in the NWS vocabulary today and therefore always returns 0; *Lightning* and *Wildfire*\ntake its place. And the time player, the density hexbins, the human-impact layer and the daily\ncasualty series have no equivalent there.\n"
+      }
+    }
+  ]
+}

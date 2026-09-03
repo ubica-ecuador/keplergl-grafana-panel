@@ -1,0 +1,2085 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Grafana replica of the Copernicus CAMS Fire Emissions Watch, built on the kepler.gl panel and reading ECMWF's public Parquet store live with DuckDB.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "type": "volkovlabs-variable-panel",
+      "id": 11,
+      "title": "Minimum cell value — drag to hide the weakest fires",
+      "description": "Hides the weakest fires everywhere at once. The ranking and the stats drop the cell-days in SQL; **the maps keep their full dataset and apply the same threshold as a kepler range filter**, so dragging the slider re-masks them instantly, with no query. Units follow the Variable picker: MW for frpfire, t/day for cfire. The daily global chart is the one panel it cannot touch — CAMS precomputes that series, there are no cells to filter.",
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "displayMode": "slider",
+        "variable": "minval",
+        "padding": 8,
+        "showName": false,
+        "showLabel": false
+      }
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Every polygon is one cell of the GFAS grid, summed over the dashboard time range. Pan or zoom and watch the panels beside it follow. Draw a polygon with the map's draw tool and the polygon takes over from the viewport; delete it and the viewport is back. Pick a country in the ranking and the map flies there and outlines its subdivisions; clear the selection and they disappear. The outlines carry no colour of their own — the cells already do — but the query behind them (refId D) returns each subdivision's total, so colouring them is a matter of styling the layer in kepler and pressing Save current map.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 14,
+        "x": 0,
+        "y": 3
+      },
+      "id": 1,
+      "options": {
+        "areaVariable": "area",
+        "basemap": "dark-matter",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": false,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [40, 63, 93],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [4, 9, 17],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [114.75, 114.75, 114.75],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [9, 16, 29],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [17, 35, 48]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": 15.208504042250498,
+              "longitude": -16.501222330238864,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_2D",
+              "maxPitch": 60,
+              "pitch": 0,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 1.30597944073028
+            },
+            "mapStyle": {
+              "backgroundColor": [0, 0, 0],
+              "mapStyles": {},
+              "styleType": "dark-matter",
+              "threeDBuildingColor": [15.035172933000911, 15.035172933000911, 15.035172933000911],
+              "topLayerGroups": {
+                "label": true,
+                "land": true,
+                "water": true
+              },
+              "visibleLayerGroups": {
+                "3d building": false,
+                "border": false,
+                "building": true,
+                "label": true,
+                "land": true,
+                "road": true,
+                "water": true
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": true
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "valor"
+                      },
+                      {
+                        "name": "dias"
+                      },
+                      {
+                        "name": "pais"
+                      }
+                    ]
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": ["143zphm", "celdas"],
+              "layers": [
+                {
+                  "id": "subdivisions",
+                  "type": "geojson",
+                  "config": {
+                    "dataId": "grafana-D",
+                    "label": "Subdivisions",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "opacity": 0.9,
+                      "stroked": true,
+                      "filled": false,
+                      "thickness": 0.8,
+                      "strokeOpacity": 0.9,
+                      "strokeColor": [232, 232, 232],
+                      "colorRange": {
+                        "name": "Fuego",
+                        "type": "custom",
+                        "category": "Custom",
+                        "colors": ["#3b0d0c", "#8c2703", "#c2410c", "#f0820b", "#fbbf24", "#fef3a3"]
+                      },
+                      "enable3d": false,
+                      "wireframe": false
+                    },
+                    "color": [232, 232, 232]
+                  },
+                  "visualChannels": {}
+                },
+                {
+                  "config": {
+                    "color": [241, 92, 23],
+                    "columnMode": "geojson",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [252, 242, 26, 255],
+                    "isVisible": true,
+                    "label": "GFAS cells (heatmap)",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [0, 0, 200, 255],
+                        "color": [255, 255, 255],
+                        "offset": [0, 0],
+                        "outlineColor": [255, 0, 0, 255],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "aggregation": "SUM",
+                      "colorRange": {
+                        "category": "Uber",
+                        "colors": ["#223F9A", "#892B8D", "#C00B68", "#EA4242", "#FF9219", "#FAE300"],
+                        "name": "UberPool",
+                        "type": "diverging"
+                      },
+                      "intensity": 6.856,
+                      "opacity": 0.52,
+                      "radius": 30.8,
+                      "threshold": 0.24
+                    }
+                  },
+                  "id": "143zphm",
+                  "type": "heatmap",
+                  "visualChannels": {
+                    "weightField": {
+                      "name": "value",
+                      "type": "real"
+                    },
+                    "weightScale": "linear"
+                  }
+                },
+                {
+                  "config": {
+                    "color": [241, 92, 23],
+                    "columnMode": "geojson",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [252, 242, 26, 255],
+                    "isVisible": true,
+                    "label": "GFAS cells",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [0, 0, 200, 255],
+                        "color": [255, 255, 255],
+                        "offset": [0, 0],
+                        "outlineColor": [255, 0, 0, 255],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "allowHover": true,
+                      "colorRange": {
+                        "category": "Custom",
+                        "colors": ["#3b0d0c", "#8c2703", "#c2410c", "#f0820b", "#fbbf24", "#fef3a3"],
+                        "name": "Fuego",
+                        "type": "custom"
+                      },
+                      "elevationScale": 50,
+                      "enable3d": false,
+                      "filled": true,
+                      "fixedHeight": false,
+                      "heightRange": [0, 1500],
+                      "opacity": 0.85,
+                      "radius": 10,
+                      "radiusRange": [0, 50],
+                      "sizeRange": [0, 10],
+                      "strokeColorRange": {
+                        "category": "Custom",
+                        "colors": ["#3b0d0c", "#8c2703", "#c2410c", "#f0820b", "#fbbf24", "#fef3a3"],
+                        "name": "Fuego",
+                        "type": "custom"
+                      },
+                      "strokeOpacity": 0,
+                      "stroked": false,
+                      "thickness": 0,
+                      "wireframe": false
+                    }
+                  },
+                  "id": "celdas",
+                  "type": "geojson",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "value",
+                      "type": "real"
+                    },
+                    "colorScale": "quantile",
+                    "heightField": {
+                      "name": "value",
+                      "type": "real"
+                    },
+                    "heightScale": "sqrt",
+                    "radiusScale": "linear",
+                    "sizeScale": "linear",
+                    "strokeColorScale": "quantile"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "saveRequest": 1,
+        "showSidePanel": false,
+        "timeSync": "off",
+        "tripLayerMode": "table",
+        "variableMappings": [
+          {
+            "field": "country",
+            "source": "click",
+            "variable": "country_sel"
+          },
+          {
+            "field": "",
+            "source": "coordinate",
+            "variable": "linkLat",
+            "variableTo": "linkLng"
+          },
+          {
+            "field": "value",
+            "variable": "minval",
+            "variableTo": "maxval",
+            "source": "filter"
+          },
+          {
+            "field": "",
+            "variable": "linkLat",
+            "variableTo": "linkLng",
+            "source": "center",
+            "zoom": 4
+          }
+        ],
+        "viewportVariables": {
+          "east": "east",
+          "north": "north",
+          "south": "south",
+          "west": "west"
+        },
+        "windDensity": 9000
+      },
+      "pluginVersion": "0.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "WITH idx AS (SELECT * FROM read_json_auto('https://sites.ecmwf.int/data/cams/products/gfas/v2_gisco_fp/regions/region_index.json')),\nreg AS (SELECT i-1 AS region_idx, admin1_parent[i] AS iso3\n        FROM idx, range(1, len(idx.admin1)+1) t(i)),\ncountries AS (SELECT admin0[i] AS iso3, admin0_names[i] AS country, admin0_continent[i] AS continente\n        FROM idx, range(1, len(idx.admin0)+1) t(i)),\npx AS (SELECT DATE '2003-01-01' + INTERVAL (day_idx) DAY AS dt,\n                     -179.95 + lon_idx*0.1 AS lon, -89.95 + lat_idx*0.1 AS lat,\n                     lon_idx, lat_idx, value, region_idx\n              FROM read_parquet([${months:sqlstring}]))\nSELECT ST_AsHEXWKB(ST_MakeEnvelope(p.lon-0.05, p.lat-0.05, p.lon+0.05, p.lat+0.05)) AS geom,\n       round(sum(p.value), 1)  AS value,\n       count(*)                AS ndays,\n       any_value(c.country)       AS country\nFROM px p\nLEFT JOIN reg r ON r.region_idx = p.region_idx\nLEFT JOIN countries c ON c.iso3 = r.iso3\nWHERE $__timeFilter(p.dt)\nGROUP BY p.lon, p.lat",
+          "refId": "A"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "WITH idx AS (SELECT * FROM read_json_auto('https://sites.ecmwf.int/data/cams/products/gfas/v2_gisco_fp/regions/region_index.json')),\nsub AS (SELECT i-1 AS region_idx, admin1[i] AS adm1, admin1_names[i] AS name, admin1_parent[i] AS iso3\n        FROM idx, range(1, len(idx.admin1)+1) t(i)),\nparent AS (SELECT admin0[i] AS iso3, admin0_names[i] AS country\n           FROM idx, range(1, len(idx.admin0)+1) t(i)),\npick AS (SELECT max(iso3) AS iso3 FROM parent WHERE country = $country_sel),\npx AS (SELECT DATE '2003-01-01' + INTERVAL (day_idx) DAY AS dt, value, region_idx\n       FROM read_parquet([${months:sqlstring}])),\nagg AS (SELECT s.adm1 AS adm1, s.name AS name, sum(p.value) AS total\n        FROM px p JOIN sub s ON s.region_idx = p.region_idx\n        WHERE $__timeFilter(p.dt)\n        GROUP BY 1, 2),\n-- Las geometrías vienen como listas anidadas GeoArrow, no como WKB: hay que\n-- rearmar el WKT a mano. Los anillos no vienen cerrados, así que se cierran; y\n-- ST_MakeValid deja un tercio como GEOMETRYCOLLECTION, que el decodificador del\n-- plugin rechaza, de ahí el ST_CollectionExtract a polígonos.\ngeo AS (SELECT g.adm1 AS adm1,\n               ST_CollectionExtract(ST_MakeValid(ST_GeomFromText(\n                 'MULTIPOLYGON(' || list_aggregate(list_transform(g.geometry, poly ->\n                     '(' || list_aggregate(list_transform(poly, ring ->\n                         '(' || list_aggregate(list_transform(\n                             CASE WHEN ring[1] = ring[len(ring)] THEN ring ELSE list_append(ring, ring[1]) END,\n                             pt -> pt[1]::VARCHAR || ' ' || pt[2]::VARCHAR), 'string_agg', ', ') || ')'\n                     ), 'string_agg', ', ') || ')'\n                 ), 'string_agg', ', ') || ')')), 3) AS shape\n        FROM read_parquet('https://apps.atmosphere.copernicus.eu/fire-emissions-watch/data/countries_admin1_v2gisco.parquet') g\n        WHERE $country_sel <> '' AND g.adm0 = (SELECT iso3 FROM pick))\nSELECT ST_AsHEXWKB(geo.shape)                    AS geom,\n       COALESCE(agg.name, geo.adm1)              AS subdivision,\n       round(COALESCE(agg.total, 0) / 1e3, 2)    AS total\nFROM geo LEFT JOIN agg ON agg.adm1 = geo.adm1"
+        }
+      ],
+      "title": "Where it burns — 0.1° grid cells",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Only the regions that fall inside what the map is showing: the drawn polygon if there is one, the viewport otherwise. **Magnitude and intensity are the contribution inside that zone**, as daily values over the dashboard time range — units for cfire: kt C and kg C/km²; for frpfire: GW and W/km² (intensity divides by the country's full area). **The anomaly σ is not**: it is the whole-country figure CAMS publishes for the $win window, because recomputing the 2003–2025 baseline inside a polygon takes 44 s. Zoomed out, with the default 7-day range, magnitude and intensity match the original viewer exactly.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "minWidth": 50
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open country view",
+              "url": "/d/fire-emissions/${__url.params:exclude:var-country_sel,var-linkLat,var-linkLng}&var-country_sel=${__data.fields[\"Region\"]:percentencode}&var-linkLat=${__data.fields[\"clat\"]}&var-linkLng=${__data.fields[\"clon\"]}"
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "#"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 38
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Region"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 118
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Trend"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "drawStyle": "line",
+                  "fillOpacity": 25,
+                  "gradientMode": "opacity",
+                  "hideValue": true,
+                  "lineWidth": 1,
+                  "type": "sparkline"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 92
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Δ"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 42
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "-1": {
+                        "color": "blue",
+                        "index": 1,
+                        "text": "▼"
+                      },
+                      "0": {
+                        "color": "text",
+                        "index": 2,
+                        "text": "—"
+                      },
+                      "1": {
+                        "color": "orange",
+                        "index": 0,
+                        "text": "▲"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Magnitude"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 94
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-reds"
+                }
+              },
+              {
+                "id": "fieldMinMax",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Intensity"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 88
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-greens"
+                }
+              },
+              {
+                "id": "fieldMinMax",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Anomaly σ"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 92
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-BlYlRd"
+                }
+              },
+              {
+                "id": "fieldMinMax",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "clat"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "clon"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 10,
+        "x": 14,
+        "y": 3
+      },
+      "id": 2,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "12.0.10",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 0,
+          "rawQuery": true,
+          "rawSql": "WITH idx AS (SELECT * FROM read_json_auto('https://sites.ecmwf.int/data/cams/products/gfas/v2_gisco_fp/regions/region_index.json')),\nreg AS (SELECT i-1 AS region_idx, admin1_parent[i] AS iso3\n        FROM idx, range(1, len(idx.admin1)+1) t(i)),\ncountries AS (SELECT admin0[i] AS iso3, admin0_names[i] AS country, admin0_continent[i] AS continente\n        FROM idx, range(1, len(idx.admin0)+1) t(i)),\npx AS (SELECT DATE '2003-01-01' + INTERVAL (day_idx) DAY AS dt,\n                     -179.95 + lon_idx*0.1 AS lon, -89.95 + lat_idx*0.1 AS lat,\n                     lon_idx, lat_idx, value, region_idx\n              FROM read_parquet([${months:sqlstring}])\n              -- Slider threshold. Panels that aggregate drop the cell-day here, in\n              -- SQL. The maps do NOT: they load the whole dataset and get the\n              -- same threshold as a kepler range filter, so dragging the\n              -- slider re-masks them in the browser without re-querying.\n              WHERE value >= $minval),\nzone AS (SELECT CASE WHEN $area = '' THEN NULL ELSE ST_GeomFromText($area) END AS g),\nareas AS (SELECT * FROM (SELECT adm0 AS iso3, area_sq_km FROM read_parquet('https://apps.atmosphere.copernicus.eu/fire-emissions-watch/data/countries_admin0_v2gisco_z0.parquet'))),\nd AS (SELECT c.iso3 AS iso3, c.country AS country, p.dt AS dt, sum(p.value) AS v\n          FROM px p\n          CROSS JOIN zone\n          JOIN reg r ON r.region_idx = p.region_idx\n          JOIN countries c ON c.iso3 = r.iso3\n          WHERE $__timeFilter(p.dt) AND (CASE WHEN zone.g IS NULL\n                THEN p.lon BETWEEN $west AND $east AND p.lat BETWEEN $south AND $north\n                ELSE ST_Within(ST_Point(p.lon, p.lat), zone.g) END)\n          GROUP BY 1, 2, 3),\nbounds AS (SELECT min(dt) AS d0, max(dt) AS d1 FROM d),\nndays AS (SELECT date_diff('day', d0, d1) + 1 AS n FROM bounds),\ntop AS (SELECT d.iso3 AS iso3, d.country AS country, sum(d.v) AS total\n        FROM d\n        JOIN areas a ON a.iso3 = d.iso3\n        GROUP BY 1, 2\n        ORDER BY total DESC\n        LIMIT 15)\n-- Rejilla densa país × día, y el valor a DOUBLE: sum() sobre INT32 da HUGEINT,\n-- que el driver entrega como string. Sin las dos cosas el frame vuelve en\n-- formato largo, timeSeriesTable no lo convierte y la sparkline desaparece.\n, days AS (SELECT unnest(range(CAST((SELECT d0 FROM bounds) AS DATE),\n                              CAST((SELECT d1 FROM bounds) AS DATE) + INTERVAL 1 DAY,\n                              INTERVAL 1 DAY))::DATE AS dt)\nSELECT g.dt AS \"time\", g.country AS country,\n       CAST(COALESCE(d.v, 0) AS DOUBLE) AS value\nFROM (SELECT top.iso3 AS iso3, top.country AS country, days.dt AS dt FROM top CROSS JOIN days) g\nLEFT JOIN d ON d.iso3 = g.iso3 AND d.dt = g.dt\nORDER BY 1",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "WITH idx AS (SELECT * FROM read_json_auto('https://sites.ecmwf.int/data/cams/products/gfas/v2_gisco_fp/regions/region_index.json')),\nreg AS (SELECT i-1 AS region_idx, admin1_parent[i] AS iso3\n        FROM idx, range(1, len(idx.admin1)+1) t(i)),\ncountries AS (SELECT admin0[i] AS iso3, admin0_names[i] AS country, admin0_continent[i] AS continente\n        FROM idx, range(1, len(idx.admin0)+1) t(i)),\npx AS (SELECT DATE '2003-01-01' + INTERVAL (day_idx) DAY AS dt,\n                     -179.95 + lon_idx*0.1 AS lon, -89.95 + lat_idx*0.1 AS lat,\n                     lon_idx, lat_idx, value, region_idx\n              FROM read_parquet([${months:sqlstring}])\n              -- Slider threshold. Panels that aggregate drop the cell-day here, in\n              -- SQL. The maps do NOT: they load the whole dataset and get the\n              -- same threshold as a kepler range filter, so dragging the\n              -- slider re-masks them in the browser without re-querying.\n              WHERE value >= $minval),\nzone AS (SELECT CASE WHEN $area = '' THEN NULL ELSE ST_GeomFromText($area) END AS g),\nareas AS (SELECT * FROM (SELECT adm0 AS iso3, area_sq_km FROM read_parquet('https://apps.atmosphere.copernicus.eu/fire-emissions-watch/data/countries_admin0_v2gisco_z0.parquet'))),\nd AS (SELECT c.iso3 AS iso3, c.country AS country, p.dt AS dt, sum(p.value) AS v,\n             avg(p.lat) AS lat, avg(p.lon) AS lon\n          FROM px p\n          CROSS JOIN zone\n          JOIN reg r ON r.region_idx = p.region_idx\n          JOIN countries c ON c.iso3 = r.iso3\n          WHERE $__timeFilter(p.dt) AND (CASE WHEN zone.g IS NULL\n                THEN p.lon BETWEEN $west AND $east AND p.lat BETWEEN $south AND $north\n                ELSE ST_Within(ST_Point(p.lon, p.lat), zone.g) END)\n          GROUP BY 1, 2, 3),\nbounds AS (SELECT min(dt) AS d0, max(dt) AS d1 FROM d),\nndays AS (SELECT date_diff('day', d0, d1) + 1 AS n FROM bounds),\ntop AS (SELECT d.iso3 AS iso3, d.country AS country, sum(d.v) AS total,\n               avg(d.lat) AS clat, avg(d.lon) AS clon\n        FROM d\n        JOIN areas a ON a.iso3 = d.iso3\n        GROUP BY 1, 2\n        ORDER BY total DESC\n        LIMIT 15),\ns AS (SELECT unnest(map_entries(windows['${win:raw}']['admin0'])) AS e\n      FROM read_json('https://sites.ecmwf.int/data/cams/products/gfas/v2_gisco_fp/latest/${var:raw}/summary.json.gz',\n        columns = {'dataset_day':'VARCHAR','variable':'VARCHAR',\n                   'windows':'MAP(VARCHAR, MAP(VARCHAR, MAP(VARCHAR, DOUBLE[])))'})),\ntrend AS (SELECT d.iso3 AS iso3,\n                avg(CASE WHEN d.dt >  l.d1 - INTERVAL 3 DAY THEN d.v END) AS fin,\n                avg(CASE WHEN d.dt <  l.d0 + INTERVAL 3 DAY THEN d.v END) AS ini\n         FROM d CROSS JOIN bounds l GROUP BY 1)\nSELECT row_number() OVER (ORDER BY top.total DESC)  AS rank,\n       top.country                                     AS country,\n       CASE WHEN t.fin IS NULL OR t.ini IS NULL OR t.ini = 0 THEN 0\n            WHEN t.fin > t.ini * 1.05 THEN  1\n            WHEN t.fin < t.ini * 0.95 THEN -1\n            ELSE 0 END                              AS arrow,\n       -- Pixels come in MW (frpfire) and t/day (cfire); the summary comes in W and\n       -- kg/day. Hence the factors here are not the summary's.\n       round(top.total / n.n / 1e3, 2)                                     AS magnitude,\n       round(top.total / n.n\n             * CASE WHEN '${var:raw}' = 'cfire' THEN 1e3 ELSE 1e6 END\n             / a.area_sq_km, 1)                                            AS intensity,\n       round(s.e.value[4], 2)                                              AS anomaly,\n       round(top.clat, 4)                                                  AS clat,\n       round(top.clon, 4)                                                  AS clon\nFROM top\nCROSS JOIN ndays n\nJOIN areas a ON a.iso3 = top.iso3\nLEFT JOIN trend t ON t.iso3 = top.iso3\nLEFT JOIN s ON s.e.key = top.iso3\nORDER BY top.total DESC",
+          "refId": "B"
+        }
+      ],
+      "title": "Top regions in view",
+      "transformations": [
+        {
+          "id": "timeSeriesTable",
+          "options": {
+            "A": {}
+          }
+        },
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "country",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {
+              "Trend #A": 2,
+              "anomaly B": 6,
+              "arrow B": 3,
+              "intensity B": 5,
+              "magnitude B": 4,
+              "country": 1,
+              "rank B": 0,
+              "clat B": 7,
+              "clon B": 8
+            },
+            "renameByName": {
+              "Trend #A": "Trend",
+              "anomaly B": "Anomaly σ",
+              "arrow B": "Δ",
+              "intensity B": "Intensity",
+              "magnitude B": "Magnitude",
+              "country": "Region",
+              "rank B": "#",
+              "clat B": "clat",
+              "clon B": "clon"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "World daily total against the mean of the same days of the year over 2003–2025. From the stats/daily.json.gz that CAMS precomputes.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Historical mean"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "text",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [8, 6],
+                  "fill": "dash"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "This year"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 14,
+        "x": 0,
+        "y": 19
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.10",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "WITH s AS (SELECT DATE '2003-01-01' + INTERVAL (CAST(e.key AS INTEGER)) DAY AS d,\n                  e.value[2]/1e9 AS v\n           FROM (SELECT unnest(map_entries(m)) AS e FROM read_json('https://sites.ecmwf.int/data/cams/products/gfas/v2_gisco_fp/stats/${var:raw}/daily.json.gz', columns = {'m':'MAP(VARCHAR, DOUBLE[])'}, records = false) t(m))),\nclim AS (SELECT strftime(d, '%m-%d') AS md, avg(v) AS mean\n         FROM s\n         WHERE d < date_trunc('year', CAST($__timeTo() AS TIMESTAMP))\n         GROUP BY 1)\nSELECT s.d                    AS \"time\",\n       round(s.v, 2)          AS \"This year\",\n       round(c.mean, 2)      AS \"Historical mean\"\nFROM s JOIN clim c ON c.md = strftime(s.d, '%m-%d')\nWHERE $__timeFilter(s.d)\nORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Daily global total — this year vs. its historical mean",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "What the map is showing right now. Draw a polygon with the map's draw tool and it takes over; delete it and the viewport is back.",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 14,
+        "y": 19
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.10",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "WITH px AS (SELECT DATE '2003-01-01' + INTERVAL (day_idx) DAY AS dt,\n                     -179.95 + lon_idx*0.1 AS lon, -89.95 + lat_idx*0.1 AS lat,\n                     lon_idx, lat_idx, value, region_idx\n              FROM read_parquet([${months:sqlstring}])\n              -- Slider threshold. Panels that aggregate drop the cell-day here, in\n              -- SQL. The maps do NOT: they load the whole dataset and get the\n              -- same threshold as a kepler range filter, so dragging the\n              -- slider re-masks them in the browser without re-querying.\n              WHERE value >= $minval),\nzone AS (SELECT CASE WHEN $area = '' THEN NULL ELSE ST_GeomFromText($area) END AS g)\nSELECT round(sum(p.value),1)                          AS \"Total in view\",\n       count(DISTINCT CAST(p.lon_idx AS BIGINT)*10000 + p.lat_idx) AS \"Active cells\",\n       count(DISTINCT p.dt)                          AS \"Days with fire\"\nFROM px p CROSS JOIN zone\nWHERE $__timeFilter(p.dt) AND (CASE WHEN zone.g IS NULL\n                THEN p.lon BETWEEN $west AND $east AND p.lat BETWEEN $south AND $north\n                ELSE ST_Within(ST_Point(p.lon, p.lat), zone.g) END)",
+          "refId": "A"
+        }
+      ],
+      "title": "In the current view",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "One row per cell per day, not aggregated: kepler's time filter brings the histogram and the play button. It shares its clock with the map beside it — press play and both views advance together, without firing a single query.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 22,
+        "w": 12,
+        "x": 0,
+        "y": 27
+      },
+      "id": 8,
+      "options": {
+        "basemap": "dark-matter",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": false,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "latitude": 6,
+              "longitude": -25,
+              "pitch": 0,
+              "zoom": 1.9
+            },
+            "mapStyle": {
+              "styleType": "dark-matter"
+            },
+            "visState": {
+              "filters": [],
+              "interactionConfig": {},
+              "layers": [
+                {
+                  "config": {
+                    "columnMode": "points",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "dataId": "grafana-A",
+                    "isVisible": true,
+                    "label": "Cells of the day",
+                    "visConfig": {
+                      "colorRange": {
+                        "category": "Custom",
+                        "colors": ["#3b0d0c", "#8c2703", "#c2410c", "#f0820b", "#fbbf24", "#fef3a3"],
+                        "name": "Fuego",
+                        "type": "custom"
+                      },
+                      "filled": true,
+                      "opacity": 0.85,
+                      "outline": false,
+                      "radius": 5,
+                      "radiusRange": [2, 26]
+                    }
+                  },
+                  "id": "puntos",
+                  "type": "point",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "value",
+                      "type": "real"
+                    },
+                    "colorScale": "quantile",
+                    "sizeField": {
+                      "name": "value",
+                      "type": "real"
+                    },
+                    "sizeScale": "sqrt"
+                  }
+                }
+              ],
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": true,
+        "publishWhilePlaying": false,
+        "showSidePanel": false,
+        "timeSync": "variables",
+        "timeVariables": {
+          "from": "playFrom",
+          "to": "playTo"
+        },
+        "tripLayerMode": "table",
+        "windDensity": 9000,
+        "variableMappings": [
+          {
+            "field": "value",
+            "variable": "minval",
+            "variableTo": "maxval",
+            "source": "filter"
+          }
+        ]
+      },
+      "pluginVersion": "0.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "WITH idx AS (SELECT * FROM read_json_auto('https://sites.ecmwf.int/data/cams/products/gfas/v2_gisco_fp/regions/region_index.json')),\nreg AS (SELECT i-1 AS region_idx, admin1_parent[i] AS iso3\n        FROM idx, range(1, len(idx.admin1)+1) t(i)),\ncountries AS (SELECT admin0[i] AS iso3, admin0_names[i] AS country, admin0_continent[i] AS continente\n        FROM idx, range(1, len(idx.admin0)+1) t(i)),\npx AS (SELECT DATE '2003-01-01' + INTERVAL (day_idx) DAY AS dt,\n                     -179.95 + lon_idx*0.1 AS lon, -89.95 + lat_idx*0.1 AS lat,\n                     lon_idx, lat_idx, value, region_idx\n              FROM read_parquet([${months:sqlstring}]))\nSELECT p.dt            AS \"time\",\n       p.lat            AS latitude,\n       p.lon            AS longitude,\n       round(p.value,1) AS value,\n       c.country           AS country\nFROM px p\nLEFT JOIN reg r ON r.region_idx = p.region_idx\nLEFT JOIN countries c ON c.iso3 = r.iso3\nWHERE $__timeFilter(p.dt)",
+          "refId": "A"
+        }
+      ],
+      "title": "Daily playback",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Cells aggregated to 0.5° — at 0.1° the columns render as hairs — with height proportional to the square root of the value, one polygon per cell per day. Shares its clock with the map on the left, and flies to whatever point you click on the map above. At rest it shows each cell's peak day, because the days overlap and the tallest one wins. Flat basemap on purpose: deck.gl does not drape data over terrain, so over a relief basemap the low cells would be buried inside the mountains.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 22,
+        "w": 12,
+        "x": 12,
+        "y": 27
+      },
+      "id": 9,
+      "options": {
+        "basemap": "dark-matter",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": false,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": -15,
+              "dragRotate": true,
+              "latitude": -12,
+              "longitude": -58,
+              "pitch": 50,
+              "zoom": 2.9
+            },
+            "mapStyle": {
+              "styleType": "dark-matter"
+            },
+            "visState": {
+              "filters": [],
+              "interactionConfig": {},
+              "layers": [
+                {
+                  "config": {
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "dataId": "grafana-A",
+                    "isVisible": true,
+                    "label": "GFAS cells",
+                    "visConfig": {
+                      "colorRange": {
+                        "category": "Custom",
+                        "colors": ["#3b0d0c", "#8c2703", "#c2410c", "#f0820b", "#fbbf24", "#fef3a3"],
+                        "name": "Fuego",
+                        "type": "custom"
+                      },
+                      "elevationScale": 50,
+                      "enable3d": true,
+                      "filled": true,
+                      "heightRange": [0, 1500],
+                      "opacity": 0.85,
+                      "strokeOpacity": 0,
+                      "stroked": false,
+                      "thickness": 0,
+                      "wireframe": false
+                    }
+                  },
+                  "id": "celdas3d",
+                  "type": "geojson",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "value",
+                      "type": "real"
+                    },
+                    "colorScale": "quantile",
+                    "heightField": {
+                      "name": "value",
+                      "type": "real"
+                    },
+                    "heightScale": "sqrt"
+                  }
+                }
+              ],
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": true,
+        "publishWhilePlaying": false,
+        "showSidePanel": false,
+        "timeSync": "off",
+        "tripLayerMode": "table",
+        "variableMappings": [
+          {
+            "field": "",
+            "source": "center",
+            "variable": "linkLat",
+            "variableTo": "linkLng",
+            "zoom": 4
+          },
+          {
+            "field": "value",
+            "variable": "minval",
+            "variableTo": "maxval",
+            "source": "filter"
+          }
+        ],
+        "windDensity": 9000
+      },
+      "pluginVersion": "0.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "WITH idx AS (SELECT * FROM read_json_auto('https://sites.ecmwf.int/data/cams/products/gfas/v2_gisco_fp/regions/region_index.json')),\nreg AS (SELECT i-1 AS region_idx, admin1_parent[i] AS iso3\n        FROM idx, range(1, len(idx.admin1)+1) t(i)),\ncountries AS (SELECT admin0[i] AS iso3, admin0_names[i] AS country, admin0_continent[i] AS continente\n        FROM idx, range(1, len(idx.admin0)+1) t(i)),\npx AS (SELECT DATE '2003-01-01' + INTERVAL (day_idx) DAY AS dt,\n                     -179.95 + lon_idx*0.1 AS lon, -89.95 + lat_idx*0.1 AS lat,\n                     lon_idx, lat_idx, value, region_idx\n              FROM read_parquet([${months:sqlstring}])),\nagr AS (\n  SELECT (p.lon_idx // 5) AS gx, (p.lat_idx // 5) AS gy, p.dt AS dt,\n         sum(p.value) AS value, any_value(c.country) AS country\n  FROM px p\n  LEFT JOIN reg r ON r.region_idx = p.region_idx\n  LEFT JOIN countries c ON c.iso3 = r.iso3\n  WHERE $__timeFilter(p.dt)\n  GROUP BY 1, 2, 3)\nSELECT ST_AsHEXWKB(ST_MakeEnvelope(-180.0 + gx*0.5, -90.0 + gy*0.5,\n                                   -179.5 + gx*0.5, -89.5 + gy*0.5)) AS geom,\n       dt AS \"time\",\n       round(value, 1) AS value,\n       country\nFROM agr",
+          "refId": "A"
+        }
+      ],
+      "title": "Emissions relief — extruded cells",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "type": "row",
+      "id": 12,
+      "title": "Country view",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 49
+      }
+    },
+    {
+      "type": "text",
+      "id": 13,
+      "title": "",
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 50
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Country view\n\nClick any row in **Top regions in view** to drill into a country. [← Back to all countries](/d/fire-emissions/${__url.params:exclude:var-country_sel}&var-country_sel=)\n\n*With no country selected these three panels show the world.*"
+      }
+    },
+    {
+      "type": "trend",
+      "id": 14,
+      "title": "Cumulative totals by year $country_sel",
+      "description": "Every year since 2003 as its own line, the climatological mean, and the year in progress. X axis is the day of the year, so the curves overlay. Read from testdata/fire/*.parquet — CAMS's own per-country series, converted once by testdata/make-firedata.py because DuckDB cannot read Arrow IPC over HTTP. The slider does not reach this panel: it has no cells to filter.",
+      "gridPos": {
+        "h": 12,
+        "w": 14,
+        "x": 0,
+        "y": 52
+      },
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "WITH idx AS (SELECT * FROM read_json_auto('https://sites.ecmwf.int/data/cams/products/gfas/v2_gisco_fp/regions/region_index.json')),\nc AS (SELECT i-1 AS region_idx, admin0_names[i] AS country FROM idx, range(1, len(idx.admin0)+1) t(i)),\nraw AS (SELECT DATE '2003-01-01' + INTERVAL (p.day_idx) DAY AS dt, p.value AS v, c.country AS country\n        FROM read_parquet('${firedata:raw}/${var:raw}_admin0.parquet') p\n        JOIN c ON c.region_idx = p.region_idx),\n-- El último día del registro, de TODO el fichero: un país sin fuego reciente no\n-- puede decirnos hasta dónde llega el dato.\nedge AS (SELECT CAST(strftime(max(dt),'%Y') AS INT) AS yr, CAST(strftime(max(dt),'%j') AS INT) AS doy FROM raw),\nbyday AS (SELECT CAST(strftime(dt,'%Y') AS INT) AS yr, CAST(strftime(dt,'%j') AS INT) AS doy, sum(v) AS v\n          FROM raw WHERE ($country_sel = '' OR country = $country_sel) GROUP BY 1, 2),\nyears AS (SELECT DISTINCT CAST(strftime(dt,'%Y') AS INT) AS yr FROM raw),\n-- Rejilla densa: sin ella la curva acumulada se rompe en cada día sin fuego.\ngrid AS (SELECT y.yr AS yr, g.doy AS doy\n         FROM years y CROSS JOIN (SELECT unnest(range(1, 367)) AS doy) g CROSS JOIN edge e\n         WHERE y.yr < e.yr OR (y.yr = e.yr AND g.doy <= e.doy)),\ncum AS (SELECT g.yr AS yr, g.doy AS doy,\n               sum(COALESCE(b.v, 0)) OVER (PARTITION BY g.yr ORDER BY g.doy) / 1e9 AS c\n        FROM grid g LEFT JOIN byday b ON b.yr = g.yr AND b.doy = g.doy),\n-- Tres papeles, como el original: los años pasados en gris, su media, y el año\n-- en curso. Etiquetarlos aquí evita overrides con el año escrito a mano.\nseries AS (\n  SELECT CASE WHEN cum.yr = e.yr THEN 'This year' ELSE cum.yr::VARCHAR END AS series,\n         cum.doy AS doy, cum.c AS c\n  FROM cum CROSS JOIN edge e\n  UNION ALL\n  SELECT 'Mean' AS series, cum.doy AS doy, avg(cum.c) AS c\n  FROM cum CROSS JOIN edge e WHERE cum.yr < e.yr GROUP BY cum.doy)\nPIVOT series ON series USING round(max(c), 4) GROUP BY doy ORDER BY doy"
+        }
+      ],
+      "options": {
+        "xField": "doy",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3d4757"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#4dd0e1"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "This year"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 12
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "doy"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Day of year"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "day of year"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(19|20)\\d\\d$"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "table",
+      "id": 16,
+      "title": "Top subdivisions $country_sel",
+      "description": "Same six columns as the country ranking, one level down. Magnitude and intensity are the contribution inside the selected country over the dashboard time range, as daily values; the anomaly σ is the whole-subdivision figure CAMS publishes for the $win window. With no country selected it ranks every subdivision on Earth.",
+      "gridPos": {
+        "h": 24,
+        "w": 10,
+        "x": 14,
+        "y": 52
+      },
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 0,
+          "rawQuery": true,
+          "rawSql": "WITH idx AS (SELECT * FROM read_json_auto('https://sites.ecmwf.int/data/cams/products/gfas/v2_gisco_fp/regions/region_index.json')),\nsub AS (SELECT i-1 AS region_idx, admin1[i] AS adm1, admin1_names[i] AS name, admin1_parent[i] AS iso3\n        FROM idx, range(1, len(idx.admin1)+1) t(i)),\nparent AS (SELECT admin0[i] AS iso3, admin0_names[i] AS country\n           FROM idx, range(1, len(idx.admin0)+1) t(i)),\nareas AS (SELECT adm1, area_sq_km FROM read_parquet('https://apps.atmosphere.copernicus.eu/fire-emissions-watch/data/countries_admin1_v2gisco_z0.parquet')),\npx AS (SELECT DATE '2003-01-01' + INTERVAL (day_idx) DAY AS dt, value, region_idx\n       FROM read_parquet([${months:sqlstring}])\n       -- Slider threshold, same as the other aggregating panels.\n       WHERE value >= $minval),\nd AS (SELECT s.region_idx AS region_idx, s.adm1 AS adm1, s.name AS name, p.dt AS dt, sum(p.value) AS v\n      FROM px p JOIN sub s ON s.region_idx = p.region_idx\n                     JOIN parent pa ON pa.iso3 = s.iso3\n      WHERE $__timeFilter(p.dt) AND ($country_sel = '' OR pa.country = $country_sel)\n      GROUP BY 1,2,3,4),\nbounds AS (SELECT min(dt) AS d0, max(dt) AS d1 FROM d),\nndays AS (SELECT date_diff('day', d0, d1) + 1 AS n FROM bounds),\ntop AS (SELECT d.adm1 AS adm1, d.name AS name, sum(d.v) AS total\n        FROM d JOIN areas a ON a.adm1 = d.adm1 GROUP BY 1,2 ORDER BY total DESC LIMIT 15),\nsm AS (SELECT unnest(map_entries(windows['${win:raw}']['admin1'])) AS e\n       FROM read_json('https://sites.ecmwf.int/data/cams/products/gfas/v2_gisco_fp/latest/${var:raw}/summary.json.gz',\n         columns = {'dataset_day':'VARCHAR','variable':'VARCHAR',\n                    'windows':'MAP(VARCHAR, MAP(VARCHAR, MAP(VARCHAR, DOUBLE[])))'})),\ntrend AS (SELECT d.adm1 AS adm1,\n                 avg(CASE WHEN d.dt >  b.d1 - INTERVAL 3 DAY THEN d.v END) AS fin,\n                 avg(CASE WHEN d.dt <  b.d0 + INTERVAL 3 DAY THEN d.v END) AS ini\n          FROM d CROSS JOIN bounds b GROUP BY 1)\n-- Rejilla densa región × día. El dato es disperso (una región sin fuego un día\n-- no trae fila) y la conversión a series de Grafana necesita la rejilla completa:\n-- sin esto el frame vuelve en formato largo y la sparkline no se dibuja.\n, days AS (SELECT unnest(range(CAST((SELECT d0 FROM bounds) AS DATE),\n                              CAST((SELECT d1 FROM bounds) AS DATE) + INTERVAL 1 DAY,\n                              INTERVAL 1 DAY))::DATE AS dt)\nSELECT g.dt AS \"time\", g.name AS region, -- sum() sobre INT32 da HUGEINT, que el driver entrega como string y\n       -- deja el frame sin campo numérico: sin este cast no hay serie.\n       CAST(COALESCE(d.v, 0) AS DOUBLE) AS value\nFROM (SELECT top.adm1 AS adm1, top.name AS name, days.dt AS dt FROM top CROSS JOIN days) g\nLEFT JOIN d ON d.adm1 = g.adm1 AND d.dt = g.dt\nORDER BY 1"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "WITH idx AS (SELECT * FROM read_json_auto('https://sites.ecmwf.int/data/cams/products/gfas/v2_gisco_fp/regions/region_index.json')),\nsub AS (SELECT i-1 AS region_idx, admin1[i] AS adm1, admin1_names[i] AS name, admin1_parent[i] AS iso3\n        FROM idx, range(1, len(idx.admin1)+1) t(i)),\nparent AS (SELECT admin0[i] AS iso3, admin0_names[i] AS country\n           FROM idx, range(1, len(idx.admin0)+1) t(i)),\nareas AS (SELECT adm1, area_sq_km FROM read_parquet('https://apps.atmosphere.copernicus.eu/fire-emissions-watch/data/countries_admin1_v2gisco_z0.parquet')),\npx AS (SELECT DATE '2003-01-01' + INTERVAL (day_idx) DAY AS dt, value, region_idx\n       FROM read_parquet([${months:sqlstring}])\n       -- Slider threshold, same as the other aggregating panels.\n       WHERE value >= $minval),\nd AS (SELECT s.region_idx AS region_idx, s.adm1 AS adm1, s.name AS name, p.dt AS dt, sum(p.value) AS v\n      FROM px p JOIN sub s ON s.region_idx = p.region_idx\n                     JOIN parent pa ON pa.iso3 = s.iso3\n      WHERE $__timeFilter(p.dt) AND ($country_sel = '' OR pa.country = $country_sel)\n      GROUP BY 1,2,3,4),\nbounds AS (SELECT min(dt) AS d0, max(dt) AS d1 FROM d),\nndays AS (SELECT date_diff('day', d0, d1) + 1 AS n FROM bounds),\ntop AS (SELECT d.adm1 AS adm1, d.name AS name, sum(d.v) AS total\n        FROM d JOIN areas a ON a.adm1 = d.adm1 GROUP BY 1,2 ORDER BY total DESC LIMIT 15),\nsm AS (SELECT unnest(map_entries(windows['${win:raw}']['admin1'])) AS e\n       FROM read_json('https://sites.ecmwf.int/data/cams/products/gfas/v2_gisco_fp/latest/${var:raw}/summary.json.gz',\n         columns = {'dataset_day':'VARCHAR','variable':'VARCHAR',\n                    'windows':'MAP(VARCHAR, MAP(VARCHAR, MAP(VARCHAR, DOUBLE[])))'})),\ntrend AS (SELECT d.adm1 AS adm1,\n                 avg(CASE WHEN d.dt >  b.d1 - INTERVAL 3 DAY THEN d.v END) AS fin,\n                 avg(CASE WHEN d.dt <  b.d0 + INTERVAL 3 DAY THEN d.v END) AS ini\n          FROM d CROSS JOIN bounds b GROUP BY 1)\nSELECT row_number() OVER (ORDER BY top.total DESC) AS rank,\n       top.name AS region,\n       CASE WHEN t.fin IS NULL OR t.ini IS NULL OR t.ini = 0 THEN 0\n            WHEN t.fin > t.ini * 1.05 THEN 1 WHEN t.fin < t.ini * 0.95 THEN -1 ELSE 0 END AS arrow,\n       round(top.total / n.n / 1e3, 2) AS magnitude,\n       round(top.total / n.n * CASE WHEN '${var:raw}' = 'cfire' THEN 1e3 ELSE 1e6 END / a.area_sq_km, 1) AS intensity,\n       round(s.e.value[4], 2) AS anomaly\nFROM top\nCROSS JOIN ndays n\nJOIN areas a ON a.adm1 = top.adm1\nLEFT JOIN trend t ON t.adm1 = top.adm1\nLEFT JOIN sm s ON s.e.key = top.adm1\nORDER BY top.total DESC"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "timeSeriesTable",
+          "options": {
+            "A": {}
+          }
+        },
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "region",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {
+              "rank B": 0,
+              "region": 1,
+              "Trend #A": 2,
+              "arrow B": 3,
+              "magnitude B": 4,
+              "intensity B": 5,
+              "anomaly B": 6
+            },
+            "renameByName": {
+              "rank B": "#",
+              "region": "Region",
+              "Trend #A": "Trend",
+              "arrow B": "Δ",
+              "magnitude B": "Magnitude",
+              "intensity B": "Intensity",
+              "anomaly B": "Anomaly σ"
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": ["sum"],
+          "countRows": false,
+          "fields": ""
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "minWidth": 50
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "#"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 38
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Region"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 118
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Trend"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "drawStyle": "line",
+                  "fillOpacity": 25,
+                  "gradientMode": "opacity",
+                  "hideValue": true,
+                  "lineWidth": 1,
+                  "type": "sparkline"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 92
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Δ"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 42
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "-1": {
+                        "color": "blue",
+                        "index": 1,
+                        "text": "▼"
+                      },
+                      "0": {
+                        "color": "text",
+                        "index": 2,
+                        "text": "—"
+                      },
+                      "1": {
+                        "color": "orange",
+                        "index": 0,
+                        "text": "▲"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Magnitude"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 94
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-reds"
+                }
+              },
+              {
+                "id": "fieldMinMax",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Intensity"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 88
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-greens"
+                }
+              },
+              {
+                "id": "fieldMinMax",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Anomaly σ"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 92
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-BlYlRd"
+                }
+              },
+              {
+                "id": "fieldMinMax",
+                "value": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "barchart",
+      "id": 15,
+      "title": "Totals for the same window, year by year $country_sel",
+      "description": "The dashboard's own date window applied to every year since 2003. Same source as the panel above.",
+      "gridPos": {
+        "h": 12,
+        "w": 14,
+        "x": 0,
+        "y": 64
+      },
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "WITH idx AS (SELECT * FROM read_json_auto('https://sites.ecmwf.int/data/cams/products/gfas/v2_gisco_fp/regions/region_index.json')),\nc AS (SELECT i-1 AS region_idx, admin0_names[i] AS country FROM idx, range(1, len(idx.admin0)+1) t(i)),\nraw AS (SELECT DATE '2003-01-01' + INTERVAL (p.day_idx) DAY AS dt, p.value AS v, c.country AS country\n        FROM read_parquet('${firedata:raw}/${var:raw}_admin0.parquet') p\n        JOIN c ON c.region_idx = p.region_idx),\ns AS (SELECT dt, v FROM raw WHERE ($country_sel = '' OR country = $country_sel))\n-- Dos columnas para que el año en curso salga de otro color, como el original:\n-- cada año llena solo una de las dos, así que no se apilan.\nSELECT CAST(strftime(dt,'%Y') AS INT) AS \"Year\",\n       round(sum(v) FILTER (WHERE CAST(strftime(dt,'%Y') AS INT) < (SELECT CAST(strftime(max(dt),'%Y') AS INT) FROM raw))/1e6, 3) AS \"Past years\",\n       round(sum(v) FILTER (WHERE CAST(strftime(dt,'%Y') AS INT) = (SELECT CAST(strftime(max(dt),'%Y') AS INT) FROM raw))/1e6, 3) AS \"This year\"\nFROM s\nWHERE strftime(dt,'%m-%d') BETWEEN strftime(CAST($__timeFrom() AS TIMESTAMP),'%m-%d')\n                              AND strftime(CAST($__timeTo()   AS TIMESTAMP),'%m-%d')\nGROUP BY 1 ORDER BY 1"
+        }
+      ],
+      "options": {
+        "xField": "Year",
+        "stacking": "normal",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": -60,
+        "xTickLabelSpacing": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#4dd0e1"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "This year"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 76
+      },
+      "id": 10,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "### Global wildfire emissions, tracked every day\n\nWildfire intensity and carbon emissions for every region — derived from satellite observations by\nthe CAMS Global Fire Assimilation System and compared against 23 years of history.\n\nA Grafana replica of [CAMS Fire Emissions Watch](https://apps.atmosphere.copernicus.eu/fire-emissions-watch/),\nbuilt on the **Kepler Geospatial Maps** panel. Data is read **live** from ECMWF's public Parquet\nstore with DuckDB (`httpfs`): no ETL, no database, and — with one exception — no local copy.\nThat is why each panel takes 1–3 s to resolve.\n\nThe exception is the two country-history charts. CAMS publishes its per-country daily series as\nArrow IPC inside gzip, which DuckDB cannot read over HTTP, so `testdata/make-firedata.py`\nconverts it once into 8 MB of Parquet. Every other number on this page is fetched live.\n\n**Global Fire Assimilation System.** GFAS assimilates fire radiative power (FRP) observations from\nsatellite-based sensors to produce daily estimates of biomass burning emissions, a consistent daily\nrecord running from 2003 to yesterday. The FRP observations assimilated in the GFAS version 1.2\nshown here are the NASA Terra MODIS and Aqua MODIS active fire products. Cells are 0.1° × 0.1°;\n`frpfire` is fire radiative power, `cfire` is carbon emissions.\n\nGFAS fire data is based on satellite observations of thermal anomalies at the surface, most commonly\nassociated with vegetation fires — but detections from other heat sources, such as active volcanoes\nand gas flaring, and from reflective surfaces are also possible. GFAS tries to minimise these\nspurious detections.\n\n**Not replicated here:** the smoke layer. The original overlays organic matter aerosol optical depth\nat 550 nm from the CAMS global forecasting system; that store sits behind an application token, so\nit is out of scope here. It is free to download from the Atmosphere Data Store under the Copernicus\nlicence, as are all the datasets behind this dashboard.\n\n**What this version does and the original does not:** the top map publishes its viewport, the\ncountry you click and the polygon you draw, and the panels around it recompute on their own. There,\nthe map and the charts are islands.\n\n---\n\n*Generated using Copernicus Atmosphere Monitoring Service information [2026]* — this dashboard\ncontains modified CAMS information. Neither the European Commission nor ECMWF is responsible for any\nuse of the data. Licensed under CC-BY-4.0.\n\n*Disclaimer.* References to geographical or other territories and groupings are based on terms\nprovided to ECMWF by ECMWF Member States and Co-operating States, terminology used by other relevant\ninternational organisations or other sources deemed relevant by ECMWF. Their use does not constitute\nor imply an expression of opinion by ECMWF concerning the status of any State or territory, or its\nfrontiers or sovereignty. The colours, boundaries and names shown, and the designations used, are\nnot intended to imply any judgment, official endorsement or acceptance by ECMWF as to the legal\nstatus or frontier of any territory.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "12.0.10",
+      "title": "",
+      "type": "text"
+    }
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 41,
+  "tags": ["kepler", "sources", "wildfires", "copernicus"],
+  "templating": {
+    "list": [
+      {
+        "type": "constant",
+        "name": "firedata",
+        "label": "Converted series path",
+        "hide": 2,
+        "query": "/testdata/fire",
+        "current": {
+          "text": "/testdata/fire",
+          "value": "/testdata/fire"
+        },
+        "options": [],
+        "skipUrlSync": true
+      },
+      {
+        "current": {
+          "text": "frpfire",
+          "value": "frpfire"
+        },
+        "includeAll": false,
+        "label": "Variable",
+        "name": "var",
+        "options": [
+          {
+            "selected": true,
+            "text": "frpfire",
+            "value": "frpfire"
+          },
+          {
+            "selected": false,
+            "text": "cfire",
+            "value": "cfire"
+          }
+        ],
+        "query": "frpfire,cfire",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "text": "7d",
+          "value": "7d"
+        },
+        "includeAll": false,
+        "label": "CAMS window",
+        "name": "win",
+        "options": [
+          {
+            "selected": true,
+            "text": "7d",
+            "value": "7d"
+          },
+          {
+            "selected": false,
+            "text": "14d",
+            "value": "14d"
+          },
+          {
+            "selected": false,
+            "text": "21d",
+            "value": "21d"
+          },
+          {
+            "selected": false,
+            "text": "28d",
+            "value": "28d"
+          }
+        ],
+        "query": "7d,14d,21d,28d",
+        "type": "custom"
+      },
+      {
+        "type": "custom",
+        "name": "minval",
+        "label": "Min cell value",
+        "hide": 2,
+        "query": "0,1,2,5,10,25,50,100,250,500,1000,2500,5000",
+        "includeAll": false,
+        "multi": false,
+        "current": {
+          "text": "0",
+          "value": "0"
+        },
+        "options": [
+          {
+            "text": "0",
+            "value": "0",
+            "selected": true
+          },
+          {
+            "text": "1",
+            "value": "1",
+            "selected": false
+          },
+          {
+            "text": "2",
+            "value": "2",
+            "selected": false
+          },
+          {
+            "text": "5",
+            "value": "5",
+            "selected": false
+          },
+          {
+            "text": "10",
+            "value": "10",
+            "selected": false
+          },
+          {
+            "text": "25",
+            "value": "25",
+            "selected": false
+          },
+          {
+            "text": "50",
+            "value": "50",
+            "selected": false
+          },
+          {
+            "text": "100",
+            "value": "100",
+            "selected": false
+          },
+          {
+            "text": "250",
+            "value": "250",
+            "selected": false
+          },
+          {
+            "text": "500",
+            "value": "500",
+            "selected": false
+          },
+          {
+            "text": "1000",
+            "value": "1000",
+            "selected": false
+          },
+          {
+            "text": "2500",
+            "value": "2500",
+            "selected": false
+          },
+          {
+            "text": "5000",
+            "value": "5000",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "maxval",
+        "label": "Max cell value",
+        "hide": 2,
+        "query": "10000000",
+        "current": {
+          "text": "10000000",
+          "value": "10000000"
+        },
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "hide": 2,
+        "includeAll": false,
+        "label": "Months",
+        "multi": true,
+        "name": "months",
+        "options": [],
+        "query": "SELECT 'https://sites.ecmwf.int/data/cams/products/gfas/v2_gisco_fp/pixels/${var:raw}/' || strftime(m, '%Y/%m') || '.parquet' AS url\nFROM (SELECT unnest(generate_series(\n        date_trunc('month', CAST($__timeFrom() AS TIMESTAMP)),\n        date_trunc('month', CAST($__timeTo()   AS TIMESTAMP)),\n        INTERVAL 1 MONTH)) AS m)\nORDER BY 1",
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "-82",
+          "value": "-82"
+        },
+        "label": "West (map)",
+        "name": "west",
+        "options": [],
+        "query": "-118.482988",
+        "type": "textbox",
+        "hide": 2
+      },
+      {
+        "current": {
+          "text": "-56",
+          "value": "-56"
+        },
+        "label": "South (map)",
+        "name": "south",
+        "options": [],
+        "query": "-27.268199",
+        "type": "textbox",
+        "hide": 2
+      },
+      {
+        "current": {
+          "text": "-34",
+          "value": "-34"
+        },
+        "label": "East (map)",
+        "name": "east",
+        "options": [],
+        "query": "0.773803",
+        "type": "textbox",
+        "hide": 2
+      },
+      {
+        "current": {
+          "text": "13",
+          "value": "13"
+        },
+        "label": "North (map)",
+        "name": "north",
+        "options": [],
+        "query": "26.76655",
+        "type": "textbox",
+        "hide": 2
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "label": "Country (click)",
+        "name": "country_sel",
+        "options": [],
+        "query": "",
+        "type": "textbox",
+        "hide": 2
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "label": "Drawn area",
+        "name": "area",
+        "options": [],
+        "query": "",
+        "type": "textbox",
+        "hide": 2
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "label": "Playback from",
+        "name": "playFrom",
+        "options": [],
+        "query": "2026-08-13T13:06:16.000Z",
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "label": "Playback to",
+        "name": "playTo",
+        "options": [],
+        "query": "2026-08-18T18:07:18.000Z",
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "-10",
+          "value": "-10"
+        },
+        "label": "Link lat",
+        "name": "linkLat",
+        "options": [],
+        "query": "-4.322231",
+        "type": "textbox",
+        "hide": 2
+      },
+      {
+        "current": {
+          "text": "-55",
+          "value": "-55"
+        },
+        "label": "Link lng",
+        "name": "linkLng",
+        "options": [],
+        "query": "-52.737251",
+        "type": "textbox",
+        "hide": 2
+      }
+    ]
+  },
+  "time": {
+    "from": "2026-08-13T00:00:00.000Z",
+    "to": "2026-08-19T23:59:59.000Z"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Fire Emissions Watch — CAMS replica",
+  "uid": "fire-emissions",
+  "version": 1
+}
