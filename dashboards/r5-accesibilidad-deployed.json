@@ -25,7 +25,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Pincha para mover el origen. Dale al play de la barra inferior: el reloj marca la hora del viaje, 07:00 es la salida. Al pausar, los tres números de abajo se recolocan en ese instante.",
+      "description": "Click to move the origin. Press play on the bar below: the clock is the time of day of the journey, and 07:00 is departure. Pause, and the four numbers underneath move to that moment.",
       "fieldConfig": {
         "defaults": {},
         "overrides": []
@@ -516,7 +516,7 @@
           "refId": "A"
         }
       ],
-      "title": "Accesibilidad desde el punto que pinches — la ventana de la consulta, animada",
+      "title": "Accessibility from wherever you click — the query's window, animated",
       "type": "ubica-keplergl-panel"
     },
     {
@@ -524,7 +524,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "La medida de R5, no un recuento nuestro: oportunidades de la rejilla de población dentro del umbral. Sigue al reloj del mapa: pausa la animación donde quieras y el número se recoloca ahí. Antes del primer play muestra el corte.",
+      "description": "R5's own measure, not a count of ours: opportunities from the population grid within the threshold. It follows the map's clock: pause the animation wherever you like and the number moves to that moment. Before the first play it shows the cutoff.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -585,7 +585,7 @@
           "refId": "A"
         }
       ],
-      "title": "Población",
+      "title": "Population",
       "type": "stat"
     },
     {
@@ -593,7 +593,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Paradas de los feeds cuya celda se alcanza dentro del umbral. Sigue al reloj del mapa: pausa la animación donde quieras y el número se recoloca ahí. Antes del primer play muestra el corte.",
+      "description": "Stops from the GTFS feeds whose cell is reached within the threshold. It follows the map's clock: pause the animation wherever you like and the number moves to that moment. Before the first play it shows the cutoff.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -654,7 +654,7 @@
           "refId": "A"
         }
       ],
-      "title": "Paradas",
+      "title": "Transit stops",
       "type": "stat"
     },
     {
@@ -662,7 +662,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Parques con algún acceso dentro del umbral, de 381 existentes. Se cuenta el parque, no la puerta. Sigue al reloj del mapa: pausa la animación donde quieras y el número se recoloca ahí. Antes del primer play muestra el corte.",
+      "description": "Parks with at least one entrance within the threshold, out of 381. The park is counted, not the gate. It follows the map's clock: pause the animation wherever you like and the number moves to that moment. Before the first play it shows the cutoff.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -723,7 +723,7 @@
           "refId": "A"
         }
       ],
-      "title": "Parques",
+      "title": "Parks",
       "type": "stat"
     },
     {
@@ -731,7 +731,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Suma del área real de las celdas alcanzadas. Sigue al reloj del mapa: pausa la animación donde quieras y el número se recoloca ahí. Antes del primer play muestra el corte.",
+      "description": "The true area of the reached cells, summed. It follows the map's clock: pause the animation wherever you like and the number moves to that moment. Before the first play it shows the cutoff.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -792,7 +792,7 @@
           "refId": "A"
         }
       ],
-      "title": "Superficie",
+      "title": "Area",
       "type": "stat"
     },
     {
@@ -800,7 +800,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Acumulada, de 5 en 5 minutos hasta el corte. El punto rojo es dónde va el reloj del mapa.",
+      "description": "Cumulative, in five-minute steps up to the cutoff. The red dot is where the map's clock currently is.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -935,11 +935,11 @@
             "uid": "duckdb"
           },
           "format": 1,
-          "rawSql": "WITH marcas AS (\n  SELECT DISTINCT m FROM (\n    SELECT unnest(generate_series(0, try_cast($cutoff AS INTEGER), 5)) AS m\n    UNION ALL SELECT least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER))\n  ) WHERE m BETWEEN 0 AND try_cast($cutoff AS INTEGER)\n)\nSELECT marcas.m AS minutos, a.personas,\n       CASE WHEN marcas.m = least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER)) THEN a.personas END AS \"en el reloj\"\nFROM marcas JOIN read_json_auto('http://iso-cuenca:8099/accessibility.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos) a ON a.minutos = marcas.m\nORDER BY marcas.m;",
+          "rawSql": "WITH marcas AS (\n  SELECT DISTINCT m FROM (\n    SELECT unnest(generate_series(0, try_cast($cutoff AS INTEGER), 5)) AS m\n    UNION ALL SELECT least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER))\n  ) WHERE m BETWEEN 0 AND try_cast($cutoff AS INTEGER)\n)\nSELECT marcas.m AS minutos, a.personas,\n       CASE WHEN marcas.m = least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER)) THEN a.personas END AS \"at the playhead\"\nFROM marcas JOIN read_json_auto('http://iso-cuenca:8099/accessibility.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos) a ON a.minutos = marcas.m\nORDER BY marcas.m;",
           "refId": "A"
         }
       ],
-      "title": "Población alcanzable",
+      "title": "Population reachable",
       "type": "trend"
     },
     {
@@ -947,7 +947,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Acumuladas, de 5 en 5 minutos hasta el corte. El punto rojo es dónde va el reloj del mapa.",
+      "description": "Cumulative, in five-minute steps up to the cutoff. The red dot is where the map's clock currently is.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1082,11 +1082,11 @@
             "uid": "duckdb"
           },
           "format": 1,
-          "rawSql": "WITH alcance AS (\n  SELECT min(c.minutos) AS m\n  FROM (SELECT unnest(stops) AS s FROM read_json_auto('http://r5-gateway/api/gtfs/6a976415196cd834c785ad5d/stops')) p\n  JOIN (SELECT minutos, ST_GeomFromHEXWKB(geom) AS g\n        FROM read_json_auto('http://iso-cuenca:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff)) c\n    ON ST_Within(ST_Point(p.s.lon, p.s.lat), c.g)\n  GROUP BY p.s._id\n),\nmarcas AS (\n  SELECT DISTINCT m FROM (\n    SELECT unnest(generate_series(0, try_cast($cutoff AS INTEGER), 5)) AS m\n    UNION ALL SELECT least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER))\n  ) WHERE m BETWEEN 0 AND try_cast($cutoff AS INTEGER)\n)\nSELECT marcas.m AS minutos,\n       count(alcance.m) AS paradas,\n       CASE WHEN marcas.m = least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER)) THEN count(alcance.m) END AS \"en el reloj\"\nFROM marcas LEFT JOIN alcance ON alcance.m <= marcas.m\nGROUP BY marcas.m ORDER BY marcas.m;",
+          "rawSql": "WITH alcance AS (\n  SELECT min(c.minutos) AS m\n  FROM (SELECT unnest(stops) AS s FROM read_json_auto('http://r5-gateway/api/gtfs/6a976415196cd834c785ad5d/stops')) p\n  JOIN (SELECT minutos, ST_GeomFromHEXWKB(geom) AS g\n        FROM read_json_auto('http://iso-cuenca:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff)) c\n    ON ST_Within(ST_Point(p.s.lon, p.s.lat), c.g)\n  GROUP BY p.s._id\n),\nmarcas AS (\n  SELECT DISTINCT m FROM (\n    SELECT unnest(generate_series(0, try_cast($cutoff AS INTEGER), 5)) AS m\n    UNION ALL SELECT least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER))\n  ) WHERE m BETWEEN 0 AND try_cast($cutoff AS INTEGER)\n)\nSELECT marcas.m AS minutos,\n       count(alcance.m) AS paradas,\n       CASE WHEN marcas.m = least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER)) THEN count(alcance.m) END AS \"at the playhead\"\nFROM marcas LEFT JOIN alcance ON alcance.m <= marcas.m\nGROUP BY marcas.m ORDER BY marcas.m;",
           "refId": "A"
         }
       ],
-      "title": "Paradas alcanzables",
+      "title": "Stops reachable",
       "type": "trend"
     },
     {
@@ -1094,7 +1094,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Acumulados, de 5 en 5 minutos hasta el corte. El punto rojo es dónde va el reloj del mapa.",
+      "description": "Cumulative, in five-minute steps up to the cutoff. The red dot is where the map's clock currently is.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1229,11 +1229,11 @@
             "uid": "duckdb"
           },
           "format": 1,
-          "rawSql": "WITH parques AS (\n  SELECT p.park_id, min(c.minutos) AS m\n  FROM ST_Read('https://appsllactalab.ucuenca.edu.ec/geoserver/geonode/puntos_acceso_parques/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=geonode:puntos_acceso_parques&outputFormat=application/json&srsName=EPSG:4326') p\n  JOIN (SELECT minutos, ST_GeomFromHEXWKB(geom) AS g\n        FROM read_json_auto('http://iso-cuenca:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff)) c\n    ON ST_Within(p.geom, c.g)\n  WHERE p.situacion IS DISTINCT FROM 'RESERVA'\n  GROUP BY p.park_id\n),\nmarcas AS (\n  SELECT DISTINCT m FROM (\n    SELECT unnest(generate_series(0, try_cast($cutoff AS INTEGER), 5)) AS m\n    UNION ALL SELECT least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER))\n  ) WHERE m BETWEEN 0 AND try_cast($cutoff AS INTEGER)\n)\nSELECT marcas.m AS minutos,\n       count(parques.m) AS parques,\n       CASE WHEN marcas.m = least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER)) THEN count(parques.m) END AS \"en el reloj\"\nFROM marcas LEFT JOIN parques ON parques.m <= marcas.m\nGROUP BY marcas.m ORDER BY marcas.m;",
+          "rawSql": "WITH parques AS (\n  SELECT p.park_id, min(c.minutos) AS m\n  FROM ST_Read('https://appsllactalab.ucuenca.edu.ec/geoserver/geonode/puntos_acceso_parques/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=geonode:puntos_acceso_parques&outputFormat=application/json&srsName=EPSG:4326') p\n  JOIN (SELECT minutos, ST_GeomFromHEXWKB(geom) AS g\n        FROM read_json_auto('http://iso-cuenca:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff)) c\n    ON ST_Within(p.geom, c.g)\n  WHERE p.situacion IS DISTINCT FROM 'RESERVA'\n  GROUP BY p.park_id\n),\nmarcas AS (\n  SELECT DISTINCT m FROM (\n    SELECT unnest(generate_series(0, try_cast($cutoff AS INTEGER), 5)) AS m\n    UNION ALL SELECT least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER))\n  ) WHERE m BETWEEN 0 AND try_cast($cutoff AS INTEGER)\n)\nSELECT marcas.m AS minutos,\n       count(parques.m) AS parques,\n       CASE WHEN marcas.m = least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER)) THEN count(parques.m) END AS \"at the playhead\"\nFROM marcas LEFT JOIN parques ON parques.m <= marcas.m\nGROUP BY marcas.m ORDER BY marcas.m;",
           "refId": "A"
         }
       ],
-      "title": "Parques alcanzables",
+      "title": "Parks reachable",
       "type": "trend"
     },
     {
@@ -1241,7 +1241,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Acumulada, de 5 en 5 minutos hasta el corte. El punto rojo es dónde va el reloj del mapa.",
+      "description": "Cumulative, in five-minute steps up to the cutoff. The red dot is where the map's clock currently is.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1376,19 +1376,41 @@
             "uid": "duckdb"
           },
           "format": 1,
-          "rawSql": "WITH celdas AS (\n  SELECT minutos,\n         ST_Area(ST_Transform(ST_GeomFromHEXWKB(geom), 'EPSG:4326', 'EPSG:3857',\n                              always_xy := true))\n           / 1e6 * pow(cos(radians(try_cast($lat AS DOUBLE))), 2) AS km2\n  FROM read_json_auto('http://iso-cuenca:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff)\n),\nmarcas AS (\n  SELECT DISTINCT m FROM (\n    SELECT unnest(generate_series(0, try_cast($cutoff AS INTEGER), 5)) AS m\n    UNION ALL SELECT least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER))\n  ) WHERE m BETWEEN 0 AND try_cast($cutoff AS INTEGER)\n)\nSELECT marcas.m AS minutos,\n       round(coalesce(sum(celdas.km2), 0), 1) AS km2,\n       CASE WHEN marcas.m = least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER))\n            THEN round(coalesce(sum(celdas.km2), 0), 1) END AS \"en el reloj\"\nFROM marcas LEFT JOIN celdas ON celdas.minutos <= marcas.m\nGROUP BY marcas.m ORDER BY marcas.m;",
+          "rawSql": "WITH celdas AS (\n  SELECT minutos,\n         ST_Area(ST_Transform(ST_GeomFromHEXWKB(geom), 'EPSG:4326', 'EPSG:3857',\n                              always_xy := true))\n           / 1e6 * pow(cos(radians(try_cast($lat AS DOUBLE))), 2) AS km2\n  FROM read_json_auto('http://iso-cuenca:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff)\n),\nmarcas AS (\n  SELECT DISTINCT m FROM (\n    SELECT unnest(generate_series(0, try_cast($cutoff AS INTEGER), 5)) AS m\n    UNION ALL SELECT least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER))\n  ) WHERE m BETWEEN 0 AND try_cast($cutoff AS INTEGER)\n)\nSELECT marcas.m AS minutos,\n       round(coalesce(sum(celdas.km2), 0), 1) AS km2,\n       CASE WHEN marcas.m = least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER))\n            THEN round(coalesce(sum(celdas.km2), 0), 1) END AS \"at the playhead\"\nFROM marcas LEFT JOIN celdas ON celdas.minutos <= marcas.m\nGROUP BY marcas.m ORDER BY marcas.m;",
           "refId": "A"
         }
       ],
-      "title": "Superficie alcanzable",
+      "title": "Area reachable",
       "type": "trend"
+    },
+    {
+      "type": "text",
+      "title": "About this dashboard",
+      "id": 10,
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 24,
+        "h": 14
+      },
+      "transparent": false,
+      "options": {
+        "mode": "markdown",
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "## What this dashboard does\n\nClick anywhere on the map and it answers one question for that spot: **where can you get to by\npublic transport, and how much is within reach?** The isochrone is drawn for the date, modes and\nlimits set at the top, and the timeline animates the journey minute by minute from a 07:00\ndeparture — the four figures below the map move with the playhead, and the four charts beside them\naccumulate in five-minute steps.\n\n## How it is built\n\nNothing is precomputed and there is no ETL. Each panel is a DuckDB query issued straight against\nthree HTTP services:\n\n1. **R5** (Conveyal), behind `r5-gateway`, computes the travel-time surface from the origin for the\n   selected date, modes, walk/bike limit and number of rides.\n2. **iso-cuenca** turns that surface into two things a query can read: `iso.geojson`, the isochrone\n   polygons the map draws, and `cells.json`, every reached cell with the minute it is reached.\n   `accessibility.json` returns R5's own opportunity counts.\n3. **DuckDB** reads those endpoints in place with `read_json_auto` and `ST_Read`, and joins them\n   against the GTFS stops served by R5's own API and the park entrances published as WFS by\n   Llactalab (Universidad de Cuenca).\n\nThe map is the **Kepler Geospatial Maps** panel, and two of its cross-filtering channels are what\nmake the dashboard interactive:\n\n- **Clicking publishes a coordinate.** The click is written into `$​lat` and `$​lng`, which every\n  query reads — so one click re-answers the whole dashboard for a new origin.\n- **The time slider publishes a window.** Instead of moving the dashboard's time range, the map\n  writes its playhead into `$​t_ini` and `$​t_fin`, which is how the figures track the animation\n  without re-running anything else.\n\n## Reading the numbers\n\n**Population** is R5's own accessibility measure over its population grid, not a count of ours.\n**Parks** counts the park once, however many of its entrances fall inside the isochrone, out of 381.\n**Area** sums the true surface of the reached cells. Before the first play, all four show the value\nat the cutoff.\n"
+      },
+      "pluginVersion": ""
     }
   ],
   "preload": false,
   "schemaVersion": 41,
   "tags": [
     "spike",
-    "accesibilidad"
+    "accessibility"
   ],
   "templating": {
     "list": [
@@ -1397,7 +1419,7 @@
           "text": "-2.897",
           "value": "-2.897"
         },
-        "label": "Latitud",
+        "label": "Latitude",
         "name": "lat",
         "query": "-2.911372",
         "type": "textbox"
@@ -1407,7 +1429,7 @@
           "text": "-79.004",
           "value": "-79.004"
         },
-        "label": "Longitud",
+        "label": "Longitude",
         "name": "lng",
         "query": "-79.025423",
         "type": "textbox"
@@ -1417,7 +1439,7 @@
           "text": "2026-09-02",
           "value": "2026-09-02"
         },
-        "label": "Fecha",
+        "label": "Date",
         "name": "fecha",
         "query": "2026-09-02",
         "type": "textbox"
@@ -1444,31 +1466,31 @@
       },
       {
         "current": {
-          "text": "A pie",
+          "text": "Walk",
           "value": "apie"
         },
-        "label": "En la calle",
+        "label": "Street mode",
         "name": "calle",
         "options": [
           {
             "selected": true,
-            "text": "A pie",
+            "text": "Walk",
             "value": "apie"
           },
           {
             "selected": false,
-            "text": "Bici",
+            "text": "Bike",
             "value": "bici"
           }
         ],
-        "query": "apie,bici",
+        "query": "Walk : apie,Bike : bici",
         "type": "custom"
       },
       {
         "current": {
           "text": [
             "Bus",
-            "Tranvía"
+            "Tram"
           ],
           "value": [
             "BUS",
@@ -1476,7 +1498,7 @@
           ]
         },
         "includeAll": false,
-        "label": "Transporte público",
+        "label": "Transit modes",
         "multi": true,
         "name": "publico",
         "options": [
@@ -1487,16 +1509,16 @@
           },
           {
             "selected": true,
-            "text": "Tranvía",
+            "text": "Tram",
             "value": "TRAM"
           },
           {
             "selected": false,
-            "text": "Ninguno",
+            "text": "None",
             "value": "none"
           }
         ],
-        "query": "BUS,TRAM,none",
+        "query": "Bus : BUS,Tram : TRAM,None : none",
         "type": "custom"
       },
       {
@@ -1504,7 +1526,7 @@
           "text": "20",
           "value": "20"
         },
-        "label": "Máx. a pie/bici (min)",
+        "label": "Max walk/bike (min)",
         "name": "apie",
         "options": [
           {
@@ -1531,7 +1553,7 @@
           "text": "4",
           "value": "4"
         },
-        "label": "Trayectos máx.",
+        "label": "Max rides",
         "name": "trasbordos",
         "options": [
           {
@@ -1558,7 +1580,7 @@
           "text": "45",
           "value": "45"
         },
-        "label": "Corte (min)",
+        "label": "Cutoff (min)",
         "name": "cutoff",
         "options": [
           {
@@ -1593,7 +1615,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Accesibilidad por isocronas (R5 + DuckDB)",
+  "title": "Transit accessibility by isochrone (R5 + DuckDB)",
   "uid": "r5-accesibilidad",
-  "description": "Accesibilidad en transporte publico desde el punto que se pinche. R5 (r5-gateway) calcula la superficie de tiempos, el servicio iso-cuenca la convierte en celdas y poligonos, y DuckDB hace el resto. El reloj del mapa recorre los minutos del viaje."
+  "description": "Public-transport accessibility from wherever you click. R5 (r5-gateway) computes the travel-time surface, the iso-cuenca service turns it into cells and polygons, and DuckDB does the rest. The map's clock walks the minutes of the journey."
 }
