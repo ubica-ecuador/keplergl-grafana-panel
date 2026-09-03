@@ -11,6 +11,7 @@ import { framesToZarr } from '../data/zarrDataset';
 import { toKeplerTheme } from '../data/keplerTheme';
 import { SavedMapConfig } from '../data/mapConfig';
 import { CUSTOM_BASEMAP_ID, DEFAULT_RASTER_SERVER_URL } from './constants';
+import { resolveCustomBasemapUrl } from './customBasemapUrl';
 import { LazyKeplerMap } from './LazyKeplerMap';
 import { useStableValue } from './useStableValue';
 import type { VariableMapping } from './variableSync';
@@ -27,7 +28,16 @@ const EMPTY_MAPPINGS: VariableMapping[] = [];
  * dynamic import in LazyKeplerMap, so a dashboard that merely has the plugin
  * installed does not pay for deck.gl and MapLibre.
  */
-export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChangeTimeRange, width, height }: Props) {
+export function KeplerPanel({
+  options,
+  onOptionsChange,
+  data,
+  timeRange,
+  onChangeTimeRange,
+  replaceVariables,
+  width,
+  height,
+}: Props) {
   const grafanaTheme = useTheme2();
 
   // kepler and the sync hook work in epoch ms; Grafana hands DateTime objects.
@@ -101,18 +111,32 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
   const keplerTheme = useMemo(() => toKeplerTheme(grafanaTheme), [grafanaTheme]);
   const followTheme = options.followGrafanaTheme ?? true;
 
+  // A self-hosted style may name a dashboard variable and may be written
+  // relative to the page; kepler can use neither as authored. See
+  // `customBasemapUrl.ts` for what each of the two costs when it is skipped.
+  const customBasemapUrl = useMemo(
+    () =>
+      resolveCustomBasemapUrl(
+        options.customBasemapUrl,
+        replaceVariables,
+        typeof window === 'undefined' ? undefined : window.location.href
+      ),
+    [options.customBasemapUrl, replaceVariables]
+  );
+
   // `auto` tracks the dashboard theme so a light dashboard does not carry a
-  // black map. `custom` is ignored until a URL is actually supplied.
+  // black map. `custom` is ignored until a URL is actually supplied — resolved
+  // rather than authored, so a variable that expands to nothing counts as none.
   const basemapId = useMemo(() => {
     const choice = options.basemap ?? 'auto';
     if (choice === 'auto') {
       return keplerTheme.mapStyle;
     }
     if (choice === 'custom') {
-      return options.customBasemapUrl ? CUSTOM_BASEMAP_ID : null;
+      return customBasemapUrl ? CUSTOM_BASEMAP_ID : null;
     }
     return choice;
-  }, [options.basemap, options.customBasemapUrl, keplerTheme.mapStyle]);
+  }, [options.basemap, customBasemapUrl, keplerTheme.mapStyle]);
 
   const handleMapConfigCaptured = useCallback(
     (mapConfig: SavedMapConfig) => onOptionsChange({ ...options, mapConfig }),
@@ -132,7 +156,7 @@ export function KeplerPanel({ options, onOptionsChange, data, timeRange, onChang
         mapConfig={options.mapConfig}
         theme={followTheme ? keplerTheme : undefined}
         basemapId={basemapId}
-        customBasemapUrl={options.customBasemapUrl}
+        customBasemapUrl={customBasemapUrl}
         showSidePanel={options.showSidePanel ?? true}
         saveRequest={options.saveRequest ?? 0}
         onMapConfigCaptured={handleMapConfigCaptured}

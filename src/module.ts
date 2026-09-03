@@ -126,7 +126,8 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
     .addTextInput({
       path: 'customBasemapUrl',
       name: 'Style URL',
-      description: 'MapLibre style.json served from your own network — required for air-gapped installs.',
+      description:
+        'MapLibre style.json served from your own network — required for air-gapped installs. Dashboard variables are interpolated, and a path relative to the dashboard is resolved against it.',
       category: ['Map'],
       settings: { placeholder: 'https://tiles.internal/style.json' },
       showIf: (config) => config.basemap === 'custom',
