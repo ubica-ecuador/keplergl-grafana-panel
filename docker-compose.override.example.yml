@@ -75,6 +75,17 @@ services:
       - default
       - ubica_network
 
+  # The tile server, for the same reason as `sources-data`: the browser talks to
+  # it directly — kepler builds the COG tile URLs client-side, so a
+  # compose-network name would not resolve in the page — and on a published
+  # instance those requests have to arrive over the same https origin as
+  # everything else. Leaving it off this network is not a subtle failure: every
+  # raster dashboard loses its tiles.
+  titiler:
+    networks:
+      - default
+      - ubica_network
+
 networks:
   # Created by the nginx-proxy-manager stack, so it is external here rather
   # than owned by this file.

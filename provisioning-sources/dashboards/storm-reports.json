@@ -861,7 +861,7 @@
       "id": 3,
       "type": "stat",
       "title": "Last 24 hours",
-      "description": "The 24-hour column of the ArcGIS dashboard, in a single request: six `CASE` expressions inside `outStatistics`. A type with no events returns 0 rather than disappearing.",
+      "description": "The 24-hour column of the ArcGIS dashboard, in a single request: six `CASE` expressions inside `outStatistics`. A type with no events returns 0 rather than disappearing. Sent as `POST` for the same reason as the block below — with every state picked this query is 1.958 characters as a `GET`, and the ceiling is 2.048.",
       "datasource": {
         "type": "yesoreyeram-infinity-datasource",
         "uid": "infinity"
@@ -885,8 +885,9 @@
           "format": "table",
           "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_storm_reports_v1/FeatureServer/4/query",
           "url_options": {
-            "method": "GET",
-            "params": [
+            "method": "POST",
+            "body_type": "x-www-form-urlencoded",
+            "body_form": [
               {
                 "key": "where",
                 "value": "HOURS_OLD <= 24 AND LONGITUDE BETWEEN $west AND $east AND LATITUDE BETWEEN $south AND $north AND INCIDENT_TYPE IN (${type:sqlstring}) AND STATE IN (${state:sqlstring})"
@@ -899,7 +900,8 @@
                 "key": "f",
                 "value": "json"
               }
-            ]
+            ],
+            "params": []
           },
           "root_selector": "features",
           "columns": [
@@ -1084,7 +1086,7 @@
       "id": 4,
       "type": "stat",
       "title": "In the player's window",
-      "description": "The same, for the span the map's time brush marks. With no brush the `mapFrom` / `mapTo` guards span everything and the block shows the whole week.",
+      "description": "The same, for the span the map's time brush marks. With no brush the `mapFrom` / `mapTo` guards span everything and the block shows the whole week. Sent as `POST`: with every state picked and a brush set, the `GET` form is 2.186 characters of query string and Esri answers **404** above 2.048.",
       "datasource": {
         "type": "yesoreyeram-infinity-datasource",
         "uid": "infinity"
@@ -1108,8 +1110,9 @@
           "format": "table",
           "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/NOAA_storm_reports_v1/FeatureServer/4/query",
           "url_options": {
-            "method": "GET",
-            "params": [
+            "method": "POST",
+            "body_type": "x-www-form-urlencoded",
+            "body_form": [
               {
                 "key": "where",
                 "value": "INCIDENT_DATETIME BETWEEN COALESCE(NULLIF('$mapFrom', ''), '1970-01-01T00:00:00.000Z') AND COALESCE(NULLIF('$mapTo', ''), '2100-01-01T00:00:00.000Z') AND LONGITUDE BETWEEN $west AND $east AND LATITUDE BETWEEN $south AND $north AND INCIDENT_TYPE IN (${type:sqlstring}) AND STATE IN (${state:sqlstring})"
@@ -1122,7 +1125,8 @@
                 "key": "f",
                 "value": "json"
               }
-            ]
+            ],
+            "params": []
           },
           "root_selector": "features",
           "columns": [

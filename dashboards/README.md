@@ -36,3 +36,21 @@ nine queries can be moved to `http://host.docker.internal:8099` whenever the das
 edited, and would then work anywhere the isochrone service is running on the host.
 
 Nothing here runs that service; it is expected on port 8099 of the machine hosting the bench.
+
+### `r5-accesibilidad-deployed.json`
+
+The same dashboard as it runs on the published instance, kept beside the bench copy because the two
+differ in the only place that matters and neither is a stale version of the other:
+
+| | bench copy | deployed copy |
+| --- | --- | --- |
+| isochrones | `http://172.22.0.1:8099` | `http://iso-cuenca:8099` |
+| routing | `https://r5.ubica.ec` | `http://r5-gateway` |
+
+On the server both services are containers on a shared Docker network, so the dashboard calls them
+by name. On a laptop they are neither: the isochrone service runs on the host and R5 is reached as
+the public deployment. Same nine panels, same ten variables, same queries — three URLs apart.
+
+Which is the argument for eventually lifting those hosts into dashboard variables, the way
+`fire-emissions.json` keeps its data root in `firedata`. Until then, import whichever matches where
+you are.
