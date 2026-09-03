@@ -15,10 +15,11 @@
       }
     ]
   },
+  "description": "Public-transport accessibility from wherever you click. R5 (r5-gateway) computes the travel-time surface, the iso-cuenca service turns it into cells and polygons, and DuckDB does the rest. The map's clock walks the minutes of the journey.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "links": [],
+  "liveNow": false,
   "panels": [
     {
       "datasource": {
@@ -26,12 +27,8 @@
         "uid": "duckdb"
       },
       "description": "Click to move the origin. Press play on the bar below: the clock is the time of day of the journey, and 07:00 is departure. Pause, and the four numbers underneath move to that moment.",
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
       "gridPos": {
-        "h": 16,
+        "h": 12,
         "w": 24,
         "x": 0,
         "y": 0
@@ -93,8 +90,8 @@
               "isSplit": false,
               "isViewportSynced": true,
               "isZoomLocked": false,
-              "latitude": -2.911460518694762,
-              "longitude": -79.0149273280571,
+              "latitude": -2.9004469530887236,
+              "longitude": -79.00083171253397,
               "mapSplitMode": "SINGLE_MAP",
               "mapViewMode": "MODE_2D",
               "maxPitch": 60,
@@ -162,15 +159,15 @@
                   ],
                   "plotType": {
                     "aggregation": "average",
-                    "defaultTimeFormat": "L  LTS",
-                    "interval": "30-second",
+                    "defaultTimeFormat": "L  LT",
+                    "interval": "1-minute",
                     "type": "histogram"
                   },
                   "speed": 10,
                   "type": "timeRange",
                   "value": [
-                    1788332520000,
-                    1788333300000
+                    1788332460000,
+                    1788333600000
                   ],
                   "view": "minified"
                 }
@@ -336,7 +333,7 @@
                       "name": "minutos",
                       "type": "integer"
                     },
-                    "colorScale": "quantile",
+                    "colorScale": "quantize",
                     "heightScale": "linear",
                     "radiusScale": "linear",
                     "sizeScale": "linear",
@@ -398,7 +395,7 @@
                     "visConfig": {
                       "allowHover": false,
                       "colorRange": {
-                        "category": "Uber",
+                        "category": "Custom",
                         "colors": [
                           "#EDD1CA",
                           "#D1A5A8",
@@ -407,9 +404,8 @@
                           "#563A5B",
                           "#2C1E3D"
                         ],
-                        "name": "Pink Wine",
-                        "reversed": true,
-                        "type": "sequential"
+                        "name": "color.customPalette.custom.minutos",
+                        "type": "custom"
                       },
                       "elevationScale": 5,
                       "enable3d": false,
@@ -419,7 +415,7 @@
                         0,
                         500
                       ],
-                      "opacity": 0.01,
+                      "opacity": 0.02,
                       "radius": 10,
                       "radiusRange": [
                         0,
@@ -478,8 +474,8 @@
         "publishWhilePlaying": false,
         "rasterColormap": "",
         "rasterPainted": false,
-        "saveRequest": 3,
-        "showSidePanel": false,
+        "saveRequest": 5,
+        "showSidePanel": true,
         "timeSync": "variables",
         "timeVariables": {
           "from": "t_ini",
@@ -495,7 +491,7 @@
           }
         ]
       },
-      "pluginVersion": "0.3.0",
+      "pluginVersion": "1.0.0",
       "targets": [
         {
           "datasource": {
@@ -532,12 +528,12 @@
             "mode": "fixed"
           },
           "decimals": 0,
-          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -546,14 +542,13 @@
             ]
           },
           "unit": "locale"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
-        "h": 5,
+        "h": 2,
         "w": 6,
         "x": 0,
-        "y": 16
+        "y": 12
       },
       "id": 2,
       "options": {
@@ -570,10 +565,13 @@
           "values": false
         },
         "showPercentChange": false,
+        "text": {
+          "valueSize": 25
+        },
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "12.0.10",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -601,12 +599,12 @@
             "mode": "fixed"
           },
           "decimals": 0,
-          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -615,14 +613,13 @@
             ]
           },
           "unit": "locale"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
-        "h": 5,
+        "h": 2,
         "w": 6,
         "x": 6,
-        "y": 16
+        "y": 12
       },
       "id": 3,
       "options": {
@@ -639,10 +636,13 @@
           "values": false
         },
         "showPercentChange": false,
+        "text": {
+          "valueSize": 25
+        },
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "12.0.10",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -670,12 +670,12 @@
             "mode": "fixed"
           },
           "decimals": 0,
-          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -684,14 +684,13 @@
             ]
           },
           "unit": "locale"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
-        "h": 5,
+        "h": 2,
         "w": 6,
         "x": 12,
-        "y": 16
+        "y": 12
       },
       "id": 4,
       "options": {
@@ -708,10 +707,13 @@
           "values": false
         },
         "showPercentChange": false,
+        "text": {
+          "valueSize": 25
+        },
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "12.0.10",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -739,12 +741,12 @@
             "mode": "fixed"
           },
           "decimals": 1,
-          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -753,14 +755,13 @@
             ]
           },
           "unit": "suffix: km²"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
-        "h": 5,
+        "h": 2,
         "w": 6,
         "x": 18,
-        "y": 16
+        "y": 12
       },
       "id": 5,
       "options": {
@@ -777,10 +778,13 @@
           "values": false
         },
         "showPercentChange": false,
+        "text": {
+          "valueSize": 25
+        },
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "12.0.10",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -831,6 +835,7 @@
               "type": "linear"
             },
             "showPoints": "always",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -841,12 +846,12 @@
             }
           },
           "decimals": 0,
-          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -870,13 +875,17 @@
               {
                 "id": "decimals",
                 "value": 0
+              },
+              {
+                "id": "displayName",
+                "value": "minutes"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "en el reloj"
+              "options": "at the playhead"
             },
             "properties": [
               {
@@ -910,7 +919,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 21
+        "y": 14
       },
       "id": 6,
       "options": {
@@ -927,7 +936,7 @@
         },
         "xField": "minutos"
       },
-      "pluginVersion": "12.0.10",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -978,6 +987,7 @@
               "type": "linear"
             },
             "showPoints": "always",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -988,12 +998,12 @@
             }
           },
           "decimals": 0,
-          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -1017,13 +1027,17 @@
               {
                 "id": "decimals",
                 "value": 0
+              },
+              {
+                "id": "displayName",
+                "value": "minutes"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "en el reloj"
+              "options": "at the playhead"
             },
             "properties": [
               {
@@ -1057,7 +1071,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 21
+        "y": 14
       },
       "id": 7,
       "options": {
@@ -1074,7 +1088,7 @@
         },
         "xField": "minutos"
       },
-      "pluginVersion": "12.0.10",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -1125,6 +1139,7 @@
               "type": "linear"
             },
             "showPoints": "always",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1135,12 +1150,12 @@
             }
           },
           "decimals": 0,
-          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -1164,13 +1179,17 @@
               {
                 "id": "decimals",
                 "value": 0
+              },
+              {
+                "id": "displayName",
+                "value": "minutes"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "en el reloj"
+              "options": "at the playhead"
             },
             "properties": [
               {
@@ -1204,7 +1223,7 @@
         "h": 7,
         "w": 6,
         "x": 12,
-        "y": 21
+        "y": 14
       },
       "id": 8,
       "options": {
@@ -1221,7 +1240,7 @@
         },
         "xField": "minutos"
       },
-      "pluginVersion": "12.0.10",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -1272,6 +1291,7 @@
               "type": "linear"
             },
             "showPoints": "always",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1282,12 +1302,12 @@
             }
           },
           "decimals": 1,
-          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -1311,13 +1331,17 @@
               {
                 "id": "decimals",
                 "value": 0
+              },
+              {
+                "id": "displayName",
+                "value": "minutes"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "en el reloj"
+              "options": "at the playhead"
             },
             "properties": [
               {
@@ -1351,7 +1375,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 21
+        "y": 14
       },
       "id": 9,
       "options": {
@@ -1368,7 +1392,7 @@
         },
         "xField": "minutos"
       },
-      "pluginVersion": "12.0.10",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -1384,30 +1408,31 @@
       "type": "trend"
     },
     {
-      "type": "text",
-      "title": "About this dashboard",
-      "id": 10,
       "gridPos": {
-        "x": 0,
-        "y": 28,
+        "h": 14,
         "w": 24,
-        "h": 14
+        "x": 0,
+        "y": 21
       },
-      "transparent": false,
+      "id": 10,
       "options": {
-        "mode": "markdown",
         "code": {
           "language": "plaintext",
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "## What this dashboard does\n\nClick anywhere on the map and it answers one question for that spot: **where can you get to by\npublic transport, and how much is within reach?** The isochrone is drawn for the date, modes and\nlimits set at the top, and the timeline animates the journey minute by minute from a 07:00\ndeparture — the four figures below the map move with the playhead, and the four charts beside them\naccumulate in five-minute steps.\n\n## How it is built\n\nNothing is precomputed and there is no ETL. Each panel is a DuckDB query issued straight against\nthree HTTP services:\n\n1. **R5** (Conveyal), behind `r5-gateway`, computes the travel-time surface from the origin for the\n   selected date, modes, walk/bike limit and number of rides.\n2. **iso-cuenca** turns that surface into two things a query can read: `iso.geojson`, the isochrone\n   polygons the map draws, and `cells.json`, every reached cell with the minute it is reached.\n   `accessibility.json` returns R5's own opportunity counts.\n3. **DuckDB** reads those endpoints in place with `read_json_auto` and `ST_Read`, and joins them\n   against the GTFS stops served by R5's own API and the park entrances published as WFS by\n   Llactalab (Universidad de Cuenca).\n\nThe map is the **Kepler Geospatial Maps** panel, and two of its cross-filtering channels are what\nmake the dashboard interactive:\n\n- **Clicking publishes a coordinate.** The click is written into `$​lat` and `$​lng`, which every\n  query reads — so one click re-answers the whole dashboard for a new origin.\n- **The time slider publishes a window.** Instead of moving the dashboard's time range, the map\n  writes its playhead into `$​t_ini` and `$​t_fin`, which is how the figures track the animation\n  without re-running anything else.\n\n## Reading the numbers\n\n**Population** is R5's own accessibility measure over its population grid, not a count of ours.\n**Parks** counts the park once, however many of its entrances fall inside the isochrone, out of 381.\n**Area** sums the true surface of the reached cells. Before the first play, all four show the value\nat the cutoff.\n"
+        "content": "## What this dashboard does\n\nClick anywhere on the map and it answers one question for that spot: **where can you get to by\npublic transport, and how much is within reach?** The isochrone is drawn for the date, modes and\nlimits set at the top, and the timeline animates the journey minute by minute from a 07:00\ndeparture — the four figures below the map move with the playhead, and the four charts beside them\naccumulate in five-minute steps.\n\n## How it is built\n\nNothing is precomputed and there is no ETL. Each panel is a DuckDB query issued straight against\nthree HTTP services:\n\n1. **R5** (Conveyal), behind `r5-gateway`, computes the travel-time surface from the origin for the\n   selected date, modes, walk/bike limit and number of rides.\n2. **iso-cuenca** turns that surface into two things a query can read: `iso.geojson`, the isochrone\n   polygons the map draws, and `cells.json`, every reached cell with the minute it is reached.\n   `accessibility.json` returns R5's own opportunity counts.\n3. **DuckDB** reads those endpoints in place with `read_json_auto` and `ST_Read`, and joins them\n   against the GTFS stops served by R5's own API and the park entrances published as WFS by\n   Llactalab (Universidad de Cuenca).\n\nThe map is the **Kepler Geospatial Maps** panel, and two of its cross-filtering channels are what\nmake the dashboard interactive:\n\n- **Clicking publishes a coordinate.** The click is written into `$​lat` and `$​lng`, which every\n  query reads — so one click re-answers the whole dashboard for a new origin.\n- **The time slider publishes a window.** Instead of moving the dashboard's time range, the map\n  writes its playhead into `$​t_ini` and `$​t_fin`, which is how the figures track the animation\n  without re-running anything else.\n\n## Reading the numbers\n\n**Population** is R5's own accessibility measure over its population grid, not a count of ours.\n**Parks** counts the park once, however many of its entrances fall inside the isochrone, out of 381.\n**Area** sums the true surface of the reached cells. Before the first play, all four show the value\nat the cutoff.\n",
+        "mode": "markdown"
       },
-      "pluginVersion": ""
+      "pluginVersion": "13.2.0",
+      "targets": [],
+      "title": "About this dashboard",
+      "type": "text"
     }
   ],
   "preload": false,
-  "schemaVersion": 41,
+  "refresh": "",
+  "schemaVersion": 42,
   "tags": [
     "spike",
     "accessibility"
@@ -1419,9 +1444,11 @@
           "text": "-2.897",
           "value": "-2.897"
         },
+        "hide": 3,
         "label": "Latitude",
         "name": "lat",
-        "query": "-2.911372",
+        "query": "-2.897",
+        "skipUrlSync": false,
         "type": "textbox"
       },
       {
@@ -1429,9 +1456,11 @@
           "text": "-79.004",
           "value": "-79.004"
         },
+        "hide": 3,
         "label": "Longitude",
         "name": "lng",
-        "query": "-79.025423",
+        "query": "-79.004",
+        "skipUrlSync": false,
         "type": "textbox"
       },
       {
@@ -1439,54 +1468,54 @@
           "text": "2026-09-02",
           "value": "2026-09-02"
         },
+        "hide": 3,
         "label": "Date",
         "name": "fecha",
         "query": "2026-09-02",
+        "skipUrlSync": false,
         "type": "textbox"
       },
       {
         "current": {
-          "text": "",
-          "value": ""
+          "text": "2026-09-02T07:01:00.000Z",
+          "value": "2026-09-02T07:01:00.000Z"
         },
         "hide": 2,
         "name": "t_ini",
-        "query": "2026-09-02T07:02:00.000Z",
+        "query": "2026-09-02T07:01:00.000Z",
+        "skipUrlSync": false,
         "type": "textbox"
       },
       {
         "current": {
-          "text": "",
-          "value": ""
+          "text": "2026-09-02T07:25:00.000Z",
+          "value": "2026-09-02T07:25:00.000Z"
         },
         "hide": 2,
         "name": "t_fin",
-        "query": "2026-09-02T07:45:00.000Z",
+        "query": "2026-09-02T07:25:00.000Z",
+        "skipUrlSync": false,
         "type": "textbox"
       },
       {
+        "allowCustomValue": true,
         "current": {
           "text": "Walk",
           "value": "apie"
         },
+        "hide": 0,
+        "includeAll": false,
         "label": "Street mode",
+        "multi": false,
         "name": "calle",
-        "options": [
-          {
-            "selected": true,
-            "text": "Walk",
-            "value": "apie"
-          },
-          {
-            "selected": false,
-            "text": "Bike",
-            "value": "bici"
-          }
-        ],
+        "options": [],
         "query": "Walk : apie,Bike : bici",
-        "type": "custom"
+        "skipUrlSync": false,
+        "type": "custom",
+        "valuesFormat": "csv"
       },
       {
+        "allowCustomValue": true,
         "current": {
           "text": [
             "Bus",
@@ -1497,115 +1526,67 @@
             "TRAM"
           ]
         },
+        "hide": 0,
         "includeAll": false,
         "label": "Transit modes",
         "multi": true,
         "name": "publico",
-        "options": [
-          {
-            "selected": true,
-            "text": "Bus",
-            "value": "BUS"
-          },
-          {
-            "selected": true,
-            "text": "Tram",
-            "value": "TRAM"
-          },
-          {
-            "selected": false,
-            "text": "None",
-            "value": "none"
-          }
-        ],
+        "options": [],
         "query": "Bus : BUS,Tram : TRAM,None : none",
-        "type": "custom"
+        "skipUrlSync": false,
+        "type": "custom",
+        "valuesFormat": "csv"
       },
       {
+        "allowCustomValue": true,
         "current": {
           "text": "20",
           "value": "20"
         },
+        "hide": 0,
+        "includeAll": false,
         "label": "Max walk/bike (min)",
+        "multi": false,
         "name": "apie",
-        "options": [
-          {
-            "selected": false,
-            "text": "10",
-            "value": "10"
-          },
-          {
-            "selected": true,
-            "text": "20",
-            "value": "20"
-          },
-          {
-            "selected": false,
-            "text": "30",
-            "value": "30"
-          }
-        ],
+        "options": [],
         "query": "10,20,30",
-        "type": "custom"
+        "skipUrlSync": false,
+        "type": "custom",
+        "valuesFormat": "csv"
       },
       {
+        "allowCustomValue": true,
         "current": {
           "text": "4",
           "value": "4"
         },
+        "hide": 0,
+        "includeAll": false,
         "label": "Max rides",
+        "multi": false,
         "name": "trasbordos",
-        "options": [
-          {
-            "selected": false,
-            "text": "1",
-            "value": "1"
-          },
-          {
-            "selected": false,
-            "text": "2",
-            "value": "2"
-          },
-          {
-            "selected": true,
-            "text": "4",
-            "value": "4"
-          }
-        ],
+        "options": [],
         "query": "1,2,4",
-        "type": "custom"
+        "skipUrlSync": false,
+        "type": "custom",
+        "valuesFormat": "csv"
       },
       {
+        "allowCustomValue": true,
         "current": {
-          "text": "45",
-          "value": "45"
+          "text": "30",
+          "value": "30"
         },
+        "hide": 0,
+        "includeAll": false,
         "label": "Cutoff (min)",
+        "multi": false,
         "name": "cutoff",
-        "options": [
-          {
-            "selected": false,
-            "text": "15",
-            "value": "15"
-          },
-          {
-            "selected": false,
-            "text": "30",
-            "value": "30"
-          },
-          {
-            "selected": true,
-            "text": "45",
-            "value": "45"
-          },
-          {
-            "selected": false,
-            "text": "60",
-            "value": "60"
-          }
-        ],
+        "options": [],
         "query": "15,30,45,60",
-        "type": "custom"
+        "skipUrlSync": false,
+        "type": "custom",
+        "valuesFormat": "csv"
       }
     ]
   },
@@ -1613,9 +1594,21 @@
     "from": "now-6h",
     "to": "now"
   },
-  "timepicker": {},
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
   "timezone": "browser",
   "title": "Transit accessibility by isochrone (R5 + DuckDB)",
-  "uid": "r5-accesibilidad",
-  "description": "Public-transport accessibility from wherever you click. R5 (r5-gateway) computes the travel-time surface, the iso-cuenca service turns it into cells and polygons, and DuckDB does the rest. The map's clock walks the minutes of the journey."
+  "uid": "r5-accesibilidad"
 }
