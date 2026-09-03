@@ -1,0 +1,35 @@
+// Exists to stop Vite's tsconfig lookup from walking out of this directory.
+//
+// This file looks redundant — the docs site has no `tsc` step, and nothing
+// here typechecks. It is not. When Vite transforms `.vitepress/theme/index.ts`
+// it calls `loadTsconfigJsonForFile`, which walks *up* from the file looking
+// for the nearest tsconfig.json. Without this one it leaves docs/site entirely
+// and lands on the repository root's, which extends `.config/tsconfig.json`,
+// which extends `@grafana/tsconfig` — a devDependency of the *root* package.
+//
+// The Docs workflow only runs `npm ci` inside docs/site, on purpose: VitePress
+// pulls in Vite, Vue and Shiki, and none of that belongs in the plugin's
+// dependency tree. So the root's node_modules does not exist on the runner,
+// `@grafana/tsconfig` cannot be resolved, and the build dies with
+// `failed to resolve "extends":"@grafana/tsconfig"`. It builds fine on a
+// developer's machine, where the root install is sitting right there — which
+// is exactly what made it a CI-only failure, and why `npm run docs:build`
+// passing locally proves nothing about the workflow.
+//
+// Deliberately extends nothing: anything it inherited would have to be
+// resolvable from docs/site's own install, which is the whole problem.
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "strict": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "types": []
+  },
+  "include": [".vitepress/**/*.ts", ".vitepress/**/*.vue"]
+}
