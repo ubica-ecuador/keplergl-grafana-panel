@@ -109,6 +109,12 @@ testdata/.cache/
 # Left behind by any run of the fixture recipes under testdata/.
 __pycache__/
 
+# The virtualenv those recipes ask you to make — `python3 -m venv .venv` is in
+# their own docstrings, so the repository should expect one rather than offer it
+# to the next `git add -A`.
+.venv/
+.venv-*/
+
 # Local deployment overlay. Compose loads this automatically when it is present,
 # which is exactly why it must not be committed: it names an *external* network
 # (`ubica_network`, owned by the nginx-proxy-manager stack) and a published
