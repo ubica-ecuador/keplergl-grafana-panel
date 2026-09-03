@@ -16,23 +16,50 @@ updates:
       include: "scope"
     # A group's `update-types` filter does not stop dependabot from opening a
     # lone PR for the majors it excludes — that is how @grafana/schema arrived
-    # at 13.x on its own. These are majors we cannot take: the production
-    # @grafana/* packages stay pinned at the floor of `grafanaDependency` so a
-    # build breaks on an API the oldest supported Grafana lacks, and the eslint
-    # stack is bound to .config/eslint.config.mjs, which only create-plugin may
-    # change — @grafana/eslint-config@10 drops the `flat.js` export it imports.
+    # at 13.x on its own. The eslint stack is bound to .config/eslint.config.mjs,
+    # which only create-plugin may change — @grafana/eslint-config@10 drops the
+    # `flat.js` export it imports — so its majors are refused.
+    #
+    # The three production @grafana/* packages are refused at *every* level, not
+    # only at majors, and the difference is the whole point of the pin: they sit
+    # at the floor of `grafanaDependency` so that the compiler knows only the
+    # APIs the oldest supported Grafana actually has, and reaching for a newer
+    # one fails the build instead of failing a user. Refusing majors alone did
+    # not do that — it let 12.0.0 -> 12.4.9 through in a PR whose CI was green,
+    # which would have taught the types four minor versions' worth of APIs that
+    # do not exist on a 12.0.10 install. Green because nothing uses them *yet*:
+    # the guard rail would simply have been gone by the time one was used.
+    #
+    # react-intl tracks kepler.gl rather than npm. kepler pulls `^7.0.0`, and the
+    # devDependency here exists so tests can wrap kepler's components in an
+    # `IntlProvider` — which works only while both resolve to the *same module
+    # instance*. A major installs a second copy at the root while kepler keeps
+    # its nested 7.x; provider and consumer stop sharing a context and the tests
+    # fail, as dependabot's own 10.1.24 PR demonstrated. 7.x patches stay
+    # deduped and are fine.
     ignore:
       - dependency-name: "@grafana/data"
-        update-types: ["version-update:semver-major"]
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
       - dependency-name: "@grafana/runtime"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@grafana/schema"
-        update-types: ["version-update:semver-major"]
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
       - dependency-name: "@grafana/ui"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+      - dependency-name: "@grafana/schema"
         update-types: ["version-update:semver-major"]
       - dependency-name: "@grafana/eslint-config"
         update-types: ["version-update:semver-major"]
       - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-intl"
         update-types: ["version-update:semver-major"]
     groups:
       unit-test:
