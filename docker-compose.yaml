@@ -141,6 +141,15 @@ services:
       # Its own database. Two Grafanas provisioning into one SQLite file race
       # each other and the loser dies with "database is locked".
       - grafana-sources-data:/var/lib/grafana
+    # The other three benches have had this from the start; this one did not,
+    # and the omission had a cost. A dashboard here that reaches a service on
+    # the host — the isochrone service behind `dashboards/r5-accesibilidad.json`
+    # listens on 8099 — had no name to call it by, so it hardcoded the Docker
+    # bridge gateway as `172.22.0.1`. That address is allocated by Docker and
+    # means nothing on another machine. With this, `host.docker.internal` works
+    # here as it does everywhere else.
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     environment:
       NODE_ENV: development
       GF_LOG_FILTERS: plugin.ubica-keplergl-panel:debug

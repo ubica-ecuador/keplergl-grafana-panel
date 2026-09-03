@@ -1,0 +1,1598 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Pincha para mover el origen. Dale al play de la barra inferior: el reloj marca la hora del viaje, 07:00 es la salida. Al pausar, los tres números de abajo se recolocan en ese instante.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "basemap": "positron",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": true,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [
+                    40,
+                    63,
+                    93
+                  ],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [
+                    4,
+                    9,
+                    17
+                  ],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [
+                    114.75,
+                    114.75,
+                    114.75
+                  ],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [
+                    9,
+                    16,
+                    29
+                  ],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [
+                    17,
+                    35,
+                    48
+                  ]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": -2.911460518694762,
+              "longitude": -79.0149273280571,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_2D",
+              "maxPitch": 60,
+              "pitch": 0,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 13.049853743787994
+            },
+            "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
+              ],
+              "mapStyles": {},
+              "styleType": "dark-matter",
+              "threeDBuildingColor": [
+                15.035172933000911,
+                15.035172933000911,
+                15.035172933000911
+              ],
+              "topLayerGroups": {
+                "label": true,
+                "road": true
+              },
+              "visibleLayerGroups": {
+                "3d building": false,
+                "border": false,
+                "building": true,
+                "label": true,
+                "land": true,
+                "road": true,
+                "water": true
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [
+                {
+                  "animationWindow": "incremental",
+                  "dataId": [
+                    "grafana-A"
+                  ],
+                  "enabled": true,
+                  "id": "reloj-viaje",
+                  "name": [
+                    "time"
+                  ],
+                  "plotType": {
+                    "aggregation": "average",
+                    "defaultTimeFormat": "L  LTS",
+                    "interval": "30-second",
+                    "type": "histogram"
+                  },
+                  "speed": 10,
+                  "type": "timeRange",
+                  "value": [
+                    1788332520000,
+                    1788333300000
+                  ],
+                  "view": "minified"
+                }
+              ],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": true
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "minutos"
+                      },
+                      {
+                        "format": "L LTS",
+                        "name": "time"
+                      }
+                    ],
+                    "grafana-B": [
+                      {
+                        "name": "minutos"
+                      }
+                    ]
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "zm44uwj",
+                "bdqzq8"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "color": [
+                      18,
+                      92,
+                      119
+                    ],
+                    "columnMode": "geojson",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "A",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "allowHover": true,
+                      "colorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#F8B195",
+                          "#EFA290",
+                          "#E5938C",
+                          "#DA8689",
+                          "#CE7886",
+                          "#C06C84",
+                          "#A36790",
+                          "#7E6494",
+                          "#58618D",
+                          "#355C7D"
+                        ],
+                        "name": "Sunrise",
+                        "reversed": true,
+                        "type": "sequential"
+                      },
+                      "elevationScale": 5,
+                      "enable3d": false,
+                      "filled": true,
+                      "fixedHeight": false,
+                      "heightRange": [
+                        0,
+                        500
+                      ],
+                      "opacity": 0.8,
+                      "radius": 10,
+                      "radiusRange": [
+                        0,
+                        50
+                      ],
+                      "sizeRange": [
+                        0,
+                        10
+                      ],
+                      "strokeColor": [
+                        77,
+                        193,
+                        156
+                      ],
+                      "strokeColorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#4C0035",
+                          "#880030",
+                          "#B72F15",
+                          "#D6610A",
+                          "#EF9100",
+                          "#FFC300"
+                        ],
+                        "name": "Global Warming",
+                        "type": "sequential"
+                      },
+                      "strokeOpacity": 0.8,
+                      "stroked": false,
+                      "thickness": 0.5,
+                      "wireframe": false
+                    }
+                  },
+                  "id": "zm44uwj",
+                  "type": "geojson",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "minutos",
+                      "type": "integer"
+                    },
+                    "colorScale": "quantile",
+                    "heightScale": "linear",
+                    "radiusScale": "linear",
+                    "sizeScale": "linear",
+                    "strokeColorScale": "quantile"
+                  }
+                },
+                {
+                  "config": {
+                    "color": [
+                      119,
+                      110,
+                      87
+                    ],
+                    "columnMode": "geojson",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "dataId": "grafana-B",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "B",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "allowHover": false,
+                      "colorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#EDD1CA",
+                          "#D1A5A8",
+                          "#AE7B90",
+                          "#83587A",
+                          "#563A5B",
+                          "#2C1E3D"
+                        ],
+                        "name": "Pink Wine",
+                        "reversed": true,
+                        "type": "sequential"
+                      },
+                      "elevationScale": 5,
+                      "enable3d": false,
+                      "filled": true,
+                      "fixedHeight": false,
+                      "heightRange": [
+                        0,
+                        500
+                      ],
+                      "opacity": 0.01,
+                      "radius": 10,
+                      "radiusRange": [
+                        0,
+                        50
+                      ],
+                      "sizeRange": [
+                        0,
+                        10
+                      ],
+                      "strokeColor": [
+                        23,
+                        184,
+                        190
+                      ],
+                      "strokeColorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#4C0035",
+                          "#880030",
+                          "#B72F15",
+                          "#D6610A",
+                          "#EF9100",
+                          "#FFC300"
+                        ],
+                        "name": "Global Warming",
+                        "type": "sequential"
+                      },
+                      "strokeOpacity": 0.8,
+                      "stroked": false,
+                      "thickness": 0.5,
+                      "wireframe": false
+                    }
+                  },
+                  "id": "bdqzq8",
+                  "type": "geojson",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "minutos",
+                      "type": "integer"
+                    },
+                    "colorScale": "quantile",
+                    "heightScale": "linear",
+                    "radiusScale": "linear",
+                    "sizeScale": "linear",
+                    "strokeColorScale": "quantile"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "rasterColormap": "",
+        "rasterPainted": false,
+        "saveRequest": 3,
+        "showSidePanel": false,
+        "timeSync": "variables",
+        "timeVariables": {
+          "from": "t_ini",
+          "to": "t_fin"
+        },
+        "tripLayerMode": "table",
+        "variableMappings": [
+          {
+            "field": "",
+            "source": "coordinate",
+            "variable": "lat",
+            "variableTo": "lng"
+          }
+        ]
+      },
+      "pluginVersion": "0.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "-- Cobertura por bandas de 5 min, sin filtrar por el reloj: la sombra.\nSELECT minutos, ST_AsHEXWKB(geom) AS geom\nFROM ST_Read('http://172.22.0.1:8099/iso.geojson?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&step=5&max=' || $cutoff);",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "-- Una fila por celda alcanzable, con el minuto en que se alcanza\n-- convertido a hora de reloj desde la salida (07:00).\nSELECT minutos, geom,\n       (($fecha || ' 07:00:00')::TIMESTAMP\n        + INTERVAL (minutos) MINUTE) AS t\nFROM read_json_auto('http://172.22.0.1:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff);",
+          "refId": "A"
+        }
+      ],
+      "title": "Accesibilidad desde el punto que pinches — la ventana de la consulta, animada",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "La medida de R5, no un recuento nuestro: oportunidades de la rejilla de población dentro del umbral. Sigue al reloj del mapa: pausa la animación donde quieras y el número se recoloca ahí. Antes del primer play muestra el corte.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "orange",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 16
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.10",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "SELECT personas FROM read_json_auto('http://172.22.0.1:8099/accessibility.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos) WHERE minutos = least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER));",
+          "refId": "A"
+        }
+      ],
+      "title": "Población",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Paradas de los feeds cuya celda se alcanza dentro del umbral. Sigue al reloj del mapa: pausa la animación donde quieras y el número se recoloca ahí. Antes del primer play muestra el corte.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 16
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.10",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "WITH alcance AS (\n  SELECT min(c.minutos) AS m\n  FROM (SELECT unnest(stops) AS s FROM read_json_auto('https://r5.ubica.ec/api/gtfs/6a976415196cd834c785ad5d/stops')) p\n  JOIN (SELECT minutos, ST_GeomFromHEXWKB(geom) AS g\n        FROM read_json_auto('http://172.22.0.1:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff)) c\n    ON ST_Within(ST_Point(p.s.lon, p.s.lat), c.g)\n  GROUP BY p.s._id\n)\nSELECT count(*) AS paradas FROM alcance WHERE m <= least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER));",
+          "refId": "A"
+        }
+      ],
+      "title": "Paradas",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Parques con algún acceso dentro del umbral, de 381 existentes. Se cuenta el parque, no la puerta. Sigue al reloj del mapa: pausa la animación donde quieras y el número se recoloca ahí. Antes del primer play muestra el corte.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "purple",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 16
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.10",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "WITH parques AS (\n  SELECT p.park_id, min(c.minutos) AS m\n  FROM ST_Read('https://appsllactalab.ucuenca.edu.ec/geoserver/geonode/puntos_acceso_parques/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=geonode:puntos_acceso_parques&outputFormat=application/json&srsName=EPSG:4326') p\n  JOIN (SELECT minutos, ST_GeomFromHEXWKB(geom) AS g\n        FROM read_json_auto('http://172.22.0.1:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff)) c\n    ON ST_Within(p.geom, c.g)\n  WHERE p.situacion IS DISTINCT FROM 'RESERVA'\n  GROUP BY p.park_id\n)\nSELECT count(*) AS parques FROM parques WHERE m <= least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER));",
+          "refId": "A"
+        }
+      ],
+      "title": "Parques",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Suma del área real de las celdas alcanzadas. Sigue al reloj del mapa: pausa la animación donde quieras y el número se recoloca ahí. Antes del primer play muestra el corte.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          },
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "suffix: km²"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 16
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.10",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "WITH celdas AS (\n  SELECT minutos,\n         ST_Area(ST_Transform(ST_GeomFromHEXWKB(geom), 'EPSG:4326', 'EPSG:3857',\n                              always_xy := true))\n           / 1e6 * pow(cos(radians(try_cast($lat AS DOUBLE))), 2) AS km2\n  FROM read_json_auto('http://172.22.0.1:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff)\n)\nSELECT round(sum(km2), 1) AS km2 FROM celdas WHERE minutos <= least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER));",
+          "refId": "A"
+        }
+      ],
+      "title": "Superficie",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Acumulada, de 5 en 5 minutos hasta el corte. El punto rojo es dónde va el reloj del mapa.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "orange",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 18,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "always",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "minutos"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "en el reloj"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 13
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 0
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 0,
+        "y": 21
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        },
+        "xField": "minutos"
+      },
+      "pluginVersion": "12.0.10",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "WITH marcas AS (\n  SELECT DISTINCT m FROM (\n    SELECT unnest(generate_series(0, try_cast($cutoff AS INTEGER), 5)) AS m\n    UNION ALL SELECT least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER))\n  ) WHERE m BETWEEN 0 AND try_cast($cutoff AS INTEGER)\n)\nSELECT marcas.m AS minutos, a.personas,\n       CASE WHEN marcas.m = least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER)) THEN a.personas END AS \"en el reloj\"\nFROM marcas JOIN read_json_auto('http://172.22.0.1:8099/accessibility.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos) a ON a.minutos = marcas.m\nORDER BY marcas.m;",
+          "refId": "A"
+        }
+      ],
+      "title": "Población alcanzable",
+      "type": "trend"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Acumuladas, de 5 en 5 minutos hasta el corte. El punto rojo es dónde va el reloj del mapa.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 18,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "always",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "minutos"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "en el reloj"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 13
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 0
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 6,
+        "y": 21
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        },
+        "xField": "minutos"
+      },
+      "pluginVersion": "12.0.10",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "WITH alcance AS (\n  SELECT min(c.minutos) AS m\n  FROM (SELECT unnest(stops) AS s FROM read_json_auto('https://r5.ubica.ec/api/gtfs/6a976415196cd834c785ad5d/stops')) p\n  JOIN (SELECT minutos, ST_GeomFromHEXWKB(geom) AS g\n        FROM read_json_auto('http://172.22.0.1:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff)) c\n    ON ST_Within(ST_Point(p.s.lon, p.s.lat), c.g)\n  GROUP BY p.s._id\n),\nmarcas AS (\n  SELECT DISTINCT m FROM (\n    SELECT unnest(generate_series(0, try_cast($cutoff AS INTEGER), 5)) AS m\n    UNION ALL SELECT least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER))\n  ) WHERE m BETWEEN 0 AND try_cast($cutoff AS INTEGER)\n)\nSELECT marcas.m AS minutos,\n       count(alcance.m) AS paradas,\n       CASE WHEN marcas.m = least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER)) THEN count(alcance.m) END AS \"en el reloj\"\nFROM marcas LEFT JOIN alcance ON alcance.m <= marcas.m\nGROUP BY marcas.m ORDER BY marcas.m;",
+          "refId": "A"
+        }
+      ],
+      "title": "Paradas alcanzables",
+      "type": "trend"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Acumulados, de 5 en 5 minutos hasta el corte. El punto rojo es dónde va el reloj del mapa.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "purple",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 18,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "always",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "minutos"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "en el reloj"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 13
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 0
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 12,
+        "y": 21
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        },
+        "xField": "minutos"
+      },
+      "pluginVersion": "12.0.10",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "WITH parques AS (\n  SELECT p.park_id, min(c.minutos) AS m\n  FROM ST_Read('https://appsllactalab.ucuenca.edu.ec/geoserver/geonode/puntos_acceso_parques/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=geonode:puntos_acceso_parques&outputFormat=application/json&srsName=EPSG:4326') p\n  JOIN (SELECT minutos, ST_GeomFromHEXWKB(geom) AS g\n        FROM read_json_auto('http://172.22.0.1:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff)) c\n    ON ST_Within(p.geom, c.g)\n  WHERE p.situacion IS DISTINCT FROM 'RESERVA'\n  GROUP BY p.park_id\n),\nmarcas AS (\n  SELECT DISTINCT m FROM (\n    SELECT unnest(generate_series(0, try_cast($cutoff AS INTEGER), 5)) AS m\n    UNION ALL SELECT least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER))\n  ) WHERE m BETWEEN 0 AND try_cast($cutoff AS INTEGER)\n)\nSELECT marcas.m AS minutos,\n       count(parques.m) AS parques,\n       CASE WHEN marcas.m = least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER)) THEN count(parques.m) END AS \"en el reloj\"\nFROM marcas LEFT JOIN parques ON parques.m <= marcas.m\nGROUP BY marcas.m ORDER BY marcas.m;",
+          "refId": "A"
+        }
+      ],
+      "title": "Parques alcanzables",
+      "type": "trend"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Acumulada, de 5 en 5 minutos hasta el corte. El punto rojo es dónde va el reloj del mapa.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 18,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "always",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "suffix: km²"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "minutos"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "en el reloj"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 13
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 0
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 18,
+        "y": 21
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        },
+        "xField": "minutos"
+      },
+      "pluginVersion": "12.0.10",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "WITH celdas AS (\n  SELECT minutos,\n         ST_Area(ST_Transform(ST_GeomFromHEXWKB(geom), 'EPSG:4326', 'EPSG:3857',\n                              always_xy := true))\n           / 1e6 * pow(cos(radians(try_cast($lat AS DOUBLE))), 2) AS km2\n  FROM read_json_auto('http://172.22.0.1:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff)\n),\nmarcas AS (\n  SELECT DISTINCT m FROM (\n    SELECT unnest(generate_series(0, try_cast($cutoff AS INTEGER), 5)) AS m\n    UNION ALL SELECT least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER))\n  ) WHERE m BETWEEN 0 AND try_cast($cutoff AS INTEGER)\n)\nSELECT marcas.m AS minutos,\n       round(coalesce(sum(celdas.km2), 0), 1) AS km2,\n       CASE WHEN marcas.m = least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n                 try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)),\n               try_cast($cutoff AS INTEGER)),\n      try_cast($cutoff AS INTEGER))\n            THEN round(coalesce(sum(celdas.km2), 0), 1) END AS \"en el reloj\"\nFROM marcas LEFT JOIN celdas ON celdas.minutos <= marcas.m\nGROUP BY marcas.m ORDER BY marcas.m;",
+          "refId": "A"
+        }
+      ],
+      "title": "Superficie alcanzable",
+      "type": "trend"
+    }
+  ],
+  "preload": false,
+  "schemaVersion": 41,
+  "tags": [
+    "spike",
+    "accesibilidad"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "-2.897",
+          "value": "-2.897"
+        },
+        "label": "Latitud",
+        "name": "lat",
+        "query": "-2.911372",
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "-79.004",
+          "value": "-79.004"
+        },
+        "label": "Longitud",
+        "name": "lng",
+        "query": "-79.025423",
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "2026-09-02",
+          "value": "2026-09-02"
+        },
+        "label": "Fecha",
+        "name": "fecha",
+        "query": "2026-09-02",
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "name": "t_ini",
+        "query": "2026-09-02T07:02:00.000Z",
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "name": "t_fin",
+        "query": "2026-09-02T07:45:00.000Z",
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "A pie",
+          "value": "apie"
+        },
+        "label": "En la calle",
+        "name": "calle",
+        "options": [
+          {
+            "selected": true,
+            "text": "A pie",
+            "value": "apie"
+          },
+          {
+            "selected": false,
+            "text": "Bici",
+            "value": "bici"
+          }
+        ],
+        "query": "apie,bici",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "text": [
+            "Bus",
+            "Tranvía"
+          ],
+          "value": [
+            "BUS",
+            "TRAM"
+          ]
+        },
+        "includeAll": false,
+        "label": "Transporte público",
+        "multi": true,
+        "name": "publico",
+        "options": [
+          {
+            "selected": true,
+            "text": "Bus",
+            "value": "BUS"
+          },
+          {
+            "selected": true,
+            "text": "Tranvía",
+            "value": "TRAM"
+          },
+          {
+            "selected": false,
+            "text": "Ninguno",
+            "value": "none"
+          }
+        ],
+        "query": "BUS,TRAM,none",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "text": "20",
+          "value": "20"
+        },
+        "label": "Máx. a pie/bici (min)",
+        "name": "apie",
+        "options": [
+          {
+            "selected": false,
+            "text": "10",
+            "value": "10"
+          },
+          {
+            "selected": true,
+            "text": "20",
+            "value": "20"
+          },
+          {
+            "selected": false,
+            "text": "30",
+            "value": "30"
+          }
+        ],
+        "query": "10,20,30",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "text": "4",
+          "value": "4"
+        },
+        "label": "Trayectos máx.",
+        "name": "trasbordos",
+        "options": [
+          {
+            "selected": false,
+            "text": "1",
+            "value": "1"
+          },
+          {
+            "selected": false,
+            "text": "2",
+            "value": "2"
+          },
+          {
+            "selected": true,
+            "text": "4",
+            "value": "4"
+          }
+        ],
+        "query": "1,2,4",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "text": "45",
+          "value": "45"
+        },
+        "label": "Corte (min)",
+        "name": "cutoff",
+        "options": [
+          {
+            "selected": false,
+            "text": "15",
+            "value": "15"
+          },
+          {
+            "selected": false,
+            "text": "30",
+            "value": "30"
+          },
+          {
+            "selected": true,
+            "text": "45",
+            "value": "45"
+          },
+          {
+            "selected": false,
+            "text": "60",
+            "value": "60"
+          }
+        ],
+        "query": "15,30,45,60",
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Accesibilidad por isocronas (R5 + DuckDB)",
+  "uid": "r5-accesibilidad"
+}
