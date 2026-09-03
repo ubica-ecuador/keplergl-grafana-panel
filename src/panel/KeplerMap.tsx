@@ -14,7 +14,7 @@ import type { RasterDataset } from '../data/rasterDataset';
 import type { WmsDataset } from '../data/wmsDataset';
 import type { EsriDataset } from '../data/esriDataset';
 import type { ZarrDataset } from '../data/zarrDataset';
-import type { SavedMapConfig } from '../data/mapConfig';
+import { namesBasemap, type SavedMapConfig } from '../data/mapConfig';
 import type { KeplerThemeOverride } from '../data/keplerTheme';
 import { KEPLER_INSTANCE_ID } from './constants';
 import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES } from './basemaps';
@@ -276,9 +276,13 @@ export function KeplerMap({
   useZarrTimeline({ store, isReady, layers: zarrLayers });
   useEsriTimeline({ store, isReady, layers: esriLayers });
 
-  // A saved config already names a base map, so it wins over the panel option.
+  // A saved config that names a base map wins over the panel option — but only
+  // if it names one. Anything this panel captures does, so those go on winning;
+  // a config *pasted* to place a layer usually carries no `mapStyle` at all, and
+  // treating the mere presence of one as a choice left the option dead for
+  // those, with nothing setting a style in its place.
   useEffect(() => {
-    if (!isReady || mapConfig || !basemapId) {
+    if (!isReady || namesBasemap(mapConfig) || !basemapId) {
       return;
     }
     setBasemap(store.dispatch, basemapId);

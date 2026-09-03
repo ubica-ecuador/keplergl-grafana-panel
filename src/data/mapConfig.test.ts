@@ -1,4 +1,5 @@
-import { keepRemoteDatasets, parseMapConfigJson } from './mapConfig';
+import { keepRemoteDatasets, namesBasemap, parseMapConfigJson } from './mapConfig';
+import savedByThePanel from '../../testdata/kepler-configs/kepler-v1-saved-config.json';
 
 /** A tileset descriptor as kepler's DatasetSchema saves one. */
 const vectorTile = {
@@ -115,5 +116,39 @@ describe('keepRemoteDatasets', () => {
     for (const input of [undefined, null, 'nope', {}, [null], [{ version: 1, data: {} }], [{ version: 'v1' }]]) {
       expect(keepRemoteDatasets(input)).toEqual([]);
     }
+  });
+});
+
+describe('namesBasemap', () => {
+  const withStyle = (mapStyle: unknown) => ({ version: 'v1', config: { mapStyle } }) as never;
+
+  it('is false for nothing at all', () => {
+    expect(namesBasemap(undefined)).toBe(false);
+    expect(namesBasemap(null)).toBe(false);
+  });
+
+  it('is false for a config that carries no style — the pasted-by-hand shape', () => {
+    // Not the shape this panel captures: `getConfigToSave` always writes a
+    // mapStyle (see the fixture case below). This is the one a user pastes into
+    // Import configuration to place a layer, which is why the option was dead.
+    expect(namesBasemap({ version: 'v1', config: { visState: {}, mapState: {} } } as never)).toBe(false);
+    expect(namesBasemap(withStyle(null))).toBe(false);
+  });
+
+  it('is false for a mapStyle that chooses nothing', () => {
+    expect(namesBasemap(withStyle({}))).toBe(false);
+    expect(namesBasemap(withStyle({ styleType: '' }))).toBe(false);
+    expect(namesBasemap(withStyle({ styleType: 7 }))).toBe(false);
+  });
+
+  it('is true only when a style is actually named', () => {
+    expect(namesBasemap(withStyle({ styleType: 'dark' }))).toBe(true);
+    expect(namesBasemap(withStyle({ styleType: 'grafana-custom-basemap' }))).toBe(true);
+  });
+
+  it('is true for a real config this panel saved, so those keep outranking the option', () => {
+    // The guard rail on the fix's scope: a captured config names a style, and
+    // must go on winning. Only configs that name none change behaviour.
+    expect(namesBasemap(savedByThePanel as never)).toBe(true);
   });
 });

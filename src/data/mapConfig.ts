@@ -134,6 +134,28 @@ function withRemoteDatasets(config: SavedMapConfig, datasets: unknown): SavedMap
   return kept.length > 0 ? { ...cleaned, datasets: kept } : cleaned;
 }
 
+/**
+ * Does this saved config actually choose a base map?
+ *
+ * A saved config outranks the **Base map** panel option, which is right when
+ * the config names a style and wrong when it does not — and plenty of them do
+ * not. `KeplerGlSchema.getConfigToSave` writes a full `mapStyle`, so anything
+ * this panel captures names one; but a config *pasted* into **Import
+ * configuration** need not. One written by hand to place a layer is usually
+ * `visState` and `mapState` and nothing else, and the panel accepts those on
+ * purpose — pasting from kepler.gl, Foursquare Studio or Dekart is a
+ * documented feature.
+ *
+ * Treating the mere presence of a config as a base-map choice left the option
+ * dead for exactly those: the option was skipped and nothing set a style in its
+ * place, so the map kept kepler's default with nothing in the console to say
+ * why. Asking whether a style is actually named is the whole of the fix.
+ */
+export function namesBasemap(config: SavedMapConfig | null | undefined): boolean {
+  const mapStyle = config?.config?.mapStyle;
+  return isRecord(mapStyle) && typeof mapStyle.styleType === 'string' && mapStyle.styleType !== '';
+}
+
 function isSavedConfig(value: unknown): value is SavedMapConfig {
   return isRecord(value) && typeof value.version === 'string' && isRecord(value.config);
 }
