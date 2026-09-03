@@ -51,6 +51,26 @@ On the server both services are containers on a shared Docker network, so the da
 by name. On a laptop they are neither: the isochrone service runs on the host and R5 is reached as
 the public deployment. Same nine panels, same ten variables, same queries — three URLs apart.
 
-Which is the argument for eventually lifting those hosts into dashboard variables, the way
-`fire-emissions.json` keeps its data root in `firedata`. Until then, import whichever matches where
+Which is the argument for eventually lifting those hosts into dashboard variables, the way the fire
+dashboard keeps its data root in a `firedata` constant. Until then, import whichever matches where
 you are.
+
+## The fire-emissions dashboard is not here, and not in `provisioning-sources/` either
+
+It is worth writing down, because it has now been re-added by mistake once.
+
+The dashboard people mean by "Fire Emissions Watch" is `fire-emissions-tabs`: stored as
+`dashboard.grafana.app/v2`, with a `TabsLayout` and fifteen `elements`, and it is the one carrying
+the smoke layer. **It cannot travel as a file.** Exporting it through `/api/dashboards/uid` is lossy
+and silent — the classic endpoint hands back a v1 conversion of four `row` panels — and provisioning
+that conversion back replaces the real thing, tabs and all. Commit `5db517c` reverted exactly that
+and took the file out of the repository on purpose.
+
+There is a second, older dashboard under the uid `fire-emissions`: classic, no tabs, and no smoke
+layer. It is not the same dashboard, and shipping it as though it were is the mistake to avoid.
+
+So the fire dashboard lives in the server's database. What the repository carries instead is
+everything that dashboard needs and that *can* be versioned: `testdata/make-firedata.py` for its two
+fixtures, `docs/fire-emissions-deploy.md` for moving it to another Grafana, and — in the plugin
+itself — the JSON colormap support the smoke layer's alpha ramp depends on, plus the patched TiTiler
+image under `docker/titiler` without which the ARCO store answers 500 to every tile.
