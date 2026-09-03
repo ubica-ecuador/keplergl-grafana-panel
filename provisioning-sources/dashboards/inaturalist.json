@@ -1,0 +1,2148 @@
+{
+  "id": null,
+  "uid": "inaturalist-ecuador",
+  "title": "Biodiversidad observada — iNaturalist (Ecuador)",
+  "description": "El feed en vivo de iNaturalist de ArcGIS Living Atlas, sobre Ecuador y Galápagos: celdas H3 preagregadas para la cobertura completa y una muestra de observaciones recientes como puntos. Sin descarga y sin ETL.",
+  "tags": [
+    "kepler",
+    "inaturalist",
+    "biodiversidad",
+    "arcgis",
+    "ecuador"
+  ],
+  "editable": true,
+  "schemaVersion": 39,
+  "version": 2,
+  "preload": false,
+  "refresh": "",
+  "timezone": "browser",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "hidden": true
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "custom",
+        "name": "resolucion",
+        "label": "Resolución",
+        "description": "El id de capa del servicio, interpolado en la **ruta** de la URL. Infinity interpola `url`, así que es la única forma de cambiar de capa: el número de capa es un segmento de la ruta, no un parámetro.",
+        "hide": 0,
+        "multi": false,
+        "includeAll": false,
+        "skipUrlSync": false,
+        "query": "País — H3 R3 : 3,Región — H3 R4 : 4,Provincia — H3 R5 : 5,Cantón — H3 R6 : 6",
+        "options": [
+          {
+            "text": "País — H3 R3",
+            "value": "3",
+            "selected": false
+          },
+          {
+            "text": "Región — H3 R4",
+            "value": "4",
+            "selected": true
+          },
+          {
+            "text": "Provincia — H3 R5",
+            "value": "5",
+            "selected": false
+          },
+          {
+            "text": "Cantón — H3 R6",
+            "value": "6",
+            "selected": false
+          }
+        ],
+        "current": {
+          "text": "Región — H3 R4",
+          "value": "4",
+          "selected": true
+        }
+      },
+      {
+        "type": "custom",
+        "name": "capa",
+        "label": "Colorear hexágonos por",
+        "description": "Infinity no interpola `columns[].selector`, pero sí `computed_columns[].selector`. El target pide los trece conteos con alias fijos y una columna calculada elige uno bajo el nombre estable `n`, que es por el que colorea el `mapConfig` guardado.",
+        "hide": 0,
+        "multi": false,
+        "includeAll": false,
+        "skipUrlSync": false,
+        "query": "Todas las observaciones : n_total,Aves : aves,Plantas : plantas,Insectos : insectos,Reptiles : reptiles,Anfibios : anfibios,Mamíferos : mamiferos,Peces : peces,Arácnidos : aracnidos,Moluscos : moluscos,Hongos : hongos,Protozoos : protozoos,Otros : otros",
+        "options": [
+          {
+            "text": "Todas las observaciones",
+            "value": "n_total",
+            "selected": true
+          },
+          {
+            "text": "Aves",
+            "value": "aves",
+            "selected": false
+          },
+          {
+            "text": "Plantas",
+            "value": "plantas",
+            "selected": false
+          },
+          {
+            "text": "Insectos",
+            "value": "insectos",
+            "selected": false
+          },
+          {
+            "text": "Reptiles",
+            "value": "reptiles",
+            "selected": false
+          },
+          {
+            "text": "Anfibios",
+            "value": "anfibios",
+            "selected": false
+          },
+          {
+            "text": "Mamíferos",
+            "value": "mamiferos",
+            "selected": false
+          },
+          {
+            "text": "Peces",
+            "value": "peces",
+            "selected": false
+          },
+          {
+            "text": "Arácnidos",
+            "value": "aracnidos",
+            "selected": false
+          },
+          {
+            "text": "Moluscos",
+            "value": "moluscos",
+            "selected": false
+          },
+          {
+            "text": "Hongos",
+            "value": "hongos",
+            "selected": false
+          },
+          {
+            "text": "Protozoos",
+            "value": "protozoos",
+            "selected": false
+          },
+          {
+            "text": "Otros",
+            "value": "otros",
+            "selected": false
+          }
+        ],
+        "current": {
+          "text": "Todas las observaciones",
+          "value": "n_total",
+          "selected": true
+        }
+      },
+      {
+        "type": "custom",
+        "name": "muestra",
+        "label": "Puntos en el mapa",
+        "description": "El servicio corta en 10 000 rasgos por petición (`maxRecordCountFactor` se satura en 5) y aquí no se pagina, así que esto es el tamaño de la muestra de puntos, no el total. El total lo dice el panel «Esfuerzo».",
+        "hide": 0,
+        "multi": false,
+        "includeAll": false,
+        "skipUrlSync": false,
+        "query": "2.000 — rápido : 2000,5.000 : 5000,10.000 — el techo del servicio : 10000",
+        "options": [
+          {
+            "text": "2.000 — rápido",
+            "value": "2000",
+            "selected": false
+          },
+          {
+            "text": "5.000",
+            "value": "5000",
+            "selected": true
+          },
+          {
+            "text": "10.000 — el techo del servicio",
+            "value": "10000",
+            "selected": false
+          }
+        ],
+        "current": {
+          "text": "5.000",
+          "value": "5000",
+          "selected": true
+        }
+      },
+      {
+        "type": "custom",
+        "name": "desdeAnio",
+        "label": "Desde el año",
+        "description": "Se aplica sobre `observed_on_year`, un entero indexado, en vez de sobre `observed_on`, que es un `TimestampOffset`. Más barato y sin líos de husos horarios. Los hexágonos no lo siguen: son totales históricos.",
+        "hide": 0,
+        "multi": false,
+        "includeAll": false,
+        "skipUrlSync": false,
+        "query": "Todo el histórico : 1900,Desde 2016 : 2016,Desde 2020 : 2020,Desde 2024 : 2024,Solo 2026 : 2026",
+        "options": [
+          {
+            "text": "Todo el histórico",
+            "value": "1900",
+            "selected": true
+          },
+          {
+            "text": "Desde 2016",
+            "value": "2016",
+            "selected": false
+          },
+          {
+            "text": "Desde 2020",
+            "value": "2020",
+            "selected": false
+          },
+          {
+            "text": "Desde 2024",
+            "value": "2024",
+            "selected": false
+          },
+          {
+            "text": "Solo 2026",
+            "value": "2026",
+            "selected": false
+          }
+        ],
+        "current": {
+          "text": "Todo el histórico",
+          "value": "1900",
+          "selected": true
+        }
+      },
+      {
+        "type": "query",
+        "name": "taxon",
+        "label": "Grupo taxonómico",
+        "description": "Sale del propio servicio, así que el mapa nunca puede escribir un valor que no esté en la lista. Es variable de consulta y no textbox porque al limpiar un filtro de kepler `useVariableSync` escribe el literal `$__all`, y con varios valores escribe un array: un textbox no admite ninguno de los dos.",
+        "datasource": {
+          "type": "yesoreyeram-infinity-datasource",
+          "uid": "infinity"
+        },
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": null,
+        "hide": 0,
+        "sort": 1,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ],
+          "selected": true
+        },
+        "options": [],
+        "definition": "taxon_category_name distintos en la capa 0, dentro del ámbito",
+        "query": {
+          "queryType": "infinity",
+          "query": "",
+          "infinityQuery": {
+            "refId": "var",
+            "datasource": {
+              "type": "yesoreyeram-infinity-datasource",
+              "uid": "infinity"
+            },
+            "type": "json",
+            "source": "url",
+            "parser": "backend",
+            "format": "table",
+            "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/iNaturalist/FeatureServer/0/query",
+            "url_options": {
+              "method": "GET",
+              "params": [
+                {
+                  "key": "where",
+                  "value": "latitude BETWEEN -5.1 AND 1.7 AND longitude BETWEEN -92.0 AND -75.0"
+                },
+                {
+                  "key": "groupByFieldsForStatistics",
+                  "value": "taxon_category_name"
+                },
+                {
+                  "key": "outStatistics",
+                  "value": "[{\"statisticType\": \"count\", \"onStatisticField\": \"observation_id\", \"outStatisticFieldName\": \"n\"}]"
+                },
+                {
+                  "key": "orderByFields",
+                  "value": "taxon_category_name"
+                },
+                {
+                  "key": "f",
+                  "value": "json"
+                }
+              ]
+            },
+            "root_selector": "features",
+            "columns": [
+              {
+                "selector": "attributes.taxon_category_name",
+                "text": "key",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "area",
+        "label": "Área dibujada (WKT)",
+        "type": "textbox",
+        "description": "La escribe el panel al dibujar un polígono (opción `areaVariable`). El mapa no la lee: si lo hiciera, dibujar encogería su propio conjunto de datos y ya no habría forma de volver a ensancharlo desde el mapa.",
+        "hide": 0,
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "query": "",
+        "skipUrlSync": false
+      },
+      {
+        "name": "areaRings",
+        "label": "Área (Esri JSON)",
+        "type": "query",
+        "description": "Puente WKT → anillos de Esri. ArcGIS quiere `rings`, el panel publica WKT, y DuckDB es el único conversor del banco. Copiado literal de aqueduct.json.",
+        "hide": 2,
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "query": "SELECT coalesce((SELECT '{\"rings\":' || json_extract(ST_AsGeoJSON(ST_GeomFromText(wkt)), '$.coordinates')::VARCHAR || ',\"spatialReference\":{\"wkid\":4326}}' FROM (SELECT '$area' AS wkt) WHERE length(wkt) > 8), '') AS rings",
+        "refresh": 1,
+        "multi": false,
+        "includeAll": false,
+        "skipUrlSync": false,
+        "current": {},
+        "options": [],
+        "regex": "",
+        "sort": 0
+      },
+      {
+        "name": "lat",
+        "type": "textbox",
+        "hide": 2,
+        "label": "lat",
+        "description": "Destino del enlace «centrar el mapa» de la tabla.",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "query": "",
+        "skipUrlSync": false
+      },
+      {
+        "name": "lng",
+        "type": "textbox",
+        "hide": 2,
+        "label": "lng",
+        "description": "Destino del enlace «centrar el mapa» de la tabla.",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "query": "",
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "gridPos": {
+        "h": 10,
+        "w": 17,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "## Biodiversidad observada en Ecuador\n\n**755 403 observaciones** de calidad de investigación subidas a\n[iNaturalist](https://www.inaturalist.org/) por 21 243 personas, cubriendo\n23 736 especies del Ecuador continental y de Galápagos. Se leen en vivo del\n*Feature Service* [iNaturalist Species Observations](https://www.arcgis.com/home/item.html?id=996576ae63d4499c924aabea1c3d3768)\nde ArcGIS Living Atlas: **sin descarga y sin ETL**, cada panel es una consulta\nal servicio.\n\nTres cosas que hay que saber para leer bien el mapa:\n\n- **Los puntos son una muestra; los hexágonos son el total.** El servicio corta\n  en 10 000 rasgos por petición y aquí no se pagina, así que la capa de puntos\n  son las N observaciones más recientes. Las celdas H3 vienen ya agregadas por\n  el propio servicio y cubren las 755 403. La cifra buena es la del panel\n  **Esfuerzo de observación**.\n- **Los hexágonos no tienen fecha.** Son totales históricos: no siguen a «Desde\n  el año» ni al pincel temporal del mapa. Todo lo demás sí.\n- **Esto mide esfuerzo de observación, no abundancia.** iNaturalist registra\n  adónde va la gente y qué fotografía. Quito y Galápagos brillan por sus\n  observadores tanto como por su biodiversidad.\n\nPara recortar por un área concreta, dibújala en el mapa: los paneles laterales y\nlas tablas la obedecen."
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Esfuerzo de observación",
+      "description": "Los números autoritativos del ámbito. Los calcula ArcGIS sin paginar, así que si alguna vez dejan de cuadrar con la suma de los hexágonos, es que algo está truncando.\n\n`count_distinct` está rechazado en esta vista, así que las dos cuentas de distintos van en peticiones aparte con `returnDistinctValues`.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 7,
+        "x": 17,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/iNaturalist/FeatureServer/0/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "latitude BETWEEN -5.1 AND 1.7 AND longitude BETWEEN -92.0 AND -75.0 AND observed_on_year >= $desdeAnio AND taxon_category_name IN (${taxon:sqlstring})"
+              },
+              {
+                "key": "geometry",
+                "value": "${areaRings:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "esriGeometryPolygon"
+              },
+              {
+                "key": "spatialRel",
+                "value": "esriSpatialRelIntersects"
+              },
+              {
+                "key": "inSR",
+                "value": "4326"
+              },
+              {
+                "key": "outStatistics",
+                "value": "[{\"statisticType\": \"count\", \"onStatisticField\": \"observation_id\", \"outStatisticFieldName\": \"n\"}]"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.n",
+              "text": "Observaciones",
+              "type": "number"
+            }
+          ]
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/iNaturalist/FeatureServer/0/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "latitude BETWEEN -5.1 AND 1.7 AND longitude BETWEEN -92.0 AND -75.0 AND observed_on_year >= $desdeAnio AND taxon_category_name IN (${taxon:sqlstring})"
+              },
+              {
+                "key": "geometry",
+                "value": "${areaRings:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "esriGeometryPolygon"
+              },
+              {
+                "key": "spatialRel",
+                "value": "esriSpatialRelIntersects"
+              },
+              {
+                "key": "inSR",
+                "value": "4326"
+              },
+              {
+                "key": "outFields",
+                "value": "taxon_id"
+              },
+              {
+                "key": "returnDistinctValues",
+                "value": "true"
+              },
+              {
+                "key": "returnCountOnly",
+                "value": "true"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "",
+          "columns": [
+            {
+              "selector": "count",
+              "text": "Especies",
+              "type": "number"
+            }
+          ]
+        },
+        {
+          "refId": "I",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/iNaturalist/FeatureServer/0/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "latitude BETWEEN -5.1 AND 1.7 AND longitude BETWEEN -92.0 AND -75.0 AND observed_on_year >= $desdeAnio AND taxon_category_name IN (${taxon:sqlstring})"
+              },
+              {
+                "key": "geometry",
+                "value": "${areaRings:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "esriGeometryPolygon"
+              },
+              {
+                "key": "spatialRel",
+                "value": "esriSpatialRelIntersects"
+              },
+              {
+                "key": "inSR",
+                "value": "4326"
+              },
+              {
+                "key": "outFields",
+                "value": "observer_id"
+              },
+              {
+                "key": "returnDistinctValues",
+                "value": "true"
+              },
+              {
+                "key": "returnCountOnly",
+                "value": "true"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "",
+          "columns": [
+            {
+              "selector": "count",
+              "text": "Observadores",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "decimals": 0,
+          "unit": "locale",
+          "mappings": [],
+          "noValue": "0"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "G"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Observaciones"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "H"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Especies"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "I"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Observadores"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "percentChangeColorMode": "standard",
+        "showPercentChange": false
+      }
+    },
+    {
+      "id": 3,
+      "type": "ubica-keplergl-panel",
+      "title": "Dónde se observa — hexágonos H3 y observaciones recientes",
+      "description": "Dos conjuntos de datos con alcances distintos, a propósito. Los **hexágonos** son las celdas H3 que el propio servicio publica ya agregadas: cubren las 755 403 observaciones del ámbito, en una sola petición y sin paginar. Los **puntos** son una muestra de las más recientes, porque el servicio corta en 10 000 rasgos por petición.\n\nEl pincel temporal mueve los puntos y deja quietos los hexágonos: las capas H3 no llevan ningún campo de fecha, son totales históricos.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 17,
+        "x": 0,
+        "y": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/iNaturalist/FeatureServer/${resolucion}/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "1=1"
+              },
+              {
+                "key": "geometry",
+                "value": "-92.0,-5.1,-75.0,1.7"
+              },
+              {
+                "key": "geometryType",
+                "value": "esriGeometryEnvelope"
+              },
+              {
+                "key": "spatialRel",
+                "value": "esriSpatialRelIntersects"
+              },
+              {
+                "key": "inSR",
+                "value": "4326"
+              },
+              {
+                "key": "outFields",
+                "value": "grid_id,observation_count,majority_taxon_category_name,minority_taxon_category_name,aves,plantae,insecta,reptilia,amphibia,mammalia,arachnida,mollusca,fungi,actinopterygii,protozoa,other"
+              },
+              {
+                "key": "returnGeometry",
+                "value": "false"
+              },
+              {
+                "key": "orderByFields",
+                "value": "OBJECTID"
+              },
+              {
+                "key": "maxRecordCountFactor",
+                "value": "5"
+              },
+              {
+                "key": "resultRecordCount",
+                "value": "10000"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.grid_id",
+              "text": "h3",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.observation_count",
+              "text": "n_total",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.majority_taxon_category_name",
+              "text": "mayoritaria",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.minority_taxon_category_name",
+              "text": "minoritaria",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.aves",
+              "text": "aves",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.plantae",
+              "text": "plantas",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.insecta",
+              "text": "insectos",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.reptilia",
+              "text": "reptiles",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.amphibia",
+              "text": "anfibios",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.mammalia",
+              "text": "mamiferos",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.arachnida",
+              "text": "aracnidos",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.mollusca",
+              "text": "moluscos",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.fungi",
+              "text": "hongos",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.actinopterygii",
+              "text": "peces",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.protozoa",
+              "text": "protozoos",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.other",
+              "text": "otros",
+              "type": "number"
+            }
+          ],
+          "computed_columns": [
+            {
+              "selector": "${capa}",
+              "text": "n"
+            }
+          ]
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/iNaturalist/FeatureServer/0/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "latitude BETWEEN -5.1 AND 1.7 AND longitude BETWEEN -92.0 AND -75.0 AND observed_on_year >= $desdeAnio"
+              },
+              {
+                "key": "outFields",
+                "value": "observation_id,observed_on,taxon_category_name,scientific_name,common_name,latitude,longitude,uncertainty_m"
+              },
+              {
+                "key": "orderByFields",
+                "value": "observed_on DESC"
+              },
+              {
+                "key": "returnGeometry",
+                "value": "false"
+              },
+              {
+                "key": "maxRecordCountFactor",
+                "value": "5"
+              },
+              {
+                "key": "resultRecordCount",
+                "value": "$muestra"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.latitude",
+              "text": "latitude",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.longitude",
+              "text": "longitude",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.observed_on",
+              "text": "time",
+              "type": "timestamp"
+            },
+            {
+              "selector": "attributes.taxon_category_name",
+              "text": "categoria",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.scientific_name",
+              "text": "especie",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.common_name",
+              "text": "nombre_comun",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.observation_id",
+              "text": "obs_id",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.uncertainty_m",
+              "text": "incertidumbre",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "followGrafanaTheme": true,
+        "basemap": "dark-matter",
+        "timeSync": "off",
+        "publishWhilePlaying": false,
+        "peerTimeSync": false,
+        "tripLayerMode": "table",
+        "flowRenderMode": "straight",
+        "windDensity": 9000,
+        "areaVariable": "area",
+        "variableMappings": [
+          {
+            "field": "categoria",
+            "variable": "taxon",
+            "source": "filter"
+          },
+          {
+            "field": "",
+            "variable": "lat",
+            "variableTo": "lng",
+            "source": "center",
+            "zoom": 11
+          }
+        ],
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -1.0,
+              "longitude": -83.5,
+              "zoom": 4.95,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "visState": {
+              "layerBlending": "normal",
+              "filters": [
+                {
+                  "dataId": [
+                    "grafana-B"
+                  ],
+                  "name": [
+                    "time"
+                  ],
+                  "id": "ventana",
+                  "type": "timeRange",
+                  "value": [
+                    1000000000000,
+                    1000000000001
+                  ],
+                  "plotType": {
+                    "type": "histogram"
+                  },
+                  "animationWindow": "free",
+                  "yAxis": null,
+                  "view": "minified",
+                  "speed": 1,
+                  "enabled": true
+                }
+              ],
+              "layerOrder": [
+                "puntos",
+                "hexagonos"
+              ],
+              "layers": [
+                {
+                  "id": "hexagonos",
+                  "type": "hexagonId",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Observaciones por celda H3",
+                    "columns": {
+                      "hex_id": "h3"
+                    },
+                    "isVisible": true,
+                    "colorField": null,
+                    "visConfig": {
+                      "opacity": 0.38,
+                      "coverage": 0.92,
+                      "enable3d": false,
+                      "sizeRange": [
+                        0,
+                        500
+                      ],
+                      "coverageRange": [
+                        0,
+                        1
+                      ],
+                      "elevationScale": 5,
+                      "enableElevationZoomFactor": true,
+                      "colorRange": {
+                        "name": "Densidad iNaturalist",
+                        "type": "sequential",
+                        "category": "Custom",
+                        "colors": [
+                          "#eef7e6",
+                          "#cde8c0",
+                          "#9ed49a",
+                          "#69bd7f",
+                          "#33a06b",
+                          "#0b7a5a",
+                          "#0b5545"
+                        ]
+                      }
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "n",
+                      "type": "integer"
+                    },
+                    "colorScale": "quantile",
+                    "sizeField": null,
+                    "sizeScale": "linear",
+                    "coverageField": null,
+                    "coverageScale": "linear"
+                  }
+                },
+                {
+                  "id": "puntos",
+                  "type": "point",
+                  "config": {
+                    "dataId": "grafana-B",
+                    "label": "Observaciones (muestra reciente)",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude",
+                      "altitude": null
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "radius": 7,
+                      "opacity": 0.95,
+                      "outline": true,
+                      "thickness": 0.6,
+                      "strokeColor": [
+                        12,
+                        16,
+                        20
+                      ],
+                      "strokeOpacity": 0.8,
+                      "filled": true,
+                      "radiusRange": [
+                        2,
+                        24
+                      ],
+                      "fixedRadius": false,
+                      "colorRange": {
+                        "name": "Categorías iNaturalist",
+                        "type": "custom",
+                        "category": "Custom",
+                        "colors": [
+                          "#2f7ec4",
+                          "#3f8f4a",
+                          "#e0a02e",
+                          "#8c5a2b",
+                          "#63bfa0",
+                          "#b5443c",
+                          "#7a5aa8",
+                          "#d97fb0",
+                          "#d9662a",
+                          "#3fb0c4",
+                          "#9aa63f",
+                          "#8a8f96"
+                        ],
+                        "colorMap": [
+                          [
+                            "Aves",
+                            "#2f7ec4"
+                          ],
+                          [
+                            "Plantae",
+                            "#3f8f4a"
+                          ],
+                          [
+                            "Insecta",
+                            "#e0a02e"
+                          ],
+                          [
+                            "Reptilia",
+                            "#8c5a2b"
+                          ],
+                          [
+                            "Amphibia",
+                            "#63bfa0"
+                          ],
+                          [
+                            "Mammalia",
+                            "#b5443c"
+                          ],
+                          [
+                            "Arachnida",
+                            "#7a5aa8"
+                          ],
+                          [
+                            "Mollusca",
+                            "#d97fb0"
+                          ],
+                          [
+                            "Fungi",
+                            "#d9662a"
+                          ],
+                          [
+                            "Actinopterygii",
+                            "#3fb0c4"
+                          ],
+                          [
+                            "Protozoa",
+                            "#9aa63f"
+                          ],
+                          [
+                            "Other",
+                            "#8a8f96"
+                          ]
+                        ]
+                      }
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "categoria",
+                      "type": "string"
+                    },
+                    "colorScale": "customOrdinal",
+                    "sizeField": null,
+                    "sizeScale": "linear"
+                  }
+                }
+              ],
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": true,
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "n",
+                        "format": null
+                      },
+                      {
+                        "name": "n_total",
+                        "format": null
+                      },
+                      {
+                        "name": "mayoritaria",
+                        "format": null
+                      },
+                      {
+                        "name": "minoritaria",
+                        "format": null
+                      }
+                    ],
+                    "grafana-B": [
+                      {
+                        "name": "especie",
+                        "format": null
+                      },
+                      {
+                        "name": "nombre_comun",
+                        "format": null
+                      },
+                      {
+                        "name": "categoria",
+                        "format": null
+                      },
+                      {
+                        "name": "time",
+                        "format": null
+                      },
+                      {
+                        "name": "incertidumbre",
+                        "format": null
+                      }
+                    ]
+                  }
+                },
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "coordinate": {
+                  "enabled": false
+                }
+              }
+            }
+          }
+        },
+        "saveRequest": 0
+      }
+    },
+    {
+      "id": 4,
+      "type": "barchart",
+      "title": "Composición taxonómica",
+      "description": "Un `groupByFieldsForStatistics` sobre `taxon_category_name`: una sola petición para los doce grupos.\n\nGrafana abre un menú contextual al pulsar una barra; el filtro es la opción del menú, así que son dos clics, no uno.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 7,
+        "x": 17,
+        "y": 10
+      },
+      "targets": [
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/iNaturalist/FeatureServer/0/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "latitude BETWEEN -5.1 AND 1.7 AND longitude BETWEEN -92.0 AND -75.0 AND observed_on_year >= $desdeAnio AND taxon_category_name IN (${taxon:sqlstring})"
+              },
+              {
+                "key": "geometry",
+                "value": "${areaRings:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "esriGeometryPolygon"
+              },
+              {
+                "key": "spatialRel",
+                "value": "esriSpatialRelIntersects"
+              },
+              {
+                "key": "inSR",
+                "value": "4326"
+              },
+              {
+                "key": "groupByFieldsForStatistics",
+                "value": "taxon_category_name"
+              },
+              {
+                "key": "outStatistics",
+                "value": "[{\"statisticType\": \"count\", \"onStatisticField\": \"observation_id\", \"outStatisticFieldName\": \"n\"}]"
+              },
+              {
+                "key": "orderByFields",
+                "value": "n DESC"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.taxon_category_name",
+              "text": "grupo",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.n",
+              "text": "n",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3f8f4a"
+          },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Filtrar el tablero por este grupo",
+              "url": "/d/inaturalist-ecuador?var-taxon=${__data.fields.grupo}&${desdeAnio:queryparam}&var-area=${area}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "grupo",
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.7,
+        "barWidth": 0.8,
+        "barRadius": 0,
+        "fullHighlight": false,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "barchart",
+      "title": "Observaciones por año",
+      "description": "Deliberadamente **no** sigue a «Desde el año»: es el panel que se mira para decidir ese valor. Su suelo es el literal 2016.\n\n`anio` va tipado como `string` porque el eje X de un barchart necesita una cadena o un campo temporal, y `observed_on_year` es un entero.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 7,
+        "x": 17,
+        "y": 17
+      },
+      "targets": [
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/iNaturalist/FeatureServer/0/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "latitude BETWEEN -5.1 AND 1.7 AND longitude BETWEEN -92.0 AND -75.0 AND observed_on_year >= 2016 AND taxon_category_name IN (${taxon:sqlstring})"
+              },
+              {
+                "key": "geometry",
+                "value": "${areaRings:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "esriGeometryPolygon"
+              },
+              {
+                "key": "spatialRel",
+                "value": "esriSpatialRelIntersects"
+              },
+              {
+                "key": "inSR",
+                "value": "4326"
+              },
+              {
+                "key": "groupByFieldsForStatistics",
+                "value": "observed_on_year"
+              },
+              {
+                "key": "outStatistics",
+                "value": "[{\"statisticType\": \"count\", \"onStatisticField\": \"observation_id\", \"outStatisticFieldName\": \"n\"}]"
+              },
+              {
+                "key": "orderByFields",
+                "value": "observed_on_year"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.observed_on_year",
+              "text": "anio",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.n",
+              "text": "n",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#2f7ec4"
+          },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "vertical",
+        "xField": "anio",
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.7,
+        "barWidth": 0.8,
+        "barRadius": 0,
+        "fullHighlight": false,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "barchart",
+      "title": "Estacionalidad",
+      "description": "Observaciones por mes del año, sumando todo el histórico del ámbito. Mide **esfuerzo de observación**, no abundancia: es cuándo sale la gente a mirar y a fotografiar.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 7,
+        "x": 17,
+        "y": 24
+      },
+      "targets": [
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/iNaturalist/FeatureServer/0/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "latitude BETWEEN -5.1 AND 1.7 AND longitude BETWEEN -92.0 AND -75.0 AND observed_on_year >= $desdeAnio AND taxon_category_name IN (${taxon:sqlstring})"
+              },
+              {
+                "key": "geometry",
+                "value": "${areaRings:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "esriGeometryPolygon"
+              },
+              {
+                "key": "spatialRel",
+                "value": "esriSpatialRelIntersects"
+              },
+              {
+                "key": "inSR",
+                "value": "4326"
+              },
+              {
+                "key": "groupByFieldsForStatistics",
+                "value": "observed_on_month"
+              },
+              {
+                "key": "outStatistics",
+                "value": "[{\"statisticType\": \"count\", \"onStatisticField\": \"observation_id\", \"outStatisticFieldName\": \"n\"}]"
+              },
+              {
+                "key": "orderByFields",
+                "value": "observed_on_month"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.observed_on_month",
+              "text": "mes",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.n",
+              "text": "n",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#e0a02e"
+          },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Ene",
+                  "index": 0
+                },
+                "2": {
+                  "text": "Feb",
+                  "index": 1
+                },
+                "3": {
+                  "text": "Mar",
+                  "index": 2
+                },
+                "4": {
+                  "text": "Abr",
+                  "index": 3
+                },
+                "5": {
+                  "text": "May",
+                  "index": 4
+                },
+                "6": {
+                  "text": "Jun",
+                  "index": 5
+                },
+                "7": {
+                  "text": "Jul",
+                  "index": 6
+                },
+                "8": {
+                  "text": "Ago",
+                  "index": 7
+                },
+                "9": {
+                  "text": "Sep",
+                  "index": 8
+                },
+                "10": {
+                  "text": "Oct",
+                  "index": 9
+                },
+                "11": {
+                  "text": "Nov",
+                  "index": 10
+                },
+                "12": {
+                  "text": "Dic",
+                  "index": 11
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "vertical",
+        "xField": "mes",
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.7,
+        "barWidth": 0.8,
+        "barRadius": 0,
+        "fullHighlight": false,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Las 20 especies más observadas",
+      "description": "`groupByFieldsForStatistics` sobre la clave taxonómica completa. El enlace va a la ficha del taxón en iNaturalist, construida con el `taxon_id` de la propia clave: `reference_url` es por observación y no sobrevive a la agrupación.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 30
+      },
+      "targets": [
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/iNaturalist/FeatureServer/0/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "latitude BETWEEN -5.1 AND 1.7 AND longitude BETWEEN -92.0 AND -75.0 AND observed_on_year >= $desdeAnio AND taxon_category_name IN (${taxon:sqlstring})"
+              },
+              {
+                "key": "geometry",
+                "value": "${areaRings:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "esriGeometryPolygon"
+              },
+              {
+                "key": "spatialRel",
+                "value": "esriSpatialRelIntersects"
+              },
+              {
+                "key": "inSR",
+                "value": "4326"
+              },
+              {
+                "key": "groupByFieldsForStatistics",
+                "value": "taxon_id,scientific_name,common_name,taxon_category_name"
+              },
+              {
+                "key": "outStatistics",
+                "value": "[{\"statisticType\": \"count\", \"onStatisticField\": \"observation_id\", \"outStatisticFieldName\": \"n\"}]"
+              },
+              {
+                "key": "orderByFields",
+                "value": "n DESC"
+              },
+              {
+                "key": "resultRecordCount",
+                "value": "20"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.taxon_id",
+              "text": "taxon_id",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.scientific_name",
+              "text": "especie",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.common_name",
+              "text": "nombre_comun",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.taxon_category_name",
+              "text": "grupo",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.n",
+              "text": "n",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "filterable": false
+          },
+          "mappings": [],
+          "noValue": "—",
+          "links": [
+            {
+              "title": "Ver la especie en iNaturalist",
+              "url": "https://www.inaturalist.org/taxa/${__data.fields.taxon_id}",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "taxon_id"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "n"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "renameByName": {
+              "especie": "Especie",
+              "nombre_comun": "Nombre común",
+              "grupo": "Grupo",
+              "n": "Observaciones"
+            },
+            "indexByName": {
+              "especie": 0,
+              "nombre_comun": 1,
+              "grupo": 2,
+              "n": 3,
+              "taxon_id": 4
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        },
+        "sortBy": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Observaciones recientes",
+      "description": "Aquí sí cabe `reference_url`, que apunta a la observación concreta. Dos enlaces a dos niveles: la fila entera centra el mapa, y la celda «Ficha» abre iNaturalist — una anulación reemplaza los enlaces por defecto solo en ese campo.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 30
+      },
+      "targets": [
+        {
+          "refId": "J",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/iNaturalist/FeatureServer/0/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "latitude BETWEEN -5.1 AND 1.7 AND longitude BETWEEN -92.0 AND -75.0 AND observed_on_year >= $desdeAnio AND taxon_category_name IN (${taxon:sqlstring})"
+              },
+              {
+                "key": "geometry",
+                "value": "${areaRings:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "esriGeometryPolygon"
+              },
+              {
+                "key": "spatialRel",
+                "value": "esriSpatialRelIntersects"
+              },
+              {
+                "key": "inSR",
+                "value": "4326"
+              },
+              {
+                "key": "outFields",
+                "value": "observation_id,observed_on,taxon_category_name,scientific_name,common_name,latitude,longitude,reference_url"
+              },
+              {
+                "key": "orderByFields",
+                "value": "observed_on DESC"
+              },
+              {
+                "key": "resultRecordCount",
+                "value": "100"
+              },
+              {
+                "key": "returnGeometry",
+                "value": "false"
+              },
+              {
+                "key": "f",
+                "value": "json"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "attributes.observed_on",
+              "text": "time",
+              "type": "timestamp"
+            },
+            {
+              "selector": "attributes.scientific_name",
+              "text": "especie",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.common_name",
+              "text": "nombre_comun",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.taxon_category_name",
+              "text": "grupo",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.reference_url",
+              "text": "enlace",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.latitude",
+              "text": "latitude",
+              "type": "number"
+            },
+            {
+              "selector": "attributes.longitude",
+              "text": "longitude",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "filterable": false
+          },
+          "mappings": [],
+          "noValue": "—",
+          "links": [
+            {
+              "title": "Centrar el mapa aquí",
+              "url": "/d/inaturalist-ecuador?var-lat=${__data.fields.latitude}&var-lng=${__data.fields.longitude}&${taxon:queryparam}&${desdeAnio:queryparam}&var-area=${area}"
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "latitude"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "longitude"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "enlace"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Ficha"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": ".+",
+                      "result": {
+                        "text": "Ver en iNaturalist ↗",
+                        "index": 0
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Abrir en iNaturalist",
+                    "url": "${__value.raw}",
+                    "targetBlank": true
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "renameByName": {
+              "time": "Fecha",
+              "especie": "Especie",
+              "nombre_comun": "Nombre común",
+              "grupo": "Grupo"
+            },
+            "indexByName": {
+              "time": 0,
+              "especie": 1,
+              "nombre_comun": 2,
+              "grupo": 3,
+              "enlace": 4,
+              "latitude": 5,
+              "longitude": 6
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        },
+        "sortBy": []
+      }
+    },
+    {
+      "id": 9,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 41
+      },
+      "options": {
+        "mode": "markdown",
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "**Fuente** · [iNaturalist Species Observations](https://www.arcgis.com/home/item.html?id=996576ae63d4499c924aabea1c3d3768),\nArcGIS Living Atlas of the World (Esri), servicio público sin credenciales.\nDatos originales de [iNaturalist](https://www.inaturalist.org/), una iniciativa\nconjunta de la California Academy of Sciences y la National Geographic Society;\ncada observación conserva la licencia que le puso quien la subió.\nEl servicio solo publica observaciones *research-grade* (`quality_grade =\n'research'`: con fecha, georreferenciadas, con foto o sonido, y de organismos\nsilvestres) y va aproximadamente **un mes por detrás** — la observación más\nreciente del servicio es del 28 de julio de 2026.\n**Ámbito** · un rectángulo (`-92,0 −5,1 → −75,0 1,7`), no la frontera del país:\narrastra franjas de Colombia, Perú y océano. Recortar de verdad es lo que hace\nel polígono que se dibuja en el mapa."
+      }
+    }
+  ]
+}

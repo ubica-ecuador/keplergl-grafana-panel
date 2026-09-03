@@ -206,6 +206,20 @@ npm run e2e             # end-to-end against the running Grafana
 Requires Node 22+. `dist/` is bind-mounted into the containers, so do **not** `rm -rf dist` while
 they are running — that leaves them serving a stale inode. `npm run build` cleans it correctly.
 
+Three of those benches sit at **12.0.10**, the floor of the supported range, which is what catches
+accidental use of a newer API. A fourth covers the other end — `docker compose up --build grafana-13`
+runs **Grafana 13** on `:3003`, where React 18 becomes React 19, and the suite is expected to pass
+there too:
+
+```bash
+GRAFANA_URL=http://localhost:3003 npx playwright test --workers=1
+```
+
+To publish a bench rather than run one locally, copy `docker-compose.override.example.yml` to
+`docker-compose.override.yml` and edit it. Compose picks that name up automatically; it is
+gitignored because it names an external network and a public hostname, so it must not reach anyone
+else's checkout.
+
 The documentation site lives in `docs/site` as its own npm package:
 
 ```bash

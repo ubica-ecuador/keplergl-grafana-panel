@@ -1,0 +1,1122 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "17.066 ríos de América reconstruidos de cabecera a mar desde HydroRIVERS, coloreados por cuenca, con el agua bajando por ellos como capa de trayectoria y un campo de velocidad trazado como líneas de corriente. El cuarto mapa lee HydroSHEDS v2 en vivo del servicio de Esri Living Atlas.",
+  "editable": true,
+  "id": null,
+  "links": [],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": [
+    "kepler",
+    "sources",
+    "hidrografía",
+    "animación"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "red",
+        "label": "Densidad de la red (mapa principal)",
+        "type": "custom",
+        "hide": 0,
+        "multi": false,
+        "includeAll": false,
+        "skipUrlSync": false,
+        "query": "Densa — 17.066 ríos : 0, Media — desde 50 km : 50, Ligera — desde 200 km : 200",
+        "options": [
+          {
+            "text": "Densa — 17.066 ríos",
+            "value": "0",
+            "selected": true
+          },
+          {
+            "text": "Media — desde 50 km",
+            "value": "50",
+            "selected": false
+          },
+          {
+            "text": "Ligera — desde 200 km",
+            "value": "200",
+            "selected": false
+          }
+        ],
+        "current": {
+          "text": "Densa — 17.066 ríos",
+          "value": "0"
+        }
+      },
+      {
+        "name": "ordenTrip",
+        "label": "Ríos animados (Strahler)",
+        "type": "custom",
+        "hide": 0,
+        "multi": false,
+        "includeAll": false,
+        "skipUrlSync": false,
+        "query": "Principales — Strahler ≥8 : 8, Medio — Strahler ≥7 : 7, Denso — Strahler ≥6 : 6",
+        "options": [
+          {
+            "text": "Principales — Strahler ≥8",
+            "value": "8",
+            "selected": false
+          },
+          {
+            "text": "Medio — Strahler ≥7",
+            "value": "7",
+            "selected": true
+          },
+          {
+            "text": "Denso — Strahler ≥6",
+            "value": "6",
+            "selected": false
+          }
+        ],
+        "current": {
+          "text": "Medio — Strahler ≥7",
+          "value": "7"
+        }
+      },
+      {
+        "name": "ciclo",
+        "label": "Longitud de onda",
+        "type": "custom",
+        "hide": 0,
+        "multi": false,
+        "includeAll": false,
+        "skipUrlSync": false,
+        "query": "Detalle — 100 km — para zoom de cuenca : 100, Corta — 400 km : 400, Media — 1000 km — vista continental : 1000, Larga — 2000 km : 2000",
+        "options": [
+          {
+            "text": "Detalle — 100 km — para zoom de cuenca",
+            "value": "100",
+            "selected": false
+          },
+          {
+            "text": "Corta — 400 km",
+            "value": "400",
+            "selected": false
+          },
+          {
+            "text": "Media — 1000 km — vista continental",
+            "value": "1000",
+            "selected": true
+          },
+          {
+            "text": "Larga — 2000 km",
+            "value": "2000",
+            "selected": false
+          }
+        ],
+        "current": {
+          "text": "Media — 1000 km — vista continental",
+          "value": "1000"
+        }
+      },
+      {
+        "name": "campo",
+        "label": "Rejilla del campo",
+        "type": "custom",
+        "hide": 0,
+        "multi": false,
+        "includeAll": false,
+        "skipUrlSync": false,
+        "query": "Continental — 0.25° — corredores de 83 km : 0250, Regional — 0.1° — corredores de 22 km : 0100, Detalle — 0.05° — corredores de 11 km : 0050",
+        "options": [
+          {
+            "text": "Continental — 0.25° — corredores de 83 km",
+            "value": "0250",
+            "selected": true
+          },
+          {
+            "text": "Regional — 0.1° — corredores de 22 km",
+            "value": "0100",
+            "selected": false
+          },
+          {
+            "text": "Detalle — 0.05° — corredores de 11 km",
+            "value": "0050",
+            "selected": false
+          }
+        ],
+        "current": {
+          "text": "Continental — 0.25° — corredores de 83 km",
+          "value": "0250"
+        }
+      },
+      {
+        "name": "detalle",
+        "label": "Detalle geométrico (Esri)",
+        "type": "custom",
+        "hide": 0,
+        "multi": false,
+        "includeAll": false,
+        "skipUrlSync": false,
+        "query": "Media — 0.02° : 0.02, Fina — más nítida y más lenta : 0.005, Gruesa — más rápida : 0.05",
+        "options": [
+          {
+            "text": "Media — 0.02°",
+            "value": "0.02",
+            "selected": true
+          },
+          {
+            "text": "Fina — más nítida y más lenta",
+            "value": "0.005",
+            "selected": false
+          },
+          {
+            "text": "Gruesa — más rápida",
+            "value": "0.05",
+            "selected": false
+          }
+        ],
+        "current": {
+          "text": "Media — 0.02°",
+          "value": "0.02"
+        }
+      },
+      {
+        "name": "lat",
+        "label": "Latitud (tabla)",
+        "type": "textbox",
+        "hide": 2,
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "query": "",
+        "skipUrlSync": false
+      },
+      {
+        "name": "lng",
+        "label": "Longitud (tabla)",
+        "type": "textbox",
+        "hide": 2,
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "query": "",
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "HydroSHEDS — la red fluvial de América",
+  "uid": "hydrosheds-americas",
+  "version": 2,
+  "weekStart": "",
+  "panels": [
+    {
+      "type": "text",
+      "id": 1,
+      "options": {
+        "mode": "markdown",
+        "content": "## HydroSHEDS — la red fluvial de América\n\n**El agua baja de verdad.** El mapa animado recorre 17.066 ríos reconstruidos tramo a tramo desde la cabecera hasta el mar — el más largo, 5.925 km — así que cada pulso de luz viaja por el cauce en vez de parpadear en su sitio. Cada cuenca tiene su color, y las divisorias de aguas aparecen solas.\n\nLos dos mapas animados **están en blanco hasta que le des al play**: son capas de trayectoria, y en el instante cero todos los rastros miden cero.\n\nLa red viene de HydroRIVERS **v1** (15 arco-segundos) en Parquet local, porque es la que publica caudal y distancia al mar, y sin una de las dos no hay nada que animar. El tercer mapa lee HydroSHEDS **v2** (1 arco-segundo) en vivo del servicio de Esri, sin descargar nada: más fino, pero solo los troncos principales, y con zoom fuerte **no coincide** con los otros — son dos modelos de elevación distintos.\n\nDatos: HydroSHEDS © WWF / McGill / DLR / Confluvio, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) — Lehner, B., Roth, A., Huber, M., Anand, M., Thieme, M. (2022). *A sharper look at the world's rivers and catchments.* Eos 103, [10.1029/2022EO220167](https://doi.org/10.1029/2022EO220167). Servicios alojados por [Esri Living Atlas](https://livingatlas.arcgis.com/)."
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "type": "ubica-keplergl-panel",
+      "id": 2,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "title": "El agua baja al mar (dale al play)",
+      "description": "Capa de trayectoria sobre los recorridos completos de HydroRIVERS v1, dibujada encima de la red coloreada por cuenca. «Longitud de onda» fija cada cuánto se repite el pulso; «Trail Length» en el panel lateral cambia el carácter más que ningún otro control.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Un renglon por rio, no por tramo: los 390.290 tramos de la red se unieron en\n-- 17.066 recorridos continuos de cabecera a mar, cada uno una sola LineString.\n-- Eso es lo que la hace dibujable, y lo que permite colorear por cuenca.\n--\n-- `cuenca` es un hash de MAIN_RIV, no una magnitud: lo que se quiere es que dos\n-- cuencas vecinas caigan en colores distintos, porque eso es lo que dibuja las\n-- divisorias de aguas.\nSELECT path_id,\n       rio,\n       cuenca_color::VARCHAR AS cuenca,\n       orden,\n       caudal,\n       round(km)::INTEGER AS km,\n       geojson\nFROM read_parquet('/testdata/hydro/network.parquet')\nWHERE km >= ${red:raw}\nORDER BY caudal"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- El reloj es `avance_km`: cuanto ha viajado esa agua desde la cabecera mas\n-- lejana de America. Sale de DIST_DN_KM, que decrece rio abajo en los 3.012.534\n-- pares de la red sin una sola excepcion, asi que es continuo a traves de las\n-- confluencias -- y eso es lo que mantiene en fase a un afluente con el rio al\n-- que entra, en vez de dejar una costura en cada union.\n--\n-- Cada viaje es un tramo de ${ciclo:raw} km de un **recorrido real**, no un tramo\n-- suelto de 2,5 km. Esa es la diferencia entre ver agua bajar y ver parpadear\n-- puntos: a escala continental 2,5 km es un quinto de pixel, y ningun cometa\n-- llegaba a moverse.\n--\n-- El modulo alinea las bandas en toda la red a la vez, y al cerrar el bucle el\n-- cometa de cada banda ha llegado justo donde empezaba el de la siguiente, asi\n-- que el ciclo no tiene costura.\n--\n-- La ventana dura siempre 20 h, sea cual sea la onda, que es lo que permite que\n-- un unico `trailLength` guardado sea siempre la misma fraccion. La velocidad\n-- en pantalla depende entonces de la onda elegida, y por tanto **no es la\n-- velocidad del agua**: el mapa afirma direccion y orden de conexion, no ritmo.\n--\n-- `:raw` en cada variable porque la fuente DuckDB entrecomilla lo que interpola,\n-- y dentro de un literal de cadena eso produce SQL roto.\nSELECT trip_id, latitude, longitude, caudal, orden, cuenca, dist_mar_km, avance_km, time\nFROM (\n  SELECT printf('%d-%d', path_id, floor(avance_km / ${ciclo:raw})::BIGINT) AS trip_id,\n         latitude,\n         longitude,\n         caudal,\n         orden,\n         cuenca_color::VARCHAR    AS cuenca,\n         dist_mar_km,\n         round(avance_km)::INTEGER AS avance_km,\n         to_timestamp(1767225600 + (avance_km % ${ciclo:raw}) / ${ciclo:raw} * 72000) AS time\n  FROM read_parquet('/testdata/hydro/path-vertices.parquet')\n  WHERE orden >= ${ordenTrip:raw}\n)\n-- Un recorrido cortado justo en el borde de una banda deja un vertice suelto a\n-- un lado, y un viaje de un punto no dibuja nada.\nQUALIFY count(*) OVER (PARTITION BY trip_id) >= 2\nORDER BY trip_id, avance_km"
+        }
+      ],
+      "options": {
+        "showSidePanel": true,
+        "followGrafanaTheme": false,
+        "basemap": "dark-matter",
+        "timeSync": "off",
+        "tripLayerMode": "table",
+        "variableMappings": [
+          {
+            "field": "",
+            "variable": "lat",
+            "variableTo": "lng",
+            "source": "center",
+            "zoom": 6
+          }
+        ],
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": 8.0,
+              "longitude": -88.0,
+              "zoom": 2.7,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "visState": {
+              "filters": [],
+              "layerBlending": "normal",
+              "layers": [
+                {
+                  "id": "red",
+                  "type": "geojson",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Red fluvial",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "opacity": 0.5,
+                      "filled": false,
+                      "stroked": true,
+                      "thickness": 0.5,
+                      "strokeOpacity": 0.5,
+                      "strokeColor": [
+                        70,
+                        120,
+                        150
+                      ],
+                      "strokeColorRange": {
+                        "name": "Cuencas",
+                        "type": "qualitative",
+                        "category": "Custom",
+                        "colors": [
+                          "#00c2ff",
+                          "#00e5a0",
+                          "#ffd166",
+                          "#ff8c42",
+                          "#ef476f",
+                          "#b388ff",
+                          "#4d96ff"
+                        ]
+                      },
+                      "sizeRange": [
+                        0.2,
+                        2.5
+                      ],
+                      "enable3d": false,
+                      "wireframe": false
+                    },
+                    "color": [
+                      77,
+                      150,
+                      255
+                    ]
+                  },
+                  "visualChannels": {
+                    "strokeColorField": {
+                      "name": "cuenca",
+                      "type": "string"
+                    },
+                    "strokeColorScale": "ordinal",
+                    "sizeField": {
+                      "name": "caudal",
+                      "type": "real"
+                    },
+                    "sizeScale": "sqrt"
+                  }
+                },
+                {
+                  "id": "flujo",
+                  "type": "trip",
+                  "config": {
+                    "dataId": "grafana-B",
+                    "label": "Agua hacia el mar",
+                    "columns": {
+                      "id": "trip_id",
+                      "lat": "latitude",
+                      "lng": "longitude",
+                      "timestamp": "time"
+                    },
+                    "columnMode": "table",
+                    "isVisible": true,
+                    "visConfig": {
+                      "trailLength": 14000,
+                      "thickness": 3,
+                      "opacity": 0.95,
+                      "sizeRange": [
+                        1,
+                        6
+                      ]
+                    },
+                    "color": [
+                      232,
+                      251,
+                      255
+                    ]
+                  },
+                  "visualChannels": {
+                    "sizeField": {
+                      "name": "orden",
+                      "type": "integer"
+                    },
+                    "sizeScale": "linear"
+                  }
+                }
+              ],
+              "layerOrder": [
+                "red",
+                "flujo"
+              ],
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": true,
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "rio"
+                      },
+                      {
+                        "name": "orden"
+                      },
+                      {
+                        "name": "caudal"
+                      },
+                      {
+                        "name": "km"
+                      }
+                    ],
+                    "grafana-B": [
+                      {
+                        "name": "caudal"
+                      },
+                      {
+                        "name": "orden"
+                      },
+                      {
+                        "name": "dist_mar_km"
+                      },
+                      {
+                        "name": "avance_km"
+                      }
+                    ]
+                  }
+                },
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "coordinate": {
+                  "enabled": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      }
+    },
+    {
+      "type": "ubica-keplergl-panel",
+      "id": 3,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "title": "Campo de velocidad — partículas sobre los ríos (dale al play)",
+      "description": "Rejilla u/v derivada de la dirección de los cauces ponderada por caudal. El panel la suaviza y traza las líneas de corriente, y las vuelve a trazar cada vez que el mapa se queda quieto, así que la densidad no cambia con el zoom. La rejilla hay que elegirla según el zoom: a vista continental el trazador avanza ~67 km por vértice y solo la de 0.25° tiene corredores lo bastante anchos para que la partícula no se salga del río.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Un renglon por rio, no por tramo: los 390.290 tramos de la red se unieron en\n-- 17.066 recorridos continuos de cabecera a mar, cada uno una sola LineString.\n-- Eso es lo que la hace dibujable, y lo que permite colorear por cuenca.\n--\n-- `cuenca` es un hash de MAIN_RIV, no una magnitud: lo que se quiere es que dos\n-- cuencas vecinas caigan en colores distintos, porque eso es lo que dibuja las\n-- divisorias de aguas.\nSELECT path_id,\n       rio,\n       cuenca_color::VARCHAR AS cuenca,\n       orden,\n       caudal,\n       round(km)::INTEGER AS km,\n       geojson\nFROM read_parquet('/testdata/hydro/network.parquet')\nWHERE km >= 200\nORDER BY caudal"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Ni una columna de este resultado llega al mapa. Las filas describen una\n-- rejilla de vectores, y lo que se dibuja son las lineas de corriente trazadas\n-- a traves de ella: geometria que calcula el panel y que la consulta nunca\n-- contuvo. Basta con que se llamen lat/lon/u/v y que no haya trip id.\nSELECT lat, lon, u, v\nFROM read_parquet('/testdata/hydro/flowfield-${campo:raw}.parquet')"
+        }
+      ],
+      "options": {
+        "showSidePanel": true,
+        "followGrafanaTheme": false,
+        "basemap": "dark-matter",
+        "timeSync": "off",
+        "windDensity": 20000,
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": 8.0,
+              "longitude": -88.0,
+              "zoom": 2.7,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "visState": {
+              "filters": [],
+              "layerBlending": "normal",
+              "layers": [
+                {
+                  "id": "red",
+                  "type": "geojson",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Red fluvial",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "opacity": 0.4,
+                      "filled": false,
+                      "stroked": true,
+                      "thickness": 0.5,
+                      "strokeOpacity": 0.4,
+                      "strokeColor": [
+                        70,
+                        120,
+                        150
+                      ],
+                      "strokeColorRange": {
+                        "name": "Cuencas",
+                        "type": "qualitative",
+                        "category": "Custom",
+                        "colors": [
+                          "#00c2ff",
+                          "#00e5a0",
+                          "#ffd166",
+                          "#ff8c42",
+                          "#ef476f",
+                          "#b388ff",
+                          "#4d96ff"
+                        ]
+                      },
+                      "sizeRange": [
+                        0.2,
+                        2.0
+                      ],
+                      "enable3d": false,
+                      "wireframe": false
+                    },
+                    "color": [
+                      77,
+                      150,
+                      255
+                    ]
+                  },
+                  "visualChannels": {
+                    "strokeColorField": {
+                      "name": "cuenca",
+                      "type": "string"
+                    },
+                    "strokeColorScale": "ordinal",
+                    "sizeField": {
+                      "name": "caudal",
+                      "type": "real"
+                    },
+                    "sizeScale": "sqrt"
+                  }
+                },
+                {
+                  "id": "corrientes",
+                  "type": "trip",
+                  "config": {
+                    "dataId": "grafana-B",
+                    "label": "Corrientes",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "columnMode": "geojson",
+                    "isVisible": true,
+                    "visConfig": {
+                      "trailLength": 20,
+                      "thickness": 1.6,
+                      "opacity": 0.95,
+                      "colorRange": {
+                        "name": "Agua",
+                        "type": "sequential",
+                        "category": "Custom",
+                        "colors": [
+                          "#0b3b5c",
+                          "#0e6ba8",
+                          "#2196c9",
+                          "#5fc9e8",
+                          "#a8e6f7",
+                          "#e8fbff"
+                        ]
+                      }
+                    },
+                    "color": [
+                      232,
+                      251,
+                      255
+                    ]
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "speed",
+                      "type": "real"
+                    },
+                    "colorScale": "quantile"
+                  }
+                }
+              ],
+              "layerOrder": [
+                "red",
+                "corrientes"
+              ],
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": true,
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "rio"
+                      },
+                      {
+                        "name": "orden"
+                      },
+                      {
+                        "name": "caudal"
+                      },
+                      {
+                        "name": "km"
+                      }
+                    ],
+                    "grafana-B": [
+                      {
+                        "name": "speed"
+                      }
+                    ]
+                  }
+                },
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "coordinate": {
+                  "enabled": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "gridPos": {
+        "h": 18,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      }
+    },
+    {
+      "type": "ubica-keplergl-panel",
+      "id": 4,
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "title": "Troncos principales en vivo — HydroSHEDS v2, Strahler ≥ 10, sin descargar nada",
+      "description": "16.715 tramos leídos del feature service de Esri Living Atlas en cada carga: 7 MB en dos páginas. Solo Strahler ≥ 10 — el umbral está fijo porque el número de páginas tiene que coincidir con el de tramos, ver el comentario en la consulta. Es una red de troncos, no la red completa: la densa es la de los mapas de arriba, que sale de Parquet local.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "type": "json",
+          "source": "url",
+          "parser": "backend",
+          "format": "table",
+          "url": "https://services5.arcgis.com/7weheFjxuNkGGiZi/arcgis/rest/services/HydroSHEDS_v2_River_Streamlines_view/FeatureServer/0/query?resultOffset=${__pagination.resultOffset}&resultRecordCount=${__pagination.resultRecordCount}",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "ORD_STRAH >= 10"
+              },
+              {
+                "key": "outFields",
+                "value": "STRM_ID,STRM_DN,ORD_STRAH,UPLAND_SKM,LENGTH_KM,UPSTREAM_KM,MAIN_BAS"
+              },
+              {
+                "key": "orderByFields",
+                "value": "OBJECTID"
+              },
+              {
+                "key": "returnGeometry",
+                "value": "true"
+              },
+              {
+                "key": "outSR",
+                "value": "4326"
+              },
+              {
+                "key": "maxAllowableOffset",
+                "value": "$detalle"
+              },
+              {
+                "key": "maxRecordCountFactor",
+                "value": "5"
+              },
+              {
+                "key": "f",
+                "value": "geojson"
+              }
+            ]
+          },
+          "root_selector": "features",
+          "columns": [
+            {
+              "selector": "properties.STRM_ID",
+              "text": "strm_id",
+              "type": "number"
+            },
+            {
+              "selector": "properties.ORD_STRAH",
+              "text": "orden",
+              "type": "number"
+            },
+            {
+              "selector": "properties.UPLAND_SKM",
+              "text": "cuenca_km2",
+              "type": "number"
+            },
+            {
+              "selector": "properties.LENGTH_KM",
+              "text": "largo_km",
+              "type": "number"
+            },
+            {
+              "selector": "properties.UPSTREAM_KM",
+              "text": "red_arriba_km",
+              "type": "number"
+            },
+            {
+              "selector": "properties.MAIN_BAS",
+              "text": "cuenca",
+              "type": "number"
+            },
+            {
+              "selector": "geometry",
+              "text": "geojson",
+              "type": "string"
+            }
+          ],
+          "pagination_mode": "offset",
+          "pagination_max_pages": 2,
+          "pagination_param_size_field_name": "resultRecordCount",
+          "pagination_param_size_field_type": "replace",
+          "pagination_param_size_value": 10000,
+          "pagination_param_offset_field_name": "resultOffset",
+          "pagination_param_offset_field_type": "replace",
+          "pagination_param_offset_value": 0
+        }
+      ],
+      "options": {
+        "showSidePanel": true,
+        "followGrafanaTheme": false,
+        "basemap": "dark-matter",
+        "timeSync": "off",
+        "variableMappings": [
+          {
+            "field": "",
+            "variable": "lat",
+            "variableTo": "lng",
+            "source": "center",
+            "zoom": 6
+          }
+        ],
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": 8.0,
+              "longitude": -88.0,
+              "zoom": 2.7,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "visState": {
+              "filters": [],
+              "layerBlending": "normal",
+              "layers": [
+                {
+                  "id": "red-viva",
+                  "type": "geojson",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Troncos (v2)",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "opacity": 0.95,
+                      "filled": false,
+                      "stroked": true,
+                      "thickness": 0.5,
+                      "strokeOpacity": 0.95,
+                      "strokeColor": [
+                        95,
+                        201,
+                        232
+                      ],
+                      "strokeColorRange": {
+                        "name": "Agua",
+                        "type": "sequential",
+                        "category": "Custom",
+                        "colors": [
+                          "#0b3b5c",
+                          "#0e6ba8",
+                          "#2196c9",
+                          "#5fc9e8",
+                          "#a8e6f7",
+                          "#e8fbff"
+                        ]
+                      },
+                      "sizeRange": [
+                        0.4,
+                        5
+                      ],
+                      "enable3d": false,
+                      "wireframe": false
+                    },
+                    "color": [
+                      95,
+                      201,
+                      232
+                    ]
+                  },
+                  "visualChannels": {
+                    "strokeColorField": {
+                      "name": "cuenca_km2",
+                      "type": "real"
+                    },
+                    "strokeColorScale": "quantile",
+                    "sizeField": {
+                      "name": "orden",
+                      "type": "integer"
+                    },
+                    "sizeScale": "linear"
+                  }
+                }
+              ],
+              "layerOrder": [
+                "red-viva"
+              ],
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": true,
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "orden"
+                      },
+                      {
+                        "name": "cuenca_km2"
+                      },
+                      {
+                        "name": "largo_km"
+                      },
+                      {
+                        "name": "red_arriba_km"
+                      },
+                      {
+                        "name": "strm_id"
+                      }
+                    ]
+                  }
+                },
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "coordinate": {
+                  "enabled": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "gridPos": {
+        "h": 18,
+        "w": 24,
+        "x": 0,
+        "y": 44
+      }
+    },
+    {
+      "type": "table",
+      "id": 5,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "title": "Las 25 cuencas de mayor caudal",
+      "description": "HydroRIVERS no trae nombres — MAIN_RIV es un id. Los 18 rotulados se identificaron por la coordenada de su desembocadura, su área y su longitud.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "SELECT nombre, rio, caudal, cuenca_km2, largo_km, red_km, tramos, latitude, longitude\nFROM read_parquet('/testdata/hydro/rivers.parquet')\nORDER BY caudal DESC\nLIMIT 25"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "links": [
+            {
+              "title": "Centrar los mapas en esta desembocadura",
+              "url": "/d/hydrosheds-americas?${__url_time_range}&var-detalle=${detalle:percentencode}&var-red=${red:percentencode}&var-ordenTrip=${ordenTrip:percentencode}&var-ciclo=${ciclo:percentencode}&var-campo=${campo:percentencode}&var-lat=${__data.fields.latitude}&var-lng=${__data.fields.longitude}"
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "nombre"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Río"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rio"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Id de cuenca"
+              },
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "caudal"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Caudal medio (m³/s)"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cuenca_km2"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Cuenca (km²)"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "largo_km"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Largo (km)"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "red_km"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Red total (km)"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "tramos"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Tramos"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "latitude"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "longitude"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 62
+      }
+    }
+  ]
+}

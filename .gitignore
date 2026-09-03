@@ -93,3 +93,26 @@ ci/
 # the repository could go public — 61 MB in four blobs. Without the rule a
 # single run of the recipe puts them back, untracked and easy to `git add -A`.
 testdata/fire/
+
+# Same arrangement for the other two dashboards that need fixtures: the recipe
+# is committed, the result is not. `make-ancestrydata.py` derives the census
+# tracts from the ACS summary files, `make-hydrodata.py` the river network from
+# HydroRIVERS — both public sources, both rebuilt by running the script.
+testdata/ancestry/
+testdata/hydro/
+
+# Where those two park the source archives they download, so a second run does
+# not fetch ~300 MB again. Not the repository-root `/.cache/` above, which is
+# npm's — this one is theirs.
+testdata/.cache/
+
+# Left behind by any run of the fixture recipes under testdata/.
+__pycache__/
+
+# Local deployment overlay. Compose loads this automatically when it is present,
+# which is exactly why it must not be committed: it names an *external* network
+# (`ubica_network`, owned by the nginx-proxy-manager stack) and a published
+# hostname, so a developer who checked it out would get "network declared as
+# external, but could not be found" on a plain `docker compose up`.
+# `docker-compose.override.example.yml` is the committed copy to work from.
+docker-compose.override.yml

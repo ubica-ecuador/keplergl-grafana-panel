@@ -1,0 +1,1038 @@
+{
+  "uid": "ancestry-census",
+  "title": "Ancestry Mosaic — EE.UU. por census tract (ACS 2024)",
+  "description": "Réplica del mapa de ascendencias del New York Times sobre ubica-keplergl-panel, con datos abiertos del American Community Survey 2024.",
+  "tags": [
+    "kepler",
+    "sources",
+    "census",
+    "demografía"
+  ],
+  "timezone": "utc",
+  "editable": true,
+  "graphTooltip": 0,
+  "schemaVersion": 41,
+  "version": 2,
+  "preload": false,
+  "refresh": "",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "hidden": true
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [],
+  "templating": {
+    "list": [
+      {
+        "type": "query",
+        "name": "grupo",
+        "label": "Grupo (coroplético)",
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "refresh": 1,
+        "sort": 0,
+        "includeAll": false,
+        "multi": false,
+        "query": "SELECT ancestry FROM read_parquet('/testdata/ancestry/ancestries.parquet') ORDER BY national_total DESC",
+        "current": {
+          "text": "Polish",
+          "value": "Polish"
+        },
+        "options": [],
+        "definition": "Grupos ordenados por población nacional"
+      },
+      {
+        "type": "textbox",
+        "name": "west",
+        "label": "Oeste",
+        "hide": 2,
+        "query": "-88.4",
+        "current": {
+          "text": "-88.4",
+          "value": "-88.4"
+        },
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
+        "type": "textbox",
+        "name": "south",
+        "label": "Sur",
+        "hide": 2,
+        "query": "41.55",
+        "current": {
+          "text": "41.55",
+          "value": "41.55"
+        },
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
+        "type": "textbox",
+        "name": "east",
+        "label": "Este",
+        "hide": 2,
+        "query": "-87.2",
+        "current": {
+          "text": "-87.2",
+          "value": "-87.2"
+        },
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
+        "type": "textbox",
+        "name": "north",
+        "label": "Norte",
+        "hide": 2,
+        "query": "42.15",
+        "current": {
+          "text": "42.15",
+          "value": "42.15"
+        },
+        "options": [],
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "# El mosaico de ascendencias de Estados Unidos\n\nRéplica, sobre este panel, del mapa de ascendencias que *The New York Times* publicó en julio de 2026.\nEl NYT no publica su dataset derivado, pero sí declara su fuente, y esa fuente es abierta: **American\nCommunity Survey 2024 (5 años)** del U.S. Census Bureau, obra del gobierno federal y por tanto de\ndominio público. Los fixtures se reconstruyen con `testdata/make-ancestrydata.py` — sin API key.\n\n**158 grupos · 85.044 census tracts · 338 millones de personas.** Tablas\n[B04006](https://api.census.gov/data/2024/acs/acs5/groups/B04006.html) (ascendencia declarada),\n[B03001](https://api.census.gov/data/2024/acs/acs5/groups/B03001.html) (origen hispano detallado) y\n[B02015](https://api.census.gov/data/2024/acs/acs5/groups/B02015.html) (grupos asiáticos detallados);\ngeometría de los *cartographic boundary files* TIGER 2024.\n\n**Cómo leerlo.** La ascendencia en la ACS es autodeclarada y de respuesta múltiple, y las tres tablas\nno comparten universo, así que los totales por tract se renormalizan donde se solapan; el remanente\naparece como *sin reportar*. El Census tiene prohibido por ley preguntar por religión, de modo que\ngrupos definidos por ella no existen en estos datos. Y sólo siete grupos tienen color propio: un mapa\nde puntos es un problema de color *todos-contra-todos*, y siete es el máximo que mantiene los pares\ndistinguibles bajo daltonismo. El resto cae en *Otros grupos* — el gráfico de barras y la tabla\nmuestran qué hay dentro, y el coroplético llega a los 158 de uno en uno.\n\n*Arrastra y haz zoom en el mapa principal: los demás paneles siguen su encuadre.*"
+      },
+      "transparent": true
+    },
+    {
+      "id": 2,
+      "type": "ubica-keplergl-panel",
+      "title": "El mosaico · un punto = 250 personas",
+      "description": "Densidad de puntos, la técnica que reproduce el efecto del mapa del NYT: kepler no mezcla colores, pero el solapamiento de puntos vecinos se lee como una mezcla. Este panel manda el encuadre al resto del dashboard mediante viewportVariables.",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Un punto por cada 250 habitantes, coloreado por su grupo.\n-- Dos recortes, no uno. El primero es el encuadre del mapa: kepler escribe\n-- west/south/east/north y DuckDB poda por estadísticas de row-group, porque el\n-- Parquet está ordenado espacialmente (celda H3 res 3).\n-- El segundo es de densidad. A escala metropolitana entran los cuatro buckets y\n-- Chicago rinde ~28.000 puntos; a escala nacional serían 1,35 millones y 86 MB,\n-- así que se queda un bucket de cada cuatro. Los buckets recorren la secuencia\n-- de puntos de cada tract, que está ordenada por grupo, de modo que cualquier\n-- subconjunto conserva las proporciones (verificado: ±0,5 puntos).\nSELECT latitude, longitude, ancestry, color_group, state\nFROM read_parquet('/testdata/ancestry/dots.parquet')\nWHERE longitude BETWEEN ${west:raw} AND ${east:raw}\n  AND latitude  BETWEEN ${south:raw} AND ${north:raw}\n  AND bucket < CASE\n        WHEN (${east:raw} - (${west:raw})) * (${north:raw} - (${south:raw})) > 100 THEN 1\n        WHEN (${east:raw} - (${west:raw})) * (${north:raw} - (${south:raw})) > 5   THEN 2\n        ELSE 4 END",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "followGrafanaTheme": false,
+        "basemap": "dark-matter",
+        "timeSync": "off",
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "tripLayerMode": "table",
+        "flowRenderMode": "straight",
+        "windDensity": 9000,
+        "saveRequest": 0,
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": 41.86,
+              "longitude": -87.72,
+              "zoom": 9.3,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false,
+              "isSplit": false,
+              "mapViewMode": "MODE_2D",
+              "mapSplitMode": "SINGLE_MAP"
+            },
+            "mapStyle": {
+              "styleType": "dark-matter",
+              "visibleLayerGroups": {
+                "label": true,
+                "land": true,
+                "water": true,
+                "border": false,
+                "road": false,
+                "building": false
+              },
+              "topLayerGroups": {
+                "label": true
+              }
+            },
+            "uiState": {
+              "mapControls": {
+                "mapLegend": {
+                  "active": true,
+                  "show": true
+                }
+              }
+            },
+            "visState": {
+              "layers": [
+                {
+                  "id": "mosaico",
+                  "type": "point",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Un punto = 250 personas",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude",
+                      "altitude": null
+                    },
+                    "isVisible": true,
+                    "color": [
+                      98,
+                      167,
+                      57
+                    ],
+                    "visConfig": {
+                      "radius": 3.2,
+                      "opacity": 0.8,
+                      "outline": false,
+                      "filled": true,
+                      "thickness": 0,
+                      "strokeOpacity": 0,
+                      "radiusRange": [
+                        0,
+                        20
+                      ],
+                      "colorRange": {
+                        "name": "Ancestry 8",
+                        "type": "custom",
+                        "category": "Custom",
+                        "colors": [
+                          "#62a739",
+                          "#a346c5",
+                          "#c1500e",
+                          "#30a0c4",
+                          "#ed4f8d",
+                          "#5f76fc",
+                          "#5b5b57",
+                          "#037c58"
+                        ]
+                      },
+                      "fixedRadius": false
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "color_group",
+                      "type": "string"
+                    },
+                    "colorScale": "ordinal",
+                    "sizeField": null,
+                    "sizeScale": "linear"
+                  }
+                }
+              ],
+              "filters": [],
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "ancestry"
+                      },
+                      {
+                        "name": "state"
+                      }
+                    ]
+                  }
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "geocoder": {
+                  "enabled": false
+                }
+              },
+              "layerBlending": "normal",
+              "overlayBlending": "normal",
+              "splitMaps": [],
+              "effects": [],
+              "animationConfig": {
+                "speed": 1
+              }
+            }
+          }
+        },
+        "viewportVariables": {
+          "west": "west",
+          "south": "south",
+          "east": "east",
+          "north": "north"
+        },
+        "variableMappings": [
+          {
+            "field": "ancestry",
+            "source": "click",
+            "variable": "grupo"
+          }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "type": "ubica-keplergl-panel",
+      "title": "Ascendencia mayoritaria por census tract",
+      "description": "Polígonos servidos como GeoJSON desde GeoParquet. El recorte usa las cuatro columnas de bounding box en vez de ST_Intersects: un BETWEEN sobre DOUBLE lo poda Parquet por estadísticas de row-group, mientras que la intersección obligaría a decodificar las 85k geometrías. Tope de 6.000 tracts por consulta, las más pobladas primero: a zoom metropolitano entran todas, a zoom nacional verás las ciudades y no el país entero.",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Polígonos de census tract coloreados por su ascendencia mayoritaria.\n-- El CAST a VARCHAR no es decorativo: ST_AsGeoJSON devuelve el tipo JSON de\n-- DuckDB y el driver Go del datasource no puede escanearlo a string. kepler\n-- tampoco renderiza WKB, así que la geometría tiene que llegar como GeoJSON.\nSELECT t.geoid, t.name, t.county, t.state, t.total_pop,\n       t.top1_ancestry, t.top1_color_group, round(100 * t.top1_pct, 1) AS top1_porcentaje,\n       t.top2_ancestry, t.top3_ancestry,\n       CAST(ST_AsGeoJSON(g.geometry) AS VARCHAR) AS geojson\nFROM read_parquet('/testdata/ancestry/tracts-geom.parquet') g\nJOIN read_parquet('/testdata/ancestry/tracts.parquet') t USING (geoid)\nWHERE g.maxx > ${west:raw} AND g.minx < ${east:raw} AND g.maxy > ${south:raw} AND g.miny < ${north:raw}\nORDER BY t.total_pop DESC\nLIMIT 6000",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "followGrafanaTheme": false,
+        "basemap": "dark-matter",
+        "timeSync": "off",
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "tripLayerMode": "table",
+        "flowRenderMode": "straight",
+        "windDensity": 9000,
+        "saveRequest": 0,
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": 41.85,
+              "longitude": -87.75,
+              "zoom": 9.2,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false,
+              "isSplit": false,
+              "mapViewMode": "MODE_2D",
+              "mapSplitMode": "SINGLE_MAP"
+            },
+            "mapStyle": {
+              "styleType": "dark-matter",
+              "visibleLayerGroups": {
+                "label": true,
+                "land": true,
+                "water": true,
+                "border": false,
+                "road": false,
+                "building": false
+              },
+              "topLayerGroups": {
+                "label": true
+              }
+            },
+            "uiState": {
+              "mapControls": {
+                "mapLegend": {
+                  "active": true,
+                  "show": true
+                }
+              }
+            },
+            "visState": {
+              "layers": [
+                {
+                  "id": "dominante",
+                  "type": "geojson",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Ascendencia mayoritaria",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "isVisible": true,
+                    "color": [
+                      98,
+                      167,
+                      57
+                    ],
+                    "visConfig": {
+                      "opacity": 0.85,
+                      "filled": true,
+                      "stroked": false,
+                      "thickness": 0.2,
+                      "strokeOpacity": 0.4,
+                      "strokeColor": [
+                        26,
+                        26,
+                        25
+                      ],
+                      "enable3d": false,
+                      "wireframe": false,
+                      "colorRange": {
+                        "name": "Ancestry 8",
+                        "type": "custom",
+                        "category": "Custom",
+                        "colors": [
+                          "#62a739",
+                          "#a346c5",
+                          "#c1500e",
+                          "#30a0c4",
+                          "#ed4f8d",
+                          "#5f76fc",
+                          "#5b5b57",
+                          "#037c58"
+                        ]
+                      }
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "top1_color_group",
+                      "type": "string"
+                    },
+                    "colorScale": "ordinal",
+                    "heightField": null,
+                    "sizeScale": "linear"
+                  }
+                }
+              ],
+              "filters": [],
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "name"
+                      },
+                      {
+                        "name": "county"
+                      },
+                      {
+                        "name": "total_pop"
+                      },
+                      {
+                        "name": "top1_ancestry"
+                      },
+                      {
+                        "name": "top1_porcentaje"
+                      },
+                      {
+                        "name": "top2_ancestry"
+                      },
+                      {
+                        "name": "top3_ancestry"
+                      }
+                    ]
+                  }
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "geocoder": {
+                  "enabled": false
+                }
+              },
+              "layerBlending": "normal",
+              "overlayBlending": "normal",
+              "splitMaps": [],
+              "effects": [],
+              "animationConfig": {
+                "speed": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "ubica-keplergl-panel",
+      "title": "Coroplético · $grupo",
+      "description": "Escala secuencial de un solo tono sobre el porcentaje del grupo elegido en la variable. Cubre los 158 grupos, incluidos los que en el mosaico caen dentro de «Otros grupos». Mismo tope de 6.000 tracts que el panel de la izquierda.",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Un solo grupo, escala secuencial. Cubre los 158 grupos del fixture,\n-- no solo los siete que tienen color propio en el mosaico.\nSELECT t.geoid, t.name, t.county, t.state, a.ancestry, a.estimate AS personas,\n       round(100 * a.pct, 2) AS pct,\n       CAST(ST_AsGeoJSON(g.geometry) AS VARCHAR) AS geojson\nFROM read_parquet('/testdata/ancestry/tract-ancestry.parquet') a\nJOIN read_parquet('/testdata/ancestry/tracts-geom.parquet') g USING (geoid)\nJOIN read_parquet('/testdata/ancestry/tracts.parquet') t USING (geoid)\nWHERE a.ancestry = '${grupo:raw}' AND g.maxx > ${west:raw} AND g.minx < ${east:raw} AND g.maxy > ${south:raw} AND g.miny < ${north:raw}\nORDER BY t.total_pop DESC\nLIMIT 6000",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "followGrafanaTheme": false,
+        "basemap": "dark-matter",
+        "timeSync": "off",
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "tripLayerMode": "table",
+        "flowRenderMode": "straight",
+        "windDensity": 9000,
+        "saveRequest": 0,
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": 41.85,
+              "longitude": -87.75,
+              "zoom": 9.2,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false,
+              "isSplit": false,
+              "mapViewMode": "MODE_2D",
+              "mapSplitMode": "SINGLE_MAP"
+            },
+            "mapStyle": {
+              "styleType": "dark-matter",
+              "visibleLayerGroups": {
+                "label": true,
+                "land": true,
+                "water": true,
+                "border": false,
+                "road": false,
+                "building": false
+              },
+              "topLayerGroups": {
+                "label": true
+              }
+            },
+            "uiState": {
+              "mapControls": {
+                "mapLegend": {
+                  "active": true,
+                  "show": true
+                }
+              }
+            },
+            "visState": {
+              "layers": [
+                {
+                  "id": "coropleta",
+                  "type": "geojson",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Participación del grupo",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "isVisible": true,
+                    "color": [
+                      57,
+                      135,
+                      229
+                    ],
+                    "visConfig": {
+                      "opacity": 0.9,
+                      "filled": true,
+                      "stroked": false,
+                      "thickness": 0.2,
+                      "strokeOpacity": 0.3,
+                      "enable3d": false,
+                      "wireframe": false,
+                      "colorRange": {
+                        "name": "Ancestry blue",
+                        "type": "custom",
+                        "category": "Custom",
+                        "colors": [
+                          "#184f95",
+                          "#1c5cab",
+                          "#256abf",
+                          "#3987e5",
+                          "#6da7ec",
+                          "#9ec5f4"
+                        ]
+                      }
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "pct",
+                      "type": "real"
+                    },
+                    "colorScale": "quantile",
+                    "heightField": null,
+                    "sizeScale": "linear"
+                  }
+                }
+              ],
+              "filters": [],
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "name"
+                      },
+                      {
+                        "name": "county"
+                      },
+                      {
+                        "name": "ancestry"
+                      },
+                      {
+                        "name": "personas"
+                      },
+                      {
+                        "name": "pct"
+                      }
+                    ]
+                  }
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "geocoder": {
+                  "enabled": false
+                }
+              },
+              "layerBlending": "normal",
+              "overlayBlending": "normal",
+              "splitMaps": [],
+              "effects": [],
+              "animationConfig": {
+                "speed": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "ubica-keplergl-panel",
+      "title": "Hexágonos H3 · población y grupo dominante",
+      "description": "Altura por población, color por grupo dominante. Único mapa que no filtra por encuadre: son 19.083 celdas agregadas y entran enteras.",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 0,
+        "y": 37
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Agregado a 25k celdas, así que se carga entero: este panel no filtra por\n-- encuadre. El índice H3 viene precalculado en el Parquet porque el datasource\n-- DuckDB sólo carga la extensión spatial, y h3 es una extensión community.\nSELECT h3, count, dominant_ancestry, dominant_color_group\nFROM read_parquet('/testdata/ancestry/h3.parquet')",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "followGrafanaTheme": false,
+        "basemap": "dark-matter",
+        "timeSync": "off",
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "tripLayerMode": "table",
+        "flowRenderMode": "straight",
+        "windDensity": 9000,
+        "saveRequest": 0,
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": 39.5,
+              "longitude": -98.35,
+              "zoom": 3.2,
+              "bearing": 0,
+              "pitch": 45,
+              "dragRotate": true,
+              "isSplit": false,
+              "mapViewMode": "MODE_2D",
+              "mapSplitMode": "SINGLE_MAP"
+            },
+            "mapStyle": {
+              "styleType": "dark-matter",
+              "visibleLayerGroups": {
+                "label": true,
+                "land": true,
+                "water": true,
+                "border": false,
+                "road": false,
+                "building": false
+              },
+              "topLayerGroups": {
+                "label": true
+              }
+            },
+            "uiState": {
+              "mapControls": {
+                "mapLegend": {
+                  "active": true,
+                  "show": true
+                }
+              }
+            },
+            "visState": {
+              "layers": [
+                {
+                  "id": "hexes",
+                  "type": "hexagonId",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Población por celda H3",
+                    "columns": {
+                      "hex_id": "h3"
+                    },
+                    "isVisible": true,
+                    "color": [
+                      98,
+                      167,
+                      57
+                    ],
+                    "visConfig": {
+                      "opacity": 0.8,
+                      "colorRange": {
+                        "name": "Ancestry 8",
+                        "type": "custom",
+                        "category": "Custom",
+                        "colors": [
+                          "#62a739",
+                          "#a346c5",
+                          "#c1500e",
+                          "#30a0c4",
+                          "#ed4f8d",
+                          "#5f76fc",
+                          "#5b5b57",
+                          "#037c58"
+                        ]
+                      },
+                      "coverage": 0.95,
+                      "enable3d": true,
+                      "sizeRange": [
+                        0,
+                        120
+                      ],
+                      "coverageRange": [
+                        0,
+                        1
+                      ],
+                      "elevationScale": 8,
+                      "enableElevationZoomFactor": true
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "dominant_color_group",
+                      "type": "string"
+                    },
+                    "colorScale": "ordinal",
+                    "sizeField": {
+                      "name": "count",
+                      "type": "integer"
+                    },
+                    "sizeScale": "sqrt",
+                    "coverageField": null,
+                    "coverageScale": "linear"
+                  }
+                }
+              ],
+              "filters": [],
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "count"
+                      },
+                      {
+                        "name": "dominant_ancestry"
+                      }
+                    ]
+                  }
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "geocoder": {
+                  "enabled": false
+                }
+              },
+              "layerBlending": "normal",
+              "overlayBlending": "normal",
+              "splitMaps": [],
+              "effects": [],
+              "animationConfig": {
+                "speed": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "barchart",
+      "title": "Los 15 grupos más numerosos del encuadre",
+      "description": "Lo que hay dentro de «Otros grupos». Agrega en SQL, a diferencia de los mapas.",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 12,
+        "y": 37
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- A diferencia de los mapas, los paneles que agregan sí recortan en SQL. Aquí se\n-- usan los cuatro buckets siempre: agregar 1,35 millones de filas en DuckDB es\n-- barato, y devuelve quince.\nSELECT d.ancestry AS \"Grupo\", count(*) * 250 AS \"Personas (aprox.)\"\nFROM read_parquet('/testdata/ancestry/dots.parquet') d\nWHERE d.longitude BETWEEN ${west:raw} AND ${east:raw}\n  AND d.latitude  BETWEEN ${south:raw} AND ${north:raw}\n  AND d.ancestry <> 'Sin ascendencia reportada'\nGROUP BY 1 ORDER BY 2 DESC LIMIT 15",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.7,
+        "barWidth": 0.8,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "lineWidth": 0,
+            "fillOpacity": 85,
+            "gradientMode": "none"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Census tracts del encuadre",
+      "description": "Los tres grupos principales de cada tract, que es lo que el color de un mapa no puede mostrar a la vez.",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 16,
+        "x": 0,
+        "y": 50
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "SELECT t.name AS \"Tract\", t.county AS \"Condado\", t.state_abbr AS \"Est.\",\n       t.total_pop AS \"Población\",\n       t.top1_ancestry AS \"1º\", round(100 * t.top1_pct, 1) AS \"1º %\",\n       t.top2_ancestry AS \"2º\", round(100 * t.top2_pct, 1) AS \"2º %\",\n       t.top3_ancestry AS \"3º\", round(100 * t.top3_pct, 1) AS \"3º %\"\nFROM read_parquet('/testdata/ancestry/tracts.parquet') t\nJOIN read_parquet('/testdata/ancestry/tracts-geom.parquet') g USING (geoid)\nWHERE g.maxx > ${west:raw} AND g.minx < ${east:raw} AND g.maxy > ${south:raw} AND g.miny < ${north:raw}\nORDER BY t.total_pop DESC LIMIT 500",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Población",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".* %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Población"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Resumen del encuadre",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 8,
+        "x": 16,
+        "y": 50
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- El CAST importa. sum() sobre un BIGINT devuelve HUGEINT en DuckDB, y el\n-- driver Go del datasource entrega HUGEINT como string: el panel stat recibe\n-- entonces un campo de texto, no puede reducirlo y se queda en blanco. Es el\n-- mismo tipo de tropiezo que el CAST de ST_AsGeoJSON en los paneles de mapa.\nSELECT sum(t.total_pop)::BIGINT AS \"Población en el encuadre\",\n       count(*) AS \"Census tracts\",\n       count(DISTINCT t.top1_ancestry) AS \"Grupos mayoritarios distintos\"\nFROM read_parquet('/testdata/ancestry/tracts.parquet') t\nJOIN read_parquet('/testdata/ancestry/tracts-geom.parquet') g USING (geoid)\nWHERE g.maxx > ${west:raw} AND g.minx < ${east:raw} AND g.maxy > ${south:raw} AND g.miny < ${north:raw}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "vertical",
+        "textMode": "auto",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      }
+    }
+  ]
+}

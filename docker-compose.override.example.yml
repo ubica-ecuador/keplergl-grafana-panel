@@ -1,0 +1,82 @@
+# Deployment overlay for the published instance — copy, do not use in place.
+#
+#     cp docker-compose.override.example.yml docker-compose.override.yml
+#
+# Compose loads `docker-compose.override.yml` automatically whenever it exists,
+# and merges it over `docker-compose.yaml`: mappings key by key, sequences by
+# appending. That is the whole mechanism, and it is why this lives in a file
+# rather than in a long-lived branch. The branch it replaces sat 66 commits
+# behind main and had to be merged forward by hand; a file that is never
+# committed cannot drift.
+#
+# The copy is gitignored on purpose. It names an **external** network owned by
+# another stack, so a developer who found it in their checkout would get
+#
+#     network ubica_network declared as external, but could not be found
+#
+# on a plain `docker compose up`. Keep site-specific values here; keep anything
+# every install needs in docker-compose.yaml, where everyone gets it.
+#
+# Set GF_SECURITY_ADMIN_PASSWORD in `.env` (also gitignored) before starting.
+
+services:
+  # The instance published at grafana.ubica.ec. It is the `grafana-sources`
+  # service because that is the one with DuckDB and Infinity installed, which
+  # is what the dashboards read through.
+  grafana-sources:
+    build:
+      args:
+        # Grafana 13, not the 12.0.10 floor the three local benches are pinned
+        # to: this is the instance people actually use, so it runs a current
+        # release and gets the security fixes that come with it. Its own
+        # variable rather than GRAFANA_VERSION, which keeps driving the benches
+        # — moving the published instance must not move the compatibility floor
+        # the panel is developed against. `-ubuntu` is not optional: the DuckDB
+        # data source is a Go binary linked against glibc and will not load on
+        # the Alpine-based default image.
+        grafana_version: ${GRAFANA_SOURCES_VERSION:-13.2.1}-ubuntu
+    # Joined to the proxy's network so nginx-proxy-manager can reach this
+    # container by name. `default` is kept because Compose appends here rather
+    # than replacing, and dropping it would cut the container off from
+    # `sources-data` and `titiler` on the compose network.
+    networks:
+      - default
+      - ubica_network
+    environment:
+      # The dev image (.config/Dockerfile) bakes in anonymous access as *Admin*
+      # with the login form disabled. That is fine on localhost and dangerous
+      # the moment the instance is reachable from the internet. These win over
+      # the image's own ENV: anonymous visitors get read-only Viewer, and
+      # editing or managing plugins needs a real login.
+      GF_AUTH_ANONYMOUS_ENABLED: 'true'
+      GF_AUTH_ANONYMOUS_ORG_ROLE: 'Viewer'
+      # The anonymous client resolves its organisation *by name*. This
+      # instance's org 1 was renamed from the stock "Main Org." to "UBICA", and
+      # without this every anonymous request dies with "[org.notFound] failed to
+      # get org by name: Main Org." — the whole site 404s to logged-out
+      # visitors, which is not an obvious symptom of an org name.
+      GF_AUTH_ANONYMOUS_ORG_NAME: 'UBICA'
+      GF_AUTH_BASIC_ENABLED: 'true'
+      GF_SECURITY_ADMIN_USER: 'admin'
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?set it in .env}
+      # TLS terminates at the proxy, so Grafana has to be told what it is
+      # published as or its redirects, asset URLs and live websockets are built
+      # against the container's own address.
+      GF_SERVER_ROOT_URL: 'https://grafana.ubica.ec'
+      GF_SERVER_DOMAIN: 'grafana.ubica.ec'
+
+  # The fixture server. On a bench it has no published port on purpose — it
+  # exists for Infinity to fetch from inside the compose network. Published
+  # here because the *browser* reads it too on this instance.
+  sources-data:
+    ports:
+      - '${SOURCES_DATA_PORT:-8081}:80/tcp'
+    networks:
+      - default
+      - ubica_network
+
+networks:
+  # Created by the nginx-proxy-manager stack, so it is external here rather
+  # than owned by this file.
+  ubica_network:
+    external: true
