@@ -155,6 +155,30 @@ services:
       # the named volume above, so this download happens once, not per restart.
       # The first start needs outbound internet.
       GF_INSTALL_PLUGINS: 'yesoreyeram-infinity-datasource,https://github.com/motherduckdb/grafana-duckdb-datasource/releases/download/v0.4.5/motherduck-duckdb-datasource-0.4.5.zip;motherduck-duckdb-datasource'
+      # Grafana 13 stopped handing the host's environment to backend plugin
+      # processes: what was the `pluginsSkipHostEnvVars` feature toggle in 12 is
+      # the default from 13 on, and a plugin sees the host env only if its id is
+      # named here. Set now although this bench still runs the 12.0.10 floor,
+      # because it costs nothing there and is the difference between working and
+      # not the day the image moves — and because the two settings below are
+      # read through exactly this door.
+      GF_PLUGINS_FORWARD_HOST_ENV_VARS: motherduck-duckdb-datasource,yesoreyeram-infinity-datasource
+      # DuckDB needs HOME. It caches the extensions it downloads — spatial,
+      # parquet, httpfs — under it, and without one every query fails with
+      # "IO Error: Can't find the home directory at ''". Pointed at the named
+      # volume rather than the image's /home/grafana so those extensions survive
+      # a container rebuild instead of being fetched again.
+      HOME: /var/lib/grafana
+      # Infinity clamps a paginated query to 5 pages unless this says otherwise
+      # (`models.GetPaginationMaxPagesValue`), and it does it *silently*. The
+      # Aqueduct dashboard needs 9 pages of 750 features to cover South America —
+      # the ArcGIS service caps maxRecordCount at 750 and will not budge — so at
+      # the default the map draws 3,750 of 6,469 watersheds: Brazil, Uruguay and
+      # five slivers of Argentina, nine countries missing, and nothing in the
+      # response or the logs to say so. 12 rather than 9 leaves room for the
+      # extent to grow; overshooting is close to free, since a page off the end
+      # of the result set is a 42-byte response.
+      GF_PLUGIN_PAGINATION_MAX_PAGES: '12'
 
   # Serves ./testdata over HTTP so Infinity exercises a real URL fetch rather
   # than inline data. Only reachable from the compose network — no published
