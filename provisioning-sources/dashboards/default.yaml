@@ -3,5 +3,16 @@ apiVersion: 1
 providers:
   - name: 'keplergl-sources'
     type: file
+    # Without this a provisioned dashboard is read-only: Grafana returns
+    # `canSave: false` and the Save button is gone, with nothing on screen
+    # explaining why. That is right for a fixture nobody should touch and wrong
+    # for this bench, whose dashboards are worked on in the UI — one of them was
+    # on its thirty-seventh revision when it was first looked at.
+    #
+    # The trade it buys: a dashboard saved in the UI now persists, but the file
+    # still wins whenever it changes on disk. So edit in the UI freely, and when
+    # a change is worth keeping, export it back over the file — otherwise the
+    # next `git pull` that touches it silently takes the edits with it.
+    allowUiUpdates: true
     options:
       path: /etc/grafana/provisioning/dashboards
