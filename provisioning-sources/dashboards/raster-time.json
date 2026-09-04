@@ -35,7 +35,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "# Multitemporal: what was there, and when\n\nThe satellite passes over Cuenca every five days, come rain or shine. The time bar under the map is that calendar — **one bar per pass** — and dragging it shows you **the last image that falls inside the window**.\n\nAll of it comes from **a single query**: one row per pass, with its date and the link to its COG. The calendar and the imagery are the same table, so dragging asks the server nothing — the choice is made here, and something only changes when you cross a date that has an image. If the window falls between two passes there is nothing to show, and the raster is withdrawn.\n\nCheck the cloud cover in the table on the right before drawing conclusions: over the equatorial Andes **most passes come covered**, and that is exactly what makes walking the calendar useful rather than settling for the most recent one.",
+        "content": "# Multitemporal: what was there, and when\n\nThe satellite passes over Cuenca every five days, come rain or shine. The time bar under the map is that calendar — **one bar per pass** — and dragging it shows you **the last image that falls inside the window**.\n\nAll of it comes from **a single query**: one row per pass, with its date and the link to its COG. The calendar and the imagery are the same table, so dragging asks the server nothing — the choice is made here, and something only changes when you cross a date that has an image. If the window falls between two passes there is nothing to show, and the raster is withdrawn.\n\nCheck the cloud cover in the table on the right before drawing conclusions: over the equatorial Andes **most passes come covered**, and that is exactly what makes walking the calendar useful rather than settling for the most recent one.\n\n**Cloud cover ≤** drops the covered passes from the catalogue, and because the calendar and the imagery are that one query, the bars leave the time bar at the same moment the rows leave the table. It starts at *All*, so nothing is hidden until you ask for it — and here it is worth being sparing with: over the four months this board opens on, a test run brought back **30 passes and only two under 60 %**, the clearest of them at 39 %. Below 40 % the calendar empties. Over the equatorial Andes the cut that separates anything is 60 % or 80 %, not 10 %.",
         "mode": "markdown"
       },
       "pluginVersion": "13.2.0",
@@ -359,7 +359,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- Una fila por pasada del satélite, cada una con su enlace a la imagen.\n-- Esto es a la vez el timeline (kepler monta su filtro temporal sobre `time`)\n-- y el catálogo del que sale la escena que se pinta: el panel dibuja la última\n-- que cae dentro de la ventana, sin volver a preguntar al servidor.\nWITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=400'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT\n  (f->'properties'->>'datetime')::TIMESTAMPTZ  AS time,\n  f->>'id'                                     AS scene_id,\n  (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n  f->'assets'->'visual'->>'href'               AS raster_url\nFROM features\nORDER BY time",
+          "rawSql": "-- Una fila por pasada del satélite, cada una con su enlace a la imagen.\n-- Esto es a la vez el timeline (kepler monta su filtro temporal sobre `time`)\n-- y el catálogo del que sale la escena que se pinta: el panel dibuja la última\n-- que cae dentro de la ventana, sin volver a preguntar al servidor.\nWITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=400'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT\n  (f->'properties'->>'datetime')::TIMESTAMPTZ  AS time,\n  f->>'id'                                     AS scene_id,\n  (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n  f->'assets'->'visual'->>'href'               AS raster_url\nFROM features\n-- El desplegable recorta el catálogo aquí, así que las pasadas que superan el\n-- umbral desaparecen a la vez del mapa y del timeline: son la misma consulta.\n-- $cloud llega ya entrecomillado del datasource ('20'); el CAST lo vuelve número.\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE <= CAST($cloud AS DOUBLE)\nORDER BY time",
           "refId": "A"
         }
       ],
@@ -434,7 +434,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- Una fila por pasada del satélite, cada una con su enlace a la imagen.\n-- Esto es a la vez el timeline (kepler monta su filtro temporal sobre `time`)\n-- y el catálogo del que sale la escena que se pinta: el panel dibuja la última\n-- que cae dentro de la ventana, sin volver a preguntar al servidor.\nWITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=400'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT\n  (f->'properties'->>'datetime')::TIMESTAMPTZ  AS time,\n  f->>'id'                                     AS scene_id,\n  (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n  f->'assets'->'visual'->>'href'               AS raster_url\nFROM features\nORDER BY time",
+          "rawSql": "-- Una fila por pasada del satélite, cada una con su enlace a la imagen.\n-- Esto es a la vez el timeline (kepler monta su filtro temporal sobre `time`)\n-- y el catálogo del que sale la escena que se pinta: el panel dibuja la última\n-- que cae dentro de la ventana, sin volver a preguntar al servidor.\nWITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=400'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT\n  (f->'properties'->>'datetime')::TIMESTAMPTZ  AS time,\n  f->>'id'                                     AS scene_id,\n  (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n  f->'assets'->'visual'->>'href'               AS raster_url\nFROM features\n-- El desplegable recorta el catálogo aquí, así que las pasadas que superan el\n-- umbral desaparecen a la vez del mapa y del timeline: son la misma consulta.\n-- $cloud llega ya entrecomillado del datasource ('20'); el CAST lo vuelve número.\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE <= CAST($cloud AS DOUBLE)\nORDER BY time",
           "refId": "A"
         }
       ],
@@ -470,5 +470,61 @@
   },
   "timezone": "browser",
   "title": "Raster — multitemporal",
-  "uid": "raster-time"
+  "uid": "raster-time",
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "All (100 %)",
+          "value": "100"
+        },
+        "description": "The most cloud a pass may carry and still enter the catalogue. It is the catalogue's own `eo:cloud_cover`, measured over the whole Sentinel-2 granule rather than over Cuenca, so it is a coarse cut. It starts at *All*, because how covered the passes come is part of what this board is showing.",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Cloud cover ≤",
+        "multi": false,
+        "name": "cloud",
+        "options": [
+          {
+            "selected": false,
+            "text": "10 %",
+            "value": "10"
+          },
+          {
+            "selected": false,
+            "text": "20 %",
+            "value": "20"
+          },
+          {
+            "selected": false,
+            "text": "30 %",
+            "value": "30"
+          },
+          {
+            "selected": false,
+            "text": "50 %",
+            "value": "50"
+          },
+          {
+            "selected": false,
+            "text": "60 %",
+            "value": "60"
+          },
+          {
+            "selected": false,
+            "text": "80 %",
+            "value": "80"
+          },
+          {
+            "selected": true,
+            "text": "All (100 %)",
+            "value": "100"
+          }
+        ],
+        "query": "10 % : 10,20 % : 20,30 % : 30,50 % : 50,60 % : 60,80 % : 80,All (100 %) : 100",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  }
 }

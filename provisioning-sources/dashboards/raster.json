@@ -35,7 +35,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "# Cloud-native raster\n\nOne query discovers the scene and the map draws it. There is no ETL and no download: DuckDB asks Sentinel-2's STAC catalogue which image covers Cuenca inside the dashboard's range, gets back **one row** with the link to the COG, and the panel hands it to TiTiler, which serves the tiles by reading the remote file over byte ranges.\n\nThe same server also knows how to **measure** what it serves, so the two panels below get numbers out of the raster without bringing a single pixel into the browser: the mean of the red band over an area, and the value of the pixel wherever you click on the map.\n\n| Piece | Who provides it |\n|---|---|\n| Catalogue | `earth-search.aws.element84.com`, public and unauthenticated |\n| Search | DuckDB with the `http_client` extension, parameterised by the range |\n| Tiles and statistics | the compose file's `titiler` container |\n| Drawing | `RasterTileLayer`, which kepler already ships |\n\n**Move the date range**: the scene and the numbers change, the viewport does not. If no image in the period is under 60 % cloud, the query returns nothing and there is no raster to draw.\n\n**The two panels below ask nothing over HTTP.** The zonal statistic is computed inside DuckDB, joining the raster to the table of zones — four zones or four thousand, one query. And the NDVI is computed in SQL and written as a COG, which TiTiler serves exactly like a remote scene:\n\n```sql\nCOPY (\n  SELECT r.geometry,\n         -- NDVI (-0.2 .. 0.9) stretched over the integer's range.\n         RT_Cube2TypeUInt16(((n.databand_1 - r.databand_1) / (n.databand_1 + r.databand_1)\n                             + 0.2) / 1.1 * 65535.0) AS ndvi\n  FROM RT_Read('/testdata/raster/cuenca-b04.tif') r\n  JOIN RT_Read('/testdata/raster/cuenca-b08.tif') n ON r.id = n.id)\nTO '/derived/ndvi-cuenca-u16.tif'\nWITH (FORMAT RASTER, DRIVER 'COG', SRS 'EPSG:4326',\n      DATABAND_COLUMNS ['ndvi'], CREATION_OPTIONS ('COMPRESS=DEFLATE'));\n```\n\nThat query is **not** in any panel, and that is deliberate: it writes a file, and a dashboard refreshing every 30 s must not redo a computation each time. It is run once — from Explore, against the DuckDB datasource — and the panels read what is already there. If the NDVI panel comes up empty, nobody has run it yet.\n\n**The integer is not a detail**: kepler will not draw a `float32` raster (the layer is simply missing, with nothing said) and `uint8` comes out as a flat sheet of colour. `uint16` is what works.",
+        "content": "# Cloud-native raster\n\nOne query discovers the scene and the map draws it. There is no ETL and no download: DuckDB asks Sentinel-2's STAC catalogue which image covers Cuenca inside the dashboard's range, gets back **one row** with the link to the COG, and the panel hands it to TiTiler, which serves the tiles by reading the remote file over byte ranges. That row carries more than the link: the gauge beside the table reads the scene's **cloud cover** straight out of the catalogue, a number that costs no pixels at all.\n\nThe same server also knows how to **measure** what it serves, so the two panels below get numbers out of the raster without bringing a single pixel into the browser: the mean of the red band over an area, and the value of the pixel wherever you click on the map.\n\n| Piece | Who provides it |\n|---|---|\n| Catalogue | `earth-search.aws.element84.com`, public and unauthenticated |\n| Search | DuckDB with the `http_client` extension, parameterised by the range |\n| Tiles and statistics | the compose file's `titiler` container |\n| Drawing | `RasterTileLayer`, which kepler already ships |\n\n**Move the date range**: the scene and the numbers change, the viewport does not. **Cloud cover ≤** sets how much cloud is tolerable — 60 % to begin with, which over the equatorial Andes is a permissive cut. If no image in the period comes in under it, the query returns nothing and there is no raster to draw.\n\n**The two panels below ask nothing over HTTP.** The zonal statistic is computed inside DuckDB, joining the raster to the table of zones — four zones or four thousand, one query. And the NDVI is computed in SQL and written as a COG, which TiTiler serves exactly like a remote scene:\n\n```sql\nCOPY (\n  SELECT r.geometry,\n         -- NDVI (-0.2 .. 0.9) stretched over the integer's range.\n         RT_Cube2TypeUInt16(((n.databand_1 - r.databand_1) / (n.databand_1 + r.databand_1)\n                             + 0.2) / 1.1 * 65535.0) AS ndvi\n  FROM RT_Read('/testdata/raster/cuenca-b04.tif') r\n  JOIN RT_Read('/testdata/raster/cuenca-b08.tif') n ON r.id = n.id)\nTO '/derived/ndvi-cuenca-u16.tif'\nWITH (FORMAT RASTER, DRIVER 'COG', SRS 'EPSG:4326',\n      DATABAND_COLUMNS ['ndvi'], CREATION_OPTIONS ('COMPRESS=DEFLATE'));\n```\n\nThat query is **not** in any panel, and that is deliberate: it writes a file, and a dashboard refreshing every 30 s must not redo a computation each time. It is run once — from Explore, against the DuckDB datasource — and the panels read what is already there. If the NDVI panel comes up empty, nobody has run it yet.\n\n**The integer is not a detail**: kepler will not draw a `float32` raster (the layer is simply missing, with nothing said) and `uint8` comes out as a flat sheet of colour. `uint16` is what works.",
         "mode": "markdown"
       },
       "pluginVersion": "13.2.0",
@@ -78,7 +78,7 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 24,
+        "w": 18,
         "x": 0,
         "y": 13
       },
@@ -97,12 +97,83 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "WITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=100'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT\n  f->>'id'                                     AS scene_id,\n  (f->'properties'->>'datetime')::TIMESTAMP    AS acquired,\n  (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n  f->'assets'->'visual'->>'href'               AS raster_url\nFROM features\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE < 60\nORDER BY acquired DESC\nLIMIT 1",
+          "rawSql": "WITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=100'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT\n  f->>'id'                                     AS scene_id,\n  (f->'properties'->>'datetime')::TIMESTAMP    AS acquired,\n  (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n  f->'assets'->'visual'->>'href'               AS raster_url\nFROM features\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE <= CAST($cloud AS DOUBLE)\nORDER BY acquired DESC\nLIMIT 1",
           "refId": "A"
         }
       ],
       "title": "The scene chosen for the current range",
       "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "How much of the scene beside it is cloud, straight from the catalogue: STAC carries `eo:cloud_cover` as a property of every item, so the number costs no pixels — it arrives with the search that picked the image.\n\nIt is a **scene-level** figure, measured over the whole Sentinel-2 granule rather than over the box this dashboard looks at. Cuenca sits in a corner of the tile, so a cloudy granule can still be clear here, and a clear one can be socked in.\n\nThe needle can never pass the cut set in **Cloud cover ≤**, because anything above it is never chosen — so it also shows how much room the scene had. The coloured bands, at 25 %, 50 % and 60 %, are fixed marks and do not follow the selector: Grafana's thresholds take numbers, not variables.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 1,
+          "displayName": "Cloud cover",
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 25
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 60
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 13
+      },
+      "id": 8,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "WITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=100'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT\n  (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover\nFROM features\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE <= CAST($cloud AS DOUBLE)\nORDER BY (f->'properties'->>'datetime')::TIMESTAMP DESC\nLIMIT 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Cloud cover of that scene",
+      "type": "gauge"
     },
     {
       "datasource": {
@@ -428,7 +499,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "WITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=100'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT\n  f->>'id'                                     AS scene_id,\n  (f->'properties'->>'datetime')::TIMESTAMP    AS acquired,\n  (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n  f->'assets'->'visual'->>'href'               AS raster_url\nFROM features\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE < 50\nORDER BY acquired DESC\nLIMIT 50",
+          "rawSql": "WITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=100'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT\n  f->>'id'                                     AS scene_id,\n  (f->'properties'->>'datetime')::TIMESTAMP    AS acquired,\n  (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n  f->'assets'->'visual'->>'href'               AS raster_url\nFROM features\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE <= CAST($cloud AS DOUBLE)\nORDER BY acquired DESC\nLIMIT 50",
           "refId": "A",
           "sql": {
             "columns": [
@@ -682,7 +753,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "NDVI computed in SQL from two bands and written as a COG; TiTiler serves it and kepler draws it. The panel cannot tell this raster from a remote scene.",
+      "description": "NDVI computed in SQL from two bands and written as a COG; TiTiler serves it and kepler draws it. The panel cannot tell this raster from a remote scene.\n\nThe ramp is set to Greens on purpose. kepler's default (Cfastie) was built for drone NDVI and steps through unrelated colours, so a continuous index comes out as confetti — the index is monotonic and its ramp has to be too.",
       "gridPos": {
         "h": 14,
         "w": 12,
@@ -709,7 +780,7 @@
         },
         "peerTimeSync": false,
         "publishWhilePlaying": false,
-        "rasterColormap": "",
+        "rasterColormap": "greens",
         "rasterPainted": false,
         "rasterServerUrl": "https://titiler.ubica.ec",
         "showSidePanel": true,
@@ -744,6 +815,58 @@
   "templating": {
     "list": [
       {
+        "current": {
+          "text": "60 %",
+          "value": "60"
+        },
+        "description": "The most cloud a scene may carry and still be chosen. It is the catalogue's own `eo:cloud_cover`, measured over the whole Sentinel-2 granule rather than over Cuenca, so it is a coarse cut: 60 % is the default because over the equatorial Andes a stricter one often leaves the range with no image at all.",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Cloud cover ≤",
+        "multi": false,
+        "name": "cloud",
+        "options": [
+          {
+            "selected": false,
+            "text": "10 %",
+            "value": "10"
+          },
+          {
+            "selected": false,
+            "text": "20 %",
+            "value": "20"
+          },
+          {
+            "selected": false,
+            "text": "30 %",
+            "value": "30"
+          },
+          {
+            "selected": false,
+            "text": "50 %",
+            "value": "50"
+          },
+          {
+            "selected": true,
+            "text": "60 %",
+            "value": "60"
+          },
+          {
+            "selected": false,
+            "text": "80 %",
+            "value": "80"
+          },
+          {
+            "selected": false,
+            "text": "All (100 %)",
+            "value": "100"
+          }
+        ],
+        "query": "10 % : 10,20 % : 20,30 % : 30,50 % : 50,60 % : 60,80 % : 80,All (100 %) : 100",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
         "allowCustomValue": true,
         "current": {
           "text": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/17/M/QS/2026/8/S2B_17MQS_20260813_0_L2A/B04.tif",
@@ -760,7 +883,7 @@
         "multi": false,
         "name": "cog",
         "options": [],
-        "query": "WITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=100'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT f->'assets'->'red'->>'href'\nFROM features\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE < 60\nORDER BY (f->'properties'->>'datetime')::TIMESTAMP DESC\nLIMIT 1",
+        "query": "WITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=100'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT f->'assets'->'red'->>'href'\nFROM features\n-- Ojo: dentro de una query de VARIABLE Grafana no entrecomilla, así que las\n-- comillas de '${cloud}' van a mano. En los paneles es al revés: $cloud llega\n-- ya entrecomillado y el CAST es el que lo devuelve a número.\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE <= CAST('${cloud}' AS DOUBLE)\nORDER BY (f->'properties'->>'datetime')::TIMESTAMP DESC\nLIMIT 1",
         "refresh": 2,
         "regex": "",
         "regexApplyTo": "value",
