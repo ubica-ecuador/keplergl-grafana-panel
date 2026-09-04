@@ -86,8 +86,6 @@ the imagery ones, which need the bench's DuckDB and its TiTiler:
 | ---------------- | ---------------------------------------------------------------------- |
 | `raster`         | a COG found by STAC search, plus statistics over it by HTTP and in SQL |
 | `raster-time`    | one row per date — the time widget as scene selector                   |
-| `precip-time`    | sixty days of CHIRPS rainfall, as a continuous field                   |
-| `precip-pmtiles` | the same map read from an archive, with no tile server at all          |
 | `wms-time`       | a WMS drawn, clicked and read back as data over WCS                    |
 
 ### The layer gallery
