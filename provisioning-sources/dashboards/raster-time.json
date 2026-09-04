@@ -1,32 +1,25 @@
 {
   "annotations": {
-    "list": []
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
   },
   "description": "Multitemporality out of a STAC catalogue: the timeline shows every satellite pass and the map draws the last image falling inside the selected window.",
   "editable": true,
-  "id": null,
-  "links": [],
-  "preload": false,
-  "refresh": "",
-  "schemaVersion": 39,
-  "tags": [
-    "kepler",
-    "raster",
-    "multitemporal"
-  ],
-  "templating": {
-    "list": []
-  },
-  "time": {
-    "from": "now-4M",
-    "to": "now"
-  },
-  "timepicker": {},
-  "timezone": "browser",
-  "title": "Raster — multitemporal",
-  "uid": "raster-time",
-  "version": 1,
-  "weekStart": "",
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "liveNow": false,
   "panels": [
     {
       "gridPos": {
@@ -36,12 +29,19 @@
         "y": 0
       },
       "id": 1,
-      "type": "text",
-      "title": "",
       "options": {
-        "mode": "markdown",
-        "content": "# Multitemporal: what was there, and when\n\nThe satellite passes over Cuenca every five days, come rain or shine. The time bar under the map is that calendar — **one bar per pass** — and dragging it shows you **the last image that falls inside the window**.\n\nAll of it comes from **a single query**: one row per pass, with its date and the link to its COG. The calendar and the imagery are the same table, so dragging asks the server nothing — the choice is made here, and something only changes when you cross a date that has an image. If the window falls between two passes there is nothing to show, and the raster is withdrawn.\n\nCheck the cloud cover in the table on the right before drawing conclusions: over the equatorial Andes **most passes come covered**, and that is exactly what makes walking the calendar useful rather than settling for the most recent one."
-      }
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "# Multitemporal: what was there, and when\n\nThe satellite passes over Cuenca every five days, come rain or shine. The time bar under the map is that calendar — **one bar per pass** — and dragging it shows you **the last image that falls inside the window**.\n\nAll of it comes from **a single query**: one row per pass, with its date and the link to its COG. The calendar and the imagery are the same table, so dragging asks the server nothing — the choice is made here, and something only changes when you cross a date that has an image. If the window falls between two passes there is nothing to show, and the raster is withdrawn.\n\nCheck the cloud cover in the table on the right before drawing conclusions: over the equatorial Andes **most passes come covered**, and that is exactly what makes walking the calendar useful rather than settling for the most recent one.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "13.2.0",
+      "targets": [],
+      "title": "",
+      "type": "text"
     },
     {
       "datasource": {
@@ -56,25 +56,300 @@
         "y": 8
       },
       "id": 2,
-      "type": "ubica-keplergl-panel",
       "options": {
-        "showSidePanel": false,
-        "timeSync": "off",
+        "basemap": "auto",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": true,
         "mapConfig": {
-          "version": "v1",
           "config": {
             "mapState": {
-              "latitude": -2.93,
-              "longitude": -79.0,
-              "zoom": 9.8,
               "bearing": 0,
+              "dragRotate": false,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [
+                    40,
+                    63,
+                    93
+                  ],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [
+                    4,
+                    9,
+                    17
+                  ],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [
+                    114.75,
+                    114.75,
+                    114.75
+                  ],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [
+                    9,
+                    16,
+                    29
+                  ],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [
+                    17,
+                    35,
+                    48
+                  ]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": -3.5253755105631877,
+              "longitude": -78.70013979104998,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_2D",
+              "maxPitch": 60,
               "pitch": 0,
-              "dragRotate": false
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 7.728447664219283
+            },
+            "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
+              ],
+              "mapStyles": {},
+              "styleType": "dark-matter",
+              "threeDBuildingColor": [
+                15.035172933000911,
+                15.035172933000911,
+                15.035172933000911
+              ],
+              "topLayerGroups": {},
+              "visibleLayerGroups": {
+                "3d building": false,
+                "border": false,
+                "building": true,
+                "label": true,
+                "land": true,
+                "road": true,
+                "water": true
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [
+                {
+                  "animationWindow": "free",
+                  "dataId": [
+                    "grafana-A"
+                  ],
+                  "enabled": true,
+                  "id": "614vaq5cq",
+                  "name": [
+                    "time"
+                  ],
+                  "plotType": {
+                    "aggregation": "minimum",
+                    "defaultTimeFormat": "L",
+                    "interval": "2-day",
+                    "type": "lineChart"
+                  },
+                  "speed": 1,
+                  "type": "timeRange",
+                  "value": [
+                    1757000659673,
+                    1788363843233
+                  ],
+                  "view": "enlarged",
+                  "yAxis": {
+                    "name": "cloud_cover",
+                    "type": "real"
+                  }
+                }
+              ],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "format": "L LTS",
+                        "name": "time"
+                      },
+                      {
+                        "name": "scene_id"
+                      },
+                      {
+                        "name": "cloud_cover"
+                      },
+                      {
+                        "name": "raster_url"
+                      }
+                    ],
+                    "grafana-A-raster": []
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "9ici1nr"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "color": [
+                      246,
+                      209,
+                      138
+                    ],
+                    "columns": {},
+                    "dataId": "grafana-A-raster",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "A",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "colorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#4C0035",
+                          "#880030",
+                          "#B72F15",
+                          "#D6610A",
+                          "#EF9100",
+                          "#FFC300"
+                        ],
+                        "name": "Global Warming",
+                        "type": "sequential"
+                      },
+                      "colormapId": "cfastie",
+                      "dynamicColor": false,
+                      "enableTerrain": true,
+                      "enableTerrainTopView": false,
+                      "endDate": "2020-03-02",
+                      "filterEnabled": false,
+                      "filterRange": [
+                        -1,
+                        1
+                      ],
+                      "gammaContrastFactor": 1,
+                      "linearRescalingFactor": [
+                        0,
+                        1
+                      ],
+                      "nonLinearRescaling": true,
+                      "opacity": 1,
+                      "preset": "trueColor",
+                      "saturationValue": 1,
+                      "showTileBorders": false,
+                      "showTileDebugInfo": false,
+                      "sigmoidalBiasFactor": 0.5,
+                      "sigmoidalContrastFactor": 0,
+                      "stacSearchProvider": "earth-search",
+                      "startDate": "2020-02-02",
+                      "useSTACSearching": false,
+                      "zoomOffset": 0
+                    }
+                  },
+                  "id": "9ici1nr",
+                  "type": "rasterTile",
+                  "visualChannels": {}
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
             }
-          }
+          },
+          "version": "v1"
         },
-        "rasterServerUrl": "https://titiler.ubica.ec"
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "rasterColormap": "",
+        "rasterPainted": false,
+        "rasterServerUrl": "https://titiler.ubica.ec",
+        "saveRequest": 1,
+        "showSidePanel": false,
+        "timeSync": "off",
+        "tripLayerMode": "table"
       },
+      "pluginVersion": "1.0.0",
       "targets": [
         {
           "datasource": {
@@ -88,7 +363,8 @@
           "refId": "A"
         }
       ],
-      "title": "Sentinel-2 over Cuenca · drag the time bar"
+      "title": "Sentinel-2 over Cuenca · drag the time bar",
+      "type": "ubica-keplergl-panel"
     },
     {
       "datasource": {
@@ -96,21 +372,30 @@
         "uid": "duckdb"
       },
       "description": "The same rows the map uses: every bar on the timeline is one of these passes.",
-      "gridPos": {
-        "h": 19,
-        "w": 7,
-        "x": 17,
-        "y": 8
-      },
-      "id": 3,
-      "type": "table",
-      "options": {
-        "showHeader": true
-      },
       "fieldConfig": {
         "defaults": {
           "custom": {
-            "align": "left"
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
           }
         },
         "overrides": [
@@ -121,13 +406,25 @@
             },
             "properties": [
               {
-                "id": "custom.hidden",
+                "id": "custom.hideFrom.viz",
                 "value": true
               }
             ]
           }
         ]
       },
+      "gridPos": {
+        "h": 19,
+        "w": 7,
+        "x": 17,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -141,7 +438,37 @@
           "refId": "A"
         }
       ],
-      "title": "The full calendar"
+      "title": "The full calendar",
+      "type": "table"
     }
-  ]
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 42,
+  "tags": [
+    "kepler",
+    "raster",
+    "multitemporal"
+  ],
+  "time": {
+    "from": "now-4M",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "browser",
+  "title": "Raster — multitemporal",
+  "uid": "raster-time"
 }

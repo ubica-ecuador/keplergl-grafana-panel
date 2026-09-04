@@ -1,244 +1,27 @@
 {
   "annotations": {
-    "list": []
-  },
-  "description": "Proof of concept: WRI's Aqueduct 4.0 layer served live from ArcGIS Online to the kepler.gl panel, with no prior download. Clipped to South America because global (61,488 polygons, 58 MiB, 171 s) does not fit in a dashboard. The map's pagination uses `replace` mode with ${__pagination.*} markers in the URL, to dodge an aliasing bug in Infinity 4.0.0 that makes `query` mode return the same page N times.",
-  "editable": true,
-  "id": null,
-  "links": [],
-  "preload": false,
-  "refresh": "",
-  "schemaVersion": 39,
-  "tags": [
-    "kepler",
-    "aqueduct",
-    "agua"
-  ],
-  "templating": {
     "list": [
       {
-        "name": "indicador",
-        "label": "Indicator",
-        "type": "custom",
-        "hide": 0,
-        "multi": false,
-        "includeAll": false,
-        "skipUrlSync": false,
-        "query": "Overall water risk : w_awr_def_tot,Baseline water stress : bws,Water depletion : bwd,Riverine flood risk : rfr,Drought risk : drr,Unimproved drinking water : udw,Unimproved sanitation : usa",
-        "options": [
-          {
-            "text": "Overall water risk",
-            "value": "w_awr_def_tot",
-            "selected": true
-          },
-          {
-            "text": "Baseline water stress",
-            "value": "bws",
-            "selected": false
-          },
-          {
-            "text": "Water depletion",
-            "value": "bwd",
-            "selected": false
-          },
-          {
-            "text": "Riverine flood risk",
-            "value": "rfr",
-            "selected": false
-          },
-          {
-            "text": "Drought risk",
-            "value": "drr",
-            "selected": false
-          },
-          {
-            "text": "Unimproved drinking water",
-            "value": "udw",
-            "selected": false
-          },
-          {
-            "text": "Unimproved sanitation",
-            "value": "usa",
-            "selected": false
-          }
-        ],
-        "current": {
-          "text": "Overall water risk",
-          "value": "w_awr_def_tot",
-          "selected": true
-        }
-      },
-      {
-        "name": "pais",
-        "label": "Countries",
-        "type": "custom",
-        "hide": 0,
-        "multi": true,
-        "includeAll": true,
-        "skipUrlSync": false,
-        "query": "Argentina,Bolivia,Brazil,Chile,Colombia,Ecuador,Guyana,Paraguay,Peru,Suriname,Uruguay,Venezuela,French Guiana",
-        "options": [
-          {
-            "text": "All",
-            "value": "$__all",
-            "selected": true
-          },
-          {
-            "text": "Argentina",
-            "value": "Argentina",
-            "selected": false
-          },
-          {
-            "text": "Bolivia",
-            "value": "Bolivia",
-            "selected": false
-          },
-          {
-            "text": "Brazil",
-            "value": "Brazil",
-            "selected": false
-          },
-          {
-            "text": "Chile",
-            "value": "Chile",
-            "selected": false
-          },
-          {
-            "text": "Colombia",
-            "value": "Colombia",
-            "selected": false
-          },
-          {
-            "text": "Ecuador",
-            "value": "Ecuador",
-            "selected": false
-          },
-          {
-            "text": "Guyana",
-            "value": "Guyana",
-            "selected": false
-          },
-          {
-            "text": "Paraguay",
-            "value": "Paraguay",
-            "selected": false
-          },
-          {
-            "text": "Peru",
-            "value": "Peru",
-            "selected": false
-          },
-          {
-            "text": "Suriname",
-            "value": "Suriname",
-            "selected": false
-          },
-          {
-            "text": "Uruguay",
-            "value": "Uruguay",
-            "selected": false
-          },
-          {
-            "text": "Venezuela",
-            "value": "Venezuela",
-            "selected": false
-          },
-          {
-            "text": "French Guiana",
-            "value": "French Guiana",
-            "selected": false
-          }
-        ],
-        "current": {
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ],
-          "selected": true
-        }
-      },
-      {
-        "name": "detalle",
-        "label": "Geometric detail",
-        "type": "custom",
-        "hide": 0,
-        "multi": false,
-        "includeAll": false,
-        "skipUrlSync": false,
-        "query": "Medium — 9 pages ~2 s : 0.02,Fine — sharper but slower : 0.01,Coarse — faster : 0.05",
-        "options": [
-          {
-            "text": "Medium — 9 pages ~2 s",
-            "value": "0.02",
-            "selected": true
-          },
-          {
-            "text": "Fine — sharper but slower",
-            "value": "0.01",
-            "selected": false
-          },
-          {
-            "text": "Coarse — faster",
-            "value": "0.05",
-            "selected": false
-          }
-        ],
-        "current": {
-          "text": "Medium — 9 pages ~2 s",
-          "value": "0.02",
-          "selected": true
-        }
-      },
-      {
-        "name": "area",
-        "label": "Drawn area (WKT)",
-        "type": "textbox",
-        "hide": 0,
-        "current": {
-          "text": "",
-          "value": ""
-        },
-        "options": [],
-        "query": "",
-        "skipUrlSync": false
-      },
-      {
-        "name": "areaRings",
-        "label": "Area (Esri JSON)",
-        "type": "query",
-        "hide": 2,
+        "builtIn": 1,
         "datasource": {
-          "type": "motherduck-duckdb-datasource",
-          "uid": "duckdb"
+          "type": "grafana",
+          "uid": "-- Grafana --"
         },
-        "query": "SELECT coalesce((SELECT '{\"rings\":' || json_extract(ST_AsGeoJSON(ST_GeomFromText(wkt)), '$.coordinates')::VARCHAR || ',\"spatialReference\":{\"wkid\":4326}}' FROM (SELECT '$area' AS wkt) WHERE length(wkt) > 8), '') AS rings",
-        "refresh": 1,
-        "multi": false,
-        "includeAll": false,
-        "skipUrlSync": false,
-        "current": {},
-        "options": [],
-        "regex": "",
-        "sort": 0
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
       }
     ]
   },
-  "time": {
-    "from": "now-6h",
-    "to": "now"
-  },
-  "timepicker": {},
-  "timezone": "browser",
-  "title": "Water risk — WRI Aqueduct 4.0 (South America)",
-  "uid": "aqueduct-sa",
-  "version": 2,
-  "weekStart": "",
+  "description": "Proof of concept: WRI's Aqueduct 4.0 layer served live from ArcGIS Online to the kepler.gl panel, with no prior download. Clipped to South America because global (61,488 polygons, 58 MiB, 171 s) does not fit in a dashboard. The map's pagination uses `replace` mode with ${__pagination.*} markers in the URL, to dodge an aliasing bug in Infinity 4.0.0 that makes `query` mode return the same page N times.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "liveNow": false,
   "panels": [
     {
-      "type": "text",
-      "title": "",
       "gridPos": {
         "h": 9,
         "w": 24,
@@ -247,14 +30,25 @@
       },
       "id": 1,
       "options": {
-        "mode": "markdown",
-        "content": "# Water risk — WRI Aqueduct 4.0\n\nThe polygons are **HydroBASINS level 6 basins cut by province**, served live from the ArcGIS Online Feature Service, **with no prior download and no ETL**. Changing the indicator or the country queries the service again.\n\n| | |\n|---|---|\n| Source | [Aqueduct 4.0 Water Risk](https://www.arcgis.com/home/item.html?id=c784f4ebddaf43c8b816612fb62e7e5b) · **Aqueduct 4.0, World Resources Institute (WRI)**, hosted by Esri. Licensed CC BY 4.0 |\n| Coverage | 13 countries of South America · 6,469 units with data for water stress (out of 6,717) |\n| How it arrives | Infinity → `f=geojson` → a `geojson` column → the panel detects it and kepler draws it |\n\n**Three things to know so as not to misread the map:**\n\n- **The gaps are \"No Data\".** Aqueduct encodes a missing value as `-9999`, and a single `-9999` would\n  wreck the colour scale, so they are filtered at source (`$​{indicador}_score >= 0`). What is missing\n  from the map is data that does not exist, not zero risk.\n- **\"Arid and Low Water Use\" scores high by convention**, not from measured stress: these are 493 arid\n  units with little water use. They come out red without there being any competition for the resource.\n- **Level 6 is coarse.** It works for a national or regional read. It does not work at municipal scale.\n\n**Filtering by drawing on the map.** With the map's draw tool (polygon or rectangle) you can narrow the\nanalysis: the ranking by country, the table and the \"In selection\" counter come to describe only the\nbasins the shape touches. **The map deliberately does not filter itself** — it goes on showing the whole\nextent as context, because if its own query depended on the shape, shrinking the dataset would leave no\nway to widen it again from the map. To go back to the total, delete the shape.\n\n*If \"With data\" and the number of polygons on the map disagree, Infinity's pagination is truncating: it\nneeds `GF_PLUGIN_PAGINATION_MAX_PAGES` in the container.*"
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "# Water risk — WRI Aqueduct 4.0\n\nThe polygons are **HydroBASINS level 6 basins cut by province**, served live from the ArcGIS Online Feature Service, **with no prior download and no ETL**. Changing the indicator or the country queries the service again.\n\n| | |\n|---|---|\n| Source | [Aqueduct 4.0 Water Risk](https://www.arcgis.com/home/item.html?id=c784f4ebddaf43c8b816612fb62e7e5b) · **Aqueduct 4.0, World Resources Institute (WRI)**, hosted by Esri. Licensed CC BY 4.0 |\n| Coverage | 13 countries of South America · 6,469 units with data for water stress (out of 6,717) |\n| How it arrives | Infinity → `f=geojson` → a `geojson` column → the panel detects it and kepler draws it |\n\n**Three things to know so as not to misread the map:**\n\n- **The gaps are \"No Data\".** Aqueduct encodes a missing value as `-9999`, and a single `-9999` would\n  wreck the colour scale, so they are filtered at source (`$​{indicador}_score >= 0`). What is missing\n  from the map is data that does not exist, not zero risk.\n- **\"Arid and Low Water Use\" scores high by convention**, not from measured stress: these are 493 arid\n  units with little water use. They come out red without there being any competition for the resource.\n- **Level 6 is coarse.** It works for a national or regional read. It does not work at municipal scale.\n\n**Filtering by drawing on the map.** With the map's draw tool (polygon or rectangle) you can narrow the\nanalysis: the ranking by country, the table and the \"In selection\" counter come to describe only the\nbasins the shape touches. **The map deliberately does not filter itself** — it goes on showing the whole\nextent as context, because if its own query depended on the shape, shrinking the dataset would leave no\nway to widen it again from the map. To go back to the total, delete the shape.\n\n*If \"With data\" and the number of polygons on the map disagree, Infinity's pagination is truncating: it\nneeds `GF_PLUGIN_PAGINATION_MAX_PAGES` in the container.*",
+        "mode": "markdown"
       },
-      "transparent": true
+      "pluginVersion": "13.2.0",
+      "targets": [],
+      "title": "",
+      "transparent": true,
+      "type": "text"
     },
     {
-      "type": "ubica-keplergl-panel",
-      "title": "$indicador — basins of South America",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
       "gridPos": {
         "h": 20,
         "w": 17,
@@ -262,52 +56,304 @@
         "y": 9
       },
       "id": 2,
-      "datasource": {
-        "type": "yesoreyeram-infinity-datasource",
-        "uid": "infinity"
+      "options": {
+        "areaVariable": "area",
+        "basemap": "dark-matter",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": true,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [
+                    40,
+                    63,
+                    93
+                  ],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [
+                    4,
+                    9,
+                    17
+                  ],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [
+                    114.75,
+                    114.75,
+                    114.75
+                  ],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [
+                    9,
+                    16,
+                    29
+                  ],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [
+                    17,
+                    35,
+                    48
+                  ]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": -18.5,
+              "longitude": -60,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_2D",
+              "maxPitch": 60,
+              "pitch": 0,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 2.45
+            },
+            "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
+              ],
+              "mapStyles": {},
+              "styleType": "grafana-satellite-terrain",
+              "threeDBuildingColor": [
+                15.035172933000911,
+                15.035172933000911,
+                15.035172933000911
+              ],
+              "topLayerGroups": {
+                "label": true,
+                "road": false
+              },
+              "visibleLayerGroups": {
+                "3d building": false,
+                "border": false,
+                "building": true,
+                "label": true,
+                "land": true,
+                "road": false,
+                "water": true
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "pais"
+                      },
+                      {
+                        "name": "provincia"
+                      },
+                      {
+                        "name": "categoria"
+                      },
+                      {
+                        "name": "score"
+                      },
+                      {
+                        "name": "area_km2"
+                      }
+                    ]
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "aqueduct"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "color": [
+                      231,
+                      159,
+                      79
+                    ],
+                    "columnMode": "geojson",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Riesgo hídrico",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "allowHover": true,
+                      "colorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#00939C",
+                          "#6BB5B9",
+                          "#AAD7D9",
+                          "#F4B198",
+                          "#DF744E",
+                          "#C22E00"
+                        ],
+                        "name": "Uber Viz Diverging",
+                        "type": "diverging"
+                      },
+                      "elevationScale": 5,
+                      "enable3d": false,
+                      "filled": true,
+                      "fixedHeight": false,
+                      "heightRange": [
+                        0,
+                        500
+                      ],
+                      "opacity": 0.85,
+                      "radius": 10,
+                      "radiusRange": [
+                        0,
+                        50
+                      ],
+                      "sizeRange": [
+                        0,
+                        10
+                      ],
+                      "strokeColor": [
+                        15,
+                        15,
+                        15
+                      ],
+                      "strokeColorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#4C0035",
+                          "#880030",
+                          "#B72F15",
+                          "#D6610A",
+                          "#EF9100",
+                          "#FFC300"
+                        ],
+                        "name": "Global Warming",
+                        "type": "sequential"
+                      },
+                      "strokeOpacity": 0.25,
+                      "stroked": true,
+                      "thickness": 0.1,
+                      "wireframe": false
+                    }
+                  },
+                  "id": "aqueduct",
+                  "type": "geojson",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "score",
+                      "type": "real"
+                    },
+                    "colorScale": "quantize",
+                    "heightScale": "linear",
+                    "radiusScale": "linear",
+                    "sizeScale": "linear",
+                    "strokeColorScale": "quantile"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "rasterColormap": "",
+        "rasterPainted": false,
+        "saveRequest": 3,
+        "showSidePanel": false,
+        "timeSync": "off",
+        "tripLayerMode": "table"
       },
+      "pluginVersion": "1.0.0",
       "targets": [
         {
-          "refId": "A",
-          "datasource": {
-            "type": "yesoreyeram-infinity-datasource",
-            "uid": "infinity"
-          },
-          "type": "json",
-          "source": "url",
-          "parser": "backend",
-          "format": "table",
-          "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/aqueduct_water_risk/FeatureServer/1/query?resultOffset=${__pagination.resultOffset}&resultRecordCount=${__pagination.resultRecordCount}",
-          "url_options": {
-            "method": "GET",
-            "params": [
-              {
-                "key": "where",
-                "value": "name_0 IN (${pais:sqlstring}) AND ${indicador}_score >= 0"
-              },
-              {
-                "key": "outFields",
-                "value": "pfaf_id,name_0,name_1,area_km2,bws_score,bws_label,bwd_score,bwd_label,rfr_score,rfr_label,drr_score,drr_label,udw_score,udw_label,usa_score,usa_label,w_awr_def_tot_score,w_awr_def_tot_label"
-              },
-              {
-                "key": "orderByFields",
-                "value": "OBJECTID"
-              },
-              {
-                "key": "returnGeometry",
-                "value": "true"
-              },
-              {
-                "key": "maxAllowableOffset",
-                "value": "$detalle"
-              },
-              {
-                "key": "f",
-                "value": "geojson"
-              }
-            ]
-          },
-          "root_selector": "features",
           "columns": [
             {
               "selector": "properties.pfaf_id",
@@ -415,159 +461,132 @@
               "text": "categoria"
             }
           ],
-          "pagination_mode": "offset",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "format": "table",
           "pagination_max_pages": 9,
+          "pagination_mode": "offset",
+          "pagination_param_offset_field_name": "resultOffset",
+          "pagination_param_offset_field_type": "replace",
+          "pagination_param_offset_value": 0,
           "pagination_param_size_field_name": "resultRecordCount",
           "pagination_param_size_field_type": "replace",
           "pagination_param_size_value": 750,
-          "pagination_param_offset_field_name": "resultOffset",
-          "pagination_param_offset_field_type": "replace",
-          "pagination_param_offset_value": 0
-        }
-      ],
-      "options": {
-        "showSidePanel": true,
-        "followGrafanaTheme": true,
-        "basemap": "dark-matter",
-        "timeSync": "off",
-        "areaVariable": "area",
-        "mapConfig": {
-          "version": "v1",
-          "config": {
-            "mapState": {
-              "latitude": -18.5,
-              "longitude": -60.0,
-              "zoom": 2.45,
-              "bearing": 0,
-              "pitch": 0,
-              "dragRotate": false
-            },
-            "visState": {
-              "filters": [],
-              "layerBlending": "normal",
-              "layers": [
-                {
-                  "id": "aqueduct",
-                  "type": "geojson",
-                  "config": {
-                    "dataId": "grafana-A",
-                    "label": "Riesgo hídrico",
-                    "columns": {
-                      "geojson": "_geojson"
-                    },
-                    "isVisible": true,
-                    "visConfig": {
-                      "opacity": 0.85,
-                      "filled": true,
-                      "stroked": true,
-                      "thickness": 0.1,
-                      "strokeOpacity": 0.25,
-                      "strokeColor": [
-                        15,
-                        15,
-                        15
-                      ],
-                      "colorRange": {
-                        "name": "Aqueduct",
-                        "type": "sequential",
-                        "category": "Custom",
-                        "colors": [
-                          "#fdf3c8",
-                          "#fbd989",
-                          "#f7a44f",
-                          "#e8642f",
-                          "#bf2626",
-                          "#7a0d1e"
-                        ]
-                      },
-                      "enable3d": false,
-                      "wireframe": false
-                    },
-                    "color": [
-                      231,
-                      159,
-                      79
-                    ]
-                  },
-                  "visualChannels": {
-                    "colorField": {
-                      "name": "score",
-                      "type": "real"
-                    },
-                    "colorScale": "quantize"
-                  }
-                }
-              ],
-              "layerOrder": [
-                "aqueduct"
-              ],
-              "interactionConfig": {
-                "tooltip": {
-                  "enabled": true,
-                  "compareMode": false,
-                  "compareType": "absolute",
-                  "fieldsToShow": {
-                    "grafana-A": [
-                      {
-                        "name": "pais"
-                      },
-                      {
-                        "name": "provincia"
-                      },
-                      {
-                        "name": "categoria"
-                      },
-                      {
-                        "name": "score"
-                      },
-                      {
-                        "name": "area_km2"
-                      }
-                    ]
-                  }
-                },
-                "brush": {
-                  "enabled": false,
-                  "size": 0.5
-                },
-                "geocoder": {
-                  "enabled": false,
-                  "limitSearch": false
-                },
-                "coordinate": {
-                  "enabled": false
-                }
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "features",
+          "source": "url",
+          "type": "json",
+          "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/aqueduct_water_risk/FeatureServer/1/query?resultOffset=${__pagination.resultOffset}&resultRecordCount=${__pagination.resultRecordCount}",
+          "url_options": {
+            "method": "GET",
+            "params": [
+              {
+                "key": "where",
+                "value": "name_0 IN (${pais:sqlstring}) AND ${indicador}_score >= 0"
+              },
+              {
+                "key": "outFields",
+                "value": "pfaf_id,name_0,name_1,area_km2,bws_score,bws_label,bwd_score,bwd_label,rfr_score,rfr_label,drr_score,drr_label,udw_score,udw_label,usa_score,usa_label,w_awr_def_tot_score,w_awr_def_tot_label"
+              },
+              {
+                "key": "orderByFields",
+                "value": "OBJECTID"
+              },
+              {
+                "key": "returnGeometry",
+                "value": "true"
+              },
+              {
+                "key": "maxAllowableOffset",
+                "value": "$detalle"
+              },
+              {
+                "key": "f",
+                "value": "geojson"
               }
-            }
+            ]
           }
         }
-      }
+      ],
+      "title": "$indicador — basins of South America",
+      "type": "ubica-keplergl-panel"
     },
     {
-      "type": "stat",
-      "title": "Units",
-      "id": 3,
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "description": "Left: the authoritative count over the whole extent, computed by ArcGIS without paging — it is the contrast that gives away a pagination truncation on the map. Right: what the drawn polygon encloses. With no shape, they agree.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "text",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        }
+      },
       "gridPos": {
         "h": 5,
         "w": 7,
         "x": 17,
         "y": 9
       },
-      "datasource": {
-        "type": "yesoreyeram-infinity-datasource",
-        "uid": "infinity"
+      "id": 3,
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
       },
+      "pluginVersion": "13.2.0",
       "targets": [
         {
-          "refId": "D",
+          "columns": [
+            {
+              "selector": "attributes.n",
+              "text": "Unidades",
+              "type": "number"
+            }
+          ],
           "datasource": {
             "type": "yesoreyeram-infinity-datasource",
             "uid": "infinity"
           },
-          "type": "json",
-          "source": "url",
-          "parser": "backend",
           "format": "table",
+          "parser": "backend",
+          "refId": "D",
+          "root_selector": "features",
+          "source": "url",
+          "type": "json",
           "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/aqueduct_water_risk/FeatureServer/1/query",
           "url_options": {
             "method": "GET",
@@ -585,26 +604,26 @@
                 "value": "json"
               }
             ]
-          },
-          "root_selector": "features",
+          }
+        },
+        {
           "columns": [
             {
               "selector": "attributes.n",
-              "text": "Unidades",
+              "text": "En selección",
               "type": "number"
             }
-          ]
-        },
-        {
-          "refId": "E",
+          ],
           "datasource": {
             "type": "yesoreyeram-infinity-datasource",
             "uid": "infinity"
           },
-          "type": "json",
-          "source": "url",
-          "parser": "backend",
           "format": "table",
+          "parser": "backend",
+          "refId": "E",
+          "root_selector": "features",
+          "source": "url",
+          "type": "json",
           "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/aqueduct_water_risk/FeatureServer/1/query",
           "url_options": {
             "method": "GET",
@@ -638,69 +657,118 @@
                 "value": "4326"
               }
             ]
-          },
-          "root_selector": "features",
-          "columns": [
-            {
-              "selector": "attributes.n",
-              "text": "En selección",
-              "type": "number"
-            }
-          ]
+          }
         }
       ],
-      "description": "Left: the authoritative count over the whole extent, computed by ArcGIS without paging — it is the contrast that gives away a pagination truncation on the map. Right: what the drawn polygon encloses. With no shape, they agree.",
+      "title": "Units",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "description": "Aggregated on the ArcGIS server: one request, ~2 KB, no pagination.",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "fixed",
-            "fixedColor": "text"
+            "mode": "continuous-YlRd"
           },
-          "unit": "none",
-          "decimals": 0
-        },
-        "overrides": []
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 2,
+          "max": 5,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        }
       },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "none",
-        "graphMode": "none",
-        "textMode": "value",
-        "justifyMode": "center",
-        "orientation": "auto"
-      }
-    },
-    {
-      "type": "barchart",
-      "title": "Mean score by country",
-      "id": 4,
       "gridPos": {
         "h": 15,
         "w": 7,
         "x": 17,
         "y": 14
       },
-      "datasource": {
-        "type": "yesoreyeram-infinity-datasource",
-        "uid": "infinity"
+      "id": 4,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.8,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        },
+        "xField": "País",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
       },
+      "pluginVersion": "13.2.0",
       "targets": [
         {
-          "refId": "B",
+          "columns": [
+            {
+              "selector": "attributes.name_0",
+              "text": "País",
+              "type": "string"
+            },
+            {
+              "selector": "attributes.score_medio",
+              "text": "Score medio",
+              "type": "number"
+            }
+          ],
           "datasource": {
             "type": "yesoreyeram-infinity-datasource",
             "uid": "infinity"
           },
-          "type": "json",
-          "source": "url",
-          "parser": "backend",
           "format": "table",
+          "parser": "backend",
+          "refId": "B",
+          "root_selector": "features",
+          "source": "url",
+          "type": "json",
           "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/aqueduct_water_risk/FeatureServer/1/query",
           "url_options": {
             "method": "GET",
@@ -742,129 +810,98 @@
                 "value": "4326"
               }
             ]
-          },
-          "root_selector": "features",
-          "columns": [
-            {
-              "selector": "attributes.name_0",
-              "text": "País",
-              "type": "string"
-            },
-            {
-              "selector": "attributes.score_medio",
-              "text": "Score medio",
-              "type": "number"
-            }
-          ]
+          }
         }
       ],
-      "description": "Aggregated on the ArcGIS server: one request, ~2 KB, no pagination.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-YlRd"
-          },
-          "min": 0,
-          "max": 5,
-          "decimals": 2,
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "options": {
-        "orientation": "horizontal",
-        "xField": "País",
-        "showValue": "auto",
-        "stacking": "none",
-        "legend": {
-          "showLegend": false,
-          "displayMode": "list",
-          "placement": "bottom",
-          "calcs": []
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        },
-        "xTickLabelRotation": 0,
-        "xTickLabelSpacing": 0,
-        "barWidth": 0.8,
-        "groupWidth": 0.7,
-        "fullHighlight": false
-      }
+      "title": "Mean score by country",
+      "type": "barchart"
     },
     {
-      "type": "table",
-      "title": "The 20 units with the worst $indicador",
-      "id": 5,
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "description": "Ordered by the service (`orderByFields`), 20 rows, no geometry and no pagination.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Score"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-YlRd"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 5
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "displayName",
+                "value": "Score"
+              }
+            ]
+          }
+        ]
+      },
       "gridPos": {
         "h": 11,
         "w": 24,
         "x": 0,
         "y": 29
       },
-      "datasource": {
-        "type": "yesoreyeram-infinity-datasource",
-        "uid": "infinity"
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
       },
+      "pluginVersion": "13.2.0",
       "targets": [
         {
-          "refId": "C",
-          "datasource": {
-            "type": "yesoreyeram-infinity-datasource",
-            "uid": "infinity"
-          },
-          "type": "json",
-          "source": "url",
-          "parser": "backend",
-          "format": "table",
-          "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/aqueduct_water_risk/FeatureServer/1/query",
-          "url_options": {
-            "method": "GET",
-            "params": [
-              {
-                "key": "where",
-                "value": "name_0 IN (${pais:sqlstring}) AND ${indicador}_score >= 0"
-              },
-              {
-                "key": "outFields",
-                "value": "pfaf_id,name_0,name_1,area_km2,bws_score,bws_label,bwd_score,bwd_label,rfr_score,rfr_label,drr_score,drr_label,udw_score,udw_label,usa_score,usa_label,w_awr_def_tot_score,w_awr_def_tot_label"
-              },
-              {
-                "key": "orderByFields",
-                "value": "${indicador}_score DESC"
-              },
-              {
-                "key": "resultRecordCount",
-                "value": "20"
-              },
-              {
-                "key": "returnGeometry",
-                "value": "false"
-              },
-              {
-                "key": "f",
-                "value": "json"
-              },
-              {
-                "key": "geometry",
-                "value": "${areaRings:raw}"
-              },
-              {
-                "key": "geometryType",
-                "value": "esriGeometryPolygon"
-              },
-              {
-                "key": "spatialRel",
-                "value": "esriSpatialRelIntersects"
-              },
-              {
-                "key": "inSR",
-                "value": "4326"
-              }
-            ]
-          },
-          "root_selector": "features",
           "columns": [
             {
               "selector": "attributes.name_0",
@@ -961,103 +998,346 @@
               "selector": "${indicador}_label",
               "text": "Categoría"
             }
-          ]
-        }
-      ],
-      "description": "Ordered by the service (`orderByFields`), 20 rows, no geometry and no pagination.",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Score"
-            },
-            "properties": [
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "format": "table",
+          "parser": "backend",
+          "refId": "C",
+          "root_selector": "features",
+          "source": "url",
+          "type": "json",
+          "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/aqueduct_water_risk/FeatureServer/1/query",
+          "url_options": {
+            "method": "GET",
+            "params": [
               {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-background",
-                  "mode": "gradient"
-                }
+                "key": "where",
+                "value": "name_0 IN (${pais:sqlstring}) AND ${indicador}_score >= 0"
               },
               {
-                "id": "color",
-                "value": {
-                  "mode": "continuous-YlRd"
-                }
+                "key": "outFields",
+                "value": "pfaf_id,name_0,name_1,area_km2,bws_score,bws_label,bwd_score,bwd_label,rfr_score,rfr_label,drr_score,drr_label,udw_score,udw_label,usa_score,usa_label,w_awr_def_tot_score,w_awr_def_tot_label"
               },
               {
-                "id": "min",
-                "value": 0
+                "key": "orderByFields",
+                "value": "${indicador}_score DESC"
               },
               {
-                "id": "max",
-                "value": 5
+                "key": "resultRecordCount",
+                "value": "20"
               },
               {
-                "id": "decimals",
-                "value": 2
+                "key": "returnGeometry",
+                "value": "false"
               },
               {
-                "id": "displayName",
-                "value": "Score"
+                "key": "f",
+                "value": "json"
+              },
+              {
+                "key": "geometry",
+                "value": "${areaRings:raw}"
+              },
+              {
+                "key": "geometryType",
+                "value": "esriGeometryPolygon"
+              },
+              {
+                "key": "spatialRel",
+                "value": "esriSpatialRelIntersects"
+              },
+              {
+                "key": "inSR",
+                "value": "4326"
               }
             ]
           }
-        ]
-      },
+        }
+      ],
+      "title": "The 20 units with the worst $indicador",
       "transformations": [
         {
           "id": "organize",
           "options": {
             "excludeByName": {
-              "bws_score": true,
-              "bws_label": true,
-              "bwd_score": true,
               "bwd_label": true,
-              "rfr_score": true,
-              "rfr_label": true,
-              "drr_score": true,
+              "bwd_score": true,
+              "bws_label": true,
+              "bws_score": true,
               "drr_label": true,
-              "udw_score": true,
+              "drr_score": true,
+              "rfr_label": true,
+              "rfr_score": true,
               "udw_label": true,
-              "usa_score": true,
+              "udw_score": true,
               "usa_label": true,
-              "w_awr_def_tot_score": true,
-              "w_awr_def_tot_label": true
+              "usa_score": true,
+              "w_awr_def_tot_label": true,
+              "w_awr_def_tot_score": true
             },
             "indexByName": {
+              "Categoría": 4,
+              "Cuenca (pfaf_id)": 2,
               "País": 0,
               "Provincia": 1,
-              "Cuenca (pfaf_id)": 2,
-              "Score": 3,
-              "Categoría": 4
+              "Score": 3
             },
             "renameByName": {}
           }
         }
       ],
-      "options": {
-        "showHeader": true,
-        "cellHeight": "sm",
-        "footer": {
-          "show": false,
-          "reducer": [
-            "sum"
-          ],
-          "countRows": false,
-          "fields": ""
-        }
-      }
+      "type": "table"
     }
-  ]
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 42,
+  "tags": [
+    "kepler",
+    "aqueduct",
+    "agua"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allowCustomValue": true,
+        "current": {
+          "text": "Overall water risk",
+          "value": "w_awr_def_tot"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Indicator",
+        "multi": false,
+        "name": "indicador",
+        "options": [
+          {
+            "selected": true,
+            "text": "Overall water risk",
+            "value": "w_awr_def_tot"
+          },
+          {
+            "selected": false,
+            "text": "Baseline water stress",
+            "value": "bws"
+          },
+          {
+            "selected": false,
+            "text": "Water depletion",
+            "value": "bwd"
+          },
+          {
+            "selected": false,
+            "text": "Riverine flood risk",
+            "value": "rfr"
+          },
+          {
+            "selected": false,
+            "text": "Drought risk",
+            "value": "drr"
+          },
+          {
+            "selected": false,
+            "text": "Unimproved drinking water",
+            "value": "udw"
+          },
+          {
+            "selected": false,
+            "text": "Unimproved sanitation",
+            "value": "usa"
+          }
+        ],
+        "query": "Overall water risk : w_awr_def_tot,Baseline water stress : bws,Water depletion : bwd,Riverine flood risk : rfr,Drought risk : drr,Unimproved drinking water : udw,Unimproved sanitation : usa",
+        "skipUrlSync": false,
+        "type": "custom",
+        "valuesFormat": "csv"
+      },
+      {
+        "allowCustomValue": true,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "hide": 0,
+        "includeAll": true,
+        "label": "Countries",
+        "multi": true,
+        "name": "pais",
+        "options": [
+          {
+            "selected": true,
+            "text": "All",
+            "value": "$__all"
+          },
+          {
+            "selected": false,
+            "text": "Argentina",
+            "value": "Argentina"
+          },
+          {
+            "selected": false,
+            "text": "Bolivia",
+            "value": "Bolivia"
+          },
+          {
+            "selected": false,
+            "text": "Brazil",
+            "value": "Brazil"
+          },
+          {
+            "selected": false,
+            "text": "Chile",
+            "value": "Chile"
+          },
+          {
+            "selected": false,
+            "text": "Colombia",
+            "value": "Colombia"
+          },
+          {
+            "selected": false,
+            "text": "Ecuador",
+            "value": "Ecuador"
+          },
+          {
+            "selected": false,
+            "text": "Guyana",
+            "value": "Guyana"
+          },
+          {
+            "selected": false,
+            "text": "Paraguay",
+            "value": "Paraguay"
+          },
+          {
+            "selected": false,
+            "text": "Peru",
+            "value": "Peru"
+          },
+          {
+            "selected": false,
+            "text": "Suriname",
+            "value": "Suriname"
+          },
+          {
+            "selected": false,
+            "text": "Uruguay",
+            "value": "Uruguay"
+          },
+          {
+            "selected": false,
+            "text": "Venezuela",
+            "value": "Venezuela"
+          },
+          {
+            "selected": false,
+            "text": "French Guiana",
+            "value": "French Guiana"
+          }
+        ],
+        "query": "Argentina,Bolivia,Brazil,Chile,Colombia,Ecuador,Guyana,Paraguay,Peru,Suriname,Uruguay,Venezuela,French Guiana",
+        "skipUrlSync": false,
+        "type": "custom",
+        "valuesFormat": "csv"
+      },
+      {
+        "allowCustomValue": true,
+        "current": {
+          "text": "Medium — 9 pages ~2 s",
+          "value": "0.02"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Geometric detail",
+        "multi": false,
+        "name": "detalle",
+        "options": [
+          {
+            "selected": true,
+            "text": "Medium — 9 pages ~2 s",
+            "value": "0.02"
+          },
+          {
+            "selected": false,
+            "text": "Fine — sharper but slower",
+            "value": "0.01"
+          },
+          {
+            "selected": false,
+            "text": "Coarse — faster",
+            "value": "0.05"
+          }
+        ],
+        "query": "Medium — 9 pages ~2 s : 0.02,Fine — sharper but slower : 0.01,Coarse — faster : 0.05",
+        "skipUrlSync": false,
+        "type": "custom",
+        "valuesFormat": "csv"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "label": "Drawn area (WKT)",
+        "name": "area",
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "allowCustomValue": true,
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "hide": 2,
+        "includeAll": false,
+        "label": "Area (Esri JSON)",
+        "multi": false,
+        "name": "areaRings",
+        "options": [],
+        "query": "SELECT coalesce((SELECT '{\"rings\":' || json_extract(ST_AsGeoJSON(ST_GeomFromText(wkt)), '$.coordinates')::VARCHAR || ',\"spatialReference\":{\"wkid\":4326}}' FROM (SELECT '$area' AS wkt) WHERE length(wkt) > 8), '') AS rings",
+        "refresh": 1,
+        "regex": "",
+        "regexApplyTo": "value",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "hidden": true,
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "browser",
+  "title": "Water risk — WRI Aqueduct 4.0 (South America)",
+  "uid": "aqueduct-sa"
 }

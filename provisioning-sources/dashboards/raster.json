@@ -1,73 +1,25 @@
 {
   "annotations": {
-    "list": []
-  },
-  "description": "COG and STAC without leaving the dashboard: DuckDB finds the scene in the catalogue, TiTiler serves it as tiles and measures it, and kepler draws it as a raster.",
-  "editable": true,
-  "id": null,
-  "links": [],
-  "preload": false,
-  "refresh": "",
-  "schemaVersion": 39,
-  "tags": [
-    "kepler",
-    "raster"
-  ],
-  "templating": {
     "list": [
       {
-        "name": "cog",
-        "label": "Red band of the scene",
-        "type": "query",
+        "builtIn": 1,
         "datasource": {
-          "type": "motherduck-duckdb-datasource",
-          "uid": "duckdb"
+          "type": "grafana",
+          "uid": "-- Grafana --"
         },
-        "query": "WITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=100'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT f->'assets'->'red'->>'href'\nFROM features\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE < 60\nORDER BY (f->'properties'->>'datetime')::TIMESTAMP DESC\nLIMIT 1",
-        "refresh": 2,
-        "hide": 2,
-        "description": "The red band of the same scene the map draws, re-resolved whenever the range changes.",
-        "current": {},
-        "options": [],
-        "regex": "",
-        "sort": 0
-      },
-      {
-        "name": "lat",
-        "type": "textbox",
-        "label": "Lat",
-        "hide": 2,
-        "query": "-2.90",
-        "current": {
-          "text": "-2.90",
-          "value": "-2.90"
-        },
-        "options": []
-      },
-      {
-        "name": "lng",
-        "type": "textbox",
-        "label": "Lng",
-        "hide": 2,
-        "query": "-79.00",
-        "current": {
-          "text": "-79.00",
-          "value": "-79.00"
-        },
-        "options": []
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
       }
     ]
   },
-  "time": {
-    "from": "now-30d",
-    "to": "now"
-  },
-  "timepicker": {},
-  "timezone": "browser",
-  "title": "Raster — COG and STAC through TiTiler",
-  "uid": "raster-bench",
-  "version": 1,
-  "weekStart": "",
+  "description": "COG and STAC without leaving the dashboard: DuckDB finds the scene in the catalogue, TiTiler serves it as tiles and measures it, and kepler draws it as a raster.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "liveNow": false,
   "panels": [
     {
       "gridPos": {
@@ -77,12 +29,19 @@
         "y": 0
       },
       "id": 1,
-      "type": "text",
-      "title": "",
       "options": {
-        "mode": "markdown",
-        "content": "# Cloud-native raster\n\nOne query discovers the scene and the map draws it. There is no ETL and no download: DuckDB asks Sentinel-2's STAC catalogue which image covers Cuenca inside the dashboard's range, gets back **one row** with the link to the COG, and the panel hands it to TiTiler, which serves the tiles by reading the remote file over byte ranges.\n\nThe same server also knows how to **measure** what it serves, so the two panels below get numbers out of the raster without bringing a single pixel into the browser: the mean of the red band over an area, and the value of the pixel wherever you click on the map.\n\n| Piece | Who provides it |\n|---|---|\n| Catalogue | `earth-search.aws.element84.com`, public and unauthenticated |\n| Search | DuckDB with the `http_client` extension, parameterised by the range |\n| Tiles and statistics | the compose file's `titiler` container |\n| Drawing | `RasterTileLayer`, which kepler already ships |\n\n**Move the date range**: the scene and the numbers change, the viewport does not. If no image in the period is under 60 % cloud, the query returns nothing and there is no raster to draw.\n\n**The two panels below ask nothing over HTTP.** The zonal statistic is computed inside DuckDB, joining the raster to the table of zones — four zones or four thousand, one query. And the NDVI is computed in SQL and written as a COG, which TiTiler serves exactly like a remote scene:\n\n```sql\nCOPY (\n  SELECT r.geometry,\n         -- NDVI (-0.2 .. 0.9) stretched over the integer's range.\n         RT_Cube2TypeUInt16(((n.databand_1 - r.databand_1) / (n.databand_1 + r.databand_1)\n                             + 0.2) / 1.1 * 65535.0) AS ndvi\n  FROM RT_Read('/testdata/raster/cuenca-b04.tif') r\n  JOIN RT_Read('/testdata/raster/cuenca-b08.tif') n ON r.id = n.id)\nTO '/derived/ndvi-cuenca-u16.tif'\nWITH (FORMAT RASTER, DRIVER 'COG', SRS 'EPSG:4326',\n      DATABAND_COLUMNS ['ndvi'], CREATION_OPTIONS ('COMPRESS=DEFLATE'));\n```\n\nThat query is **not** in any panel, and that is deliberate: it writes a file, and a dashboard refreshing every 30 s must not redo a computation each time. It is run once — from Explore, against the DuckDB datasource — and the panels read what is already there. If the NDVI panel comes up empty, nobody has run it yet.\n\n**The integer is not a detail**: kepler will not draw a `float32` raster (the layer is simply missing, with nothing said) and `uint8` comes out as a flat sheet of colour. `uint16` is what works."
-      }
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "# Cloud-native raster\n\nOne query discovers the scene and the map draws it. There is no ETL and no download: DuckDB asks Sentinel-2's STAC catalogue which image covers Cuenca inside the dashboard's range, gets back **one row** with the link to the COG, and the panel hands it to TiTiler, which serves the tiles by reading the remote file over byte ranges.\n\nThe same server also knows how to **measure** what it serves, so the two panels below get numbers out of the raster without bringing a single pixel into the browser: the mean of the red band over an area, and the value of the pixel wherever you click on the map.\n\n| Piece | Who provides it |\n|---|---|\n| Catalogue | `earth-search.aws.element84.com`, public and unauthenticated |\n| Search | DuckDB with the `http_client` extension, parameterised by the range |\n| Tiles and statistics | the compose file's `titiler` container |\n| Drawing | `RasterTileLayer`, which kepler already ships |\n\n**Move the date range**: the scene and the numbers change, the viewport does not. If no image in the period is under 60 % cloud, the query returns nothing and there is no raster to draw.\n\n**The two panels below ask nothing over HTTP.** The zonal statistic is computed inside DuckDB, joining the raster to the table of zones — four zones or four thousand, one query. And the NDVI is computed in SQL and written as a COG, which TiTiler serves exactly like a remote scene:\n\n```sql\nCOPY (\n  SELECT r.geometry,\n         -- NDVI (-0.2 .. 0.9) stretched over the integer's range.\n         RT_Cube2TypeUInt16(((n.databand_1 - r.databand_1) / (n.databand_1 + r.databand_1)\n                             + 0.2) / 1.1 * 65535.0) AS ndvi\n  FROM RT_Read('/testdata/raster/cuenca-b04.tif') r\n  JOIN RT_Read('/testdata/raster/cuenca-b08.tif') n ON r.id = n.id)\nTO '/derived/ndvi-cuenca-u16.tif'\nWITH (FORMAT RASTER, DRIVER 'COG', SRS 'EPSG:4326',\n      DATABAND_COLUMNS ['ndvi'], CREATION_OPTIONS ('COMPRESS=DEFLATE'));\n```\n\nThat query is **not** in any panel, and that is deliberate: it writes a file, and a dashboard refreshing every 30 s must not redo a computation each time. It is run once — from Explore, against the DuckDB datasource — and the panels read what is already there. If the NDVI panel comes up empty, nobody has run it yet.\n\n**The integer is not a detail**: kepler will not draw a `float32` raster (the layer is simply missing, with nothing said) and `uint8` comes out as a flat sheet of colour. `uint16` is what works.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "13.2.0",
+      "targets": [],
+      "title": "",
+      "type": "text"
     },
     {
       "datasource": {
@@ -90,6 +49,33 @@
         "uid": "duckdb"
       },
       "description": "The same query that feeds the map. Here it is raw, as the panel receives it: one row, with the raster_url column the plugin detects by name.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        }
+      },
       "gridPos": {
         "h": 5,
         "w": 24,
@@ -97,18 +83,11 @@
         "y": 13
       },
       "id": 2,
-      "type": "table",
       "options": {
+        "cellHeight": "sm",
         "showHeader": true
       },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "left"
-          }
-        },
-        "overrides": []
-      },
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -122,7 +101,8 @@
           "refId": "A"
         }
       ],
-      "title": "The scene chosen for the current range"
+      "title": "The scene chosen for the current range",
+      "type": "table"
     },
     {
       "datasource": {
@@ -137,33 +117,308 @@
         "y": 18
       },
       "id": 3,
-      "type": "ubica-keplergl-panel",
       "options": {
-        "showSidePanel": true,
+        "basemap": "auto",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": true,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [
+                    40,
+                    63,
+                    93
+                  ],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [
+                    4,
+                    9,
+                    17
+                  ],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [
+                    114.75,
+                    114.75,
+                    114.75
+                  ],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [
+                    9,
+                    16,
+                    29
+                  ],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [
+                    17,
+                    35,
+                    48
+                  ]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": -3.290422681059312,
+              "longitude": -78.77098918298188,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_2D",
+              "maxPitch": 60,
+              "pitch": 0,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 8.158204096379365
+            },
+            "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
+              ],
+              "mapStyles": {},
+              "styleType": "dark-matter",
+              "threeDBuildingColor": [
+                15.035172933000911,
+                15.035172933000911,
+                15.035172933000911
+              ],
+              "topLayerGroups": {},
+              "visibleLayerGroups": {
+                "3d building": false,
+                "border": false,
+                "building": true,
+                "label": true,
+                "land": true,
+                "road": true,
+                "water": true
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [
+                {
+                  "animationWindow": "free",
+                  "dataId": [
+                    "grafana-A"
+                  ],
+                  "enabled": true,
+                  "id": "2iucvx19t",
+                  "name": [
+                    "time"
+                  ],
+                  "plotType": {
+                    "aggregation": "average",
+                    "defaultTimeFormat": "L",
+                    "interval": "2-day",
+                    "type": "lineChart"
+                  },
+                  "speed": 1,
+                  "type": "timeRange",
+                  "value": [
+                    1754667847732,
+                    1786635844026
+                  ],
+                  "view": "enlarged",
+                  "yAxis": {
+                    "name": "cloud_cover",
+                    "type": "real"
+                  }
+                }
+              ],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": true
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "scene_id"
+                      },
+                      {
+                        "format": "L LTS",
+                        "name": "time"
+                      },
+                      {
+                        "name": "cloud_cover"
+                      },
+                      {
+                        "name": "raster_url"
+                      }
+                    ],
+                    "grafana-A-raster": []
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "olcj0jy"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "color": [
+                      34,
+                      63,
+                      154
+                    ],
+                    "columns": {},
+                    "dataId": "grafana-A-raster",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "A",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "colorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#4C0035",
+                          "#880030",
+                          "#B72F15",
+                          "#D6610A",
+                          "#EF9100",
+                          "#FFC300"
+                        ],
+                        "name": "Global Warming",
+                        "type": "sequential"
+                      },
+                      "colormapId": "cfastie",
+                      "dynamicColor": false,
+                      "enableTerrain": true,
+                      "enableTerrainTopView": false,
+                      "endDate": "2020-03-02",
+                      "filterEnabled": false,
+                      "filterRange": [
+                        -1,
+                        1
+                      ],
+                      "gammaContrastFactor": 1,
+                      "linearRescalingFactor": [
+                        0,
+                        1
+                      ],
+                      "nonLinearRescaling": true,
+                      "opacity": 1,
+                      "preset": "trueColor",
+                      "saturationValue": 1,
+                      "showTileBorders": false,
+                      "showTileDebugInfo": false,
+                      "sigmoidalBiasFactor": 0.5,
+                      "sigmoidalContrastFactor": 0,
+                      "stacSearchProvider": "earth-search",
+                      "startDate": "2020-02-02",
+                      "useSTACSearching": false,
+                      "zoomOffset": 0
+                    }
+                  },
+                  "id": "olcj0jy",
+                  "type": "rasterTile",
+                  "visualChannels": {}
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "rasterColormap": "",
+        "rasterPainted": false,
+        "rasterServerUrl": "https://titiler.ubica.ec",
+        "saveRequest": 1,
+        "showSidePanel": false,
         "timeSync": "off",
+        "tripLayerMode": "table",
         "variableMappings": [
           {
             "field": "",
+            "source": "coordinate",
             "variable": "lat",
-            "variableTo": "lng",
-            "source": "coordinate"
+            "variableTo": "lng"
           }
-        ],
-        "mapConfig": {
-          "version": "v1",
-          "config": {
-            "mapState": {
-              "latitude": -2.905,
-              "longitude": -79.0,
-              "zoom": 9.5,
-              "bearing": 0,
-              "pitch": 0,
-              "dragRotate": false
-            }
-          }
-        },
-        "rasterServerUrl": "https://titiler.ubica.ec"
+        ]
       },
+      "pluginVersion": "1.0.0",
       "targets": [
         {
           "datasource": {
@@ -173,11 +428,29 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "WITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=100'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT\n  f->>'id'                                     AS scene_id,\n  (f->'properties'->>'datetime')::TIMESTAMP    AS acquired,\n  (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n  f->'assets'->'visual'->>'href'               AS raster_url\nFROM features\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE < 60\nORDER BY acquired DESC\nLIMIT 1",
-          "refId": "A"
+          "rawSql": "WITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=100'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT\n  f->>'id'                                     AS scene_id,\n  (f->'properties'->>'datetime')::TIMESTAMP    AS acquired,\n  (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n  f->'assets'->'visual'->>'href'               AS raster_url\nFROM features\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE < 50\nORDER BY acquired DESC\nLIMIT 50",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
         }
       ],
-      "title": "Sentinel-2 over Cuenca"
+      "title": "Sentinel-2 over Cuenca",
+      "type": "ubica-keplergl-panel"
     },
     {
       "datasource": {
@@ -185,6 +458,30 @@
         "uid": "infinity"
       },
       "description": "A zonal statistic computed by TiTiler: it clips the red band with the polygon and returns the summary. One HTTP request, zero pixels in the browser.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "text",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "displayName": "reflectancia media",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        }
+      },
       "gridPos": {
         "h": 8,
         "w": 8,
@@ -192,8 +489,12 @@
         "y": 18
       },
       "id": 4,
-      "type": "stat",
       "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -201,51 +502,41 @@
           "fields": "",
           "values": false
         },
+        "showPercentChange": false,
         "textMode": "value_and_name",
-        "colorMode": "value",
-        "graphMode": "none"
+        "wideLayout": true
       },
-      "fieldConfig": {
-        "defaults": {
-          "decimals": 0,
-          "unit": "none",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "text"
-          },
-          "displayName": "reflectancia media"
-        },
-        "overrides": []
-      },
+      "pluginVersion": "13.2.0",
       "targets": [
         {
-          "refId": "A",
-          "datasource": {
-            "type": "yesoreyeram-infinity-datasource",
-            "uid": "infinity"
-          },
-          "type": "json",
-          "source": "url",
-          "format": "table",
-          "parser": "backend",
-          "url": "http://titiler/cog/statistics?url=${cog:percentencode}",
-          "url_options": {
-            "method": "POST",
-            "data": "{\"type\": \"Feature\", \"properties\": {\"name\": \"Cuenca\"}, \"geometry\": {\"type\": \"Polygon\", \"coordinates\": [[[-79.05, -2.95], [-78.95, -2.95], [-78.95, -2.85], [-79.05, -2.85], [-79.05, -2.95]]]}}",
-            "body_type": "raw",
-            "body_content_type": "application/json"
-          },
-          "root_selector": "properties.statistics.b1",
           "columns": [
             {
               "selector": "mean",
               "text": "mean",
               "type": "number"
             }
-          ]
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "format": "table",
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "properties.statistics.b1",
+          "source": "url",
+          "type": "json",
+          "url": "http://titiler/cog/statistics?url=${cog:percentencode}",
+          "url_options": {
+            "body_content_type": "application/json",
+            "body_type": "raw",
+            "data": "{\"type\": \"Feature\", \"properties\": {\"name\": \"Cuenca\"}, \"geometry\": {\"type\": \"Polygon\", \"coordinates\": [[[-79.05, -2.95], [-78.95, -2.95], [-78.95, -2.85], [-79.05, -2.85], [-79.05, -2.95]]]}}",
+            "method": "POST"
+          }
         }
       ],
-      "title": "Mean red reflectance · Cuenca area"
+      "title": "Mean red reflectance · Cuenca area",
+      "type": "stat"
     },
     {
       "datasource": {
@@ -253,6 +544,30 @@
         "uid": "infinity"
       },
       "description": "The value of the pixel under the point you click on the map. The coordinates arrive through the $​lat and $​lng variables, published by the map panel itself.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "text",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "displayName": "reflectancia (banda roja)",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        }
+      },
       "gridPos": {
         "h": 8,
         "w": 8,
@@ -260,8 +575,12 @@
         "y": 26
       },
       "id": 5,
-      "type": "stat",
       "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -269,43 +588,33 @@
           "fields": "",
           "values": false
         },
+        "showPercentChange": false,
         "textMode": "value_and_name",
-        "colorMode": "value",
-        "graphMode": "none"
+        "wideLayout": true
       },
-      "fieldConfig": {
-        "defaults": {
-          "decimals": 0,
-          "unit": "none",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "text"
-          },
-          "displayName": "reflectancia (banda roja)"
-        },
-        "overrides": []
-      },
+      "pluginVersion": "13.2.0",
       "targets": [
         {
-          "refId": "A",
+          "columns": [],
           "datasource": {
             "type": "yesoreyeram-infinity-datasource",
             "uid": "infinity"
           },
-          "type": "json",
-          "source": "url",
           "format": "table",
           "parser": "backend",
+          "refId": "A",
+          "root_selector": "values",
+          "source": "url",
+          "type": "json",
           "url": "http://titiler/cog/point/${lng},${lat}?url=${cog:percentencode}",
           "url_options": {
-            "method": "GET",
-            "data": ""
-          },
-          "root_selector": "values",
-          "columns": []
+            "data": "",
+            "method": "GET"
+          }
         }
       ],
-      "title": "The pixel value where you click"
+      "title": "The pixel value where you click",
+      "type": "stat"
     },
     {
       "datasource": {
@@ -313,25 +622,45 @@
         "uid": "duckdb"
       },
       "description": "RT_CubeClip + RT_CubeStats_Agg with GROUP BY: one row per zone, joined to the population already living in the table. Four zones or four thousand, it is the same query.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        }
+      },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 31
+        "y": 34
       },
       "id": 6,
-      "type": "table",
       "options": {
+        "cellHeight": "sm",
         "showHeader": true
       },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "left"
-          }
-        },
-        "overrides": []
-      },
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -345,7 +674,8 @@
           "refId": "A"
         }
       ],
-      "title": "Zonal statistics computed in DuckDB"
+      "title": "Zonal statistics computed in DuckDB",
+      "type": "table"
     },
     {
       "datasource": {
@@ -357,28 +687,36 @@
         "h": 14,
         "w": 12,
         "x": 12,
-        "y": 31
+        "y": 34
       },
       "id": 7,
-      "type": "ubica-keplergl-panel",
       "options": {
-        "showSidePanel": true,
-        "timeSync": "off",
+        "basemap": "auto",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": true,
         "mapConfig": {
-          "version": "v1",
           "config": {
             "mapState": {
-              "latitude": -2.95,
-              "longitude": -79.0,
-              "zoom": 10,
               "bearing": 0,
+              "dragRotate": false,
+              "latitude": -2.95,
+              "longitude": -79,
               "pitch": 0,
-              "dragRotate": false
+              "zoom": 10
             }
-          }
+          },
+          "version": "v1"
         },
-        "rasterServerUrl": "https://titiler.ubica.ec"
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "rasterColormap": "",
+        "rasterPainted": false,
+        "rasterServerUrl": "https://titiler.ubica.ec",
+        "showSidePanel": true,
+        "timeSync": "off",
+        "tripLayerMode": "table"
       },
+      "pluginVersion": "1.0.0",
       "targets": [
         {
           "datasource": {
@@ -392,7 +730,89 @@
           "refId": "A"
         }
       ],
-      "title": "NDVI computed in SQL"
+      "title": "NDVI computed in SQL",
+      "type": "ubica-keplergl-panel"
     }
-  ]
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 42,
+  "tags": [
+    "kepler",
+    "raster"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allowCustomValue": true,
+        "current": {
+          "text": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/17/M/QS/2026/8/S2B_17MQS_20260813_0_L2A/B04.tif",
+          "value": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/17/M/QS/2026/8/S2B_17MQS_20260813_0_L2A/B04.tif"
+        },
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "description": "The red band of the same scene the map draws, re-resolved whenever the range changes.",
+        "hide": 2,
+        "includeAll": false,
+        "label": "Red band of the scene",
+        "multi": false,
+        "name": "cog",
+        "options": [],
+        "query": "WITH resp AS (\n  SELECT http_get(\n    'https://earth-search.aws.element84.com/v1/search'\n    || '?collections=sentinel-2-l2a'\n    || '&bbox=-79.10,-3.05,-78.90,-2.85'\n    || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n    || '&limit=100'\n  ) AS r\n),\nfeatures AS (\n  SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp\n)\nSELECT f->'assets'->'red'->>'href'\nFROM features\nWHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE < 60\nORDER BY (f->'properties'->>'datetime')::TIMESTAMP DESC\nLIMIT 1",
+        "refresh": 2,
+        "regex": "",
+        "regexApplyTo": "value",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "-2.766308",
+          "value": "-2.766308"
+        },
+        "hide": 2,
+        "label": "Lat",
+        "name": "lat",
+        "query": "-2.766308",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "-78.861623",
+          "value": "-78.861623"
+        },
+        "hide": 2,
+        "label": "Lng",
+        "name": "lng",
+        "query": "-78.861623",
+        "skipUrlSync": false,
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-2y",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "browser",
+  "title": "Raster — COG and STAC through TiTiler",
+  "uid": "raster-bench"
 }
