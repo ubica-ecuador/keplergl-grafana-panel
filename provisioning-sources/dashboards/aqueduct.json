@@ -2,7 +2,7 @@
   "annotations": {
     "list": []
   },
-  "description": "Prueba de concepto: la capa Aqueduct 4.0 de WRI servida en vivo desde ArcGIS Online al panel kepler.gl, sin descarga previa. Recortada a Sudamérica porque global (61.488 polígonos, 58 MiB, 171 s) no cabe en un dashboard. La paginación del mapa usa el modo `replace` con marcadores ${__pagination.*} en la URL para esquivar un bug de aliasing de Infinity 4.0.0 que hace que el modo `query` devuelva la misma página N veces — ver docs/aqueduct-arcgis-findings.md.",
+  "description": "Proof of concept: WRI's Aqueduct 4.0 layer served live from ArcGIS Online to the kepler.gl panel, with no prior download. Clipped to South America because global (61,488 polygons, 58 MiB, 171 s) does not fit in a dashboard. The map's pagination uses `replace` mode with ${__pagination.*} markers in the URL, to dodge an aliasing bug in Infinity 4.0.0 that makes `query` mode return the same page N times.",
   "editable": true,
   "id": null,
   "links": [],
@@ -18,59 +18,59 @@
     "list": [
       {
         "name": "indicador",
-        "label": "Indicador",
+        "label": "Indicator",
         "type": "custom",
         "hide": 0,
         "multi": false,
         "includeAll": false,
         "skipUrlSync": false,
-        "query": "Riesgo hídrico global : w_awr_def_tot, Estrés hídrico base : bws, Agotamiento de agua : bwd, Riesgo de inundación fluvial : rfr, Riesgo de sequía : drr, Agua potable no mejorada : udw, Saneamiento no mejorado : usa",
+        "query": "Overall water risk : w_awr_def_tot,Baseline water stress : bws,Water depletion : bwd,Riverine flood risk : rfr,Drought risk : drr,Unimproved drinking water : udw,Unimproved sanitation : usa",
         "options": [
           {
-            "text": "Riesgo hídrico global",
+            "text": "Overall water risk",
             "value": "w_awr_def_tot",
             "selected": true
           },
           {
-            "text": "Estrés hídrico base",
+            "text": "Baseline water stress",
             "value": "bws",
             "selected": false
           },
           {
-            "text": "Agotamiento de agua",
+            "text": "Water depletion",
             "value": "bwd",
             "selected": false
           },
           {
-            "text": "Riesgo de inundación fluvial",
+            "text": "Riverine flood risk",
             "value": "rfr",
             "selected": false
           },
           {
-            "text": "Riesgo de sequía",
+            "text": "Drought risk",
             "value": "drr",
             "selected": false
           },
           {
-            "text": "Agua potable no mejorada",
+            "text": "Unimproved drinking water",
             "value": "udw",
             "selected": false
           },
           {
-            "text": "Saneamiento no mejorado",
+            "text": "Unimproved sanitation",
             "value": "usa",
             "selected": false
           }
         ],
         "current": {
-          "text": "Riesgo hídrico global",
+          "text": "Overall water risk",
           "value": "w_awr_def_tot",
           "selected": true
         }
       },
       {
         "name": "pais",
-        "label": "Países",
+        "label": "Countries",
         "type": "custom",
         "hide": 0,
         "multi": true,
@@ -161,39 +161,39 @@
       },
       {
         "name": "detalle",
-        "label": "Detalle geométrico",
+        "label": "Geometric detail",
         "type": "custom",
         "hide": 0,
         "multi": false,
         "includeAll": false,
         "skipUrlSync": false,
-        "query": "Media — 9 páginas, ~2 s : 0.02, Fina — más nítida, más lenta : 0.01, Gruesa — más rápida : 0.05",
+        "query": "Medium — 9 pages ~2 s : 0.02,Fine — sharper but slower : 0.01,Coarse — faster : 0.05",
         "options": [
           {
-            "text": "Media — 9 páginas, ~2 s",
+            "text": "Medium — 9 pages ~2 s",
             "value": "0.02",
             "selected": true
           },
           {
-            "text": "Fina — más nítida, más lenta",
+            "text": "Fine — sharper but slower",
             "value": "0.01",
             "selected": false
           },
           {
-            "text": "Gruesa — más rápida",
+            "text": "Coarse — faster",
             "value": "0.05",
             "selected": false
           }
         ],
         "current": {
-          "text": "Media — 9 páginas, ~2 s",
+          "text": "Medium — 9 pages ~2 s",
           "value": "0.02",
           "selected": true
         }
       },
       {
         "name": "area",
-        "label": "Área dibujada (WKT)",
+        "label": "Drawn area (WKT)",
         "type": "textbox",
         "hide": 0,
         "current": {
@@ -206,7 +206,7 @@
       },
       {
         "name": "areaRings",
-        "label": "Área (Esri JSON)",
+        "label": "Area (Esri JSON)",
         "type": "query",
         "hide": 2,
         "datasource": {
@@ -231,7 +231,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Riesgo hídrico — WRI Aqueduct 4.0 (Sudamérica)",
+  "title": "Water risk — WRI Aqueduct 4.0 (South America)",
   "uid": "aqueduct-sa",
   "version": 2,
   "weekStart": "",
@@ -248,13 +248,13 @@
       "id": 1,
       "options": {
         "mode": "markdown",
-        "content": "# Riesgo hídrico — WRI Aqueduct 4.0\n\nLos polígonos son cuencas de **HydroBASINS nivel 6 cortadas por provincia**, servidas en vivo desde el\nFeature Service de ArcGIS Online, **sin descarga previa ni ETL**. Cambiar el indicador o el país vuelve a\nconsultar el servicio.\n\n| | |\n|---|---|\n| Fuente | [Aqueduct 4.0 Water Risk](https://www.arcgis.com/home/item.html?id=c784f4ebddaf43c8b816612fb62e7e5b) · **Aqueduct 4.0, World Resources Institute (WRI)**, alojado por Esri. Licencia CC BY 4.0 |\n| Cobertura | 13 países de Sudamérica · 6.469 unidades con dato para estrés hídrico (de 6.717) |\n| Cómo llega | Infinity → `f=geojson` → columna `geojson` → el panel la detecta y kepler la dibuja |\n\n**Tres cosas que hay que saber para no leer mal el mapa:**\n\n- **Los huecos son «No Data».** Aqueduct codifica la ausencia de dato como `-9999`, y un solo `-9999`\n  arruinaría la escala de color, así que se filtran en origen (`${indicador}_score >= 0`). Lo que falta en\n  el mapa es dato que no existe, no riesgo cero.\n- **«Arid and Low Water Use» puntúa alto por convención**, no por estrés medido: son 493 unidades áridas\n  con poco uso de agua. Aparecen en rojo sin que haya competencia por el recurso.\n- **El nivel 6 es grueso.** Sirve para lectura nacional o regional. No sirve para escala municipal.\n\n**Filtrar dibujando sobre el mapa.** Con la herramienta de dibujo del mapa (polígono o rectángulo)\npuedes acotar el análisis: el ranking por país, la tabla y el contador «En selección» pasan a describir\nsolo las cuencas que toque la figura. **El mapa a propósito no se filtra** — se queda mostrando todo el\námbito como contexto, porque si su propia consulta dependiera de la figura, al encoger el dataset ya no\npodría volver a ensancharse desde el mapa. Para volver al total, borra la figura.\n\n*Si «Con dato» y el número de polígonos del mapa no coinciden, la paginación de Infinity está\ntruncando: requiere `GF_PLUGIN_PAGINATION_MAX_PAGES` en el contenedor.*"
+        "content": "# Water risk — WRI Aqueduct 4.0\n\nThe polygons are **HydroBASINS level 6 basins cut by province**, served live from the ArcGIS Online Feature Service, **with no prior download and no ETL**. Changing the indicator or the country queries the service again.\n\n| | |\n|---|---|\n| Source | [Aqueduct 4.0 Water Risk](https://www.arcgis.com/home/item.html?id=c784f4ebddaf43c8b816612fb62e7e5b) · **Aqueduct 4.0, World Resources Institute (WRI)**, hosted by Esri. Licensed CC BY 4.0 |\n| Coverage | 13 countries of South America · 6,469 units with data for water stress (out of 6,717) |\n| How it arrives | Infinity → `f=geojson` → a `geojson` column → the panel detects it and kepler draws it |\n\n**Three things to know so as not to misread the map:**\n\n- **The gaps are \"No Data\".** Aqueduct encodes a missing value as `-9999`, and a single `-9999` would\n  wreck the colour scale, so they are filtered at source (`$​{indicador}_score >= 0`). What is missing\n  from the map is data that does not exist, not zero risk.\n- **\"Arid and Low Water Use\" scores high by convention**, not from measured stress: these are 493 arid\n  units with little water use. They come out red without there being any competition for the resource.\n- **Level 6 is coarse.** It works for a national or regional read. It does not work at municipal scale.\n\n**Filtering by drawing on the map.** With the map's draw tool (polygon or rectangle) you can narrow the\nanalysis: the ranking by country, the table and the \"In selection\" counter come to describe only the\nbasins the shape touches. **The map deliberately does not filter itself** — it goes on showing the whole\nextent as context, because if its own query depended on the shape, shrinking the dataset would leave no\nway to widen it again from the map. To go back to the total, delete the shape.\n\n*If \"With data\" and the number of polygons on the map disagree, Infinity's pagination is truncating: it\nneeds `GF_PLUGIN_PAGINATION_MAX_PAGES` in the container.*"
       },
       "transparent": true
     },
     {
       "type": "ubica-keplergl-panel",
-      "title": "$indicador — cuencas de Sudamérica",
+      "title": "$indicador — basins of South America",
       "gridPos": {
         "h": 20,
         "w": 17,
@@ -545,7 +545,7 @@
     },
     {
       "type": "stat",
-      "title": "Unidades",
+      "title": "Units",
       "id": 3,
       "gridPos": {
         "h": 5,
@@ -649,7 +649,7 @@
           ]
         }
       ],
-      "description": "Izquierda: recuento autoritativo de todo el ámbito, calculado por ArcGIS sin paginar — es el contraste que delata un truncado de paginación en el mapa. Derecha: lo que encierra el polígono dibujado. Sin figura, coinciden.",
+      "description": "Left: the authoritative count over the whole extent, computed by ArcGIS without paging — it is the contrast that gives away a pagination truncation on the map. Right: what the drawn polygon encloses. With no shape, they agree.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -678,7 +678,7 @@
     },
     {
       "type": "barchart",
-      "title": "Score medio por país",
+      "title": "Mean score by country",
       "id": 4,
       "gridPos": {
         "h": 15,
@@ -758,7 +758,7 @@
           ]
         }
       ],
-      "description": "Agregado en el servidor de ArcGIS: una petición, ~2 KB, sin paginación.",
+      "description": "Aggregated on the ArcGIS server: one request, ~2 KB, no pagination.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -795,7 +795,7 @@
     },
     {
       "type": "table",
-      "title": "Las 20 unidades con peor $indicador",
+      "title": "The 20 units with the worst $indicador",
       "id": 5,
       "gridPos": {
         "h": 11,
@@ -964,7 +964,7 @@
           ]
         }
       ],
-      "description": "Ordenado por el servicio (`orderByFields`), 20 filas, sin geometría ni paginación.",
+      "description": "Ordered by the service (`orderByFields`), 20 rows, no geometry and no pagination.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -1006,6 +1006,10 @@
               {
                 "id": "decimals",
                 "value": 2
+              },
+              {
+                "id": "displayName",
+                "value": "Score"
               }
             ]
           }

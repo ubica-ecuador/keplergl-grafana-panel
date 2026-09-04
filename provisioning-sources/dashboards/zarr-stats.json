@@ -1,7 +1,7 @@
 {
   "uid": "zarr-stats",
-  "title": "Zarr — estadística de lo que dibujas",
-  "description": "Zonal sobre un Zarr piramidado: la figura dibujada se mide en el mes que la capa está pintando, con una sola petición compartida.",
+  "title": "Zarr — statistics of what you draw",
+  "description": "Zonal statistics over a pyramided Zarr: the shape you draw is measured in the month the layer is painting, with a single shared request.",
   "tags": [
     "zarr",
     "raster",
@@ -26,7 +26,7 @@
       },
       {
         "name": "area",
-        "label": "Zona dibujada (WKT)",
+        "label": "Drawn area (WKT)",
         "hide": 0,
         "type": "textbox",
         "query": "",
@@ -59,7 +59,7 @@
       },
       {
         "name": "zona",
-        "label": "zona",
+        "label": "zone",
         "hide": 2,
         "type": "query",
         "datasource": {
@@ -79,7 +79,7 @@
       },
       {
         "name": "mes",
-        "label": "Mes medido",
+        "label": "Month measured",
         "hide": 0,
         "type": "query",
         "datasource": {
@@ -111,7 +111,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "# Estadística de lo que dibujas, sobre un Zarr piramidado\n\nTemperatura media mensual del demo climático de CarbonPlan. **Dibuja** un polígono con la\nherramienta del mapa y **arrastra el tiempo**: los números miden esa zona en ese mes.\n\nEste store está escrito **para mapas** —pirámide de 6 niveles, chunks de 128×128, ya en Web\nMercator— y se nota en las dos mitades:\n\n| | Pintar una tesela | Medir una zona |\n|---|---|---|\n| Este store | 0,22–2,2 s, plano en todos los zooms | **1,0–1,5 s** |\n| GPCP, sin pirámide | 1,2–17,5 s, peor al alejar | 6,9–21,1 s |\n\nLos cuatro paneles de la derecha **comparten una sola petición**: la tabla la hace, y los dos\nnúmeros la reutilizan con el datasource `-- Dashboard --`. Añadir un número más cuesta cero peticiones.\n\nLa cadena sigue siendo la misma: el mapa publica la figura como WKT, una variable de consulta la\npasa a GeoJSON con DuckDB, e Infinity la manda a `/zarr/statistics` con la misma `sel` que la capa.\n\n**El reloj del mapa es quien manda** (`Time range sync: Slider writes variables`): al soltar la\nbarra, el panel escribe la ventana en `mapFrom`/`mapTo`, eso recalcula el mes y los tres paneles se\nrefrescan. Con cualquier otro modo las variables no se publican y la estadística se queda pegada al\nfinal del rango del dashboard.\n"
+        "content": "# Statistics of what you draw, over a pyramided Zarr\n\nMonthly mean temperature from CarbonPlan's climate demo. **Draw** a polygon with the map's tool and **drag the time bar**: the numbers measure that area in that month.\n\nThis store is written **for maps** — a six-level pyramid, 128×128 chunks, already in Web Mercator — and it shows in both halves:\n\n| | Drawing a tile | Measuring an area |\n|---|---|---|\n| This store | 0.22–2.2 s, flat at every zoom | **1.0–1.5 s** |\n| GPCP, no pyramid | 1.2–17.5 s, worse as you zoom out | 6.9–21.1 s |\n\nThe four panels on the right **share a single request**: the table makes it, and the two figures reuse it through the `-- Dashboard --` datasource. One more figure costs zero requests.\n\nThe chain is the same as ever: the map publishes the shape as WKT, a query variable turns it into GeoJSON with DuckDB, and Infinity sends it to `/zarr/statistics` with the same `sel` the layer uses.\n\n**The map's clock is in charge** (`Time range sync: Slider writes variables`): on releasing the bar, the panel writes the window into `mapFrom`/`mapTo`, that recomputes the month, and the three panels refresh. In any other mode the variables are not published and the statistics stay pinned to the end of the dashboard's range."
       }
     },
     {
@@ -121,7 +121,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "title": "Temperatura media mensual · dibuja una zona y arrastra el tiempo",
+      "title": "Monthly mean temperature · draw an area and drag the time bar",
       "gridPos": {
         "h": 21,
         "w": 15,
@@ -174,8 +174,8 @@
         "type": "yesoreyeram-infinity-datasource",
         "uid": "infinity"
       },
-      "title": "La petición · todas las estadísticas",
-      "description": "El único POST a /zarr/statistics del dashboard. Los dos paneles de abajo reutilizan este resultado.",
+      "title": "The request · every statistic",
+      "description": "The dashboard's only POST to /zarr/statistics. The two panels below reuse this result.",
       "gridPos": {
         "h": 6,
         "w": 9,
@@ -254,8 +254,8 @@
     {
       "type": "stat",
       "id": 3,
-      "title": "Temperatura media en la zona",
-      "description": "Reutiliza el resultado de la tabla de arriba: cero peticiones propias.",
+      "title": "Mean temperature in the area",
+      "description": "Reuses the result of the table above: no requests of its own.",
       "datasource": {
         "type": "datasource",
         "uid": "-- Dashboard --"
@@ -300,8 +300,8 @@
     {
       "type": "stat",
       "id": 6,
-      "title": "Mínimo en la zona",
-      "description": "El extremo frío, que en un campo de temperatura dice tanto como la media: es donde hiela. Reutiliza el mismo frame, sin una petición propia.",
+      "title": "Minimum in the area",
+      "description": "The cold extreme, which in a temperature field says as much as the mean: it is where it freezes. Reuses the same frame, without a request of its own.",
       "datasource": {
         "type": "datasource",
         "uid": "-- Dashboard --"
@@ -346,12 +346,12 @@
     {
       "type": "stat",
       "id": 4,
-      "title": "Máximo en la zona",
+      "title": "Maximum in the area",
       "datasource": {
         "type": "datasource",
         "uid": "-- Dashboard --"
       },
-      "description": "El extremo cálido. Mismo frame, otro campo.",
+      "description": "The warm extreme. Same frame, another field.",
       "gridPos": {
         "h": 5,
         "w": 9,

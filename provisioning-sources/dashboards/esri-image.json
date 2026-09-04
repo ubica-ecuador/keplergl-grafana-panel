@@ -1,7 +1,7 @@
 {
   "uid": "esri-image",
-  "title": "ArcGIS Image Service — el mundo en una capa",
-  "description": "Prueba de la capa esriImage: un solo servicio, sin fichero, sin firma y sin servidor de teselas propio, cubriendo el planeta a cualquier zoom.",
+  "title": "ArcGIS Image Service — the world in one layer",
+  "description": "A test of the esriImage layer: a single service, with no file, no signing and no tile server of our own, covering the planet at any zoom.",
   "tags": [
     "arcgis",
     "kepler",
@@ -22,7 +22,7 @@
           "text": "2023",
           "value": "2023"
         },
-        "label": "Año del ráster",
+        "label": "Raster year",
         "name": "anio",
         "type": "custom",
         "query": "2017, 2018, 2019, 2020, 2021, 2022, 2023",
@@ -36,7 +36,7 @@
     {
       "id": 1,
       "type": "ubica-keplergl-panel",
-      "title": "Cobertura del suelo — servida por el ImageServer",
+      "title": "Land cover — served by the ImageServer",
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"

@@ -2,7 +2,7 @@
   "annotations": {
     "list": []
   },
-  "description": "Precipitación diaria de CHIRPS sobre Sudamérica: el timeline recorre los días y el mapa pinta la lluvia de cada uno, con las curvas que dicen dónde mirar.",
+  "description": "CHIRPS daily precipitation over South America: the timeline walks the days and the map draws each day's rain, with the curves telling you where to look.",
   "editable": true,
   "id": null,
   "links": [],
@@ -24,7 +24,7 @@
   },
   "timepicker": {},
   "timezone": "utc",
-  "title": "Lluvia — CHIRPS sobre Sudamérica · PMTiles sin servidor",
+  "title": "Rainfall — CHIRPS over South America · PMTiles, no server",
   "uid": "precip-pmtiles",
   "version": 1,
   "weekStart": "",
@@ -41,7 +41,7 @@
       "title": "",
       "options": {
         "mode": "markdown",
-        "content": "# Lluvia diaria — la misma, sin servidor de teselas\n\nEste tablero dibuja **exactamente los mismos sesenta días** que [el original](/d/precip-time), y la diferencia está en cómo llegan a la pantalla.\n\nAllí cada día es un **COG** que un TiTiler recorta en teselas cuando el mapa las pide. Aquí cada día es un **PMTiles**: un archivo con la pirámide ya dibujada dentro, que kepler lee por sí mismo pidiendo trozos del fichero. La opción «Raster tile server» del panel está **vacía a propósito** — no hay nada que configurar, y ese es justo el caso de quien instale el plugin desde el catálogo de Grafana y no tenga dónde levantar un servidor.\n\nEl precio se ve en el panel de capas: **solo hay opacidad**. Ni rampa, ni reescalado, ni elegir banda — el azul se decidió al hornear el archivo, y ya no hay números debajo que repintar. En el original esos controles siguen ahí.\n\nLo que cuesta cada forma, medido sobre estos mismos datos: el COG de un día pesa 631 KB y necesita un servidor vivo; el archivo pesa unos 470 KB y no necesita ninguno."
+        "content": "# Daily rainfall — the same, with no tile server\n\nThis board draws **exactly the same sixty days** as [the original](/d/precip-time), and the difference is in how they reach the screen.\n\nThere, each day is a **COG** that a TiTiler cuts into tiles when the map asks for them. Here, each day is a **PMTiles**: one file with the pyramid already drawn inside it, which kepler reads by itself by asking for pieces of the file. The panel's \"Raster tile server\" option is **deliberately empty** — there is nothing to configure, and that is precisely the case of someone who installs the plugin from Grafana's catalogue and has nowhere to stand a server up.\n\nThe price shows in the layer panel: **there is only opacity**. No ramp, no rescaling, no choosing a band — the blue was decided when the file was baked, and there are no numbers underneath left to repaint. In the original those controls are still there.\n\nWhat each form costs, measured on these same data: a day's COG weighs 631 KB and needs a live server; the archive weighs about 470 KB and needs none."
       }
     },
     {
@@ -49,7 +49,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Un COG por día. El timeline elige cuál se pinta y el relevo entre escenas se solapa, así que no hay parpadeo al arrastrar.",
+      "description": "One COG per day. The timeline picks which one is drawn, and the handover between scenes overlaps, so dragging does not flicker.",
       "gridPos": {
         "h": 20,
         "w": 15,
@@ -89,14 +89,14 @@
           "refId": "A"
         }
       ],
-      "title": "Lluvia del día · leída del archivo, sin servidor de teselas"
+      "title": "The day's rain · read from the archive, with no tile server"
     },
     {
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Calculado sobre los rásters originales en coma flotante, antes de cuantizar: la intensidad es la media de las celdas que registraron lluvia, no de toda la región.",
+      "description": "Computed on the original floating-point rasters, before quantising: the intensity is the mean of the cells that recorded rain, not of the whole region.",
       "gridPos": {
         "h": 11,
         "w": 9,
@@ -181,14 +181,14 @@
           "refId": "A"
         }
       ],
-      "title": "Cómo llovió cada día"
+      "title": "How it rained each day"
     },
     {
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "El mismo calendario en cifras. El máximo es el de una sola celda de 5 km, así que sube mucho más que la media.",
+      "description": "The same calendar as figures. The maximum is that of a single 5 km cell, so it runs far higher than the mean.",
       "gridPos": {
         "h": 9,
         "w": 9,
@@ -234,7 +234,7 @@
           "refId": "A"
         }
       ],
-      "title": "El calendario en cifras"
+      "title": "The calendar in figures"
     }
   ]
 }

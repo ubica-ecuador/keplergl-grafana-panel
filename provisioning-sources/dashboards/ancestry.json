@@ -1,7 +1,7 @@
 {
   "uid": "ancestry-census",
-  "title": "Ancestry Mosaic — EE.UU. por census tract (ACS 2024)",
-  "description": "Réplica del mapa de ascendencias del New York Times sobre ubica-keplergl-panel, con datos abiertos del American Community Survey 2024.",
+  "title": "Ancestry Mosaic — the U.S. by census tract (ACS 2024)",
+  "description": "A replica of The New York Times' ancestry map on ubica-keplergl-panel, with open data from the American Community Survey 2024.",
   "tags": [
     "kepler",
     "sources",
@@ -31,7 +31,7 @@
       {
         "type": "query",
         "name": "grupo",
-        "label": "Grupo (coroplético)",
+        "label": "Group (choropleth)",
         "datasource": {
           "type": "motherduck-duckdb-datasource",
           "uid": "duckdb"
@@ -51,7 +51,7 @@
       {
         "type": "textbox",
         "name": "west",
-        "label": "Oeste",
+        "label": "West",
         "hide": 2,
         "query": "-88.4",
         "current": {
@@ -64,7 +64,7 @@
       {
         "type": "textbox",
         "name": "south",
-        "label": "Sur",
+        "label": "South",
         "hide": 2,
         "query": "41.55",
         "current": {
@@ -77,7 +77,7 @@
       {
         "type": "textbox",
         "name": "east",
-        "label": "Este",
+        "label": "East",
         "hide": 2,
         "query": "-87.2",
         "current": {
@@ -90,7 +90,7 @@
       {
         "type": "textbox",
         "name": "north",
-        "label": "Norte",
+        "label": "North",
         "hide": 2,
         "query": "42.15",
         "current": {
@@ -115,15 +115,15 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "# El mosaico de ascendencias de Estados Unidos\n\nRéplica, sobre este panel, del mapa de ascendencias que *The New York Times* publicó en julio de 2026.\nEl NYT no publica su dataset derivado, pero sí declara su fuente, y esa fuente es abierta: **American\nCommunity Survey 2024 (5 años)** del U.S. Census Bureau, obra del gobierno federal y por tanto de\ndominio público. Los fixtures se reconstruyen con `testdata/make-ancestrydata.py` — sin API key.\n\n**158 grupos · 85.044 census tracts · 338 millones de personas.** Tablas\n[B04006](https://api.census.gov/data/2024/acs/acs5/groups/B04006.html) (ascendencia declarada),\n[B03001](https://api.census.gov/data/2024/acs/acs5/groups/B03001.html) (origen hispano detallado) y\n[B02015](https://api.census.gov/data/2024/acs/acs5/groups/B02015.html) (grupos asiáticos detallados);\ngeometría de los *cartographic boundary files* TIGER 2024.\n\n**Cómo leerlo.** La ascendencia en la ACS es autodeclarada y de respuesta múltiple, y las tres tablas\nno comparten universo, así que los totales por tract se renormalizan donde se solapan; el remanente\naparece como *sin reportar*. El Census tiene prohibido por ley preguntar por religión, de modo que\ngrupos definidos por ella no existen en estos datos. Y sólo siete grupos tienen color propio: un mapa\nde puntos es un problema de color *todos-contra-todos*, y siete es el máximo que mantiene los pares\ndistinguibles bajo daltonismo. El resto cae en *Otros grupos* — el gráfico de barras y la tabla\nmuestran qué hay dentro, y el coroplético llega a los 158 de uno en uno.\n\n*Arrastra y haz zoom en el mapa principal: los demás paneles siguen su encuadre.*"
+        "content": "# The ancestry mosaic of the United States\n\nA replica, on this panel, of the ancestry map *The New York Times* published in July 2026. The NYT does not publish its derived dataset, but it does state its source, and that source is open: the **American Community Survey 2024 (5-year)** from the U.S. Census Bureau, a work of the federal government and therefore in the public domain. The fixtures are rebuilt with `testdata/make-ancestrydata.py` — no API key.\n\n**158 groups · 85,044 census tracts · 338 million people.** Tables\n[B04006](https://api.census.gov/data/2024/acs/acs5/groups/B04006.html) (reported ancestry),\n[B03001](https://api.census.gov/data/2024/acs/acs5/groups/B03001.html) (detailed Hispanic origin) and\n[B02015](https://api.census.gov/data/2024/acs/acs5/groups/B02015.html) (detailed Asian groups);\ngeometry from the TIGER 2024 *cartographic boundary files*.\n\n**How to read it.** Ancestry in the ACS is self-reported and multiple-response, and the three tables do not share a universe, so per-tract totals are renormalised where they overlap; the remainder shows up as *not reported*. The Census is forbidden by law from asking about religion, so groups defined by it do not exist in these data. And only seven groups get a colour of their own: a dot map is an all-against-all colour problem, and seven is the most that keeps the pairs distinguishable under colour blindness. The rest fall into *Other groups* — the bar chart and the table show what is inside, and the choropleth reaches all 158 one at a time.\n\n*Pan and zoom on the main map: the other panels follow its viewport.*"
       },
       "transparent": true
     },
     {
       "id": 2,
       "type": "ubica-keplergl-panel",
-      "title": "El mosaico · un punto = 250 personas",
-      "description": "Densidad de puntos, la técnica que reproduce el efecto del mapa del NYT: kepler no mezcla colores, pero el solapamiento de puntos vecinos se lee como una mezcla. Este panel manda el encuadre al resto del dashboard mediante viewportVariables.",
+      "title": "The mosaic · one dot = 250 people",
+      "description": "Dot density, the technique that reproduces the effect of the NYT map: kepler does not blend colours, but the overlap of neighbouring dots reads as a blend. This panel sends its viewport to the rest of the dashboard through viewportVariables.",
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
@@ -307,8 +307,8 @@
     {
       "id": 3,
       "type": "ubica-keplergl-panel",
-      "title": "Ascendencia mayoritaria por census tract",
-      "description": "Polígonos servidos como GeoJSON desde GeoParquet. El recorte usa las cuatro columnas de bounding box en vez de ST_Intersects: un BETWEEN sobre DOUBLE lo poda Parquet por estadísticas de row-group, mientras que la intersección obligaría a decodificar las 85k geometrías. Tope de 6.000 tracts por consulta, las más pobladas primero: a zoom metropolitano entran todas, a zoom nacional verás las ciudades y no el país entero.",
+      "title": "Majority ancestry by census tract",
+      "description": "Polygons served as GeoJSON out of GeoParquet. The clip uses the four bounding-box columns rather than ST_Intersects: a BETWEEN over DOUBLE is pruned by Parquet's row-group statistics, whereas the intersection would force all 85k geometries to be decoded.",
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
@@ -493,8 +493,8 @@
     {
       "id": 4,
       "type": "ubica-keplergl-panel",
-      "title": "Coroplético · $grupo",
-      "description": "Escala secuencial de un solo tono sobre el porcentaje del grupo elegido en la variable. Cubre los 158 grupos, incluidos los que en el mosaico caen dentro de «Otros grupos». Mismo tope de 6.000 tracts que el panel de la izquierda.",
+      "title": "Choropleth · $grupo",
+      "description": "A single-hue sequential scale over the percentage of the group chosen in the variable. It covers all 158 groups, including those the mosaic folds into \"Other groups\". Same 6,000-tract ceiling as the panel on the left.",
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
@@ -666,8 +666,8 @@
     {
       "id": 5,
       "type": "ubica-keplergl-panel",
-      "title": "Hexágonos H3 · población y grupo dominante",
-      "description": "Altura por población, color por grupo dominante. Único mapa que no filtra por encuadre: son 19.083 celdas agregadas y entran enteras.",
+      "title": "H3 hexagons · population and dominant group",
+      "description": "Height by population, colour by dominant group. The only map that does not filter by viewport: these are 19,083 aggregated cells and they fit whole.",
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
@@ -843,8 +843,8 @@
     {
       "id": 6,
       "type": "barchart",
-      "title": "Los 15 grupos más numerosos del encuadre",
-      "description": "Lo que hay dentro de «Otros grupos». Agrega en SQL, a diferencia de los mapas.",
+      "title": "The 15 largest groups in the viewport",
+      "description": "What is inside \"Other groups\". It aggregates in SQL, unlike the maps.",
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
@@ -905,8 +905,8 @@
     {
       "id": 7,
       "type": "table",
-      "title": "Census tracts del encuadre",
-      "description": "Los tres grupos principales de cada tract, que es lo que el color de un mapa no puede mostrar a la vez.",
+      "title": "Census tracts in the viewport",
+      "description": "The top three groups of each tract, which is what a map's colour cannot show at once.",
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
@@ -976,6 +976,10 @@
               {
                 "id": "unit",
                 "value": "short"
+              },
+              {
+                "id": "displayName",
+                "value": "Population"
               }
             ]
           }
@@ -985,7 +989,7 @@
     {
       "id": 8,
       "type": "stat",
-      "title": "Resumen del encuadre",
+      "title": "Viewport summary",
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"

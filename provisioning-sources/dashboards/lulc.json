@@ -2,7 +2,7 @@
   "annotations": {
     "list": []
   },
-  "description": "El ráster global de cobertura del suelo de Sentinel-2 a 10 m, dibujado por el propio ImageServer que mide las cifras: una fuente leída dos veces.",
+  "description": "The global Sentinel-2 land-cover raster at 10 m, drawn by the very ImageServer that measures the figures: one source read twice.",
   "editable": true,
   "id": 2239669715451904,
   "links": [],
@@ -21,7 +21,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "# Cobertura y uso del suelo — Sentinel-2 10 m\n\nLas cifras salen de `computeHistograms`, que cuenta píxeles por clase sobre **la extensión que el mapa\nestá mostrando**: mueve o acerca el mapa, en cualquier parte del mundo, y todo lo de abajo se recalcula\nen medio segundo.\n\n**Y ahora el mapa sale de ese mismo servicio.** El fondo es el ImageServer dibujando la cobertura a\ndemanda, no una copia: mapa y números leen una sola fuente, así que no pueden desacompasarse.\n\n**Los dos años de la comparación, en el mapa.** *Año A* y *Año B* eligen entre qué dos años se mide\ntodo: el mapa trae una capa de cada uno —A abajo, B encima— y el cambio relativo de aquí abajo se\ncalcula justo entre ellos, no entre el primero y el último de la serie. Como B tapa a A, para\ncompararlos parte el visor con el primer botón de la columna de controles del mapa: **Swipe** da una\nbarra vertical que arrastras de un año al otro. La composición por año, más abajo, sigue mostrando\nlos nueve.\n\n| | |\n|---|---|\n| Fuente | [Sentinel-2 10m Land Use/Land Cover Time Series](https://www.arcgis.com/home/item.html?id=cfcb7609de5f478eb7666240902d4d3d) · **Impact Observatory, Microsoft y Esri**. Licencia CC BY 4.0, acceso anónimo |\n| Cobertura | Mundial, 10 m, nueve clases, 2017-2025 |\n| Cómo llega | Cifras: `computeHistograms` → Infinity. Fondo: `exportImage`, una petición por tesela, con la paleta del propio servicio |\n\n**Un servicio, no doscientos ficheros.** Un ImageServer es un *mosaic dataset*: el catálogo de sus\nrásteres, la regla para elegir entre ellos y una pirámide construida sobre el conjunto. Por eso\nresponde para cualquier extensión a cualquier zoom desde un único punto final — el planeta entero en\nuna capa, en poco más de un segundo por tesela. La misma colección repartida en COG son unos\ndoscientos ficheros por año, uno por zona UTM.\n\n**Los años los pone la fuente.** El selector no lleva lista escrita a mano: le pregunta al catálogo\ndel servicio qué años publica. Son los mismos nueve que miden las cifras, sin desfase.\n\n**Lo que hay que saber para no leer mal las cifras:**\n\n- **Impact Observatory desaconseja la comparación píxel a píxel entre años.** Cada año se clasifica por\n  separado y el modelo cambia; parte de la diferencia interanual es método, no territorio. Por eso este\n  tablero lidera con el **cambio relativo**, que es lo que mejor aguanta.\n- **El muestreo va en rejilla Web Mercator, así que el área está sesgada por latitud.** Cada muestra\n  cubre `(escala·cos φ)²` de suelo real: a 60° de latitud, la cuarta parte que en el ecuador. Los km²\n  son **aproximados** y tanto más optimistas para las clases de latitud alta cuanto más alta sea la\n  vista. El **cambio relativo no lo arrastra**, porque los nueve años se miden con la misma rejilla.\n- **La clase «Nubes» es el termómetro de calidad del año.** Cuando sube, el resto de las clases de ese\n  año valen menos. En las pruebas oscila entre 0,2 % y 1,8 % según el año y la región.\n\n**Acotar dibujando.** La herramienta de dibujo del mapa (polígono o rectángulo) sustituye la extensión\nde la vista por la figura: las cifras pasan a describir sólo lo que la figura encierra, a la resolución\nmás fina que el servicio admita. Borra la figura para volver a la vista.\n\n*El servicio corta a 4000 px de lado y a ~13 M de celdas. Por encima de 4000 devuelve\n`{\"histograms\":[]}` **sin error**; por encima de 13 M devuelve un 400 explícito. La variable oculta\n`escala` mantiene la petición en 3500 px de lado, así que ninguno de los dos techos debería alcanzarse.*\n\n\n**Una sola clase, con un clic.** El desplegable **Clase de cobertura** —o un clic sobre la\nclase en el medidor de cambio relativo o en la tabla de detalle— deja **las dos capas** mostrando esa\ncobertura sola: la clase elegida es común a los dos años, que es lo que permite mirar cómo cambió. No la dibuja\nel panel: el servicio publica una función de render por clase, y lo que llega es la clase con su\ncolor y el resto del ráster **transparente**, así que lo que se ve por debajo es el mapa base, no\nun hueco. Las cifras no se mueven: siguen midiendo **todas** las clases, para que aislar sirva\npara mirar y no se confunda con filtrar. Vuelve a *Todas* para recuperar el mapa completo.",
+        "content": "# Land use and land cover — Sentinel-2 10 m\n\nThe figures come from `computeHistograms`, which counts pixels per class over **the extent the map is showing**: pan or zoom, anywhere in the world, and everything below is recomputed in half a second.\n\n**And the map now comes from that same service.** The background is the ImageServer drawing the land cover on demand, not a copy: map and numbers read one source, so they cannot drift apart.\n\n**The two years of the comparison, on the map.** *Year A* and *Year B* choose which two years everything is measured between: the map carries one layer of each — A below, B on top — and the relative change down here is computed between exactly those two, not between the first and last of the series. Since B covers A, split the viewer with the first button in the map's control column to compare them: **Swipe** gives a vertical bar you drag from one year to the other. The composition by year, further down, still shows all nine.\n\n| | |\n|---|---|\n| Source | [Sentinel-2 10m Land Use/Land Cover Time Series](https://www.arcgis.com/home/item.html?id=cfcb7609de5f478eb7666240902d4d3d) · **Impact Observatory, Microsoft and Esri**. Licensed CC BY 4.0, anonymous access |\n| Coverage | Worldwide, 10 m, nine classes, 2017-2025 |\n| How it arrives | Figures: `computeHistograms` → Infinity. Background: `exportImage`, one request per tile, with the service's own palette |\n\n**One service, not two hundred files.** An ImageServer is a *mosaic dataset*: the catalogue of its rasters, the rule for choosing between them, and a pyramid built over the whole set. That is why it answers for any extent at any zoom from a single endpoint — the entire planet in one layer, in little over a second per tile. The same collection split into COGs is some two hundred files per year, one per UTM zone.\n\n**The years come from the source.** The selector carries no hand-written list: it asks the service's catalogue which years it publishes. They are the same nine the figures are measured over, with no drift.\n\n**What you need to know so as not to misread the figures:**\n\n- **Impact Observatory advises against pixel-by-pixel comparison between years.** Each year is classified separately and the model changes; part of the year-on-year difference is method, not territory. That is why this board leads with **relative change**, which holds up best.\n- **The sampling runs on a Web Mercator grid, so area is biased by latitude.** Each sample covers `(scale·cos φ)²` of real ground: at 60° of latitude, a quarter of what it covers at the equator. The km² are **approximate**, and the more so — optimistically — for high-latitude classes the higher the view reaches. **Relative change does not carry that bias**, because all nine years are measured on the same grid.\n- **The \"Clouds\" class is the year's quality thermometer.** When it rises, the rest of that year's classes are worth less. In testing it swings between 0.2 % and 1.8 % depending on the year and the region.\n\n**Narrowing by drawing.** The map's draw tool (polygon or rectangle) replaces the view's extent with the shape: the figures come to describe only what the shape encloses, at the finest resolution the service allows. Delete the shape to go back to the view.\n\n*The service cuts off at 4000 px a side and at ~13 M cells. Above 4000 it returns `{\"histograms\":[]}` **with no error**; above 13 M it returns an explicit 400. The hidden `escala` variable keeps the request at 3500 px a side, so neither ceiling should be reached.*\n\n\n**A single class, with one click.** The **Land cover class** dropdown — or a click on the class in the relative-change gauge or in the detail table — leaves **both layers** showing that cover alone: the chosen class is common to both years, which is what lets you look at how it changed. The panel does not draw it: the service publishes a render function per class, and what arrives is the class in its colour with the rest of the raster **transparent**, so what shows underneath is the base map, not a hole. The figures do not move: they go on measuring **all** the classes, so that isolating is for looking and is not confused with filtering. Go back to *All* to recover the whole map.",
         "mode": "markdown"
       },
       "title": "",
@@ -33,7 +33,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "El fondo es el ráster de 10 m de Azuay, teselado por titiler sobre los GeoTIFF de `testdata/lulc/`; el selector «Año del ráster» lo cambia. Encima, apagadas, nueve capas `bitmap` con el planeta entero a ~10 km por píxel: enciende una para salir de Azuay, apágalas para volver al detalle.",
+      "description": "The background is the 10 m raster of Azuay, tiled by titiler over the GeoTIFFs in `testdata/lulc/`; the \"Raster year\" selector changes it. Above it, switched off, nine `bitmap` layers with the whole planet at ~10 km per pixel: turn one on to leave Azuay, turn them off to come back to the detail.",
       "gridPos": {
         "h": 22,
         "w": 24,
@@ -112,7 +112,7 @@
           "rawSql": "-- Un servicio, no doscientos ficheros.\n--\n-- El ImageServer es un mosaic dataset: el catálogo de sus rásteres, la regla\n-- para elegir entre ellos y una pirámide sobre el conjunto. Responde para\n-- cualquier extensión y cualquier zoom desde un solo punto final, así que\n-- desaparecen el bloque de zonas UTM, la firma SAS y el servidor de teselas.\n--\n-- Y es el MISMO servicio del que salen las cifras de abajo, de modo que mapa y\n-- números no pueden desacompasarse: son una fuente leída dos veces.\nSELECT\n  'https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer' AS esri_url,\n  '{\"mosaicMethod\":\"esriMosaicAttribute\",\"where\":\"Year=' || CAST($anioB AS VARCHAR) || '\"}' AS mosaic_rule,\n\n  -- Y así es como se aísla una clase: el propio servicio publica una función\n  -- «Isolate …» por cobertura, que devuelve esa clase con su color y TODO lo\n  -- demás transparente. No se filtra nada aquí ni se recorta el ráster; se le\n  -- pide otro dibujo. Vacío quiere decir «la cartográfica», que es la de siempre.\n  --\n  -- `$clase` va sin comillas: este datasource ya entrecomilla las variables, y\n  -- '$clase' saldría como ''pct_arboles'' y sería un error de sintaxis. Se acepta\n  -- Se le quita el prefijo porque cada panel nombra sus campos a su manera\n  -- (`pct_` en el gráfico, `km2_` en la tabla), y se acepta además la etiqueta en\n  -- español, que es lo que manda el clic en el medidor de cambio relativo.\n  CASE\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('arboles', 'Árboles')\n      THEN '{\"rasterFunction\":\"Isolate Trees for Visualization and Analysis\"}'\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('pastizal', 'Pastizal/Matorral')\n      THEN '{\"rasterFunction\":\"Isolate Rangelands Areas for Visualization and Analysis\"}'\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('cultivos', 'Cultivos')\n      THEN '{\"rasterFunction\":\"Isolate Crops for Visualization and Analysis\"}'\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('construido', 'Área construida')\n      THEN '{\"rasterFunction\":\"Isolate Built Areas for Visualization and Analysis\"}'\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('suelo_desnudo', 'Suelo desnudo')\n      THEN '{\"rasterFunction\":\"Isolate Bare Ground Areas for Visualization and Analysis\"}'\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('agua', 'Agua')\n      THEN '{\"rasterFunction\":\"Isolate Water Areas for Visualization and Analysis\"}'\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('veg_inundada', 'Vegetación inundada')\n      THEN '{\"rasterFunction\":\"Isolate Flooded Vegeation Areas for Visualization and Analysis\"}'\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('nieve', 'Nieve/Hielo')\n      THEN '{\"rasterFunction\":\"Isolate Snow or Ice for Visualization and Analysis\"}'\n    WHEN regexp_replace($clase, '^(pct_|km2_)', '') IN ('nubes', 'Nubes')\n      THEN '{\"rasterFunction\":\"Isolate Clouds for Visualization and Analysis\"}'\n    WHEN $clase IN ('convertidas', 'Tierras convertidas')\n      THEN '{\"rasterFunction\":\"Isolate Converted Lands for Visualization and Analysis\"}'\n    ELSE ''\n  END AS rendering_rule"
         }
       ],
-      "title": "Cobertura del suelo — los dos años elegidos, servidos por el ImageServer",
+      "title": "Land cover — the two chosen years, served by the ImageServer",
       "type": "ubica-keplergl-panel"
     },
     {
@@ -120,7 +120,7 @@
         "type": "datasource",
         "uid": "-- Dashboard --"
       },
-      "description": "Las tres primeras son cambio relativo entre el primer y el último año. «Nubes» es el mismo cálculo aplicado a la clase de nubes: si se dispara, la comparación de ese par de años vale menos.",
+      "description": "The first three are relative change between the first and last year. \"Clouds\" is the same computation applied to the cloud class: if it spikes, the comparison of that pair of years is worth less.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -169,7 +169,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Árboles"
+                "value": "Trees"
               },
               {
                 "id": "color",
@@ -188,7 +188,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Pastizal/Matorral"
+                "value": "Rangeland"
               },
               {
                 "id": "color",
@@ -207,7 +207,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Cultivos"
+                "value": "Crops"
               },
               {
                 "id": "color",
@@ -226,7 +226,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Área construida"
+                "value": "Built area"
               },
               {
                 "id": "color",
@@ -245,7 +245,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Suelo desnudo"
+                "value": "Bare ground"
               },
               {
                 "id": "color",
@@ -264,7 +264,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Agua"
+                "value": "Water"
               },
               {
                 "id": "color",
@@ -283,7 +283,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Vegetación inundada"
+                "value": "Flooded vegetation"
               },
               {
                 "id": "color",
@@ -302,7 +302,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Nieve/Hielo"
+                "value": "Snow/Ice"
               },
               {
                 "id": "color",
@@ -321,7 +321,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Nubes"
+                "value": "Clouds"
               },
               {
                 "id": "color",
@@ -369,7 +369,7 @@
           "withTransforms": false
         }
       ],
-      "title": "Lo esencial en la vista actual, $anioA → $anioB",
+      "title": "The essentials in the current view, $anioA → $anioB",
       "transformations": [
         {
           "id": "merge",
@@ -396,7 +396,7 @@
         "type": "yesoreyeram-infinity-datasource",
         "uid": "infinity"
       },
-      "description": "Reparto de las muestras entre las nueve clases. El eje está normalizado al 100 %, así que lo que se lee es la proporción, no la superficie. Arrastra el sesgo de latitud descrito en la cabecera.",
+      "description": "How the samples are split across the nine classes. The axis is normalised to 100 %, so what you read is the proportion, not the surface. It carries the latitude bias described in the header.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -429,7 +429,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Año"
+                "value": "Year"
               },
               {
                 "id": "unit",
@@ -449,7 +449,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Árboles"
+                "value": "Trees %"
               },
               {
                 "id": "color",
@@ -468,7 +468,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Pastizal/Matorral"
+                "value": "Rangeland %"
               },
               {
                 "id": "color",
@@ -487,7 +487,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Cultivos"
+                "value": "Crops %"
               },
               {
                 "id": "color",
@@ -506,7 +506,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Área construida"
+                "value": "Built area %"
               },
               {
                 "id": "color",
@@ -525,7 +525,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Suelo desnudo"
+                "value": "Bare ground %"
               },
               {
                 "id": "color",
@@ -544,7 +544,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Agua"
+                "value": "Water %"
               },
               {
                 "id": "color",
@@ -563,7 +563,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Vegetación inundada"
+                "value": "Flooded vegetation %"
               },
               {
                 "id": "color",
@@ -582,7 +582,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Nieve/Hielo"
+                "value": "Snow/Ice %"
               },
               {
                 "id": "color",
@@ -601,7 +601,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Nubes"
+                "value": "Clouds %"
               },
               {
                 "id": "color",
@@ -2149,7 +2149,7 @@
           }
         }
       ],
-      "title": "Composición de la cobertura, por año",
+      "title": "Land-cover composition, by year",
       "transformations": [
         {
           "id": "merge",
@@ -2182,7 +2182,7 @@
         "type": "yesoreyeram-infinity-datasource",
         "uid": "infinity"
       },
-      "description": "Diferencia porcentual entre el primer y el último año de la serie, clase a clase, sobre la vista actual. Es la cifra que menos sufre el sesgo de latitud: los nueve años se miden con la misma rejilla, así que el factor se cancela.",
+      "description": "The percentage difference between the first and last year of the series, class by class, over the current view. It is the figure that suffers least from the latitude bias: all nine years are measured on the same grid, so the factor cancels.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2602,7 +2602,7 @@
           }
         }
       ],
-      "title": "Cambio relativo por clase, $anioA → $anioB",
+      "title": "Relative change by class, $anioA → $anioB",
       "transformations": [
         {
           "id": "merge",
@@ -2660,7 +2660,7 @@
         "type": "datasource",
         "uid": "-- Dashboard --"
       },
-      "description": "«Muestras» es el conteo bruto de píxeles muestreados; los km² son ese conteo por el área media de una muestra, y por tanto aproximados — exactos cuando la vista abarca poca latitud, optimistas para las clases de latitud alta cuando abarca mucha.",
+      "description": "\"Samples\" is the raw count of sampled pixels; the km² are that count times the mean area of a sample, and therefore approximate — exact when the view spans little latitude, optimistic for high-latitude classes when it spans much.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -2693,7 +2693,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Año"
+                "value": "Year"
               },
               {
                 "id": "unit",
@@ -2717,7 +2717,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Muestras"
+                "value": "Samples"
               },
               {
                 "id": "unit",
@@ -2741,7 +2741,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Árboles"
+                "value": "Trees km²"
               },
               {
                 "id": "custom.cellOptions",
@@ -2776,7 +2776,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Pastizal/Matorral"
+                "value": "Rangeland km²"
               },
               {
                 "id": "custom.cellOptions",
@@ -2811,7 +2811,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Cultivos"
+                "value": "Crops km²"
               },
               {
                 "id": "custom.cellOptions",
@@ -2846,7 +2846,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Área construida"
+                "value": "Built area km²"
               },
               {
                 "id": "custom.cellOptions",
@@ -2881,7 +2881,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Suelo desnudo"
+                "value": "Bare ground km²"
               },
               {
                 "id": "custom.cellOptions",
@@ -2916,7 +2916,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Agua"
+                "value": "Water km²"
               },
               {
                 "id": "custom.cellOptions",
@@ -2951,7 +2951,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Vegetación inundada"
+                "value": "Flooded vegetation km²"
               },
               {
                 "id": "custom.cellOptions",
@@ -2986,7 +2986,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Nieve/Hielo"
+                "value": "Snow/Ice km²"
               },
               {
                 "id": "custom.cellOptions",
@@ -3021,7 +3021,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Nubes"
+                "value": "Clouds km²"
               },
               {
                 "id": "custom.cellOptions",
@@ -3086,7 +3086,7 @@
           "withTransforms": false
         }
       ],
-      "title": "Detalle por año, en la vista actual",
+      "title": "Detail by year, in the current view",
       "transformations": [
         {
           "id": "merge",
@@ -3134,7 +3134,7 @@
           "value": "-180"
         },
         "hide": 2,
-        "label": "Vista · oeste",
+        "label": "View · west",
         "name": "mapWest",
         "options": [],
         "query": "-180",
@@ -3147,7 +3147,7 @@
           "value": "-80.0134"
         },
         "hide": 2,
-        "label": "Vista · sur",
+        "label": "View · south",
         "name": "mapSouth",
         "options": [],
         "query": "-80.0134",
@@ -3160,7 +3160,7 @@
           "value": "180"
         },
         "hide": 2,
-        "label": "Vista · este",
+        "label": "View · east",
         "name": "mapEast",
         "options": [],
         "query": "180",
@@ -3173,7 +3173,7 @@
           "value": "84.0326"
         },
         "hide": 2,
-        "label": "Vista · norte",
+        "label": "View · north",
         "name": "mapNorth",
         "options": [],
         "query": "84.0326",
@@ -3193,7 +3193,7 @@
         "description": "El año de partida de la comparación. Sale del catálogo del propio servicio.",
         "hide": 0,
         "includeAll": false,
-        "label": "Año A (fondo)",
+        "label": "Year A (below)",
         "multi": false,
         "name": "anioA",
         "query": "-- Los años los publica el propio servicio: su catálogo es una tabla y lleva\n-- un campo `Year`. Nueve hoy, los mismos que miden las cifras.\nWITH resp AS (\n  SELECT http_get(\n    'https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer/query'\n    || '?where=1%3D1&outFields=Year&returnDistinctValues=true'\n    || '&returnGeometry=false&orderByFields=Year&f=json'\n  ) AS r\n),\nfilas AS (SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp)\nSELECT DISTINCT CAST(f->'attributes'->>'Year' AS VARCHAR) AS anio\nFROM filas\nWHERE f->'attributes'->>'Year' IS NOT NULL\nORDER BY anio DESC\n",
@@ -3216,7 +3216,7 @@
         "description": "El año de llegada. El mapa lo dibuja encima del A, y el cambio se mide de A a B.",
         "hide": 0,
         "includeAll": false,
-        "label": "Año B (encima)",
+        "label": "Year B (on top)",
         "multi": false,
         "name": "anioB",
         "query": "-- Los años los publica el propio servicio: su catálogo es una tabla y lleva\n-- un campo `Year`. Nueve hoy, los mismos que miden las cifras.\nWITH resp AS (\n  SELECT http_get(\n    'https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer/query'\n    || '?where=1%3D1&outFields=Year&returnDistinctValues=true'\n    || '&returnGeometry=false&orderByFields=Year&f=json'\n  ) AS r\n),\nfilas AS (SELECT unnest(json_extract(r->>'body', '$.features[*]')) AS f FROM resp)\nSELECT DISTINCT CAST(f->'attributes'->>'Year' AS VARCHAR) AS anio\nFROM filas\nWHERE f->'attributes'->>'Year' IS NOT NULL\nORDER BY anio DESC\n",
@@ -3228,73 +3228,73 @@
       },
       {
         "current": {
-          "text": "Todas",
+          "text": "All",
           "value": "Todas"
         },
         "description": "El servicio publica una función «Isolate …» por clase; ésta elige cuál aplicar.",
         "hide": 0,
         "includeAll": false,
-        "label": "Clase de cobertura",
+        "label": "Land cover class",
         "multi": false,
         "name": "clase",
         "options": [
           {
             "selected": true,
-            "text": "Todas",
+            "text": "All",
             "value": "Todas"
           },
           {
             "selected": false,
-            "text": "Árboles",
+            "text": "Trees",
             "value": "Árboles"
           },
           {
             "selected": false,
-            "text": "Pastizal/Matorral",
+            "text": "Rangeland",
             "value": "Pastizal/Matorral"
           },
           {
             "selected": false,
-            "text": "Cultivos",
+            "text": "Crops",
             "value": "Cultivos"
           },
           {
             "selected": false,
-            "text": "Área construida",
+            "text": "Built area",
             "value": "Área construida"
           },
           {
             "selected": false,
-            "text": "Suelo desnudo",
+            "text": "Bare ground",
             "value": "Suelo desnudo"
           },
           {
             "selected": false,
-            "text": "Agua",
+            "text": "Water",
             "value": "Agua"
           },
           {
             "selected": false,
-            "text": "Vegetación inundada",
+            "text": "Flooded vegetation",
             "value": "Vegetación inundada"
           },
           {
             "selected": false,
-            "text": "Nieve/Hielo",
+            "text": "Snow/Ice",
             "value": "Nieve/Hielo"
           },
           {
             "selected": false,
-            "text": "Nubes",
+            "text": "Clouds",
             "value": "Nubes"
           },
           {
             "selected": false,
-            "text": "Tierras convertidas",
+            "text": "Converted land",
             "value": "Tierras convertidas"
           }
         ],
-        "query": "Todas,Árboles,Pastizal/Matorral,Cultivos,Área construida,Suelo desnudo,Agua,Vegetación inundada,Nieve/Hielo,Nubes,Tierras convertidas",
+        "query": "All : Todas,Trees : Árboles,Rangeland : Pastizal/Matorral,Crops : Cultivos,Built area : Área construida,Bare ground : Suelo desnudo,Water : Agua,Flooded vegetation : Vegetación inundada,Snow/Ice : Nieve/Hielo,Clouds : Nubes,Converted land : Tierras convertidas",
         "skipUrlSync": false,
         "type": "custom"
       },
@@ -3304,7 +3304,7 @@
           "value": ""
         },
         "hide": 0,
-        "label": "Área dibujada (WKT)",
+        "label": "Drawn area (WKT)",
         "name": "area",
         "options": [],
         "query": "",
@@ -3319,7 +3319,7 @@
         },
         "hide": 2,
         "includeAll": false,
-        "label": "Escala de muestreo (m)",
+        "label": "Sampling scale (m)",
         "multi": false,
         "name": "escala",
         "options": [],
@@ -3338,7 +3338,7 @@
         },
         "hide": 2,
         "includeAll": false,
-        "label": "Área por muestra (km²)",
+        "label": "Area per sample (km²)",
         "multi": false,
         "name": "areaPx",
         "options": [],
@@ -3357,7 +3357,7 @@
         },
         "hide": 2,
         "includeAll": false,
-        "label": "Geometría (Esri JSON)",
+        "label": "Geometry (Esri JSON)",
         "multi": false,
         "name": "geom",
         "options": [],
@@ -3376,7 +3376,7 @@
         },
         "hide": 2,
         "includeAll": false,
-        "label": "Tipo de geometría",
+        "label": "Geometry type",
         "multi": false,
         "name": "geomTipo",
         "options": [],
@@ -3395,7 +3395,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Cobertura y uso del suelo — Sentinel-2 10 m (2017-2025)",
+  "title": "Land use and land cover — Sentinel-2 10 m (2017-2025)",
   "uid": "lulc-mundial",
   "version": 10,
   "weekStart": ""

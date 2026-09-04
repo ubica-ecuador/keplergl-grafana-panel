@@ -2,7 +2,7 @@
   "annotations": {
     "list": []
   },
-  "description": "Precipitación diaria de CHIRPS sobre Sudamérica: el timeline recorre los días y el mapa pinta la lluvia de cada uno, con las curvas que dicen dónde mirar.",
+  "description": "CHIRPS daily precipitation over South America: the timeline walks the days and the map draws each day's rain, with the curves telling you where to look.",
   "editable": true,
   "id": null,
   "links": [],
@@ -24,7 +24,7 @@
   },
   "timepicker": {},
   "timezone": "utc",
-  "title": "Lluvia — CHIRPS diario sobre Sudamérica",
+  "title": "Rainfall — daily CHIRPS over South America",
   "uid": "precip-time",
   "version": 1,
   "weekStart": "",
@@ -41,7 +41,7 @@
       "title": "",
       "options": {
         "mode": "markdown",
-        "content": "# Lluvia diaria sobre Sudamérica\n\nSesenta días de precipitación satelital (**CHIRPS**, 0.05°), uno por barra del timeline. Arrástralo y el mapa muestra la lluvia de ese día; las curvas de la derecha te dicen dónde mirar, porque un pico en **intensidad** o en **área con lluvia** es un día que merece la pena abrir.\n\nNada de esto se descargó entero: CHIRPS publica un COG por día y DuckDB leyó por HTTP solo las nueve teselas que cubren el continente, las recortó y las dejó listas para el mapa.\n\n**Dos cosas que conviene saber de lo que ves.** La lámina está cuantizada —0 a 30 mm sobre un entero— porque kepler no dibuja rásters de coma flotante: **por encima de 30 mm en un día el tono ya no distingue**, aunque las cifras de la derecha, calculadas sobre los datos originales, sí llegan a los 300 mm que caen algunos días. Y se pinta **todo**, también lo que no llovió, con el tono más claro: un campo dibujado solo donde llueve se lee como ruido, no como tiempo. El océano entra en ese mismo tono claro aunque CHIRPS no mida sobre el mar — enmascararlo exigiría un recorte con la línea de costa."
+        "content": "# Daily rainfall over South America\n\nSixty days of satellite precipitation (**CHIRPS**, 0.05°), one per bar of the timeline. Drag it and the map shows that day's rain; the curves on the right tell you where to look, because a peak in **intensity** or in **area with rain** is a day worth opening.\n\nNone of this was downloaded whole: CHIRPS publishes one COG per day, and DuckDB read over HTTP only the nine tiles that cover the continent, clipped them, and left them ready for the map.\n\n**Two things worth knowing about what you are seeing.** The sheet is quantised — 0 to 30 mm over an integer — because kepler will not draw a floating-point raster: **above 30 mm in a day the shade stops distinguishing**, although the figures on the right, computed on the original data, do reach the 300 mm that fall on some days. And **everything** is painted, including where it did not rain, in the lightest shade: a field drawn only where it rains reads as noise rather than as weather. The ocean falls into that same light shade even though CHIRPS does not measure at sea — masking it would need a clip against the coastline."
       }
     },
     {
@@ -49,7 +49,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Un COG por día. El timeline elige cuál se pinta y el relevo entre escenas se solapa, así que no hay parpadeo al arrastrar.",
+      "description": "One COG per day. The timeline picks which one is drawn, and the handover between scenes overlaps, so dragging does not flicker.",
       "gridPos": {
         "h": 20,
         "w": 15,
@@ -90,14 +90,14 @@
           "refId": "A"
         }
       ],
-      "title": "Lluvia del día · arrastra la barra de tiempo"
+      "title": "The day's rain · drag the time bar"
     },
     {
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Calculado sobre los rásters originales en coma flotante, antes de cuantizar: la intensidad es la media de las celdas que registraron lluvia, no de toda la región.",
+      "description": "Computed on the original floating-point rasters, before quantising: the intensity is the mean of the cells that recorded rain, not of the whole region.",
       "gridPos": {
         "h": 11,
         "w": 9,
@@ -182,14 +182,14 @@
           "refId": "A"
         }
       ],
-      "title": "Cómo llovió cada día"
+      "title": "How it rained each day"
     },
     {
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "El mismo calendario en cifras. El máximo es el de una sola celda de 5 km, así que sube mucho más que la media.",
+      "description": "The same calendar as figures. The maximum is that of a single 5 km cell, so it runs far higher than the mean.",
       "gridPos": {
         "h": 9,
         "w": 9,
@@ -235,7 +235,7 @@
           "refId": "A"
         }
       ],
-      "title": "El calendario en cifras"
+      "title": "The calendar in figures"
     }
   ]
 }

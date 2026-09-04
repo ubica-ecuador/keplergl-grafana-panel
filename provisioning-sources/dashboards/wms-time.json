@@ -2,7 +2,7 @@
   "annotations": {
     "list": []
   },
-  "description": "Un WMS temporal como capa del mapa: el reloj del panel recorre las fechas del servicio.",
+  "description": "A temporal WMS as a map layer: the panel's clock walks the service's dates.",
   "editable": true,
   "id": null,
   "links": [],
@@ -18,7 +18,7 @@
     "list": [
       {
         "name": "capa",
-        "label": "Capa del servicio",
+        "label": "Service layer",
         "type": "custom",
         "query": "persiann_pdir_24h,persiann_pdir_48h,persiann_pdir_72h,persiann_no_precipitation,imerg_early_run_24h",
         "current": {
@@ -33,7 +33,7 @@
       },
       {
         "name": "lluvia",
-        "label": "Valor bajo el clic",
+        "label": "Value under the click",
         "type": "textbox",
         "query": "",
         "current": {
@@ -46,7 +46,7 @@
       },
       {
         "name": "area",
-        "label": "Zona dibujada",
+        "label": "Drawn area",
         "type": "textbox",
         "query": "",
         "current": {
@@ -59,7 +59,7 @@
       },
       {
         "name": "mapFrom",
-        "label": "Ventana del mapa · desde",
+        "label": "Map window · from",
         "type": "textbox",
         "query": "",
         "current": {
@@ -73,7 +73,7 @@
       },
       {
         "name": "mapTo",
-        "label": "Ventana del mapa · hasta",
+        "label": "Map window · to",
         "type": "textbox",
         "query": "",
         "current": {
@@ -87,7 +87,7 @@
       },
       {
         "name": "west",
-        "label": "Encuadre · oeste",
+        "label": "Viewport · west",
         "type": "textbox",
         "query": "",
         "current": {
@@ -101,7 +101,7 @@
       },
       {
         "name": "south",
-        "label": "Encuadre · sur",
+        "label": "Viewport · south",
         "type": "textbox",
         "query": "",
         "current": {
@@ -115,7 +115,7 @@
       },
       {
         "name": "east",
-        "label": "Encuadre · este",
+        "label": "Viewport · east",
         "type": "textbox",
         "query": "",
         "current": {
@@ -129,7 +129,7 @@
       },
       {
         "name": "north",
-        "label": "Encuadre · norte",
+        "label": "Viewport · north",
         "type": "textbox",
         "query": "",
         "current": {
@@ -149,7 +149,7 @@
   },
   "timepicker": {},
   "timezone": "utc",
-  "title": "Lluvia — PERSIANN por WMS temporal",
+  "title": "Rainfall — PERSIANN over a temporal WMS",
   "uid": "wms-time",
   "version": 1,
   "weekStart": "",
@@ -166,7 +166,7 @@
       "id": 1,
       "options": {
         "mode": "markdown",
-        "content": "## Lluvia por WMS temporal — PERSIANN sobre Ecuador\n\nEl servicio es de [GeoGLOWS](https://services.geoglows.org/geoserver/): un GeoServer con dimensión `TIME`, que publica una imagen por día y espera que se le pida una fecha en la propia petición.\n\n**Arrastra la barra de tiempo del mapa.** La imagen cambia sin volver a consultar y sin mover el encuadre: la fecha viaja en el `TIME` del GetMap. Un arrastre que se queda entre dos días no pide nada. La consulta no devuelve imágenes — devuelve el servicio, la capa, y las fechas que el propio servicio dice tener.\n\n**Pincha sobre la lluvia** y el panel le pregunta al servicio qué hay bajo ese píxel, en la fecha que estás viendo. El número aparece arriba, en «Valor bajo el clic», y cualquier otro panel puede leerlo.\n\n**Dibuja un polígono** con la herramienta del mapa: el mismo dato que ves pintado se lee en números por WCS —la otra cara del mismo GeoServer— y DuckDB lo recorta por tu zona. El WMS dibuja; el WCS entrega los píxeles. Ni ETL ni segunda fuente — y el número sigue a la misma barra de tiempo que la imagen.\n\nAbajo, la **serie de siete días** sobre esa misma zona: si no hay polígono dibujado, mide lo que estás mirando, así que mover el mapa la recalcula."
+        "content": "## Rainfall over a temporal WMS — PERSIANN over Ecuador\n\nThe service is [GeoGLOWS'](https://services.geoglows.org/geoserver/): a GeoServer with a `TIME` dimension, publishing one image per day and expecting a date to be asked for in the request itself.\n\n**Drag the map's time bar.** The image changes without querying again and without moving the viewport: the date travels in the GetMap's `TIME`. A drag that lands between two days asks for nothing. The query returns no images — it returns the service, the layer, and the dates the service itself says it has.\n\n**Click on the rain** and the panel asks the service what lies under that pixel, on the date you are looking at. The figure appears above, under \"Value under the click\", and any other panel can read it.\n\n**Draw a polygon** with the map's tool: the very data you see painted is read as numbers over WCS — the other face of the same GeoServer — and DuckDB clips it to your area. The WMS draws; the WCS hands over the pixels. No ETL and no second source — and the number follows the same time bar as the image.\n\nBelow, the **seven-day series** over that same area: with no polygon drawn it measures whatever you are looking at, so moving the map recomputes it."
       }
     },
     {
@@ -174,7 +174,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "La consulta nombra el servicio y la capa; el reloj del mapa elige el día. Ningún servidor de teselas interviene: el WMS dibuja sus propias imágenes.",
+      "description": "The query names the service and the layer; the map's clock picks the day. No tile server is involved: the WMS draws its own images.",
       "gridPos": {
         "h": 19,
         "w": 14,
@@ -230,14 +230,14 @@
           "north": "north"
         }
       },
-      "title": "PERSIANN sobre Ecuador · arrastra el tiempo, pincha el mapa"
+      "title": "PERSIANN over Ecuador · drag the time, click the map"
     },
     {
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Lo mismo que alimenta el mapa, como tabla: una fila por día disponible.",
+      "description": "The same thing that feeds the map, as a table: one row per available day.",
       "gridPos": {
         "h": 10,
         "w": 10,
@@ -258,7 +258,7 @@
           "refId": "A"
         }
       ],
-      "title": "Los días que el servicio ofrece",
+      "title": "The days the service offers",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -276,7 +276,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "El mismo dato que pinta el mapa, leído por WCS y recortado en DuckDB. La zona es el polígono que dibujes; si no hay ninguno, el encuadre del mapa. La fecha es la del extremo de la barra de tiempo del mapa.",
+      "description": "The same data the map draws, read over WCS and clipped in DuckDB. The area is whatever polygon you draw; with none, the map's viewport. The date is the one at the end of the map's time bar.",
       "gridPos": {
         "h": 9,
         "w": 10,
@@ -297,7 +297,7 @@
           "refId": "A"
         }
       ],
-      "title": "Lluvia sobre la zona · un día",
+      "title": "Rain over the area · one day",
       "fieldConfig": {
         "defaults": {
           "unit": "none",
@@ -317,6 +317,10 @@
               {
                 "id": "decimals",
                 "value": 0
+              },
+              {
+                "id": "displayName",
+                "value": "cells in the area"
               }
             ]
           }
@@ -341,7 +345,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Los siete días que terminan hoy, sobre el polígono que dibujes — y si no hay ninguno, sobre el encuadre del mapa. Son siete peticiones WCS, una por día: RT_Read exige ruta literal y un rango temporal en WCS devuelve una sola loncha. Unos cuatro segundos por pasada, y se relanza cada vez que mueves el mapa. Hoy aparece en cuanto el servicio publica su pasada; hasta entonces son seis puntos, no un error.",
+      "description": "The seven days ending today, over the polygon you draw — and with none, over the map's viewport. That is seven WCS requests, one per day: RT_Read demands a literal path, and a time range in WCS returns a single image.",
       "gridPos": {
         "h": 9,
         "w": 24,
@@ -362,7 +366,7 @@
           "refId": "A"
         }
       ],
-      "title": "Siete días sobre la zona · media y máximo",
+      "title": "Seven days over the area · mean and maximum",
       "fieldConfig": {
         "defaults": {
           "unit": "none",
@@ -405,6 +409,10 @@
               {
                 "id": "custom.axisLabel",
                 "value": "máximo (mm)"
+              },
+              {
+                "id": "displayName",
+                "value": "maximum mm"
               }
             ]
           }

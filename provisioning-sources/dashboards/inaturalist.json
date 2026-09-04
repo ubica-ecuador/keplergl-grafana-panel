@@ -1,8 +1,8 @@
 {
   "id": null,
   "uid": "inaturalist-ecuador",
-  "title": "Biodiversidad observada — iNaturalist (Ecuador)",
-  "description": "El feed en vivo de iNaturalist de ArcGIS Living Atlas, sobre Ecuador y Galápagos: celdas H3 preagregadas para la cobertura completa y una muestra de observaciones recientes como puntos. Sin descarga y sin ETL.",
+  "title": "Observed biodiversity — iNaturalist (Ecuador)",
+  "description": "ArcGIS Living Atlas' live iNaturalist feed, over Ecuador and the Galápagos: pre-aggregated H3 cells for full coverage and a sample of recent observations as dots. No download and no ETL.",
   "tags": [
     "kepler",
     "inaturalist",
@@ -28,37 +28,37 @@
       {
         "type": "custom",
         "name": "resolucion",
-        "label": "Resolución",
+        "label": "Resolution",
         "description": "El id de capa del servicio, interpolado en la **ruta** de la URL. Infinity interpola `url`, así que es la única forma de cambiar de capa: el número de capa es un segmento de la ruta, no un parámetro.",
         "hide": 0,
         "multi": false,
         "includeAll": false,
         "skipUrlSync": false,
-        "query": "País — H3 R3 : 3,Región — H3 R4 : 4,Provincia — H3 R5 : 5,Cantón — H3 R6 : 6",
+        "query": "Country — H3 R3 : 3,Region — H3 R4 : 4,Province — H3 R5 : 5,Canton — H3 R6 : 6",
         "options": [
           {
-            "text": "País — H3 R3",
+            "text": "Country — H3 R3",
             "value": "3",
             "selected": false
           },
           {
-            "text": "Región — H3 R4",
+            "text": "Region — H3 R4",
             "value": "4",
             "selected": true
           },
           {
-            "text": "Provincia — H3 R5",
+            "text": "Province — H3 R5",
             "value": "5",
             "selected": false
           },
           {
-            "text": "Cantón — H3 R6",
+            "text": "Canton — H3 R6",
             "value": "6",
             "selected": false
           }
         ],
         "current": {
-          "text": "Región — H3 R4",
+          "text": "Region — H3 R4",
           "value": "4",
           "selected": true
         }
@@ -66,31 +66,31 @@
       {
         "type": "custom",
         "name": "capa",
-        "label": "Colorear hexágonos por",
+        "label": "Colour hexagons by",
         "description": "Infinity no interpola `columns[].selector`, pero sí `computed_columns[].selector`. El target pide los trece conteos con alias fijos y una columna calculada elige uno bajo el nombre estable `n`, que es por el que colorea el `mapConfig` guardado.",
         "hide": 0,
         "multi": false,
         "includeAll": false,
         "skipUrlSync": false,
-        "query": "Todas las observaciones : n_total,Aves : aves,Plantas : plantas,Insectos : insectos,Reptiles : reptiles,Anfibios : anfibios,Mamíferos : mamiferos,Peces : peces,Arácnidos : aracnidos,Moluscos : moluscos,Hongos : hongos,Protozoos : protozoos,Otros : otros",
+        "query": "All observations : n_total,Birds : aves,Plants : plantas,Insects : insectos,Reptiles : reptiles,Amphibians : anfibios,Mammals : mamiferos,Fish : peces,Arachnids : aracnidos,Molluscs : moluscos,Fungi : hongos,Protozoa : protozoos,Other : otros",
         "options": [
           {
-            "text": "Todas las observaciones",
+            "text": "All observations",
             "value": "n_total",
             "selected": true
           },
           {
-            "text": "Aves",
+            "text": "Birds",
             "value": "aves",
             "selected": false
           },
           {
-            "text": "Plantas",
+            "text": "Plants",
             "value": "plantas",
             "selected": false
           },
           {
-            "text": "Insectos",
+            "text": "Insects",
             "value": "insectos",
             "selected": false
           },
@@ -100,48 +100,48 @@
             "selected": false
           },
           {
-            "text": "Anfibios",
+            "text": "Amphibians",
             "value": "anfibios",
             "selected": false
           },
           {
-            "text": "Mamíferos",
+            "text": "Mammals",
             "value": "mamiferos",
             "selected": false
           },
           {
-            "text": "Peces",
+            "text": "Fish",
             "value": "peces",
             "selected": false
           },
           {
-            "text": "Arácnidos",
+            "text": "Arachnids",
             "value": "aracnidos",
             "selected": false
           },
           {
-            "text": "Moluscos",
+            "text": "Molluscs",
             "value": "moluscos",
             "selected": false
           },
           {
-            "text": "Hongos",
+            "text": "Fungi",
             "value": "hongos",
             "selected": false
           },
           {
-            "text": "Protozoos",
+            "text": "Protozoa",
             "value": "protozoos",
             "selected": false
           },
           {
-            "text": "Otros",
+            "text": "Other",
             "value": "otros",
             "selected": false
           }
         ],
         "current": {
-          "text": "Todas las observaciones",
+          "text": "All observations",
           "value": "n_total",
           "selected": true
         }
@@ -149,32 +149,32 @@
       {
         "type": "custom",
         "name": "muestra",
-        "label": "Puntos en el mapa",
+        "label": "Dots on the map",
         "description": "El servicio corta en 10 000 rasgos por petición (`maxRecordCountFactor` se satura en 5) y aquí no se pagina, así que esto es el tamaño de la muestra de puntos, no el total. El total lo dice el panel «Esfuerzo».",
         "hide": 0,
         "multi": false,
         "includeAll": false,
         "skipUrlSync": false,
-        "query": "2.000 — rápido : 2000,5.000 : 5000,10.000 — el techo del servicio : 10000",
+        "query": "2000 — fast : 2000,5000 : 5000,10000 — the service ceiling : 10000",
         "options": [
           {
-            "text": "2.000 — rápido",
+            "text": "2000 — fast",
             "value": "2000",
             "selected": false
           },
           {
-            "text": "5.000",
+            "text": "5000",
             "value": "5000",
             "selected": true
           },
           {
-            "text": "10.000 — el techo del servicio",
+            "text": "10000 — the service ceiling",
             "value": "10000",
             "selected": false
           }
         ],
         "current": {
-          "text": "5.000",
+          "text": "5000",
           "value": "5000",
           "selected": true
         }
@@ -182,42 +182,42 @@
       {
         "type": "custom",
         "name": "desdeAnio",
-        "label": "Desde el año",
+        "label": "From year",
         "description": "Se aplica sobre `observed_on_year`, un entero indexado, en vez de sobre `observed_on`, que es un `TimestampOffset`. Más barato y sin líos de husos horarios. Los hexágonos no lo siguen: son totales históricos.",
         "hide": 0,
         "multi": false,
         "includeAll": false,
         "skipUrlSync": false,
-        "query": "Todo el histórico : 1900,Desde 2016 : 2016,Desde 2020 : 2020,Desde 2024 : 2024,Solo 2026 : 2026",
+        "query": "All history : 1900,From 2016 : 2016,From 2020 : 2020,From 2024 : 2024,Only 2026 : 2026",
         "options": [
           {
-            "text": "Todo el histórico",
+            "text": "All history",
             "value": "1900",
             "selected": true
           },
           {
-            "text": "Desde 2016",
+            "text": "From 2016",
             "value": "2016",
             "selected": false
           },
           {
-            "text": "Desde 2020",
+            "text": "From 2020",
             "value": "2020",
             "selected": false
           },
           {
-            "text": "Desde 2024",
+            "text": "From 2024",
             "value": "2024",
             "selected": false
           },
           {
-            "text": "Solo 2026",
+            "text": "Only 2026",
             "value": "2026",
             "selected": false
           }
         ],
         "current": {
-          "text": "Todo el histórico",
+          "text": "All history",
           "value": "1900",
           "selected": true
         }
@@ -225,7 +225,7 @@
       {
         "type": "query",
         "name": "taxon",
-        "label": "Grupo taxonómico",
+        "label": "Taxonomic group",
         "description": "Sale del propio servicio, así que el mapa nunca puede escribir un valor que no esté en la lista. Es variable de consulta y no textbox porque al limpiar un filtro de kepler `useVariableSync` escribe el literal `$__all`, y con varios valores escribe un array: un textbox no admite ninguno de los dos.",
         "datasource": {
           "type": "yesoreyeram-infinity-datasource",
@@ -300,7 +300,7 @@
       },
       {
         "name": "area",
-        "label": "Área dibujada (WKT)",
+        "label": "Drawn area (WKT)",
         "type": "textbox",
         "description": "La escribe el panel al dibujar un polígono (opción `areaVariable`). El mapa no la lee: si lo hiciera, dibujar encogería su propio conjunto de datos y ya no habría forma de volver a ensancharlo desde el mapa.",
         "hide": 0,
@@ -314,7 +314,7 @@
       },
       {
         "name": "areaRings",
-        "label": "Área (Esri JSON)",
+        "label": "Area (Esri JSON)",
         "type": "query",
         "description": "Puente WKT → anillos de Esri. ArcGIS quiere `rings`, el panel publica WKT, y DuckDB es el único conversor del banco. Copiado literal de aqueduct.json.",
         "hide": 2,
@@ -385,14 +385,14 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "## Biodiversidad observada en Ecuador\n\n**755 403 observaciones** de calidad de investigación subidas a\n[iNaturalist](https://www.inaturalist.org/) por 21 243 personas, cubriendo\n23 736 especies del Ecuador continental y de Galápagos. Se leen en vivo del\n*Feature Service* [iNaturalist Species Observations](https://www.arcgis.com/home/item.html?id=996576ae63d4499c924aabea1c3d3768)\nde ArcGIS Living Atlas: **sin descarga y sin ETL**, cada panel es una consulta\nal servicio.\n\nTres cosas que hay que saber para leer bien el mapa:\n\n- **Los puntos son una muestra; los hexágonos son el total.** El servicio corta\n  en 10 000 rasgos por petición y aquí no se pagina, así que la capa de puntos\n  son las N observaciones más recientes. Las celdas H3 vienen ya agregadas por\n  el propio servicio y cubren las 755 403. La cifra buena es la del panel\n  **Esfuerzo de observación**.\n- **Los hexágonos no tienen fecha.** Son totales históricos: no siguen a «Desde\n  el año» ni al pincel temporal del mapa. Todo lo demás sí.\n- **Esto mide esfuerzo de observación, no abundancia.** iNaturalist registra\n  adónde va la gente y qué fotografía. Quito y Galápagos brillan por sus\n  observadores tanto como por su biodiversidad.\n\nPara recortar por un área concreta, dibújala en el mapa: los paneles laterales y\nlas tablas la obedecen."
+        "content": "## Observed biodiversity in Ecuador\n\n**755,403 research-grade observations** uploaded to\n[iNaturalist](https://www.inaturalist.org/) by 21,243 people, covering\n23,736 species of mainland Ecuador and the Galápagos. They are read live from the\n*Feature Service* [iNaturalist Species Observations](https://www.arcgis.com/home/item.html?id=996576ae63d4499c924aabea1c3d3768)\nin the ArcGIS Living Atlas: **no download and no ETL**, every panel is a query\nagainst the service.\n\nThree things to know so as to read the map properly:\n\n- **The dots are a sample; the hexagons are the total.** The service cuts off at\n  10,000 features per request and nothing here pages, so the dot layer is the N\n  most recent observations. The H3 cells come already aggregated by the service\n  itself and cover all 755,403. The figure to trust is the one in the\n  **Observation effort** panel.\n- **The hexagons carry no date.** They are historical totals: they follow neither\n  \"From year\" nor the map's time brush. Everything else does.\n- **This measures observation effort, not abundance.** iNaturalist records where\n  people go and what they photograph. Quito and the Galápagos stand out for their\n  observers as much as for their biodiversity.\n\nTo narrow things to a particular area, draw it on the map: the side panels and the\ntables obey it."
       }
     },
     {
       "id": 2,
       "type": "stat",
-      "title": "Esfuerzo de observación",
-      "description": "Los números autoritativos del ámbito. Los calcula ArcGIS sin paginar, así que si alguna vez dejan de cuadrar con la suma de los hexágonos, es que algo está truncando.\n\n`count_distinct` está rechazado en esta vista, así que las dos cuentas de distintos van en peticiones aparte con `returnDistinctValues`.",
+      "title": "Observation effort",
+      "description": "The authoritative numbers for the extent. ArcGIS computes them without paging, so if they ever stop agreeing with the sum of the hexagons, something is truncating. `count_distinct` is refused on this view, so the two counts come from separate requests.",
       "datasource": {
         "type": "yesoreyeram-infinity-datasource",
         "uid": "infinity"
@@ -651,8 +651,8 @@
     {
       "id": 3,
       "type": "ubica-keplergl-panel",
-      "title": "Dónde se observa — hexágonos H3 y observaciones recientes",
-      "description": "Dos conjuntos de datos con alcances distintos, a propósito. Los **hexágonos** son las celdas H3 que el propio servicio publica ya agregadas: cubren las 755 403 observaciones del ámbito, en una sola petición y sin paginar. Los **puntos** son una muestra de las más recientes, porque el servicio corta en 10 000 rasgos por petición.\n\nEl pincel temporal mueve los puntos y deja quietos los hexágonos: las capas H3 no llevan ningún campo de fecha, son totales históricos.",
+      "title": "Where things are observed — H3 hexagons and recent observations",
+      "description": "Two datasets with deliberately different reach. The **hexagons** are the H3 cells the service itself publishes pre-aggregated: they cover all 755,403 observations of the extent, in one request and without paging. The **dots** are the most recent sample.",
       "datasource": {
         "type": "yesoreyeram-infinity-datasource",
         "uid": "infinity"
@@ -1203,8 +1203,8 @@
     {
       "id": 4,
       "type": "barchart",
-      "title": "Composición taxonómica",
-      "description": "Un `groupByFieldsForStatistics` sobre `taxon_category_name`: una sola petición para los doce grupos.\n\nGrafana abre un menú contextual al pulsar una barra; el filtro es la opción del menú, así que son dos clics, no uno.",
+      "title": "Taxonomic composition",
+      "description": "A `groupByFieldsForStatistics` over `taxon_category_name`: a single request for the twelve groups. Grafana opens a context menu when a bar is pressed; the filter is an option in that menu, so it is two clicks, not one.",
       "datasource": {
         "type": "yesoreyeram-infinity-datasource",
         "uid": "infinity"
@@ -1355,8 +1355,8 @@
     {
       "id": 5,
       "type": "barchart",
-      "title": "Observaciones por año",
-      "description": "Deliberadamente **no** sigue a «Desde el año»: es el panel que se mira para decidir ese valor. Su suelo es el literal 2016.\n\n`anio` va tipado como `string` porque el eje X de un barchart necesita una cadena o un campo temporal, y `observed_on_year` es un entero.",
+      "title": "Observations per year",
+      "description": "Deliberately does **not** follow \"From year\": this is the panel you look at to decide that value. Its floor is the literal 2016. `anio` is typed as a `string` because a bar chart's X axis needs a string or a time field.",
       "datasource": {
         "type": "yesoreyeram-infinity-datasource",
         "uid": "infinity"
@@ -1501,8 +1501,8 @@
     {
       "id": 6,
       "type": "barchart",
-      "title": "Estacionalidad",
-      "description": "Observaciones por mes del año, sumando todo el histórico del ámbito. Mide **esfuerzo de observación**, no abundancia: es cuándo sale la gente a mirar y a fotografiar.",
+      "title": "Seasonality",
+      "description": "Observations by month of the year, summing the whole history of the extent. It measures **observation effort**, not abundance: it is when people go out to look and to photograph.",
       "datasource": {
         "type": "yesoreyeram-infinity-datasource",
         "uid": "infinity"
@@ -1701,8 +1701,8 @@
     {
       "id": 7,
       "type": "table",
-      "title": "Las 20 especies más observadas",
-      "description": "`groupByFieldsForStatistics` sobre la clave taxonómica completa. El enlace va a la ficha del taxón en iNaturalist, construida con el `taxon_id` de la propia clave: `reference_url` es por observación y no sobrevive a la agrupación.",
+      "title": "The 20 most observed species",
+      "description": "`groupByFieldsForStatistics` over the full taxonomic key. The link goes to the taxon's page on iNaturalist, built from the `taxon_id` in that same key: `reference_url` is per observation and does not survive the grouping.",
       "datasource": {
         "type": "yesoreyeram-infinity-datasource",
         "uid": "infinity"
@@ -1830,6 +1830,10 @@
               {
                 "id": "custom.hidden",
                 "value": true
+              },
+              {
+                "id": "displayName",
+                "value": "taxon_id"
               }
             ]
           },
@@ -1845,6 +1849,10 @@
                   "type": "gauge",
                   "mode": "gradient"
                 }
+              },
+              {
+                "id": "displayName",
+                "value": "n"
               }
             ]
           }
@@ -1888,8 +1896,8 @@
     {
       "id": 8,
       "type": "table",
-      "title": "Observaciones recientes",
-      "description": "Aquí sí cabe `reference_url`, que apunta a la observación concreta. Dos enlaces a dos niveles: la fila entera centra el mapa, y la celda «Ficha» abre iNaturalist — una anulación reemplaza los enlaces por defecto solo en ese campo.",
+      "title": "Recent observations",
+      "description": "Here `reference_url` does fit, pointing at the specific observation. Two links at two levels: the whole row centres the map, and the \"Page\" cell opens iNaturalist — an override replaces the default links in that field alone.",
       "datasource": {
         "type": "yesoreyeram-infinity-datasource",
         "uid": "infinity"
@@ -2049,7 +2057,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Ficha"
+                "value": "link"
               },
               {
                 "id": "mappings",
@@ -2141,7 +2149,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "**Fuente** · [iNaturalist Species Observations](https://www.arcgis.com/home/item.html?id=996576ae63d4499c924aabea1c3d3768),\nArcGIS Living Atlas of the World (Esri), servicio público sin credenciales.\nDatos originales de [iNaturalist](https://www.inaturalist.org/), una iniciativa\nconjunta de la California Academy of Sciences y la National Geographic Society;\ncada observación conserva la licencia que le puso quien la subió.\nEl servicio solo publica observaciones *research-grade* (`quality_grade =\n'research'`: con fecha, georreferenciadas, con foto o sonido, y de organismos\nsilvestres) y va aproximadamente **un mes por detrás** — la observación más\nreciente del servicio es del 28 de julio de 2026.\n**Ámbito** · un rectángulo (`-92,0 −5,1 → −75,0 1,7`), no la frontera del país:\narrastra franjas de Colombia, Perú y océano. Recortar de verdad es lo que hace\nel polígono que se dibuja en el mapa."
+        "content": "**Source** · [iNaturalist Species Observations](https://www.arcgis.com/home/item.html?id=996576ae63d4499c924aabea1c3d3768),\nArcGIS Living Atlas of the World (Esri), a public service needing no credentials.\nOriginal data from [iNaturalist](https://www.inaturalist.org/), a joint initiative\nof the California Academy of Sciences and the National Geographic Society;\neach observation keeps the licence whoever uploaded it chose.\nThe service publishes only *research-grade* observations (`quality_grade =\n'research'`: dated, georeferenced, with a photo or sound, and of wild organisms)\nand runs roughly **a month behind** — the most recent observation in the service\nis from 28 July 2026.\n**Extent** · a rectangle (`-92.0 −5.1 → −75.0 1.7`), not the country's border:\nit drags in strips of Colombia, Peru and ocean. Real clipping is what the polygon\ndrawn on the map does."
       }
     }
   ]

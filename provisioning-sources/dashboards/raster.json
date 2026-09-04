@@ -2,7 +2,7 @@
   "annotations": {
     "list": []
   },
-  "description": "COG y STAC sin salir del dashboard: DuckDB busca la escena en el catálogo, TiTiler la sirve en teselas y la mide, y kepler la pinta como ráster.",
+  "description": "COG and STAC without leaving the dashboard: DuckDB finds the scene in the catalogue, TiTiler serves it as tiles and measures it, and kepler draws it as a raster.",
   "editable": true,
   "id": null,
   "links": [],
@@ -17,7 +17,7 @@
     "list": [
       {
         "name": "cog",
-        "label": "Banda roja de la escena",
+        "label": "Red band of the scene",
         "type": "query",
         "datasource": {
           "type": "motherduck-duckdb-datasource",
@@ -64,7 +64,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Ráster — COG y STAC vía TiTiler",
+  "title": "Raster — COG and STAC through TiTiler",
   "uid": "raster-bench",
   "version": 1,
   "weekStart": "",
@@ -81,7 +81,7 @@
       "title": "",
       "options": {
         "mode": "markdown",
-        "content": "# Ráster cloud-native\n\nUna consulta descubre la escena y el mapa la pinta. No hay ETL, ni descarga: DuckDB pregunta al catálogo STAC de Sentinel-2 qué imagen cubre Cuenca dentro del rango del dashboard, devuelve **una fila** con el enlace al COG, y el panel se lo pasa a TiTiler, que sirve las teselas leyendo el fichero remoto por rangos de bytes.\n\nEl mismo servidor sabe además **medir** lo que sirve, así que los dos paneles de abajo sacan números del ráster sin traerse un solo píxel al navegador: la media de la banda roja sobre una zona, y el valor del píxel donde pinches en el mapa.\n\n| Pieza | Quién la pone |\n|---|---|\n| Catálogo | `earth-search.aws.element84.com`, público y sin autenticación |\n| Búsqueda | DuckDB con la extensión `http_client`, parametrizada por el rango |\n| Teselas y estadísticas | el contenedor `titiler` del compose |\n| Dibujo | `RasterTileLayer`, que kepler ya trae |\n\n**Mueve el rango de fechas**: cambian la escena y los números, no el encuadre. Si en el periodo no hay ninguna imagen bajo el 60 % de nubes, la consulta no devuelve nada y no hay ráster que pintar.\n\n**Los dos paneles de abajo no piden nada por HTTP.** La estadística zonal se calcula dentro de DuckDB, uniendo el ráster a la tabla de zonas — cuatro zonas o cuatro mil, una sola consulta. Y el NDVI está calculado en SQL y escrito como COG, que TiTiler sirve igual que una escena remota:\n\n```sql\nCOPY (\n  SELECT r.geometry,\n         -- NDVI (-0.2 .. 0.9) estirado sobre el rango del entero.\n         RT_Cube2TypeUInt16(((n.databand_1 - r.databand_1) / (n.databand_1 + r.databand_1)\n                             + 0.2) / 1.1 * 65535.0) AS ndvi\n  FROM RT_Read('/testdata/raster/cuenca-b04.tif') r\n  JOIN RT_Read('/testdata/raster/cuenca-b08.tif') n ON r.id = n.id)\nTO '/derived/ndvi-cuenca-u16.tif'\nWITH (FORMAT RASTER, DRIVER 'COG', SRS 'EPSG:4326',\n      DATABAND_COLUMNS ['ndvi'], CREATION_OPTIONS ('COMPRESS=DEFLATE'));\n```\n\nEsa consulta **no** está en ningún panel, y es deliberado: escribe un fichero, y un dashboard que refresca cada 30 s no debe rehacer un cálculo cada vez. Se ejecuta una vez —desde Explore, contra el datasource DuckDB— y los paneles leen lo que ya está. Si el panel de NDVI aparece vacío, es que nadie la ha ejecutado todavía.\n\n**El entero no es un detalle**: kepler no pinta un ráster `float32` (se queda sin capa, sin decir nada) y con `uint8` sale un plano de color. `uint16` es lo que funciona."
+        "content": "# Cloud-native raster\n\nOne query discovers the scene and the map draws it. There is no ETL and no download: DuckDB asks Sentinel-2's STAC catalogue which image covers Cuenca inside the dashboard's range, gets back **one row** with the link to the COG, and the panel hands it to TiTiler, which serves the tiles by reading the remote file over byte ranges.\n\nThe same server also knows how to **measure** what it serves, so the two panels below get numbers out of the raster without bringing a single pixel into the browser: the mean of the red band over an area, and the value of the pixel wherever you click on the map.\n\n| Piece | Who provides it |\n|---|---|\n| Catalogue | `earth-search.aws.element84.com`, public and unauthenticated |\n| Search | DuckDB with the `http_client` extension, parameterised by the range |\n| Tiles and statistics | the compose file's `titiler` container |\n| Drawing | `RasterTileLayer`, which kepler already ships |\n\n**Move the date range**: the scene and the numbers change, the viewport does not. If no image in the period is under 60 % cloud, the query returns nothing and there is no raster to draw.\n\n**The two panels below ask nothing over HTTP.** The zonal statistic is computed inside DuckDB, joining the raster to the table of zones — four zones or four thousand, one query. And the NDVI is computed in SQL and written as a COG, which TiTiler serves exactly like a remote scene:\n\n```sql\nCOPY (\n  SELECT r.geometry,\n         -- NDVI (-0.2 .. 0.9) stretched over the integer's range.\n         RT_Cube2TypeUInt16(((n.databand_1 - r.databand_1) / (n.databand_1 + r.databand_1)\n                             + 0.2) / 1.1 * 65535.0) AS ndvi\n  FROM RT_Read('/testdata/raster/cuenca-b04.tif') r\n  JOIN RT_Read('/testdata/raster/cuenca-b08.tif') n ON r.id = n.id)\nTO '/derived/ndvi-cuenca-u16.tif'\nWITH (FORMAT RASTER, DRIVER 'COG', SRS 'EPSG:4326',\n      DATABAND_COLUMNS ['ndvi'], CREATION_OPTIONS ('COMPRESS=DEFLATE'));\n```\n\nThat query is **not** in any panel, and that is deliberate: it writes a file, and a dashboard refreshing every 30 s must not redo a computation each time. It is run once — from Explore, against the DuckDB datasource — and the panels read what is already there. If the NDVI panel comes up empty, nobody has run it yet.\n\n**The integer is not a detail**: kepler will not draw a `float32` raster (the layer is simply missing, with nothing said) and `uint8` comes out as a flat sheet of colour. `uint16` is what works."
       }
     },
     {
@@ -89,7 +89,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "La misma consulta que alimenta el mapa. Aquí se ve en crudo lo que el panel recibe: una fila, con la columna raster_url que el plugin detecta por nombre.",
+      "description": "The same query that feeds the map. Here it is raw, as the panel receives it: one row, with the raster_url column the plugin detects by name.",
       "gridPos": {
         "h": 5,
         "w": 24,
@@ -122,14 +122,14 @@
           "refId": "A"
         }
       ],
-      "title": "La escena elegida para el rango actual"
+      "title": "The scene chosen for the current range"
     },
     {
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "El ráster llega al mapa por la columna raster_url del DataFrame. Al pinchar, el panel publica el lugar en $lat/$lng, que es lo que consulta el panel de la derecha.",
+      "description": "The raster reaches the map through the DataFrame's raster_url column. On a click the panel publishes the place in $​lat/$​lng, which is what the panel on the right queries.",
       "gridPos": {
         "h": 16,
         "w": 16,
@@ -177,14 +177,14 @@
           "refId": "A"
         }
       ],
-      "title": "Sentinel-2 sobre Cuenca"
+      "title": "Sentinel-2 over Cuenca"
     },
     {
       "datasource": {
         "type": "yesoreyeram-infinity-datasource",
         "uid": "infinity"
       },
-      "description": "Estadística zonal calculada por TiTiler: recorta la banda roja con el polígono y devuelve el resumen. Una petición HTTP, cero píxeles en el navegador.",
+      "description": "A zonal statistic computed by TiTiler: it clips the red band with the polygon and returns the summary. One HTTP request, zero pixels in the browser.",
       "gridPos": {
         "h": 8,
         "w": 8,
@@ -245,14 +245,14 @@
           ]
         }
       ],
-      "title": "Reflectancia roja media · zona de Cuenca"
+      "title": "Mean red reflectance · Cuenca area"
     },
     {
       "datasource": {
         "type": "yesoreyeram-infinity-datasource",
         "uid": "infinity"
       },
-      "description": "El valor del píxel bajo el punto que pinches en el mapa. Las coordenadas llegan por las variables $lat y $lng, que publica el propio panel del mapa.",
+      "description": "The value of the pixel under the point you click on the map. The coordinates arrive through the $​lat and $​lng variables, published by the map panel itself.",
       "gridPos": {
         "h": 8,
         "w": 8,
@@ -305,14 +305,14 @@
           "columns": []
         }
       ],
-      "title": "Valor del píxel donde pinchas"
+      "title": "The pixel value where you click"
     },
     {
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "RT_CubeClip + RT_CubeStats_Agg con GROUP BY: una fila por zona, unida a la población que ya vivía en la tabla. Cuatro zonas o cuatro mil, es la misma consulta.",
+      "description": "RT_CubeClip + RT_CubeStats_Agg with GROUP BY: one row per zone, joined to the population already living in the table. Four zones or four thousand, it is the same query.",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -345,14 +345,14 @@
           "refId": "A"
         }
       ],
-      "title": "Estadística zonal calculada en DuckDB"
+      "title": "Zonal statistics computed in DuckDB"
     },
     {
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "NDVI calculado en SQL a partir de dos bandas y escrito como COG; TiTiler lo sirve y kepler lo pinta. El panel no distingue este ráster de una escena remota.",
+      "description": "NDVI computed in SQL from two bands and written as a COG; TiTiler serves it and kepler draws it. The panel cannot tell this raster from a remote scene.",
       "gridPos": {
         "h": 14,
         "w": 12,
@@ -392,7 +392,7 @@
           "refId": "A"
         }
       ],
-      "title": "NDVI calculado en SQL"
+      "title": "NDVI computed in SQL"
     }
   ]
 }
