@@ -3,6 +3,10 @@
 Seven walkthroughs, each one a working dashboard you build from an empty panel. They are ordered so
 that each assumes the one before it, but any of them can be read on its own.
 
+Finished dashboards of the same kind — global seismicity, a wind field over the Andes, imagery on
+the dashboard clock — are **[live at grafana.ubica.ec](https://grafana.ubica.ec/dashboards)**, open
+to anyone as a read-only viewer. Worth a look before or after any of these.
+
 | #   | Tutorial                                                 | Needs       | Teaches                                |
 | --- | -------------------------------------------------------- | ----------- | -------------------------------------- |
 | 1   | [Your first map](./first-map)                            | Infinity    | detection, styling, saving             |

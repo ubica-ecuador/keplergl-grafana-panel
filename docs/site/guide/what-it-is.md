@@ -1,3 +1,11 @@
+---
+# The first Introduction entry in the sidebar is the outbound link to the live
+# demos, and VitePress builds the pager from that same list — without this, the
+# first page of the docs proper offers a "previous page" that walks out of the
+# site. It had no previous page before the demo link existed either.
+prev: false
+---
+
 # What it is
 
 A Grafana panel plugin that runs [kepler.gl](https://kepler.gl) inside the panel, fed by any
@@ -8,6 +16,14 @@ already returns.
 `kepler.gl` is the geospatial visualisation library Uber open-sourced and Foursquare now
 maintains. It renders with [deck.gl](https://deck.gl) on WebGL, which is what lets it draw
 hundreds of thousands of features and animate them.
+
+::: tip See it running before you install anything
+The dashboards built with this panel are live at
+**[grafana.ubica.ec](https://grafana.ubica.ec/dashboards)** — trajectories, wind fields, satellite
+imagery on a clock, polygons out of a database, tables that re-rank as you pan. Anonymous visitors
+are let in as read-only viewers, so you can pan, filter and play them with no account and nothing
+installed.
+:::
 
 ## What runs where
 

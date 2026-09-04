@@ -5,6 +5,10 @@ Five minutes from an installed plugin to a map you can pan. This assumes you hav
 in it. If you have neither, [Tutorial 1](../tutorials/first-map) starts a step earlier and builds
 one from a public URL.
 
+To see where this ends up before installing anything, the
+[live demos](https://grafana.ubica.ec/dashboards) are some finished dashboards on a public
+Grafana, open to anyone as a read-only viewer.
+
 ## 1. Add a panel
 
 New dashboard → **Add visualization** → pick your data source → choose **Kepler Geospatial Maps** in

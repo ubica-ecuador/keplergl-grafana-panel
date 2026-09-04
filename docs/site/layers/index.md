@@ -9,6 +9,10 @@ Two of kepler's own, `a5` and `geohash`, are grid-index layers like H3 and S2 bu
 from a column; they can still be added by hand. See
 [Layers configured with a URL](./url-configured#using-them-anyway).
 
+Many of these are easier to judge moving than in a still: they are drawing right now on the
+**[live demo dashboards](https://grafana.ubica.ec/dashboards)**, which anyone can open as a read-only
+viewer.
+
 Of the six that take a URL instead, two can now be driven by one as well — a query that returns a
 link to imagery draws a `rasterTile` layer, and one that names a service draws a `wms` layer. See
 [Rasters](../guide/data/rasters) and [WMS services](../guide/data/wms). The remaining four, and

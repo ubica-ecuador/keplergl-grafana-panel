@@ -24,6 +24,15 @@ export const VERSIONS = {
  */
 const base = process.env.DOCS_BASE ?? '/keplergl-grafana-panel/';
 
+/**
+ * The published instance: the `grafana-sources` bench behind grafana.ubica.ec,
+ * reachable anonymously as a read-only Viewer, so a reader can open the
+ * dashboards these pages describe without installing anything first.
+ * Kept as a constant because it appears in the nav and the sidebar, and a dead
+ * demo link in both places at once is worse than none.
+ */
+export const DEMO_URL = 'https://grafana.ubica.ec/dashboards';
+
 export default defineConfig({
   base,
   lang: 'en-GB',
@@ -46,7 +55,12 @@ export default defineConfig({
     // which is the same premise the plugin itself is built on.
     search: { provider: 'local' },
 
+    // The live instance comes first on purpose: the fastest way to understand
+    // what the panel does is to drag one of its timelines, and that costs a
+    // reader nothing — the dashboards are public and read-only. VitePress
+    // detects the absolute URL and opens it in a new tab by itself.
     nav: [
+      { text: 'Live demos', link: DEMO_URL },
       { text: 'Guide', link: '/guide/what-it-is' },
       { text: 'Tutorials', link: '/tutorials/' },
       { text: 'Layer gallery', link: '/layers/' },
@@ -57,6 +71,7 @@ export default defineConfig({
       {
         text: 'Introduction',
         items: [
+          { text: 'Live demos ↗', link: DEMO_URL },
           { text: 'What it is', link: '/guide/what-it-is' },
           { text: 'Install', link: '/guide/install' },
           { text: 'Quickstart', link: '/guide/quickstart' },

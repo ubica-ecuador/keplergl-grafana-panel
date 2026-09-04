@@ -9,6 +9,8 @@ An open source alternative to the Foursquare Studio panel, which renders its map
 `studio.foursquare.com` and therefore needs a Foursquare account. This one runs kepler.gl inside the
 panel: no account, no Mapbox token, no hosted service rendering your map.
 
+**🌍 [Live demos](https://grafana.ubica.ec/dashboards)** — dashboards running in a public Grafana. No account and nothing to install: open one and pan, filter and play it yourself.
+
 **📖 [Full documentation](https://ubica-ecuador.github.io/keplergl-grafana-panel/)** — guides,
 tutorials, a layer gallery and a complete option reference.
 
@@ -52,7 +54,9 @@ tutorials, a layer gallery and a complete option reference.
 ## Dashboards built with it
 
 Each one is a Grafana dashboard: no account, no Mapbox token, no hosted service rendering the map.
-Every picture is the panel drawing rows a query returned.
+Every picture is the panel drawing rows a query returned — and every one of them is
+**[live at grafana.ubica.ec](https://grafana.ubica.ec/dashboards)**, read-only, so the screenshots
+below can be checked against the running thing.
 
 <table>
   <tr>
@@ -93,7 +97,8 @@ Every picture is the panel drawing rows a query returned.
   </tr>
 </table>
 
-More of them, and how each was built, in the
+**[Open the live demos →](https://grafana.ubica.ec/dashboards)** — these six and a dozen more, from
+Zarr and PMTiles imagery to wind fields and transit isochrones. How each one was built is in the
 [documentation](https://ubica-ecuador.github.io/keplergl-grafana-panel/).
 
 ## Installing
