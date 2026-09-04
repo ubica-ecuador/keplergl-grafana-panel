@@ -143,7 +143,7 @@
       "options": {
         "showSidePanel": false,
         "timeSync": "variables",
-        "rasterServerUrl": "http://localhost:8088",
+        "rasterServerUrl": "https://titiler.ubica.ec",
         "rasterColormap": "magma",
         "zarrRescale": "-20,40",
         "areaVariable": "area",

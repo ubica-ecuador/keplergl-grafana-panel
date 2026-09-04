@@ -75,7 +75,7 @@
           }
         },
         "rasterColormap": "blues",
-        "rasterServerUrl": "http://localhost:8088"
+        "rasterServerUrl": "https://titiler.ubica.ec"
       },
       "targets": [
         {

@@ -162,7 +162,7 @@
             }
           }
         },
-        "rasterServerUrl": "http://localhost:8088"
+        "rasterServerUrl": "https://titiler.ubica.ec"
       },
       "targets": [
         {
@@ -377,7 +377,7 @@
             }
           }
         },
-        "rasterServerUrl": "http://localhost:8088"
+        "rasterServerUrl": "https://titiler.ubica.ec"
       },
       "targets": [
         {
