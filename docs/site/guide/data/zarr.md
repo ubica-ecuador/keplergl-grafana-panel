@@ -27,6 +27,8 @@ appears in the Field mapping editor — alias them in the query if your columns 
 `zarr_variable` is deliberately narrow. A bare `variable` column is an ordinary thing to find in a
 long-format table, and claiming it would read a frame of unrelated measurements as a Zarr store.
 
+<video src="/img/guide-zarr.mp4" poster="/img/guide-zarr.jpg" autoplay loop muted playsinline controls aria-label="A global monthly temperature array read straight from a Zarr store: dragging the map's clock walks the months, and the mean, minimum and maximum over the drawn area follow" style="width:100%;height:auto;border-radius:8px"></video>
+
 ## A tile server does sit in between
 
 Unlike a WMS, this needs one, and it is the **Raster tile server** panel option — the same option

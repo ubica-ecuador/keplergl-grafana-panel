@@ -17,6 +17,8 @@ not a coincidence, and it is the reason the picker looks different from stock ke
 | No Basemap                | —                 | empty background, no tiles fetched at all   |
 | Self-hosted `style.json`  | you               | for air-gapped installs                     |
 
+<video src="/img/guide-basemap-relief.mp4" poster="/img/guide-basemap-relief.jpg" autoplay loop muted playsinline controls aria-label="The Satellite + relief base map: an accessibility isochrone draped over Esri imagery on real elevation, tilted so the valley around Cuenca shows" style="width:100%;height:auto;border-radius:8px"></video>
+
 ## Why the list is replaced rather than extended
 
 kepler.gl ships nine default base maps, and **five of them are Mapbox styles** — Satellite With

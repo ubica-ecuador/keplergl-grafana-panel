@@ -1,9 +1,9 @@
-# Kepler Geospatial Maps
+# Kepler Geospatial Maps for Grafana
 
 ![The Amazon basin drawn as a velocity field: every tributary traced by streamlines over a dark basemap](https://raw.githubusercontent.com/ubica-ecuador/keplergl-grafana-panel/main/src/img/banner.png)
 
 Interactive [kepler.gl](https://kepler.gl) maps inside Grafana dashboards, fed by any Grafana data
-source. Built for spatio-temporal mobility data — points, trajectories and origin-destination flows.
+source. Built for advanced spatio-temporal mobility data — points, trajectories and origin-destination flows visualizations.
 
 An open source alternative to the Foursquare Studio panel, which renders its map in an iframe against
 `studio.foursquare.com` and therefore needs a Foursquare account. This one runs kepler.gl inside the
@@ -43,9 +43,7 @@ tutorials, a layer gallery and a complete option reference.
 - **No account needed for any base map.** Carto's three, and Esri's three — flat satellite imagery,
   plus satellite and topographic with **real elevation**: tilt the camera and the ground has relief.
   Topographic exists only in this relief form; there is no flat version. Every one can be swapped for
-  a self-hosted `style.json`; kepler's icon library ships with the plugin. The base maps that require
-  a Mapbox account are not offered at all, rather than sitting in the picker blanking the map when
-  clicked.
+  a self-hosted `style.json`; kepler's icon library ships with the plugin.
 
 > **Esri's terms of use.** The satellite and topographic imagery come from Esri's public
 > `services.arcgisonline.com` endpoint, whose terms ask for an ArcGIS account for production use.
@@ -53,7 +51,6 @@ tutorials, a layer gallery and a complete option reference.
 
 ## Dashboards built with it
 
-Each one is a Grafana dashboard: no account, no Mapbox token, no hosted service rendering the map.
 Every picture is the panel drawing rows a query returned — and every one of them is
 **[live at grafana.ubica.ec](https://grafana.ubica.ec/dashboards)**, read-only, so the screenshots
 below can be checked against the running thing.
@@ -98,7 +95,7 @@ below can be checked against the running thing.
 </table>
 
 **[Open the live demos →](https://grafana.ubica.ec/dashboards)** — these six and a dozen more, from
-Zarr and PMTiles imagery to wind fields and transit isochrones. How each one was built is in the
+Zarr, COG, STAC and PMTiles imagery to wind fields and transit isochrones. How each one was built is in the
 [documentation](https://ubica-ecuador.github.io/keplergl-grafana-panel/).
 
 ## Installing
@@ -169,8 +166,7 @@ FROM gps_readings;
 Add a panel, choose **Kepler Geospatial Maps**, and that is a map. Name a column the plugin does not
 recognise and you map it by hand under **Field mapping**, per query.
 
-Two things worth knowing immediately: kepler's default point radius is small, so raise it before
-concluding nothing rendered; and layer styling lives in kepler's store, so capture it with
+Layer and map styling lives in kepler's store, so capture it with
 **Map configuration → Save current map** before reloading the page.
 
 The [quickstart](https://ubica-ecuador.github.io/keplergl-grafana-panel/guide/quickstart.html) walks
@@ -235,16 +231,6 @@ npm run docs:dev
 The [contributing guide](https://ubica-ecuador.github.io/keplergl-grafana-panel/contributing.html)
 covers the three benches, the provisioned dashboards, the browser verification scripts and how the
 documentation screenshots are regenerated.
-
-## Releases
-
-- **v1.0** — cloud-native imagery on the dashboard clock (COG, PMTiles, Zarr, WMS, ArcGIS Image
-  Services), animated velocity fields as a layer, and the five cross-filtering channels.
-- **v0.3** — origin-destination flow layers; map filters driving dashboard variables.
-- **v0.2** — automatic trip layers; dashboard time range synced with kepler's timeline.
-
-The full history is in the
-[changelog](https://github.com/ubica-ecuador/keplergl-grafana-panel/blob/main/CHANGELOG.md).
 
 ## Licence
 

@@ -4,7 +4,7 @@ layout: home
 hero:
   name: Kepler Geospatial Maps
   text: Interactive maps inside Grafana
-  tagline: kepler.gl running in the panel — no account, no Mapbox token, no hosted service rendering your map. Spatio-temporal data from any Grafana data source.
+  tagline: kepler.gl running in the panel. Spatio-temporal data from any Grafana data source.
   image:
     src: /logo-large.svg
     alt: Kepler Geospatial Maps

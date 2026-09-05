@@ -17,6 +17,8 @@ already returns.
 maintains. It renders with [deck.gl](https://deck.gl) on WebGL, which is what lets it draw
 hundreds of thousands of features and animate them.
 
+<video src="/img/guide-accessibility-dashboard.mp4" poster="/img/guide-accessibility-dashboard.jpg" autoplay loop muted playsinline controls aria-label="The panel in a dashboard: clicking the map moves the origin, dragging the time window resizes the transit accessibility isochrone over Cuenca, and the stats and charts beside it follow" style="width:100%;height:auto;border-radius:8px"></video>
+
 ::: tip See it running before you install anything
 The dashboards built with this panel are live at
 **[grafana.ubica.ec](https://grafana.ubica.ec/dashboards)** — trajectories, wind fields, satellite

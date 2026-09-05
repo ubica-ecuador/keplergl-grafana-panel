@@ -12,7 +12,7 @@ FROM vehicle_positions
 ORDER BY vehicle_id, ts;
 ```
 
-![An animated Trip layer, partway through playback](/img/guide-trips.jpg)
+<video src="/img/guide-trips.mp4" poster="/img/guide-trips.jpg" autoplay loop muted playsinline controls aria-label="An animated Trip layer playing back: one participant's trail drawn along the streets as kepler's clock runs, coloured by speed" style="width:100%;height:auto;border-radius:8px"></video>
 
 ## The three columns that make a trip
 

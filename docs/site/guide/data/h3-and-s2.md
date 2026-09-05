@@ -15,6 +15,8 @@ FROM journeys
 GROUP BY 1;
 ```
 
+<video src="/img/guide-h3.mp4" poster="/img/guide-h3.jpg" autoplay loop muted playsinline controls aria-label="An H3 hexagon layer: changing the resolution variable redraws the grid finer, and a rectangle drawn on the map filters the charts beside it" style="width:100%;height:auto;border-radius:8px"></video>
+
 ### How it is detected
 
 Two mechanisms, and it is worth knowing they are different.

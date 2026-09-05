@@ -18,6 +18,8 @@ have none: it never reaches kepler as a column. Alias it in the query if your co
 something else.
 :::
 
+<video src="/img/guide-rasters.mp4" poster="/img/guide-rasters.jpg" autoplay loop muted playsinline controls aria-label="Daily PERSIANN rainfall imagery over Ecuador, one scene per date: dragging the map's time widget walks the scenes, and the statistics under the map follow" style="width:100%;height:auto;border-radius:8px"></video>
+
 ## The query returns an address, not rows
 
 Everything else on these pages draws your rows. This one draws a **file the browser was told where

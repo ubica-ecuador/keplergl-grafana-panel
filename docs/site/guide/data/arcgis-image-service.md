@@ -8,6 +8,8 @@ SELECT 'https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCo
          AS esri_url
 ```
 
+<video src="/img/guide-arcgis-image-service.mp4" poster="/img/guide-arcgis-image-service.jpg" autoplay loop muted playsinline controls aria-label="The Sentinel-2 land-cover Image Service drawn in the panel: panning and zooming redraws it at any extent, and the class composition beside the map follows the view" style="width:100%;height:auto;border-radius:8px"></video>
+
 ## Why this exists beside the raster path
 
 [A raster](./rasters) is a **file**, and a file has one footprint. Global collections are published cut

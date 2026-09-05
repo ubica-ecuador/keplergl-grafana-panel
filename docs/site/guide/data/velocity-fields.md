@@ -12,6 +12,8 @@ WHERE level_hpa = 700
 ORDER BY lat, lon;
 ```
 
+<video src="/img/guide-velocity-fields.mp4" poster="/img/guide-velocity-fields.jpg" autoplay loop muted playsinline controls aria-label="A Flow field layer animating: streamlines traced through a grid of river velocities across South America, particles running along them" style="width:100%;height:auto;border-radius:8px"></video>
+
 ## This one is not a table of places
 
 Every other layer draws your rows. This one does not. The rows describe a **grid of vectors**, and

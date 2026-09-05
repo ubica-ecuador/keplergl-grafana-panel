@@ -4,7 +4,7 @@ A geometry column can hold **GeoJSON, WKT, or raw WKB/EWKB hex**, and all three 
 one is the interesting case: it means a plain `SELECT geom` from PostGIS works, with no conversion
 function wrapped around it.
 
-![Polygons from a PostGIS EWKB geometry column](/img/guide-geometry-ewkb.jpg)
+![Trajectory lines drawn straight from a PostGIS geometry column — the query selects geometry and nothing wraps it](/img/guide-geometry-ewkb.jpg)
 
 ## All of these work
 

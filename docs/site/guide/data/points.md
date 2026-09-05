@@ -3,6 +3,8 @@
 The simplest thing the panel draws, and the one that needs the least from your query: two
 coordinate columns, and everything else is optional.
 
+![A point layer with its time filter: latitude, longitude and time detected from the query, and the timeline animating thirty days of global seismicity](/img/guide-points-over-time.jpg)
+
 ## The minimum
 
 ```sql

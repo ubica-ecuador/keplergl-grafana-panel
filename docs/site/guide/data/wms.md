@@ -17,6 +17,8 @@ The two go together: a service publishes many layers, so a URL without a layer n
 picture. **Both must be present or neither role applies.** Like the raster role, neither appears in
 the Field mapping editor — alias them in the query if your columns are named otherwise.
 
+<video src="/img/guide-rasters.mp4" poster="/img/guide-rasters.jpg" autoplay loop muted playsinline controls aria-label="The PERSIANN precipitation WMS on the map: dragging the time widget makes the service redraw the scene for each date, and the statistics beside it follow" style="width:100%;height:auto;border-radius:8px"></video>
+
 ## Nothing sits in between
 
 There is no tile server to configure here. That is the difference between a WMS and a COG, and the

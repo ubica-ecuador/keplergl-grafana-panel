@@ -4,6 +4,8 @@ The panel does not ask you to describe your data. It reads the columns your quer
 works out what part each one plays, and builds the layer. This page is the whole pipeline in one
 place; the pages after it go role by role.
 
+![A hexagonal grid raised into 3D from one query: the panel read its columns and made them the height and the colour](/img/guide-query-to-map.jpg)
+
 ## The pipeline
 
 <svg viewBox="0 0 720 132" role="img" aria-label="Pipeline: query results, field-role detection, kepler dataset, layer" style="max-width:100%;height:auto;color:var(--vp-c-text-1)">
