@@ -1,83 +1,24 @@
 # Changelog
 
-1.0.0 is the first release submitted to the Grafana plugin catalog, so there is no earlier release
+1.0.0 is the first release published to the Grafana plugin catalog, so there is no earlier release
 for it to be a change against — the entry below lists what the plugin **does**, not what changed to
 get it there. From 1.0.0 onwards, each release documents what changed since the one before it.
 
-## Unreleased
-
-### Changed
-
-- **kepler.gl moves from `3.3.0-alpha.7` to `3.3.0-alpha.9`**, which is now the `latest` tag on npm.
-  There is still no stable 3.3.0, so the pin stays exact. What it brings: kepler registers a
-  twenty-first layer type, `geohash`, alongside the `a5` grid-index layer it already had — neither
-  is detected from a column, so both are added by hand like the URL-configured layers; kepler's own
-  packages drop their nested `lodash` copies for `es-toolkit`; and deck.gl and loaders.gl advance by
-  a patch. The declared dependency set is otherwise unchanged, and the bundle is the same size to
-  within a tenth of a megabyte.
-
-  What it does **not** bring is a fix for any of the four upstream defects this plugin works around.
-  All four were re-read in the installed alpha.9 and are unchanged: the Trip layer's value accessor
-  still takes the feature alone (`tripLayerFix`), the incremental animation still discards the
-  remainder instead of clamping (`animationSweepFix`), the histogram still paints its brush before
-  its bars (`rangeBrushFix`), and the WMS layer still hands deck a plain url with no `TIME`
-  (`wmsTimeLayer`). The four modules stay, and so do the notes saying when to delete them.
-
-### Added
-
-- **A Grafana 13 bench on port 3003** (`grafana-13` in `docker-compose.yaml`). `grafanaDependency`
-  has no upper bound, so every 13.x install offers this plugin, and 13 is where React 18 becomes
-  React 19 — which `@grafana/react-detect` reports the plugin as incompatible with, entirely because
-  of packages inside kepler's tree that are in the built archive. The other three benches all sit at
-  the floor of the supported range; this one is the ceiling, so the claim can be tested rather than
-  assumed.
-
-  It is now tested: the full end-to-end suite passes **48/48** against Grafana 13.2.1, so the
-  react-detect report is a false positive in practice. The one gap is react-color's `defaultProps`,
-  the only finding that is a real behavioural change rather than a legacy API React 19 merely
-  ignores — no spec opens kepler's colour picker, so it was opened by hand instead; it renders and
-  throws nothing.
-
-- **Signing wired into the release workflow for both sides of the catalog review.** A plugin that
-  has never been published cannot be signed — the signature level is granted by the review — so the
-  archive submitted for review has to be unsigned, and is. The token is passed unconditionally
-  regardless, because the action skips its own sign step on an empty one; adding
-  `GRAFANA_ACCESS_POLICY_TOKEN` to the repository secrets after approval turns signing on with no
-  further edit.
-
-### Fixed
-
-Two in the **Base map** option, which in different ways did not do what it says. Both were found
-running against the published instance at `grafana.ubica.ec` and are ported from its deployment
-branch.
-
-- **A self-hosted `style.json` could use neither a dashboard variable nor a relative path.** Panel
-  options are not interpolated by Grafana unless a plugin asks, so `${tilesBase}/style-${year}.json`
-  was fetched literally; and because kepler fetches the style itself, a path like
-  `/public/plugins/…/style.json` came back as Grafana's own SPA shell. The second failed silently —
-  `Map style response is empty` in the console and a quiet fall back to the default base map, with
-  nothing pointing at the option. Both are resolved now, and a variable that expands to nothing
-  counts as no URL rather than as a broken one.
-
-- **A saved map configuration killed the option even when it named no base map.** Any stored
-  configuration outranked it, but a configuration pasted into **Import configuration** — one written
-  by hand to place a layer, say — commonly carries no `mapStyle` at all. For those the option was
-  skipped and nothing set a style in its place, so the map kept kepler's default. A configuration
-  that does name a style still wins, exactly as before; configurations this panel saves always name
-  one, so their behaviour is unchanged.
-
-- The documentation said kepler registers **nineteen** layer types. It registered twenty at
-  `alpha.7` and registers twenty-one at `alpha.9` — the count had never accounted for `a5`. The
-  arithmetic on the layer pages now closes: thirteen driven from query columns, six configured with
-  a URL, two grid-index layers the panel does not detect.
-
-## 1.0.0 (2026-09-01)
+## 1.0.0 (2026-09-05)
 
 Interactive kepler.gl maps inside Grafana dashboards, fed by any Grafana data source: points,
 trajectories, origin-destination flows and animated velocity fields built straight from a query's
 columns; cloud-native imagery walked by the dashboard clock; and five cross-filtering channels
 wiring the map into the rest of the dashboard through variables. No account and no Mapbox token are
 needed for any base map.
+
+### Compatibility
+
+Grafana **12.0.10 or later within 12.0**, **12.1.7 or later within 12.1**, and **12.2.5 or later**,
+13.x included. The earlier patch releases are excluded rather than untested: Grafana only added
+`react/jsx-runtime` to its SystemJS import map in those three, and without it the plugin fails to
+load outright. The end-to-end suite is run against the floor of that range and against 13.2.1, the
+two ends where a break would show first.
 
 ### Data in
 
@@ -145,7 +86,9 @@ PMTiles, Zarr, WMS, and ArcGIS Image Services.**
   ground; topographic exists only in this relief form, with no flat version. The Mapbox-only
   styles that would blank the map on click are not offered at all.
 - A self-hosted MapLibre `style.json`, for an air-gapped install or to skip Esri's and Carto's
-  terms of use entirely.
+  terms of use entirely. Its URL is interpolated before it is fetched, so it can be assembled from
+  dashboard variables, and a path relative to the Grafana instance works as well as an absolute
+  one. A variable that expands to nothing counts as no URL rather than as a broken one.
 - Follows the dashboard theme, base map included.
 - **WebGL 2** required — everything the map draws goes through deck.gl, with no canvas or SVG
   fallback. Each map holds two WebGL contexts, so the practical ceiling is around eight maps on one
@@ -153,7 +96,9 @@ PMTiles, Zarr, WMS, and ArcGIS Image Services.**
 - **Saved map configuration**, stored with the dashboard: layers, styling, filters, interactions,
   split state, base map. Configs pasted from kepler.gl, Foursquare Studio or Dekart are accepted,
   and a layer added by hand through kepler's own **Add Data → Tileset** is saved as a lightweight
-  descriptor rather than as data.
+  descriptor rather than as data. A stored configuration that names a base map outranks the **Base
+  map** option; one that names none — as a hand-written or pasted configuration commonly does —
+  leaves the option in charge.
 - **Split view** — two synchronised panes with different layers visible in each, or a swipe
   curtain between them.
 - Layer configuration survives a data refresh: rows are swapped in under the layers rather than the
