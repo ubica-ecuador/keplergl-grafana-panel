@@ -1,6 +1,6 @@
 {
   "uid": "esriimage",
-  "title": "ArcGIS Image Service por teselas",
+  "title": "ArcGIS Image Service by tiles — test fixture",
   "tags": [
     "arcgis",
     "raster"
@@ -27,13 +27,13 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "# Un servicio, no un fichero\n\nEl panel no descarga ningún ráster: pide al ImageServer que dibuje cada tesela\npor su extensión. La regla de mosaico elige el año, y el formato `png32` es lo\nque hace que el nodata llegue transparente en vez de negro.\n"
+        "content": "> **Test fixture.** This board points at `imagery.test`, a host that does not resolve. It exists so the end-to-end suite can intercept its requests; opened by hand the map stays empty, and that is correct.\n\n# A service, not a file\n\nThe panel downloads no raster: it asks the ImageServer to draw each tile by its extent. The mosaic rule picks the year, and the `png32` format is what makes nodata arrive transparent instead of black."
       }
     },
     {
       "id": 2,
       "type": "ubica-keplergl-panel",
-      "title": "Cobertura del suelo",
+      "title": "Land cover",
       "datasource": {
         "type": "grafana-testdata-datasource",
         "uid": "trlxrdZVk"

@@ -1,6 +1,6 @@
 {
   "uid": "esriimagetime",
-  "title": "ArcGIS Image Service — multitemporal",
+  "title": "ArcGIS Image Service over time — test fixture",
   "tags": [
     "arcgis",
     "raster",
@@ -28,13 +28,13 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "# Un servicio, muchos años\n\nTres años de un servicio **inventado**. Como sus hermanos `zarr` y `cogPainted`, este tablero\napunta a un host que no existe (`imagery.test`): existe para que el e2e intercepte sus\npeticiones, así que **abierto a mano el mapa se queda vacío, y es lo correcto**.\n\nLo que fija es que la regla de mosaico —la que elige el año— la ponga el reloj del mapa, sin\nreconstruir la capa.\n\nPara verlo funcionando de verdad, contra el servicio real de Impact Observatory, están\n`esri-image` y `esri-identify` en el banco de fuentes (`:3002`).\n"
+        "content": "> **Test fixture.** This board points at `imagery.test`, a host that does not resolve. It exists so the end-to-end suite can intercept its requests; opened by hand the map stays empty, and that is correct.\n\n# One service, many years\n\nThree years of an **invented** service. Like its siblings `zarr` and `cogPainted`, this board points at a host that does not exist (`imagery.test`): it exists so the end-to-end suite can intercept its requests, so **opened by hand the map stays empty, and that is correct**.\n\nWhat it pins down is that the mosaic rule — the one that picks the year — is set by the map's clock, without rebuilding the layer.\n\nTo see it working for real, against Impact Observatory's actual service, `esri-image` and `esri-identify` are on the sources bench (`:3002`)."
       }
     },
     {
       "id": 1,
       "type": "ubica-keplergl-panel",
-      "title": "Un servicio, muchos años",
+      "title": "One service, many years",
       "datasource": {
         "type": "grafana-testdata-datasource",
         "uid": "trlxrdZVk"
@@ -97,5 +97,5 @@
       ]
     }
   ],
-  "description": "Tres años de un servicio inventado, con el host de pruebas `imagery.test`: el mapa sólo dibuja cuando el e2e intercepta sus peticiones. Los tableros que funcionan contra el servicio real están en el banco de fuentes."
+  "description": "Three years of an invented service on the test host `imagery.test`: the map draws only when the end-to-end suite intercepts its requests. The boards that run against the real service live on the sources bench."
 }

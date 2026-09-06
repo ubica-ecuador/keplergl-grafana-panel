@@ -1,6 +1,6 @@
 {
   "uid": "zarr-pyramid",
-  "title": "Zarr — pirámide y meses",
+  "title": "Zarr pyramid and months — test fixture",
   "tags": [
     "zarr"
   ],
@@ -24,7 +24,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "# Zarr piramidado y temporal\n\nPirámide `multiscales` de 6 niveles: cada zoom pide su propio nivel por `group`, y más allá del más\nprofundo deck reutiliza lo que tiene. El eje temporal del store no son fechas sino enteros en una\ndimensión llamada `month`, así que la consulta declara ambas cosas y el panel traduce.\n"
+        "content": "> **Test fixture.** This board points at `titiler.test`, a host that does not resolve. It exists so the end-to-end suite can intercept its requests; opened by hand the map stays empty, and that is correct.\n\n# Pyramided and temporal Zarr\n\nA `multiscales` pyramid of 6 levels: each zoom asks for its own level through `group`, and beyond the deepest one deck reuses what it has. The store's time axis is not dates but integers in a dimension called `month`, so the query declares both things and the panel translates."
       }
     },
     {
@@ -34,7 +34,7 @@
         "type": "grafana-testdata-datasource",
         "uid": "trlxrdZVk"
       },
-      "title": "Pirámide · el zoom elige el nivel, el reloj el mes",
+      "title": "Pyramid · the zoom picks the level, the clock picks the month",
       "gridPos": {
         "h": 18,
         "w": 24,

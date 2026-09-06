@@ -1,7 +1,7 @@
 {
   "uid": "cogpainted",
-  "title": "COG pintado por TiTiler",
-  "description": "Una variable de un store Zarr, dibujada por el router /zarr de TiTiler y recorrida con el reloj.",
+  "title": "COG painted by TiTiler — test fixture",
+  "description": "Two scenes of a COG, painted server-side by TiTiler's /cog router and walked with the clock. Points at a host that does not resolve: it draws only under the end-to-end proxy.",
   "tags": [
     "zarr"
   ],
@@ -24,7 +24,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "# COG pintado por el servidor\n\nDos escenas de un COG inventado. A diferencia de la capa ráster de kepler, que pide `.npy`\ny colorea en el navegador, aquí el panel pide `.png` al router `/cog` y el servidor aplica\nla paleta que el fichero lleva dentro.\n\nEs lo único que sirve para un ráster **clasificado**: con nueve clases numeradas 1-11, el\nreescalado del shader las lleva todas al mismo color y el mapa sale de un color liso.\n"
+        "content": "> **Test fixture.** This board points at `titiler.test`, a host that does not resolve. It exists so the end-to-end suite can intercept its requests; opened by hand the map stays empty, and that is correct.\n\n# A COG painted by the server\n\nTwo scenes of an invented COG. Unlike kepler's raster layer, which asks for `.npy` and colours in the browser, here the panel asks the `/cog` router for `.png` and the server applies the palette the file carries inside it.\n\nIt is the only thing that works for a **classified** raster: with nine classes numbered 1-11, the shader's rescaling takes them all to the same colour and the map comes out a flat single tone."
       }
     },
     {
@@ -34,7 +34,7 @@
         "type": "grafana-testdata-datasource",
         "uid": "trlxrdZVk"
       },
-      "title": "COG pintado",
+      "title": "Painted COG",
       "gridPos": {
         "h": 18,
         "w": 24,

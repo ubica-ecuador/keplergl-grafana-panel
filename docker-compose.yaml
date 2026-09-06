@@ -1,4 +1,56 @@
 services:
+  # Fills in dist/ so that `docker compose up grafana` works from a fresh clone.
+  #
+  # The Grafana services bind-mount ../dist rather than building the plugin
+  # themselves, so on a clone that has never been built they would start with an
+  # empty plugin directory and no panel. Grafana's own review guidance says
+  # "running docker compose up from a fresh environment should be enough to make
+  # the dashboard example work", and without this service it is not.
+  #
+  # Costs a developer nothing: with dist/module.js already there — the normal
+  # state on a working machine — it exits immediately without installing
+  # anything, and with node_modules present but dist gone it only rebuilds.
+  # `npm ci` is reached solely by a checkout that has neither, which is exactly
+  # the fresh clone this service exists for.
+  #
+  # node_modules is deliberately NOT shadowed by an anonymous volume. That was
+  # the first attempt, and it backfires: Docker creates the volume's mountpoint
+  # inside /plugin, which is a bind mount, so an *empty* node_modules appears on
+  # the host and any `test -d node_modules` then lies. Installing into the host
+  # directory is safe here because both sides are node 22 on the same platform —
+  # .nvmrc pins 22 and the image is node:22.
+  #
+  # No container_name on purpose, unlike every other service here: a fixed name
+  # is a global lock, and this one-shot container outlives its run in `Exited`
+  # state, so a second checkout of the repo could not start at all. Compose
+  # names it after the project instead.
+  plugin-build:
+    image: node:22-bookworm-slim
+    working_dir: /plugin
+    volumes:
+      - .:/plugin
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        if [ -f dist/module.js ]; then
+          echo "dist/module.js is already there — nothing to build."
+          exit 0
+        fi
+        if [ -z "$$(ls -A node_modules 2>/dev/null)" ]; then
+          echo "No dependencies in this checkout. Installing them (once, a few minutes)."
+          npm ci
+        fi
+        echo "Building the plugin into dist/."
+        npm run build
+        # This container runs as root, so everything it just created is
+        # root-owned inside the host's checkout — which would leave whoever
+        # cloned it unable to `rm -rf dist` or run `npm install` without sudo.
+        # package.json came with the checkout, so its owner is the right one to
+        # hand the new directories to, whatever uid that happens to be.
+        chown -R "$$(stat -c '%u:%g' package.json)" node_modules dist
+
   # Grafana 12.0.10 — the floor of the range declared in src/plugin.json.
   #
   # Not 12.0.0: Grafana only added `react/jsx-runtime` to its SystemJS import map
@@ -25,6 +77,12 @@ services:
     # resolves to Grafana itself.
     extra_hosts:
       - 'host.docker.internal:host-gateway'
+    # Only this one waits for the build. It is the bench a reviewer is pointed
+    # at, and it is the one that has to work from a clone with a single command;
+    # the other three are developer benches, where dist/ is always already there.
+    depends_on:
+      plugin-build:
+        condition: service_completed_successfully
 
   # Same Grafana, strict Content-Security-Policy, on port 3001.
   #

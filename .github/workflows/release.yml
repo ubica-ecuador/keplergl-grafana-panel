@@ -13,6 +13,13 @@ jobs:
   release:
     permissions:
       contents: write
+      # The two below exist for `attestation: true` further down, which has the
+      # build sign a provenance record with this workflow's own OIDC identity:
+      # `id-token` to mint that identity, `attestations` to store the record
+      # against the repository. The build step fails outright without them
+      # rather than quietly skipping the attestation.
+      id-token: write
+      attestations: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -50,3 +57,13 @@ jobs:
       - uses: grafana/plugin-actions/build-plugin@build-plugin/v1.2.0
         with:
           policy_token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
+          # A verifiable record of where this archive came from, which the
+          # catalog checks on submission: without it the report reads "No
+          # provenance attestation. This plugin was built without build
+          # verification." Unlike the signature it does not wait for the
+          # review — it works from the very first tag. Needs the two extra
+          # permissions above.
+          attestation: true
+          # `use_changelog_generator` is deliberately NOT set. It runs
+          # github-changelog-generator and commits the result over CHANGELOG.md,
+          # which here would destroy a changelog written by hand. Leave it off.

@@ -1,7 +1,7 @@
 {
   "uid": "zarr",
-  "title": "Zarr — teselas por TiTiler",
-  "description": "Una variable de un store Zarr, dibujada por el router /zarr de TiTiler y recorrida con el reloj.",
+  "title": "Zarr tiles via TiTiler — test fixture",
+  "description": "One variable of a Zarr store, drawn by TiTiler's /zarr router and walked with the clock. Points at a host that does not resolve: it draws only under the end-to-end proxy.",
   "tags": [
     "zarr"
   ],
@@ -25,7 +25,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "# Zarr por teselas de TiTiler\n\nTres días de una tienda inventada. El panel no lee el Zarr: pide teselas ya pintadas al\nrouter `/zarr` del servidor de teselas, y la fecha viaja en el parámetro `sel`.\n\nLa columna `zarr_time_label` existe porque `sel` se compara **literalmente** contra el índice\ndel store: aquí los sellos van a medianoche y las etiquetas a las 09:00, como en MUR SST.\nDerivar la etiqueta del timestamp daría 00:00 y el servidor respondería 500.\n"
+        "content": "> **Test fixture.** This board points at `titiler.test`, a host that does not resolve. It exists so the end-to-end suite can intercept its requests; opened by hand the map stays empty, and that is correct.\n\n# Zarr by TiTiler tiles\n\nThree days of an invented store. The panel does not read the Zarr: it asks the tile server's `/zarr` router for tiles that are already painted, and the date travels in the `sel` parameter.\n\nThe `zarr_time_label` column exists because `sel` is compared **literally** against the store's index: here the stamps sit at midnight and the labels at 09:00, as in MUR SST. Deriving the label from the timestamp would give 00:00 and the server would answer 500."
       }
     },
     {
@@ -35,7 +35,7 @@
         "type": "grafana-testdata-datasource",
         "uid": "trlxrdZVk"
       },
-      "title": "Lluvia · la fecha viaja en sel",
+      "title": "Rainfall · the date travels in sel",
       "gridPos": {
         "h": 18,
         "w": 24,

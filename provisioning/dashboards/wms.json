@@ -2,7 +2,7 @@
   "annotations": {
     "list": []
   },
-  "description": "Un WMS temporal dibujado desde una sola fila, con las fechas leídas del propio servicio.",
+  "description": "A time-aware WMS drawn from a single row, with the dates read from the service itself.",
   "editable": true,
   "id": null,
   "links": [],
@@ -17,7 +17,7 @@
     "list": [
       {
         "name": "valor",
-        "label": "Valor bajo el clic",
+        "label": "Value under the click",
         "type": "textbox",
         "query": "",
         "current": {
@@ -26,7 +26,7 @@
           "value": ""
         },
         "options": [],
-        "description": "Lo escribe el mapa: pinchar sobre la capa pregunta al servicio por ese píxel, en la fecha que se está viendo."
+        "description": "Written by the map: clicking on the layer asks the service for that pixel, on the date being shown."
       }
     ]
   },
@@ -36,7 +36,7 @@
   },
   "timepicker": {},
   "timezone": "utc",
-  "title": "Kepler.gl — WMS temporal",
+  "title": "Kepler.gl — temporal WMS",
   "uid": "wms",
   "version": 1,
   "weekStart": "",
@@ -53,7 +53,7 @@
       "id": 1,
       "options": {
         "mode": "markdown",
-        "content": "## Un WMS temporal sin infraestructura ninguna\n\nLa consulta es un frame de TestData con **una sola fila**: el servicio y la capa. Ni una fecha.\n\nEl calendario lo pone el servicio. Una capa con dimensión `TIME` publica en su GetCapabilities todas las pasadas que tiene, y el panel las lee de ahí para montar el eje del reloj — así que **arrastra la barra de tiempo del mapa** y la imagen cambia de día, sin datasource, sin ETL y sin servidor de teselas.\n\nSi la consulta trae su propia columna de tiempo, manda ella. Este panel enseña el otro lado del trato: cuando no la trae, el servicio sabe sus fechas mejor que nadie.\n\n**Pincha sobre la lluvia** y el valor del píxel aparece arriba, en «Valor bajo el clic». Un `-99` es lo que este producto usa para «sin dato», no un fallo."
+        "content": "## A temporal WMS with no infrastructure at all\n\nThe query is a TestData frame of **one single row**: the service and the layer. Not one date.\n\nThe calendar comes from the service. A layer with a `TIME` dimension publishes every pass it holds in its GetCapabilities, and the panel reads them from there to build the clock's axis — so **drag the map's time bar** and the image changes day, with no data source, no ETL and no tile server.\n\nIf the query brings a time column of its own, that one wins. This panel shows the other half of the bargain: when it does not, the service knows its own dates better than anyone.\n\n**Click on the rainfall** and the pixel's value appears above, under \"Value under the click\". A `-99` is what this product uses for \"no data\", not a failure."
       }
     },
     {
@@ -61,7 +61,7 @@
         "type": "grafana-testdata-datasource",
         "uid": "trlxrdZVk"
       },
-      "description": "Una fila nombrando servicio y capa. Las fechas salen del GetCapabilities del servicio.",
+      "description": "One row naming the service and the layer. The dates come from the service's GetCapabilities.",
       "gridPos": {
         "h": 18,
         "w": 24,
@@ -105,7 +105,7 @@
           }
         ]
       },
-      "title": "PERSIANN sobre Ecuador · el calendario lo pone el servicio"
+      "title": "PERSIANN over Ecuador · the service supplies the calendar"
     }
   ]
 }
