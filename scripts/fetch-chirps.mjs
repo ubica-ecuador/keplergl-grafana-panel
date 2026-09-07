@@ -12,11 +12,12 @@
  * Two things are deliberate and lossy, and both are visible in the output:
  *
  *  - **Rain is quantised to uint16, 0–100 mm stretched over the integer
- *    range.** kepler cannot draw a float raster at all — it has no maximum
- *    value for the float types, gives up on the pixel range, and leaves a layer
- *    that renders nothing and reports nothing. Above 100 mm in a day the image
- *    saturates; the statistics beside it are computed from the original floats,
- *    so the real figure is never lost.
+ *    range.** kepler has no maximum value for the float types, so a float
+ *    raster draws only where the metadata declares band statistics to rescale
+ *    against; uint16 needs nothing from the metadata and works everywhere,
+ *    including on a stock kepler.gl. Above 100 mm in a day the image saturates;
+ *    the statistics beside it are computed from the original floats, so the real
+ *    figure is never lost.
  *  - **Zero becomes nodata.** Dry ground and ocean then read as transparent
  *    rather than as a black sheet over the basemap, which is the difference
  *    between a map of rainfall and a map of a rectangle.

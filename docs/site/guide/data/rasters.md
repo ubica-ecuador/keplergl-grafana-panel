@@ -204,11 +204,18 @@ Its layer is, with whatever you styled on it. See
 
 ## Three ways this fails without saying so
 
-::: warning kepler cannot draw a float32 raster
-It looks up a maximum value per data type to rescale against, has none for the float types, and
-gives up. The result is a layer that requests no tiles, draws nothing, and reports nothing. `uint8`
-draws, but flat. **`uint16` is what works**, so a raster you compute yourself has to be scaled onto
-it — see [Measuring imagery](../sources/measuring-imagery).
+::: warning A float32 raster needs statistics in its STAC
+kepler looks up a maximum value per data type to rescale against and has none for the float types, so
+the range has to come from the band statistics the metadata declares — `raster:bands[].statistics`, or
+the STAC 1.1 `bands[].statistics`. TiTiler's `/cog/stac` writes them, so a float32 COG served that way
+draws. Without them there is no range at all, and the layer requests no tiles, draws nothing and
+reports nothing.
+
+Two limits remain. Only **single-band** scenes take that path — a float composite such as true colour
+still has no range — and this rests on a patch this plugin carries against kepler.gl
+([PR #3704](https://github.com/keplergl/kepler.gl/pull/3704)); stock kepler.gl draws no float raster at
+all. `uint16` avoids the question entirely, which is why a raster you compute yourself is usually
+scaled onto it — see [Measuring imagery](../sources/measuring-imagery).
 :::
 
 ::: warning A strict CSP needs `connect-src`, not `img-src`
@@ -221,6 +228,11 @@ about images.
 If the tile server's STAC document is not one kepler accepts, kepler swallows the exception and
 keeps the metadata it had — leaving an empty layer and no error. Check it from the browser console:
 `metadata.stac_version` on the dataset should be a version string, not `undefined`.
+
+The requirement that is easiest to miss is not a field but a **declaration**: an item must either
+carry STAC 1.1 core `bands` on an asset, or name **both** the `eo` and `raster` extensions in
+`stac_extensions`. An asset with `eo:bands` and `raster:bands` in it is not enough if the extensions
+are not declared, and the document is dropped without a word. TiTiler declares them.
 :::
 
 ## The raster can be one you computed

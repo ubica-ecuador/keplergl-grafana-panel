@@ -38,5 +38,7 @@ module.exports = {
     // ESM-only wasm binding pulled in by kepler's @loaders.gl/parquet at import
     // time; jest cannot parse it and no test reads parquet files.
     '^parquet-wasm$': '<rootDir>/tests/mocks/parquet-wasm.js',
+    // ESM-only .mjs decoder reached through kepler's @luma.gl/gltf; see the mock.
+    '^meshoptimizer(/.*)?$': '<rootDir>/tests/mocks/meshoptimizer.js',
   },
 };

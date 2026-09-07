@@ -1,0 +1,48 @@
+diff --git a/node_modules/@kepler.gl/layers/dist/cjs/raster-tile/raster-tile-utils.js b/node_modules/@kepler.gl/layers/dist/cjs/raster-tile/raster-tile-utils.js
+index 4707a19..1710b16 100644
+--- a/node_modules/@kepler.gl/layers/dist/cjs/raster-tile/raster-tile-utils.js
++++ b/node_modules/@kepler.gl/layers/dist/cjs/raster-tile/raster-tile-utils.js
+@@ -162,13 +162,14 @@ function getPixelRange(stac, dtype, _ref) {
+   var minPixelValue = 0;
+   var maxPixelValue = dtypeMaxValue[dtype];
+ 
+-  // TODO check if this early return is expected
+-  if (!maxPixelValue) {
++  // PATCHED (keplergl/kepler.gl#3704): data types without a fixed maximum, such as
++  // floats, can only be rescaled from the statistics reported by the STAC metadata.
++  if (maxPixelValue === null || !Number.isFinite(maxPixelValue)) {
++    if (typeof minRasterStatsValue === 'number' && typeof maxRasterStatsValue === 'number') {
++      return [minRasterStatsValue, maxRasterStatsValue];
++    }
+     return null;
+   }
+-  if (!Number.isFinite(maxPixelValue) && typeof minRasterStatsValue === 'number' && typeof maxRasterStatsValue === 'number') {
+-    return [minRasterStatsValue, maxRasterStatsValue];
+-  }
+   return [minPixelValue, maxPixelValue];
+ }
+ 
+diff --git a/node_modules/@kepler.gl/layers/dist/esm/raster-tile/raster-tile-utils.js b/node_modules/@kepler.gl/layers/dist/esm/raster-tile/raster-tile-utils.js
+index 1aa38c5..6886a92 100644
+--- a/node_modules/@kepler.gl/layers/dist/esm/raster-tile/raster-tile-utils.js
++++ b/node_modules/@kepler.gl/layers/dist/esm/raster-tile/raster-tile-utils.js
+@@ -135,13 +135,14 @@ function getPixelRange(stac, dtype, _ref) {
+   var minPixelValue = 0;
+   var maxPixelValue = dtypeMaxValue[dtype];
+ 
+-  // TODO check if this early return is expected
+-  if (!maxPixelValue) {
++  // PATCHED (keplergl/kepler.gl#3704): data types without a fixed maximum, such as
++  // floats, can only be rescaled from the statistics reported by the STAC metadata.
++  if (maxPixelValue === null || !Number.isFinite(maxPixelValue)) {
++    if (typeof minRasterStatsValue === 'number' && typeof maxRasterStatsValue === 'number') {
++      return [minRasterStatsValue, maxRasterStatsValue];
++    }
+     return null;
+   }
+-  if (!Number.isFinite(maxPixelValue) && typeof minRasterStatsValue === 'number' && typeof maxRasterStatsValue === 'number') {
+-    return [minRasterStatsValue, maxRasterStatsValue];
+-  }
+   return [minPixelValue, maxPixelValue];
+ }
+ 

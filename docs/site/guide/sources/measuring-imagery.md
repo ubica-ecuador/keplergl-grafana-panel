@@ -206,9 +206,11 @@ Point a `raster_url` column at the result and it draws. See
 
 Five things about that are worth knowing before you spend an afternoon on them:
 
-- **Write an integer type.** kepler cannot draw a `float32` raster: it has no maximum value to
-  rescale a float against, and gives up — leaving a layer that renders nothing and reports nothing.
-  `uint8` draws, but flat. **`uint16` is what works**, so scale your index onto it, as above.
+- **A float type draws only if the metadata carries statistics.** kepler has no maximum value to
+  rescale a float against, so it takes the range from `raster:bands[].statistics` — which TiTiler's
+  `/cog/stac` writes for any file it can read, and which covers a single-band index like this one.
+  **`uint16` asks nothing of the metadata** and is what the rainfall pipeline uses, so scale your
+  index onto it, as above, unless you want the real values in the file.
 - **`DATABAND_COLUMNS` is required**, even though the extension's own example omits it.
 - **Overwriting fails.** `COPY` writes the file and then cannot find a temporary it has already
   moved: the file is fine and the query errors. Which pushes towards the pattern you want anyway —

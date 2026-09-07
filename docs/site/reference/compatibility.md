@@ -49,7 +49,7 @@ catalog flow and the release-archive install that works while the review is pend
 
 | Library        | Version                  |
 | -------------- | ------------------------ |
-| kepler.gl      | **3.3.0-alpha.9**        |
+| kepler.gl      | **3.3.0-alpha.10**        |
 | deck.gl        | **9.3.10**               |
 | MapLibre GL JS | **4** (pinned by kepler) |
 | React          | 18.3.1                   |
