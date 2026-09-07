@@ -236,3 +236,4 @@ dashboard: compute it once, and let the panels read what is there.
 | the imagery joined to your own tables      | DuckDB `raster`           |
 | numbers out of a WMS you can only see      | WCS + DuckDB `raster`     |
 | a new raster to draw                       | `COPY … FORMAT RASTER`    |
+| which scenes cover your zones at all       | [STAC catalogues](./stac-catalogs) |

@@ -138,6 +138,7 @@ export default defineConfig({
           { text: 'Infinity — GeoJSON, CSV, WFS', link: '/guide/sources/infinity' },
           { text: 'Any other SQL source', link: '/guide/sources/other-sql' },
           { text: 'Measuring imagery', link: '/guide/sources/measuring-imagery' },
+          { text: 'STAC catalogues', link: '/guide/sources/stac-catalogs' },
         ],
       },
       {

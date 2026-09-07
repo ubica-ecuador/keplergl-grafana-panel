@@ -9,6 +9,10 @@ The map's time widget answers that. Whichever of the three paths you took —
 scene selector, and dragging it changes the picture without re-running your query, rebuilding your
 layer, or moving the frame you are looking at.
 
+Where those rows come from is a separate question. A catalogue search can produce them, and once the
+footprints come with them you can ask which scenes cover your own zones and which do not — see
+[STAC catalogues](../sources/stac-catalogs).
+
 ## Give the query one row per date
 
 For a raster, that is the whole configuration. Return a **time column** alongside the URL and the

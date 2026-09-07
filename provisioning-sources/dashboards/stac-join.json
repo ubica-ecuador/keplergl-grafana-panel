@@ -1,0 +1,894 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "A STAC catalogue joined in DuckDB to the polygon you draw: which scenes cover your area, how much of it they cover, what is left uncovered, and the whole catalogue seen as pictures of that same area.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "liveNow": false,
+  "panels": [
+    {
+      "gridPos": {
+        "h": 16,
+        "w": 16,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "# From the sky to the ground\n\n**The map opens with an area already drawn** — move it, reshape it, or draw your\nown, and every panel follows. That is the whole interaction: you draw a shape and\nDuckDB asks a live STAC catalogue what imagery exists for exactly it. In SQL,\ninside a panel, with no Spark, no cluster and no ETL.\n\nThe area's own bounding box travels in the search URL, so the catalogue does the\nfiltering and returns tens of scenes instead of thousands. A bounding box only\nnarrows, though: `ST_Intersects` is what refines the answer to the shape you\ndrew, and `ST_Difference` turns what is left over into the **outline** that\nappears whenever some part of your area no scene reaches.\n\n| Piece | Who provides it |\n|---|---|\n| Catalogue | `earth-search.aws.element84.com`, public and unauthenticated |\n| Search | DuckDB with the `http_client` extension, one call per area |\n| The join | `ST_Intersects`, `ST_Intersection`, `ST_Union_Agg` |\n| What is missed | `ST_Difference`, drawn rather than counted |\n| The pictures | the tile server, cutting your area out of each scene |\n\n**Coverage against best scene** is the pair worth watching. *Best scene* is the\nmost any single image gives you; *coverage*, what you get by mosaicking every\nscene in the range. They rarely agree, which is why \"which scene should I use?\"\nis usually the wrong question. When they do agree, your area fits inside one.\n\n**The table on the right is the catalogue as pictures**: each thumbnail is your\nown area, cut out of that scene by the tile server — a few kilobytes, not a\ndownload. **Click any row** and the map flies to that scene and draws it, moving\nnothing else: the time range and the figures stay where they were, because the\nclick writes a coordinate and a scene rather than a range. Clear *Scene picked*\nand the clearest scene in range comes back.\n\n**Cloud ≤** decides what counts as usable: lower it and the uncovered part grows.\n**Covers ≥** drops the scenes that only clip a corner — over a province-sized\narea, six in seven can fall below 10 %.",
+        "mode": "markdown"
+      },
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 16,
+        "x": 0,
+        "y": 16
+      },
+      "id": 2,
+      "options": {
+        "areaVariable": "aoiArea",
+        "basemap": "auto",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": true,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [
+                    40,
+                    63,
+                    93
+                  ],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [
+                    4,
+                    9,
+                    17
+                  ],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [
+                    114.75,
+                    114.75,
+                    114.75
+                  ],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [
+                    9,
+                    16,
+                    29
+                  ],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [
+                    17,
+                    35,
+                    48
+                  ]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": -0.391688,
+              "longitude": -91.522663,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_2D",
+              "maxPitch": 60,
+              "pitch": 0,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 8.6
+            },
+            "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
+              ],
+              "mapStyles": {},
+              "styleType": "grafana-satellite",
+              "threeDBuildingColor": [
+                15.035172933000911,
+                15.035172933000911,
+                15.035172933000911
+              ],
+              "topLayerGroups": {},
+              "visibleLayerGroups": {
+                "3d building": false,
+                "border": false,
+                "building": true,
+                "label": true,
+                "land": true,
+                "road": true,
+                "water": true
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [
+                  {
+                    "geometry": {
+                      "coordinates": [
+                        [
+                          [
+                            -91.74230610827041,
+                            -0.20945659606094522
+                          ],
+                          [
+                            -91.74230610827041,
+                            -0.5739201940042752
+                          ],
+                          [
+                            -91.30301968013377,
+                            -0.5739201940042752
+                          ],
+                          [
+                            -91.30301968013377,
+                            -0.20945659606094522
+                          ],
+                          [
+                            -91.74230610827041,
+                            -0.20945659606094522
+                          ]
+                        ]
+                      ],
+                      "type": "Polygon"
+                    },
+                    "id": "aoi-default",
+                    "properties": {
+                      "isClosed": true,
+                      "isVisible": true,
+                      "renderState": null
+                    },
+                    "type": "Feature"
+                  }
+                ],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [],
+                    "grafana-B": [
+                      {
+                        "name": "scene_id"
+                      },
+                      {
+                        "name": "acquired_at"
+                      },
+                      {
+                        "name": "cloud_cover"
+                      },
+                      {
+                        "name": "raster_url"
+                      }
+                    ],
+                    "grafana-B-raster": []
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "gapoutline",
+                "6jclrgg"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "color": [
+                      248,
+                      149,
+                      112
+                    ],
+                    "columns": {},
+                    "dataId": "grafana-B-raster",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "B",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "colorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#4C0035",
+                          "#880030",
+                          "#B72F15",
+                          "#D6610A",
+                          "#EF9100",
+                          "#FFC300"
+                        ],
+                        "name": "Global Warming",
+                        "type": "sequential"
+                      },
+                      "colormapId": "cfastie",
+                      "dynamicColor": false,
+                      "enableTerrain": true,
+                      "enableTerrainTopView": false,
+                      "endDate": "2020-03-02",
+                      "filterEnabled": false,
+                      "filterRange": [
+                        -1,
+                        1
+                      ],
+                      "gammaContrastFactor": 1,
+                      "linearRescalingFactor": [
+                        0,
+                        1
+                      ],
+                      "nonLinearRescaling": true,
+                      "opacity": 1,
+                      "preset": "trueColor",
+                      "saturationValue": 1,
+                      "showTileBorders": false,
+                      "showTileDebugInfo": false,
+                      "sigmoidalBiasFactor": 0.5,
+                      "sigmoidalContrastFactor": 0,
+                      "stacSearchProvider": "earth-search",
+                      "startDate": "2020-02-02",
+                      "useSTACSearching": false,
+                      "zoomOffset": 0
+                    }
+                  },
+                  "id": "6jclrgg",
+                  "type": "rasterTile",
+                  "visualChannels": {}
+                },
+                {
+                  "config": {
+                    "color": [
+                      255,
+                      203,
+                      153
+                    ],
+                    "columnMode": "geojson",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Not covered",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "allowHover": true,
+                      "colorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#4C0035",
+                          "#880030",
+                          "#B72F15",
+                          "#D6610A",
+                          "#EF9100",
+                          "#FFC300"
+                        ],
+                        "name": "Global Warming",
+                        "type": "sequential"
+                      },
+                      "elevationScale": 5,
+                      "enable3d": false,
+                      "filled": false,
+                      "fixedHeight": false,
+                      "heightRange": [
+                        0,
+                        500
+                      ],
+                      "opacity": 0.35,
+                      "radius": 10,
+                      "radiusRange": [
+                        0,
+                        50
+                      ],
+                      "sizeRange": [
+                        0,
+                        10
+                      ],
+                      "strokeColor": [
+                        255,
+                        203,
+                        153
+                      ],
+                      "strokeColorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#4C0035",
+                          "#880030",
+                          "#B72F15",
+                          "#D6610A",
+                          "#EF9100",
+                          "#FFC300"
+                        ],
+                        "name": "Global Warming",
+                        "type": "sequential"
+                      },
+                      "strokeOpacity": 0.9,
+                      "stroked": true,
+                      "thickness": 1.5,
+                      "wireframe": false
+                    }
+                  },
+                  "id": "gapoutline",
+                  "type": "geojson",
+                  "visualChannels": {
+                    "colorScale": "quantile",
+                    "heightScale": "linear",
+                    "radiusScale": "linear",
+                    "sizeScale": "linear",
+                    "strokeColorScale": "quantile"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "variableMappings": [
+          {
+            "field": "",
+            "source": "center",
+            "variable": "lat",
+            "variableTo": "lng",
+            "zoom": 8
+          }
+        ],
+        "rasterColormap": "",
+        "rasterPainted": false,
+        "rasterServerUrl": "https://titiler.ubica.ec",
+        "showSidePanel": false,
+        "timeSync": "off",
+        "tripLayerMode": "table"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "CREATE OR REPLACE TEMP MACRO m2(g) AS\n  ST_Area(ST_Transform(g, 'EPSG:4326', 'EPSG:6933', always_xy := true));\n\n-- El área es la que dibujes en el mapa. Sin dibujo no hay pregunta.\nSET VARIABLE drawn = nullif($aoiArea, '');\n-- Y la escena que hayas clicado en la hoja de contactos, si has clicado alguna.\nSET VARIABLE picked = nullif($scene, '');\n\nWITH aoi AS (\n  -- El área es la que dibujes, y sólo esa. Sin dibujo no hay pregunta que\n  -- hacerle al catálogo, y todos los paneles quedan vacíos a propósito.\n  SELECT 'Drawn area' AS name, ST_GeomFromText(getvariable('drawn')) AS geom\n  WHERE getvariable('drawn') IS NOT NULL\n),\n-- Una búsqueda por AOI, con su propio bbox metido en la URL: eso es el\n-- pushdown. Un solo bbox que envolviera a todos traería más de las 200 escenas\n-- que la API entrega por página, y el recorte sería silencioso.\nsearch AS (\n  SELECT name, geom,\n         http_get('https://earth-search.aws.element84.com/v1/search'\n           || '?collections=' || $collection\n           || '&bbox=' || ST_XMin(geom) || ',' || ST_YMin(geom) || ','\n                       || ST_XMax(geom) || ',' || ST_YMax(geom)\n           || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n           || '&limit=200') AS r\n  FROM aoi\n),\nfeatures AS (\n  SELECT name, geom,\n         unnest(json_extract(r->>'body', '$.features[*]')) AS f\n  FROM search\n),\nscenes AS (\n  SELECT name, geom,\n         f->>'id'                                     AS scene_id,\n         (f->'properties'->>'datetime')::TIMESTAMP    AS acquired,\n         (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n         f->'assets'->'visual'->>'href'               AS visual_href,\n         ST_GeomFromGeoJSON(f->>'geometry')           AS footprint\n  FROM features\n  WHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE <= CAST($cloud AS DOUBLE)\n),\n-- El bbox acota; ST_Intersects afina. Una escena puede tocar el rectángulo del\n-- área sin tocar el área, y ahí es donde el join hace su trabajo. El corte por\n-- cobertura va después: descarta las que solo rozan una esquina, que en una\n-- hoja de contactos son ruido — un 2 % no es una imagen de tu zona.\nhit AS (\n  SELECT * FROM scenes\n  WHERE ST_Intersects(geom, footprint)\n    AND m2(ST_Intersection(geom, footprint)) / m2(geom) * 100 >= CAST($cover AS DOUBLE)\n)\n-- El hueco: la parte del área que ninguna escena utilizable alcanza. Se dibuja\n-- solo esto y no también lo cubierto, por dos razones. Lo cubierto ya está en\n-- el mapa — son las huellas. Y kepler colorea una capa entera de un color, así\n-- que \"visto\" y \"sin ver\" en el mismo dataset saldrían idénticos y la\n-- distinción, que es todo el mensaje, se perdería.\n, cov AS (\n  SELECT any_value(a.geom)         AS aoi_geom,\n         ST_Union_Agg(h.footprint) AS seen\n  FROM aoi a LEFT JOIN hit h ON h.name = a.name\n),\ngap AS (\n  -- Sin ninguna escena, ST_Difference devuelve NULL y el hueco es el área entera.\n  SELECT COALESCE(ST_Difference(aoi_geom, seen), aoi_geom) AS geom, aoi_geom\n  FROM cov WHERE aoi_geom IS NOT NULL\n)\nSELECT 'Not covered'                            AS part,\n       ROUND(m2(geom) / m2(aoi_geom) * 100, 1)  AS uncovered_pct,\n       CAST(ST_AsGeoJSON(geom) AS VARCHAR)      AS geojson\nFROM gap\n-- Cubierta del todo es un polígono vacío, y un GeoJSON sin anillos no se dibuja.\nWHERE NOT ST_IsEmpty(geom)",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "CREATE OR REPLACE TEMP MACRO m2(g) AS\n  ST_Area(ST_Transform(g, 'EPSG:4326', 'EPSG:6933', always_xy := true));\n\n-- El área es la que dibujes en el mapa. Sin dibujo no hay pregunta.\nSET VARIABLE drawn = nullif($aoiArea, '');\n-- Y la escena que hayas clicado en la hoja de contactos, si has clicado alguna.\nSET VARIABLE picked = nullif($scene, '');\n\nWITH aoi AS (\n  -- El área es la que dibujes, y sólo esa. Sin dibujo no hay pregunta que\n  -- hacerle al catálogo, y todos los paneles quedan vacíos a propósito.\n  SELECT 'Drawn area' AS name, ST_GeomFromText(getvariable('drawn')) AS geom\n  WHERE getvariable('drawn') IS NOT NULL\n),\n-- Una búsqueda por AOI, con su propio bbox metido en la URL: eso es el\n-- pushdown. Un solo bbox que envolviera a todos traería más de las 200 escenas\n-- que la API entrega por página, y el recorte sería silencioso.\nsearch AS (\n  SELECT name, geom,\n         http_get('https://earth-search.aws.element84.com/v1/search'\n           || '?collections=' || $collection\n           || '&bbox=' || ST_XMin(geom) || ',' || ST_YMin(geom) || ','\n                       || ST_XMax(geom) || ',' || ST_YMax(geom)\n           || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n           || '&limit=200') AS r\n  FROM aoi\n),\nfeatures AS (\n  SELECT name, geom,\n         unnest(json_extract(r->>'body', '$.features[*]')) AS f\n  FROM search\n),\nscenes AS (\n  SELECT name, geom,\n         f->>'id'                                     AS scene_id,\n         (f->'properties'->>'datetime')::TIMESTAMP    AS acquired,\n         (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n         f->'assets'->'visual'->>'href'               AS visual_href,\n         ST_GeomFromGeoJSON(f->>'geometry')           AS footprint\n  FROM features\n  WHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE <= CAST($cloud AS DOUBLE)\n),\n-- El bbox acota; ST_Intersects afina. Una escena puede tocar el rectángulo del\n-- área sin tocar el área, y ahí es donde el join hace su trabajo. El corte por\n-- cobertura va después: descarta las que solo rozan una esquina, que en una\n-- hoja de contactos son ruido — un 2 % no es una imagen de tu zona.\nhit AS (\n  SELECT * FROM scenes\n  WHERE ST_Intersects(geom, footprint)\n    AND m2(ST_Intersection(geom, footprint)) / m2(geom) * 100 >= CAST($cover AS DOUBLE)\n)\nSELECT scene_id,\n       -- Texto y no TIMESTAMP, a propósito. Un campo de tipo time convierte a\n       -- kepler en un segundo selector de escena —el reloj— compitiendo con la\n       -- hoja de contactos, y cuando discrepan `useRasterTimeline` resuelve\n       -- OCULTANDO la capa (`selected.length === 0` → isVisible false). Sin\n       -- tipo time, `readScenes` da time null en todas, `pickScene` devuelve la\n       -- primera sin mirar ventana alguna, y esa rama deja de existir.\n       strftime(acquired, '%d %b %Y  %H:%M') AS acquired_at,\n       ROUND(cloud_cover, 1) AS cloud_cover,\n       -- La columna raster_url convierte esto en un catálogo de escenas: el\n       -- reloj del mapa elige cuál se pinta. Al clicar una fila de la hoja de\n       -- contactos, las demás pierden el enlace y el catálogo se queda en una:\n       -- `readScenes` descarta las filas sin url, así que la huella y el\n       -- instante de cada escena siguen ahí y el reloj no se entera.\n       CASE WHEN getvariable('picked') IS NULL\n                 OR visual_href = getvariable('picked')\n            THEN visual_href END AS raster_url,\n       ROUND(m2(ST_Intersection(geom, footprint)) / m2(geom) * 100, 1) AS covers_pct\nFROM hit\n-- Sin ventana temporal, `readScenes` conserva este orden y dibuja la primera:\n-- sin escena elegida, la que se ve es la más despejada del rango.\nORDER BY cloud_cover",
+          "refId": "B"
+        }
+      ],
+      "title": "The area, the scene that covers it, and what is left out",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Coverage is what you get by mosaicking every scene in the range; best scene is the most any single one gives. The difference between the two is the point: one image rarely covers a whole area.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Coverage"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Best scene"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Min cloud"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Scenes"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "km²"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "CREATE OR REPLACE TEMP MACRO m2(g) AS\n  ST_Area(ST_Transform(g, 'EPSG:4326', 'EPSG:6933', always_xy := true));\n\n-- El área es la que dibujes en el mapa. Sin dibujo no hay pregunta.\nSET VARIABLE drawn = nullif($aoiArea, '');\n-- Y la escena que hayas clicado en la hoja de contactos, si has clicado alguna.\nSET VARIABLE picked = nullif($scene, '');\n\nWITH aoi AS (\n  -- El área es la que dibujes, y sólo esa. Sin dibujo no hay pregunta que\n  -- hacerle al catálogo, y todos los paneles quedan vacíos a propósito.\n  SELECT 'Drawn area' AS name, ST_GeomFromText(getvariable('drawn')) AS geom\n  WHERE getvariable('drawn') IS NOT NULL\n),\n-- Una búsqueda por AOI, con su propio bbox metido en la URL: eso es el\n-- pushdown. Un solo bbox que envolviera a todos traería más de las 200 escenas\n-- que la API entrega por página, y el recorte sería silencioso.\nsearch AS (\n  SELECT name, geom,\n         http_get('https://earth-search.aws.element84.com/v1/search'\n           || '?collections=' || $collection\n           || '&bbox=' || ST_XMin(geom) || ',' || ST_YMin(geom) || ','\n                       || ST_XMax(geom) || ',' || ST_YMax(geom)\n           || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n           || '&limit=200') AS r\n  FROM aoi\n),\nfeatures AS (\n  SELECT name, geom,\n         unnest(json_extract(r->>'body', '$.features[*]')) AS f\n  FROM search\n),\nscenes AS (\n  SELECT name, geom,\n         f->>'id'                                     AS scene_id,\n         (f->'properties'->>'datetime')::TIMESTAMP    AS acquired,\n         (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n         f->'assets'->'visual'->>'href'               AS visual_href,\n         ST_GeomFromGeoJSON(f->>'geometry')           AS footprint\n  FROM features\n  WHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE <= CAST($cloud AS DOUBLE)\n),\n-- El bbox acota; ST_Intersects afina. Una escena puede tocar el rectángulo del\n-- área sin tocar el área, y ahí es donde el join hace su trabajo. El corte por\n-- cobertura va después: descarta las que solo rozan una esquina, que en una\n-- hoja de contactos son ruido — un 2 % no es una imagen de tu zona.\nhit AS (\n  SELECT * FROM scenes\n  WHERE ST_Intersects(geom, footprint)\n    AND m2(ST_Intersection(geom, footprint)) / m2(geom) * 100 >= CAST($cover AS DOUBLE)\n)\nSELECT count(h.scene_id)            AS \"Scenes\",\n       ROUND(min(h.cloud_cover), 1) AS \"Min cloud\",\n       -- Lo que se ve mosaicando todas las escenas del rango...\n       ROUND(COALESCE(m2(ST_Intersection(any_value(a.geom), ST_Union_Agg(h.footprint)))\n                    / m2(any_value(a.geom)) * 100, 0), 1) AS \"Coverage\",\n       -- ...frente a lo que da la mejor escena suelta. La diferencia es lo que\n       -- hace que \"¿qué escena uso?\" sea casi siempre la pregunta equivocada.\n       ROUND(COALESCE(max(m2(ST_Intersection(a.geom, h.footprint))\n                    / m2(a.geom) * 100), 0), 1)           AS \"Best scene\",\n       ROUND(m2(any_value(a.geom)) / 1e6)                 AS \"km²\"\nFROM aoi a LEFT JOIN hit h ON h.name = a.name\n-- Sin área dibujada `aoi` está vacío: agrupando no hay grupos y el panel dice\n-- \"No data\". Sin GROUP BY, el agregado devolvería una fila de ceros que se\n-- leería como una medición real.\nGROUP BY a.name",
+          "refId": "A"
+        }
+      ],
+      "title": "Your area, in the catalogue",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Every scene the catalogue has for your area, as pictures. Each thumbnail is the area itself, cut out of that scene by the tile server. Click a row and the map flies to it and draws it.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "links": [
+            {
+              "title": "Fly the map to this scene",
+              "url": "/d/stac-join-bench?${__url_time_range}&var-collection=${collection:percentencode}&var-cloud=${cloud:percentencode}&var-cover=${cover:percentencode}&var-aoiArea=${aoiArea:percentencode}&var-lat=${__data.fields.centre_lat}&var-lng=${__data.fields.centre_lng}&var-scene=${__data.fields.scene_url:percentencode}"
+            }
+          ],
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "View"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "image"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 67
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cloud %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.width",
+                "value": 83
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Covers %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "centre_lat"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "centre_lng"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "scene_url"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Date"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 164
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 8,
+        "x": 16,
+        "y": 16
+      },
+      "id": 6,
+      "options": {
+        "cellHeight": "lg",
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "Covers %"
+          }
+        ],
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "CREATE OR REPLACE TEMP MACRO m2(g) AS\n  ST_Area(ST_Transform(g, 'EPSG:4326', 'EPSG:6933', always_xy := true));\n\n-- El área es la que dibujes en el mapa. Sin dibujo no hay pregunta.\nSET VARIABLE drawn = nullif($aoiArea, '');\n-- Y la escena que hayas clicado en la hoja de contactos, si has clicado alguna.\nSET VARIABLE picked = nullif($scene, '');\n\nWITH aoi AS (\n  -- El área es la que dibujes, y sólo esa. Sin dibujo no hay pregunta que\n  -- hacerle al catálogo, y todos los paneles quedan vacíos a propósito.\n  SELECT 'Drawn area' AS name, ST_GeomFromText(getvariable('drawn')) AS geom\n  WHERE getvariable('drawn') IS NOT NULL\n),\n-- Una búsqueda por AOI, con su propio bbox metido en la URL: eso es el\n-- pushdown. Un solo bbox que envolviera a todos traería más de las 200 escenas\n-- que la API entrega por página, y el recorte sería silencioso.\nsearch AS (\n  SELECT name, geom,\n         http_get('https://earth-search.aws.element84.com/v1/search'\n           || '?collections=' || $collection\n           || '&bbox=' || ST_XMin(geom) || ',' || ST_YMin(geom) || ','\n                       || ST_XMax(geom) || ',' || ST_YMax(geom)\n           || '&datetime=' || $__timeFrom() || '/' || $__timeTo()\n           || '&limit=200') AS r\n  FROM aoi\n),\nfeatures AS (\n  SELECT name, geom,\n         unnest(json_extract(r->>'body', '$.features[*]')) AS f\n  FROM search\n),\nscenes AS (\n  SELECT name, geom,\n         f->>'id'                                     AS scene_id,\n         (f->'properties'->>'datetime')::TIMESTAMP    AS acquired,\n         (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,\n         f->'assets'->'visual'->>'href'               AS visual_href,\n         ST_GeomFromGeoJSON(f->>'geometry')           AS footprint\n  FROM features\n  WHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE <= CAST($cloud AS DOUBLE)\n),\n-- El bbox acota; ST_Intersects afina. Una escena puede tocar el rectángulo del\n-- área sin tocar el área, y ahí es donde el join hace su trabajo. El corte por\n-- cobertura va después: descarta las que solo rozan una esquina, que en una\n-- hoja de contactos son ruido — un 2 % no es una imagen de tu zona.\nhit AS (\n  SELECT * FROM scenes\n  WHERE ST_Intersects(geom, footprint)\n    AND m2(ST_Intersection(geom, footprint)) / m2(geom) * 100 >= CAST($cover AS DOUBLE)\n)\n-- La hoja de contactos: el catálogo visto como imágenes en vez de como una\n-- lista de identificadores. Cada miniatura es un recorte hecho por el servidor\n-- de teselas, 128 px y unos 9 kB — no baja la escena, la mira.\nSELECT 'https://titiler.ubica.ec/cog/bbox/'\n         -- Recortado a donde la escena y el área se tocan, no al área entera: a\n         -- 30 px de alto, un recorte medio transparente es una mota gris.\n         || ST_XMin(ST_Intersection(geom, footprint)) || ','\n         || ST_YMin(ST_Intersection(geom, footprint)) || ','\n         || ST_XMax(ST_Intersection(geom, footprint)) || ','\n         || ST_YMax(ST_Intersection(geom, footprint))\n         || '.png?url=' || url_encode(visual_href)\n         || '&max_size=128'                                     AS \"View\",\n       -- Texto, no TIMESTAMP: Grafana traduciría el instante al huso del\n       -- navegador y una pasada de las 19:00 UTC cambiaría de día.\n       strftime(acquired, '%d %b %Y  %H:%M')                    AS \"Date\",\n       ROUND(cloud_cover, 1)                                    AS \"Cloud %\",\n       ROUND(m2(ST_Intersection(geom, footprint)) / m2(geom) * 100, 1) AS \"Covers %\",\n       -- Ocultas: alimentan el enlace de la fila. El centro de lo que muestra\n       -- la miniatura —no el del área— para que el mapa aterrice en la imagen.\n       ST_Y(ST_Centroid(ST_Intersection(geom, footprint)))       AS centre_lat,\n       ST_X(ST_Centroid(ST_Intersection(geom, footprint)))       AS centre_lng,\n       visual_href                                               AS scene_url\nFROM hit\nORDER BY \"Cloud %\", acquired DESC\nLIMIT 24",
+          "refId": "A"
+        }
+      ],
+      "title": "The catalogue, as pictures of your area",
+      "type": "table"
+    }
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 42,
+  "tags": [
+    "duckdb",
+    "stac",
+    "raster"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "sentinel-2-l2a",
+          "value": "sentinel-2-l2a"
+        },
+        "description": "Any collection the catalogue publishes. The join does not care which.",
+        "includeAll": false,
+        "label": "Collection",
+        "name": "collection",
+        "options": [],
+        "query": "sentinel-2-l2a,sentinel-2-l1c,landsat-c2-l2",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "text": "40 %",
+          "value": "40"
+        },
+        "description": "The most cloud a scene may carry and still count as usable. It is the catalogue own eo:cloud_cover, measured over the whole granule rather than over your area, so it is a coarse cut.",
+        "includeAll": false,
+        "label": "Cloud ≤",
+        "name": "cloud",
+        "options": [],
+        "query": "5 % : 5,10 % : 10,20 % : 20,40 % : 40,60 % : 60,100 % : 100",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "text": "any",
+          "value": "0"
+        },
+        "description": "How much of your area a scene must cover to count. One that only clips a corner adds almost nothing and crowds the contact sheet; this is the cut that removes it.",
+        "includeAll": false,
+        "label": "Covers ≥",
+        "name": "cover",
+        "options": [],
+        "query": "any : 0,10 % : 10,25 % : 25,50 % : 50,75 % : 75",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "text": "POLYGON ((-91.74230610827041 -0.20945659606094522, -91.74230610827041 -0.5739201940042752, -91.30301968013377 -0.5739201940042752, -91.30301968013377 -0.20945659606094522, -91.74230610827041 -0.20945659606094522))",
+          "value": "POLYGON ((-91.74230610827041 -0.20945659606094522, -91.74230610827041 -0.5739201940042752, -91.30301968013377 -0.5739201940042752, -91.30301968013377 -0.20945659606094522, -91.74230610827041 -0.20945659606094522))"
+        },
+        "hide": 2,
+        "label": "Area (map)",
+        "name": "aoiArea",
+        "query": "POLYGON ((-91.74230610827041 -0.20945659606094522, -91.74230610827041 -0.5739201940042752, -91.30301968013377 -0.5739201940042752, -91.30301968013377 -0.20945659606094522, -91.74230610827041 -0.20945659606094522))",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "label": "Lat (map)",
+        "name": "lat",
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "label": "Lng (map)",
+        "name": "lng",
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "label": "Scene picked",
+        "name": "scene",
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "From the sky to the ground — exploring a STAC catalogue",
+  "uid": "stac-join-bench"
+}

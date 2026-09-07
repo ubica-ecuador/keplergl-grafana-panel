@@ -191,6 +191,10 @@ belonged to it.
 Return **one row per date** instead of one row, and the query stops being an answer and becomes a
 small catalogue the map's time widget can walk. See [Imagery over time](./imagery-over-time).
 
+Keep the footprint alongside the link and the catalogue becomes joinable: which scenes cover *your*
+zones, how much of each they cover, and which zones got nothing. See
+[STAC catalogues](../sources/stac-catalogs).
+
 ## What is saved, and what is rebuilt
 
 The raster dataset is rebuilt by the query on every load, so — unlike a tileset you add by hand in
