@@ -44,10 +44,51 @@ That division of labour is what makes this work at all:
   browser's reach entirely. It does not matter here: the one fetching chunks is the server.
 
 TiTiler 2.2.1 ships the `/zarr` router already, so a deployment that already renders COGs needs
-nothing new.
+nothing new — with one exception, below.
 
 What the query produces is a dataset with no rows — `grafana-<refId>-zarr` — holding the store, the
 variable and the colouring, alongside the ordinary table dataset your rows make.
+
+## Icechunk repositories
+
+Some archives no longer publish a Zarr tree at all. dynamical.org's weather archives, among others,
+now ship **Icechunk** repositories: a transactional layer over Zarr that gives an archive git-like
+snapshots and atomic commits. That is worth a great deal for data that keeps arriving — a forecast
+writing twenty-five variables cannot be read half-updated, and every past version stays addressable
+— and it is why a growing number of public archives are moving.
+
+A repository is not a tree of chunks, though. Its chunk objects are named by opaque identifiers and
+the map from array coordinates to object lives in a manifest, so the address of a chunk cannot be
+worked out from the array: it can only be looked up, after reading a pointer, then a snapshot, then
+the manifests that snapshot names. No ordinary Zarr reader does that, and the browser cannot either
+— the library that does is compiled to WebAssembly that needs cross-origin isolation, which a
+Grafana page does not have.
+
+So this is the one case that asks something of the tile server: it must carry an Icechunk opener.
+The stock image has none; the one built in this repository's `docker/titiler/` does, in a single
+small module.
+
+Given such a server, nothing else changes — same roles, same panel options, same layer. Only the
+address does:
+
+```sql
+SELECT 'stac+https://stac.dynamical.org/noaa-gfs-forecast/collection.json' AS zarr_url,
+       'temperature_2m' AS zarr_variable
+```
+
+Two forms are understood:
+
+| Address                                  | What it means                                       |
+| ---------------------------------------- | --------------------------------------------------- |
+| `icechunk+https://bucket…/name.icechunk` | the repository, at exactly that location            |
+| `stac+https://…/collection.json`         | ask this STAC Collection where its repository is    |
+
+**Prefer the second.** Publishers roll repository versions — dynamical's GFS is on `v0.2.7` as this
+is written — and a dashboard holding the bucket address breaks by itself on the next one, with a
+`404` that says nothing about versions. The catalogue always knows where today's is.
+
+A forecast archive drawn end to end, with the query and what it costs:
+[Forecasts from an Icechunk archive](../sources/icechunk).
 
 ## The colour range is not optional
 

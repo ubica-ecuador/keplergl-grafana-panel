@@ -1,0 +1,83 @@
+{
+  "uid": "gfs-forecast",
+  "title": "NOAA GFS — forecast from an Icechunk repository",
+  "description": "Two metres of air temperature from the newest GFS run, stepping forward hour by hour. The archive is an Icechunk repository, which no Zarr reader can open on its own: the server resolves it and answers in tiles.",
+  "tags": [
+    "zarr",
+    "icechunk",
+    "raster",
+    "duckdb"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "time": {
+    "from": "now-6h",
+    "to": "now+2d"
+  },
+  "panels": [
+    {
+      "type": "text",
+      "id": 1,
+      "title": "What you are looking at",
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Air temperature two metres above the ground, from the most recent run of NOAA's Global Forecast System, hour by hour out to two days.\n\nThe map draws the hour at the **end** of the dashboard's range, and the range runs into the future — `now+2d` — because a forecast does. Narrow it to walk the forecast, or press play on the map's own time bar; if you do, switch that bar's window mode to *incremental*, because in the default *free* mode the window is as wide as the whole forecast and slides without ever changing which hour is drawn.\n\nThe archive is published by dynamical.org as an **Icechunk** repository. Chunk objects there are named by opaque identifiers and the map from array coordinates to object lives in a manifest, so a browser cannot fetch a chunk even knowing exactly which one it wants — it would have to read the manifests first, and the library that does that will not run in a Grafana page. The tile server resolves the repository instead, which is why the store address below starts with `stac+`: the catalogue is asked where the repository is today, rather than the address being written down and going stale on the next version.\n\nA tile over Ecuador costs about two seconds; the whole world at zoom 0 costs about thirty. That is the archive's shape showing through — it is chunked for reading a long time series at one place, so a map pays for 105 forecast hours to draw one."
+      }
+    },
+    {
+      "type": "ubica-keplergl-panel",
+      "id": 2,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "title": "2 m temperature · newest GFS run · the hour drawn is the end of the range",
+      "gridPos": {
+        "h": 22,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawQuery": true,
+          "format": 1,
+          "rawSql": "-- Una fila por hora del pronostico. DuckDB no lee Icechunk y no lo intenta:\n-- aqui solo se calcula QUE pedir, y el servidor de teselas lo resuelve.\n--\n-- La pasada: GFS arranca cada 6 h y dynamical tarda un rato en ingerirla, asi\n-- que se toma el ultimo multiplo de 6 h que tenga ya 9 horas de antiguedad. Es\n-- margen, no precision: pedir una pasada que aun no esta da teselas vacias.\nWITH run AS (\n  SELECT to_timestamp(floor(epoch(now() - INTERVAL '9 hours') / 21600) * 21600) AS init\n)\nSELECT\n  init + INTERVAL '1 hour' * h AS time,\n  -- `stac+` en vez de la url del bucket: dynamical rueda la version del\n  -- repositorio (`v0.2.7` hoy) y pide que nadie la fije. El servidor pregunta\n  -- al catalogo donde esta hoy.\n  'stac+https://stac.dynamical.org/noaa-gfs-forecast/collection.json' AS zarr_url,\n  'temperature_2m' AS zarr_variable,\n  -- El reloj recorre `lead_time`, no `time`: el archivo es un cubo de\n  -- pronostico y su eje temporal son dos, la pasada y el salto.\n  'lead_time' AS zarr_time_dim,\n  -- TRAMPA: el eje es `timedelta64[us]` pero el valor va en NANOSEGUNDOS.\n  -- TiTiler convierte la cadena con el tipo escalar generico de numpy y pandas\n  -- la interpreta en ns pase lo que pase; en microsegundos no encuentra nada y\n  -- responde 500 «not all values found in index».\n  (h * 3600 * 1000000000)::BIGINT::VARCHAR AS zarr_time_label,\n  -- La pasada se fija, en el formato numpy de siempre.\n  'init_time=' || strftime(init AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%S.000000000') AS zarr_sel\nFROM run, generate_series(0, 48) g(h)\nORDER BY time"
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "timeSync": "toMap",
+        "rasterServerUrl": "http://localhost:8088",
+        "rasterColormap": "turbo",
+        "zarrRescale": "-10,35",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -1.5,
+              "longitude": -78.5,
+              "zoom": 4.5,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        }
+      }
+    }
+  ]
+}

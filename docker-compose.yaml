@@ -370,14 +370,17 @@ services:
   # name would not resolve.
   #
   # Built from ./docker/titiler rather than pulled directly: that is the same
-  # pinned 2.2.1 image with one comparison in rio-tiler given a tolerance, so a
-  # global 0.4° store whose south edge misses by 4e-13 degrees stops answering
-  # 500 to every tile. The Dockerfile explains it; the patch beside it is the
-  # whole change.
+  # pinned 2.2.1 image carrying two changes. One comparison in rio-tiler is given
+  # a tolerance, so a global 0.4° store whose south edge misses by 4e-13 degrees
+  # stops answering 500 to every tile; and the `/zarr` router is remounted with
+  # an opener that also reads Icechunk repositories, which is the only way an
+  # archive published as Icechunk — dynamical.org's NOAA GFS — reaches the map at
+  # all, since the browser cannot resolve one itself. The Dockerfile explains the
+  # first, `icechunk_app.py` the second.
   titiler:
     build:
       context: ./docker/titiler
-    image: ubica-keplergl-panel-titiler:2.2.1-bounds-tolerance
+    image: ubica-keplergl-panel-titiler:2.2.1-ubica
     container_name: 'ubica-keplergl-panel-titiler'
     ports:
       - '8088:80/tcp'
