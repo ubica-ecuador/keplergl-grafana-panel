@@ -18,14 +18,15 @@
 # tile answers `500 Invalid geographic bounds`. Nothing about the message
 # suggests the data is fine and the arithmetic is not.
 #
-# The patch gives the four comparisons a thousandth of a cell of slack, in both
-# readers that carry them (`io/xarray.py` and `experimental/_zarr.py`; the
-# `/zarr` router uses the latter). The tolerance scales with the grid rather
-# than being a fixed number of degrees, because the residue grows with the
-# number of steps in the coordinate array: 4e-13 here, but up to 8.6e-10 on a
-# 0.001° global grid, which a fixed 1e-9 would barely clear. A thousandth of a
-# cell stays far below any real overshoot at every resolution — a genuinely
-# misplaced dataset is out by whole cells, not by a thousandth of one.
+# The patch makes the four comparisons use `math.isclose`, in both readers that
+# carry them (`io/xarray.py` and `experimental/_zarr.py`; the `/zarr` router
+# uses the latter). The residue is float noise on numbers of magnitude 90 and
+# 180, so it scales with the coordinate and not with the cell: 4e-13 here, but
+# 8.6e-10 on a 0.001° global grid and 6.0e-09 on a 0.0001° one — a fixed 1e-9
+# would clear the first and reject the second. `math.isclose` is already
+# denominated in the right unit; its default tolerance is 9e-08° at the poles,
+# about a centimetre, inside a half-cell allowance that is 22 km on the CAMS
+# grid. A genuinely misplaced dataset is out by whole cells and still raises.
 #
 # It is applied as a patch rather than edited in place so `git diff` shows what
 # changed against upstream, and so deleting one file and one build stanza puts
@@ -43,8 +44,8 @@ RUN patch -p1 --forward -d /usr/local/lib/python3.14/site-packages \
  && rm /tmp/rio-tiler-bounds-tolerance.patch \
  && python -c "\
 import inspect, rio_tiler.experimental._zarr as z, rio_tiler.io.xarray as x; \
-assert 'xeps' in inspect.getsource(z.ZarrReader.__attrs_post_init__), 'zarr reader unpatched'; \
-assert 'xeps' in inspect.getsource(x.XarrayReader.__attrs_post_init__), 'xarray reader unpatched'; \
+assert '_below' in inspect.getsource(z.ZarrReader.__attrs_post_init__), 'zarr reader unpatched'; \
+assert '_below' in inspect.getsource(x.XarrayReader.__attrs_post_init__), 'xarray reader unpatched'; \
 print('rio-tiler bounds tolerance in place')"
 
 # Icechunk. The wheel is `cp312-abi3`, so it installs on this image's Python 3.14
