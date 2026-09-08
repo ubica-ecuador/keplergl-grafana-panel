@@ -14,12 +14,19 @@ import {
   setRasterLayerVisible,
 } from './keplerAdapter';
 import { makeSettler, pacingFor, SETTLE_MS } from './settle';
+import { opensToDomain, type TimeVariableMapping } from './timeVariableSync';
+import { readVariableWindow } from './useTimeVariableSync';
 import { SliceWatcher } from './sliceWatcher';
 
 interface Params {
   store: Store;
   /** kepler only accepts actions once its instance has registered. */
   isReady: boolean;
+  /**
+   * The variables the map publishes its window to, or null when it publishes
+   * none. Their presence is what tells this timeline to leave the clock alone.
+   */
+  timeVariables: TimeVariableMapping | null;
   /** The Image Service queries, each carrying the moments it offered. */
   layers: EsriDataset[];
 }
@@ -44,11 +51,16 @@ interface Params {
  * the stack. Same shape as the raster, WMS and Zarr timelines, for the same
  * reason.
  */
-export function useEsriTimeline({ store, isReady, layers }: Params): void {
+export function useEsriTimeline({ store, isReady, layers, timeVariables }: Params): void {
   const layersRef = useRef(layers);
   useEffect(() => {
     layersRef.current = layers;
   }, [layers]);
+
+  const timeVariablesRef = useRef(timeVariables);
+  useEffect(() => {
+    timeVariablesRef.current = timeVariables;
+  }, [timeVariables]);
 
   // The filter is opened to its full domain once. kepler creates a time filter
   // narrowed to a slice somewhere in the past, so without this the map would
@@ -66,7 +78,7 @@ export function useEsriTimeline({ store, isReady, layers }: Params): void {
       return;
     }
 
-    if (!opened.current) {
+    if (opensToDomain(opened.current, readVariableWindow(timeVariablesRef.current))) {
       const domain = readTimeDomain(store);
       if (domain) {
         pushTimeRange(store, store.dispatch, domain);

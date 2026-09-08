@@ -279,7 +279,7 @@ export function KeplerMap({
   // A Zarr query hands the widget the moments the store holds, and the label
   // each one answers to.
   useZarrTimeline({ store, isReady, layers: zarrLayers, timeVariables: clockVariables });
-  useEsriTimeline({ store, isReady, layers: esriLayers });
+  useEsriTimeline({ store, isReady, layers: esriLayers, timeVariables: clockVariables });
 
   // A saved config that names a base map wins over the panel option — but only
   // if it names one. Anything this panel captures does, so those go on winning;
