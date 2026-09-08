@@ -1,5 +1,6 @@
 import {
   decideTimeSync,
+  opensToDomain,
   formatTimeValue,
   nextPublishDelay,
   parseTimeValue,
@@ -124,6 +125,14 @@ describe('decideTimeSync', () => {
     expect(decideTimeSync(A, B, A)).toBe('toMap');
   });
 
+  it('waits, without recording an agreement, while the variables are empty underneath it', () => {
+    expect(decideTimeSync(A, NONE, A)).toBe('wait');
+  });
+
+  it('still lets the variables drive when they arrive late, because waiting recorded no agreement', () => {
+    expect(decideTimeSync(A, B, undefined)).toBe('toMap');
+  });
+
   it('publishes to the variables when the map is what moved', () => {
     expect(decideTimeSync(B, A, A)).toBe('toVariables');
   });
@@ -175,5 +184,20 @@ describe('nextPublishDelay', () => {
   it('is a plain trailing debounce without a cap, which is how a silent playback stays silent', () => {
     expect(nextPublishDelay(1000, 1000, REST, Number.POSITIVE_INFINITY)).toBe(REST);
     expect(nextPublishDelay(60_000, 1000, REST, Number.POSITIVE_INFINITY)).toBe(REST);
+  });
+});
+
+describe('opensToDomain', () => {
+  it('opens once when nothing outside the map says which moment to show', () => {
+    expect(opensToDomain(false, null)).toBe(true);
+  });
+
+  it('stands down when the variables already carry a window, so a shared link is not widened away', () => {
+    expect(opensToDomain(false, { from: 1000, to: 2000 })).toBe(false);
+  });
+
+  it('never opens twice, whatever the variables say', () => {
+    expect(opensToDomain(true, null)).toBe(false);
+    expect(opensToDomain(true, { from: 1000, to: 2000 })).toBe(false);
   });
 });

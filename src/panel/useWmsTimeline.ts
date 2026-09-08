@@ -15,11 +15,18 @@ import {
   syncWmsCalendar,
 } from './keplerAdapter';
 import { SliceWatcher } from './sliceWatcher';
+import { opensToDomain, type TimeVariableMapping } from './timeVariableSync';
+import { readVariableWindow } from './useTimeVariableSync';
 
 interface Params {
   store: Store;
   /** kepler only accepts actions once its instance has registered. */
   isReady: boolean;
+  /**
+   * The variables the map publishes its window to, or null when it publishes
+   * none. Their presence is what tells this timeline to leave the clock alone.
+   */
+  timeVariables: TimeVariableMapping | null;
   /** The WMS queries, each carrying the dates it offered. */
   layers: WmsDataset[];
 }
@@ -50,11 +57,16 @@ interface Params {
  * dispatching while kepler is mid-dispatch re-enters its reducer and overflows
  * the stack. Same shape as `useRasterTimeline`, for the same reason.
  */
-export function useWmsTimeline({ store, isReady, layers }: Params): void {
+export function useWmsTimeline({ store, isReady, layers, timeVariables }: Params): void {
   const layersRef = useRef(layers);
   useEffect(() => {
     layersRef.current = layers;
   }, [layers]);
+
+  const timeVariablesRef = useRef(timeVariables);
+  useEffect(() => {
+    timeVariablesRef.current = timeVariables;
+  }, [timeVariables]);
 
   /**
    * Datasets whose layer has been pinned to the right service layer.
@@ -99,7 +111,7 @@ export function useWmsTimeline({ store, isReady, layers }: Params): void {
       return;
     }
 
-    if (!opened.current) {
+    if (opensToDomain(opened.current, readVariableWindow(timeVariablesRef.current))) {
       const domain = readTimeDomain(store);
       if (domain) {
         pushTimeRange(store, store.dispatch, domain);

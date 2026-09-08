@@ -213,12 +213,18 @@ export function useTimeVariableSync({ store, isReady, enabled, mapping, whilePla
         cancelPublish.current();
         return;
 
+      // Nothing to do and nothing to remember: `lastKey` stays as it was, so a
+      // window arriving on a later pass is still read as the variables' first
+      // word rather than as the map having moved.
+      case 'wait':
+        return;
+
       case 'toMap': {
-        // Clearing the variables means "no restriction", which on the map is the
-        // whole domain rather than an absent filter — the widget stays put and
-        // simply opens up.
-        const target = variableWindow ?? domain;
-        if (target && pushTimeRange(store, store.dispatch, target)) {
+        // Always a real window: `decideTimeSync` only asks for this direction
+        // when the variables have one to give, so there is no falling back to
+        // the domain here. A blank pair is a variable mid-recompute, not a
+        // request to see everything.
+        if (variableWindow && pushTimeRange(store, store.dispatch, variableWindow)) {
           cancelPublish.current();
           // Record what kepler settled on, not what was asked for: it clamps the
           // window to the domain, and recording the request would make the
@@ -277,6 +283,22 @@ export function useTimeVariableSync({ store, isReady, enabled, mapping, whilePla
 }
 
 /** Both bound variables' current values, read from the URL. */
+/**
+ * The window the mapped variables describe right now, read from the URL.
+ *
+ * Exported for the timelines, which have to know whether anyone outside the map
+ * has already said which moment to show before they widen the filter to the
+ * whole dataset. Read from the location rather than from props for the reason
+ * this whole module does: a variable change reaches a panel as a URL change,
+ * and a render is not guaranteed to follow it.
+ */
+export function readVariableWindow(mapping: TimeVariableMapping | null): TimeRangeMs | null {
+  if (!mapping?.from || !mapping.to) {
+    return null;
+  }
+  return readWindowFromVariables(readVariables(mapping), mapping);
+}
+
 function readVariables(mapping: TimeVariableMapping): Record<string, unknown> {
   const search = locationService.getSearch();
   const read = (name: string): unknown => {

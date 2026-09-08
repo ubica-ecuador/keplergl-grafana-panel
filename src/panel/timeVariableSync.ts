@@ -126,7 +126,7 @@ export function timeVariableWrites(
 const NO_WINDOW = 'NONE';
 
 /** Which side, if either, should be moved to match the other. */
-export type TimeSyncDirection = 'none' | 'toMap' | 'toVariables';
+export type TimeSyncDirection = 'none' | 'wait' | 'toMap' | 'toVariables';
 
 /**
  * Which way a difference between the map and the variables should travel.
@@ -149,7 +149,44 @@ export function decideTimeSync(mapKey: string, varKey: string, lastKey: string |
   }
   // The map still sits where we left it, so the variables are what moved.
   // Anything else — including both sides moving — is the map's to publish.
-  return mapKey === lastKey ? 'toMap' : 'toVariables';
+  if (mapKey !== lastKey) {
+    return 'toVariables';
+  }
+
+  // Except when what the variables did was empty. That is not someone asking to
+  // see everything: it is what Grafana does for a moment while it recomputes a
+  // variable that depends on another — pick an hour from a dropdown and the
+  // variables derived from it go blank before they come back with the new
+  // value. Reading the blank as "no restriction" opened the map to the whole
+  // dataset and then published that back, so the pick was undone a frame after
+  // it was made.
+  //
+  // `wait` rather than `none` because the difference is what gets remembered.
+  // An agreement needs two sides, and a silent one cannot agree to anything;
+  // recording it here would make the next pass — the one where the variables
+  // finally arrive — look like the map moved, and the map would publish over
+  // the value it should have followed. Chained variables resolve slowly enough
+  // for that to be the normal case, not the rare one.
+  return varKey === NO_WINDOW ? 'wait' : 'toMap';
+}
+
+/**
+ * Whether a timeline should widen the map's filter to the data's own domain.
+ *
+ * The timelines do that once on load, and they have to: kepler creates a time
+ * filter narrowed to a slice somewhere in the past, so a map left alone opens
+ * on an old date while having just drawn the newest one.
+ *
+ * But the dashboard can arrive already saying which moment it wants — a shared
+ * link, a variable seeded to the present hour, a picker someone chose from —
+ * and widening the filter then throws that away before anyone sees it. The
+ * symptom is a map that flicks to the requested moment and slides to the end of
+ * the data a second later, with nothing anywhere to say why. So when the time
+ * variables carry a window, the variable sync owns the clock and this stands
+ * down; the widening is for a map nobody has an opinion about.
+ */
+export function opensToDomain(alreadyOpened: boolean, variableWindow: TimeRangeMs | null): boolean {
+  return !alreadyOpened && variableWindow === null;
 }
 
 /**

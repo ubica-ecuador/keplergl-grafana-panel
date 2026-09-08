@@ -265,15 +265,20 @@ export function KeplerMap({
 
   // A raster query that returns a dated series hands the choice of scene to the
   // map's own time widget.
-  useRasterTimeline({ store, isReady, rasters });
+  // Null unless the map publishes its window: that is what tells each timeline
+  // whether anyone outside has already chosen a moment, and so whether to leave
+  // the clock alone instead of widening it to the whole dataset on load.
+  const clockVariables = timeSync === 'variables' ? (timeVariables ?? null) : null;
+
+  useRasterTimeline({ store, isReady, rasters, timeVariables: clockVariables });
 
   // A WMS query hands the same widget the service's own dates, and pins which
   // of the service's layers is drawn.
-  useWmsTimeline({ store, isReady, layers: wms });
+  useWmsTimeline({ store, isReady, layers: wms, timeVariables: clockVariables });
 
   // A Zarr query hands the widget the moments the store holds, and the label
   // each one answers to.
-  useZarrTimeline({ store, isReady, layers: zarrLayers });
+  useZarrTimeline({ store, isReady, layers: zarrLayers, timeVariables: clockVariables });
   useEsriTimeline({ store, isReady, layers: esriLayers });
 
   // A saved config that names a base map wins over the panel option — but only

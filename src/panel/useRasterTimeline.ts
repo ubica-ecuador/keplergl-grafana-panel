@@ -16,11 +16,18 @@ import {
 } from './keplerAdapter';
 import { makeSettler, pacingFor, SETTLE_MS } from './settle';
 import { SliceWatcher } from './sliceWatcher';
+import { opensToDomain, type TimeVariableMapping } from './timeVariableSync';
+import { readVariableWindow } from './useTimeVariableSync';
 
 interface Params {
   store: Store;
   /** kepler only accepts actions once its instance has registered. */
   isReady: boolean;
+  /**
+   * The variables the map publishes its window to, or null when it publishes
+   * none. Their presence is what tells this timeline to leave the clock alone.
+   */
+  timeVariables: TimeVariableMapping | null;
   /** The raster queries, each carrying its whole series of scenes. */
   rasters: RasterDataset[];
 }
@@ -51,11 +58,16 @@ interface Params {
  * dispatching while kepler is mid-dispatch re-enters its reducer and overflows
  * the stack. Same shape as `useTimeVariableSync`, for the same reason.
  */
-export function useRasterTimeline({ store, isReady, rasters }: Params): void {
+export function useRasterTimeline({ store, isReady, rasters, timeVariables }: Params): void {
   const rastersRef = useRef(rasters);
   useEffect(() => {
     rastersRef.current = rasters;
   }, [rasters]);
+
+  const timeVariablesRef = useRef(timeVariables);
+  useEffect(() => {
+    timeVariablesRef.current = timeVariables;
+  }, [timeVariables]);
 
   /**
    * Layers already given their colour ramp, so the user can then change it
@@ -83,7 +95,7 @@ export function useRasterTimeline({ store, isReady, rasters }: Params): void {
       return;
     }
 
-    if (!opened.current) {
+    if (opensToDomain(opened.current, readVariableWindow(timeVariablesRef.current))) {
       const domain = readTimeDomain(store);
       if (domain) {
         pushTimeRange(store, store.dispatch, domain);
