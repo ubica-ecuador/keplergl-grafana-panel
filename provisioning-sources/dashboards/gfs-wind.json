@@ -396,7 +396,7 @@
         "publishWhilePlaying": false,
         "rasterColormap": "",
         "rasterPainted": false,
-        "rasterServerUrl": "http://localhost:8088",
+        "rasterServerUrl": "https://titiler.ubica.ec",
         "saveRequest": 2,
         "showSidePanel": true,
         "timeSync": "off",
