@@ -7,7 +7,7 @@ over terrain, why clicking works the way it does.
 
 ::: info Extracted, not recalled
 The mapping below was read out of the **installed** `@kepler.gl/layers` 3.3.0-alpha.10 and
-cross-checked against deck.gl's own catalogue. Bundled deck.gl is **9.3.10**.
+cross-checked against deck.gl's own catalogue. Bundled deck.gl is **9.3.11**.
 :::
 
 ## Which deck.gl layer draws what

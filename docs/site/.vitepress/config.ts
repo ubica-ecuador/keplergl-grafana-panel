@@ -12,7 +12,7 @@ import { defineConfig } from 'vitepress';
  */
 export const VERSIONS = {
   kepler: '3.3.0-alpha.10',
-  deck: '9.3.10',
+  deck: '9.3.11',
   maplibre: '4',
 };
 
