@@ -889,9 +889,9 @@ function captureRemoteDatasets(store: Store): SavedRemoteDataset[] {
  * Refresh path: replaces the data behind existing datasets while preserving the
  * layers, filters and styling the user configured by hand.
  *
- * This is the deliberate departure from the Foursquare plugin, which does
- * removeDataset + addDataset on every refresh and therefore discards the user's
- * layer configuration each time the query re-runs.
+ * This is a deliberate departure from the usual implementation: removeDataset +
+ * addDataset on every refresh is simpler, but it discards the user's layer
+ * configuration each time the query re-runs.
  *
  * Datasets kepler already holds go through `replaceDataInMap`, one call each,
  * because `updateVisData` cannot swap their rows — see `replaceDatasetData`

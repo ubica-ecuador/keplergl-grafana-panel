@@ -5,9 +5,8 @@
 Interactive [kepler.gl](https://kepler.gl) maps inside Grafana dashboards, fed by any Grafana data
 source. Built for advanced spatio-temporal mobility data — points, trajectories and origin-destination flows visualizations.
 
-An open source alternative to the Foursquare Studio panel, which renders its map in an iframe against
-`studio.foursquare.com` and therefore needs a Foursquare account. This one runs kepler.gl inside the
-panel: no account, no Mapbox token, no hosted service rendering your map.
+kepler.gl runs inside the panel, against your own queries: no account, no Mapbox token, and no
+hosted service rendering your map.
 
 **🌍 [Live demos](https://grafana.ubica.ec/dashboards)** — dashboards running in a public Grafana. No account and nothing to install: open one and pan, filter and play it yourself.
 

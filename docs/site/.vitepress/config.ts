@@ -75,7 +75,7 @@ export default defineConfig({
           { text: 'What it is', link: '/guide/what-it-is' },
           { text: 'Install', link: '/guide/install' },
           { text: 'Quickstart', link: '/guide/quickstart' },
-          { text: 'Migrating from the Foursquare panel', link: '/guide/migrating-from-the-foursquare-panel' },
+          { text: 'Coming from another kepler.gl tool', link: '/guide/coming-from-another-kepler-tool' },
         ],
       },
       {

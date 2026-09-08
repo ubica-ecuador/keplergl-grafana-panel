@@ -34,9 +34,8 @@ const ROLES: Array<{ key: keyof FieldRoles; label: string; help: string }> = [
  * Per-query mapping of columns to roles.
  *
  * Autodetection fills these in, and this editor exists for when it guesses
- * wrong or cannot guess at all. The Foursquare plugin has no equivalent: it
- * requires columns named exactly `latitude`/`longitude`/`time`, so users have to
- * rewrite their SQL around the plugin instead of the other way round.
+ * wrong or cannot guess at all — so that adapting a query to the panel is never
+ * a precondition for drawing it.
  */
 export function FieldMappingEditor({ value, onChange, context }: Props) {
   const frames = context.data ?? [];

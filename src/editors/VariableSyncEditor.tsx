@@ -21,8 +21,8 @@ const SOURCE_OPTIONS: Array<ComboboxOption<'filter' | 'click' | 'coordinate' | '
  *
  * Each row maps a filtered column to a template variable; when the user sets a
  * select or text filter on that column, the panel writes its value to the
- * variable and the rest of the dashboard re-queries. Turning a map into a
- * cross-filter control is something the Foursquare plugin cannot do at all.
+ * variable and the rest of the dashboard re-queries, which turns the map into a
+ * cross-filter control for the whole dashboard.
  *
  * Naming a second variable in "Max" turns the row into a *range* mapping: a
  * numeric filter on the column publishes its window as the min/max pair —

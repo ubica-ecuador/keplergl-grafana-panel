@@ -25,11 +25,9 @@ means a change in that default cannot silently remove the feature the plugin is 
 cdnUrl: <the plugin's own asset path>
 ```
 
-By default kepler fetches its icon library at runtime from `studio-public-data.foursquare.com`. That
-is wrong here on three counts: a plugin whose premise is escaping a hosted Foursquare dependency
-should not call a Foursquare CDN; Grafana's strict Content-Security-Policy blocks the request under
-`connect-src` and it surfaces as an unhandled "Failed to fetch"; and an air-gapped install has no
-route to it at all.
+By default kepler fetches its icon library at runtime from a hosted CDN. That does not work here on
+two counts: Grafana's strict Content-Security-Policy blocks the request under `connect-src` and it
+surfaces as an unhandled "Failed to fetch", and an air-gapped install has no route to it at all.
 
 So kepler's icon library is **vendored with the plugin** and served from Grafana. The path is read
 from the runtime asset base rather than hardcoded, because Grafana can serve plugin assets from a
@@ -144,9 +142,9 @@ is applied to the rasters your queries produce. See [Rasters](../guide/data/rast
 On a query refresh the panel **replaces the data underneath the existing datasets** rather than
 removing and re-adding them, so the layers, filters and styling you configured survive.
 
-This is a deliberate departure from how such panels usually work — the Foursquare Studio panel does
-remove-then-add on every refresh, and therefore discards the user's layer configuration each time
-the query re-runs.
+This is a deliberate departure from how such panels usually work. Remove-then-add on every refresh
+is the simpler implementation, and it discards the user's layer configuration each time the query
+re-runs.
 
 ## Where upstream documentation is behind this plugin
 

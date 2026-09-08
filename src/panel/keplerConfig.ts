@@ -7,12 +7,10 @@ import { registerFlowFieldMessages } from './flowFieldMessages';
 /**
  * Base URL for kepler's own static assets.
  *
- * By default kepler fetches its icon library at runtime from
- * `studio-public-data.foursquare.com`. That is wrong here on three counts: a
- * plugin whose whole premise is escaping the Foursquare hosted dependency
- * should not call a Foursquare CDN; Grafana's strict Content-Security-Policy
+ * By default kepler fetches its icon library at runtime from a hosted CDN. That
+ * does not work here on two counts: Grafana's strict Content-Security-Policy
  * blocks the request via `connect-src` and it surfaces as an unhandled "Failed
- * to fetch"; and air-gapped installs have no route to it at all.
+ * to fetch", and air-gapped installs have no route to it at all.
  *
  * `src/icons/svg-icons.json` is vendored from kepler.gl (MIT) and copied into
  * dist by the scaffold's `**\/*.json` rule, so it is served from the plugin's

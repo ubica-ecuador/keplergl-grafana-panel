@@ -74,13 +74,12 @@ does not do.
 Geomap is the lighter tool and it is already there. This one is what you want when the data is
 moving, when there is a lot of it, or when the styling has to go further than a panel option list.
 
-## How it compares to the Foursquare Studio panel
+## Already have a kepler.gl map?
 
-Foursquare publishes its own Grafana panel, which renders its map in an iframe against
-`studio.foursquare.com` and therefore needs a Foursquare account. This plugin exists as the open
-alternative to it. If you are coming from there, start at
-[Migrating from the Foursquare panel](./migrating-from-the-foursquare-panel) — it maps their
-column conventions onto ours and covers bringing a saved map configuration across.
+Maps built in kepler.gl's own demo app, in Dekart or in Foursquare Studio all export the same
+`KeplerGlSchema` JSON, and this panel accepts it. See
+[Coming from another kepler.gl tool](./coming-from-another-kepler-tool) for bringing one across
+and the two conventions worth knowing first.
 
 ## Status
 

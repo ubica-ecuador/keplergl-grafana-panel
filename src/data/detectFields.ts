@@ -239,9 +239,8 @@ const NAME_CANDIDATES: Record<string, string[]> = {
  * Infers field roles from a DataFrame by column name and type.
  *
  * This is only ever a starting point: the panel's field mapping editor lets the
- * user override every role. The Foursquare plugin has no such escape hatch — it
- * demands columns named exactly `latitude`/`longitude`/`time`, which forces
- * users to rewrite their queries around the plugin.
+ * user override every role. Detection deliberately accepts a wide set of names
+ * so that an unrecognised column is a dropdown rather than a query rewrite.
  */
 export function detectFields(frame: DataFrame): FieldRoles {
   const roles: FieldRoles = {};

@@ -89,9 +89,9 @@ kepler's layer panel, then save. Once saved, the ids match and it is stable.
 
 Invalid JSON is rejected rather than throwing: a typo in the textarea cannot take the panel down.
 
-## Coming from the Foursquare Studio panel
+## Coming from another kepler.gl tool
 
-See [Migrating from the Foursquare panel](../migrating-from-the-foursquare-panel), which covers the
+See [Coming from another kepler.gl tool](../coming-from-another-kepler-tool), which covers the
 column conventions as well as the configuration.
 
 ## Dashboards as code

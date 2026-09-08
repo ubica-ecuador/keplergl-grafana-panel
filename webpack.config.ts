@@ -68,7 +68,7 @@ const config = async (env: Env): Promise<Configuration> => {
       /*
        * Static assets kepler fetches at runtime from `cdnUrl` — which
        * keplerConfig.ts points at the plugin's own asset path so air-gapped
-       * installs never call the Foursquare CDN. The scaffold only copies JSON
+       * installs never call the hosted CDN. The scaffold only copies JSON
        * (that rule carries the vendored svg-icons.json); these two trees are
        * PNG, vendored from kepler.gl (MIT), and need their own copy rule.
        *
