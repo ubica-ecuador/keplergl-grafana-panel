@@ -1,83 +1,1064 @@
 {
-  "uid": "gfs-forecast",
-  "title": "NOAA GFS — forecast from an Icechunk repository",
-  "description": "Two metres of air temperature from the newest GFS run, stepping forward hour by hour. The archive is an Icechunk repository, which no Zarr reader can open on its own: the server resolves it and answers in tiles.",
-  "tags": [
-    "zarr",
-    "icechunk",
-    "raster",
-    "duckdb"
-  ],
-  "timezone": "utc",
-  "schemaVersion": 39,
-  "version": 1,
-  "editable": true,
-  "time": {
-    "from": "now-6h",
-    "to": "now+2d"
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "yesoreyeram-infinity-datasource",
+          "uid": "infinity"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "yellow",
+        "name": "Hour on the map",
+        "target": {
+          "columns": [
+            {
+              "selector": "time",
+              "text": "time",
+              "type": "timestamp"
+            },
+            {
+              "selector": "text",
+              "text": "text",
+              "type": "string"
+            }
+          ],
+          "data": "[{\"time\": \"${horaDibujada}\", \"text\": \"the hour the map is drawing\"}]",
+          "format": "table",
+          "parser": "backend",
+          "refId": "Anno",
+          "root_selector": "",
+          "source": "inline",
+          "type": "json"
+        }
+      }
+    ]
   },
+  "description": "One of twenty-five variables from the newest GFS run, stepping forward hour by hour. The archive is an Icechunk repository, which no Zarr reader can open on its own: the server resolves it and answers in tiles.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
   "panels": [
     {
-      "type": "text",
-      "id": 1,
-      "title": "What you are looking at",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
       "gridPos": {
         "h": 7,
         "w": 24,
         "x": 0,
         "y": 0
       },
+      "id": 1,
       "options": {
-        "mode": "markdown",
-        "content": "Air temperature two metres above the ground, from the most recent run of NOAA's Global Forecast System, hour by hour out to two days.\n\nThe map draws the hour at the **end** of the dashboard's range, and the range runs into the future — `now+2d` — because a forecast does. Narrow it to walk the forecast, or press play on the map's own time bar; if you do, switch that bar's window mode to *incremental*, because in the default *free* mode the window is as wide as the whole forecast and slides without ever changing which hour is drawn.\n\nThe archive is published by dynamical.org as an **Icechunk** repository. Chunk objects there are named by opaque identifiers and the map from array coordinates to object lives in a manifest, so a browser cannot fetch a chunk even knowing exactly which one it wants — it would have to read the manifests first, and the library that does that will not run in a Grafana page. The tile server resolves the repository instead, which is why the store address below starts with `stac+`: the catalogue is asked where the repository is today, rather than the address being written down and going stale on the next version.\n\nA tile over Ecuador costs about two seconds; the whole world at zoom 0 costs about thirty. That is the archive's shape showing through — it is chunked for reading a long time series at one place, so a map pays for 105 forecast hours to draw one."
-      }
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "One variable of the most recent run of NOAA's Global Forecast System, hour by hour out to two days. **Pick it above**: the archive holds twenty-five, and the query hands each one its own value range and colour ramp, because degrees Celsius and pascals cannot share a stretch.\n\n**Walk the forecast with the time bar at the bottom of the map**, not with the dashboard's picker at the top. The map's own clock is what chooses the hour here, and it is also what the figures on the right follow — the dashboard range cannot see it move. If you press play, switch that bar's window mode to *incremental*: in the default *free* mode the window is as wide as the whole forecast and slides without ever changing which hour is drawn.\n\nThe archive is published by dynamical.org as an **Icechunk** repository. Chunk objects there are named by opaque identifiers and the map from array coordinates to object lives in a manifest, so a browser cannot fetch a chunk even knowing exactly which one it wants — it would have to read the manifests first, and the library that does that will not run in a Grafana page. The tile server resolves the repository instead, which is why the store address below starts with `stac+`: the catalogue is asked where the repository is today, rather than the address being written down and going stale on the next version.\n\n**The recharge area of the Mazar hydroelectric plant is already drawn** and the three figures on the right are already about it. To move it, press **Escape** on the map first, or click the edit tool in the map's own tool strip: the map opens in draw mode, where a click starts a new shape rather than picking up the one that is there. They are measured by the same server on the same slice the map is painting: same variable, same run, same hour — the map publishes the hour it is showing and the request follows it. Note the cell count: at 0.25° a small shape covers very few cells, and a mean over three of them is not worth much.\n\nThe chart at the bottom is the same measurement for **every hour of the forecast**, sixteen days of it, in a single request — the server answers with one band per hour when the lead time is left unpinned. It follows the polygon and the variable too, so moving the shape redraws the whole curve.\n\nA tile over Ecuador costs about two seconds; the whole world at zoom 0 costs about thirty. That is the archive's shape showing through — it is chunked for reading a long time series at one place, so a map pays for 105 forecast hours to draw one.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "12.0.10",
+      "title": "What you are looking at",
+      "type": "text"
     },
     {
-      "type": "ubica-keplergl-panel",
-      "id": 2,
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "title": "2 m temperature · newest GFS run · the hour drawn is the end of the range",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
       "gridPos": {
         "h": 22,
-        "w": 24,
+        "w": 16,
         "x": 0,
         "y": 7
       },
+      "id": 2,
+      "options": {
+        "areaVariable": "area",
+        "basemap": "auto",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": true,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [
+                    40,
+                    63,
+                    93
+                  ],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [
+                    4,
+                    9,
+                    17
+                  ],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [
+                    114.75,
+                    114.75,
+                    114.75
+                  ],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [
+                    9,
+                    16,
+                    29
+                  ],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [
+                    17,
+                    35,
+                    48
+                  ]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": -3.221337319831678,
+              "longitude": -79.03478276728805,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_2D",
+              "maxPitch": 60,
+              "pitch": 0,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 6.980654760073648
+            },
+            "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
+              ],
+              "mapStyles": {},
+              "styleType": "dark-matter",
+              "threeDBuildingColor": [
+                15.035172933000911,
+                15.035172933000911,
+                15.035172933000911
+              ],
+              "topLayerGroups": {
+                "border": true,
+                "label": true
+              },
+              "visibleLayerGroups": {
+                "3d building": false,
+                "border": true,
+                "building": true,
+                "label": true,
+                "land": true,
+                "road": true,
+                "water": true
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [
+                  {
+                    "geometry": {
+                      "coordinates": [
+                        [
+                          [
+                            -79.33151735783883,
+                            -2.3490527719619796
+                          ],
+                          [
+                            -79.33151735783883,
+                            -3.0111649142394774
+                          ],
+                          [
+                            -78.40064246244333,
+                            -3.0111649142394774
+                          ],
+                          [
+                            -78.40064246244333,
+                            -2.3490527719619796
+                          ],
+                          [
+                            -79.33151735783883,
+                            -2.3490527719619796
+                          ]
+                        ]
+                      ],
+                      "type": "Polygon"
+                    },
+                    "id": "mazar-recharge-area",
+                    "properties": {
+                      "isClosed": true,
+                      "isVisible": true,
+                      "name": "Mazar recharge area",
+                      "renderType": "Polygon"
+                    },
+                    "type": "Feature"
+                  }
+                ],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [
+                {
+                  "animationWindow": "incremental",
+                  "dataId": [
+                    "grafana-A"
+                  ],
+                  "enabled": true,
+                  "id": "qx4unsrwc",
+                  "name": [
+                    "time"
+                  ],
+                  "plotType": {
+                    "aggregation": "average",
+                    "defaultTimeFormat": "L  H A",
+                    "interval": "1-hour",
+                    "type": "histogram"
+                  },
+                  "speed": 1,
+                  "syncTimelineMode": 1,
+                  "type": "timeRange",
+                  "value": [
+                    1788800400000,
+                    1788984000000
+                  ],
+                  "view": "enlarged"
+                }
+              ],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "format": "L LTS",
+                        "name": "time"
+                      },
+                      {
+                        "name": "zarr_url"
+                      },
+                      {
+                        "name": "zarr_variable"
+                      },
+                      {
+                        "name": "zarr_rescale"
+                      },
+                      {
+                        "name": "zarr_colormap"
+                      }
+                    ],
+                    "grafana-A-zarr": [],
+                    "grafana-A-zarr-times": [
+                      {
+                        "format": "L LTS",
+                        "name": "time"
+                      }
+                    ]
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "grafana-A-zarr-layer"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "color": [
+                      18,
+                      147,
+                      154
+                    ],
+                    "columns": {},
+                    "dataId": "grafana-A-zarr",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "A",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "opacity": 0.27,
+                      "zarrLabel": "180000000000000"
+                    }
+                  },
+                  "id": "grafana-A-zarr-layer",
+                  "type": "zarr",
+                  "visualChannels": {
+                    "colorScale": "quantile",
+                    "sizeScale": "linear"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "rasterColormap": "turbo",
+        "rasterPainted": false,
+        "rasterServerUrl": "http://localhost:8088",
+        "saveRequest": 1,
+        "showSidePanel": false,
+        "timeSync": "variables",
+        "timeVariables": {
+          "from": "mapFrom",
+          "to": "mapTo"
+        },
+        "tripLayerMode": "table",
+        "zarrRescale": "-10,35"
+      },
+      "pluginVersion": "1.0.0",
       "targets": [
         {
-          "refId": "A",
           "datasource": {
             "type": "motherduck-duckdb-datasource",
             "uid": "duckdb"
           },
-          "rawQuery": true,
           "format": 1,
-          "rawSql": "-- Una fila por hora del pronostico. DuckDB no lee Icechunk y no lo intenta:\n-- aqui solo se calcula QUE pedir, y el servidor de teselas lo resuelve.\n--\n-- La pasada: GFS arranca cada 6 h y dynamical tarda un rato en ingerirla, asi\n-- que se toma el ultimo multiplo de 6 h que tenga ya 9 horas de antiguedad. Es\n-- margen, no precision: pedir una pasada que aun no esta da teselas vacias.\nWITH run AS (\n  SELECT to_timestamp(floor(epoch(now() - INTERVAL '9 hours') / 21600) * 21600) AS init\n)\nSELECT\n  init + INTERVAL '1 hour' * h AS time,\n  -- `stac+` en vez de la url del bucket: dynamical rueda la version del\n  -- repositorio (`v0.2.7` hoy) y pide que nadie la fije. El servidor pregunta\n  -- al catalogo donde esta hoy.\n  'stac+https://stac.dynamical.org/noaa-gfs-forecast/collection.json' AS zarr_url,\n  'temperature_2m' AS zarr_variable,\n  -- El reloj recorre `lead_time`, no `time`: el archivo es un cubo de\n  -- pronostico y su eje temporal son dos, la pasada y el salto.\n  'lead_time' AS zarr_time_dim,\n  -- TRAMPA: el eje es `timedelta64[us]` pero el valor va en NANOSEGUNDOS.\n  -- TiTiler convierte la cadena con el tipo escalar generico de numpy y pandas\n  -- la interpreta en ns pase lo que pase; en microsegundos no encuentra nada y\n  -- responde 500 «not all values found in index».\n  (h * 3600 * 1000000000)::BIGINT::VARCHAR AS zarr_time_label,\n  -- La pasada se fija, en el formato numpy de siempre.\n  'init_time=' || strftime(init AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%S.000000000') AS zarr_sel\nFROM run, generate_series(0, 48) g(h)\nORDER BY time"
+          "rawQuery": true,
+          "rawSql": "-- Una fila por paso del pronostico: dieciseis dias. DuckDB no lee Icechunk y no lo intenta:\n-- aqui solo se calcula QUE pedir, y el servidor de teselas lo resuelve.\n--\n-- La pasada: GFS arranca cada 6 h y dynamical tarda un rato en ingerirla, asi\n-- que se toma el ultimo multiplo de 6 h que tenga ya 9 horas de antiguedad. Es\n-- margen, no precision: pedir una pasada que aun no esta da teselas vacias.\n--\n-- OJO con $variable: este datasource entrecomilla las variables por su cuenta,\n-- asi que va desnuda. Metida dentro de comillas saldria como ''temperature_2m''\n-- y la consulta no llega ni al parser.\nWITH run AS (\n  SELECT to_timestamp(floor(epoch(now() - INTERVAL '9 hours') / 21600) * 21600) AS init\n)\nSELECT\n  init + INTERVAL '1 hour' * h AS time,\n  -- `stac+` en vez de la url del bucket: dynamical rueda la version del\n  -- repositorio (`v0.2.7` hoy) y pide que nadie la fije. El servidor pregunta\n  -- al catalogo donde esta hoy.\n  'stac+https://stac.dynamical.org/noaa-gfs-forecast/collection.json' AS zarr_url,\n  $variable AS zarr_variable,\n  -- El rango y la rampa viajan POR FILA, no por opcion del panel: cada variable\n  -- vive en su propia escala, y una sola no puede servir a grados Celsius y a\n  -- pascales a la vez. La opcion del panel queda de red por si esto faltara.\n  CASE $variable\n    WHEN 'temperature_2m'                    THEN '-10,35'\n    WHEN 'relative_humidity_2m'              THEN '0,100'\n    WHEN 'total_cloud_cover_atmosphere'      THEN '0,100'\n    WHEN 'precipitation_surface'             THEN '0,0.0028'\n    WHEN 'precipitable_water_atmosphere'     THEN '0,60'\n    WHEN 'pressure_reduced_to_mean_sea_level' THEN '98000,103000'\n    WHEN 'wind_u_10m'                        THEN '-15,15'\n    WHEN 'wind_v_10m'                        THEN '-15,15'\n    ELSE '-10,35'\n  END AS zarr_rescale,\n  CASE $variable\n    WHEN 'relative_humidity_2m'              THEN 'blues'\n    WHEN 'total_cloud_cover_atmosphere'      THEN 'greys'\n    WHEN 'precipitation_surface'             THEN 'blues'\n    WHEN 'precipitable_water_atmosphere'     THEN 'viridis'\n    WHEN 'pressure_reduced_to_mean_sea_level' THEN 'rdylbu'\n    WHEN 'wind_u_10m'                        THEN 'rdylbu'\n    WHEN 'wind_v_10m'                        THEN 'rdylbu'\n    ELSE 'turbo'\n  END AS zarr_colormap,\n  -- El reloj recorre `lead_time`, no `time`: el archivo es un cubo de\n  -- pronostico y su eje temporal son dos, la pasada y el salto.\n  'lead_time' AS zarr_time_dim,\n  -- El valor del lead va en nanosegundos.\n  (h * 3600 * 1000000000)::BIGINT::VARCHAR AS zarr_time_label,\n  -- La pasada se fija, en el formato numpy de siempre.\n  'init_time=' || strftime(init AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%S.000000000') AS zarr_sel\n-- Los 209 pasos que el archivo publica de verdad, no un rango redondo: horario hasta las\n-- 120 h y cada tres a partir de 123, hasta 384. Pedir una hora que no existe es un 500 por\n-- tesela, y quedarse corto deja el mapa sin poder ir donde apunta la grafica -- que cubre\n-- los dieciseis dias enteros -- ni donde lleve un clic en ella.\nFROM run, (SELECT unnest(range(0, 121)) AS h UNION ALL SELECT unnest(range(123, 385, 3)) AS h) g\nORDER BY time",
+          "refId": "A"
         }
       ],
+      "title": "${variable:text} · newest GFS run · walk it with the map's own time bar",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 16,
+        "y": 7
+      },
+      "id": 6,
       "options": {
-        "showSidePanel": false,
-        "timeSync": "toMap",
-        "rasterServerUrl": "http://localhost:8088",
-        "rasterColormap": "turbo",
-        "zarrRescale": "-10,35",
-        "mapConfig": {
-          "version": "v1",
-          "config": {
-            "mapState": {
-              "latitude": -1.5,
-              "longitude": -78.5,
-              "zoom": 4.5,
-              "bearing": 0,
-              "pitch": 0,
-              "dragRotate": false
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^mean$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.10",
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 5,
+          "refId": "A"
+        }
+      ],
+      "title": "Mean in the area",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 16,
+        "y": 12
+      },
+      "id": 7,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^min$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.10",
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 5,
+          "refId": "A"
+        }
+      ],
+      "title": "Minimum",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "orange",
+            "mode": "fixed"
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 16,
+        "y": 17
+      },
+      "id": 8,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^max$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.10",
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 5,
+          "refId": "A"
+        }
+      ],
+      "title": "Maximum",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "infinity"
+      },
+      "description": "One request, shared: the three figures above read this panel rather than asking the server the same question three more times.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 22
+      },
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "12.0.10",
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "mean",
+              "text": "mean",
+              "type": "number"
+            },
+            {
+              "selector": "min",
+              "text": "min",
+              "type": "number"
+            },
+            {
+              "selector": "max",
+              "text": "max",
+              "type": "number"
+            },
+            {
+              "selector": "median",
+              "text": "median",
+              "type": "number"
+            },
+            {
+              "selector": "std",
+              "text": "std",
+              "type": "number"
+            },
+            {
+              "selector": "count",
+              "text": "cells",
+              "type": "number"
             }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "infinity"
+          },
+          "format": "table",
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "properties.statistics.b1",
+          "source": "url",
+          "type": "json",
+          "url": "http://titiler/zarr/statistics?url=${store:percentencode}&variable=${variable}&sel=init_time%3D${pasada}&sel=lead_time%3D${lead}",
+          "url_options": {
+            "body_content_type": "application/json",
+            "body_type": "raw",
+            "data": "{\"type\": \"Feature\", \"properties\": {}, \"geometry\": ${zona}}",
+            "method": "POST"
           }
         }
-      }
+      ],
+      "title": "The request · every statistic of ${variable:text}",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Every forecast hour out to sixteen days, measured over the same polygon. One request: leaving the lead-time axis unpinned makes the server answer with one band per hour instead of one number.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "mean"
+            },
+            "properties": [
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "min"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.fillBelowTo",
+                "value": "max"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "max"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 29
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.10",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- La serie entera sobre la figura dibujada, en UNA sola peticion.\n--\n-- El truco: NO fijar `lead_time`. Con la pasada fijada y el eje de saltos intacto,\n-- TiTiler deja ese eje como bandas y devuelve una por hora de pronostico, cada una\n-- con su media, su minimo y su maximo. 209 horas -- dieciseis dias -- en ~4 s, en\n-- vez de 209 peticiones. La etiqueta de cada banda trae el salto en microsegundos,\n-- que es lo que reconstruye el eje temporal.\n--\n-- OJO con las variables, que aqui tiene truco. En una consulta de PANEL este\n-- datasource entrecomilla las variables por su cuenta -- de ahi que $variable,\n-- $pasada y $zona vayan desnudas --, PERO ese automatismo se apaga en cuanto la\n-- variable lleva un modificador de formato: ${store:percentencode} llega cruda y\n-- hay que entrecomillarla a mano, o la consulta muere en\n-- `Parser Error: syntax error at or near \"%\"` sin llegar al parser.\n-- Y $zona tampoco puede ir desnuda, por lo contrario: el automatismo ESCAPA las\n-- comillas dobles del GeoJSON y lo entrega malformado (`Conversion Error:\n-- Malformed JSON at byte 46`). Con `:raw` viaja intacto y las comillas las pongo yo.\nLOAD http_client; LOAD json;\nWITH run AS (\n  SELECT to_timestamp(floor(epoch(now() - INTERVAL '9 hours') / 21600) * 21600) AS init\n), resp AS (\n  SELECT (http_post(\n    'http://titiler/zarr/statistics?url=' || '${store:percentencode}'\n      || '&variable=' || ${variable}\n      || '&sel=init_time%3D' || ${pasada},\n    MAP {'content-type': 'application/json'},\n    ('{\"type\":\"Feature\",\"properties\":{},\"geometry\":' || '${zona:raw}' || '}')::JSON\n  ) ->> 'body')::JSON AS body\n), st AS (\n  SELECT body -> 'properties' -> 'statistics' AS s FROM resp\n), bandas AS (\n  SELECT s, unnest(json_keys(s)) AS b FROM st\n)\nSELECT\n  init + to_microseconds(CAST(regexp_extract(\n      json_extract_string(s, '$.\"' || b || '\".description'), '^[0-9]+') AS BIGINT)) AS time,\n  json_extract(s, '$.\"' || b || '\".mean')::DOUBLE AS mean,\n  json_extract(s, '$.\"' || b || '\".min')::DOUBLE  AS min,\n  json_extract(s, '$.\"' || b || '\".max')::DOUBLE  AS max\nFROM bandas, run\nORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "title": "${variable:text} over the drawn area · the whole forecast",
+      "type": "timeseries"
     }
-  ]
+  ],
+  "preload": false,
+  "schemaVersion": 41,
+  "tags": [
+    "zarr",
+    "icechunk",
+    "raster",
+    "duckdb"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "2 m temperature (C)",
+          "value": "temperature_2m"
+        },
+        "description": "Which of the archive’s 25 variables is drawn. It travels to the zarr_variable column, and the query hands each one its own value range and colour ramp — pascals and degrees Celsius cannot share a stretch.",
+        "includeAll": false,
+        "label": "Variable",
+        "name": "variable",
+        "options": [],
+        "query": "2 m temperature (C) : temperature_2m,2 m relative humidity (%) : relative_humidity_2m,Total cloud cover (%) : total_cloud_cover_atmosphere,Precipitation rate (kg m-2 s-1) : precipitation_surface,Precipitable water (kg m-2) : precipitable_water_atmosphere,Pressure at MSL (Pa) : pressure_reduced_to_mean_sea_level,10 m wind U (m s-1) : wind_u_10m,10 m wind V (m s-1) : wind_v_10m",
+        "type": "custom"
+      },
+      {
+        "description": "The archive address, kept in one place: the map query and the statistics request must ask about the same store or the numbers are about a different map.",
+        "hide": 2,
+        "label": "store",
+        "name": "store",
+        "query": "stac+https://stac.dynamical.org/noaa-gfs-forecast/collection.json",
+        "skipUrlSync": true,
+        "type": "constant"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "description": "Written by the map itself whenever the polygon is drawn or moved.",
+        "hide": 2,
+        "label": "Drawn area (WKT)",
+        "name": "area",
+        "query": "",
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "description": "Which hour of the forecast the map draws. Changing it moves the map without reloading anything — a variable change is not a navigation.",
+        "includeAll": false,
+        "label": "Forecast hour",
+        "name": "hora",
+        "options": [],
+        "query": "-- Las horas del pronostico, de ahora en adelante, como desplegable.\n-- `__text` es lo que se lee y `__value` lo que viaja: en el mismo ISO que escribe el\n-- panel al mover su propio reloj, para que haya un solo formato en juego.\n-- La primera opcion es la que Grafana toma por defecto, y por eso el WHERE recorta\n-- el pasado: asi el tablero abre en la hora actual y no en el ultimo paso.\nWITH run AS (SELECT to_timestamp(floor(epoch(now() - INTERVAL '9 hours') / 21600) * 21600) AS init)\nSELECT strftime((init + INTERVAL '1 hour' * h) AT TIME ZONE 'UTC',\n                '%d %b %H:%M UTC') AS __text,\n       strftime((init + INTERVAL '1 hour' * h) AT TIME ZONE 'UTC',\n                '%Y-%m-%dT%H:%M:%S.000Z') AS __value\nFROM run, (SELECT unnest(range(0, 121)) AS h UNION ALL SELECT unnest(range(123, 385, 3)) AS h) g\nWHERE init + INTERVAL '1 hour' * h >= date_trunc('hour', now())\nORDER BY h",
+        "refresh": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "description": "Seeded at load with the hour nearest now; the map owns it afterwards.",
+        "hide": 2,
+        "includeAll": false,
+        "label": "mapFrom",
+        "name": "mapFrom",
+        "options": [],
+        "query": "-- Seis horas antes de la hora elegida. Parentesis obligatorios: `AT TIME ZONE` liga\n-- mas fuerte que la resta y sin ellos DuckDB intenta `timezone('UTC', INTERVAL)`.\nSELECT strftime((('${hora}')::TIMESTAMPTZ - INTERVAL '6 hours') AT TIME ZONE 'UTC',\n                '%Y-%m-%dT%H:%M:%S.000Z')",
+        "refresh": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "description": "Seeded at load with the hour nearest now; the map owns it afterwards.",
+        "hide": 2,
+        "includeAll": false,
+        "label": "mapTo",
+        "name": "mapTo",
+        "options": [],
+        "query": "-- La hora elegida en el desplegable, tal cual. Que esto mande sobre el mapa funciona\n-- porque mientras el mapa no se haya movido por su cuenta las variables ganan\n-- (`decideTimeSync`) -- el mismo mecanismo que hace que un enlace compartido restaure\n-- el encuadre.\nSELECT '${hora}'",
+        "refresh": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "hide": 2,
+        "includeAll": false,
+        "label": "zone",
+        "name": "zona",
+        "options": [],
+        "query": "-- El mapa publica la figura como WKT; TiTiler quiere GeoJSON.\n-- OJO: en una consulta de VARIABLE el datasource NO entrecomilla solo (si lo\n-- hace en las de panel), asi que las comillas van a mano. Y el ::VARCHAR no es\n-- cosmetico: sin el, \"unsupported Scan ... map[string]interface{}\".\n--\n-- El coalesce es lo que hace que el tablero abra con numeros: el mapa arranca\n-- con este mismo poligono ya dibujado, y hasta que alguien lo mueva la variable\n-- esta vacia (la primera pasada del sincronizador adopta, no publica).\nLOAD spatial;\nSELECT ST_AsGeoJSON(ST_GeomFromText(\n  coalesce(nullif('${area}', ''), 'POLYGON((-79.33151735783883 -2.3490527719619796, -79.33151735783883 -3.0111649142394774, -78.40064246244333 -3.0111649142394774, -78.40064246244333 -2.3490527719619796, -79.33151735783883 -2.3490527719619796))')))::VARCHAR",
+        "refresh": 2,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "hide": 2,
+        "includeAll": false,
+        "label": "run",
+        "name": "pasada",
+        "options": [],
+        "query": "-- La misma pasada que dibuja el mapa, con la misma regla de las 9 horas.\nSELECT strftime(to_timestamp(floor(epoch(now() - INTERVAL '9 hours') / 21600) * 21600)\n                AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%S.000000000')",
+        "refresh": 2,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "hide": 2,
+        "includeAll": false,
+        "label": "lead",
+        "name": "lead",
+        "options": [],
+        "query": "-- La hora que el mapa esta pintando, en nanosegundos desde el inicio de la pasada.\n--\n-- Sale de `mapTo`, que publica el propio panel al mover SU barra de tiempo. No de\n-- $__timeTo(): el selector del dashboard no se entera de que el mapa cambio de hora,\n-- asi que una estadistica colgada de el se queda clavada mientras el mapa avanza.\n-- $__timeTo() queda de respaldo para la primera pasada, antes de que el mapa publique.\n--\n-- OJO: en una consulta de VARIABLE el datasource NO entrecomilla solo, de ahi las\n-- comillas a mano en '${mapTo}'.\nWITH run AS (\n  SELECT to_timestamp(floor(epoch(now() - INTERVAL '9 hours') / 21600) * 21600) AS init\n)\nSELECT (least(greatest(floor(epoch(\n          coalesce(try_cast(nullif('${mapTo}', '') AS TIMESTAMPTZ), $__timeTo()::TIMESTAMPTZ)\n          - init) / 3600), 0), 384)\n        * 3600 * 1000000000)::BIGINT::VARCHAR\nFROM run",
+        "refresh": 2,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "hide": 2,
+        "includeAll": false,
+        "label": "drawn hour",
+        "name": "horaDibujada",
+        "options": [],
+        "query": "-- La hora exacta que el mapa esta pintando, en ISO, para marcarla en la grafica.\n-- Sale del mismo `lead` que miden las estadisticas, no de `mapTo`: mapTo es el borde\n-- de la ventana y puede caer entre dos horas, mientras que lo que se dibuja es\n-- siempre una hora exacta del pronostico.\n-- Y la division es entera (`//`): con `/` sale un DOUBLE y no hay to_microseconds(DOUBLE),\n-- asi que la variable se queda vacia y la anotacion no aparece, sin decir nada.\nWITH run AS (\n  SELECT to_timestamp(floor(epoch(now() - INTERVAL '9 hours') / 21600) * 21600) AS init\n)\nSELECT strftime((init + to_microseconds(CAST('${lead}' AS BIGINT) // 1000))\n                AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%SZ')\nFROM run",
+        "refresh": 2,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now+16d"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "NOAA GFS — forecast from an Icechunk repository",
+  "uid": "gfs-forecast",
+  "version": 29
 }
