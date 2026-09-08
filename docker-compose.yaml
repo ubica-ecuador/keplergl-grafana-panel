@@ -400,6 +400,11 @@ services:
       # has; the rest is header caching. Deliberately NOT setting
       # CPL_VSIL_CURL_ALLOWED_EXTENSIONS: it turns "unexpected extension" into a
       # silent failure, and the COGs we write ourselves may not end in .tif.
+      # Hold the GFS repository open from boot. Opening it costs 4.6 s and every
+      # worker pays it separately, which a dashboard measuring a lattice cannot
+      # afford: DuckDB's http_client abandons a response after ten seconds and
+      # has no setting to say otherwise. See ICECHUNK_PRELOAD in icechunk_app.py.
+      ICECHUNK_PRELOAD: 'stac+https://stac.dynamical.org/noaa-gfs-forecast/collection.json'
       GDAL_DISABLE_READDIR_ON_OPEN: 'EMPTY_DIR'
       GDAL_HTTP_MERGE_CONSECUTIVE_RANGES: 'YES'
       GDAL_INGESTED_BYTES_AT_OPEN: '32768'

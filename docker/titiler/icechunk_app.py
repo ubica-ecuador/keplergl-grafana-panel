@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 import urllib.request
 from functools import lru_cache
@@ -79,6 +80,66 @@ STAC_ASSET = os.environ.get("ICECHUNK_STAC_ASSET", "icechunk-https")
 # holds a snapshot rather than a branch — shares one *version*, so a screenful of
 # tiles can never be half old forecast and half new one.
 CACHE_TTL = int(os.environ.get("ICECHUNK_CACHE_TTL", "900"))
+
+# Bytes of decompressed chunks each open repository keeps in memory.
+#
+# Icechunk ships this **off** — `num_bytes_chunks: 0` — so by default every read
+# fetches and decompresses its chunk again, however many times the same one is
+# asked for. That default is wrong for everything this server does, because a
+# chunk here is enormous next to a request: GFS packs 105 lead times and 30.25°
+# of latitude and longitude into one 0.91 MiB object, so a screenful of tiles and
+# a whole regional grid of statistics all live inside a single chunk.
+#
+# Measured against GFS, reading the same one-cell window five times:
+#
+#     off      1.12 s, 1.82 s, 1.80 s, 0.80 s …   every read pays in full
+#     on       3.37 s, then 0.007 s               460x on every read but the first
+#
+# and the shape of request that this makes possible — 81 separate windows, which
+# is what one `/zarr/statistics` call over a 9x9 grid does — goes from 90 s to
+# 0.68 s.
+#
+# The number is per repository and per worker, so the ceiling is this times the
+# live entries of the cache above times `WEB_CONCURRENCY`. 128 MiB holds about
+# twenty of GFS's chunks unpacked, which is a region at any zoom; raise it for a
+# server that serves several archives at once, and watch the multiplication.
+CHUNK_CACHE_BYTES = int(
+    os.environ.get("ICECHUNK_CHUNK_CACHE_BYTES", str(128 * 1024 * 1024))
+)
+
+
+# Repositories to hold open, comma separated, so that no request ever pays for
+# opening one.
+#
+# Opening the GFS repo costs about 4.6 seconds — a 491 KB pointer, a snapshot,
+# then the metadata — and that is charged to whichever request arrives first.
+# Under gunicorn it is charged four times, once per worker, because each has its
+# own cache. That is survivable for a tile, which is one request among dozens.
+# It is fatal for a dashboard that measures a lattice, because DuckDB's
+# `http_client` gives up on a response after ten seconds and offers no setting
+# to say otherwise: measured against a cold server, requests of nine cells took
+# 6.5 s, 7.2 s, 8.1 s and 10.3 s — the last one over the edge — while the same
+# requests warm took 1.1 s. Splitting the work into smaller requests does not
+# help, because the cost is the opening and not the cells.
+#
+# So the opening moves off the request path entirely: a daemon thread per worker
+# opens these at boot and re-opens them before the cache above retires them, at
+# a third of its lifetime. The thread never lets an exception escape — a
+# repository that cannot be reached at boot must not stop a server whose other
+# routes have nothing to do with it, and the next pass will try again.
+PRELOAD = [a.strip() for a in os.environ.get("ICECHUNK_PRELOAD", "").split(",") if a.strip()]
+
+
+def _keep_open() -> None:
+    """Open every preloaded repository, again and again, in the background."""
+    while True:
+        for src_path in PRELOAD:
+            try:
+                open_icechunk(src_path)
+            except Exception as exc:  # noqa: BLE001 - a boot must not depend on this
+                print(f"icechunk preload failed for {src_path}: {exc!r}", flush=True)
+
+        time.sleep(max(CACHE_TTL // 3, 30))
 
 
 def icechunk_href(src_path: str) -> str | None:
@@ -129,7 +190,10 @@ def _open_icechunk(
     href = icechunk_href(src_path)
     assert href is not None, f"{src_path} is not an Icechunk url"
 
-    repo = icechunk.Repository.open(icechunk.http_storage(href))
+    config = icechunk.RepositoryConfig.default()
+    config.caching = icechunk.CachingConfig(num_bytes_chunks=CHUNK_CACHE_BYTES)
+
+    repo = icechunk.Repository.open(icechunk.http_storage(href), config=config)
     session = repo.readonly_session("main")
 
     open_args: dict[str, Any] = {
@@ -187,3 +251,7 @@ zarr_factory = XarrayTilerFactory(
 )
 
 app.include_router(zarr_factory.router, prefix="/zarr", tags=["Zarr"])
+
+if PRELOAD:
+    threading.Thread(target=_keep_open, name="icechunk-preload", daemon=True).start()
+
