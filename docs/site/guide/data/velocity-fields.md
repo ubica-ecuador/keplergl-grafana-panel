@@ -66,6 +66,14 @@ layer's own **Columns** section, which also carries the switch between the two s
 query whose names are in neither list above needs no aliasing, just a different column picked.
 :::
 
+### When the wind is in an archive, not in a table
+
+A forecast archive holds the two components already, but it is not a table and no `SELECT` reaches
+into it. Both roles still arrive as ordinary columns — the tile server is asked for the whole lattice
+at once and the query turns its answer into rows. Worked end to end, with the trap that makes the
+field look calm instead of broken:
+[a wind field from an Icechunk archive](../sources/icechunk#a-wind-field-from-the-same-archive).
+
 ## What disqualifies a query
 
 A **trip id** column. A GPS trace that happens to carry a `speed` column is a trajectory, not a

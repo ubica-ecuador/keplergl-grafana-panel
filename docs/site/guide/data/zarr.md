@@ -181,6 +181,19 @@ SELECT '…/tavg-prec-month' AS zarr_url,
 
 Time is not listed there — the map's clock owns it, and it travels as the label above.
 
+::: warning A pinned moment is a selector, not a time role
+`zarr_time_dim` and `zarr_time_label` describe an axis **the map's clock walks**, and the panel only
+reads them from a query that returns a `time` column: with no calendar to build, the label never
+reaches the tile url and the server is asked for a cube it cannot draw — a `500` per tile.
+
+When the moment is fixed by something else — a dashboard variable, a dropdown — it is not a time role
+at all. Put it in `zarr_sel` beside the other pinned axes:
+
+```sql
+'init_time=' || $run || ',lead_time=' || $lead AS zarr_sel
+```
+:::
+
 ## When the temporal axis is not called time
 
 A climate store often does not hold dates at all. CarbonPlan's demo keeps twelve months as

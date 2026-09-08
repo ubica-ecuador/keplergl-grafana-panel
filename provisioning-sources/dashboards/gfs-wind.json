@@ -1,0 +1,542 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "The 10 m wind of the newest NOAA GFS run as a flow field. The archive is an Icechunk repository, so the whole lattice is measured server-side in one request per component.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "The **10 m wind of the newest NOAA GFS run**, drawn as a flow field: one arrow per grid point, its direction and length taken from the archive's `wind_u_10m` and `wind_v_10m`.\n\n**The map's own time bar does not walk the forecast.** It is a sixty-second loop that animates the streaks along the field, and pressing play sets them moving; the field itself is already drawn without it. Dragging that bar changes nothing about which hour you are looking at.\n\n**The hour comes from the picker above**, which re-runs the query. A flow field holds one instant — the panel keeps the first moment a query offers and drops the rest along with the time column — so there is no forecast for a clock to walk.\n\n**Under the wind** paints one of the archive's own variables as a raster, on the same run and the same hour — it comes from the same two numbers the arrows do, so the two can never drift apart. There is no wind speed among the choices because **the archive does not publish one**: it ships `u` and `v` components, and the tile server paints one variable at a time. Set it to *Nothing* for the field alone.\n\n**Grid** trades detail for reach at the same price. Both settings are 49 points and both take about ten seconds, because what a request costs is the number of points, not the ground they cover: *Detail* samples every cell of the archive over 1.5°, *Wide* every other cell over 3°.\n\n**A tile server that has just started can miss the first load**, and says so: *the tile server did not answer*. Opening the archive costs about five seconds per worker, and DuckDB abandons any response that takes more than ten — a ceiling it offers no way to raise. Refreshing is enough; by then the server is warm.\n\nThe archive is published by dynamical.org as an **Icechunk** repository, which no ordinary Zarr reader opens: chunk objects are named by opaque identifiers and the map from array coordinates to object lives in a manifest. The tile server resolves it — and it is also the only thing here that can read the archive at all, which is why the whole lattice travels to it as one GeoJSON `FeatureCollection` per component. Two requests, not ninety-eight.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "12.0.10",
+      "title": "What you are looking at",
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 22,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 2,
+      "options": {
+        "basemap": "auto",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": true,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [
+                    40,
+                    63,
+                    93
+                  ],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [
+                    4,
+                    9,
+                    17
+                  ],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [
+                    114.75,
+                    114.75,
+                    114.75
+                  ],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [
+                    9,
+                    16,
+                    29
+                  ],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [
+                    17,
+                    35,
+                    48
+                  ]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": -2.9068981967614747,
+              "longitude": -79.19079557276429,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_2D",
+              "maxPitch": 60,
+              "pitch": 0,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 9.249493327785046
+            },
+            "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
+              ],
+              "mapStyles": {},
+              "styleType": "grafana-satellite-terrain",
+              "threeDBuildingColor": [
+                9.311499150948377,
+                9.311499150948377,
+                9.311499150948377
+              ],
+              "topLayerGroups": {},
+              "visibleLayerGroups": {
+                "label": false,
+                "road": false
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "currentTime": 1788864788065,
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "u"
+                      },
+                      {
+                        "name": "v"
+                      }
+                    ],
+                    "grafana-B": [
+                      {
+                        "name": "zarr_url"
+                      },
+                      {
+                        "name": "zarr_variable"
+                      },
+                      {
+                        "format": "L LTS",
+                        "name": "zarr_sel"
+                      },
+                      {
+                        "name": "zarr_rescale"
+                      },
+                      {
+                        "name": "zarr_colormap"
+                      }
+                    ],
+                    "grafana-B-zarr": []
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "flowfield-grafana-A",
+                "grafana-B-zarr-layer"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "color": [
+                      30,
+                      150,
+                      190
+                    ],
+                    "columnMode": "components",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude",
+                      "u": "u",
+                      "v": "v"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Flow field",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "colorBySpeed": true,
+                      "colorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#00939C",
+                          "#4EA7AD",
+                          "#78BCBF",
+                          "#9ED0D2",
+                          "#C2E5E6",
+                          "#E6FAFA"
+                        ],
+                        "name": "Uber Viz Sequential",
+                        "type": "sequential"
+                      },
+                      "cycleSeconds": 60,
+                      "density": 10500,
+                      "elevationScale": 1,
+                      "flowContext": {
+                        "baseMs": 1788864777165,
+                        "camera": {
+                          "bearing": 0,
+                          "height": 326,
+                          "latitude": -2.9068981967614747,
+                          "longitude": -79.19079557276429,
+                          "pitch": 0,
+                          "width": 1499,
+                          "zoom": 9.249493327785046
+                        },
+                        "tallest": 0
+                      },
+                      "heightMeters": 0,
+                      "lifeFraction": 0.4,
+                      "lineLength": 30,
+                      "opacity": 0.8,
+                      "seamlessLoop": true,
+                      "smoothing": 3,
+                      "thickness": 2.1,
+                      "trailShare": 8,
+                      "zoomResponse": 0.4
+                    }
+                  },
+                  "id": "flowfield-grafana-A",
+                  "type": "flowfield",
+                  "visualChannels": {
+                    "colorScale": "quantile",
+                    "sizeScale": "linear"
+                  }
+                },
+                {
+                  "config": {
+                    "color": [
+                      231,
+                      159,
+                      213
+                    ],
+                    "columns": {},
+                    "dataId": "grafana-B-zarr",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": false,
+                    "label": "B",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "opacity": 0.45
+                    }
+                  },
+                  "id": "grafana-B-zarr-layer",
+                  "type": "zarr",
+                  "visualChannels": {
+                    "colorScale": "quantile",
+                    "sizeScale": "linear"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "rasterColormap": "",
+        "rasterPainted": false,
+        "rasterServerUrl": "http://localhost:8088",
+        "saveRequest": 2,
+        "showSidePanel": true,
+        "timeSync": "off",
+        "tripLayerMode": "table"
+      },
+      "pluginVersion": "1.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- One arrow per grid point, in SIX requests: three batches of the lattice, twice,\n-- once per wind component.\n--\n-- Not one request per point. The archive can only be read by the tile server, and\n-- asking it point by point is ninety-eight round trips, which DuckDB issues one at\n-- a time: measured, 27.7 s, with the first attempt dying on Grafana's timeout.\n--\n-- And not one request for the whole lattice either, which is where this gets\n-- interesting. `/zarr/statistics` takes a GeoJSON FeatureCollection, walks\n-- `features` in order and writes a `statistics` object into each one, so the whole\n-- lattice does fit in a single call — and that call takes about seven seconds warm.\n-- The trouble is the ceiling on the other side: **DuckDB's `http_client` abandons a\n-- response after ten seconds** and exposes no setting to change it (`http_timeout`\n-- belongs to httpfs and this extension ignores it). Against a cold tile server the\n-- same call took 10.0 s and came back empty. Three batches leave the margin.\n--\n-- Each cell carries its own lat/lon in `properties`, and those come back untouched,\n-- so the six answers are joined on the coordinates we sent — never on the order of\n-- an array, and never by parsing a geometry back.\n--\n-- OJO with the variables. This datasource quotes them by itself in a panel query,\n-- which is why $pasada and $lead go bare -- but that stops the moment a format\n-- modifier appears, so '${store:percentencode}' needs its own quotes or the query\n-- dies in `Parser Error: syntax error at or near \"%\"`. And $paso must arrive as a\n-- number to be multiplied, which is what :raw is for.\nLOAD http_client; LOAD json;\nWITH grid AS (\n  -- Seven by seven around 2.75 S, 79 W -- the austro. Generated here, with\n  -- integers divided at the end, because the flow layer rejects a lattice whose\n  -- spacing wobbles by more than 5% and draws nothing while saying nothing.\n  -- Never built from the coordinates the server echoes back.\n  SELECT (-275 + i * ${paso:raw}) / 100.0 AS latitude,\n         (-7900 + j * ${paso:raw}) / 100.0 AS longitude\n  FROM (SELECT unnest(range(-3, 4)) AS i) a,\n       (SELECT unnest(range(-3, 4)) AS j) b\n), lotes AS (\n  -- Modulo rather than division, so the three batches come out the same size\n  -- (17, 16, 16) instead of two full ones and a remainder.\n  SELECT latitude, longitude,\n         (row_number() OVER (ORDER BY latitude, longitude) - 1) % 3 AS lote\n  FROM grid\n), fc AS (\n  SELECT lote, json_group_array(json_object(\n           'type', 'Feature',\n           'properties', json_object('lat', latitude, 'lon', longitude),\n           'geometry', json_object(\n             'type', 'Polygon',\n             'coordinates', json_array(json_array(\n               json_array(longitude - 0.05, latitude - 0.05),\n               json_array(longitude - 0.05, latitude + 0.05),\n               json_array(longitude + 0.05, latitude + 0.05),\n               json_array(longitude + 0.05, latitude - 0.05),\n               json_array(longitude - 0.05, latitude - 0.05)))))) AS feats\n  FROM lotes GROUP BY lote\n), q AS (\n  -- The run and the hour are pinned, so what the server hands back is a plain\n  -- 2-D field and every cell answers with a single band.\n  SELECT 'http://titiler/zarr/statistics?url=' || '${store:percentencode}'\n      || '&sel=init_time%3D' || $pasada\n      || '&sel=lead_time%3D' || $lead\n      || '&variable=' AS base\n), resp AS (\n  SELECT 'u' AS comp, http_post(\n    base || 'wind_u_10m',\n    MAP {'content-type': 'application/json'},\n    ('{\"type\":\"FeatureCollection\",\"features\":' || feats::VARCHAR || '}')::JSON) AS r\n  FROM fc, q\n  UNION ALL\n  SELECT 'v', http_post(\n    base || 'wind_v_10m',\n    MAP {'content-type': 'application/json'},\n    ('{\"type\":\"FeatureCollection\",\"features\":' || feats::VARCHAR || '}')::JSON)\n  FROM fc, q\n), vivo AS (\n  -- Say what went wrong. A request that fails comes back with status -1 and an\n  -- EMPTY body, and casting that to JSON reports `Malformed JSON at byte 0`,\n  -- which reads like a bug in the query rather than a server that never answered.\n  SELECT comp,\n         CASE WHEN (r ->> 'status') = '200' THEN (r ->> 'body')::JSON\n              ELSE error('the tile server did not answer: '\n                         || coalesce(r ->> 'reason', '?')\n                         || ' (status ' || coalesce(r ->> 'status', '?') || ')')::JSON\n         END AS body\n  FROM resp\n), vals AS (\n  -- `statistics.*.mean` rather than `statistics.b1.mean`: the band is named after\n  -- the axes that survived the sel, and naming it here would tie the query to that\n  -- spelling.\n  SELECT comp,\n         json_extract(f, '$.properties.lat')::DOUBLE AS latitude,\n         json_extract(f, '$.properties.lon')::DOUBLE AS longitude,\n         json_extract(f, '$.properties.statistics.*.mean')[1]::DOUBLE AS val\n  FROM vivo, unnest(json_extract(body, '$.features[*]')) AS t(f)\n)\n-- `u` and `v` are the aliases the flow layer looks for. wind_u_10m is not among\n-- them and none of these roles appears in the Field mapping editor, so the alias\n-- is the whole contract. And no time column: the layer keeps one instant only.\nSELECT latitude, longitude,\n       max(val) FILTER (WHERE comp = 'u') AS u,\n       max(val) FILTER (WHERE comp = 'v') AS v\nFROM vals\nGROUP BY latitude, longitude\nORDER BY latitude, longitude\n",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- El rasterizado de fondo: la MISMA pasada y la MISMA hora que el viento, porque\n-- sale de las mismas dos variables ($pasada y $lead). Ni una consulta ni la otra\n-- miran el reloj del mapa, que aqui es el bucle sintetico del trazado.\n--\n-- Esto no devuelve filas de datos: los papeles zarr_* construyen un dataset aparte\n-- (`grafana-B-zarr`) que solo lleva la direccion del almacen, la variable y el\n-- color. De ahi que baste una fila -- y que cero filas signifique \"sin raster\",\n-- que es lo que hace la opcion `none` del desplegable.\n--\n-- El rango y la rampa viajan POR FILA y no como opcion del panel: cada variable\n-- vive en su propia escala fisica y una sola no puede servir a un porcentaje y a\n-- pascales a la vez.\nWITH nubes AS (\n  -- Blanco que gana cuerpo con la cobertura: por debajo del 10% no se ve nada.\n  SELECT '[[[0,26],[255,255,255,0]],[[26,64],[255,255,255,45]],[[64,115],[255,255,255,95]],'\n      || '[[115,166],[255,255,255,150]],[[166,217],[255,255,255,200]],[[217,256],[255,255,255,235]]]'\n      AS rampa\n), lluvia AS (\n  SELECT '[[[0,8],[120,190,255,0]],[[8,32],[110,175,245,60]],[[32,80],[80,145,230,110]],'\n      || '[[80,150],[50,110,215,165]],[[150,220],[30,75,190,205]],[[220,256],[20,45,160,235]]]'\n      AS rampa\n)\nSELECT $store AS zarr_url,\n       $capa  AS zarr_variable,\n       -- Los DOS ejes del cubo van aqui, fijos y separados por coma, y ninguno\n       -- como papel temporal.\n       --\n       -- `zarr_time_dim`/`zarr_time_label` son para un eje que camina el reloj del\n       -- mapa, y el panel solo los mira si la consulta trae columna de tiempo\n       -- (`readCalendar` devuelve el calendario vacio sin ella). Esta no la trae, a\n       -- proposito: aqui la hora la fija el desplegable. Puestos como papel\n       -- temporal, la etiqueta no llegaba a la URL y las teselas salian 500 por\n       -- pedirle al servidor un cubo de cuatro dimensiones.\n       'init_time=' || $pasada || ',lead_time=' || $lead AS zarr_sel,\n       CASE $capa\n         WHEN 'total_cloud_cover_atmosphere'                THEN '0,100'\n         WHEN 'temperature_2m'                              THEN '-10,35'\n         WHEN 'relative_humidity_2m'                        THEN '0,100'\n         WHEN 'precipitation_surface'                       THEN '0,0.0028'\n         WHEN 'precipitable_water_atmosphere'               THEN '0,60'\n         WHEN 'pressure_reduced_to_mean_sea_level'          THEN '98000,103000'\n         WHEN 'downward_short_wave_radiation_flux_surface'  THEN '0,1000'\n         WHEN 'wind_u_10m'                                  THEN '-15,15'\n         ELSE '0,100'\n       END AS zarr_rescale,\n       -- Nubosidad y lluvia van con rampa de INTERVALOS en vez de nombre, porque\n       -- son campos que son casi todo ceros y toda rampa con nombre es opaca de\n       -- punta a punta: un cielo despejado pintaria una sabana solida sobre el\n       -- mapa base y sobre las flechas. El alfa solo puede venir de la rampa, asi\n       -- que la rampa viaja entera.\n       --\n       -- Los intervalos van en 0-255, NO en las unidades del almacen: el rango de\n       -- arriba lleva el dato al byte primero, y la rampa colorea bytes.\n       CASE $capa\n         WHEN 'total_cloud_cover_atmosphere'                THEN nubes.rampa\n         WHEN 'precipitation_surface'                       THEN lluvia.rampa\n         WHEN 'temperature_2m'                              THEN 'turbo'\n         WHEN 'relative_humidity_2m'                        THEN 'blues'\n         WHEN 'precipitable_water_atmosphere'               THEN 'viridis'\n         WHEN 'downward_short_wave_radiation_flux_surface'  THEN 'inferno'\n         WHEN 'pressure_reduced_to_mean_sea_level'          THEN 'rdylbu'\n         WHEN 'wind_u_10m'                                  THEN 'rdylbu'\n         ELSE 'greys'\n       END AS zarr_colormap\nFROM nubes, lluvia\n-- Cero filas cuando el desplegable dice `none`, y entonces el panel no arma\n-- ningun dataset zarr y no hay raster que pintar.\nWHERE $capa <> 'none'\n",
+          "refId": "B"
+        }
+      ],
+      "title": "10 m wind over ${capa:text} · ${hora} · newest GFS run",
+      "type": "ubica-keplergl-panel"
+    }
+  ],
+  "preload": false,
+  "schemaVersion": 41,
+  "tags": [
+    "zarr",
+    "icechunk",
+    "flow",
+    "duckdb"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "stac+https://stac.dynamical.org/noaa-gfs-forecast/collection.json",
+          "value": "stac+https://stac.dynamical.org/noaa-gfs-forecast/collection.json"
+        },
+        "description": "Where the repository lives. `stac+` rather than the bucket address: dynamical rolls the repository version and asks callers not to write it down, so the catalogue is asked where today's is.",
+        "hide": 2,
+        "label": "Store",
+        "name": "store",
+        "query": "stac+https://stac.dynamical.org/noaa-gfs-forecast/collection.json",
+        "skipUrlSync": true,
+        "type": "constant"
+      },
+      {
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "definition": "",
+        "description": "Which hour of the forecast the field shows. This is the only clock here: a flow field holds one instant, so the map's own time bar has nothing to walk.",
+        "includeAll": false,
+        "label": "Hour",
+        "name": "hora",
+        "options": [],
+        "query": "-- The forecast hours, from now on, as a dropdown. `__text` is what is read and\n-- `__value` what travels. The first option is the one Grafana takes by default,\n-- so the WHERE trims the past and the dashboard opens on the current hour.\nWITH run AS (SELECT to_timestamp(floor(epoch(now() - INTERVAL '9 hours') / 21600) * 21600) AS init)\nSELECT strftime((init + INTERVAL '1 hour' * h) AT TIME ZONE 'UTC',\n                '%d %b %H:%M UTC') AS __text,\n       strftime((init + INTERVAL '1 hour' * h) AT TIME ZONE 'UTC',\n                '%Y-%m-%dT%H:%M:%S.000Z') AS __value\nFROM run, (SELECT unnest(range(0, 121)) AS h UNION ALL SELECT unnest(range(123, 385, 3)) AS h) g\nWHERE init + INTERVAL '1 hour' * h >= date_trunc('hour', now())\nORDER BY h\n",
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "Detail · 0.25° over 1.5°",
+          "value": "25"
+        },
+        "description": "Detail or reach, at the same price. Both are 49 points and both cost about seven seconds: what a request costs is the number of points, not the ground they cover.",
+        "includeAll": false,
+        "label": "Grid",
+        "name": "paso",
+        "options": [],
+        "query": "Detail · 0.25° over 1.5° : 25,Wide · 0.5° over 3° : 50",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "text": "Cloud cover (%)",
+          "value": "total_cloud_cover_atmosphere"
+        },
+        "description": "Which of the archive's own variables is painted under the wind. The archive has no wind speed — it publishes u and v components only — and the tile server paints one variable at a time, so this is a field beside the wind rather than the wind itself.",
+        "includeAll": false,
+        "label": "Under the wind",
+        "name": "capa",
+        "options": [],
+        "query": "Cloud cover (%) : total_cloud_cover_atmosphere,2 m temperature (C) : temperature_2m,2 m relative humidity (%) : relative_humidity_2m,Precipitation rate (kg m-2 s-1) : precipitation_surface,Precipitable water (kg m-2) : precipitable_water_atmosphere,Shortwave radiation (W m-2) : downward_short_wave_radiation_flux_surface,Pressure at MSL (Pa) : pressure_reduced_to_mean_sea_level,10 m wind U (m s-1) : wind_u_10m,Nothing : none",
+        "type": "custom"
+      },
+      {
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "definition": "",
+        "description": "The run the field is read from.",
+        "hide": 2,
+        "includeAll": false,
+        "label": "Run",
+        "name": "pasada",
+        "options": [],
+        "query": "-- The run the field is read from, with the usual nine-hour rule: GFS starts every\n-- six hours and dynamical takes a while to ingest it, so the newest run that is\n-- surely there is the last multiple of six hours that is already nine hours old.\nSELECT strftime(to_timestamp(floor(epoch(now() - INTERVAL '9 hours') / 21600) * 21600)\n                AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%S.000000000')\n",
+        "refresh": 2,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "definition": "",
+        "description": "The chosen hour as nanoseconds from the start of the run.",
+        "hide": 2,
+        "includeAll": false,
+        "label": "Lead",
+        "name": "lead",
+        "options": [],
+        "query": "-- The chosen hour as a distance from the start of the run, in nanoseconds, which\n-- is the unit `lead_time` answers to.\n--\n-- It comes straight from the dropdown, not from the map: the flow layer holds one\n-- instant and has no clock of its own to publish.\n--\n-- OJO: in a VARIABLE query this datasource does NOT quote by itself -- it does in\n-- panel queries -- so the quotes around '${hora}' are mine. And the arithmetic\n-- rides on floor()'s DOUBLE: written over integers, 3600 * 1000000000 overflows\n-- INT32 before anything else happens.\nWITH run AS (\n  SELECT to_timestamp(floor(epoch(now() - INTERVAL '9 hours') / 21600) * 21600) AS init\n)\nSELECT (least(greatest(floor(epoch(('${hora}')::TIMESTAMPTZ - init) / 3600), 0), 384)\n        * 3600 * 1000000000)::BIGINT::VARCHAR\nFROM run\n",
+        "refresh": 2,
+        "regex": "",
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now+16d"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "NOAA GFS — wind field from an Icechunk repository",
+  "uid": "gfs-wind",
+  "version": 8
+}
