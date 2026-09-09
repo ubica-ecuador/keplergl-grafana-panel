@@ -748,6 +748,171 @@
         "mode": "markdown",
         "content": "### Como se leen estos dos\n\n**El de barras**: cada barra es **un ano**. Su altura es **cuanta lluvia cayo entre enero\ny abril** en la estacion elegida — la temporada lluviosa de la costa. La barra que se\nsale es **1983**, el Nino que inundo el pais.\n\n**El de puntos**: cada punto es **una temporada**.\n\n- Hacia la **derecha**: mas caliente estaba el mar frente a la costa en dic-ene-feb.\n- Hacia **arriba**: mas llovio despues, de enero a abril.\n\nSi el mar mandara del todo, los puntos formarian una linea. Suben hacia la derecha, si,\npero **dispersos**: la correlacion va de **0,38 a 0,75** segun la estacion. El mar\ninclina la balanza; no decide la temporada.\n\nEstos dos vienen de **GHCN-Daily** (NOAA), que solo tiene **15 estaciones en Ecuador**\npero llega a **1945** — y es lo unico que alcanza el 82-83. La red densa de INAMHI, la\ndel mapa, solo deja ver **diez dias** sin credenciales."
       }
+    },
+    {
+      "id": 9,
+      "type": "trend",
+      "title": "Que viene: los 31 miembros del GEFS, hasta 35 dias",
+      "description": "Cada horizonte lleva los 31 miembros del ensemble del GEFS sobre Ecuador. La banda entre p10 y p90 es la discrepancia entre ellos: cuanto mas ancha, menos acuerdo. Pasada la semana 2 el modelo no acierta dias concretos, solo tendencia. Eje en dias de horizonte, no en fechas.",
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 55
+      },
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El ensemble del GEFS a 35 dias, cosechado por el servicio. Se lee de un\n-- parquet y no en vivo porque el abanico entero tarda ~15 s contra TiTiler y el\n-- http_client de DuckDB abandona a los 10 s.\n-- Eje en DIAS de horizonte, no en fechas: las fechas son futuras y el rango del\n-- tablero (2015-hoy) dejaria el panel vacio.\nSELECT lead_h / 24.0 AS dia,\n       round(p50, 2) AS \"mediana (mm/dia)\",\n       round(p10, 2) AS \"p10 · el escenario seco\",\n       round(p90, 2) AS \"p90 · el escenario humedo\",\n       round(prob * 100) AS \"prob. de pasar el umbral (%)\"\nFROM read_parquet($svc || '/gefs/gefs.parquet')\nWHERE miembros > 0\nORDER BY dia",
+          "format": 1
+        }
+      ],
+      "options": {
+        "xField": "dia",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": true,
+            "axisLabel": "lluvia media sobre Ecuador (mm/dia)"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dia"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "dias por delante"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "mediana (mm/dia)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p10 · el escenario seco"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.fillBelowTo",
+                "value": "p90 · el escenario humedo"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p90 · el escenario humedo"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "super-light-blue"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "prob. de pasar el umbral (%)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "probabilidad (%)"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "min",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }
