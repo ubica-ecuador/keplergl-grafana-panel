@@ -92,6 +92,80 @@
         "options": [],
         "query": "INSTALL httpfs; LOAD httpfs;\n-- Solo las 27 con pronostico; ofrecer las 651 seria ofrecer paneles vacios.\nSELECT e.nombre || ' (' || e.provincia || ')' AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/geoglows/caudal.parquet'))\nORDER BY e.nombre",
         "definition": "INSTALL httpfs; LOAD httpfs;\n-- Solo las 27 con pronostico; ofrecer las 651 seria ofrecer paneles vacios.\nSELECT e.nombre || ' (' || e.provincia || ')' AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/geoglows/caudal.parquet'))\nORDER BY e.nombre"
+      },
+      {
+        "name": "capa",
+        "label": "capa del cielo",
+        "type": "custom",
+        "hide": 0,
+        "query": "Lluvia caida en 24 h · PERSIANN satelite : satellite_based_precipitation:persiann_pdir_24h,Lluvia caida en 72 h · PERSIANN : satellite_based_precipitation:persiann_pdir_72h,Lluvia pronosticada diaria · WRF +3 dias : wrf:wrf_precipitation_daily,Viento pronosticado · WRF +3 dias : wrf:wrf_wind_speed,La nube ahora en color real · GOES : goes:goes_rgb_true_color,Temperatura de incendios · GOES : goes:goes_rgb_fire_temperature,Humedad del suelo · FFGS : ffgs:soil_moisture",
+        "current": {
+          "text": "Lluvia caida en 24 h · PERSIANN satelite",
+          "value": "satellite_based_precipitation:persiann_pdir_24h",
+          "selected": true
+        },
+        "options": [
+          {
+            "text": "Lluvia caida en 24 h · PERSIANN satelite",
+            "value": "satellite_based_precipitation:persiann_pdir_24h",
+            "selected": true
+          },
+          {
+            "text": "Lluvia caida en 72 h · PERSIANN",
+            "value": "satellite_based_precipitation:persiann_pdir_72h",
+            "selected": false
+          },
+          {
+            "text": "Lluvia pronosticada diaria · WRF +3 dias",
+            "value": "wrf:wrf_precipitation_daily",
+            "selected": false
+          },
+          {
+            "text": "Viento pronosticado · WRF +3 dias",
+            "value": "wrf:wrf_wind_speed",
+            "selected": false
+          },
+          {
+            "text": "La nube ahora en color real · GOES",
+            "value": "goes:goes_rgb_true_color",
+            "selected": false
+          },
+          {
+            "text": "Temperatura de incendios · GOES",
+            "value": "goes:goes_rgb_fire_temperature",
+            "selected": false
+          },
+          {
+            "text": "Humedad del suelo · FFGS",
+            "value": "ffgs:soil_moisture",
+            "selected": false
+          }
+        ],
+        "multi": false,
+        "includeAll": false,
+        "description": "Las etiquetas no pueden llevar comas: una variable custom separa sus opciones por coma."
+      },
+      {
+        "name": "cieloFrom",
+        "label": "cieloFrom",
+        "type": "textbox",
+        "hide": 2,
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        }
+      },
+      {
+        "name": "cieloTo",
+        "label": "cieloTo",
+        "type": "textbox",
+        "hide": 2,
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        }
       }
     ]
   },
@@ -1069,6 +1143,61 @@
             ]
           }
         ]
+      }
+    },
+    {
+      "id": 11,
+      "type": "ubica-keplergl-panel",
+      "title": "El cielo de Ecuador · $capa",
+      "description": "Segundo mapa, con su propio reloj: estas capas son de ahora y de los proximos tres dias, mientras el mapa de arriba recorre once anos. Fuente: GeoServer de GEOGLOWS. Comprobado hoy que las cuatro estan vivas; imerg_early_run_* lleva 189 dias parada y wrf_precipitation_weekly, 152.",
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 77
+      },
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawQuery": true,
+          "rawSql": "-- Las fechas las publica el propio servicio en su GetCapabilities, asi que la\n-- consulta solo tiene que decir QUE capa: el panel lee el calendario solo.\n-- OJO con $capa: en una query de PANEL el datasource entrecomilla el solo.\nSELECT 'https://services.geoglows.org/geoserver/ows' AS wms_url,\n       $capa AS wms_layer",
+          "format": 1
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "followGrafanaTheme": true,
+        "timeSync": "variables",
+        "timeVariables": {
+          "from": "cieloFrom",
+          "to": "cieloTo"
+        },
+        "basemap": "dark-matter",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -1.4,
+              "longitude": -83.4,
+              "zoom": 5.15,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
       }
     }
   ]
