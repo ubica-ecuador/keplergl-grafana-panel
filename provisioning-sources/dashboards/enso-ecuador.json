@@ -1,0 +1,469 @@
+{
+  "uid": "enso-ecuador",
+  "title": "El Nino en Ecuador",
+  "description": "Vigilancia del impacto de El Nino en Ecuador: indices del CPC y la anomalia oficial de INAMHI, servida por el servicio elnino.",
+  "tags": [
+    "enso",
+    "ecuador",
+    "inamhi",
+    "duckdb"
+  ],
+  "timezone": "utc",
+  "editable": true,
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {
+    "from": "2015-01-01T00:00:00.000Z",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "svc",
+        "label": "servicio elnino",
+        "type": "constant",
+        "hide": 2,
+        "query": "http://host.docker.internal:8092",
+        "current": {
+          "text": "http://host.docker.internal:8092",
+          "value": "http://host.docker.internal:8092"
+        },
+        "skipUrlSync": true,
+        "description": "Base del servicio elnino (~/dev/elnino). En despliegue pasa a https://enso.ubica.ec"
+      },
+      {
+        "name": "fecha",
+        "label": "fecha",
+        "type": "query",
+        "hide": 0,
+        "refresh": 1,
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "multi": false,
+        "includeAll": false,
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "query": "INSTALL httpfs; LOAD httpfs;\n-- En una query de VARIABLE el datasource NO entrecomilla solo: las comillas\n-- de '${svc}' son a mano. Y el ::VARCHAR es obligatorio.\nSELECT strftime(fecha, '%d %b %Y') AS __text, fecha::VARCHAR AS __value\nFROM (SELECT DISTINCT fecha\n      FROM read_parquet('${svc}/inamhi/anomalias.parquet'))\nORDER BY fecha DESC",
+        "definition": "INSTALL httpfs; LOAD httpfs;\n-- En una query de VARIABLE el datasource NO entrecomilla solo: las comillas\n-- de '${svc}' son a mano. Y el ::VARCHAR es obligatorio.\nSELECT strftime(fecha, '%d %b %Y') AS __text, fecha::VARCHAR AS __value\nFROM (SELECT DISTINCT fecha\n      FROM read_parquet('${svc}/inamhi/anomalias.parquet'))\nORDER BY fecha DESC"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "# El Nino en Ecuador\n\nVigilancia del impacto, **no pronostico del fenomeno**: eso pide un modelo acoplado\noceano-atmosfera que ninguna de estas fuentes tiene.\n\n**Hay evento en curso.** El indice Nino 1+2 paso de -0,29 en enero de 2026 a **+2,82 en\njunio**, y la ultima anomalia de INAMHI, del 7 de septiembre, sigue en positivo.\n\n**Para Ecuador manda Nino 1+2, no el 3.4.** El \"Nino costero\" de 2017 inundo la costa con el\n3.4 en neutro: un tablero que solo mire el ONI se pierde justo el evento que mas importa aqui.\n\n## Limites, que un tablero de ENSO que no los diga miente\n\n- El indice del CPC llega con **~2 meses** de retraso.\n- INAMHI publica **~2 dias** despues de la fecha, y **solo durante los eventos**: hay 68\n  fechas en 2026 y **ninguna en 2021-22**. El eje de tiempo tiene agujeros de verdad; no se\n  interpola entre ellos.\n- La anomalia de INAMHI es de **once zonas**, no de 571 cuencas: las 571 filas de su WFS son\n  trozos de poligono que repiten el valor de su zona.\n- **La unidad de la anomalia esta por confirmar.** Los valores van de -30,7 a +6,3, que no\n  encaja ni con mm/dia ni con un porcentaje. Y que son esas once zonas tampoco esta claro: no\n  coinciden con las diez demarcaciones hidrograficas ni con las regiones de precipitacion.\n  Hasta saberlo se etiquetan por numero y por su forma.\n\nDatos: **INAMHI** (`geoservicios.inamhi.gob.ec`) via el servicio `elnino`, y **NOAA CPC**."
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Indices Nino: la fase en que estamos",
+      "description": "SST estandarizada de las regiones Nino, del CPC. 1+2 es la costa de Ecuador y Peru; 3.4 es el que sale en la prensa.",
+      "gridPos": {
+        "h": 9,
+        "w": 17,
+        "x": 0,
+        "y": 9
+      },
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El fichero del CPC va en columnas de ancho fijo y DuckDB no tiene delimitador\n-- \"espacios en blanco\": se lee la linea entera con un delimitador imposible y se\n-- trocea con regexp_extract_all.\nWITH l AS (\n  SELECT regexp_extract_all(trim(col), '[-0-9.]+') AS f\n  FROM read_csv('https://www.cpc.ncep.noaa.gov/data/indices/ersst5.nino.mth.91-20.ascii',\n                columns={'col':'VARCHAR'}, header=false, delim=E'\\x07')\n)\nSELECT make_date(f[1]::INT, f[2]::INT, 1)::TIMESTAMP AS time,\n       f[4]::DOUBLE  AS \"Nino 1+2\",\n       f[10]::DOUBLE AS \"Nino 3.4\"\nFROM l\nWHERE len(f) = 10 AND try_cast(f[1] AS INT) IS NOT NULL\nORDER BY time",
+          "format": 1
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "decimals": 2,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "spanNulls": true,
+            "axisSoftMin": -3,
+            "axisSoftMax": 3
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              },
+              {
+                "color": "text",
+                "value": -0.5
+              },
+              {
+                "color": "orange",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 1.5
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Nino 1+2"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Nino 3.4"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-blue"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Nino 1+2 ahora",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "description": "El ultimo valor publicado por el CPC. Por encima de +0,5 sostenido, hay Nino.",
+      "gridPos": {
+        "h": 9,
+        "w": 7,
+        "x": 17,
+        "y": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 2
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^Nino 1\\+2$/",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "decimals": 2,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": -0.5
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "orange",
+                "value": 1.0
+              },
+              {
+                "color": "red",
+                "value": 2.0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "ubica-keplergl-panel",
+      "title": "Anomalia de lluvia por zona · INAMHI · $fecha",
+      "description": "Las once zonas que INAMHI distingue, en la fecha elegida. Unidad por confirmar.",
+      "gridPos": {
+        "h": 18,
+        "w": 14,
+        "x": 0,
+        "y": 18
+      },
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Una sola fecha: 11 filas y 0,47 MB. Cruzar las 183 fechas con su geometria\n-- serian 86 MB, porque cada fila arrastraria el GeoJSON de su zona.\nSELECT a.zona_id,\n       CASE zona_id\n    WHEN 81 THEN 'Galapagos'\n    WHEN 20 THEN 'oriente sur'      WHEN 21 THEN 'oriente norte'\n    WHEN 26 THEN 'sierra sur'       WHEN 27 THEN 'sierra norte'\n    WHEN 31 THEN 'costa sur'        WHEN 32 THEN 'costa sur-centro'\n    WHEN 33 THEN 'costa norte'      WHEN 37 THEN 'costa El Oro'\n    WHEN 38 THEN 'peninsula'        WHEN 39 THEN 'Manabi'\n  END AS region,\n       a.mean AS anomalia,\n       a.min  AS minimo,\n       a.max  AS maximo,\n       z.geojson\nFROM read_parquet($svc || '/inamhi/anomalias.parquet') a\nJOIN read_parquet($svc || '/inamhi/zonas.parquet')     z USING (zona_id)\nWHERE a.fecha = $fecha::DATE\nORDER BY a.zona_id",
+          "format": 1
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "followGrafanaTheme": true,
+        "timeSync": "off",
+        "basemap": "positron",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -1.4,
+              "longitude": -83.4,
+              "zoom": 5.15,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false,
+              "isSplit": false
+            },
+            "mapStyle": {
+              "styleType": "positron"
+            },
+            "visState": {
+              "layers": [
+                {
+                  "id": "anomalia-zonas",
+                  "type": "geojson",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Anomalia por zona",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "isVisible": true,
+                    "colorField": null,
+                    "visConfig": {
+                      "opacity": 0.75,
+                      "strokeOpacity": 0.9,
+                      "thickness": 0.5,
+                      "strokeColor": [
+                        60,
+                        60,
+                        60
+                      ],
+                      "colorRange": {
+                        "name": "Seco a lluvioso",
+                        "type": "diverging",
+                        "category": "ColorBrewer",
+                        "colors": [
+                          "#8c510a",
+                          "#bf812d",
+                          "#dfc27d",
+                          "#f6e8c3",
+                          "#c7eae5",
+                          "#80cdc1",
+                          "#35978f",
+                          "#01665e"
+                        ]
+                      },
+                      "filled": true,
+                      "stroked": true,
+                      "enable3d": false,
+                      "wireframe": false
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "anomalia",
+                      "type": "real"
+                    },
+                    "colorScale": "quantize"
+                  }
+                }
+              ],
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "region",
+                        "format": null
+                      },
+                      {
+                        "name": "zona_id",
+                        "format": null
+                      },
+                      {
+                        "name": "anomalia",
+                        "format": null
+                      },
+                      {
+                        "name": "minimo",
+                        "format": null
+                      },
+                      {
+                        "name": "maximo",
+                        "format": null
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Once anos de anomalia, zona a zona",
+      "description": "Sin geometria son 79 KB. Puntos y no lineas: INAMHI publica a rachas y unir dos fechas con dos anos de por medio seria inventar. Pincha un punto y el mapa salta a esa fecha.",
+      "gridPos": {
+        "h": 18,
+        "w": 10,
+        "x": 14,
+        "y": 18
+      },
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Sin geometria son 79 KB: aqui viven los once anos.\nSELECT fecha::TIMESTAMP AS time,\n       'zona ' || zona_id AS zona,\n       mean AS anomalia\nFROM read_parquet($svc || '/inamhi/anomalias.parquet')\nORDER BY time, zona_id",
+          "format": 1
+        }
+      ],
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "zona"
+            ],
+            "keepFields": false
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "custom": {
+            "drawStyle": "points",
+            "showPoints": "always",
+            "pointSize": 5,
+            "lineWidth": 0,
+            "fillOpacity": 0,
+            "spanNulls": false,
+            "axisSoftMin": -4,
+            "axisSoftMax": 8
+          },
+          "links": [
+            {
+              "title": "Llevar el mapa a esta fecha",
+              "oneClick": true,
+              "url": "d/enso-ecuador/el-nino-en-ecuador?var-fecha=${__value.time:date:YYYY-MM-DD}&${__url_time_range}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    }
+  ]
+}
