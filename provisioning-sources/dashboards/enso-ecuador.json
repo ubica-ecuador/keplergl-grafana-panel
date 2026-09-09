@@ -32,24 +32,26 @@
         "description": "Base del servicio elnino (~/dev/elnino). En despliegue pasa a https://enso.ubica.ec"
       },
       {
-        "name": "fecha",
-        "label": "fecha",
-        "type": "query",
-        "hide": 0,
-        "refresh": 1,
-        "datasource": {
-          "type": "motherduck-duckdb-datasource",
-          "uid": "duckdb"
-        },
-        "multi": false,
-        "includeAll": false,
+        "name": "mapFrom",
+        "label": "mapFrom",
+        "type": "textbox",
+        "hide": 2,
+        "query": "",
         "current": {
           "text": "",
           "value": ""
-        },
-        "options": [],
-        "query": "INSTALL httpfs; LOAD httpfs;\n-- En una query de VARIABLE el datasource NO entrecomilla solo: las comillas\n-- de '${svc}' son a mano. Y el ::VARCHAR es obligatorio.\nSELECT strftime(fecha, '%d %b %Y') AS __text, fecha::VARCHAR AS __value\nFROM (SELECT DISTINCT fecha\n      FROM read_parquet('${svc}/inamhi/anomalias.parquet'))\nORDER BY fecha DESC",
-        "definition": "INSTALL httpfs; LOAD httpfs;\n-- En una query de VARIABLE el datasource NO entrecomilla solo: las comillas\n-- de '${svc}' son a mano. Y el ::VARCHAR es obligatorio.\nSELECT strftime(fecha, '%d %b %Y') AS __text, fecha::VARCHAR AS __value\nFROM (SELECT DISTINCT fecha\n      FROM read_parquet('${svc}/inamhi/anomalias.parquet'))\nORDER BY fecha DESC"
+        }
+      },
+      {
+        "name": "mapTo",
+        "label": "mapTo",
+        "type": "textbox",
+        "hide": 2,
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        }
       }
     ]
   },
@@ -65,7 +67,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "# El Nino en Ecuador\n\nVigilancia del impacto, **no pronostico del fenomeno**: eso pide un modelo acoplado\noceano-atmosfera que ninguna de estas fuentes tiene.\n\n**Hay evento en curso.** El indice Nino 1+2 paso de -0,29 en enero de 2026 a **+2,82 en\njunio**, y la ultima anomalia de INAMHI, del 7 de septiembre, sigue en positivo.\n\n**Para Ecuador manda Nino 1+2, no el 3.4.** El \"Nino costero\" de 2017 inundo la costa con el\n3.4 en neutro: un tablero que solo mire el ONI se pierde justo el evento que mas importa aqui.\n\n## Limites, que un tablero de ENSO que no los diga miente\n\n- El indice del CPC llega con **~2 meses** de retraso.\n- INAMHI publica **~2 dias** despues de la fecha, y **solo durante los eventos**: hay 68\n  fechas en 2026 y **ninguna en 2021-22**. El eje de tiempo tiene agujeros de verdad; no se\n  interpola entre ellos.\n- La anomalia de INAMHI es de **once zonas**, no de 571 cuencas: las 571 filas de su WFS son\n  trozos de poligono que repiten el valor de su zona.\n- **La unidad de la anomalia esta por confirmar.** Los valores van de -30,7 a +6,3, que no\n  encaja ni con mm/dia ni con un porcentaje. Y que son esas once zonas tampoco esta claro: no\n  coinciden con las diez demarcaciones hidrograficas ni con las regiones de precipitacion.\n  Hasta saberlo se etiquetan por numero y por su forma.\n\nDatos: **INAMHI** (`geoservicios.inamhi.gob.ec`) via el servicio `elnino`, y **NOAA CPC**."
+        "content": "# El Nino en Ecuador\n\nVigilancia del impacto, **no pronostico del fenomeno**: eso pide un modelo acoplado\noceano-atmosfera que ninguna de estas fuentes tiene.\n\n**Hay evento en curso.** El indice Nino 1+2 paso de -0,29 en enero de 2026 a **+2,82 en\njunio**, y la ultima anomalia de INAMHI, del 7 de septiembre, sigue en positivo.\n\n**Para Ecuador manda Nino 1+2, no el 3.4.** El \"Nino costero\" de 2017 inundo la costa con el\n3.4 en neutro: un tablero que solo mire el ONI se pierde justo el evento que mas importa aqui.\n\n## Limites, que un tablero de ENSO que no los diga miente\n\n- El indice del CPC llega con **~2 meses** de retraso.\n- INAMHI publica **~2 dias** despues de la fecha, y **solo durante los eventos**: hay 68\n  fechas en 2026 y **ninguna en 2021-22**. El eje de tiempo tiene agujeros de verdad; no se\n  interpola entre ellos.\n- La anomalia de INAMHI es de **once zonas**, no de 571 cuencas: las 571 filas de su WFS son\n  trozos de poligono que repiten el valor de su zona.\n- **La unidad de la anomalia esta por confirmar.** Los valores van de -30,7 a +6,3, que no\n  encaja ni con mm/dia ni con un porcentaje. Y que son esas once zonas tampoco esta claro: no\n  coinciden con las diez demarcaciones hidrograficas ni con las regiones de precipitacion.\n  Hasta saberlo se etiquetan por numero y por su forma.\n\nEl mapa **recorre el tiempo**. Abre en el evento en curso; para ver 2016 o 2018, ensancha el\nrango. Con la ventana ancha se apilan todas las fechas que quepan en ella: estrechala con la\nbarra del propio mapa, o dale al play. El detalle de los poligonos ahi es de ~1 km, porque va\nuna geometria por fecha y con el detalle fino los once anos serian 86 MB en vez de 15.\n\nDatos: **INAMHI** (`geoservicios.inamhi.gob.ec`) via el servicio `elnino`, y **NOAA CPC**."
       }
     },
     {
@@ -258,8 +260,8 @@
     {
       "id": 4,
       "type": "ubica-keplergl-panel",
-      "title": "Anomalia de lluvia por zona · INAMHI · $fecha",
-      "description": "Las once zonas que INAMHI distingue, en la fecha elegida. Unidad por confirmar.",
+      "title": "Anomalia de lluvia por zona · INAMHI",
+      "description": "Las 183 fechas cargadas de una (15,3 MB de geojson a ~1 km). La barra del propio mapa elige que se dibuja; con la ventana ancha se apilan todas, asi que estrechala o dale al play. Unidad por confirmar.",
       "gridPos": {
         "h": 18,
         "w": 14,
@@ -278,14 +280,14 @@
             "uid": "duckdb"
           },
           "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Una sola fecha: 11 filas y 0,47 MB. Cruzar las 183 fechas con su geometria\n-- serian 86 MB, porque cada fila arrastraria el GeoJSON de su zona.\nSELECT a.zona_id,\n       CASE zona_id\n    WHEN 81 THEN 'Galapagos'\n    WHEN 20 THEN 'oriente sur'      WHEN 21 THEN 'oriente norte'\n    WHEN 26 THEN 'sierra sur'       WHEN 27 THEN 'sierra norte'\n    WHEN 31 THEN 'costa sur'        WHEN 32 THEN 'costa sur-centro'\n    WHEN 33 THEN 'costa norte'      WHEN 37 THEN 'costa El Oro'\n    WHEN 38 THEN 'peninsula'        WHEN 39 THEN 'Manabi'\n  END AS region,\n       a.mean AS anomalia,\n       a.min  AS minimo,\n       a.max  AS maximo,\n       z.geojson\nFROM read_parquet($svc || '/inamhi/anomalias.parquet') a\nJOIN read_parquet($svc || '/inamhi/zonas.parquet')     z USING (zona_id)\nWHERE a.fecha = $fecha::DATE\nORDER BY a.zona_id",
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El mapa recorre el tiempo, asi que va una geometria por FECHA y no una por\n-- zona: el peso se multiplica por el numero de fechas. Por eso `geojson_ligero`\n-- (~1,1 km de detalle, 7,6 KB por zona) y no la fina (43,6 KB): once anos son\n-- 15,3 MB en vez de 86, y la consulta tarda 0,2 s. El reloj del mapa los recorre.\nSELECT a.fecha::TIMESTAMP AS time,\n       a.zona_id,\n       CASE zona_id\n    WHEN 81 THEN 'Galapagos'\n    WHEN 20 THEN 'oriente sur'      WHEN 21 THEN 'oriente norte'\n    WHEN 26 THEN 'sierra sur'       WHEN 27 THEN 'sierra norte'\n    WHEN 31 THEN 'costa sur'        WHEN 32 THEN 'costa sur-centro'\n    WHEN 33 THEN 'costa norte'      WHEN 37 THEN 'costa El Oro'\n    WHEN 38 THEN 'peninsula'        WHEN 39 THEN 'Manabi'\n  END AS region,\n       a.mean AS anomalia,\n       a.min  AS minimo,\n       a.max  AS maximo,\n       z.geojson_ligero AS geojson\nFROM read_parquet($svc || '/inamhi/anomalias.parquet') a\nJOIN read_parquet($svc || '/inamhi/zonas.parquet')     z USING (zona_id)\nORDER BY a.fecha, a.zona_id",
           "format": 1
         }
       ],
       "options": {
         "showSidePanel": false,
         "followGrafanaTheme": true,
-        "timeSync": "off",
+        "timeSync": "variables",
         "basemap": "positron",
         "mapConfig": {
           "version": "v1",
@@ -385,7 +387,12 @@
               }
             }
           }
-        }
+        },
+        "timeVariables": {
+          "from": "mapFrom",
+          "to": "mapTo"
+        },
+        "publishWhilePlaying": false
       },
       "fieldConfig": {
         "defaults": {},
@@ -396,7 +403,7 @@
       "id": 5,
       "type": "timeseries",
       "title": "Once anos de anomalia, zona a zona",
-      "description": "Sin geometria son 79 KB. Puntos y no lineas: INAMHI publica a rachas y unir dos fechas con dos anos de por medio seria inventar. Pincha un punto y el mapa salta a esa fecha.",
+      "description": "Sin geometria son 79 KB, asi que aqui caben los once anos enteros. Puntos y no lineas: INAMHI publica a rachas y unir dos fechas con dos anos de por medio seria inventar. Arrastra sobre la grafica para acotar el rango: el mapa te sigue.",
       "gridPos": {
         "h": 18,
         "w": 10,
@@ -442,14 +449,7 @@
             "spanNulls": false,
             "axisSoftMin": -4,
             "axisSoftMax": 8
-          },
-          "links": [
-            {
-              "title": "Llevar el mapa a esta fecha",
-              "oneClick": true,
-              "url": "d/enso-ecuador/el-nino-en-ecuador?var-fecha=${__value.time:date:YYYY-MM-DD}&${__url_time_range}"
-            }
-          ]
+          }
         },
         "overrides": []
       },
