@@ -67,7 +67,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "# El Nino en Ecuador\n\nVigilancia del impacto, **no pronostico del fenomeno**: eso pide un modelo acoplado\noceano-atmosfera que ninguna de estas fuentes tiene.\n\n**Hay evento en curso, y creciendo.** El indice Nino 1+2 paso de -0,26 en enero de 2026 a\n**+3,28 en agosto**, y la ultima anomalia de INAMHI, del 7 de septiembre, sigue en positivo.\n\n**Para Ecuador manda Nino 1+2, no el 3.4.** El \"Nino costero\" de 2017 inundo la costa con el\n3.4 en neutro: un tablero que solo mire el ONI se pierde justo el evento que mas importa aqui.\n\n## Limites, que un tablero de ENSO que no los diga miente\n\n- Los indices son de **NOAA PSL**: ERSST V6 sobre base **1981-2010**, con ~1 mes de retraso.\n  El CPC publica los mismos indices sobre **1991-2020** y da otros numeros para el mismo mes\n  (junio de 2026: +2,48 aqui, +2,82 alli). No son intercambiables.\n- INAMHI publica **~2 dias** despues de la fecha, y **solo durante los eventos**: hay 68\n  fechas en 2026 y **ninguna en 2021-22**. El eje de tiempo tiene agujeros de verdad; no se\n  interpola entre ellos.\n- La anomalia de INAMHI es de **once zonas**, no de 571 cuencas: las 571 filas de su WFS son\n  trozos de poligono que repiten el valor de su zona.\n- **La unidad de la anomalia esta por confirmar.** Los valores van de -30,7 a +6,3, que no\n  encaja ni con mm/dia ni con un porcentaje. Y que son esas once zonas tampoco esta claro: no\n  coinciden con las diez demarcaciones hidrograficas ni con las regiones de precipitacion.\n  Hasta saberlo se etiquetan por numero y por su forma.\n\nEl mapa **recorre el tiempo**. Abre en el evento en curso; para ver 2016 o 2018, ensancha el\nrango. Con la ventana ancha se apilan todas las fechas que quepan en ella: estrechala con la\nbarra del propio mapa, o dale al play. El detalle de los poligonos ahi es de ~1 km, porque va\nuna geometria por fecha y con el detalle fino los once anos serian 86 MB en vez de 15.\n\nDatos: **INAMHI** (`geoservicios.inamhi.gob.ec`) via el servicio `elnino`, y **NOAA PSL**."
+        "content": "# El Nino en Ecuador\n\nVigilancia del impacto, **no pronostico del fenomeno**: eso pide un modelo acoplado\noceano-atmosfera que ninguna de estas fuentes tiene.\n\n**Hay evento en curso, y creciendo.** El indice Nino 1+2 paso de -0,26 en enero de 2026 a\n**+3,28 en agosto**, y la ultima anomalia de INAMHI, del 7 de septiembre, sigue en positivo.\n\n**Para Ecuador manda Nino 1+2, no el 3.4.** El \"Nino costero\" de 2017 inundo la costa con el\n3.4 en neutro: un tablero que solo mire el ONI se pierde justo el evento que mas importa aqui.\n\n## Limites, que un tablero de ENSO que no los diga miente\n\n- Los indices son de **NOAA PSL**: ERSST V6 sobre base **1981-2010**, con ~1 mes de retraso.\n  El CPC publica los mismos indices sobre **1991-2020** y da otros numeros para el mismo mes\n  (junio de 2026: +2,48 aqui, +2,82 alli). No son intercambiables.\n- INAMHI publica **~2 dias** despues de la fecha, y **solo durante los eventos**: hay 68\n  fechas en 2026 y **ninguna en 2021-22**. El eje de tiempo tiene agujeros de verdad; no se\n  interpola entre ellos.\n- La anomalia de INAMHI es de **once zonas**, no de 571 cuencas: las 571 filas de su WFS son\n  trozos de poligono que repiten el valor de su zona.\n- **El indice de INAMHI no esta definido en ninguna parte, y NO es una cantidad de lluvia.**\n  Sus valores van de **-5,4 a +10,1** (mediana 0,08), centrados en cero y sesgados a la derecha.\n  Medido: enfrentado a la lluvia real de IMERG **sobre el mismo poligono**, en diez fechas\n  repartidas por todo el rango, la correlacion es de **+0,20** con ventanas de 1 a 30 dias. Hay\n  fechas que lo dejan claro: el 31-ago-2026 marca **+4,79** con 0,45 mm/dia de lluvia, y el\n  14-mar-2019 marca **+1,75** con 20,91 mm/dia. Su forma es la de una **anomalia tipificada**\n  (desviaciones respecto a lo normal del mes), lo que explicaria justo eso — pero **no esta\n  confirmado**: INAMHI no publica metadatos de estas capas, y el unico documento metodologico\n  localizable describe otro producto (anomalias porcentuales del acumulado enero-mayo).\n  **Leelo como mas humedo / mas seco de lo normal, no como milimetros.**\n- Que son las once zonas tampoco esta claro: no coinciden con las diez demarcaciones\n  hidrograficas ni con las regiones de precipitacion. Se etiquetan por numero y por su forma:\n  81 es Galapagos, 31-39 la costa, 20-21 el oriente, 26-27 la sierra.\nEl mapa **recorre el tiempo**. Abre en el evento en curso; para ver 2016 o 2018, ensancha el\nrango. Con la ventana ancha se apilan todas las fechas que quepan en ella: estrechala con la\nbarra del propio mapa, o dale al play. El detalle de los poligonos ahi es de ~1 km, porque va\nuna geometria por fecha y con el detalle fino los once anos serian 86 MB en vez de 15.\n\nDatos: **INAMHI** (`geoservicios.inamhi.gob.ec`) via el servicio `elnino`, y **NOAA PSL**."
       }
     },
     {
@@ -260,8 +260,8 @@
     {
       "id": 4,
       "type": "ubica-keplergl-panel",
-      "title": "Anomalia de lluvia por zona · INAMHI",
-      "description": "Las 183 fechas cargadas de una (15,3 MB de geojson a ~1 km). La barra del propio mapa elige que se dibuja; con la ventana ancha se apilan todas, asi que estrechala o dale al play. Unidad por confirmar.",
+      "title": "Indice de anomalia por zona · INAMHI",
+      "description": "Indice de INAMHI por zona, no milimetros: enfrentado a la lluvia de IMERG sobre el mismo poligono da una correlacion de +0,20. Marron = por debajo de lo normal, verde-azulado = por encima. Las 183 fechas cargadas de una; la barra del mapa elige cual se dibuja.",
       "gridPos": {
         "h": 18,
         "w": 14,
@@ -311,7 +311,7 @@
                   "type": "geojson",
                   "config": {
                     "dataId": "grafana-A",
-                    "label": "Anomalia por zona",
+                    "label": "Indice INAMHI (unidad sin confirmar)",
                     "columns": {
                       "geojson": "_geojson"
                     },
@@ -352,7 +352,7 @@
                       "name": "anomalia",
                       "type": "real"
                     },
-                    "colorScale": "quantize"
+                    "colorScale": "quantile"
                   }
                 }
               ],
