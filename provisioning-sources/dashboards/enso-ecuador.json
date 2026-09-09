@@ -280,10 +280,10 @@
     {
       "id": 4,
       "type": "ubica-keplergl-panel",
-      "title": "Indice de anomalia por zona · INAMHI",
-      "description": "Indice de INAMHI por zona, no milimetros: enfrentado a la lluvia de IMERG sobre el mismo poligono da una correlacion de +0,20. Marron = por debajo de lo normal, verde-azulado = por encima. Las 183 fechas cargadas de una; la barra del mapa elige cual se dibuja.",
+      "title": "Ecuador ahora: el indice de INAMHI por zona, y donde esta lloviendo",
+      "description": "Dos cosas a la vez. El COLOR DE FONDO es el indice de anomalia de INAMHI por zona (marron = por debajo de lo normal, verde-azulado = por encima; no son milimetros). Los PUNTOS son las 220 estaciones que transmiten ahora mismo, del tamano y color de la lluvia que han medido en las ultimas 24 horas. El fondo recorre once anos con la barra del mapa; los puntos son siempre de hoy.",
       "gridPos": {
-        "h": 18,
+        "h": 24,
         "w": 14,
         "x": 0,
         "y": 18
@@ -301,6 +301,16 @@
           },
           "rawQuery": true,
           "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El mapa recorre el tiempo, asi que va una geometria por FECHA y no una por\n-- zona: el peso se multiplica por el numero de fechas. Por eso `geojson_ligero`\n-- (~1,1 km de detalle, 7,6 KB por zona) y no la fina (43,6 KB): once anos son\n-- 15,3 MB en vez de 86, y la consulta tarda 0,2 s. El reloj del mapa los recorre.\nSELECT a.fecha::TIMESTAMP AS time,\n       a.zona_id,\n       CASE zona_id\n    WHEN 81 THEN 'Galapagos'\n    WHEN 20 THEN 'oriente sur'      WHEN 21 THEN 'oriente norte'\n    WHEN 26 THEN 'sierra sur'       WHEN 27 THEN 'sierra norte'\n    WHEN 31 THEN 'costa sur'        WHEN 32 THEN 'costa sur-centro'\n    WHEN 33 THEN 'costa norte'      WHEN 37 THEN 'costa El Oro'\n    WHEN 38 THEN 'peninsula'        WHEN 39 THEN 'Manabi'\n  END AS region,\n       a.mean AS anomalia,\n       a.min  AS minimo,\n       a.max  AS maximo,\n       z.geojson_ligero AS geojson\nFROM read_parquet($svc || '/inamhi/anomalias.parquet') a\nJOIN read_parquet($svc || '/inamhi/zonas.parquet')     z USING (zona_id)\nORDER BY a.fecha, a.zona_id",
+          "format": 1
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- La red real de INAMHI: 1.892 estaciones, 220 transmitiendo. Los datos\n-- publicos se cortan a DIEZ DIAS (mas pide sesion), asi que esto es la foto de\n-- ahora, no historia.\nWITH lluvia AS (\n  SELECT estacion, sum(valor) AS mm\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\nSELECT e.latitude, e.longitude,\n       e.nombre, e.provincia, e.codigo, e.altitud,\n       round(coalesce(l.mm, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN lluvia l ON l.estacion = e.id_estacion\nWHERE e.transmitiendo\nORDER BY lluvia_24h DESC",
           "format": 1
         }
       ],
@@ -374,6 +384,61 @@
                     },
                     "colorScale": "quantile"
                   }
+                },
+                {
+                  "id": "estaciones-inamhi",
+                  "type": "point",
+                  "config": {
+                    "dataId": "grafana-B",
+                    "label": "Estaciones INAMHI (lluvia 24 h)",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "filled": true,
+                      "opacity": 0.95,
+                      "outline": true,
+                      "thickness": 1,
+                      "strokeColor": [
+                        40,
+                        40,
+                        40
+                      ],
+                      "radius": 11,
+                      "radiusRange": [
+                        3,
+                        45
+                      ],
+                      "colorRange": {
+                        "name": "Lluvia 24 h",
+                        "type": "sequential",
+                        "category": "Uber",
+                        "colors": [
+                          "#9AA5AB",
+                          "#7FC5CC",
+                          "#37A3AD",
+                          "#0B7C89",
+                          "#04525C",
+                          "#022E36"
+                        ]
+                      }
+                    },
+                    "columnMode": "points",
+                    "color": [
+                      154,
+                      165,
+                      171
+                    ]
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "lluvia_24h",
+                      "type": "real"
+                    },
+                    "colorScale": "quantize"
+                  }
                 }
               ],
               "interactionConfig": {
@@ -401,10 +466,32 @@
                         "name": "maximo",
                         "format": null
                       }
+                    ],
+                    "grafana-B": [
+                      {
+                        "name": "nombre",
+                        "format": null
+                      },
+                      {
+                        "name": "provincia",
+                        "format": null
+                      },
+                      {
+                        "name": "lluvia_24h",
+                        "format": null
+                      },
+                      {
+                        "name": "altitud",
+                        "format": null
+                      }
                     ]
                   }
                 }
-              }
+              },
+              "layerOrder": [
+                "estaciones-inamhi",
+                "anomalia-zonas"
+              ]
             }
           }
         },
@@ -425,7 +512,7 @@
       "title": "Once anos de anomalia, zona a zona",
       "description": "Sin geometria son 79 KB, asi que aqui caben los once anos enteros. Puntos y no lineas: INAMHI publica a rachas y unir dos fechas con dos anos de por medio seria inventar. Arrastra sobre la grafica para acotar el rango: el mapa te sigue.",
       "gridPos": {
-        "h": 18,
+        "h": 24,
         "w": 10,
         "x": 14,
         "y": 18
@@ -488,13 +575,13 @@
     {
       "id": 6,
       "type": "barchart",
-      "title": "Temporada lluviosa ano a ano · $estacion",
+      "title": "Cuanto llovio cada temporada (ene-abr)",
       "description": "Acumulado de enero a abril desde 1945, de GHCN-Daily. Es lo unico que alcanza el 82-83 y el 97-98: el ASOS de dynamical.org no tiene Ecuador. Eje de categorias, no de tiempo: no depende del rango del tablero.",
       "gridPos": {
-        "h": 12,
-        "w": 13,
-        "x": 0,
-        "y": 36
+        "h": 13,
+        "w": 9,
+        "x": 5,
+        "y": 42
       },
       "datasource": {
         "type": "motherduck-duckdb-datasource",
@@ -556,13 +643,13 @@
     {
       "id": 7,
       "type": "xychart",
-      "title": "El indice frente a la lluvia, temporada a temporada",
+      "title": "Mar mas caliente = temporada mas lluviosa",
       "description": "Cada punto es una temporada: el Nino 1+2 promedio de dic-ene-feb frente a la lluvia de ene-abr en la estacion elegida. La relacion es real pero NO determinista: medida sobre las cuatro estaciones costeras con registro largo da r entre 0,38 (Pichilingue) y 0,75 (San Juan La Mana), o sea entre el 14 % y el 57 % de la variacion explicada. 1983 (indice 2,35) fue el mas lluvioso del registro con 2.648 mm, pero 2016 (indice 1,61) se quedo en 1.513, por debajo de la mediana.",
       "gridPos": {
-        "h": 12,
-        "w": 11,
-        "x": 13,
-        "y": 36
+        "h": 13,
+        "w": 10,
+        "x": 14,
+        "y": 42
       },
       "datasource": {
         "type": "motherduck-duckdb-datasource",
@@ -642,6 +729,20 @@
         ]
       },
       "pluginVersion": "12.0.10"
+    },
+    {
+      "id": 8,
+      "type": "text",
+      "gridPos": {
+        "h": 13,
+        "w": 5,
+        "x": 0,
+        "y": 42
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Como se leen estos dos\n\n**El de barras**: cada barra es **un ano**. Su altura es **cuanta lluvia cayo entre enero\ny abril** en la estacion elegida — la temporada lluviosa de la costa. La barra que se\nsale es **1983**, el Nino que inundo el pais.\n\n**El de puntos**: cada punto es **una temporada**.\n\n- Hacia la **derecha**: mas caliente estaba el mar frente a la costa en dic-ene-feb.\n- Hacia **arriba**: mas llovio despues, de enero a abril.\n\nSi el mar mandara del todo, los puntos formarian una linea. Suben hacia la derecha, si,\npero **dispersos**: la correlacion va de **0,38 a 0,75** segun la estacion. El mar\ninclina la balanza; no decide la temporada.\n\nEstos dos vienen de **GHCN-Daily** (NOAA), que solo tiene **15 estaciones en Ecuador**\npero llega a **1945** — y es lo unico que alcanza el 82-83. La red densa de INAMHI, la\ndel mapa, solo deja ver **diez dias** sin credenciales."
+      }
     }
   ]
 }
