@@ -1797,7 +1797,120 @@
                     }
                   ]
                 }
-              }
+              },
+              "variables": [
+                {
+                  "kind": "CustomVariable",
+                  "spec": {
+                    "name": "capa",
+                    "query": "Lluvia caida en 24 h · PERSIANN satelite : satellite_based_precipitation:persiann_pdir_24h,Lluvia caida en 72 h · PERSIANN : satellite_based_precipitation:persiann_pdir_72h,Lluvia pronosticada diaria · WRF +3 dias : wrf:wrf_precipitation_daily,Viento pronosticado · WRF +3 dias : wrf:wrf_wind_speed,La nube ahora en color real · GOES : goes:goes_rgb_true_color,Temperatura de incendios · GOES : goes:goes_rgb_fire_temperature,Humedad del suelo · FFGS : ffgs:soil_moisture",
+                    "current": {
+                      "text": "Lluvia caida en 24 h · PERSIANN satelite",
+                      "value": "satellite_based_precipitation:persiann_pdir_24h"
+                    },
+                    "options": [
+                      {
+                        "selected": true,
+                        "text": "Lluvia caida en 24 h · PERSIANN satelite",
+                        "value": "satellite_based_precipitation:persiann_pdir_24h"
+                      },
+                      {
+                        "selected": false,
+                        "text": "Lluvia caida en 72 h · PERSIANN",
+                        "value": "satellite_based_precipitation:persiann_pdir_72h"
+                      },
+                      {
+                        "selected": false,
+                        "text": "Lluvia pronosticada diaria · WRF +3 dias",
+                        "value": "wrf:wrf_precipitation_daily"
+                      },
+                      {
+                        "selected": false,
+                        "text": "Viento pronosticado · WRF +3 dias",
+                        "value": "wrf:wrf_wind_speed"
+                      },
+                      {
+                        "selected": false,
+                        "text": "La nube ahora en color real · GOES",
+                        "value": "goes:goes_rgb_true_color"
+                      },
+                      {
+                        "selected": false,
+                        "text": "Temperatura de incendios · GOES",
+                        "value": "goes:goes_rgb_fire_temperature"
+                      },
+                      {
+                        "selected": false,
+                        "text": "Humedad del suelo · FFGS",
+                        "value": "ffgs:soil_moisture"
+                      }
+                    ],
+                    "multi": false,
+                    "includeAll": false,
+                    "label": "capa del cielo",
+                    "hide": "dontHide",
+                    "skipUrlSync": false,
+                    "description": "Las etiquetas no pueden llevar comas: una variable custom separa sus opciones por coma.",
+                    "allowCustomValue": true
+                  }
+                },
+                {
+                  "kind": "TextVariable",
+                  "spec": {
+                    "name": "mapFrom",
+                    "current": {
+                      "text": "",
+                      "value": ""
+                    },
+                    "query": "",
+                    "label": "mapFrom",
+                    "hide": "hideVariable",
+                    "skipUrlSync": false
+                  }
+                },
+                {
+                  "kind": "TextVariable",
+                  "spec": {
+                    "name": "mapTo",
+                    "current": {
+                      "text": "",
+                      "value": ""
+                    },
+                    "query": "",
+                    "label": "mapTo",
+                    "hide": "hideVariable",
+                    "skipUrlSync": false
+                  }
+                },
+                {
+                  "kind": "TextVariable",
+                  "spec": {
+                    "name": "cieloFrom",
+                    "current": {
+                      "text": "",
+                      "value": ""
+                    },
+                    "query": "",
+                    "label": "cieloFrom",
+                    "hide": "hideVariable",
+                    "skipUrlSync": false
+                  }
+                },
+                {
+                  "kind": "TextVariable",
+                  "spec": {
+                    "name": "cieloTo",
+                    "current": {
+                      "text": "",
+                      "value": ""
+                    },
+                    "query": "",
+                    "label": "cieloTo",
+                    "hide": "hideVariable",
+                    "skipUrlSync": false
+                  }
+                }
+              ]
             }
           },
           {
@@ -1875,7 +1988,107 @@
                     }
                   ]
                 }
-              }
+              },
+              "variables": [
+                {
+                  "kind": "QueryVariable",
+                  "spec": {
+                    "name": "estacionVer",
+                    "label": "estacion del detalle",
+                    "description": "Puerta de entrada a la pestaña Detalle. Pinchar una estacion en un mapa la pisa.",
+                    "hide": "dontHide",
+                    "refresh": "onDashboardLoad",
+                    "skipUrlSync": false,
+                    "current": {
+                      "text": "",
+                      "value": ""
+                    },
+                    "options": [],
+                    "multi": false,
+                    "includeAll": false,
+                    "allowCustomValue": true,
+                    "definition": "INSTALL httpfs; LOAD httpfs;\n-- Solo las que tienen algo que enseñar: las que han transmitido lluvia.\nSELECT e.nombre || ' — ' || e.provincia AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/inamhi/observaciones.parquet'))\nORDER BY e.nombre",
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- Solo las que tienen algo que enseñar: las que han transmitido lluvia.\nSELECT e.nombre || ' — ' || e.provincia AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/inamhi/observaciones.parquet'))\nORDER BY e.nombre"
+                      }
+                    },
+                    "regex": "",
+                    "sort": "disabled"
+                  }
+                },
+                {
+                  "kind": "QueryVariable",
+                  "spec": {
+                    "name": "zonaVer",
+                    "label": "zona del detalle",
+                    "description": "Idem para las zonas. Pinchar una zona en el mapa de arriba la pisa.",
+                    "hide": "dontHide",
+                    "refresh": "onDashboardLoad",
+                    "skipUrlSync": false,
+                    "current": {
+                      "text": "",
+                      "value": ""
+                    },
+                    "options": [],
+                    "multi": false,
+                    "includeAll": false,
+                    "allowCustomValue": true,
+                    "definition": "INSTALL httpfs; LOAD httpfs;\nSELECT 'zona ' || zona_id || ' · ' || CASE zona_id\n    WHEN 81 THEN 'Galapagos'  WHEN 20 THEN 'oriente sur'  WHEN 21 THEN 'oriente norte'\n    WHEN 26 THEN 'sierra sur' WHEN 27 THEN 'sierra norte' WHEN 31 THEN 'costa sur'\n    WHEN 32 THEN 'costa sur-centro' WHEN 33 THEN 'costa norte'\n    WHEN 37 THEN 'costa El Oro'    WHEN 38 THEN 'peninsula' WHEN 39 THEN 'Manabi'\n  END AS __text,\n  zona_id::VARCHAR AS __value\nFROM (SELECT DISTINCT zona_id FROM read_parquet('${svc}/inamhi/anomalias.parquet'))\nORDER BY zona_id",
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\nSELECT 'zona ' || zona_id || ' · ' || CASE zona_id\n    WHEN 81 THEN 'Galapagos'  WHEN 20 THEN 'oriente sur'  WHEN 21 THEN 'oriente norte'\n    WHEN 26 THEN 'sierra sur' WHEN 27 THEN 'sierra norte' WHEN 31 THEN 'costa sur'\n    WHEN 32 THEN 'costa sur-centro' WHEN 33 THEN 'costa norte'\n    WHEN 37 THEN 'costa El Oro'    WHEN 38 THEN 'peninsula' WHEN 39 THEN 'Manabi'\n  END AS __text,\n  zona_id::VARCHAR AS __value\nFROM (SELECT DISTINCT zona_id FROM read_parquet('${svc}/inamhi/anomalias.parquet'))\nORDER BY zona_id"
+                      }
+                    },
+                    "regex": "",
+                    "sort": "disabled"
+                  }
+                },
+                {
+                  "kind": "QueryVariable",
+                  "spec": {
+                    "name": "rio",
+                    "current": {
+                      "text": "",
+                      "value": ""
+                    },
+                    "label": "rio",
+                    "hide": "dontHide",
+                    "refresh": "onDashboardLoad",
+                    "skipUrlSync": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- Solo las 27 con pronostico; ofrecer las 651 seria ofrecer paneles vacios.\nSELECT e.nombre || ' (' || e.provincia || ')' AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/geoglows/caudal.parquet'))\nORDER BY e.nombre"
+                      }
+                    },
+                    "regex": "",
+                    "sort": "disabled",
+                    "definition": "INSTALL httpfs; LOAD httpfs;\n-- Solo las 27 con pronostico; ofrecer las 651 seria ofrecer paneles vacios.\nSELECT e.nombre || ' (' || e.provincia || ')' AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/geoglows/caudal.parquet'))\nORDER BY e.nombre",
+                    "options": [],
+                    "multi": false,
+                    "includeAll": false,
+                    "allowCustomValue": true
+                  }
+                }
+              ]
             }
           },
           {
@@ -1953,7 +2166,41 @@
                     }
                   ]
                 }
-              }
+              },
+              "variables": [
+                {
+                  "kind": "QueryVariable",
+                  "spec": {
+                    "name": "estacion",
+                    "current": {
+                      "text": "",
+                      "value": ""
+                    },
+                    "label": "estacion",
+                    "hide": "dontHide",
+                    "refresh": "onDashboardLoad",
+                    "skipUrlSync": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- Solo las que tienen al menos diez temporadas ene-abr completas: seis de\n-- las quince no tienen ninguna y darian un panel vacio sin explicar por que.\n-- En una query de VARIABLE el datasource NO entrecomilla solo.\nWITH temporadas AS (\n  SELECT estacion, count(*) AS n FROM (\n    SELECT estacion, year(fecha) AS anio\n    FROM read_parquet('${svc}/ghcn/ghcn.parquet')\n    WHERE elemento = 'PRCP' AND month(fecha) BETWEEN 1 AND 4\n    GROUP BY 1, 2 HAVING count(*) > 100)\n  GROUP BY estacion)\nSELECT e.nombre || ' — ' || t.n || ' temporadas' AS __text,\n       e.estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/ghcn/estaciones.parquet') e\nJOIN temporadas t USING (estacion)\nWHERE t.n >= 10\nORDER BY t.n DESC"
+                      }
+                    },
+                    "regex": "",
+                    "sort": "disabled",
+                    "definition": "INSTALL httpfs; LOAD httpfs;\n-- Solo las que tienen al menos diez temporadas ene-abr completas: seis de\n-- las quince no tienen ninguna y darian un panel vacio sin explicar por que.\n-- En una query de VARIABLE el datasource NO entrecomilla solo.\nWITH temporadas AS (\n  SELECT estacion, count(*) AS n FROM (\n    SELECT estacion, year(fecha) AS anio\n    FROM read_parquet('${svc}/ghcn/ghcn.parquet')\n    WHERE elemento = 'PRCP' AND month(fecha) BETWEEN 1 AND 4\n    GROUP BY 1, 2 HAVING count(*) > 100)\n  GROUP BY estacion)\nSELECT e.nombre || ' — ' || t.n || ' temporadas' AS __text,\n       e.estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/ghcn/estaciones.parquet') e\nJOIN temporadas t USING (estacion)\nWHERE t.n >= 10\nORDER BY t.n DESC",
+                    "options": [],
+                    "multi": false,
+                    "includeAll": false,
+                    "allowCustomValue": true
+                  }
+                }
+              ]
             }
           },
           {
@@ -2045,181 +2292,6 @@
         }
       },
       {
-        "kind": "QueryVariable",
-        "spec": {
-          "name": "estacion",
-          "current": {
-            "text": "",
-            "value": ""
-          },
-          "label": "estacion",
-          "hide": "dontHide",
-          "refresh": "onDashboardLoad",
-          "skipUrlSync": false,
-          "query": {
-            "kind": "DataQuery",
-            "group": "motherduck-duckdb-datasource",
-            "version": "v0",
-            "datasource": {
-              "name": "duckdb"
-            },
-            "spec": {
-              "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- Solo las que tienen al menos diez temporadas ene-abr completas: seis de\n-- las quince no tienen ninguna y darian un panel vacio sin explicar por que.\n-- En una query de VARIABLE el datasource NO entrecomilla solo.\nWITH temporadas AS (\n  SELECT estacion, count(*) AS n FROM (\n    SELECT estacion, year(fecha) AS anio\n    FROM read_parquet('${svc}/ghcn/ghcn.parquet')\n    WHERE elemento = 'PRCP' AND month(fecha) BETWEEN 1 AND 4\n    GROUP BY 1, 2 HAVING count(*) > 100)\n  GROUP BY estacion)\nSELECT e.nombre || ' — ' || t.n || ' temporadas' AS __text,\n       e.estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/ghcn/estaciones.parquet') e\nJOIN temporadas t USING (estacion)\nWHERE t.n >= 10\nORDER BY t.n DESC"
-            }
-          },
-          "regex": "",
-          "sort": "disabled",
-          "definition": "INSTALL httpfs; LOAD httpfs;\n-- Solo las que tienen al menos diez temporadas ene-abr completas: seis de\n-- las quince no tienen ninguna y darian un panel vacio sin explicar por que.\n-- En una query de VARIABLE el datasource NO entrecomilla solo.\nWITH temporadas AS (\n  SELECT estacion, count(*) AS n FROM (\n    SELECT estacion, year(fecha) AS anio\n    FROM read_parquet('${svc}/ghcn/ghcn.parquet')\n    WHERE elemento = 'PRCP' AND month(fecha) BETWEEN 1 AND 4\n    GROUP BY 1, 2 HAVING count(*) > 100)\n  GROUP BY estacion)\nSELECT e.nombre || ' — ' || t.n || ' temporadas' AS __text,\n       e.estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/ghcn/estaciones.parquet') e\nJOIN temporadas t USING (estacion)\nWHERE t.n >= 10\nORDER BY t.n DESC",
-          "options": [],
-          "multi": false,
-          "includeAll": false,
-          "allowCustomValue": true
-        }
-      },
-      {
-        "kind": "TextVariable",
-        "spec": {
-          "name": "mapFrom",
-          "current": {
-            "text": "",
-            "value": ""
-          },
-          "query": "",
-          "label": "mapFrom",
-          "hide": "hideVariable",
-          "skipUrlSync": false
-        }
-      },
-      {
-        "kind": "TextVariable",
-        "spec": {
-          "name": "mapTo",
-          "current": {
-            "text": "",
-            "value": ""
-          },
-          "query": "",
-          "label": "mapTo",
-          "hide": "hideVariable",
-          "skipUrlSync": false
-        }
-      },
-      {
-        "kind": "QueryVariable",
-        "spec": {
-          "name": "rio",
-          "current": {
-            "text": "",
-            "value": ""
-          },
-          "label": "rio",
-          "hide": "dontHide",
-          "refresh": "onDashboardLoad",
-          "skipUrlSync": false,
-          "query": {
-            "kind": "DataQuery",
-            "group": "motherduck-duckdb-datasource",
-            "version": "v0",
-            "datasource": {
-              "name": "duckdb"
-            },
-            "spec": {
-              "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- Solo las 27 con pronostico; ofrecer las 651 seria ofrecer paneles vacios.\nSELECT e.nombre || ' (' || e.provincia || ')' AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/geoglows/caudal.parquet'))\nORDER BY e.nombre"
-            }
-          },
-          "regex": "",
-          "sort": "disabled",
-          "definition": "INSTALL httpfs; LOAD httpfs;\n-- Solo las 27 con pronostico; ofrecer las 651 seria ofrecer paneles vacios.\nSELECT e.nombre || ' (' || e.provincia || ')' AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/geoglows/caudal.parquet'))\nORDER BY e.nombre",
-          "options": [],
-          "multi": false,
-          "includeAll": false,
-          "allowCustomValue": true
-        }
-      },
-      {
-        "kind": "CustomVariable",
-        "spec": {
-          "name": "capa",
-          "query": "Lluvia caida en 24 h · PERSIANN satelite : satellite_based_precipitation:persiann_pdir_24h,Lluvia caida en 72 h · PERSIANN : satellite_based_precipitation:persiann_pdir_72h,Lluvia pronosticada diaria · WRF +3 dias : wrf:wrf_precipitation_daily,Viento pronosticado · WRF +3 dias : wrf:wrf_wind_speed,La nube ahora en color real · GOES : goes:goes_rgb_true_color,Temperatura de incendios · GOES : goes:goes_rgb_fire_temperature,Humedad del suelo · FFGS : ffgs:soil_moisture",
-          "current": {
-            "text": "Lluvia caida en 24 h · PERSIANN satelite",
-            "value": "satellite_based_precipitation:persiann_pdir_24h"
-          },
-          "options": [
-            {
-              "selected": true,
-              "text": "Lluvia caida en 24 h · PERSIANN satelite",
-              "value": "satellite_based_precipitation:persiann_pdir_24h"
-            },
-            {
-              "selected": false,
-              "text": "Lluvia caida en 72 h · PERSIANN",
-              "value": "satellite_based_precipitation:persiann_pdir_72h"
-            },
-            {
-              "selected": false,
-              "text": "Lluvia pronosticada diaria · WRF +3 dias",
-              "value": "wrf:wrf_precipitation_daily"
-            },
-            {
-              "selected": false,
-              "text": "Viento pronosticado · WRF +3 dias",
-              "value": "wrf:wrf_wind_speed"
-            },
-            {
-              "selected": false,
-              "text": "La nube ahora en color real · GOES",
-              "value": "goes:goes_rgb_true_color"
-            },
-            {
-              "selected": false,
-              "text": "Temperatura de incendios · GOES",
-              "value": "goes:goes_rgb_fire_temperature"
-            },
-            {
-              "selected": false,
-              "text": "Humedad del suelo · FFGS",
-              "value": "ffgs:soil_moisture"
-            }
-          ],
-          "multi": false,
-          "includeAll": false,
-          "label": "capa del cielo",
-          "hide": "dontHide",
-          "skipUrlSync": false,
-          "description": "Las etiquetas no pueden llevar comas: una variable custom separa sus opciones por coma.",
-          "allowCustomValue": true
-        }
-      },
-      {
-        "kind": "TextVariable",
-        "spec": {
-          "name": "cieloFrom",
-          "current": {
-            "text": "",
-            "value": ""
-          },
-          "query": "",
-          "label": "cieloFrom",
-          "hide": "hideVariable",
-          "skipUrlSync": false
-        }
-      },
-      {
-        "kind": "TextVariable",
-        "spec": {
-          "name": "cieloTo",
-          "current": {
-            "text": "",
-            "value": ""
-          },
-          "query": "",
-          "label": "cieloTo",
-          "hide": "hideVariable",
-          "skipUrlSync": false
-        }
-      },
-      {
         "kind": "TextVariable",
         "spec": {
           "name": "zonaSel",
@@ -2245,72 +2317,6 @@
           "label": "estacionSel",
           "hide": "hideVariable",
           "skipUrlSync": false
-        }
-      },
-      {
-        "kind": "QueryVariable",
-        "spec": {
-          "name": "estacionVer",
-          "label": "estacion del detalle",
-          "description": "Puerta de entrada a la pestaña Detalle. Pinchar una estacion en un mapa la pisa.",
-          "hide": "dontHide",
-          "refresh": "onDashboardLoad",
-          "skipUrlSync": false,
-          "current": {
-            "text": "",
-            "value": ""
-          },
-          "options": [],
-          "multi": false,
-          "includeAll": false,
-          "allowCustomValue": true,
-          "definition": "INSTALL httpfs; LOAD httpfs;\n-- Solo las que tienen algo que enseñar: las que han transmitido lluvia.\nSELECT e.nombre || ' — ' || e.provincia AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/inamhi/observaciones.parquet'))\nORDER BY e.nombre",
-          "query": {
-            "kind": "DataQuery",
-            "group": "motherduck-duckdb-datasource",
-            "version": "v0",
-            "datasource": {
-              "name": "duckdb"
-            },
-            "spec": {
-              "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- Solo las que tienen algo que enseñar: las que han transmitido lluvia.\nSELECT e.nombre || ' — ' || e.provincia AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/inamhi/observaciones.parquet'))\nORDER BY e.nombre"
-            }
-          },
-          "regex": "",
-          "sort": "disabled"
-        }
-      },
-      {
-        "kind": "QueryVariable",
-        "spec": {
-          "name": "zonaVer",
-          "label": "zona del detalle",
-          "description": "Idem para las zonas. Pinchar una zona en el mapa de arriba la pisa.",
-          "hide": "dontHide",
-          "refresh": "onDashboardLoad",
-          "skipUrlSync": false,
-          "current": {
-            "text": "",
-            "value": ""
-          },
-          "options": [],
-          "multi": false,
-          "includeAll": false,
-          "allowCustomValue": true,
-          "definition": "INSTALL httpfs; LOAD httpfs;\nSELECT 'zona ' || zona_id || ' · ' || CASE zona_id\n    WHEN 81 THEN 'Galapagos'  WHEN 20 THEN 'oriente sur'  WHEN 21 THEN 'oriente norte'\n    WHEN 26 THEN 'sierra sur' WHEN 27 THEN 'sierra norte' WHEN 31 THEN 'costa sur'\n    WHEN 32 THEN 'costa sur-centro' WHEN 33 THEN 'costa norte'\n    WHEN 37 THEN 'costa El Oro'    WHEN 38 THEN 'peninsula' WHEN 39 THEN 'Manabi'\n  END AS __text,\n  zona_id::VARCHAR AS __value\nFROM (SELECT DISTINCT zona_id FROM read_parquet('${svc}/inamhi/anomalias.parquet'))\nORDER BY zona_id",
-          "query": {
-            "kind": "DataQuery",
-            "group": "motherduck-duckdb-datasource",
-            "version": "v0",
-            "datasource": {
-              "name": "duckdb"
-            },
-            "spec": {
-              "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\nSELECT 'zona ' || zona_id || ' · ' || CASE zona_id\n    WHEN 81 THEN 'Galapagos'  WHEN 20 THEN 'oriente sur'  WHEN 21 THEN 'oriente norte'\n    WHEN 26 THEN 'sierra sur' WHEN 27 THEN 'sierra norte' WHEN 31 THEN 'costa sur'\n    WHEN 32 THEN 'costa sur-centro' WHEN 33 THEN 'costa norte'\n    WHEN 37 THEN 'costa El Oro'    WHEN 38 THEN 'peninsula' WHEN 39 THEN 'Manabi'\n  END AS __text,\n  zona_id::VARCHAR AS __value\nFROM (SELECT DISTINCT zona_id FROM read_parquet('${svc}/inamhi/anomalias.parquet'))\nORDER BY zona_id"
-            }
-          },
-          "regex": "",
-          "sort": "disabled"
         }
       }
     ]
