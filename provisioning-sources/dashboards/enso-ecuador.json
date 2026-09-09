@@ -1148,8 +1148,8 @@
     {
       "id": 11,
       "type": "ubica-keplergl-panel",
-      "title": "El cielo de Ecuador · $capa",
-      "description": "Segundo mapa, con su propio reloj: estas capas son de ahora y de los proximos tres dias, mientras el mapa de arriba recorre once anos. Fuente: GeoServer de GEOGLOWS. Comprobado hoy que las cuatro estan vivas; imerg_early_run_* lleva 189 dias parada y wrf_precipitation_weekly, 152.",
+      "title": "El cielo de Ecuador · $capa · con las estaciones encima",
+      "description": "Segundo mapa, con su propio reloj: estas capas son de ahora y de los proximos tres dias, mientras el mapa de arriba recorre once anos. Fuente: GeoServer de GEOGLOWS. Comprobado hoy que las cuatro estan vivas; imerg_early_run_* lleva 189 dias parada y wrf_precipitation_weekly, 152. Los puntos son las 220 estaciones que transmiten, con la lluvia que han medido en 24 h: sirven para contrastar lo que ve el satelite con lo que se midio en el suelo.",
       "gridPos": {
         "h": 20,
         "w": 24,
@@ -1170,6 +1170,16 @@
           "rawQuery": true,
           "rawSql": "-- Las fechas las publica el propio servicio en su GetCapabilities, asi que la\n-- consulta solo tiene que decir QUE capa: el panel lee el calendario solo.\n-- OJO con $capa: en una query de PANEL el datasource entrecomilla el solo.\nSELECT 'https://services.geoglows.org/geoserver/ows' AS wms_url,\n       $capa AS wms_layer",
           "format": 1
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawQuery": true,
+          "format": 1,
+          "rawSql": "-- OJO: esta consulta es GEMELA de la refId B del panel 4 (el mapa de\n-- arriba). Se repite a proposito: reutilizarla con el datasource\n-- `-- Dashboard --` se probo y NO funciona con este panel — el frame\n-- compartido llega con UNA fila en vez de 220, con y sin choque de\n-- refId. Si cambia una, cambiar la otra.\nINSTALL httpfs; LOAD httpfs;\n-- La red real de INAMHI: 1.892 estaciones, 220 transmitiendo. Los datos publicos\n-- se cortan a DIEZ DIAS (mas pide sesion): esto es la foto de ahora, no historia.\nWITH lluvia AS (\n  SELECT estacion, sum(valor) AS mm\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\nSELECT e.latitude, e.longitude, e.nombre, e.provincia, e.codigo, e.altitud,\n       round(coalesce(l.mm, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN lluvia l ON l.estacion = e.id_estacion\nWHERE e.transmitiendo\nORDER BY lluvia_24h DESC"
         }
       ],
       "options": {
@@ -1191,6 +1201,94 @@
               "bearing": 0,
               "pitch": 0,
               "dragRotate": false
+            },
+            "visState": {
+              "layers": [
+                {
+                  "id": "estaciones-cielo",
+                  "type": "point",
+                  "config": {
+                    "dataId": "grafana-B",
+                    "label": "Estaciones INAMHI · lluvia 24 h",
+                    "columnMode": "points",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "isVisible": true,
+                    "color": [
+                      255,
+                      255,
+                      255
+                    ],
+                    "visConfig": {
+                      "filled": true,
+                      "opacity": 0.95,
+                      "outline": true,
+                      "thickness": 1.5,
+                      "strokeColor": [
+                        10,
+                        10,
+                        10
+                      ],
+                      "radius": 9,
+                      "radiusRange": [
+                        6,
+                        40
+                      ],
+                      "colorRange": {
+                        "name": "Lluvia 24 h",
+                        "type": "sequential",
+                        "category": "Uber",
+                        "colors": [
+                          "#FFFFFF",
+                          "#FFE0A3",
+                          "#FFBE4D",
+                          "#FF9A1F",
+                          "#E8590C",
+                          "#A63603"
+                        ]
+                      }
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "lluvia_24h",
+                      "type": "real"
+                    },
+                    "colorScale": "quantize",
+                    "sizeField": {
+                      "name": "lluvia_24h",
+                      "type": "real"
+                    },
+                    "sizeScale": "sqrt"
+                  }
+                }
+              ],
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-B": [
+                      {
+                        "name": "nombre",
+                        "format": null
+                      },
+                      {
+                        "name": "provincia",
+                        "format": null
+                      },
+                      {
+                        "name": "lluvia_24h",
+                        "format": null
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "mapStyle": {
+              "styleType": "dark-matter"
             }
           }
         }
