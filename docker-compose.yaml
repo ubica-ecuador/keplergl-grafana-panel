@@ -176,7 +176,12 @@ services:
       context: .config
       args:
         grafana_image: ${GRAFANA_IMAGE:-grafana-enterprise}
-        grafana_version: ${GRAFANA_VERSION:-12.0.10}-ubuntu
+        # Variable propia, y 13.2.1 por defecto, por una razon concreta: el
+        # tablero `enso-ecuador` usa `TabsLayout`, que necesita el toggle
+        # `dashboardNewLayouts` — presente en 13.2.1 y ausente en 12.0.10. Es la
+        # misma version que ya fija docker-compose.override.example.yml para
+        # produccion. Los otros tres bancos siguen en GRAFANA_VERSION.
+        grafana_version: ${GRAFANA_SOURCES_VERSION:-13.2.1}-ubuntu
         # Must stay false. On true the entrypoint hands over to supervisord
         # instead of Grafana's own /run.sh, and /run.sh is what reads
         # GF_INSTALL_PLUGINS — the data sources below would silently never

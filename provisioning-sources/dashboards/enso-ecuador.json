@@ -1,1302 +1,2076 @@
 {
-  "uid": "enso-ecuador",
-  "title": "El Nino en Ecuador",
-  "description": "Vigilancia del impacto de El Nino en Ecuador: indices del CPC y la anomalia oficial de INAMHI, servida por el servicio elnino.",
-  "tags": [
-    "enso",
-    "ecuador",
-    "inamhi",
-    "duckdb"
-  ],
-  "timezone": "utc",
-  "editable": true,
-  "schemaVersion": 39,
-  "version": 1,
-  "time": {
-    "from": "2015-01-01T00:00:00.000Z",
-    "to": "now"
+  "kind": "Dashboard",
+  "apiVersion": "dashboard.grafana.app/v2beta1",
+  "metadata": {
+    "name": "enso-ecuador"
   },
-  "templating": {
-    "list": [
+  "spec": {
+    "annotations": [
       {
-        "name": "svc",
-        "label": "servicio elnino",
-        "type": "constant",
-        "hide": 2,
-        "query": "http://host.docker.internal:8092",
-        "current": {
-          "text": "http://host.docker.internal:8092",
-          "value": "http://host.docker.internal:8092"
-        },
-        "skipUrlSync": true,
-        "description": "Base del servicio elnino (~/dev/elnino). En despliegue pasa a https://enso.ubica.ec"
-      },
-      {
-        "name": "estacion",
-        "label": "estacion",
-        "type": "query",
-        "hide": 0,
-        "refresh": 1,
-        "datasource": {
-          "type": "motherduck-duckdb-datasource",
-          "uid": "duckdb"
-        },
-        "multi": false,
-        "includeAll": false,
-        "current": {
-          "text": "",
-          "value": ""
-        },
-        "options": [],
-        "query": "INSTALL httpfs; LOAD httpfs;\n-- Solo las que tienen al menos diez temporadas ene-abr completas: seis de\n-- las quince no tienen ninguna y darian un panel vacio sin explicar por que.\n-- En una query de VARIABLE el datasource NO entrecomilla solo.\nWITH temporadas AS (\n  SELECT estacion, count(*) AS n FROM (\n    SELECT estacion, year(fecha) AS anio\n    FROM read_parquet('${svc}/ghcn/ghcn.parquet')\n    WHERE elemento = 'PRCP' AND month(fecha) BETWEEN 1 AND 4\n    GROUP BY 1, 2 HAVING count(*) > 100)\n  GROUP BY estacion)\nSELECT e.nombre || ' — ' || t.n || ' temporadas' AS __text,\n       e.estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/ghcn/estaciones.parquet') e\nJOIN temporadas t USING (estacion)\nWHERE t.n >= 10\nORDER BY t.n DESC",
-        "definition": "INSTALL httpfs; LOAD httpfs;\n-- Solo las que tienen al menos diez temporadas ene-abr completas: seis de\n-- las quince no tienen ninguna y darian un panel vacio sin explicar por que.\n-- En una query de VARIABLE el datasource NO entrecomilla solo.\nWITH temporadas AS (\n  SELECT estacion, count(*) AS n FROM (\n    SELECT estacion, year(fecha) AS anio\n    FROM read_parquet('${svc}/ghcn/ghcn.parquet')\n    WHERE elemento = 'PRCP' AND month(fecha) BETWEEN 1 AND 4\n    GROUP BY 1, 2 HAVING count(*) > 100)\n  GROUP BY estacion)\nSELECT e.nombre || ' — ' || t.n || ' temporadas' AS __text,\n       e.estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/ghcn/estaciones.parquet') e\nJOIN temporadas t USING (estacion)\nWHERE t.n >= 10\nORDER BY t.n DESC"
-      },
-      {
-        "name": "mapFrom",
-        "label": "mapFrom",
-        "type": "textbox",
-        "hide": 2,
-        "query": "",
-        "current": {
-          "text": "",
-          "value": ""
-        }
-      },
-      {
-        "name": "mapTo",
-        "label": "mapTo",
-        "type": "textbox",
-        "hide": 2,
-        "query": "",
-        "current": {
-          "text": "",
-          "value": ""
-        }
-      },
-      {
-        "name": "rio",
-        "label": "rio",
-        "type": "query",
-        "hide": 0,
-        "refresh": 1,
-        "datasource": {
-          "type": "motherduck-duckdb-datasource",
-          "uid": "duckdb"
-        },
-        "multi": false,
-        "includeAll": false,
-        "current": {
-          "text": "",
-          "value": ""
-        },
-        "options": [],
-        "query": "INSTALL httpfs; LOAD httpfs;\n-- Solo las 27 con pronostico; ofrecer las 651 seria ofrecer paneles vacios.\nSELECT e.nombre || ' (' || e.provincia || ')' AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/geoglows/caudal.parquet'))\nORDER BY e.nombre",
-        "definition": "INSTALL httpfs; LOAD httpfs;\n-- Solo las 27 con pronostico; ofrecer las 651 seria ofrecer paneles vacios.\nSELECT e.nombre || ' (' || e.provincia || ')' AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/geoglows/caudal.parquet'))\nORDER BY e.nombre"
-      },
-      {
-        "name": "capa",
-        "label": "capa del cielo",
-        "type": "custom",
-        "hide": 0,
-        "query": "Lluvia caida en 24 h · PERSIANN satelite : satellite_based_precipitation:persiann_pdir_24h,Lluvia caida en 72 h · PERSIANN : satellite_based_precipitation:persiann_pdir_72h,Lluvia pronosticada diaria · WRF +3 dias : wrf:wrf_precipitation_daily,Viento pronosticado · WRF +3 dias : wrf:wrf_wind_speed,La nube ahora en color real · GOES : goes:goes_rgb_true_color,Temperatura de incendios · GOES : goes:goes_rgb_fire_temperature,Humedad del suelo · FFGS : ffgs:soil_moisture",
-        "current": {
-          "text": "Lluvia caida en 24 h · PERSIANN satelite",
-          "value": "satellite_based_precipitation:persiann_pdir_24h",
-          "selected": true
-        },
-        "options": [
-          {
-            "text": "Lluvia caida en 24 h · PERSIANN satelite",
-            "value": "satellite_based_precipitation:persiann_pdir_24h",
-            "selected": true
+        "kind": "AnnotationQuery",
+        "spec": {
+          "query": {
+            "kind": "DataQuery",
+            "group": "grafana",
+            "version": "v0",
+            "datasource": {
+              "name": "-- Grafana --"
+            },
+            "spec": {}
           },
-          {
-            "text": "Lluvia caida en 72 h · PERSIANN",
-            "value": "satellite_based_precipitation:persiann_pdir_72h",
-            "selected": false
-          },
-          {
-            "text": "Lluvia pronosticada diaria · WRF +3 dias",
-            "value": "wrf:wrf_precipitation_daily",
-            "selected": false
-          },
-          {
-            "text": "Viento pronosticado · WRF +3 dias",
-            "value": "wrf:wrf_wind_speed",
-            "selected": false
-          },
-          {
-            "text": "La nube ahora en color real · GOES",
-            "value": "goes:goes_rgb_true_color",
-            "selected": false
-          },
-          {
-            "text": "Temperatura de incendios · GOES",
-            "value": "goes:goes_rgb_fire_temperature",
-            "selected": false
-          },
-          {
-            "text": "Humedad del suelo · FFGS",
-            "value": "ffgs:soil_moisture",
-            "selected": false
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "builtIn": true,
+          "legacyOptions": {
+            "type": "dashboard"
           }
-        ],
-        "multi": false,
-        "includeAll": false,
-        "description": "Las etiquetas no pueden llevar comas: una variable custom separa sus opciones por coma."
-      },
-      {
-        "name": "cieloFrom",
-        "label": "cieloFrom",
-        "type": "textbox",
-        "hide": 2,
-        "query": "",
-        "current": {
-          "text": "",
-          "value": ""
-        }
-      },
-      {
-        "name": "cieloTo",
-        "label": "cieloTo",
-        "type": "textbox",
-        "hide": 2,
-        "query": "",
-        "current": {
-          "text": "",
-          "value": ""
         }
       }
-    ]
-  },
-  "panels": [
-    {
-      "id": 1,
-      "type": "text",
-      "gridPos": {
-        "h": 9,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "# El Nino en Ecuador\n\nVigilancia del impacto, **no pronostico del fenomeno**: eso pide un modelo acoplado\noceano-atmosfera que ninguna de estas fuentes tiene.\n\n**Hay evento en curso, y creciendo.** El indice Nino 1+2 paso de -0,26 en enero de 2026 a\n**+3,28 en agosto**, y la ultima anomalia de INAMHI, del 7 de septiembre, sigue en positivo.\n\n**Para Ecuador manda Nino 1+2, no el 3.4.** El \"Nino costero\" de 2017 inundo la costa con el\n3.4 en neutro: un tablero que solo mire el ONI se pierde justo el evento que mas importa aqui.\n\n## Limites, que un tablero de ENSO que no los diga miente\n\n- Los indices son de **NOAA PSL**: ERSST V6 sobre base **1981-2010**, con ~1 mes de retraso.\n  El CPC publica los mismos indices sobre **1991-2020** y da otros numeros para el mismo mes\n  (junio de 2026: +2,48 aqui, +2,82 alli). No son intercambiables.\n- INAMHI publica **~2 dias** despues de la fecha, y **solo durante los eventos**: hay 68\n  fechas en 2026 y **ninguna en 2021-22**. El eje de tiempo tiene agujeros de verdad; no se\n  interpola entre ellos.\n- La anomalia de INAMHI es de **once zonas**, no de 571 cuencas: las 571 filas de su WFS son\n  trozos de poligono que repiten el valor de su zona.\n- **El indice de INAMHI no esta definido en ninguna parte, y NO es una cantidad de lluvia.**\n  Sus valores van de **-5,4 a +10,1** (mediana 0,08), centrados en cero y sesgados a la derecha.\n  Medido: enfrentado a la lluvia real de IMERG **sobre el mismo poligono**, en diez fechas\n  repartidas por todo el rango, la correlacion es de **+0,20** con ventanas de 1 a 30 dias. Hay\n  fechas que lo dejan claro: el 31-ago-2026 marca **+4,79** con 0,45 mm/dia de lluvia, y el\n  14-mar-2019 marca **+1,75** con 20,91 mm/dia. Su forma es la de una **anomalia tipificada**\n  (desviaciones respecto a lo normal del mes), lo que explicaria justo eso — pero **no esta\n  confirmado**: INAMHI no publica metadatos de estas capas, y el unico documento metodologico\n  localizable describe otro producto (anomalias porcentuales del acumulado enero-mayo).\n  **Leelo como mas humedo / mas seco de lo normal, no como milimetros.**\n- **La relacion Nino 1+2 <-> lluvia costera es real pero no determinista**: r entre 0,38 y\n  0,75 segun la estacion. 1983 fue el ene-abr mas lluvioso del registro, pero 2016 —con un\n  indice tambien alto— se quedo por debajo de la mediana. El indice inclina la balanza; no\n  decide la temporada.\n- Que son las once zonas tampoco esta claro: no coinciden con las diez demarcaciones\n  hidrograficas ni con las regiones de precipitacion. Se etiquetan por numero y por su forma:\n  81 es Galapagos, 31-39 la costa, 20-21 el oriente, 26-27 la sierra.\nEl mapa **recorre el tiempo**. Abre en el evento en curso; para ver 2016 o 2018, ensancha el\nrango. Con la ventana ancha se apilan todas las fechas que quepan en ella: estrechala con la\nbarra del propio mapa, o dale al play. El detalle de los poligonos ahi es de ~1 km, porque va\nuna geometria por fecha y con el detalle fino los once anos serian 86 MB en vez de 15.\n\nDatos: **INAMHI** (`geoservicios.inamhi.gob.ec`) via el servicio `elnino`, y **NOAA PSL**."
-      }
-    },
-    {
-      "id": 2,
-      "type": "timeseries",
-      "title": "Indices Nino: la fase en que estamos",
-      "description": "Anomalia de SST de las regiones Nino, de NOAA PSL (ERSST V6, base 1981-2010). 1+2 es la costa de Ecuador y Peru; 3.4 el que sale en la prensa. OJO: el CPC publica sobre otra base (1991-2020) y da otros numeros para el mismo mes.",
-      "gridPos": {
-        "h": 9,
-        "w": 17,
-        "x": 0,
-        "y": 9
-      },
-      "datasource": {
-        "type": "motherduck-duckdb-datasource",
-        "uid": "duckdb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
+    ],
+    "cursorSync": "Off",
+    "description": "Vigilancia del impacto de El Nino en Ecuador: indices del CPC y la anomalia oficial de INAMHI, servida por el servicio elnino.",
+    "editable": true,
+    "elements": {
+      "panel-1": {
+        "kind": "Panel",
+        "spec": {
+          "id": 1,
+          "title": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
           },
-          "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSELECT fecha::TIMESTAMP AS time,\n       max(CASE WHEN indice = 'nino12' THEN valor END) AS \"Nino 1+2\",\n       max(CASE WHEN indice = 'nino34' THEN valor END) AS \"Nino 3.4\"\nFROM read_parquet($svc || '/indices/indices.parquet')\nWHERE indice IN ('nino12', 'nino34')\nGROUP BY fecha\nORDER BY time",
-          "format": 1
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "celsius",
-          "decimals": 2,
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 8,
-            "spanNulls": true,
-            "axisSoftMin": -3,
-            "axisSoftMax": 3
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "text",
+            "version": "",
+            "spec": {
+              "options": {
+                "content": "# El Nino en Ecuador\n\nVigilancia del impacto, **no pronostico del fenomeno**: eso pide un modelo acoplado\noceano-atmosfera que ninguna de estas fuentes tiene.\n\n**Hay evento en curso, y creciendo.** El indice Nino 1+2 paso de -0,26 en enero de 2026 a\n**+3,28 en agosto**, y la ultima anomalia de INAMHI, del 7 de septiembre, sigue en positivo.\n\n**Para Ecuador manda Nino 1+2, no el 3.4.** El \"Nino costero\" de 2017 inundo la costa con el\n3.4 en neutro: un tablero que solo mire el ONI se pierde justo el evento que mas importa aqui.\n\n## Limites, que un tablero de ENSO que no los diga miente\n\n- Los indices son de **NOAA PSL**: ERSST V6 sobre base **1981-2010**, con ~1 mes de retraso.\n  El CPC publica los mismos indices sobre **1991-2020** y da otros numeros para el mismo mes\n  (junio de 2026: +2,48 aqui, +2,82 alli). No son intercambiables.\n- INAMHI publica **~2 dias** despues de la fecha, y **solo durante los eventos**: hay 68\n  fechas en 2026 y **ninguna en 2021-22**. El eje de tiempo tiene agujeros de verdad; no se\n  interpola entre ellos.\n- La anomalia de INAMHI es de **once zonas**, no de 571 cuencas: las 571 filas de su WFS son\n  trozos de poligono que repiten el valor de su zona.\n- **El indice de INAMHI no esta definido en ninguna parte, y NO es una cantidad de lluvia.**\n  Sus valores van de **-5,4 a +10,1** (mediana 0,08), centrados en cero y sesgados a la derecha.\n  Medido: enfrentado a la lluvia real de IMERG **sobre el mismo poligono**, en diez fechas\n  repartidas por todo el rango, la correlacion es de **+0,20** con ventanas de 1 a 30 dias. Hay\n  fechas que lo dejan claro: el 31-ago-2026 marca **+4,79** con 0,45 mm/dia de lluvia, y el\n  14-mar-2019 marca **+1,75** con 20,91 mm/dia. Su forma es la de una **anomalia tipificada**\n  (desviaciones respecto a lo normal del mes), lo que explicaria justo eso — pero **no esta\n  confirmado**: INAMHI no publica metadatos de estas capas, y el unico documento metodologico\n  localizable describe otro producto (anomalias porcentuales del acumulado enero-mayo).\n  **Leelo como mas humedo / mas seco de lo normal, no como milimetros.**\n- **La relacion Nino 1+2 <-> lluvia costera es real pero no determinista**: r entre 0,38 y\n  0,75 segun la estacion. 1983 fue el ene-abr mas lluvioso del registro, pero 2016 —con un\n  indice tambien alto— se quedo por debajo de la mediana. El indice inclina la balanza; no\n  decide la temporada.\n- Que son las once zonas tampoco esta claro: no coinciden con las diez demarcaciones\n  hidrograficas ni con las regiones de precipitacion. Se etiquetan por numero y por su forma:\n  81 es Galapagos, 31-39 la costa, 20-21 el oriente, 26-27 la sierra.\nEl mapa **recorre el tiempo**. Abre en el evento en curso; para ver 2016 o 2018, ensancha el\nrango. Con la ventana ancha se apilan todas las fechas que quepan en ella: estrechala con la\nbarra del propio mapa, o dale al play. El detalle de los poligonos ahi es de ~1 km, porque va\nuna geometria por fecha y con el detalle fino los once anos serian 86 MB en vez de 15.\n\nDatos: **INAMHI** (`geoservicios.inamhi.gob.ec`) via el servicio `elnino`, y **NOAA PSL**.",
+                "mode": "markdown"
               },
-              {
-                "color": "text",
-                "value": -0.5
-              },
-              {
-                "color": "orange",
-                "value": 0.5
-              },
-              {
-                "color": "red",
-                "value": 1.5
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
               }
-            ]
+            }
           }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Nino 1+2"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "red"
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 3
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Nino 3.4"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "semi-dark-blue"
-                }
-              },
-              {
-                "id": "custom.fillOpacity",
-                "value": 0
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
         }
-      }
-    },
-    {
-      "id": 3,
-      "type": "stat",
-      "title": "Nino 1+2 ahora",
-      "datasource": {
-        "type": "datasource",
-        "uid": "-- Dashboard --"
       },
-      "description": "El ultimo valor publicado por el CPC. Por encima de +0,5 sostenido, hay Nino.",
-      "gridPos": {
-        "h": 9,
-        "w": 7,
-        "x": 17,
-        "y": 9
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "datasource",
-            "uid": "-- Dashboard --"
-          },
-          "panelId": 2
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "/^Nino 1\\+2$/",
-          "values": false
-        },
-        "colorMode": "background",
-        "graphMode": "none",
-        "textMode": "auto"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "celsius",
-          "decimals": 2,
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": -0.5
-              },
-              {
-                "color": "yellow",
-                "value": 0.5
-              },
-              {
-                "color": "orange",
-                "value": 1.0
-              },
-              {
-                "color": "red",
-                "value": 2.0
-              }
-            ]
-          }
-        },
-        "overrides": []
-      }
-    },
-    {
-      "id": 4,
-      "type": "ubica-keplergl-panel",
-      "title": "Ecuador ahora: el indice de INAMHI por zona, y donde esta lloviendo",
-      "description": "Dos cosas a la vez. El COLOR DE FONDO es el indice de anomalia de INAMHI por zona (marron = por debajo de lo normal, verde-azulado = por encima; no son milimetros). Los PUNTOS son las 220 estaciones que transmiten ahora mismo, del tamano y color de la lluvia que han medido en las ultimas 24 horas. El fondo recorre once anos con la barra del mapa; los puntos son siempre de hoy.",
-      "gridPos": {
-        "h": 24,
-        "w": 14,
-        "x": 0,
-        "y": 18
-      },
-      "datasource": {
-        "type": "motherduck-duckdb-datasource",
-        "uid": "duckdb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El mapa recorre el tiempo, asi que va una geometria por FECHA y no una por\n-- zona: el peso se multiplica por el numero de fechas. Por eso `geojson_ligero`\n-- (~1,1 km de detalle, 7,6 KB por zona) y no la fina (43,6 KB): once anos son\n-- 15,3 MB en vez de 86, y la consulta tarda 0,2 s. El reloj del mapa los recorre.\nSELECT a.fecha::TIMESTAMP AS time,\n       a.zona_id,\n       CASE zona_id\n    WHEN 81 THEN 'Galapagos'\n    WHEN 20 THEN 'oriente sur'      WHEN 21 THEN 'oriente norte'\n    WHEN 26 THEN 'sierra sur'       WHEN 27 THEN 'sierra norte'\n    WHEN 31 THEN 'costa sur'        WHEN 32 THEN 'costa sur-centro'\n    WHEN 33 THEN 'costa norte'      WHEN 37 THEN 'costa El Oro'\n    WHEN 38 THEN 'peninsula'        WHEN 39 THEN 'Manabi'\n  END AS region,\n       a.mean AS anomalia,\n       a.min  AS minimo,\n       a.max  AS maximo,\n       z.geojson_ligero AS geojson\nFROM read_parquet($svc || '/inamhi/anomalias.parquet') a\nJOIN read_parquet($svc || '/inamhi/zonas.parquet')     z USING (zona_id)\nORDER BY a.fecha, a.zona_id",
-          "format": 1
-        },
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "rawQuery": true,
-          "format": 1,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- La red real de INAMHI: 1.892 estaciones, 220 transmitiendo. Los datos publicos\n-- se cortan a DIEZ DIAS (mas pide sesion): esto es la foto de ahora, no historia.\nWITH lluvia AS (\n  SELECT estacion, sum(valor) AS mm\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\nSELECT e.latitude, e.longitude, e.nombre, e.provincia, e.codigo, e.altitud,\n       round(coalesce(l.mm, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN lluvia l ON l.estacion = e.id_estacion\nWHERE e.transmitiendo\nORDER BY lluvia_24h DESC"
-        }
-      ],
-      "options": {
-        "showSidePanel": false,
-        "followGrafanaTheme": true,
-        "timeSync": "variables",
-        "basemap": "positron",
-        "mapConfig": {
-          "version": "v1",
-          "config": {
-            "mapState": {
-              "latitude": -1.4,
-              "longitude": -83.4,
-              "zoom": 5.15,
-              "bearing": 0,
-              "pitch": 0,
-              "dragRotate": false,
-              "isSplit": false
-            },
-            "mapStyle": {
-              "styleType": "positron"
-            },
-            "visState": {
-              "layers": [
+      "panel-10": {
+        "kind": "Panel",
+        "spec": {
+          "id": 10,
+          "title": "Caudal pronosticado · la estacion pinchada, o la del selector",
+          "description": "Quince dias de caudal en m3/s, del modelo global de GEOGLOWS via el visor de INAMHI. La banda entre el escenario bajo y el alto es la incertidumbre del modelo: se abre con el horizonte. Para una hidroelectrica esto es mas directo que la lluvia — el caudal es lo que mueve la turbina. Solo 27 de las 651 estaciones hidrologicas tienen tramo del modelo asociado.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
                 {
-                  "id": "estaciones-inamhi",
-                  "type": "point",
-                  "config": {
-                    "dataId": "grafana-B",
-                    "label": "Estaciones INAMHI · lluvia 24 h",
-                    "columnMode": "points",
-                    "columns": {
-                      "lat": "latitude",
-                      "lng": "longitude"
-                    },
-                    "isVisible": true,
-                    "color": [
-                      130,
-                      138,
-                      143
-                    ],
-                    "visConfig": {
-                      "filled": true,
-                      "opacity": 0.95,
-                      "outline": true,
-                      "thickness": 1,
-                      "strokeColor": [
-                        255,
-                        255,
-                        255
-                      ],
-                      "radius": 9,
-                      "radiusRange": [
-                        6,
-                        40
-                      ],
-                      "colorRange": {
-                        "name": "Lluvia 24 h",
-                        "type": "sequential",
-                        "category": "Uber",
-                        "colors": [
-                          "#9AA5AB",
-                          "#7FC5CC",
-                          "#37A3AD",
-                          "#0B7C89",
-                          "#04525C",
-                          "#022E36"
-                        ]
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Pronostico de caudal de GEOGLOWS, quince dias cada tres horas. Solo 27 de las\n-- 651 estaciones hidrologicas tienen tramo del modelo asociado.\n-- Eje en DIAS por delante, no en fechas: son futuras y el rango del tablero\n-- (2015-hoy) dejaria el panel vacio.\nSELECT round(date_diff('hour', now(), strptime(fecha, '%Y-%m-%dT%H:%M:%SZ')) / 24.0, 2) AS dia,\n       round(mediana, 1) AS \"caudal mediano (m3/s)\",\n       round(minimo, 1)  AS \"el escenario bajo\",\n       round(maximo, 1)  AS \"el escenario alto\"\nFROM read_parquet($svc || '/geoglows/caudal.parquet')\n-- Sigue al clic si lo hay; si no, al desplegable.\nWHERE estacion = (\n  -- El clic manda SOLO si esa estacion tiene pronostico: 27 de las 651 lo\n  -- tienen, y pinchar una meteorologica vaciaba el panel pisando al selector.\n  SELECT coalesce(\n    max(CASE WHEN estacion = try_cast(nullif($estacionSel, '') AS BIGINT)\n             THEN estacion END),\n    try_cast($rio AS BIGINT))\n  FROM read_parquet($svc || '/geoglows/caudal.parquet'))\nORDER BY dia"
                       }
-                    }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "trend",
+            "version": "",
+            "spec": {
+              "options": {
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "none"
+                },
+                "xField": "dia"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "decimals": 1,
+                  "custom": {
+                    "axisLabel": "caudal (m3/s)",
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "lineWidth": 2,
+                    "showPoints": "never",
+                    "spanNulls": true
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "dia"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "dias por delante"
+                      }
+                    ]
                   },
-                  "visualChannels": {
-                    "colorField": {
-                      "name": "lluvia_24h",
-                      "type": "real"
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "caudal mediano (m3/s)"
                     },
-                    "colorScale": "quantize",
-                    "sizeField": {
-                      "name": "lluvia_24h",
-                      "type": "real"
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "blue",
+                          "mode": "fixed"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 3
+                      },
+                      {
+                        "id": "unit",
+                        "value": "m3/s"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "el escenario bajo"
                     },
-                    "sizeScale": "sqrt"
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "orange",
+                          "mode": "fixed"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 1
+                      },
+                      {
+                        "id": "unit",
+                        "value": "m3/s"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "el escenario alto"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "super-light-blue",
+                          "mode": "fixed"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 1
+                      },
+                      {
+                        "id": "unit",
+                        "value": "m3/s"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-11": {
+        "kind": "Panel",
+        "spec": {
+          "id": 11,
+          "title": "El cielo de Ecuador · $capa · con las estaciones encima",
+          "description": "Segundo mapa, con su propio reloj: estas capas son de ahora y de los proximos tres dias, mientras el mapa de arriba recorre once anos. Fuente: GeoServer de GEOGLOWS. Comprobado hoy que las cuatro estan vivas; imerg_early_run_* lleva 189 dias parada y wrf_precipitation_weekly, 152. Los puntos son las 220 estaciones que transmiten, con la lluvia que han medido en 24 h: sirven para contrastar lo que ve el satelite con lo que se midio en el suelo.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "-- Las fechas las publica el propio servicio en su GetCapabilities, asi que la\n-- consulta solo tiene que decir QUE capa: el panel lee el calendario solo.\n-- OJO con $capa: en una query de PANEL el datasource entrecomilla el solo.\nSELECT 'https://services.geoglows.org/geoserver/ows' AS wms_url,\n       $capa AS wms_layer"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
                   }
                 },
                 {
-                  "id": "anomalia-zonas",
-                  "type": "geojson",
-                  "config": {
-                    "dataId": "grafana-A",
-                    "label": "Indice INAMHI (unidad sin confirmar)",
-                    "columns": {
-                      "geojson": "_geojson"
-                    },
-                    "isVisible": true,
-                    "colorField": null,
-                    "visConfig": {
-                      "opacity": 0.55,
-                      "strokeOpacity": 0.9,
-                      "thickness": 0.5,
-                      "strokeColor": [
-                        60,
-                        60,
-                        60
-                      ],
-                      "colorRange": {
-                        "name": "Seco a lluvioso",
-                        "type": "diverging",
-                        "category": "ColorBrewer",
-                        "colors": [
-                          "#8c510a",
-                          "#bf812d",
-                          "#dfc27d",
-                          "#f6e8c3",
-                          "#c7eae5",
-                          "#80cdc1",
-                          "#35978f",
-                          "#01665e"
-                        ]
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
                       },
-                      "filled": true,
-                      "stroked": true,
-                      "enable3d": false,
-                      "wireframe": false
-                    }
-                  },
-                  "visualChannels": {
-                    "colorField": {
-                      "name": "anomalia",
-                      "type": "real"
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "-- OJO: esta consulta es GEMELA de la refId B del panel 4 (el mapa de\n-- arriba). Se repite a proposito: reutilizarla con el datasource\n-- `-- Dashboard --` se probo y NO funciona con este panel — el frame\n-- compartido llega con UNA fila en vez de 220, con y sin choque de\n-- refId. Si cambia una, cambiar la otra.\nINSTALL httpfs; LOAD httpfs;\n-- La red real de INAMHI: 1.892 estaciones, 220 transmitiendo. Los datos publicos\n-- se cortan a DIEZ DIAS (mas pide sesion): esto es la foto de ahora, no historia.\nWITH lluvia AS (\n  SELECT estacion, sum(valor) AS mm\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\nSELECT e.latitude, e.longitude, e.nombre, e.provincia, e.codigo, e.altitud,\n       round(coalesce(l.mm, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN lluvia l ON l.estacion = e.id_estacion\nWHERE e.transmitiendo\nORDER BY lluvia_24h DESC"
+                      }
                     },
-                    "colorScale": "quantile"
+                    "refId": "B",
+                    "hidden": false
                   }
                 }
               ],
-              "interactionConfig": {
-                "tooltip": {
-                  "enabled": true,
-                  "fieldsToShow": {
-                    "grafana-A": [
-                      {
-                        "name": "region",
-                        "format": null
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "ubica-keplergl-panel",
+            "version": "",
+            "spec": {
+              "options": {
+                "basemap": "dark-matter",
+                "followGrafanaTheme": true,
+                "mapConfig": {
+                  "config": {
+                    "mapState": {
+                      "bearing": 0,
+                      "dragRotate": false,
+                      "latitude": -1.4,
+                      "longitude": -83.4,
+                      "pitch": 0,
+                      "zoom": 5.15
+                    },
+                    "mapStyle": {
+                      "styleType": "dark-matter"
+                    },
+                    "visState": {
+                      "interactionConfig": {
+                        "tooltip": {
+                          "enabled": true,
+                          "fieldsToShow": {
+                            "grafana-B": [
+                              {
+                                "name": "nombre"
+                              },
+                              {
+                                "name": "provincia"
+                              },
+                              {
+                                "name": "lluvia_24h"
+                              }
+                            ]
+                          }
+                        }
                       },
-                      {
-                        "name": "zona_id",
-                        "format": null
-                      },
-                      {
-                        "name": "anomalia",
-                        "format": null
-                      },
-                      {
-                        "name": "minimo",
-                        "format": null
-                      },
-                      {
-                        "name": "maximo",
-                        "format": null
-                      }
-                    ],
-                    "grafana-B": [
-                      {
-                        "name": "nombre",
-                        "format": null
-                      },
-                      {
-                        "name": "provincia",
-                        "format": null
-                      },
-                      {
-                        "name": "lluvia_24h",
-                        "format": null
-                      },
-                      {
-                        "name": "altitud",
-                        "format": null
-                      }
-                    ]
+                      "layers": [
+                        {
+                          "config": {
+                            "color": [
+                              255,
+                              255,
+                              255
+                            ],
+                            "columnMode": "points",
+                            "columns": {
+                              "lat": "latitude",
+                              "lng": "longitude"
+                            },
+                            "dataId": "grafana-B",
+                            "isVisible": true,
+                            "label": "Estaciones INAMHI · lluvia 24 h",
+                            "visConfig": {
+                              "colorRange": {
+                                "category": "Uber",
+                                "colors": [
+                                  "#FFFFFF",
+                                  "#FFE0A3",
+                                  "#FFBE4D",
+                                  "#FF9A1F",
+                                  "#E8590C",
+                                  "#A63603"
+                                ],
+                                "name": "Lluvia 24 h",
+                                "type": "sequential"
+                              },
+                              "filled": true,
+                              "opacity": 0.95,
+                              "outline": true,
+                              "radius": 9,
+                              "radiusRange": [
+                                6,
+                                40
+                              ],
+                              "strokeColor": [
+                                10,
+                                10,
+                                10
+                              ],
+                              "thickness": 1.5
+                            }
+                          },
+                          "id": "estaciones-cielo",
+                          "type": "point",
+                          "visualChannels": {
+                            "colorField": {
+                              "name": "lluvia_24h",
+                              "type": "real"
+                            },
+                            "colorScale": "quantize",
+                            "sizeField": {
+                              "name": "lluvia_24h",
+                              "type": "real"
+                            },
+                            "sizeScale": "sqrt"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "version": "v1"
+                },
+                "showSidePanel": false,
+                "timeSync": "variables",
+                "timeVariables": {
+                  "from": "cieloFrom",
+                  "to": "cieloTo"
+                },
+                "variableMappings": [
+                  {
+                    "field": "id_estacion",
+                    "source": "click",
+                    "variable": "estacionSel"
                   }
-                }
+                ]
               },
-              "layerOrder": [
-                "estaciones-inamhi",
-                "anomalia-zonas"
-              ]
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
             }
           }
-        },
-        "timeVariables": {
-          "from": "mapFrom",
-          "to": "mapTo"
-        },
-        "publishWhilePlaying": false
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      }
-    },
-    {
-      "id": 5,
-      "type": "timeseries",
-      "title": "Once anos de anomalia, zona a zona",
-      "description": "Sin geometria son 79 KB, asi que aqui caben los once anos enteros. Puntos y no lineas: INAMHI publica a rachas y unir dos fechas con dos anos de por medio seria inventar. Arrastra sobre la grafica para acotar el rango: el mapa te sigue.",
-      "gridPos": {
-        "h": 24,
-        "w": 10,
-        "x": 14,
-        "y": 18
-      },
-      "datasource": {
-        "type": "motherduck-duckdb-datasource",
-        "uid": "duckdb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Sin geometria son 79 KB: aqui viven los once anos.\nSELECT fecha::TIMESTAMP AS time,\n       'zona ' || zona_id AS zona,\n       mean AS anomalia\nFROM read_parquet($svc || '/inamhi/anomalias.parquet')\nORDER BY time, zona_id",
-          "format": 1
-        }
-      ],
-      "transformations": [
-        {
-          "id": "partitionByValues",
-          "options": {
-            "fields": [
-              "zona"
-            ],
-            "keepFields": false
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "decimals": 2,
-          "custom": {
-            "drawStyle": "points",
-            "showPoints": "always",
-            "pointSize": 5,
-            "lineWidth": 0,
-            "fillOpacity": 0,
-            "spanNulls": false,
-            "axisSoftMin": -4,
-            "axisSoftMax": 8
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      }
-    },
-    {
-      "id": 6,
-      "type": "barchart",
-      "title": "Cuanto llovio cada temporada (ene-abr)",
-      "description": "Acumulado de enero a abril desde 1945, de GHCN-Daily. Es lo unico que alcanza el 82-83 y el 97-98: el ASOS de dynamical.org no tiene Ecuador. Eje de categorias, no de tiempo: no depende del rango del tablero.",
-      "gridPos": {
-        "h": 13,
-        "w": 9,
-        "x": 5,
-        "y": 42
-      },
-      "datasource": {
-        "type": "motherduck-duckdb-datasource",
-        "uid": "duckdb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Acumulado de la temporada lluviosa de la costa (ene-abr) por año. El\n-- HAVING no es adorno: sin el, un año con tres dias de dato aparece como una\n-- sequia historica.\nSELECT year(fecha)::VARCHAR AS anio,\n       round(sum(valor)) AS \"mm ene-abr\"\nFROM read_parquet($svc || '/ghcn/ghcn.parquet')\nWHERE elemento = 'PRCP' AND estacion = $estacion\n  AND month(fecha) BETWEEN 1 AND 4\nGROUP BY 1\nHAVING count(*) > 100\nORDER BY 1",
-          "format": 1
-        }
-      ],
-      "options": {
-        "xField": "anio",
-        "orientation": "vertical",
-        "showValue": "never",
-        "legend": {
-          "showLegend": false
-        },
-        "tooltip": {
-          "mode": "single"
         }
       },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-BlYlRd"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "mm ene-abr"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "none"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              },
-              {
-                "id": "custom.axisLabel",
-                "value": "mm acumulados (ene-abr)"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": 7,
-      "type": "xychart",
-      "title": "Mar mas caliente = temporada mas lluviosa",
-      "description": "Cada punto es una temporada: el Nino 1+2 promedio de dic-ene-feb frente a la lluvia de ene-abr en la estacion elegida. La relacion es real pero NO determinista: medida sobre las cuatro estaciones costeras con registro largo da r entre 0,38 (Pichilingue) y 0,75 (San Juan La Mana), o sea entre el 14 % y el 57 % de la variacion explicada. 1983 (indice 2,35) fue el mas lluvioso del registro con 2.648 mm, pero 2016 (indice 1,61) se quedo en 1.513, por debajo de la mediana.",
-      "gridPos": {
-        "h": 13,
-        "w": 10,
-        "x": 14,
-        "y": 42
-      },
-      "datasource": {
-        "type": "motherduck-duckdb-datasource",
-        "uid": "duckdb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- La tesis del tablero: cuando el Nino 1+2 sube, la costa se inunda.\n-- El indice va en dic-ene-feb (diciembre cuenta para el año siguiente, que es\n-- cuando llega la lluvia); la lluvia, ene-abr de ese mismo año.\nWITH lluvia AS (\n  SELECT year(fecha) AS anio, sum(valor) AS mm\n  FROM read_parquet($svc || '/ghcn/ghcn.parquet')\n  WHERE elemento = 'PRCP' AND estacion = $estacion AND month(fecha) BETWEEN 1 AND 4\n  GROUP BY 1 HAVING count(*) > 100\n), indice AS (\n  SELECT CASE WHEN month(fecha) = 12 THEN year(fecha) + 1 ELSE year(fecha) END AS anio,\n         round(avg(valor), 2) AS nino12\n  FROM read_parquet($svc || '/indices/indices.parquet')\n  WHERE indice = 'nino12' AND month(fecha) IN (12, 1, 2)\n  GROUP BY 1 HAVING count(*) = 3\n)\nSELECT i.nino12 AS indice,\n       round(l.mm) AS mm\nFROM lluvia l JOIN indice i USING (anio)\nORDER BY i.nino12",
-          "format": 1
-        }
-      ],
-      "options": {
-        "mapping": "auto",
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "decimals": 0,
-          "custom": {
-            "show": "points",
-            "pointSize": {
-              "fixed": 9
-            },
-            "pointShape": "circle",
-            "pointStrokeWidth": 1,
-            "fillOpacity": 70
-          },
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "super-light-blue"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "mm"
-            },
-            "properties": [
-              {
-                "id": "custom.axisLabel",
-                "value": "lluvia ene-abr (mm)"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "indice"
-            },
-            "properties": [
-              {
-                "id": "custom.axisLabel",
-                "value": "Nino 1+2 (dic-ene-feb), °C"
-              },
-              {
-                "id": "decimals",
-                "value": 2
-              }
-            ]
-          }
-        ]
-      },
-      "pluginVersion": "12.0.10"
-    },
-    {
-      "id": 8,
-      "type": "text",
-      "gridPos": {
-        "h": 13,
-        "w": 5,
-        "x": 0,
-        "y": 42
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "### Como se leen estos dos\n\n**El de barras**: cada barra es **un ano**. Su altura es **cuanta lluvia cayo entre enero\ny abril** en la estacion elegida — la temporada lluviosa de la costa. La barra que se\nsale es **1983**, el Nino que inundo el pais.\n\n**El de puntos**: cada punto es **una temporada**.\n\n- Hacia la **derecha**: mas caliente estaba el mar frente a la costa en dic-ene-feb.\n- Hacia **arriba**: mas llovio despues, de enero a abril.\n\nSi el mar mandara del todo, los puntos formarian una linea. Suben hacia la derecha, si,\npero **dispersos**: la correlacion va de **0,38 a 0,75** segun la estacion. El mar\ninclina la balanza; no decide la temporada.\n\nEstos dos vienen de **GHCN-Daily** (NOAA), que solo tiene **15 estaciones en Ecuador**\npero llega a **1945** — y es lo unico que alcanza el 82-83. La red densa de INAMHI, la\ndel mapa, solo deja ver **diez dias** sin credenciales."
-      }
-    },
-    {
-      "id": 9,
-      "type": "trend",
-      "title": "Que viene: los 31 miembros del GEFS, hasta 35 dias",
-      "description": "Cada horizonte lleva los 31 miembros del ensemble del GEFS sobre Ecuador. La banda entre p10 y p90 es la discrepancia entre ellos: cuanto mas ancha, menos acuerdo. Pasada la semana 2 el modelo no acierta dias concretos, solo tendencia. Eje en dias de horizonte, no en fechas.",
-      "gridPos": {
-        "h": 11,
-        "w": 24,
-        "x": 0,
-        "y": 55
-      },
-      "datasource": {
-        "type": "motherduck-duckdb-datasource",
-        "uid": "duckdb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El ensemble del GEFS a 35 dias, cosechado por el servicio. Se lee de un\n-- parquet y no en vivo porque el abanico entero tarda ~15 s contra TiTiler y el\n-- http_client de DuckDB abandona a los 10 s.\n-- Eje en DIAS de horizonte, no en fechas: las fechas son futuras y el rango del\n-- tablero (2015-hoy) dejaria el panel vacio.\nSELECT lead_h / 24.0 AS dia,\n       round(p50, 2) AS \"mediana (mm/dia)\",\n       round(p10, 2) AS \"p10 · el escenario seco\",\n       round(p90, 2) AS \"p90 · el escenario humedo\",\n       round(prob * 100) AS \"prob. de pasar el umbral (%)\"\nFROM read_parquet($svc || '/gefs/gefs.parquet')\nWHERE miembros > 0\nORDER BY dia",
-          "format": 1
-        }
-      ],
-      "options": {
-        "xField": "dia",
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "decimals": 1,
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 0,
-            "showPoints": "auto",
-            "pointSize": 5,
-            "spanNulls": true,
-            "axisLabel": "lluvia media sobre Ecuador (mm/dia)"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "dia"
-            },
-            "properties": [
-              {
-                "id": "custom.axisLabel",
-                "value": "dias por delante"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "mediana (mm/dia)"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "blue"
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 3
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "p10 · el escenario seco"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "orange"
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 1
-              },
-              {
-                "id": "custom.fillBelowTo",
-                "value": "p90 · el escenario humedo"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "p90 · el escenario humedo"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "super-light-blue"
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 1
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "prob. de pasar el umbral (%)"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "red"
-                }
-              },
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              },
-              {
-                "id": "custom.axisLabel",
-                "value": "probabilidad (%)"
-              },
-              {
-                "id": "unit",
-                "value": "percent"
-              },
-              {
-                "id": "max",
-                "value": 100
-              },
-              {
-                "id": "min",
-                "value": 0
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": 10,
-      "type": "trend",
-      "title": "Caudal pronosticado · $rio",
-      "description": "Quince dias de caudal en m3/s, del modelo global de GEOGLOWS via el visor de INAMHI. La banda entre el escenario bajo y el alto es la incertidumbre del modelo: se abre con el horizonte. Para una hidroelectrica esto es mas directo que la lluvia — el caudal es lo que mueve la turbina. Solo 27 de las 651 estaciones hidrologicas tienen tramo del modelo asociado.",
-      "gridPos": {
-        "h": 11,
-        "w": 24,
-        "x": 0,
-        "y": 66
-      },
-      "datasource": {
-        "type": "motherduck-duckdb-datasource",
-        "uid": "duckdb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Pronostico de caudal de GEOGLOWS, quince dias cada tres horas. Solo 27 de las\n-- 651 estaciones hidrologicas tienen tramo del modelo asociado.\n-- Eje en DIAS por delante, no en fechas: son futuras y el rango del tablero\n-- (2015-hoy) dejaria el panel vacio.\nSELECT round(date_diff('hour', now(), strptime(fecha, '%Y-%m-%dT%H:%M:%SZ')) / 24.0, 2) AS dia,\n       round(mediana, 1) AS \"caudal mediano (m3/s)\",\n       round(minimo, 1)  AS \"el escenario bajo\",\n       round(maximo, 1)  AS \"el escenario alto\"\nFROM read_parquet($svc || '/geoglows/caudal.parquet')\nWHERE estacion = $rio\nORDER BY dia",
-          "format": 1
-        }
-      ],
-      "options": {
-        "xField": "dia",
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "decimals": 1,
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 0,
-            "showPoints": "never",
-            "spanNulls": true,
-            "axisLabel": "caudal (m3/s)"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "dia"
-            },
-            "properties": [
-              {
-                "id": "custom.axisLabel",
-                "value": "dias por delante"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "caudal mediano (m3/s)"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "blue"
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 3
-              },
-              {
-                "id": "unit",
-                "value": "m3/s"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "el escenario bajo"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "orange"
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 1
-              },
-              {
-                "id": "unit",
-                "value": "m3/s"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "el escenario alto"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "super-light-blue"
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 1
-              },
-              {
-                "id": "unit",
-                "value": "m3/s"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": 11,
-      "type": "ubica-keplergl-panel",
-      "title": "El cielo de Ecuador · $capa · con las estaciones encima",
-      "description": "Segundo mapa, con su propio reloj: estas capas son de ahora y de los proximos tres dias, mientras el mapa de arriba recorre once anos. Fuente: GeoServer de GEOGLOWS. Comprobado hoy que las cuatro estan vivas; imerg_early_run_* lleva 189 dias parada y wrf_precipitation_weekly, 152. Los puntos son las 220 estaciones que transmiten, con la lluvia que han medido en 24 h: sirven para contrastar lo que ve el satelite con lo que se midio en el suelo.",
-      "gridPos": {
-        "h": 20,
-        "w": 24,
-        "x": 0,
-        "y": 77
-      },
-      "datasource": {
-        "type": "motherduck-duckdb-datasource",
-        "uid": "duckdb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "rawQuery": true,
-          "rawSql": "-- Las fechas las publica el propio servicio en su GetCapabilities, asi que la\n-- consulta solo tiene que decir QUE capa: el panel lee el calendario solo.\n-- OJO con $capa: en una query de PANEL el datasource entrecomilla el solo.\nSELECT 'https://services.geoglows.org/geoserver/ows' AS wms_url,\n       $capa AS wms_layer",
-          "format": 1
-        },
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "rawQuery": true,
-          "format": 1,
-          "rawSql": "-- OJO: esta consulta es GEMELA de la refId B del panel 4 (el mapa de\n-- arriba). Se repite a proposito: reutilizarla con el datasource\n-- `-- Dashboard --` se probo y NO funciona con este panel — el frame\n-- compartido llega con UNA fila en vez de 220, con y sin choque de\n-- refId. Si cambia una, cambiar la otra.\nINSTALL httpfs; LOAD httpfs;\n-- La red real de INAMHI: 1.892 estaciones, 220 transmitiendo. Los datos publicos\n-- se cortan a DIEZ DIAS (mas pide sesion): esto es la foto de ahora, no historia.\nWITH lluvia AS (\n  SELECT estacion, sum(valor) AS mm\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\nSELECT e.latitude, e.longitude, e.nombre, e.provincia, e.codigo, e.altitud,\n       round(coalesce(l.mm, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN lluvia l ON l.estacion = e.id_estacion\nWHERE e.transmitiendo\nORDER BY lluvia_24h DESC"
-        }
-      ],
-      "options": {
-        "showSidePanel": false,
-        "followGrafanaTheme": true,
-        "timeSync": "variables",
-        "timeVariables": {
-          "from": "cieloFrom",
-          "to": "cieloTo"
-        },
-        "basemap": "dark-matter",
-        "mapConfig": {
-          "version": "v1",
-          "config": {
-            "mapState": {
-              "latitude": -1.4,
-              "longitude": -83.4,
-              "zoom": 5.15,
-              "bearing": 0,
-              "pitch": 0,
-              "dragRotate": false
-            },
-            "visState": {
-              "layers": [
+      "panel-2": {
+        "kind": "Panel",
+        "spec": {
+          "id": 2,
+          "title": "Indices Nino: la fase en que estamos",
+          "description": "Anomalia de SST de las regiones Nino, de NOAA PSL (ERSST V6, base 1981-2010). 1+2 es la costa de Ecuador y Peru; 3.4 el que sale en la prensa. OJO: el CPC publica sobre otra base (1991-2020) y da otros numeros para el mismo mes.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
                 {
-                  "id": "estaciones-cielo",
-                  "type": "point",
-                  "config": {
-                    "dataId": "grafana-B",
-                    "label": "Estaciones INAMHI · lluvia 24 h",
-                    "columnMode": "points",
-                    "columns": {
-                      "lat": "latitude",
-                      "lng": "longitude"
-                    },
-                    "isVisible": true,
-                    "color": [
-                      255,
-                      255,
-                      255
-                    ],
-                    "visConfig": {
-                      "filled": true,
-                      "opacity": 0.95,
-                      "outline": true,
-                      "thickness": 1.5,
-                      "strokeColor": [
-                        10,
-                        10,
-                        10
-                      ],
-                      "radius": 9,
-                      "radiusRange": [
-                        6,
-                        40
-                      ],
-                      "colorRange": {
-                        "name": "Lluvia 24 h",
-                        "type": "sequential",
-                        "category": "Uber",
-                        "colors": [
-                          "#FFFFFF",
-                          "#FFE0A3",
-                          "#FFBE4D",
-                          "#FF9A1F",
-                          "#E8590C",
-                          "#A63603"
-                        ]
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\nSELECT fecha::TIMESTAMP AS time,\n       max(CASE WHEN indice = 'nino12' THEN valor END) AS \"Nino 1+2\",\n       max(CASE WHEN indice = 'nino34' THEN valor END) AS \"Nino 3.4\"\nFROM read_parquet($svc || '/indices/indices.parquet')\nWHERE indice IN ('nino12', 'nino34')\nGROUP BY fecha\nORDER BY time"
                       }
-                    }
-                  },
-                  "visualChannels": {
-                    "colorField": {
-                      "name": "lluvia_24h",
-                      "type": "real"
                     },
-                    "colorScale": "quantize",
-                    "sizeField": {
-                      "name": "lluvia_24h",
-                      "type": "real"
-                    },
-                    "sizeScale": "sqrt"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
-              "interactionConfig": {
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "",
+            "spec": {
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
                 "tooltip": {
-                  "enabled": true,
-                  "fieldsToShow": {
-                    "grafana-B": [
+                  "mode": "multi",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "celsius",
+                  "decimals": 2,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
                       {
-                        "name": "nombre",
-                        "format": null
+                        "value": null,
+                        "color": "blue"
                       },
                       {
-                        "name": "provincia",
-                        "format": null
+                        "value": -0.5,
+                        "color": "text"
                       },
                       {
-                        "name": "lluvia_24h",
-                        "format": null
+                        "value": 0.5,
+                        "color": "orange"
+                      },
+                      {
+                        "value": 1.5,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "custom": {
+                    "axisSoftMax": 3,
+                    "axisSoftMin": -3,
+                    "drawStyle": "line",
+                    "fillOpacity": 8,
+                    "lineWidth": 2,
+                    "spanNulls": true
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Nino 1+2"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "red",
+                          "mode": "fixed"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 3
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Nino 3.4"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "semi-dark-blue",
+                          "mode": "fixed"
+                        }
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
                       }
                     ]
                   }
-                }
+                ]
               }
-            },
-            "mapStyle": {
-              "styleType": "dark-matter"
             }
           }
         }
       },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
+      "panel-20": {
+        "kind": "Panel",
+        "spec": {
+          "id": 20,
+          "title": "Lluvia de la estacion · sus ultimos 10 dias",
+          "description": "Pincha una estacion en cualquiera de los dos mapas. Sin cuenta de INAMHI, diez dias es todo lo que hay.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Los diez dias que INAMHI deja ver sin cuenta, de la estacion que se pincho\n-- en cualquiera de los dos mapas.\nSELECT strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') AS time,\n       valor AS \"lluvia (mm/h)\"\nFROM read_parquet($svc || '/inamhi/observaciones.parquet')\n-- Variable DESNUDA: en una consulta de panel el datasource la\n-- entrecomilla el solo, y unas comillas de mas dan ''63807''.\nWHERE estacion = try_cast(nullif($estacionSel, '') AS BIGINT)\nORDER BY time"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "timeFrom": "10d"
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "",
+            "spec": {
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false
+                },
+                "tooltip": {
+                  "mode": "single",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "lengthmm",
+                  "decimals": 1,
+                  "custom": {
+                    "drawStyle": "bars",
+                    "fillOpacity": 80,
+                    "lineWidth": 1
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-21": {
+        "kind": "Panel",
+        "spec": {
+          "id": 21,
+          "title": "Ficha de la estacion",
+          "description": "Lo que INAMHI publica de ella.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\nSELECT nombre, codigo, provincia, canton, categoria, propietario, captor,\n       round(altitud) AS \"altitud (m)\",\n       CASE WHEN transmitiendo THEN 'si' ELSE 'no' END AS transmite\nFROM read_parquet($svc || '/inamhi/estaciones.parquet')\nWHERE id_estacion = try_cast(nullif($estacionSel, '') AS BIGINT)"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "table",
+            "version": "",
+            "spec": {
+              "options": {
+                "cellHeight": "sm",
+                "showHeader": true
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-22": {
+        "kind": "Panel",
+        "spec": {
+          "id": 22,
+          "title": "Los once anos de la zona pinchada",
+          "description": "Pincha una zona en el mapa de arriba. La banda min-max es la dispersion dentro de la zona.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Los once anos de UNA zona, aislada de las otras diez: en el panel general se\n-- ven todas encimadas y no se distingue cual hace que.\n-- Solo el indice: `min` y `max` son extremos POR PIXEL dentro de la zona,\n-- van de -75 a +100 y aplastan la escala de lo que importa.\nSELECT fecha::TIMESTAMP AS time,\n       mean AS \"indice de la zona\"\nFROM read_parquet($svc || '/inamhi/anomalias.parquet')\nWHERE zona_id = try_cast(nullif($zonaSel, '') AS BIGINT)\nORDER BY time"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "",
+            "spec": {
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "decimals": 2,
+                  "custom": {
+                    "drawStyle": "points",
+                    "lineWidth": 0,
+                    "pointSize": 5,
+                    "showPoints": "always",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-3": {
+        "kind": "Panel",
+        "spec": {
+          "id": 3,
+          "title": "Nino 1+2 ahora",
+          "description": "El ultimo valor publicado por el CPC. Por encima de +0,5 sostenido, hay Nino.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "-- Dashboard --"
+                      },
+                      "spec": {
+                        "panelId": 2
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "/^Nino 1\\+2$/",
+                  "values": false
+                },
+                "textMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "celsius",
+                  "decimals": 2,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": null,
+                        "color": "blue"
+                      },
+                      {
+                        "value": -0.5,
+                        "color": "green"
+                      },
+                      {
+                        "value": 0.5,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 1,
+                        "color": "orange"
+                      },
+                      {
+                        "value": 2,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-4": {
+        "kind": "Panel",
+        "spec": {
+          "id": 4,
+          "title": "Ecuador ahora: el indice de INAMHI por zona, y donde esta lloviendo",
+          "description": "Dos cosas a la vez. El COLOR DE FONDO es el indice de anomalia de INAMHI por zona (marron = por debajo de lo normal, verde-azulado = por encima; no son milimetros). Los PUNTOS son las 220 estaciones que transmiten ahora mismo, del tamano y color de la lluvia que han medido en las ultimas 24 horas. El fondo recorre once anos con la barra del mapa; los puntos son siempre de hoy.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El mapa recorre el tiempo, asi que va una geometria por FECHA y no una por\n-- zona: el peso se multiplica por el numero de fechas. Por eso `geojson_ligero`\n-- (~1,1 km de detalle, 7,6 KB por zona) y no la fina (43,6 KB): once anos son\n-- 15,3 MB en vez de 86, y la consulta tarda 0,2 s. El reloj del mapa los recorre.\nSELECT a.fecha::TIMESTAMP AS time,\n       a.zona_id,\n       CASE zona_id\n    WHEN 81 THEN 'Galapagos'\n    WHEN 20 THEN 'oriente sur'      WHEN 21 THEN 'oriente norte'\n    WHEN 26 THEN 'sierra sur'       WHEN 27 THEN 'sierra norte'\n    WHEN 31 THEN 'costa sur'        WHEN 32 THEN 'costa sur-centro'\n    WHEN 33 THEN 'costa norte'      WHEN 37 THEN 'costa El Oro'\n    WHEN 38 THEN 'peninsula'        WHEN 39 THEN 'Manabi'\n  END AS region,\n       a.mean AS anomalia,\n       a.min  AS minimo,\n       a.max  AS maximo,\n       z.geojson_ligero AS geojson\nFROM read_parquet($svc || '/inamhi/anomalias.parquet') a\nJOIN read_parquet($svc || '/inamhi/zonas.parquet')     z USING (zona_id)\nORDER BY a.fecha, a.zona_id"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- La red real de INAMHI: 1.892 estaciones, 220 transmitiendo. Los datos publicos\n-- se cortan a DIEZ DIAS (mas pide sesion): esto es la foto de ahora, no historia.\nWITH lluvia AS (\n  SELECT estacion, sum(valor) AS mm\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\nSELECT e.latitude, e.longitude, e.nombre, e.provincia, e.codigo, e.altitud,\n       round(coalesce(l.mm, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN lluvia l ON l.estacion = e.id_estacion\nWHERE e.transmitiendo\nORDER BY lluvia_24h DESC"
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "ubica-keplergl-panel",
+            "version": "",
+            "spec": {
+              "options": {
+                "basemap": "positron",
+                "followGrafanaTheme": true,
+                "mapConfig": {
+                  "config": {
+                    "mapState": {
+                      "bearing": 0,
+                      "dragRotate": false,
+                      "isSplit": false,
+                      "latitude": -1.4,
+                      "longitude": -83.4,
+                      "pitch": 0,
+                      "zoom": 5.15
+                    },
+                    "mapStyle": {
+                      "styleType": "positron"
+                    },
+                    "visState": {
+                      "interactionConfig": {
+                        "tooltip": {
+                          "enabled": true,
+                          "fieldsToShow": {
+                            "grafana-A": [
+                              {
+                                "name": "region"
+                              },
+                              {
+                                "name": "zona_id"
+                              },
+                              {
+                                "name": "anomalia"
+                              },
+                              {
+                                "name": "minimo"
+                              },
+                              {
+                                "name": "maximo"
+                              }
+                            ],
+                            "grafana-B": [
+                              {
+                                "name": "nombre"
+                              },
+                              {
+                                "name": "provincia"
+                              },
+                              {
+                                "name": "lluvia_24h"
+                              },
+                              {
+                                "name": "altitud"
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "layerOrder": [
+                        "estaciones-inamhi",
+                        "anomalia-zonas"
+                      ],
+                      "layers": [
+                        {
+                          "config": {
+                            "color": [
+                              130,
+                              138,
+                              143
+                            ],
+                            "columnMode": "points",
+                            "columns": {
+                              "lat": "latitude",
+                              "lng": "longitude"
+                            },
+                            "dataId": "grafana-B",
+                            "isVisible": true,
+                            "label": "Estaciones INAMHI · lluvia 24 h",
+                            "visConfig": {
+                              "colorRange": {
+                                "category": "Uber",
+                                "colors": [
+                                  "#9AA5AB",
+                                  "#7FC5CC",
+                                  "#37A3AD",
+                                  "#0B7C89",
+                                  "#04525C",
+                                  "#022E36"
+                                ],
+                                "name": "Lluvia 24 h",
+                                "type": "sequential"
+                              },
+                              "filled": true,
+                              "opacity": 0.95,
+                              "outline": true,
+                              "radius": 9,
+                              "radiusRange": [
+                                6,
+                                40
+                              ],
+                              "strokeColor": [
+                                255,
+                                255,
+                                255
+                              ],
+                              "thickness": 1
+                            }
+                          },
+                          "id": "estaciones-inamhi",
+                          "type": "point",
+                          "visualChannels": {
+                            "colorField": {
+                              "name": "lluvia_24h",
+                              "type": "real"
+                            },
+                            "colorScale": "quantize",
+                            "sizeField": {
+                              "name": "lluvia_24h",
+                              "type": "real"
+                            },
+                            "sizeScale": "sqrt"
+                          }
+                        },
+                        {
+                          "config": {
+                            "columns": {
+                              "geojson": "_geojson"
+                            },
+                            "dataId": "grafana-A",
+                            "isVisible": true,
+                            "label": "Indice INAMHI (unidad sin confirmar)",
+                            "visConfig": {
+                              "colorRange": {
+                                "category": "ColorBrewer",
+                                "colors": [
+                                  "#8c510a",
+                                  "#bf812d",
+                                  "#dfc27d",
+                                  "#f6e8c3",
+                                  "#c7eae5",
+                                  "#80cdc1",
+                                  "#35978f",
+                                  "#01665e"
+                                ],
+                                "name": "Seco a lluvioso",
+                                "type": "diverging"
+                              },
+                              "enable3d": false,
+                              "filled": true,
+                              "opacity": 0.55,
+                              "strokeColor": [
+                                60,
+                                60,
+                                60
+                              ],
+                              "strokeOpacity": 0.9,
+                              "stroked": true,
+                              "thickness": 0.5,
+                              "wireframe": false
+                            }
+                          },
+                          "id": "anomalia-zonas",
+                          "type": "geojson",
+                          "visualChannels": {
+                            "colorField": {
+                              "name": "anomalia",
+                              "type": "real"
+                            },
+                            "colorScale": "quantile"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "version": "v1"
+                },
+                "publishWhilePlaying": false,
+                "showSidePanel": false,
+                "timeSync": "variables",
+                "timeVariables": {
+                  "from": "mapFrom",
+                  "to": "mapTo"
+                },
+                "variableMappings": [
+                  {
+                    "field": "zona_id",
+                    "source": "click",
+                    "variable": "zonaSel"
+                  },
+                  {
+                    "field": "id_estacion",
+                    "source": "click",
+                    "variable": "estacionSel"
+                  }
+                ]
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-5": {
+        "kind": "Panel",
+        "spec": {
+          "id": 5,
+          "title": "Once anos de anomalia, zona a zona",
+          "description": "Sin geometria son 79 KB, asi que aqui caben los once anos enteros. Puntos y no lineas: INAMHI publica a rachas y unir dos fechas con dos anos de por medio seria inventar. Arrastra sobre la grafica para acotar el rango: el mapa te sigue.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Sin geometria son 79 KB: aqui viven los once anos.\nSELECT fecha::TIMESTAMP AS time,\n       'zona ' || zona_id AS zona,\n       mean AS anomalia\nFROM read_parquet($svc || '/inamhi/anomalias.parquet')\nORDER BY time, zona_id"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [
+                {
+                  "kind": "partitionByValues",
+                  "spec": {
+                    "id": "partitionByValues",
+                    "options": {
+                      "fields": [
+                        "zona"
+                      ],
+                      "keepFields": false
+                    }
+                  }
+                }
+              ],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "",
+            "spec": {
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "decimals": 2,
+                  "custom": {
+                    "axisSoftMax": 8,
+                    "axisSoftMin": -4,
+                    "drawStyle": "points",
+                    "fillOpacity": 0,
+                    "lineWidth": 0,
+                    "pointSize": 5,
+                    "showPoints": "always",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-6": {
+        "kind": "Panel",
+        "spec": {
+          "id": 6,
+          "title": "Cuanto llovio cada temporada (ene-abr)",
+          "description": "Acumulado de enero a abril desde 1945, de GHCN-Daily. Es lo unico que alcanza el 82-83 y el 97-98: el ASOS de dynamical.org no tiene Ecuador. Eje de categorias, no de tiempo: no depende del rango del tablero.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Acumulado de la temporada lluviosa de la costa (ene-abr) por año. El\n-- HAVING no es adorno: sin el, un año con tres dias de dato aparece como una\n-- sequia historica.\nSELECT year(fecha)::VARCHAR AS anio,\n       round(sum(valor)) AS \"mm ene-abr\"\nFROM read_parquet($svc || '/ghcn/ghcn.parquet')\nWHERE elemento = 'PRCP' AND estacion = $estacion\n  AND month(fecha) BETWEEN 1 AND 4\nGROUP BY 1\nHAVING count(*) > 100\nORDER BY 1"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "barchart",
+            "version": "",
+            "spec": {
+              "options": {
+                "legend": {
+                  "showLegend": false
+                },
+                "orientation": "vertical",
+                "showValue": "never",
+                "tooltip": {
+                  "mode": "single"
+                },
+                "xField": "anio"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "continuous-BlYlRd"
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "mm ene-abr"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "none"
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 0
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "mm acumulados (ene-abr)"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-7": {
+        "kind": "Panel",
+        "spec": {
+          "id": 7,
+          "title": "Mar mas caliente = temporada mas lluviosa",
+          "description": "Cada punto es una temporada: el Nino 1+2 promedio de dic-ene-feb frente a la lluvia de ene-abr en la estacion elegida. La relacion es real pero NO determinista: medida sobre las cuatro estaciones costeras con registro largo da r entre 0,38 (Pichilingue) y 0,75 (San Juan La Mana), o sea entre el 14 % y el 57 % de la variacion explicada. 1983 (indice 2,35) fue el mas lluvioso del registro con 2.648 mm, pero 2016 (indice 1,61) se quedo en 1.513, por debajo de la mediana.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- La tesis del tablero: cuando el Nino 1+2 sube, la costa se inunda.\n-- El indice va en dic-ene-feb (diciembre cuenta para el año siguiente, que es\n-- cuando llega la lluvia); la lluvia, ene-abr de ese mismo año.\nWITH lluvia AS (\n  SELECT year(fecha) AS anio, sum(valor) AS mm\n  FROM read_parquet($svc || '/ghcn/ghcn.parquet')\n  WHERE elemento = 'PRCP' AND estacion = $estacion AND month(fecha) BETWEEN 1 AND 4\n  GROUP BY 1 HAVING count(*) > 100\n), indice AS (\n  SELECT CASE WHEN month(fecha) = 12 THEN year(fecha) + 1 ELSE year(fecha) END AS anio,\n         round(avg(valor), 2) AS nino12\n  FROM read_parquet($svc || '/indices/indices.parquet')\n  WHERE indice = 'nino12' AND month(fecha) IN (12, 1, 2)\n  GROUP BY 1 HAVING count(*) = 3\n)\nSELECT i.nino12 AS indice,\n       round(l.mm) AS mm\nFROM lluvia l JOIN indice i USING (anio)\nORDER BY i.nino12"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "xychart",
+            "version": "12.0.10",
+            "spec": {
+              "options": {
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false
+                },
+                "mapping": "auto",
+                "tooltip": {
+                  "mode": "single",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "decimals": 0,
+                  "color": {
+                    "mode": "fixed",
+                    "fixedColor": "super-light-blue"
+                  },
+                  "custom": {
+                    "fillOpacity": 70,
+                    "pointShape": "circle",
+                    "pointSize": {
+                      "fixed": 9
+                    },
+                    "pointStrokeWidth": 1,
+                    "show": "points"
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "mm"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "lluvia ene-abr (mm)"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "indice"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Nino 1+2 (dic-ene-feb), °C"
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 2
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-8": {
+        "kind": "Panel",
+        "spec": {
+          "id": 8,
+          "title": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "text",
+            "version": "",
+            "spec": {
+              "options": {
+                "content": "### Como se leen estos dos\n\n**El de barras**: cada barra es **un ano**. Su altura es **cuanta lluvia cayo entre enero\ny abril** en la estacion elegida — la temporada lluviosa de la costa. La barra que se\nsale es **1983**, el Nino que inundo el pais.\n\n**El de puntos**: cada punto es **una temporada**.\n\n- Hacia la **derecha**: mas caliente estaba el mar frente a la costa en dic-ene-feb.\n- Hacia **arriba**: mas llovio despues, de enero a abril.\n\nSi el mar mandara del todo, los puntos formarian una linea. Suben hacia la derecha, si,\npero **dispersos**: la correlacion va de **0,38 a 0,75** segun la estacion. El mar\ninclina la balanza; no decide la temporada.\n\nEstos dos vienen de **GHCN-Daily** (NOAA), que solo tiene **15 estaciones en Ecuador**\npero llega a **1945** — y es lo unico que alcanza el 82-83. La red densa de INAMHI, la\ndel mapa, solo deja ver **diez dias** sin credenciales.",
+                "mode": "markdown"
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-9": {
+        "kind": "Panel",
+        "spec": {
+          "id": 9,
+          "title": "Que viene: los 31 miembros del GEFS, hasta 35 dias",
+          "description": "Cada horizonte lleva los 31 miembros del ensemble del GEFS sobre Ecuador. La banda entre p10 y p90 es la discrepancia entre ellos: cuanto mas ancha, menos acuerdo. Pasada la semana 2 el modelo no acierta dias concretos, solo tendencia. Eje en dias de horizonte, no en fechas.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El ensemble del GEFS a 35 dias, cosechado por el servicio. Se lee de un\n-- parquet y no en vivo porque el abanico entero tarda ~15 s contra TiTiler y el\n-- http_client de DuckDB abandona a los 10 s.\n-- Eje en DIAS de horizonte, no en fechas: las fechas son futuras y el rango del\n-- tablero (2015-hoy) dejaria el panel vacio.\nSELECT lead_h / 24.0 AS dia,\n       round(p50, 2) AS \"mediana (mm/dia)\",\n       round(p10, 2) AS \"p10 · el escenario seco\",\n       round(p90, 2) AS \"p90 · el escenario humedo\",\n       round(prob * 100) AS \"prob. de pasar el umbral (%)\"\nFROM read_parquet($svc || '/gefs/gefs.parquet')\nWHERE miembros > 0\nORDER BY dia"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "trend",
+            "version": "",
+            "spec": {
+              "options": {
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "none"
+                },
+                "xField": "dia"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "decimals": 1,
+                  "custom": {
+                    "axisLabel": "lluvia media sobre Ecuador (mm/dia)",
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "showPoints": "auto",
+                    "spanNulls": true
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "dia"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "dias por delante"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "mediana (mm/dia)"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "blue",
+                          "mode": "fixed"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 3
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "p10 · el escenario seco"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "orange",
+                          "mode": "fixed"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 1
+                      },
+                      {
+                        "id": "custom.fillBelowTo",
+                        "value": "p90 · el escenario humedo"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "p90 · el escenario humedo"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "super-light-blue",
+                          "mode": "fixed"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 1
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "prob. de pasar el umbral (%)"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "red",
+                          "mode": "fixed"
+                        }
+                      },
+                      {
+                        "id": "custom.axisPlacement",
+                        "value": "right"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "probabilidad (%)"
+                      },
+                      {
+                        "id": "unit",
+                        "value": "percent"
+                      },
+                      {
+                        "id": "max",
+                        "value": 100
+                      },
+                      {
+                        "id": "min",
+                        "value": 0
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
       }
-    }
-  ]
+    },
+    "layout": {
+      "kind": "TabsLayout",
+      "spec": {
+        "tabs": [
+          {
+            "kind": "TabsLayoutTab",
+            "spec": {
+              "title": "Estado",
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 24,
+                        "height": 9,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-1"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 9,
+                        "width": 17,
+                        "height": 9,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-2"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 17,
+                        "y": 9,
+                        "width": 7,
+                        "height": 9,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-3"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "TabsLayoutTab",
+            "spec": {
+              "title": "Ahora",
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 14,
+                        "height": 24,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-4"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 14,
+                        "y": 0,
+                        "width": 10,
+                        "height": 24,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-11"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "TabsLayoutTab",
+            "spec": {
+              "title": "Detalle",
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 16,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-20"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 16,
+                        "y": 0,
+                        "width": 8,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-21"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 10,
+                        "width": 24,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-22"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 20,
+                        "width": 24,
+                        "height": 11,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-10"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "TabsLayoutTab",
+            "spec": {
+              "title": "Historia",
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 5,
+                        "height": 13,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-8"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 5,
+                        "y": 0,
+                        "width": 9,
+                        "height": 13,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-6"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 14,
+                        "y": 0,
+                        "width": 10,
+                        "height": 13,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-7"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 13,
+                        "width": 24,
+                        "height": 12,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-5"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "TabsLayoutTab",
+            "spec": {
+              "title": "Que viene",
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 24,
+                        "height": 14,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-9"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "links": [],
+    "liveNow": false,
+    "preload": false,
+    "tags": [
+      "enso",
+      "ecuador",
+      "inamhi",
+      "duckdb"
+    ],
+    "timeSettings": {
+      "timezone": "utc",
+      "from": "2015-01-01T00:00:00.000Z",
+      "to": "now",
+      "autoRefresh": "",
+      "autoRefreshIntervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ],
+      "hideTimepicker": false,
+      "fiscalYearStartMonth": 0
+    },
+    "title": "El Nino en Ecuador",
+    "variables": [
+      {
+        "kind": "ConstantVariable",
+        "spec": {
+          "name": "svc",
+          "query": "http://host.docker.internal:8092",
+          "current": {
+            "text": "http://host.docker.internal:8092",
+            "value": "http://host.docker.internal:8092"
+          },
+          "label": "servicio elnino",
+          "hide": "hideVariable",
+          "skipUrlSync": true,
+          "description": "Base del servicio elnino (~/dev/elnino). En despliegue pasa a https://enso.ubica.ec"
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "estacion",
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "label": "estacion",
+          "hide": "dontHide",
+          "refresh": "onDashboardLoad",
+          "skipUrlSync": false,
+          "query": {
+            "kind": "DataQuery",
+            "group": "motherduck-duckdb-datasource",
+            "version": "v0",
+            "datasource": {
+              "name": "duckdb"
+            },
+            "spec": {
+              "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- Solo las que tienen al menos diez temporadas ene-abr completas: seis de\n-- las quince no tienen ninguna y darian un panel vacio sin explicar por que.\n-- En una query de VARIABLE el datasource NO entrecomilla solo.\nWITH temporadas AS (\n  SELECT estacion, count(*) AS n FROM (\n    SELECT estacion, year(fecha) AS anio\n    FROM read_parquet('${svc}/ghcn/ghcn.parquet')\n    WHERE elemento = 'PRCP' AND month(fecha) BETWEEN 1 AND 4\n    GROUP BY 1, 2 HAVING count(*) > 100)\n  GROUP BY estacion)\nSELECT e.nombre || ' — ' || t.n || ' temporadas' AS __text,\n       e.estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/ghcn/estaciones.parquet') e\nJOIN temporadas t USING (estacion)\nWHERE t.n >= 10\nORDER BY t.n DESC"
+            }
+          },
+          "regex": "",
+          "sort": "disabled",
+          "definition": "INSTALL httpfs; LOAD httpfs;\n-- Solo las que tienen al menos diez temporadas ene-abr completas: seis de\n-- las quince no tienen ninguna y darian un panel vacio sin explicar por que.\n-- En una query de VARIABLE el datasource NO entrecomilla solo.\nWITH temporadas AS (\n  SELECT estacion, count(*) AS n FROM (\n    SELECT estacion, year(fecha) AS anio\n    FROM read_parquet('${svc}/ghcn/ghcn.parquet')\n    WHERE elemento = 'PRCP' AND month(fecha) BETWEEN 1 AND 4\n    GROUP BY 1, 2 HAVING count(*) > 100)\n  GROUP BY estacion)\nSELECT e.nombre || ' — ' || t.n || ' temporadas' AS __text,\n       e.estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/ghcn/estaciones.parquet') e\nJOIN temporadas t USING (estacion)\nWHERE t.n >= 10\nORDER BY t.n DESC",
+          "options": [],
+          "multi": false,
+          "includeAll": false,
+          "allowCustomValue": true
+        }
+      },
+      {
+        "kind": "TextVariable",
+        "spec": {
+          "name": "mapFrom",
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "query": "",
+          "label": "mapFrom",
+          "hide": "hideVariable",
+          "skipUrlSync": false
+        }
+      },
+      {
+        "kind": "TextVariable",
+        "spec": {
+          "name": "mapTo",
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "query": "",
+          "label": "mapTo",
+          "hide": "hideVariable",
+          "skipUrlSync": false
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "rio",
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "label": "rio",
+          "hide": "dontHide",
+          "refresh": "onDashboardLoad",
+          "skipUrlSync": false,
+          "query": {
+            "kind": "DataQuery",
+            "group": "motherduck-duckdb-datasource",
+            "version": "v0",
+            "datasource": {
+              "name": "duckdb"
+            },
+            "spec": {
+              "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- Solo las 27 con pronostico; ofrecer las 651 seria ofrecer paneles vacios.\nSELECT e.nombre || ' (' || e.provincia || ')' AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/geoglows/caudal.parquet'))\nORDER BY e.nombre"
+            }
+          },
+          "regex": "",
+          "sort": "disabled",
+          "definition": "INSTALL httpfs; LOAD httpfs;\n-- Solo las 27 con pronostico; ofrecer las 651 seria ofrecer paneles vacios.\nSELECT e.nombre || ' (' || e.provincia || ')' AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/geoglows/caudal.parquet'))\nORDER BY e.nombre",
+          "options": [],
+          "multi": false,
+          "includeAll": false,
+          "allowCustomValue": true
+        }
+      },
+      {
+        "kind": "CustomVariable",
+        "spec": {
+          "name": "capa",
+          "query": "Lluvia caida en 24 h · PERSIANN satelite : satellite_based_precipitation:persiann_pdir_24h,Lluvia caida en 72 h · PERSIANN : satellite_based_precipitation:persiann_pdir_72h,Lluvia pronosticada diaria · WRF +3 dias : wrf:wrf_precipitation_daily,Viento pronosticado · WRF +3 dias : wrf:wrf_wind_speed,La nube ahora en color real · GOES : goes:goes_rgb_true_color,Temperatura de incendios · GOES : goes:goes_rgb_fire_temperature,Humedad del suelo · FFGS : ffgs:soil_moisture",
+          "current": {
+            "text": "Lluvia caida en 24 h · PERSIANN satelite",
+            "value": "satellite_based_precipitation:persiann_pdir_24h"
+          },
+          "options": [
+            {
+              "selected": true,
+              "text": "Lluvia caida en 24 h · PERSIANN satelite",
+              "value": "satellite_based_precipitation:persiann_pdir_24h"
+            },
+            {
+              "selected": false,
+              "text": "Lluvia caida en 72 h · PERSIANN",
+              "value": "satellite_based_precipitation:persiann_pdir_72h"
+            },
+            {
+              "selected": false,
+              "text": "Lluvia pronosticada diaria · WRF +3 dias",
+              "value": "wrf:wrf_precipitation_daily"
+            },
+            {
+              "selected": false,
+              "text": "Viento pronosticado · WRF +3 dias",
+              "value": "wrf:wrf_wind_speed"
+            },
+            {
+              "selected": false,
+              "text": "La nube ahora en color real · GOES",
+              "value": "goes:goes_rgb_true_color"
+            },
+            {
+              "selected": false,
+              "text": "Temperatura de incendios · GOES",
+              "value": "goes:goes_rgb_fire_temperature"
+            },
+            {
+              "selected": false,
+              "text": "Humedad del suelo · FFGS",
+              "value": "ffgs:soil_moisture"
+            }
+          ],
+          "multi": false,
+          "includeAll": false,
+          "label": "capa del cielo",
+          "hide": "dontHide",
+          "skipUrlSync": false,
+          "description": "Las etiquetas no pueden llevar comas: una variable custom separa sus opciones por coma.",
+          "allowCustomValue": true
+        }
+      },
+      {
+        "kind": "TextVariable",
+        "spec": {
+          "name": "cieloFrom",
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "query": "",
+          "label": "cieloFrom",
+          "hide": "hideVariable",
+          "skipUrlSync": false
+        }
+      },
+      {
+        "kind": "TextVariable",
+        "spec": {
+          "name": "cieloTo",
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "query": "",
+          "label": "cieloTo",
+          "hide": "hideVariable",
+          "skipUrlSync": false
+        }
+      },
+      {
+        "kind": "TextVariable",
+        "spec": {
+          "name": "zonaSel",
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "query": "",
+          "label": "zonaSel",
+          "hide": "hideVariable",
+          "skipUrlSync": false
+        }
+      },
+      {
+        "kind": "TextVariable",
+        "spec": {
+          "name": "estacionSel",
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "query": "",
+          "label": "estacionSel",
+          "hide": "hideVariable",
+          "skipUrlSync": false
+        }
+      }
+    ]
+  }
 }

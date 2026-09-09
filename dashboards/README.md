@@ -66,6 +66,22 @@ and silent — the classic endpoint hands back a v1 conversion of four `row` pan
 that conversion back replaces the real thing, tabs and all. Commit `5db517c` reverted exactly that
 and took the file out of the repository on purpose.
 
+### Pero un v2 escrito a mano SÍ se provisiona (comprobado 2026-09-09)
+
+Lo de arriba es cierto de **exportar**, y sólo de exportar. Escribir un
+`dashboard.grafana.app/v2beta1` a mano en `provisioning/dashboards/` y dejar que
+Grafana 13.2.1 lo cargue **funciona**: entra con `provisioned: true`, la API lo
+devuelve como v2beta1 con su layout intacto, y un `TabsLayout` se ve con pestañas
+en el navegador. Al quitar el fichero, Grafana lo retira solo.
+
+Así lo hace `provisioning-sources/dashboards/enso-ecuador.json`, que es v2beta1
+con cinco pestañas y sigue versionado como cualquier otro. La receta para
+escribirlo sin adivinar la forma: provisionar el v1, pedirlo a
+`/apis/dashboard.grafana.app/v2beta1/namespaces/default/dashboards/<uid>` —Grafana
+lo traduce— y sustituir el `GridLayout` que devuelve por un `TabsLayout`.
+
+Necesita el toggle `dashboardNewLayouts`, que trae 13.2.1 y no 12.0.10.
+
 There is a second, older dashboard under the uid `fire-emissions`: classic, no tabs, and no smoke
 layer. It is not the same dashboard, and shipping it as though it were is the mistake to avoid.
 
