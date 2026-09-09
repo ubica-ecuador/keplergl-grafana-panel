@@ -311,27 +311,7 @@
           },
           "rawQuery": true,
           "format": 1,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- La red real de INAMHI: 1.892 estaciones, 220 transmitiendo. Los datos publicos\n-- se cortan a DIEZ DIAS (mas pide sesion): esto es la foto de ahora, no historia.\n-- El reparto por tramos se hace AQUI y no con los canales de kepler, que dejaban\n-- la capa montada y sin pintar.\nWITH lluvia AS (\n  SELECT estacion, sum(valor) AS mm\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\nSELECT e.latitude, e.longitude, e.nombre, e.provincia, e.codigo,\n       round(coalesce(l.mm, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN lluvia l ON l.estacion = e.id_estacion\nWHERE e.transmitiendo AND coalesce(l.mm, 0) = 0\nORDER BY lluvia_24h DESC"
-        },
-        {
-          "refId": "C",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "rawQuery": true,
-          "format": 1,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- La red real de INAMHI: 1.892 estaciones, 220 transmitiendo. Los datos publicos\n-- se cortan a DIEZ DIAS (mas pide sesion): esto es la foto de ahora, no historia.\n-- El reparto por tramos se hace AQUI y no con los canales de kepler, que dejaban\n-- la capa montada y sin pintar.\nWITH lluvia AS (\n  SELECT estacion, sum(valor) AS mm\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\nSELECT e.latitude, e.longitude, e.nombre, e.provincia, e.codigo,\n       round(coalesce(l.mm, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN lluvia l ON l.estacion = e.id_estacion\nWHERE e.transmitiendo AND coalesce(l.mm, 0) BETWEEN 0.1 AND 4.9\nORDER BY lluvia_24h DESC"
-        },
-        {
-          "refId": "D",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "rawQuery": true,
-          "format": 1,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- La red real de INAMHI: 1.892 estaciones, 220 transmitiendo. Los datos publicos\n-- se cortan a DIEZ DIAS (mas pide sesion): esto es la foto de ahora, no historia.\n-- El reparto por tramos se hace AQUI y no con los canales de kepler, que dejaban\n-- la capa montada y sin pintar.\nWITH lluvia AS (\n  SELECT estacion, sum(valor) AS mm\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\nSELECT e.latitude, e.longitude, e.nombre, e.provincia, e.codigo,\n       round(coalesce(l.mm, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN lluvia l ON l.estacion = e.id_estacion\nWHERE e.transmitiendo AND coalesce(l.mm, 0) >= 5\nORDER BY lluvia_24h DESC"
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- La red real de INAMHI: 1.892 estaciones, 220 transmitiendo. Los datos publicos\n-- se cortan a DIEZ DIAS (mas pide sesion): esto es la foto de ahora, no historia.\nWITH lluvia AS (\n  SELECT estacion, sum(valor) AS mm\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\nSELECT e.latitude, e.longitude, e.nombre, e.provincia, e.codigo, e.altitud,\n       round(coalesce(l.mm, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN lluvia l ON l.estacion = e.id_estacion\nWHERE e.transmitiendo\nORDER BY lluvia_24h DESC"
         }
       ],
       "options": {
@@ -357,83 +337,11 @@
             "visState": {
               "layers": [
                 {
-                  "id": "estaciones-mucha",
-                  "type": "point",
-                  "config": {
-                    "dataId": "grafana-D",
-                    "label": "Lluvia >= 5 mm (24 h)",
-                    "columnMode": "points",
-                    "columns": {
-                      "lat": "latitude",
-                      "lng": "longitude"
-                    },
-                    "isVisible": true,
-                    "color": [
-                      12,
-                      74,
-                      110
-                    ],
-                    "visConfig": {
-                      "filled": true,
-                      "opacity": 0.9,
-                      "outline": true,
-                      "thickness": 1,
-                      "strokeColor": [
-                        255,
-                        255,
-                        255
-                      ],
-                      "radius": 20,
-                      "radiusRange": [
-                        3,
-                        45
-                      ]
-                    }
-                  },
-                  "visualChannels": {}
-                },
-                {
-                  "id": "estaciones-lluvia",
-                  "type": "point",
-                  "config": {
-                    "dataId": "grafana-C",
-                    "label": "Lluvia < 5 mm (24 h)",
-                    "columnMode": "points",
-                    "columns": {
-                      "lat": "latitude",
-                      "lng": "longitude"
-                    },
-                    "isVisible": true,
-                    "color": [
-                      64,
-                      169,
-                      201
-                    ],
-                    "visConfig": {
-                      "filled": true,
-                      "opacity": 0.9,
-                      "outline": true,
-                      "thickness": 1,
-                      "strokeColor": [
-                        255,
-                        255,
-                        255
-                      ],
-                      "radius": 12,
-                      "radiusRange": [
-                        3,
-                        45
-                      ]
-                    }
-                  },
-                  "visualChannels": {}
-                },
-                {
-                  "id": "estaciones-secas",
+                  "id": "estaciones-inamhi",
                   "type": "point",
                   "config": {
                     "dataId": "grafana-B",
-                    "label": "Sin lluvia (24 h)",
+                    "label": "Estaciones INAMHI · lluvia 24 h",
                     "columnMode": "points",
                     "columns": {
                       "lat": "latitude",
@@ -447,7 +355,7 @@
                     ],
                     "visConfig": {
                       "filled": true,
-                      "opacity": 0.9,
+                      "opacity": 0.95,
                       "outline": true,
                       "thickness": 1,
                       "strokeColor": [
@@ -455,14 +363,38 @@
                         255,
                         255
                       ],
-                      "radius": 7,
+                      "radius": 9,
                       "radiusRange": [
-                        3,
-                        45
-                      ]
+                        6,
+                        40
+                      ],
+                      "colorRange": {
+                        "name": "Lluvia 24 h",
+                        "type": "sequential",
+                        "category": "Uber",
+                        "colors": [
+                          "#9AA5AB",
+                          "#7FC5CC",
+                          "#37A3AD",
+                          "#0B7C89",
+                          "#04525C",
+                          "#022E36"
+                        ]
+                      }
                     }
                   },
-                  "visualChannels": {}
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "lluvia_24h",
+                      "type": "real"
+                    },
+                    "colorScale": "quantize",
+                    "sizeField": {
+                      "name": "lluvia_24h",
+                      "type": "real"
+                    },
+                    "sizeScale": "sqrt"
+                  }
                 },
                 {
                   "id": "anomalia-zonas",
@@ -552,33 +484,9 @@
                       {
                         "name": "lluvia_24h",
                         "format": null
-                      }
-                    ],
-                    "grafana-C": [
-                      {
-                        "name": "nombre",
-                        "format": null
                       },
                       {
-                        "name": "provincia",
-                        "format": null
-                      },
-                      {
-                        "name": "lluvia_24h",
-                        "format": null
-                      }
-                    ],
-                    "grafana-D": [
-                      {
-                        "name": "nombre",
-                        "format": null
-                      },
-                      {
-                        "name": "provincia",
-                        "format": null
-                      },
-                      {
-                        "name": "lluvia_24h",
+                        "name": "altitud",
                         "format": null
                       }
                     ]
@@ -586,9 +494,7 @@
                 }
               },
               "layerOrder": [
-                "estaciones-mucha",
-                "estaciones-lluvia",
-                "estaciones-secas",
+                "estaciones-inamhi",
                 "anomalia-zonas"
               ]
             }
