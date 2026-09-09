@@ -72,6 +72,26 @@
           "text": "",
           "value": ""
         }
+      },
+      {
+        "name": "rio",
+        "label": "rio",
+        "type": "query",
+        "hide": 0,
+        "refresh": 1,
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "multi": false,
+        "includeAll": false,
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "query": "INSTALL httpfs; LOAD httpfs;\n-- Solo las 27 con pronostico; ofrecer las 651 seria ofrecer paneles vacios.\nSELECT e.nombre || ' (' || e.provincia || ')' AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/geoglows/caudal.parquet'))\nORDER BY e.nombre",
+        "definition": "INSTALL httpfs; LOAD httpfs;\n-- Solo las 27 con pronostico; ofrecer las 651 seria ofrecer paneles vacios.\nSELECT e.nombre || ' (' || e.provincia || ')' AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/geoglows/caudal.parquet'))\nORDER BY e.nombre"
       }
     ]
   },
@@ -908,6 +928,143 @@
               {
                 "id": "min",
                 "value": 0
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "type": "trend",
+      "title": "Caudal pronosticado · $rio",
+      "description": "Quince dias de caudal en m3/s, del modelo global de GEOGLOWS via el visor de INAMHI. La banda entre el escenario bajo y el alto es la incertidumbre del modelo: se abre con el horizonte. Para una hidroelectrica esto es mas directo que la lluvia — el caudal es lo que mueve la turbina. Solo 27 de las 651 estaciones hidrologicas tienen tramo del modelo asociado.",
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 66
+      },
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Pronostico de caudal de GEOGLOWS, quince dias cada tres horas. Solo 27 de las\n-- 651 estaciones hidrologicas tienen tramo del modelo asociado.\n-- Eje en DIAS por delante, no en fechas: son futuras y el rango del tablero\n-- (2015-hoy) dejaria el panel vacio.\nSELECT round(date_diff('hour', now(), strptime(fecha, '%Y-%m-%dT%H:%M:%SZ')) / 24.0, 2) AS dia,\n       round(mediana, 1) AS \"caudal mediano (m3/s)\",\n       round(minimo, 1)  AS \"el escenario bajo\",\n       round(maximo, 1)  AS \"el escenario alto\"\nFROM read_parquet($svc || '/geoglows/caudal.parquet')\nWHERE estacion = $rio\nORDER BY dia",
+          "format": 1
+        }
+      ],
+      "options": {
+        "xField": "dia",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisLabel": "caudal (m3/s)"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dia"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "dias por delante"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "caudal mediano (m3/s)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              },
+              {
+                "id": "unit",
+                "value": "m3/s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "el escenario bajo"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "unit",
+                "value": "m3/s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "el escenario alto"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "super-light-blue"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "unit",
+                "value": "m3/s"
               }
             ]
           }
