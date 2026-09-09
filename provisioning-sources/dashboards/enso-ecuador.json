@@ -32,6 +32,26 @@
         "description": "Base del servicio elnino (~/dev/elnino). En despliegue pasa a https://enso.ubica.ec"
       },
       {
+        "name": "estacion",
+        "label": "estacion",
+        "type": "query",
+        "hide": 0,
+        "refresh": 1,
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "multi": false,
+        "includeAll": false,
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "query": "INSTALL httpfs; LOAD httpfs;\n-- Solo las que tienen al menos diez temporadas ene-abr completas: seis de\n-- las quince no tienen ninguna y darian un panel vacio sin explicar por que.\n-- En una query de VARIABLE el datasource NO entrecomilla solo.\nWITH temporadas AS (\n  SELECT estacion, count(*) AS n FROM (\n    SELECT estacion, year(fecha) AS anio\n    FROM read_parquet('${svc}/ghcn/ghcn.parquet')\n    WHERE elemento = 'PRCP' AND month(fecha) BETWEEN 1 AND 4\n    GROUP BY 1, 2 HAVING count(*) > 100)\n  GROUP BY estacion)\nSELECT e.nombre || ' — ' || t.n || ' temporadas' AS __text,\n       e.estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/ghcn/estaciones.parquet') e\nJOIN temporadas t USING (estacion)\nWHERE t.n >= 10\nORDER BY t.n DESC",
+        "definition": "INSTALL httpfs; LOAD httpfs;\n-- Solo las que tienen al menos diez temporadas ene-abr completas: seis de\n-- las quince no tienen ninguna y darian un panel vacio sin explicar por que.\n-- En una query de VARIABLE el datasource NO entrecomilla solo.\nWITH temporadas AS (\n  SELECT estacion, count(*) AS n FROM (\n    SELECT estacion, year(fecha) AS anio\n    FROM read_parquet('${svc}/ghcn/ghcn.parquet')\n    WHERE elemento = 'PRCP' AND month(fecha) BETWEEN 1 AND 4\n    GROUP BY 1, 2 HAVING count(*) > 100)\n  GROUP BY estacion)\nSELECT e.nombre || ' — ' || t.n || ' temporadas' AS __text,\n       e.estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/ghcn/estaciones.parquet') e\nJOIN temporadas t USING (estacion)\nWHERE t.n >= 10\nORDER BY t.n DESC"
+      },
+      {
         "name": "mapFrom",
         "label": "mapFrom",
         "type": "textbox",
@@ -67,7 +87,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "# El Nino en Ecuador\n\nVigilancia del impacto, **no pronostico del fenomeno**: eso pide un modelo acoplado\noceano-atmosfera que ninguna de estas fuentes tiene.\n\n**Hay evento en curso, y creciendo.** El indice Nino 1+2 paso de -0,26 en enero de 2026 a\n**+3,28 en agosto**, y la ultima anomalia de INAMHI, del 7 de septiembre, sigue en positivo.\n\n**Para Ecuador manda Nino 1+2, no el 3.4.** El \"Nino costero\" de 2017 inundo la costa con el\n3.4 en neutro: un tablero que solo mire el ONI se pierde justo el evento que mas importa aqui.\n\n## Limites, que un tablero de ENSO que no los diga miente\n\n- Los indices son de **NOAA PSL**: ERSST V6 sobre base **1981-2010**, con ~1 mes de retraso.\n  El CPC publica los mismos indices sobre **1991-2020** y da otros numeros para el mismo mes\n  (junio de 2026: +2,48 aqui, +2,82 alli). No son intercambiables.\n- INAMHI publica **~2 dias** despues de la fecha, y **solo durante los eventos**: hay 68\n  fechas en 2026 y **ninguna en 2021-22**. El eje de tiempo tiene agujeros de verdad; no se\n  interpola entre ellos.\n- La anomalia de INAMHI es de **once zonas**, no de 571 cuencas: las 571 filas de su WFS son\n  trozos de poligono que repiten el valor de su zona.\n- **El indice de INAMHI no esta definido en ninguna parte, y NO es una cantidad de lluvia.**\n  Sus valores van de **-5,4 a +10,1** (mediana 0,08), centrados en cero y sesgados a la derecha.\n  Medido: enfrentado a la lluvia real de IMERG **sobre el mismo poligono**, en diez fechas\n  repartidas por todo el rango, la correlacion es de **+0,20** con ventanas de 1 a 30 dias. Hay\n  fechas que lo dejan claro: el 31-ago-2026 marca **+4,79** con 0,45 mm/dia de lluvia, y el\n  14-mar-2019 marca **+1,75** con 20,91 mm/dia. Su forma es la de una **anomalia tipificada**\n  (desviaciones respecto a lo normal del mes), lo que explicaria justo eso — pero **no esta\n  confirmado**: INAMHI no publica metadatos de estas capas, y el unico documento metodologico\n  localizable describe otro producto (anomalias porcentuales del acumulado enero-mayo).\n  **Leelo como mas humedo / mas seco de lo normal, no como milimetros.**\n- Que son las once zonas tampoco esta claro: no coinciden con las diez demarcaciones\n  hidrograficas ni con las regiones de precipitacion. Se etiquetan por numero y por su forma:\n  81 es Galapagos, 31-39 la costa, 20-21 el oriente, 26-27 la sierra.\nEl mapa **recorre el tiempo**. Abre en el evento en curso; para ver 2016 o 2018, ensancha el\nrango. Con la ventana ancha se apilan todas las fechas que quepan en ella: estrechala con la\nbarra del propio mapa, o dale al play. El detalle de los poligonos ahi es de ~1 km, porque va\nuna geometria por fecha y con el detalle fino los once anos serian 86 MB en vez de 15.\n\nDatos: **INAMHI** (`geoservicios.inamhi.gob.ec`) via el servicio `elnino`, y **NOAA PSL**."
+        "content": "# El Nino en Ecuador\n\nVigilancia del impacto, **no pronostico del fenomeno**: eso pide un modelo acoplado\noceano-atmosfera que ninguna de estas fuentes tiene.\n\n**Hay evento en curso, y creciendo.** El indice Nino 1+2 paso de -0,26 en enero de 2026 a\n**+3,28 en agosto**, y la ultima anomalia de INAMHI, del 7 de septiembre, sigue en positivo.\n\n**Para Ecuador manda Nino 1+2, no el 3.4.** El \"Nino costero\" de 2017 inundo la costa con el\n3.4 en neutro: un tablero que solo mire el ONI se pierde justo el evento que mas importa aqui.\n\n## Limites, que un tablero de ENSO que no los diga miente\n\n- Los indices son de **NOAA PSL**: ERSST V6 sobre base **1981-2010**, con ~1 mes de retraso.\n  El CPC publica los mismos indices sobre **1991-2020** y da otros numeros para el mismo mes\n  (junio de 2026: +2,48 aqui, +2,82 alli). No son intercambiables.\n- INAMHI publica **~2 dias** despues de la fecha, y **solo durante los eventos**: hay 68\n  fechas en 2026 y **ninguna en 2021-22**. El eje de tiempo tiene agujeros de verdad; no se\n  interpola entre ellos.\n- La anomalia de INAMHI es de **once zonas**, no de 571 cuencas: las 571 filas de su WFS son\n  trozos de poligono que repiten el valor de su zona.\n- **El indice de INAMHI no esta definido en ninguna parte, y NO es una cantidad de lluvia.**\n  Sus valores van de **-5,4 a +10,1** (mediana 0,08), centrados en cero y sesgados a la derecha.\n  Medido: enfrentado a la lluvia real de IMERG **sobre el mismo poligono**, en diez fechas\n  repartidas por todo el rango, la correlacion es de **+0,20** con ventanas de 1 a 30 dias. Hay\n  fechas que lo dejan claro: el 31-ago-2026 marca **+4,79** con 0,45 mm/dia de lluvia, y el\n  14-mar-2019 marca **+1,75** con 20,91 mm/dia. Su forma es la de una **anomalia tipificada**\n  (desviaciones respecto a lo normal del mes), lo que explicaria justo eso — pero **no esta\n  confirmado**: INAMHI no publica metadatos de estas capas, y el unico documento metodologico\n  localizable describe otro producto (anomalias porcentuales del acumulado enero-mayo).\n  **Leelo como mas humedo / mas seco de lo normal, no como milimetros.**\n- **La relacion Nino 1+2 <-> lluvia costera es real pero no determinista**: r entre 0,38 y\n  0,75 segun la estacion. 1983 fue el ene-abr mas lluvioso del registro, pero 2016 —con un\n  indice tambien alto— se quedo por debajo de la mediana. El indice inclina la balanza; no\n  decide la temporada.\n- Que son las once zonas tampoco esta claro: no coinciden con las diez demarcaciones\n  hidrograficas ni con las regiones de precipitacion. Se etiquetan por numero y por su forma:\n  81 es Galapagos, 31-39 la costa, 20-21 el oriente, 26-27 la sierra.\nEl mapa **recorre el tiempo**. Abre en el evento en curso; para ver 2016 o 2018, ensancha el\nrango. Con la ventana ancha se apilan todas las fechas que quepan en ella: estrechala con la\nbarra del propio mapa, o dale al play. El detalle de los poligonos ahi es de ~1 km, porque va\nuna geometria por fecha y con el detalle fino los once anos serian 86 MB en vez de 15.\n\nDatos: **INAMHI** (`geoservicios.inamhi.gob.ec`) via el servicio `elnino`, y **NOAA PSL**."
       }
     },
     {
@@ -464,6 +484,164 @@
           "sort": "desc"
         }
       }
+    },
+    {
+      "id": 6,
+      "type": "barchart",
+      "title": "Temporada lluviosa ano a ano · $estacion",
+      "description": "Acumulado de enero a abril desde 1945, de GHCN-Daily. Es lo unico que alcanza el 82-83 y el 97-98: el ASOS de dynamical.org no tiene Ecuador. Eje de categorias, no de tiempo: no depende del rango del tablero.",
+      "gridPos": {
+        "h": 12,
+        "w": 13,
+        "x": 0,
+        "y": 36
+      },
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Acumulado de la temporada lluviosa de la costa (ene-abr) por año. El\n-- HAVING no es adorno: sin el, un año con tres dias de dato aparece como una\n-- sequia historica.\nSELECT year(fecha)::VARCHAR AS anio,\n       round(sum(valor)) AS \"mm ene-abr\"\nFROM read_parquet($svc || '/ghcn/ghcn.parquet')\nWHERE elemento = 'PRCP' AND estacion = $estacion\n  AND month(fecha) BETWEEN 1 AND 4\nGROUP BY 1\nHAVING count(*) > 100\nORDER BY 1",
+          "format": 1
+        }
+      ],
+      "options": {
+        "xField": "anio",
+        "orientation": "vertical",
+        "showValue": "never",
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-BlYlRd"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "mm ene-abr"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "mm acumulados (ene-abr)"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "type": "xychart",
+      "title": "El indice frente a la lluvia, temporada a temporada",
+      "description": "Cada punto es una temporada: el Nino 1+2 promedio de dic-ene-feb frente a la lluvia de ene-abr en la estacion elegida. La relacion es real pero NO determinista: medida sobre las cuatro estaciones costeras con registro largo da r entre 0,38 (Pichilingue) y 0,75 (San Juan La Mana), o sea entre el 14 % y el 57 % de la variacion explicada. 1983 (indice 2,35) fue el mas lluvioso del registro con 2.648 mm, pero 2016 (indice 1,61) se quedo en 1.513, por debajo de la mediana.",
+      "gridPos": {
+        "h": 12,
+        "w": 11,
+        "x": 13,
+        "y": 36
+      },
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- La tesis del tablero: cuando el Nino 1+2 sube, la costa se inunda.\n-- El indice va en dic-ene-feb (diciembre cuenta para el año siguiente, que es\n-- cuando llega la lluvia); la lluvia, ene-abr de ese mismo año.\nWITH lluvia AS (\n  SELECT year(fecha) AS anio, sum(valor) AS mm\n  FROM read_parquet($svc || '/ghcn/ghcn.parquet')\n  WHERE elemento = 'PRCP' AND estacion = $estacion AND month(fecha) BETWEEN 1 AND 4\n  GROUP BY 1 HAVING count(*) > 100\n), indice AS (\n  SELECT CASE WHEN month(fecha) = 12 THEN year(fecha) + 1 ELSE year(fecha) END AS anio,\n         round(avg(valor), 2) AS nino12\n  FROM read_parquet($svc || '/indices/indices.parquet')\n  WHERE indice = 'nino12' AND month(fecha) IN (12, 1, 2)\n  GROUP BY 1 HAVING count(*) = 3\n)\nSELECT i.nino12 AS indice,\n       round(l.mm) AS mm\nFROM lluvia l JOIN indice i USING (anio)\nORDER BY i.nino12",
+          "format": 1
+        }
+      ],
+      "options": {
+        "mapping": "auto",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "custom": {
+            "show": "points",
+            "pointSize": {
+              "fixed": 9
+            },
+            "pointShape": "circle",
+            "pointStrokeWidth": 1,
+            "fillOpacity": 70
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "super-light-blue"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "mm"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "lluvia ene-abr (mm)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "indice"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Nino 1+2 (dic-ene-feb), °C"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      },
+      "pluginVersion": "12.0.10"
     }
   ]
 }
