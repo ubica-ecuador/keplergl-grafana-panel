@@ -88,7 +88,7 @@
                       "spec": {
                         "format": 1,
                         "rawQuery": true,
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Pronostico de caudal de GEOGLOWS, quince dias cada tres horas. Solo 27 de las\n-- 651 estaciones hidrologicas tienen tramo del modelo asociado.\n-- Eje en DIAS por delante, no en fechas: son futuras y el rango del tablero\n-- (2015-hoy) dejaria el panel vacio.\nSELECT round(date_diff('hour', now(), strptime(fecha, '%Y-%m-%dT%H:%M:%SZ')) / 24.0, 2) AS dia,\n       round(mediana, 1) AS \"caudal mediano (m3/s)\",\n       round(minimo, 1)  AS \"el escenario bajo\",\n       round(maximo, 1)  AS \"el escenario alto\"\nFROM read_parquet($svc || '/geoglows/caudal.parquet')\n-- Sigue al clic si lo hay; si no, al desplegable.\nWHERE estacion = (\n  -- El clic manda SOLO si esa estacion tiene pronostico: 27 de las 651 lo\n  -- tienen, y pinchar una meteorologica vaciaba el panel pisando al selector.\n  SELECT coalesce(\n    max(CASE WHEN estacion = try_cast(nullif($estacionSel, '') AS BIGINT)\n             THEN estacion END),\n    try_cast($rio AS BIGINT))\n  FROM read_parquet($svc || '/geoglows/caudal.parquet'))\nORDER BY dia"
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Pronostico de caudal de GEOGLOWS, quince dias cada tres horas. Solo 27 de las\n-- 651 estaciones hidrologicas tienen tramo del modelo asociado.\n-- Eje en DIAS por delante, no en fechas: son futuras y el rango del tablero\n-- (2015-hoy) dejaria el panel vacio.\nSELECT round(date_diff('hour', now(), strptime(fecha, '%Y-%m-%dT%H:%M:%SZ')) / 24.0, 2) AS dia,\n       round(mediana, 1) AS \"caudal mediano (m3/s)\",\n       round(minimo, 1)  AS \"el escenario bajo\",\n       round(maximo, 1)  AS \"el escenario alto\"\nFROM read_parquet($svc || '/geoglows/caudal.parquet')\n-- Sigue al clic si lo hay; si no, al desplegable.\nWHERE estacion = (\n  -- El clic manda SOLO si esa estacion tiene pronostico: 27 de las 651 lo\n  -- tienen, y pinchar una meteorologica vaciaba el panel pisando al selector.\n  SELECT coalesce(\n    max(CASE WHEN estacion = try_cast(nullif($estacionSel, '') AS BIGINT)\n             THEN estacion END),\n    coalesce(try_cast($rio AS BIGINT),\n             try_cast($estacionVer AS BIGINT)))\n  FROM read_parquet($svc || '/geoglows/caudal.parquet'))\nORDER BY dia"
                       }
                     },
                     "refId": "A",
@@ -557,7 +557,7 @@
                       "spec": {
                         "format": 1,
                         "rawQuery": true,
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Los diez dias que INAMHI deja ver sin cuenta, de la estacion que se pincho\n-- en cualquiera de los dos mapas.\nSELECT strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') AS time,\n       valor AS \"lluvia (mm/h)\"\nFROM read_parquet($svc || '/inamhi/observaciones.parquet')\n-- Variable DESNUDA: en una consulta de panel el datasource la\n-- entrecomilla el solo, y unas comillas de mas dan ''63807''.\nWHERE estacion = try_cast(nullif($estacionSel, '') AS BIGINT)\nORDER BY time"
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Los diez dias que INAMHI deja ver sin cuenta, de la estacion que se pincho\n-- en cualquiera de los dos mapas.\nSELECT strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') AS time,\n       valor AS \"lluvia (mm/h)\"\nFROM read_parquet($svc || '/inamhi/observaciones.parquet')\n-- Variable DESNUDA: en una consulta de panel el datasource la\n-- entrecomilla el solo, y unas comillas de mas dan ''63807''.\nWHERE estacion = coalesce(try_cast(nullif($estacionSel, '') AS BIGINT),\n                         try_cast($estacionVer AS BIGINT))\nORDER BY time"
                       }
                     },
                     "refId": "A",
@@ -627,7 +627,7 @@
                       "spec": {
                         "format": 1,
                         "rawQuery": true,
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\nSELECT nombre, codigo, provincia, canton, categoria, propietario, captor,\n       round(altitud) AS \"altitud (m)\",\n       CASE WHEN transmitiendo THEN 'si' ELSE 'no' END AS transmite\nFROM read_parquet($svc || '/inamhi/estaciones.parquet')\nWHERE id_estacion = try_cast(nullif($estacionSel, '') AS BIGINT)"
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\nSELECT nombre, codigo, provincia, canton, categoria, propietario, captor,\n       round(altitud) AS \"altitud (m)\",\n       CASE WHEN transmitiendo THEN 'si' ELSE 'no' END AS transmite\nFROM read_parquet($svc || '/inamhi/estaciones.parquet')\nWHERE id_estacion = coalesce(try_cast(nullif($estacionSel, '') AS BIGINT),\n                           try_cast($estacionVer AS BIGINT))"
                       }
                     },
                     "refId": "A",
@@ -680,7 +680,7 @@
                       "spec": {
                         "format": 1,
                         "rawQuery": true,
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Los once anos de UNA zona, aislada de las otras diez: en el panel general se\n-- ven todas encimadas y no se distingue cual hace que.\n-- Solo el indice: `min` y `max` son extremos POR PIXEL dentro de la zona,\n-- van de -75 a +100 y aplastan la escala de lo que importa.\nSELECT fecha::TIMESTAMP AS time,\n       mean AS \"indice de la zona\"\nFROM read_parquet($svc || '/inamhi/anomalias.parquet')\nWHERE zona_id = try_cast(nullif($zonaSel, '') AS BIGINT)\nORDER BY time"
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Los once anos de UNA zona, aislada de las otras diez: en el panel general se\n-- ven todas encimadas y no se distingue cual hace que.\n-- Solo el indice: `min` y `max` son extremos POR PIXEL dentro de la zona,\n-- van de -75 a +100 y aplastan la escala de lo que importa.\nSELECT fecha::TIMESTAMP AS time,\n       mean AS \"indice de la zona\"\nFROM read_parquet($svc || '/inamhi/anomalias.parquet')\nWHERE zona_id = coalesce(try_cast(nullif($zonaSel, '') AS BIGINT),\n                    try_cast($zonaVer AS BIGINT))\nORDER BY time"
                       }
                     },
                     "refId": "A",
@@ -1566,6 +1566,130 @@
             }
           }
         }
+      },
+      "panel-23": {
+        "kind": "Panel",
+        "spec": {
+          "id": 23,
+          "title": "Que estas viendo en esta pestana",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "text",
+            "version": "",
+            "spec": {
+              "options": {
+                "mode": "markdown",
+                "content": "### Dos mapas, dos relojes\n\n**Arriba — el indice de INAMHI por zona.** El color de fondo es el indice oficial de anomalia\nde las **once zonas** que INAMHI distingue (no son 571 cuencas: sus 571 filas son trozos de\npoligono que repiten el valor de su zona). Marron es por debajo de lo normal, verde-azulado por\nencima. **No son milimetros** — medido contra la lluvia real de IMERG sobre el mismo poligono da\nuna correlacion de +0,20. Leelo como *mas humedo / mas seco de lo normal*.\n\nSu barra de tiempo recorre **once anos**, de diciembre de 2015 a hoy, y tiene agujeros de verdad:\nINAMHI publica solo durante los eventos, asi que 2021 y 2022 estan vacios. Con la ventana abierta\ndel todo se apilan todas las fechas y el mapa sale palido; estrechala o dale al play.\n\n**Abajo — el cielo de ahora.** Siete capas conmutables del GeoServer de GEOGLOWS: lluvia caida\npor satelite (PERSIANN), lluvia y viento pronosticados a tres dias (WRF), la nube en color real\n(GOES, con pasos de diez minutos) y la humedad del suelo. Tiene **su propio reloj** porque estas\ncapas son de ahora y de los proximos dias; compartirlo con el de arriba arrastraria a uno a un\ntiempo donde el otro no tiene nada.\n\n**Los puntos, en los dos mapas**, son las 220 estaciones de INAMHI que transmiten, del color de\nla lluvia que han medido en 24 h. **Pinchando una** se llena la pestana Detalle."
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-24": {
+        "kind": "Panel",
+        "spec": {
+          "id": 24,
+          "title": "Como se usa esta pestana",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "text",
+            "version": "",
+            "spec": {
+              "options": {
+                "mode": "markdown",
+                "content": "### Elige una estacion o una zona, o pinchala en el mapa\n\nArriba tienes dos desplegables: **estacion del detalle** y **zona del detalle**. Pero lo mas\ndirecto es ir a **Ahora** y **pinchar** un punto o una zona en el mapa: el clic pisa al\ndesplegable y esta pestana se llena con lo que pinchaste.\n\n- **Lluvia de la estacion** — su serie horaria. Son **diez dias y no mas**: es el tope que\n  impone INAMHI a quien consulta sin cuenta. Las estaciones **hidrologicas** no miden lluvia, asi\n  que su panel sale vacio con razon.\n- **Ficha** — lo que INAMHI publica de ella: codigo, provincia, canton, altitud, propietario.\n- **Los once anos de la zona** — el indice de esa zona sola. En el panel general de Historia se\n  ven las once encimadas y no se distingue cual hace que.\n- **Caudal** — quince dias de pronostico de GEOGLOWS. Solo **27 de las 651** estaciones\n  hidrologicas tienen tramo de rio del modelo asociado; si pinchas una que no lo tiene, el panel\n  se queda con la del selector en vez de vaciarse."
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-25": {
+        "kind": "Panel",
+        "spec": {
+          "id": 25,
+          "title": "Que estas viendo en esta pestana",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "text",
+            "version": "",
+            "spec": {
+              "options": {
+                "mode": "markdown",
+                "content": "### La memoria larga, que es lo que ninguna otra fuente da\n\nINAMHI empieza en 2015 y las estaciones automaticas dan diez dias. Para comparar el Nino de ahora\ncon el del 82-83 hace falta otra cosa: **GHCN-Daily**, el archivo climatico global de NOAA. Solo\ntiene **quince estaciones en Ecuador** —y solo cuatro con registro largo de lluvia— pero llega a\n**1945**.\n\n- **Cuanto llovio cada temporada** — acumulado de enero a abril, la temporada lluviosa de la\n  costa, ano a ano. La barra que se sale es **1983**.\n- **Mar mas caliente = temporada mas lluviosa** — cada punto una temporada. La relacion es real\n  pero **no determinista**: la correlacion va de **0,38 a 0,75** segun la estacion. 1983 fue el\n  mas lluvioso del registro con un indice de 2,35, pero **2016, con 1,61, se quedo por debajo de\n  la mediana**. El mar inclina la balanza; no decide la temporada.\n- **Once anos de anomalia** — las once zonas de INAMHI juntas. Para aislar una, pinchala en el\n  mapa de **Ahora** y mirala en **Detalle**."
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-26": {
+        "kind": "Panel",
+        "spec": {
+          "id": 26,
+          "title": "Que estas viendo en esta pestana",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "text",
+            "version": "",
+            "spec": {
+              "options": {
+                "mode": "markdown",
+                "content": "### Probabilidad, no pronostico de un dia\n\nLos 31 miembros del ensemble del GEFS sobre Ecuador, hasta 35 dias. Cada horizonte lleva los 31,\ny de ahi salen las tres lineas: la **mediana** es el escenario central, y la banda entre **p10** y\n**p90** es cuanto discrepan entre si. **Cuanto mas ancha la banda, menos acuerdo hay.** La linea\nroja del eje derecho es la probabilidad de superar el umbral de lluvia.\n\n**Pasada la semana 2 esto no acierta dias concretos, solo tendencia.** Un modelo global a treinta\ndias no dice si llovera el martes; dice si el mes pinta humedo o seco. Leerlo de otra manera es\npedirle lo que no puede dar.\n\nEl eje va en **dias por delante** y no en fechas porque las fechas son futuras: con un eje\ntemporal, el rango del tablero (2015 → hoy) dejaria el panel vacio."
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
       }
     },
     "layout": {
@@ -1657,6 +1781,19 @@
                           "name": "panel-11"
                         }
                       }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 24,
+                        "width": 24,
+                        "height": 11,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-23"
+                        }
+                      }
                     }
                   ]
                 }
@@ -1720,6 +1857,19 @@
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-10"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 31,
+                        "width": 24,
+                        "height": 11,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-24"
                         }
                       }
                     }
@@ -1787,6 +1937,19 @@
                           "name": "panel-5"
                         }
                       }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 25,
+                        "width": 24,
+                        "height": 11,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-25"
+                        }
+                      }
                     }
                   ]
                 }
@@ -1796,7 +1959,7 @@
           {
             "kind": "TabsLayoutTab",
             "spec": {
-              "title": "Que viene",
+              "title": "Pronostico",
               "layout": {
                 "kind": "GridLayout",
                 "spec": {
@@ -1811,6 +1974,19 @@
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-9"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 14,
+                        "width": 24,
+                        "height": 11,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-26"
                         }
                       }
                     }
@@ -2069,6 +2245,72 @@
           "label": "estacionSel",
           "hide": "hideVariable",
           "skipUrlSync": false
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "estacionVer",
+          "label": "estacion del detalle",
+          "description": "Puerta de entrada a la pestaña Detalle. Pinchar una estacion en un mapa la pisa.",
+          "hide": "dontHide",
+          "refresh": "onDashboardLoad",
+          "skipUrlSync": false,
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "options": [],
+          "multi": false,
+          "includeAll": false,
+          "allowCustomValue": true,
+          "definition": "INSTALL httpfs; LOAD httpfs;\n-- Solo las que tienen algo que enseñar: las que han transmitido lluvia.\nSELECT e.nombre || ' — ' || e.provincia AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/inamhi/observaciones.parquet'))\nORDER BY e.nombre",
+          "query": {
+            "kind": "DataQuery",
+            "group": "motherduck-duckdb-datasource",
+            "version": "v0",
+            "datasource": {
+              "name": "duckdb"
+            },
+            "spec": {
+              "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- Solo las que tienen algo que enseñar: las que han transmitido lluvia.\nSELECT e.nombre || ' — ' || e.provincia AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nWHERE e.id_estacion IN (\n  SELECT DISTINCT estacion FROM read_parquet('${svc}/inamhi/observaciones.parquet'))\nORDER BY e.nombre"
+            }
+          },
+          "regex": "",
+          "sort": "disabled"
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "zonaVer",
+          "label": "zona del detalle",
+          "description": "Idem para las zonas. Pinchar una zona en el mapa de arriba la pisa.",
+          "hide": "dontHide",
+          "refresh": "onDashboardLoad",
+          "skipUrlSync": false,
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "options": [],
+          "multi": false,
+          "includeAll": false,
+          "allowCustomValue": true,
+          "definition": "INSTALL httpfs; LOAD httpfs;\nSELECT 'zona ' || zona_id || ' · ' || CASE zona_id\n    WHEN 81 THEN 'Galapagos'  WHEN 20 THEN 'oriente sur'  WHEN 21 THEN 'oriente norte'\n    WHEN 26 THEN 'sierra sur' WHEN 27 THEN 'sierra norte' WHEN 31 THEN 'costa sur'\n    WHEN 32 THEN 'costa sur-centro' WHEN 33 THEN 'costa norte'\n    WHEN 37 THEN 'costa El Oro'    WHEN 38 THEN 'peninsula' WHEN 39 THEN 'Manabi'\n  END AS __text,\n  zona_id::VARCHAR AS __value\nFROM (SELECT DISTINCT zona_id FROM read_parquet('${svc}/inamhi/anomalias.parquet'))\nORDER BY zona_id",
+          "query": {
+            "kind": "DataQuery",
+            "group": "motherduck-duckdb-datasource",
+            "version": "v0",
+            "datasource": {
+              "name": "duckdb"
+            },
+            "spec": {
+              "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\nSELECT 'zona ' || zona_id || ' · ' || CASE zona_id\n    WHEN 81 THEN 'Galapagos'  WHEN 20 THEN 'oriente sur'  WHEN 21 THEN 'oriente norte'\n    WHEN 26 THEN 'sierra sur' WHEN 27 THEN 'sierra norte' WHEN 31 THEN 'costa sur'\n    WHEN 32 THEN 'costa sur-centro' WHEN 33 THEN 'costa norte'\n    WHEN 37 THEN 'costa El Oro'    WHEN 38 THEN 'peninsula' WHEN 39 THEN 'Manabi'\n  END AS __text,\n  zona_id::VARCHAR AS __value\nFROM (SELECT DISTINCT zona_id FROM read_parquet('${svc}/inamhi/anomalias.parquet'))\nORDER BY zona_id"
+            }
+          },
+          "regex": "",
+          "sort": "disabled"
         }
       }
     ]
