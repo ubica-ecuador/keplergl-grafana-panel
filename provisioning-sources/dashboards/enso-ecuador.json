@@ -1588,7 +1588,7 @@
             "spec": {
               "options": {
                 "mode": "markdown",
-                "content": "### Dos mapas, dos relojes\n\n**Arriba — el indice de INAMHI por zona.** El color de fondo es el indice oficial de anomalia\nde las **once zonas** que INAMHI distingue (no son 571 cuencas: sus 571 filas son trozos de\npoligono que repiten el valor de su zona). Marron es por debajo de lo normal, verde-azulado por\nencima. **No son milimetros** — medido contra la lluvia real de IMERG sobre el mismo poligono da\nuna correlacion de +0,20. Leelo como *mas humedo / mas seco de lo normal*.\n\nSu barra de tiempo recorre **once anos**, de diciembre de 2015 a hoy, y tiene agujeros de verdad:\nINAMHI publica solo durante los eventos, asi que 2021 y 2022 estan vacios. Con la ventana abierta\ndel todo se apilan todas las fechas y el mapa sale palido; estrechala o dale al play.\n\n**Abajo — el cielo de ahora.** Siete capas conmutables del GeoServer de GEOGLOWS: lluvia caida\npor satelite (PERSIANN), lluvia y viento pronosticados a tres dias (WRF), la nube en color real\n(GOES, con pasos de diez minutos) y la humedad del suelo. Tiene **su propio reloj** porque estas\ncapas son de ahora y de los proximos dias; compartirlo con el de arriba arrastraria a uno a un\ntiempo donde el otro no tiene nada.\n\n**Los puntos, en los dos mapas**, son las 220 estaciones de INAMHI que transmiten, del color de\nla lluvia que han medido en 24 h. **Pinchando una** se llena la pestana Detalle."
+                "content": "### Dos mapas, dos relojes\n\n**Arriba — el indice de INAMHI por zona.** El color de fondo es el indice oficial de anomalia\nde las **once zonas** que INAMHI distingue (no son 571 cuencas: sus 571 filas son trozos de\npoligono que repiten el valor de su zona). Marron es por debajo de lo normal, verde-azulado por\nencima. **No son milimetros** — medido contra la lluvia real de IMERG sobre el mismo poligono da\nuna correlacion de +0,20. Leelo como *mas humedo / mas seco de lo normal*.\n\nSu barra de tiempo recorre **once anos**, de diciembre de 2015 a hoy, y tiene agujeros de verdad:\nINAMHI publica solo durante los eventos, asi que 2021 y 2022 estan vacios. Con la ventana abierta\ndel todo se apilan todas las fechas y el mapa sale palido; estrechala o dale al play.\n\n**Abajo — el cielo de ahora.** Siete capas conmutables del GeoServer de GEOGLOWS: lluvia caida\npor satelite (PERSIANN), lluvia y viento pronosticados a tres dias (WRF), la nube en color real\n(GOES, con pasos de diez minutos) y la humedad del suelo. Tiene **su propio reloj** porque estas\ncapas son de ahora y de los proximos dias; compartirlo con el de arriba arrastraria a uno a un\ntiempo donde el otro no tiene nada.\n\n**Los puntos, en los dos mapas**, son las 220 estaciones de INAMHI que transmiten, del color de\nla lluvia que han medido en 24 h. **Pinchando una** se llena el detalle, que esta justo debajo en esta misma pestana."
               },
               "fieldConfig": {
                 "defaults": {},
@@ -1602,7 +1602,7 @@
         "kind": "Panel",
         "spec": {
           "id": 24,
-          "title": "Como se usa esta pestana",
+          "title": "El detalle de lo que pinchaste",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1619,7 +1619,7 @@
             "spec": {
               "options": {
                 "mode": "markdown",
-                "content": "### Elige una estacion o una zona, o pinchala en el mapa\n\nArriba tienes dos desplegables: **estacion del detalle** y **zona del detalle**. Pero lo mas\ndirecto es ir a **Ahora** y **pinchar** un punto o una zona en el mapa: el clic pisa al\ndesplegable y esta pestana se llena con lo que pinchaste.\n\n- **Lluvia de la estacion** — su serie horaria. Son **diez dias y no mas**: es el tope que\n  impone INAMHI a quien consulta sin cuenta. Las estaciones **hidrologicas** no miden lluvia, asi\n  que su panel sale vacio con razon.\n- **Ficha** — lo que INAMHI publica de ella: codigo, provincia, canton, altitud, propietario.\n- **Los once anos de la zona** — el indice de esa zona sola. En el panel general de Historia se\n  ven las once encimadas y no se distingue cual hace que.\n- **Caudal** — quince dias de pronostico de GEOGLOWS. Solo **27 de las 651** estaciones\n  hidrologicas tienen tramo de rio del modelo asociado; si pinchas una que no lo tiene, el panel\n  se queda con la del selector en vez de vaciarse."
+                "content": "### Pincha un punto o una zona en los mapas de arriba\n\nEl detalle vive **debajo de los mapas y no en otra pestana** a proposito: el clic nace\narriba y cae aqui, sin salto. Tambien puedes elegir a mano en los desplegables\n**estacion del detalle** y **zona del detalle**; el clic los pisa.\n\n- **Lluvia de la estacion** — su serie horaria. Son **diez dias y no mas**: es el tope que\n  impone INAMHI a quien consulta sin cuenta. Las estaciones **hidrologicas** no miden lluvia, asi\n  que su panel sale vacio con razon.\n- **Ficha** — lo que INAMHI publica de ella: codigo, provincia, canton, altitud, propietario.\n- **Los once anos de la zona** — el indice de esa zona sola. En el panel general de Historia se\n  ven las once encimadas y no se distingue cual hace que.\n- **Caudal** — quince dias de pronostico de GEOGLOWS. Solo **27 de las 651** estaciones\n  hidrologicas tienen tramo de rio del modelo asociado; si pinchas una que no lo tiene, el panel\n  se queda con la del selector en vez de vaciarse."
               },
               "fieldConfig": {
                 "defaults": {},
@@ -1650,7 +1650,7 @@
             "spec": {
               "options": {
                 "mode": "markdown",
-                "content": "### La memoria larga, que es lo que ninguna otra fuente da\n\nINAMHI empieza en 2015 y las estaciones automaticas dan diez dias. Para comparar el Nino de ahora\ncon el del 82-83 hace falta otra cosa: **GHCN-Daily**, el archivo climatico global de NOAA. Solo\ntiene **quince estaciones en Ecuador** —y solo cuatro con registro largo de lluvia— pero llega a\n**1945**.\n\n- **Cuanto llovio cada temporada** — acumulado de enero a abril, la temporada lluviosa de la\n  costa, ano a ano. La barra que se sale es **1983**.\n- **Mar mas caliente = temporada mas lluviosa** — cada punto una temporada. La relacion es real\n  pero **no determinista**: la correlacion va de **0,38 a 0,75** segun la estacion. 1983 fue el\n  mas lluvioso del registro con un indice de 2,35, pero **2016, con 1,61, se quedo por debajo de\n  la mediana**. El mar inclina la balanza; no decide la temporada.\n- **Once anos de anomalia** — las once zonas de INAMHI juntas. Para aislar una, pinchala en el\n  mapa de **Ahora** y mirala en **Detalle**."
+                "content": "### La memoria larga, que es lo que ninguna otra fuente da\n\nINAMHI empieza en 2015 y las estaciones automaticas dan diez dias. Para comparar el Nino de ahora\ncon el del 82-83 hace falta otra cosa: **GHCN-Daily**, el archivo climatico global de NOAA. Solo\ntiene **quince estaciones en Ecuador** —y solo cuatro con registro largo de lluvia— pero llega a\n**1945**.\n\n- **Cuanto llovio cada temporada** — acumulado de enero a abril, la temporada lluviosa de la\n  costa, ano a ano. La barra que se sale es **1983**.\n- **Mar mas caliente = temporada mas lluviosa** — cada punto una temporada. La relacion es real\n  pero **no determinista**: la correlacion va de **0,38 a 0,75** segun la estacion. 1983 fue el\n  mas lluvioso del registro con un indice de 2,35, pero **2016, con 1,61, se quedo por debajo de\n  la mediana**. El mar inclina la balanza; no decide la temporada.\n- **Once anos de anomalia** — las once zonas de INAMHI juntas. Para aislar una, pinchala en el\n  mapa de **Ahora** y mirala en el detalle de esa misma pestana."
               },
               "fieldConfig": {
                 "defaults": {},
@@ -1691,413 +1691,12 @@
           }
         }
       },
-      "panel-30": {
-        "kind": "Panel",
-        "spec": {
-          "id": 30,
-          "title": "Rios de ${provincia:raw}",
-          "description": "Todos los tramos con pronostico de la provincia elegida, del tamano y color del caudal de ahora, con la cuenca del tramo en amarillo. Elige alguno en `rios` para ver su serie a la derecha.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "refId": "A",
-                    "hidden": false,
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "motherduck-duckdb-datasource",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "duckdb"
-                      },
-                      "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Toda la provincia, no solo lo elegido: asi la pestaña nunca llega vacia\n-- y se ve donde estan los que se pueden elegir.\nWITH ahora AS (\n  SELECT estacion, min_by(mediana, fecha) AS q0\n  FROM read_parquet($svc || '/geoglows/caudal.parquet') GROUP BY 1)\nSELECT e.id_estacion, e.latitude, e.longitude, e.nombre, e.provincia,\n       round(a.q0, 1) AS caudal_ahora\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nJOIN ahora a ON a.estacion = e.id_estacion\nWHERE e.provincia = $provincia\nORDER BY caudal_ahora DESC",
-                        "rawQuery": true,
-                        "format": 1
-                      }
-                    }
-                  }
-                },
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "refId": "B",
-                    "hidden": false,
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "motherduck-duckdb-datasource",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "duckdb"
-                      },
-                      "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- La cuenca de aporte de cada tramo elegido. Son CUENCAS DE TRAMO, no de rio ni\n-- la linea del cauce: 1 a 70 km2, la porcion que drena directamente a ese\n-- pedazo de rio. Es lo unico con geometria que publica GEOGLOWS para el modelo.\nWITH rio AS (\n  SELECT DISTINCT estacion, river_id\n  FROM read_parquet($svc || '/geoglows/caudal.parquet'))\nSELECT c.river_id, e.nombre, e.provincia, c.geojson\nFROM read_parquet($svc || '/geoglows/cuencas_rio.parquet') c\nJOIN rio r ON r.river_id = c.river_id\nJOIN read_parquet($svc || '/inamhi/estaciones.parquet') e ON e.id_estacion = r.estacion\nWHERE e.provincia = $provincia",
-                        "rawQuery": true,
-                        "format": 1
-                      }
-                    }
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "ubica-keplergl-panel",
-            "version": "",
-            "spec": {
-              "options": {
-                "showSidePanel": false,
-                "followGrafanaTheme": true,
-                "timeSync": "off",
-                "basemap": "dark-matter",
-                "variableMappings": [
-                  {
-                    "field": "id_estacion",
-                    "variable": "estacionSel",
-                    "source": "click"
-                  }
-                ],
-                "mapConfig": {
-                  "version": "v1",
-                  "config": {
-                    "mapState": {
-                      "latitude": -1.4,
-                      "longitude": -78.6,
-                      "zoom": 5.9,
-                      "bearing": 0,
-                      "pitch": 0,
-                      "dragRotate": false
-                    },
-                    "mapStyle": {
-                      "styleType": "dark-matter"
-                    },
-                    "visState": {
-                      "layers": [
-                        {
-                          "id": "rios",
-                          "type": "point",
-                          "config": {
-                            "dataId": "grafana-A",
-                            "label": "Caudal ahora (m3/s)",
-                            "columnMode": "points",
-                            "columns": {
-                              "lat": "latitude",
-                              "lng": "longitude"
-                            },
-                            "isVisible": true,
-                            "color": [
-                              100,
-                              180,
-                              220
-                            ],
-                            "visConfig": {
-                              "filled": true,
-                              "opacity": 0.95,
-                              "outline": true,
-                              "thickness": 1,
-                              "strokeColor": [
-                                255,
-                                255,
-                                255
-                              ],
-                              "radius": 10,
-                              "radiusRange": [
-                                8,
-                                45
-                              ],
-                              "colorRange": {
-                                "name": "Caudal",
-                                "type": "sequential",
-                                "category": "Uber",
-                                "colors": [
-                                  "#C6E4E6",
-                                  "#7FC5CC",
-                                  "#37A3AD",
-                                  "#0B7C89",
-                                  "#04525C",
-                                  "#022E36"
-                                ]
-                              }
-                            }
-                          },
-                          "visualChannels": {
-                            "colorField": {
-                              "name": "caudal_ahora",
-                              "type": "real"
-                            },
-                            "colorScale": "quantize",
-                            "sizeField": {
-                              "name": "caudal_ahora",
-                              "type": "real"
-                            },
-                            "sizeScale": "sqrt"
-                          }
-                        },
-                        {
-                          "id": "cuencas-rio",
-                          "type": "geojson",
-                          "config": {
-                            "dataId": "grafana-B",
-                            "label": "Cuenca del tramo",
-                            "columns": {
-                              "geojson": "_geojson"
-                            },
-                            "isVisible": true,
-                            "color": [
-                              255,
-                              200,
-                              90
-                            ],
-                            "visConfig": {
-                              "opacity": 0.35,
-                              "strokeOpacity": 0.9,
-                              "thickness": 1.5,
-                              "strokeColor": [
-                                255,
-                                200,
-                                90
-                              ],
-                              "filled": true,
-                              "stroked": true,
-                              "enable3d": false
-                            }
-                          },
-                          "visualChannels": {}
-                        }
-                      ],
-                      "interactionConfig": {
-                        "tooltip": {
-                          "enabled": true,
-                          "fieldsToShow": {
-                            "grafana-A": [
-                              {
-                                "name": "nombre",
-                                "format": null
-                              },
-                              {
-                                "name": "provincia",
-                                "format": null
-                              },
-                              {
-                                "name": "caudal_ahora",
-                                "format": null
-                              }
-                            ],
-                            "grafana-B": [
-                              {
-                                "name": "nombre",
-                                "format": null
-                              },
-                              {
-                                "name": "provincia",
-                                "format": null
-                              }
-                            ]
-                          }
-                        }
-                      },
-                      "layerOrder": [
-                        "rios",
-                        "cuencas-rio"
-                      ]
-                    }
-                  }
-                }
-              },
-              "fieldConfig": {
-                "defaults": {},
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-31": {
-        "kind": "Panel",
-        "spec": {
-          "id": 31,
-          "title": "${rios:text}",
-          "description": "Quince dias de caudal pronosticado. La banda entre el escenario bajo y el alto se abre con el horizonte: es cuanto discrepa el modelo consigo mismo.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "refId": "A",
-                    "hidden": false,
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "motherduck-duckdb-datasource",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "duckdb"
-                      },
-                      "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Un panel por rio: la repeticion pasa UN valor cada vez en $rios.\nSELECT round(date_diff('hour', now(), strptime(fecha, '%Y-%m-%dT%H:%M:%SZ')) / 24.0, 2) AS dia,\n       round(mediana, 1) AS \"mediana\",\n       round(minimo, 1)  AS \"bajo\",\n       round(maximo, 1)  AS \"alto\"\nFROM read_parquet($svc || '/geoglows/caudal.parquet')\nWHERE estacion = try_cast($rios AS BIGINT)\nORDER BY dia",
-                        "rawQuery": true,
-                        "format": 1
-                      }
-                    }
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "trend",
-            "version": "",
-            "spec": {
-              "options": {
-                "xField": "dia",
-                "legend": {
-                  "calcs": [],
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": false
-                },
-                "tooltip": {
-                  "mode": "multi",
-                  "sort": "none"
-                }
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "decimals": 1,
-                  "custom": {
-                    "drawStyle": "line",
-                    "lineWidth": 2,
-                    "fillOpacity": 0,
-                    "showPoints": "never",
-                    "spanNulls": true,
-                    "axisLabel": "m3/s"
-                  }
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "dia"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.axisLabel",
-                        "value": "dias por delante"
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "mediana"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "mode": "fixed",
-                          "fixedColor": "blue"
-                        }
-                      },
-                      {
-                        "id": "custom.lineWidth",
-                        "value": 3
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "bajo"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "mode": "fixed",
-                          "fixedColor": "orange"
-                        }
-                      },
-                      {
-                        "id": "custom.lineWidth",
-                        "value": 1
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "alto"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "mode": "fixed",
-                          "fixedColor": "super-light-blue"
-                        }
-                      },
-                      {
-                        "id": "custom.lineWidth",
-                        "value": 1
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
-          }
-        }
-      },
-      "panel-32": {
-        "kind": "Panel",
-        "spec": {
-          "id": 32,
-          "title": "Que estas viendo en esta pestana",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "text",
-            "version": "",
-            "spec": {
-              "options": {
-                "mode": "markdown",
-                "content": "### Un panel por rio de la provincia\n\nElige la **provincia** en el selector de arriba: el mapa y la lista de rios se acotan a ella, y\nsale **un panel por cada tramo con pronostico** que tenga. Quita del desplegable los que no te\ninteresen.\n\nEl selector de provincia vive **arriba del todo, fuera de la pestaña**, y no por gusto: Grafana\nsolo sustituye variables de **ambito tablero** dentro de la consulta de otra variable. Puesto\ndentro de la pestaña, el SQL de la lista sale sin sustituir, casa con cero filas y el panel se\ntitula «None».\n\nLas provincias marcadas **· sin rios** tienen estaciones de lluvia pero ningun tramo del modelo:\nen esas, esta pestaña sale vacia y la de **Lluvia** no.\n"
-              },
-              "fieldConfig": {
-                "defaults": {},
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
       "panel-40": {
         "kind": "Panel",
         "spec": {
           "id": 40,
           "title": "Estaciones de ${provincia:raw}",
-          "description": "Todas las de la provincia elegida, del tamano y color de la lluvia que han medido en 24 h. Elige alguna en `estaciones` para verla hora a hora a la derecha. Pinchando una se llena ademas la pestana Detalle.",
+          "description": "Todas las de la provincia elegida, del tamano y color de la lluvia que han medido en 24 h. Elige alguna en `estaciones` para verla hora a hora a la derecha. Pinchando una se llena ademas el detalle del final de la pestana Ahora.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2776,6 +2375,26 @@
                       }
                     }
                   }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "D",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- La cuenca de aporte de cada tramo elegido. Son CUENCAS DE TRAMO, no de rio ni\n-- la linea del cauce: 1 a 70 km2, la porcion que drena directamente a ese\n-- pedazo de rio. Es lo unico con geometria que publica GEOGLOWS para el modelo.\nWITH rio AS (\n  SELECT DISTINCT estacion, river_id\n  FROM read_parquet($svc || '/geoglows/caudal.parquet'))\nSELECT c.river_id, e.nombre, e.provincia, c.geojson\nFROM read_parquet($svc || '/geoglows/cuencas_rio.parquet') c\nJOIN rio r ON r.river_id = c.river_id\nJOIN read_parquet($svc || '/inamhi/estaciones.parquet') e ON e.id_estacion = r.estacion\nWHERE e.provincia = $provincia",
+                        "rawQuery": true,
+                        "format": 1
+                      }
+                    }
+                  }
                 }
               ],
               "transformations": [],
@@ -2792,7 +2411,13 @@
                 "followGrafanaTheme": true,
                 "timeSync": "off",
                 "basemap": "dark-matter",
-                "variableMappings": [],
+                "variableMappings": [
+                  {
+                    "field": "id_estacion",
+                    "variable": "estacionSel",
+                    "source": "click"
+                  }
+                ],
                 "mapConfig": {
                   "version": "v1",
                   "config": {
@@ -2958,6 +2583,37 @@
                             }
                           },
                           "visualChannels": {}
+                        },
+                        {
+                          "id": "cuencas-rio",
+                          "type": "geojson",
+                          "config": {
+                            "dataId": "grafana-D",
+                            "label": "Cuenca de aporte del tramo",
+                            "columns": {
+                              "geojson": "_geojson"
+                            },
+                            "isVisible": true,
+                            "color": [
+                              255,
+                              200,
+                              90
+                            ],
+                            "visConfig": {
+                              "opacity": 0.35,
+                              "strokeOpacity": 0.9,
+                              "thickness": 1.5,
+                              "strokeColor": [
+                                255,
+                                200,
+                                90
+                              ],
+                              "filled": true,
+                              "stroked": true,
+                              "enable3d": false
+                            }
+                          },
+                          "visualChannels": {}
                         }
                       ],
                       "interactionConfig": {
@@ -3003,6 +2659,16 @@
                               },
                               {
                                 "name": "km",
+                                "format": null
+                              }
+                            ],
+                            "grafana-D": [
+                              {
+                                "name": "nombre",
+                                "format": null
+                              },
+                              {
+                                "name": "provincia",
                                 "format": null
                               }
                             ]
@@ -3557,7 +3223,7 @@
             "spec": {
               "options": {
                 "mode": "markdown",
-                "content": "### Oceano extremo, atmosfera todavia no\n\nEsto es lo que los dos informes oficiales repiten y el tablero no decia. El\n**ERFEN 08-2026** (4 de septiembre) y el **BAC 430** de la CPPS coinciden:\n\n> «Estos eventos **no reflejan todavia** una respuesta pluviometrica persistente y\n> generalizada asociada a El Nino... **no pueden atribuirse de manera directa y\n> generalizada** al evento.»\n\nEl mar esta en su sitio: Nino 1+2 por encima de +4, nivel del mar entre los mas altos\nde 77 anos, agua calida acumulada. **La atmosfera sobre Ecuador no ha respondido**: la\nZCIT sigue al norte, la Interandina en seco, y agosto concentro el **48 % de los\nincendios del ano y el 66 % de la superficie quemada** (2.831 eventos y 18.028 ha en lo\nque va de 2026). El pronostico de INAMHI para septiembre es «normal a **bajo** la\nnormal» en Interandina y Amazonia.\n\nUn tablero que pone un +4,6 grande junto a mapas de lluvia invita a la inferencia\ncontraria. Hoy la lectura honesta es esa: **oceano si, atmosfera aun no**, y lo que\ndecidira el trimestre es si la respuesta atmosferica se consolida.\n\n### Lo que dicen que viene\n\nLa OMM da **~100 % de probabilidad** de que el evento persista hasta febrero de 2027, con\nposible intensidad muy fuerte hacia finales de 2026 y maximo en noviembre. Para\ncaudales, entre el 4 y el 19 de septiembre el ERFEN espera **incremento progresivo en el\nLitoral**, sobre todo en rios del norte; Interandina estable con ligeras disminuciones; y\nAmazonia estable con ascensos localizados a mediados de mes. La pestaña **Rios** se puede\nleer contra eso.\n\n### De donde sale cada numero de esta pestana\n\n| | |\n|---|---|\n| Nino 1+2 semanal | CPC `wksst9120.for`. Ojo: `wksst8110.for` responde pero esta **congelado en enero de 2021** |\n| ONI, SOI, OLR, PDO | NOAA PSL. El PDO llega solo a agosto de 2025 |\n| Agua calida | PMEL/TAO, 120E-80W |\n| Nivel del mar historico | UHSLC, diario. La Libertad **desde 1949** |\n| Nivel del mar ahora | INOCAR, red **nacional**, cada minuto. Su red **regional** responde 200 y esta parada desde abril de 2021 |\n"
+                "content": "### Oceano extremo, atmosfera todavia no\n\nEsto es lo que los dos informes oficiales repiten y el tablero no decia. El\n**ERFEN 08-2026** (4 de septiembre) y el **BAC 430** de la CPPS coinciden:\n\n> «Estos eventos **no reflejan todavia** una respuesta pluviometrica persistente y\n> generalizada asociada a El Nino... **no pueden atribuirse de manera directa y\n> generalizada** al evento.»\n\nEl mar esta en su sitio: Nino 1+2 por encima de +4, nivel del mar entre los mas altos\nde 77 anos, agua calida acumulada. **La atmosfera sobre Ecuador no ha respondido**: la\nZCIT sigue al norte, la Interandina en seco, y agosto concentro el **48 % de los\nincendios del ano y el 66 % de la superficie quemada** (2.831 eventos y 18.028 ha en lo\nque va de 2026). El pronostico de INAMHI para septiembre es «normal a **bajo** la\nnormal» en Interandina y Amazonia.\n\nUn tablero que pone un +4,6 grande junto a mapas de lluvia invita a la inferencia\ncontraria. Hoy la lectura honesta es esa: **oceano si, atmosfera aun no**, y lo que\ndecidira el trimestre es si la respuesta atmosferica se consolida.\n\n### Lo que dicen que viene\n\nLa OMM da **~100 % de probabilidad** de que el evento persista hasta febrero de 2027, con\nposible intensidad muy fuerte hacia finales de 2026 y maximo en noviembre. Para\ncaudales, entre el 4 y el 19 de septiembre el ERFEN espera **incremento progresivo en el\nLitoral**, sobre todo en rios del norte; Interandina estable con ligeras disminuciones; y\nAmazonia estable con ascensos localizados a mediados de mes. La pestaña **Respuesta** se puede\nleer contra eso.\n\n### De donde sale cada numero de esta pestana\n\n| | |\n|---|---|\n| Nino 1+2 semanal | CPC `wksst9120.for`. Ojo: `wksst8110.for` responde pero esta **congelado en enero de 2021** |\n| ONI, SOI, OLR, PDO | NOAA PSL. El PDO llega solo a agosto de 2025 |\n| Agua calida | PMEL/TAO, 120E-80W |\n| Nivel del mar historico | UHSLC, diario. La Libertad **desde 1949** |\n| Nivel del mar ahora | INOCAR, red **nacional**, cada minuto. Su red **regional** responde 200 y esta parada desde abril de 2021 |\n"
               },
               "fieldConfig": {
                 "defaults": {},
@@ -3877,6 +3543,84 @@
                           "name": "panel-23"
                         }
                       }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 35,
+                        "width": 16,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-20"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 16,
+                        "y": 35,
+                        "width": 8,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-21"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 45,
+                        "width": 24,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-66"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 55,
+                        "width": 24,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-22"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 65,
+                        "width": 24,
+                        "height": 11,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-10"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 76,
+                        "width": 24,
+                        "height": 11,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-24"
+                        }
+                      }
                     }
                   ]
                 }
@@ -3992,100 +3736,7 @@
                     "hide": "hideVariable",
                     "skipUrlSync": false
                   }
-                }
-              ]
-            }
-          },
-          {
-            "kind": "TabsLayoutTab",
-            "spec": {
-              "title": "Detalle",
-              "layout": {
-                "kind": "GridLayout",
-                "spec": {
-                  "items": [
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 0,
-                        "y": 0,
-                        "width": 16,
-                        "height": 10,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-20"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 16,
-                        "y": 0,
-                        "width": 8,
-                        "height": 10,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-21"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 0,
-                        "y": 10,
-                        "width": 24,
-                        "height": 10,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-66"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 0,
-                        "y": 20,
-                        "width": 24,
-                        "height": 10,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-22"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 0,
-                        "y": 30,
-                        "width": 24,
-                        "height": 11,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-10"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 0,
-                        "y": 41,
-                        "width": 24,
-                        "height": 11,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-24"
-                        }
-                      }
-                    }
-                  ]
-                }
-              },
-              "variables": [
+                },
                 {
                   "kind": "QueryVariable",
                   "spec": {
@@ -4275,102 +3926,6 @@
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-42"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          {
-            "kind": "TabsLayoutTab",
-            "spec": {
-              "title": "Rios",
-              "variables": [
-                {
-                  "kind": "QueryVariable",
-                  "spec": {
-                    "name": "rios",
-                    "label": "rios",
-                    "hide": "dontHide",
-                    "description": "Todas las de la provincia elegida. Quita las que no te interesen.",
-                    "refresh": "onDashboardLoad",
-                    "skipUrlSync": false,
-                    "current": {
-                      "text": [
-                        "All"
-                      ],
-                      "value": [
-                        "$__all"
-                      ]
-                    },
-                    "options": [],
-                    "multi": true,
-                    "includeAll": true,
-                    "allowCustomValue": false,
-                    "regex": "",
-                    "sort": "disabled",
-                    "definition": "INSTALL httpfs; LOAD httpfs;\n-- Sin encadenar, por lo mismo que la de estaciones.\nWITH t AS (SELECT estacion, max(mediana) AS v\n  FROM read_parquet('${svc}/geoglows/caudal.parquet') GROUP BY 1)\nSELECT e.provincia || ' · ' || e.nombre AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN t ON t.estacion = e.id_estacion\nORDER BY e.provincia, t.v DESC",
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "motherduck-duckdb-datasource",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "duckdb"
-                      },
-                      "spec": {
-                        "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- Encadenada a $provincia (ambito tablero), igual que la de estaciones.\nWITH t AS (SELECT estacion, max(mediana) AS v\n  FROM read_parquet('${svc}/geoglows/caudal.parquet') GROUP BY 1)\nSELECT e.nombre AS __text, e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN t ON t.estacion = e.id_estacion\nWHERE e.provincia = '${provincia}'\nUNION ALL\n-- Seis provincias tienen lluvia pero ningun tramo del modelo. Sin esta fila la\n-- lista sale vacia, y una lista vacia con repeat da un panel titulado «All»:\n-- feo y parece averia. Con ella sale un panel que dice lo que pasa. El id 0 no\n-- existe, asi que el panel queda en «No data», que es la verdad.\nSELECT '— ${provincia} no tiene tramos con pronostico —' AS __text, '0' AS __value\nWHERE NOT EXISTS (\n  SELECT 1 FROM read_parquet('${svc}/inamhi/estaciones.parquet') e2\n  WHERE e2.provincia = '${provincia}'\n    AND e2.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet('${svc}/geoglows/caudal.parquet')))\nORDER BY 1"
-                      }
-                    }
-                  }
-                }
-              ],
-              "layout": {
-                "kind": "GridLayout",
-                "spec": {
-                  "items": [
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 0,
-                        "y": 0,
-                        "width": 10,
-                        "height": 22,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-30"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 10,
-                        "y": 0,
-                        "width": 14,
-                        "height": 11,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-31"
-                        },
-                        "repeat": {
-                          "mode": "variable",
-                          "value": "rios",
-                          "direction": "v"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 0,
-                        "y": 22,
-                        "width": 24,
-                        "height": 11,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-32"
                         }
                       }
                     }
