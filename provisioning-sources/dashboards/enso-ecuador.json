@@ -262,7 +262,7 @@
                       "spec": {
                         "format": 1,
                         "rawQuery": true,
-                        "rawSql": "-- OJO: esta consulta es GEMELA de la refId B del panel 4 (el mapa de\n-- arriba). Se repite a proposito: reutilizarla con el datasource\n-- `-- Dashboard --` se probo y NO funciona con este panel — el frame\n-- compartido llega con UNA fila en vez de 220, con y sin choque de\n-- refId. Si cambia una, cambiar la otra.\nINSTALL httpfs; LOAD httpfs;\n-- La red real de INAMHI: 1.892 estaciones, 220 transmitiendo. Los datos publicos\n-- se cortan a DIEZ DIAS (mas pide sesion): esto es la foto de ahora, no historia.\nWITH lluvia AS (\n  SELECT estacion, sum(valor) AS mm\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\nSELECT e.latitude, e.longitude, e.nombre, e.provincia, e.codigo, e.altitud,\n       round(coalesce(l.mm, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN lluvia l ON l.estacion = e.id_estacion\nWHERE e.transmitiendo\nORDER BY lluvia_24h DESC"
+                        "rawSql": "-- OJO: esta consulta es GEMELA de la refId B del panel 4 (el mapa de\n-- arriba). Se repite a proposito: reutilizarla con el datasource\n-- `-- Dashboard --` se probo y NO funciona con este panel — el frame\n-- compartido llega con UNA fila en vez de 220, con y sin choque de\n-- refId. Si cambia una, cambiar la otra.\nINSTALL httpfs; LOAD httpfs;\n-- La red real de INAMHI: 1.892 estaciones, 220 transmitiendo. Los datos publicos\n-- se cortan a DIEZ DIAS (mas pide sesion): esto es la foto de ahora, no historia.\nWITH lluvia AS (\n  SELECT estacion, sum(valor) AS mm\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\n-- `id_estacion` va en el SELECT porque el mapeo de clic de este panel publica\n-- ESE campo en `estacionSel`. Sin el, kepler no tiene que publicar y pinchar\n-- una estacion no llenaba nada: el mapeo estaba declarado y mudo.\nSELECT e.id_estacion, e.latitude, e.longitude, e.nombre, e.provincia, e.codigo, e.altitud,\n       round(coalesce(l.mm, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN lluvia l ON l.estacion = e.id_estacion\nWHERE e.transmitiendo\nORDER BY lluvia_24h DESC"
                       }
                     },
                     "refId": "B",
@@ -859,7 +859,7 @@
                       "spec": {
                         "format": 1,
                         "rawQuery": true,
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- La red real de INAMHI: 1.892 estaciones, 220 transmitiendo. Los datos publicos\n-- se cortan a DIEZ DIAS (mas pide sesion): esto es la foto de ahora, no historia.\nWITH lluvia AS (\n  SELECT estacion, sum(valor) AS mm\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\nSELECT e.latitude, e.longitude, e.nombre, e.provincia, e.codigo, e.altitud,\n       round(coalesce(l.mm, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN lluvia l ON l.estacion = e.id_estacion\nWHERE e.transmitiendo\nORDER BY lluvia_24h DESC"
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- La red real de INAMHI: 1.892 estaciones, 220 transmitiendo. Los datos publicos\n-- se cortan a DIEZ DIAS (mas pide sesion): esto es la foto de ahora, no historia.\nWITH lluvia AS (\n  SELECT estacion, sum(valor) AS mm\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\n-- `id_estacion` va en el SELECT porque el mapeo de clic de este panel publica\n-- ESE campo en `estacionSel`. Sin el, kepler no tiene que publicar y pinchar\n-- una estacion no llenaba nada: el mapeo estaba declarado y mudo.\nSELECT e.id_estacion, e.latitude, e.longitude, e.nombre, e.provincia, e.codigo, e.altitud,\n       round(coalesce(l.mm, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN lluvia l ON l.estacion = e.id_estacion\nWHERE e.transmitiendo\nORDER BY lluvia_24h DESC"
                       }
                     },
                     "refId": "B",
@@ -1691,271 +1691,6 @@
           }
         }
       },
-      "panel-40": {
-        "kind": "Panel",
-        "spec": {
-          "id": 40,
-          "title": "Estaciones de ${provincia:raw}",
-          "description": "Todas las de la provincia elegida, del tamano y color de la lluvia que han medido en 24 h. Elige alguna en `estaciones` para verla hora a hora a la derecha. Pinchando una se llena ademas el detalle del final de la pestana Ahora.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "refId": "A",
-                    "hidden": false,
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "motherduck-duckdb-datasource",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "duckdb"
-                      },
-                      "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Toda la provincia, no solo lo elegido: asi la pestaña nunca llega vacia\n-- y se ve donde estan las que se pueden elegir.\nWITH l AS (\n  SELECT estacion, sum(valor) AS mm24\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\nSELECT e.id_estacion, e.latitude, e.longitude, e.nombre, e.provincia,\n       round(coalesce(l.mm24, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN l ON l.estacion = e.id_estacion\nWHERE e.id_estacion IN (\n        SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n  AND e.provincia = $provincia\nORDER BY lluvia_24h DESC",
-                        "rawQuery": true,
-                        "format": 1
-                      }
-                    }
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "ubica-keplergl-panel",
-            "version": "",
-            "spec": {
-              "options": {
-                "showSidePanel": false,
-                "followGrafanaTheme": true,
-                "timeSync": "off",
-                "basemap": "dark-matter",
-                "variableMappings": [
-                  {
-                    "field": "id_estacion",
-                    "variable": "estacionSel",
-                    "source": "click"
-                  }
-                ],
-                "mapConfig": {
-                  "version": "v1",
-                  "config": {
-                    "mapState": {
-                      "latitude": -1.4,
-                      "longitude": -78.6,
-                      "zoom": 5.9,
-                      "bearing": 0,
-                      "pitch": 0,
-                      "dragRotate": false
-                    },
-                    "mapStyle": {
-                      "styleType": "dark-matter"
-                    },
-                    "visState": {
-                      "layers": [
-                        {
-                          "id": "estaciones-lluvia",
-                          "type": "point",
-                          "config": {
-                            "dataId": "grafana-A",
-                            "label": "Lluvia 24 h (mm)",
-                            "columnMode": "points",
-                            "columns": {
-                              "lat": "latitude",
-                              "lng": "longitude"
-                            },
-                            "isVisible": true,
-                            "color": [
-                              150,
-                              160,
-                              170
-                            ],
-                            "visConfig": {
-                              "filled": true,
-                              "opacity": 0.95,
-                              "outline": true,
-                              "thickness": 1.5,
-                              "strokeColor": [
-                                255,
-                                255,
-                                255
-                              ],
-                              "radius": 12,
-                              "radiusRange": [
-                                10,
-                                48
-                              ],
-                              "colorRange": {
-                                "name": "Lluvia",
-                                "type": "sequential",
-                                "category": "Uber",
-                                "colors": [
-                                  "#9AA5AB",
-                                  "#7FC5CC",
-                                  "#37A3AD",
-                                  "#0B7C89",
-                                  "#04525C",
-                                  "#022E36"
-                                ]
-                              }
-                            }
-                          },
-                          "visualChannels": {
-                            "colorField": {
-                              "name": "lluvia_24h",
-                              "type": "real"
-                            },
-                            "colorScale": "quantize",
-                            "sizeField": {
-                              "name": "lluvia_24h",
-                              "type": "real"
-                            },
-                            "sizeScale": "sqrt"
-                          }
-                        }
-                      ],
-                      "interactionConfig": {
-                        "tooltip": {
-                          "enabled": true,
-                          "fieldsToShow": {
-                            "grafana-A": [
-                              {
-                                "name": "nombre",
-                                "format": null
-                              },
-                              {
-                                "name": "provincia",
-                                "format": null
-                              },
-                              {
-                                "name": "lluvia_24h",
-                                "format": null
-                              }
-                            ]
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              "fieldConfig": {
-                "defaults": {},
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-41": {
-        "kind": "Panel",
-        "spec": {
-          "id": 41,
-          "title": "${estaciones:text}",
-          "description": "Lluvia hora a hora. Son diez dias y no mas: el tope que INAMHI impone sin cuenta.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "refId": "A",
-                    "hidden": false,
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "motherduck-duckdb-datasource",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "duckdb"
-                      },
-                      "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Un panel por estacion: la repeticion pasa UN valor cada vez.\nSELECT strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') AS time,\n       valor AS \"mm en esa hora\"\nFROM read_parquet($svc || '/inamhi/observaciones.parquet')\nWHERE estacion = try_cast($estaciones AS BIGINT)\nORDER BY time",
-                        "rawQuery": true,
-                        "format": 1
-                      }
-                    }
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {
-                "timeFrom": "10d"
-              }
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "timeseries",
-            "version": "",
-            "spec": {
-              "options": {
-                "legend": {
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": false
-                },
-                "tooltip": {
-                  "mode": "single",
-                  "sort": "none"
-                }
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "unit": "lengthmm",
-                  "decimals": 1,
-                  "custom": {
-                    "drawStyle": "bars",
-                    "fillOpacity": 80,
-                    "lineWidth": 1,
-                    "axisLabel": "mm en esa hora"
-                  }
-                },
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-42": {
-        "kind": "Panel",
-        "spec": {
-          "id": 42,
-          "title": "Que estas viendo, y de que desconfiar",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "text",
-            "version": "",
-            "spec": {
-              "options": {
-                "mode": "markdown",
-                "content": "### Un panel por estacion de la provincia, hora a hora\n\nElige la **provincia** en el selector de arriba: el mapa y la lista se acotan a ella, y sale\n**un panel por estacion**. Son 166 estaciones repartidas en 22 provincias, asi que sin acotar\nno hay quien lo mire; Pichincha sola tiene 57 y tarda unos 7 s en pintarse entera.\n\nEl selector de provincia vive **arriba del todo, fuera de la pestaña**, y no por gusto: Grafana\nsolo sustituye variables de **ambito tablero** dentro de la consulta de otra variable. Puesto\ndentro de la pestaña, el SQL de la lista sale sin sustituir, casa con cero filas y el panel se\ntitula «None».\n\n### Hay estaciones que miden mal, y conviene saberlo\n\nEl dato viene tal como INAMHI lo publica, **sin filtrar**. Y midiendo la red entera aparecen\ndos que no encajan:\n\n- **QUININDE (Esmeraldas)** acumula **2.277 mm en diez dias** —2,3 metros, casi su lluvia de un\n  ano entero— sosteniendo horas de 50 a 75 mm/h durante dias seguidos.\n- **Captacion Central - CCS (Napo)** llega a **121,6 mm en una sola hora**.\n\nPara poner eso en escala: el **percentil 99 de las 34.616 lecturas horarias de toda la red es\nde 4,4 mm/h**, y esas dos estaciones acaparan **las once lecturas** que superan los 60 mm/h.\nNo parece lluvia: parece un sensor averiado o mal escalado.\n\nComo la pestaña enseña **todas** las de la provincia, si eliges **Esmeraldas** o **Napo** esas\ndos apareceran. Lo que veras son sus cifras, no una correccion nuestra.\n"
-              },
-              "fieldConfig": {
-                "defaults": {},
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
       "panel-50": {
         "kind": "Panel",
         "spec": {
@@ -1980,7 +1715,7 @@
                         "name": "duckdb"
                       },
                       "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Un panel por rio. Se le pega la lluvia de la estacion de INAMHI MAS CERCANA\n-- al limnigrafo (distancia plana con correccion de coseno; a estas distancias\n-- sobra). Medido: mediana 13 km, 22 de los 27 rios por debajo de 25 km.\nWITH rio AS (SELECT try_cast($riosResp AS BIGINT) AS id),\nsitio AS (\n  SELECT e.latitude AS lat, e.longitude AS lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.id_estacion = (SELECT id FROM rio)),\nmala AS (\n-- Fuera de la eleccion los sensores implausibles: el p99 de las 34.616 lecturas\n-- horarias de la red es 4,4 mm/h, y solo dos estaciones pasan de 60 (Captacion\n-- Central 121,6 y QUININDE 74,6). No se ocultan —siguen en la pestaña Lluvia—,\n-- pero elegir un sensor averiado como referencia de lluvia seria elegir mal.\n-- Es una regla medida, no una lista negra: si otro se estropea, cae solo.\n  SELECT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  GROUP BY 1 HAVING max(valor) > 60),\ncerca AS (\n  SELECT e.id_estacion\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e, sitio s\n  WHERE e.id_estacion IN (\n    SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n    AND e.id_estacion NOT IN (SELECT estacion FROM mala)\n  ORDER BY 111.19 * sqrt(pow(e.latitude - s.lat, 2)\n         + pow((e.longitude - s.lon) * cos(radians(s.lat)), 2))\n  LIMIT 1),\nh AS (\n  SELECT strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') AS t, valor\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE estacion = (SELECT id_estacion FROM cerca)),\n-- Acumulado MOVIL de 24 h, no barras por dia: las barras salen del ancho del\n-- paso mas fino de la serie (el caudal, cada 3 h) y quedan en un pelo. Ademas\n-- un acumulado de 24 h es lo que de verdad se compara con un caudal.\nlluvia AS (\n  SELECT round(date_diff('hour', now(), t) / 24.0, 3) AS dia,\n         round(sum(valor) OVER (ORDER BY t\n                RANGE BETWEEN INTERVAL 23 HOUR PRECEDING AND CURRENT ROW), 1) AS \"lluvia 24h\",\n         NULL::DOUBLE AS \"caudal\", NULL::DOUBLE AS \"bajo\", NULL::DOUBLE AS \"alto\"\n  FROM h),\ncaudal AS (\n  SELECT round(date_diff('hour', now(), strptime(fecha, '%Y-%m-%dT%H:%M:%SZ')) / 24.0, 3) AS dia,\n         NULL::DOUBLE, round(mediana, 1), round(minimo, 1), round(maximo, 1)\n  FROM read_parquet($svc || '/geoglows/caudal.parquet')\n  WHERE estacion = (SELECT id FROM rio))\nSELECT * FROM lluvia UNION ALL SELECT * FROM caudal ORDER BY dia",
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Un panel por rio. Se le pega la lluvia de la estacion de INAMHI MAS CERCANA\n-- al limnigrafo (distancia plana con correccion de coseno; a estas distancias\n-- sobra). Medido: mediana 13 km, 22 de los 27 rios por debajo de 25 km.\nWITH rio AS (SELECT try_cast($riosResp AS BIGINT) AS id),\nsitio AS (\n  SELECT e.latitude AS lat, e.longitude AS lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.id_estacion = (SELECT id FROM rio)),\nmala AS (\n-- Fuera de la eleccion los sensores implausibles: el p99 de las 34.616 lecturas\n-- horarias de la red es 4,4 mm/h, y solo dos estaciones pasan de 60 (Captacion\n-- Central 121,6 y QUININDE 74,6). No se ocultan —siguen en el mapa de Ahora—,\n-- pero elegir un sensor averiado como referencia de lluvia seria elegir mal.\n-- Es una regla medida, no una lista negra: si otro se estropea, cae solo.\n  SELECT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  GROUP BY 1 HAVING max(valor) > 60),\ncerca AS (\n  SELECT e.id_estacion\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e, sitio s\n  WHERE e.id_estacion IN (\n    SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n    AND e.id_estacion NOT IN (SELECT estacion FROM mala)\n  ORDER BY 111.19 * sqrt(pow(e.latitude - s.lat, 2)\n         + pow((e.longitude - s.lon) * cos(radians(s.lat)), 2))\n  LIMIT 1),\nh AS (\n  SELECT strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') AS t, valor\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE estacion = (SELECT id_estacion FROM cerca)),\n-- Acumulado MOVIL de 24 h, no barras por dia: las barras salen del ancho del\n-- paso mas fino de la serie (el caudal, cada 3 h) y quedan en un pelo. Ademas\n-- un acumulado de 24 h es lo que de verdad se compara con un caudal.\nlluvia AS (\n  SELECT round(date_diff('hour', now(), t) / 24.0, 3) AS dia,\n         round(sum(valor) OVER (ORDER BY t\n                RANGE BETWEEN INTERVAL 23 HOUR PRECEDING AND CURRENT ROW), 1) AS \"lluvia 24h\",\n         NULL::DOUBLE AS \"caudal\", NULL::DOUBLE AS \"bajo\", NULL::DOUBLE AS \"alto\"\n  FROM h),\ncaudal AS (\n  SELECT round(date_diff('hour', now(), strptime(fecha, '%Y-%m-%dT%H:%M:%SZ')) / 24.0, 3) AS dia,\n         NULL::DOUBLE, round(mediana, 1), round(minimo, 1), round(maximo, 1)\n  FROM read_parquet($svc || '/geoglows/caudal.parquet')\n  WHERE estacion = (SELECT id FROM rio))\nSELECT * FROM lluvia UNION ALL SELECT * FROM caudal ORDER BY dia",
                         "rawQuery": true,
                         "format": 1
                       }
@@ -2171,7 +1906,7 @@
                         "name": "duckdb"
                       },
                       "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Con que estacion se empareja cada rio, y a que distancia. Va en la pestaña\n-- porque la distancia es el limite de todo esto: a 65 km, la lluvia de al lado\n-- no es la que alimenta ese rio.\nWITH r AS (\n  SELECT e.id_estacion, e.nombre, e.latitude lat, e.longitude lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.provincia = $provincia\n    AND e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/geoglows/caudal.parquet'))),\nmala AS (\n-- Fuera de la eleccion los sensores implausibles: el p99 de las 34.616 lecturas\n-- horarias de la red es 4,4 mm/h, y solo dos estaciones pasan de 60 (Captacion\n-- Central 121,6 y QUININDE 74,6). No se ocultan —siguen en la pestaña Lluvia—,\n-- pero elegir un sensor averiado como referencia de lluvia seria elegir mal.\n-- Es una regla medida, no una lista negra: si otro se estropea, cae solo.\n  SELECT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  GROUP BY 1 HAVING max(valor) > 60),\np AS (\n  SELECT e.id_estacion, e.nombre, e.latitude lat, e.longitude lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n    AND e.id_estacion NOT IN (SELECT estacion FROM mala))\n-- La columna «mm 10d» no es adorno: 51 de las 166 estaciones marcan\n-- exactamente 0,0 mm en la ventana, algunas en plena vertiente amazonica donde\n-- llueve casi a diario. Sin este dato, un panel plano se lee como «no llovio»\n-- cuando lo que dice es «este pluviometro no midio». No se filtran: se enseña.\nSELECT r.nombre AS \"rio\", p.nombre AS \"lluvia de\",\n       round(111.19 * sqrt(pow(r.lat-p.lat,2) + pow((r.lon-p.lon)*cos(radians(r.lat)),2)), 1) AS \"km\",\n       round(coalesce((SELECT sum(o.valor) FROM read_parquet($svc || '/inamhi/observaciones.parquet') o\n                       WHERE o.estacion = p.id_estacion), 0), 1) AS \"mm 10d\"\nFROM r JOIN p ON true\nQUALIFY row_number() OVER (PARTITION BY r.id_estacion ORDER BY \"km\") = 1\nORDER BY \"km\" ",
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Con que estacion se empareja cada rio, y a que distancia. Va en la pestaña\n-- porque la distancia es el limite de todo esto: a 65 km, la lluvia de al lado\n-- no es la que alimenta ese rio.\nWITH r AS (\n  SELECT e.id_estacion, e.nombre, e.latitude lat, e.longitude lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.provincia = $provincia\n    AND e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/geoglows/caudal.parquet'))),\nmala AS (\n-- Fuera de la eleccion los sensores implausibles: el p99 de las 34.616 lecturas\n-- horarias de la red es 4,4 mm/h, y solo dos estaciones pasan de 60 (Captacion\n-- Central 121,6 y QUININDE 74,6). No se ocultan —siguen en la mapa de Ahora—,\n-- pero elegir un sensor averiado como referencia de lluvia seria elegir mal.\n-- Es una regla medida, no una lista negra: si otro se estropea, cae solo.\n  SELECT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  GROUP BY 1 HAVING max(valor) > 60),\np AS (\n  SELECT e.id_estacion, e.nombre, e.latitude lat, e.longitude lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n    AND e.id_estacion NOT IN (SELECT estacion FROM mala))\n-- La columna «mm 10d» no es adorno: 51 de las 166 estaciones marcan\n-- exactamente 0,0 mm en la ventana, algunas en plena vertiente amazonica donde\n-- llueve casi a diario. Sin este dato, un panel plano se lee como «no llovio»\n-- cuando lo que dice es «este pluviometro no midio». No se filtran: se enseña.\nSELECT r.nombre AS \"rio\", p.nombre AS \"lluvia de\",\n       round(111.19 * sqrt(pow(r.lat-p.lat,2) + pow((r.lon-p.lon)*cos(radians(r.lat)),2)), 1) AS \"km\",\n       round(coalesce((SELECT sum(o.valor) FROM read_parquet($svc || '/inamhi/observaciones.parquet') o\n                       WHERE o.estacion = p.id_estacion), 0), 1) AS \"mm 10d\"\nFROM r JOIN p ON true\nQUALIFY row_number() OVER (PARTITION BY r.id_estacion ORDER BY \"km\") = 1\nORDER BY \"km\" ",
                         "rawQuery": true,
                         "format": 1
                       }
@@ -2295,7 +2030,7 @@
             "spec": {
               "options": {
                 "mode": "markdown",
-                "content": "### Prueba: ¿se ve la lluvia empujando al rio?\n\nCada panel junta las dos mitades en **un solo eje**: a la izquierda del cero lo que **ya llovio**\n(barras, mm/dia) y a la derecha lo que **GEOGLOWS pronostica** de caudal (linea, m³/s, eje\nderecho). El cero es ahora.\n\n### Lo que esto NO es\n\nNo es una correlacion, y conviene decirlo antes de que el ojo la invente. Las dos series\n**apenas se tocan**: la lluvia de INAMHI llega hasta hoy y el pronostico de caudal empieza hoy,\nasi que **se solapan un solo dia**. Lo que ves es una secuencia —llovio esto, el modelo dice que\nel rio hara aquello—, no una relacion medida.\n\nDe la eleccion quedan fuera **Captacion Central - CCS** y **QUININDE**, los dos sensores cuyas\nhoras de 121,6 y 74,6 mm no parecen lluvia (el p99 de la red es 4,4 mm/h). No se ocultan —siguen\nen la pestaña **Lluvia**— pero no sirven de referencia. La regla es el umbral, no los nombres.\n\nY el emparejamiento es por **cercania en linea recta**, no por cuenca: la tabla de al lado dice\na cuantos kilometros esta cada estacion. Por debajo de 25 km (22 de los 27 rios) la cosa se\nsostiene; en los tres que pasan de 50, la lluvia de al lado puede ser de otra vertiente.\n\n### Y un hallazgo que conviene mirar de frente\n\n**51 de las 166 estaciones marcan exactamente 0,0 mm en los diez dias.** Alguna esta en la\nvertiente amazonica, donde llueve casi a diario: eso no es sequia, es un pluviometro que no\nmide. Por eso la tabla trae la columna **mm 10d**, en rojo cuando es cero. Si el panel sale\nplano, mirala antes de concluir nada: puede que no lloviera, o puede que nadie lo apuntara.\n\n### Que haria falta para medir la relacion de verdad\n\nHistoria en las dos series. El caudal la tiene: el **retrospectivo diario de GEOGLOWS** existe y\nresponde (612 dias en 13 s por rio, sin poder pedir varios de golpe; los 27 saldrian en ~90 s\ncon el abanico que el servicio ya usa). La lluvia es el eslabon flojo: INAMHI corta en **10 dias**\npara quien consulta sin cuenta, y GHCN, que si tiene historia, solo deja **7 de 27** rios con una\nestacion a menos de 30 km y ademas se quedo en agosto de 2025.\n"
+                "content": "### Prueba: ¿se ve la lluvia empujando al rio?\n\nCada panel junta las dos mitades en **un solo eje**: a la izquierda del cero lo que **ya llovio**\n(barras, mm/dia) y a la derecha lo que **GEOGLOWS pronostica** de caudal (linea, m³/s, eje\nderecho). El cero es ahora.\n\n### Lo que esto NO es\n\nNo es una correlacion, y conviene decirlo antes de que el ojo la invente. Las dos series\n**apenas se tocan**: la lluvia de INAMHI llega hasta hoy y el pronostico de caudal empieza hoy,\nasi que **se solapan un solo dia**. Lo que ves es una secuencia —llovio esto, el modelo dice que\nel rio hara aquello—, no una relacion medida.\n\nDe la eleccion quedan fuera **Captacion Central - CCS** y **QUININDE**, los dos sensores cuyas\nhoras de 121,6 y 74,6 mm no parecen lluvia (el p99 de la red es 4,4 mm/h). No se ocultan —siguen en el mapa de\n**Ahora**, y pinchandolas se ven sus cifras abajo— pero no sirven de referencia. La regla es el umbral, no los nombres.\n\nY el emparejamiento es por **cercania en linea recta**, no por cuenca: la tabla de al lado dice\na cuantos kilometros esta cada estacion. Por debajo de 25 km (22 de los 27 rios) la cosa se\nsostiene; en los tres que pasan de 50, la lluvia de al lado puede ser de otra vertiente.\n\n### Y un hallazgo que conviene mirar de frente\n\n**51 de las 166 estaciones marcan exactamente 0,0 mm en los diez dias.** Alguna esta en la\nvertiente amazonica, donde llueve casi a diario: eso no es sequia, es un pluviometro que no\nmide. Por eso la tabla trae la columna **mm 10d**, en rojo cuando es cero. Si el panel sale\nplano, mirala antes de concluir nada: puede que no lloviera, o puede que nadie lo apuntara.\n\n### Que haria falta para medir la relacion de verdad\n\nHistoria en las dos series. El caudal la tiene: el **retrospectivo diario de GEOGLOWS** existe y\nresponde (612 dias en 13 s por rio, sin poder pedir varios de golpe; los 27 saldrian en ~90 s\ncon el abanico que el servicio ya usa). La lluvia es el eslabon flojo: INAMHI corta en **10 dias**\npara quien consulta sin cuenta, y GHCN, que si tiene historia, solo deja **7 de 27** rios con una\nestacion a menos de 30 km y ademas se quedo en agosto de 2025.\n"
               },
               "fieldConfig": {
                 "defaults": {},
@@ -3836,102 +3571,6 @@
                   }
                 }
               ]
-            }
-          },
-          {
-            "kind": "TabsLayoutTab",
-            "spec": {
-              "title": "Lluvia",
-              "variables": [
-                {
-                  "kind": "QueryVariable",
-                  "spec": {
-                    "name": "estaciones",
-                    "label": "estaciones",
-                    "hide": "dontHide",
-                    "description": "Todas las de la provincia elegida. Quita las que no te interesen.",
-                    "refresh": "onDashboardLoad",
-                    "skipUrlSync": false,
-                    "current": {
-                      "text": [
-                        "All"
-                      ],
-                      "value": [
-                        "$__all"
-                      ]
-                    },
-                    "options": [],
-                    "multi": true,
-                    "includeAll": true,
-                    "allowCustomValue": false,
-                    "regex": "",
-                    "sort": "disabled",
-                    "definition": "INSTALL httpfs; LOAD httpfs;\n-- SIN encadenar a la provincia, a proposito: un hijo encadenado no adopta el\n-- valor con el que se provisiona —Grafana lo valida contra la lista nueva y lo\n-- vacia— y el tablero abria con un panel roto. Ordenada por provincia para que\n-- el buscador del desplegable las agrupe.\nWITH t AS (SELECT estacion, sum(valor) AS v\n  FROM read_parquet('${svc}/inamhi/observaciones.parquet') GROUP BY 1)\nSELECT e.provincia || ' · ' || e.nombre AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN t ON t.estacion = e.id_estacion\nORDER BY e.provincia, t.v DESC",
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "motherduck-duckdb-datasource",
-                      "version": "v0",
-                      "datasource": {
-                        "name": "duckdb"
-                      },
-                      "spec": {
-                        "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- Encadenada a $provincia, que es de ambito TABLERO a proposito.\n-- Las comillas van a mano: en una consulta de variable el datasource NO\n-- entrecomilla (en una de panel si, y ahi ponerlas seria doble comilla).\nWITH t AS (SELECT estacion, sum(valor) AS v\n  FROM read_parquet('${svc}/inamhi/observaciones.parquet') GROUP BY 1)\nSELECT e.nombre AS __text, e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN t ON t.estacion = e.id_estacion\nWHERE e.provincia = '${provincia}'\nORDER BY t.v DESC"
-                      }
-                    }
-                  }
-                }
-              ],
-              "layout": {
-                "kind": "GridLayout",
-                "spec": {
-                  "items": [
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 0,
-                        "y": 0,
-                        "width": 10,
-                        "height": 22,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-40"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 10,
-                        "y": 0,
-                        "width": 14,
-                        "height": 11,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-41"
-                        },
-                        "repeat": {
-                          "mode": "variable",
-                          "value": "estaciones",
-                          "direction": "v"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 0,
-                        "y": 22,
-                        "width": 24,
-                        "height": 12,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-42"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
             }
           },
           {

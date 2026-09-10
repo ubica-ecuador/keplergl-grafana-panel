@@ -75,7 +75,7 @@ devuelve como v2beta1 con su layout intacto, y un `TabsLayout` se ve con pestañ
 en el navegador. Al quitar el fichero, Grafana lo retira solo.
 
 Así lo hace `provisioning-sources/dashboards/enso-ecuador.json`, que es v2beta1
-con siete pestañas y sigue versionado como cualquier otro. La receta para
+con seis pestañas y sigue versionado como cualquier otro. La receta para
 escribirlo sin adivinar la forma: provisionar el v1, pedirlo a
 `/apis/dashboard.grafana.app/v2beta1/namespaces/default/dashboards/<uid>` —Grafana
 lo traduce— y sustituir el `GridLayout` que devuelve por un `TabsLayout`.
