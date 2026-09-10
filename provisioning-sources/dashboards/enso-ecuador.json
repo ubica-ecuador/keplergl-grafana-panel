@@ -2705,6 +2705,321 @@
             }
           }
         }
+      },
+      "panel-53": {
+        "kind": "Panel",
+        "spec": {
+          "id": 53,
+          "title": "El par sobre el mapa · ${provincia:raw}",
+          "links": [],
+          "description": "Azul: el limnigrafo, del tamaño de su caudal. Naranja: la estacion de lluvia con la que se empareja, del tamaño de lo que midio en diez dias. La linea gris es la distancia entre los dos, que es de lo que hay que desconfiar. El encuadre arranca fijo en el pais: el panel sabe ajustarse a los datos (fitMapToBounds) pero eso solo esta cableado a la capa de flujo, asi que encuadrar por provincia pediria tocar el plugin. Con la rueda se acerca.",
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El MISMO emparejamiento que usan el panel y la tabla: la estacion de lluvia\n-- mas cercana, descartando los dos sensores implausibles por umbral medido\n-- (p99 de la red = 4,4 mm/h; solo dos pasan de 60). Si esto se desviara del\n-- criterio del panel, el mapa contaria otra cosa que la grafica.\nWITH mala AS (\n  SELECT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  GROUP BY 1 HAVING max(valor) > 60),\nr AS (\n  SELECT e.id_estacion, e.nombre, e.latitude AS lat, e.longitude AS lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.provincia = $provincia\n    AND e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/geoglows/caudal.parquet'))),\np AS (\n  SELECT e.id_estacion, e.nombre, e.latitude AS lat, e.longitude AS lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n    AND e.id_estacion NOT IN (SELECT estacion FROM mala)),\npar AS (\n  SELECT r.id_estacion AS rio_id, r.nombre AS rio, r.lat AS rlat, r.lon AS rlon,\n         p.id_estacion AS est_id, p.nombre AS est, p.lat AS plat, p.lon AS plon,\n         round(111.19 * sqrt(pow(r.lat-p.lat,2) + pow((r.lon-p.lon)*cos(radians(r.lat)),2)), 1) AS km\n  FROM r JOIN p ON true\n  QUALIFY row_number() OVER (PARTITION BY r.id_estacion ORDER BY km) = 1)\n-- A: el limnigrafo, con el caudal que el modelo da para ahora mismo.\nSELECT par.rio_id AS id_estacion, par.rlat AS latitude, par.rlon AS longitude,\n       par.rio AS nombre, par.est AS \"lluvia de\", par.km,\n       round((SELECT min_by(c.mediana, c.fecha) FROM read_parquet($svc || '/geoglows/caudal.parquet') c\n              WHERE c.estacion = par.rio_id), 1) AS caudal_ahora\nFROM par ORDER BY km",
+                        "rawQuery": true,
+                        "format": 1
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "B",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El MISMO emparejamiento que usan el panel y la tabla: la estacion de lluvia\n-- mas cercana, descartando los dos sensores implausibles por umbral medido\n-- (p99 de la red = 4,4 mm/h; solo dos pasan de 60). Si esto se desviara del\n-- criterio del panel, el mapa contaria otra cosa que la grafica.\nWITH mala AS (\n  SELECT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  GROUP BY 1 HAVING max(valor) > 60),\nr AS (\n  SELECT e.id_estacion, e.nombre, e.latitude AS lat, e.longitude AS lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.provincia = $provincia\n    AND e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/geoglows/caudal.parquet'))),\np AS (\n  SELECT e.id_estacion, e.nombre, e.latitude AS lat, e.longitude AS lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n    AND e.id_estacion NOT IN (SELECT estacion FROM mala)),\npar AS (\n  SELECT r.id_estacion AS rio_id, r.nombre AS rio, r.lat AS rlat, r.lon AS rlon,\n         p.id_estacion AS est_id, p.nombre AS est, p.lat AS plat, p.lon AS plon,\n         round(111.19 * sqrt(pow(r.lat-p.lat,2) + pow((r.lon-p.lon)*cos(radians(r.lat)),2)), 1) AS km\n  FROM r JOIN p ON true\n  QUALIFY row_number() OVER (PARTITION BY r.id_estacion ORDER BY km) = 1)\n-- B: la estacion de lluvia. DISTINCT porque dos rios pueden compartirla.\nSELECT DISTINCT par.est_id AS id_estacion, par.plat AS latitude, par.plon AS longitude,\n       par.est AS nombre,\n       round(coalesce((SELECT sum(o.valor) FROM read_parquet($svc || '/inamhi/observaciones.parquet') o\n                       WHERE o.estacion = par.est_id), 0), 1) AS mm_10d\nFROM par ORDER BY mm_10d DESC",
+                        "rawQuery": true,
+                        "format": 1
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "C",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El MISMO emparejamiento que usan el panel y la tabla: la estacion de lluvia\n-- mas cercana, descartando los dos sensores implausibles por umbral medido\n-- (p99 de la red = 4,4 mm/h; solo dos pasan de 60). Si esto se desviara del\n-- criterio del panel, el mapa contaria otra cosa que la grafica.\nWITH mala AS (\n  SELECT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  GROUP BY 1 HAVING max(valor) > 60),\nr AS (\n  SELECT e.id_estacion, e.nombre, e.latitude AS lat, e.longitude AS lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.provincia = $provincia\n    AND e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/geoglows/caudal.parquet'))),\np AS (\n  SELECT e.id_estacion, e.nombre, e.latitude AS lat, e.longitude AS lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n    AND e.id_estacion NOT IN (SELECT estacion FROM mala)),\npar AS (\n  SELECT r.id_estacion AS rio_id, r.nombre AS rio, r.lat AS rlat, r.lon AS rlon,\n         p.id_estacion AS est_id, p.nombre AS est, p.lat AS plat, p.lon AS plon,\n         round(111.19 * sqrt(pow(r.lat-p.lat,2) + pow((r.lon-p.lon)*cos(radians(r.lat)),2)), 1) AS km\n  FROM r JOIN p ON true\n  QUALIFY row_number() OVER (PARTITION BY r.id_estacion ORDER BY km) = 1)\n-- C: la linea que une el par. Es el punto flojo de la pestaña hecho geometria:\n-- cuanto mas larga, menos derecho tiene esa lluvia a explicar ese caudal.\nSELECT par.rio, par.est, par.km,\n       '{\"type\":\"LineString\",\"coordinates\":[[' || par.rlon || ',' || par.rlat || '],['\n                                              || par.plon || ',' || par.plat || ']]}' AS geojson\nFROM par ORDER BY km",
+                        "rawQuery": true,
+                        "format": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "ubica-keplergl-panel",
+            "version": "",
+            "spec": {
+              "options": {
+                "showSidePanel": false,
+                "followGrafanaTheme": true,
+                "timeSync": "off",
+                "basemap": "dark-matter",
+                "variableMappings": [],
+                "mapConfig": {
+                  "version": "v1",
+                  "config": {
+                    "mapState": {
+                      "latitude": -1.2,
+                      "longitude": -78.4,
+                      "zoom": 6.4,
+                      "bearing": 0,
+                      "pitch": 0,
+                      "dragRotate": false
+                    },
+                    "mapStyle": {
+                      "styleType": "dark-matter"
+                    },
+                    "visState": {
+                      "layers": [
+                        {
+                          "id": "rios",
+                          "type": "point",
+                          "config": {
+                            "dataId": "grafana-A",
+                            "label": "Rio · caudal ahora (m3/s)",
+                            "columnMode": "points",
+                            "columns": {
+                              "lat": "latitude",
+                              "lng": "longitude"
+                            },
+                            "isVisible": true,
+                            "color": [
+                              100,
+                              180,
+                              220
+                            ],
+                            "visConfig": {
+                              "filled": true,
+                              "opacity": 0.95,
+                              "outline": true,
+                              "thickness": 1,
+                              "strokeColor": [
+                                255,
+                                255,
+                                255
+                              ],
+                              "radius": 12,
+                              "radiusRange": [
+                                9,
+                                40
+                              ],
+                              "colorRange": {
+                                "name": "c",
+                                "type": "sequential",
+                                "category": "Uber",
+                                "colors": [
+                                  "#C6E4E6",
+                                  "#7FC5CC",
+                                  "#37A3AD",
+                                  "#0B7C89",
+                                  "#04525C",
+                                  "#022E36"
+                                ]
+                              }
+                            }
+                          },
+                          "visualChannels": {
+                            "colorField": {
+                              "name": "caudal_ahora",
+                              "type": "real"
+                            },
+                            "colorScale": "quantize",
+                            "sizeField": {
+                              "name": "caudal_ahora",
+                              "type": "real"
+                            },
+                            "sizeScale": "sqrt"
+                          }
+                        },
+                        {
+                          "id": "lluvia",
+                          "type": "point",
+                          "config": {
+                            "dataId": "grafana-B",
+                            "label": "Lluvia · mm en 10 dias",
+                            "columnMode": "points",
+                            "columns": {
+                              "lat": "latitude",
+                              "lng": "longitude"
+                            },
+                            "isVisible": true,
+                            "color": [
+                              250,
+                              200,
+                              80
+                            ],
+                            "visConfig": {
+                              "filled": true,
+                              "opacity": 0.95,
+                              "outline": true,
+                              "thickness": 1,
+                              "strokeColor": [
+                                255,
+                                255,
+                                255
+                              ],
+                              "radius": 12,
+                              "radiusRange": [
+                                9,
+                                40
+                              ],
+                              "colorRange": {
+                                "name": "c",
+                                "type": "sequential",
+                                "category": "Uber",
+                                "colors": [
+                                  "#FFF3B0",
+                                  "#FFD166",
+                                  "#F4A261",
+                                  "#E76F51",
+                                  "#B33F30"
+                                ]
+                              }
+                            }
+                          },
+                          "visualChannels": {
+                            "colorField": {
+                              "name": "mm_10d",
+                              "type": "real"
+                            },
+                            "colorScale": "quantize",
+                            "sizeField": {
+                              "name": "mm_10d",
+                              "type": "real"
+                            },
+                            "sizeScale": "sqrt"
+                          }
+                        },
+                        {
+                          "id": "par",
+                          "type": "geojson",
+                          "config": {
+                            "dataId": "grafana-C",
+                            "label": "El par (largo = sospechoso)",
+                            "columns": {
+                              "geojson": "_geojson"
+                            },
+                            "isVisible": true,
+                            "color": [
+                              200,
+                              200,
+                              200
+                            ],
+                            "visConfig": {
+                              "opacity": 0.8,
+                              "strokeOpacity": 0.8,
+                              "thickness": 1.5,
+                              "strokeColor": [
+                                190,
+                                190,
+                                190
+                              ],
+                              "filled": false,
+                              "stroked": true,
+                              "enable3d": false
+                            }
+                          },
+                          "visualChannels": {}
+                        }
+                      ],
+                      "interactionConfig": {
+                        "tooltip": {
+                          "enabled": true,
+                          "fieldsToShow": {
+                            "grafana-A": [
+                              {
+                                "name": "nombre",
+                                "format": null
+                              },
+                              {
+                                "name": "lluvia de",
+                                "format": null
+                              },
+                              {
+                                "name": "km",
+                                "format": null
+                              },
+                              {
+                                "name": "caudal_ahora",
+                                "format": null
+                              }
+                            ],
+                            "grafana-B": [
+                              {
+                                "name": "nombre",
+                                "format": null
+                              },
+                              {
+                                "name": "mm_10d",
+                                "format": null
+                              }
+                            ],
+                            "grafana-C": [
+                              {
+                                "name": "rio",
+                                "format": null
+                              },
+                              {
+                                "name": "est",
+                                "format": null
+                              },
+                              {
+                                "name": "km",
+                                "format": null
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
       }
     },
     "layout": {
@@ -3330,7 +3645,20 @@
                         "x": 14,
                         "y": 0,
                         "width": 10,
-                        "height": 10,
+                        "height": 14,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-53"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 14,
+                        "y": 14,
+                        "width": 10,
+                        "height": 8,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-51"
@@ -3341,7 +3669,7 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 0,
-                        "y": 10,
+                        "y": 22,
                         "width": 24,
                         "height": 12,
                         "element": {
