@@ -53,7 +53,7 @@
             "version": "",
             "spec": {
               "options": {
-                "content": "# El Nino en Ecuador\n\nVigilancia del impacto, **no pronostico del fenomeno**: eso pide un modelo acoplado\noceano-atmosfera que ninguna de estas fuentes tiene.\n\n**Hay evento en curso, y creciendo.** El semanal del CPC da **Nino 1+2 = +4,6 el 2 de\nseptiembre de 2026**, y el nivel del mar en La Libertad esta entre los diez meses mas\naltos de un registro que arranca en **1949**. La pestana **Oceano** lo desarrolla.\n\n**Pero el oceano y la atmosfera no van al mismo paso.** Los informes oficiales\n—ERFEN 08-2026 y BAC 430— insisten en que sobre Ecuador **todavia no** hay respuesta\npluviometrica persistente: la ZCIT sigue al norte, la Interandina en seco y agosto\nconcentro el 48 % de los incendios del ano. Leer un +4,6 como «lluvias ya» seria leer\nmal el tablero.\n\n**Para Ecuador manda Nino 1+2, no el 3.4.** El \"Nino costero\" de 2017 inundo la costa con el\n3.4 en neutro: un tablero que solo mire el ONI se pierde justo el evento que mas importa aqui.\n\n## Limites, que un tablero de ENSO que no los diga miente\n\n- Los indices son de **NOAA PSL**: ERSST V6 sobre base **1981-2010**, con ~1 mes de retraso.\n  El CPC publica los mismos indices sobre **1991-2020** y da otros numeros para el mismo mes\n  (junio de 2026: +2,48 aqui, +2,82 alli). No son intercambiables.\n- INAMHI publica **~2 dias** despues de la fecha, y **solo durante los eventos**: hay 68\n  fechas en 2026 y **ninguna en 2021-22**. El eje de tiempo tiene agujeros de verdad; no se\n  interpola entre ellos.\n- La anomalia de INAMHI es de **once zonas**, no de 571 cuencas: las 571 filas de su WFS son\n  trozos de poligono que repiten el valor de su zona.\n- **El indice de INAMHI no esta definido en ninguna parte, y NO es una cantidad de lluvia.**\n  Sus valores van de **-5,4 a +10,1** (mediana 0,08), centrados en cero y sesgados a la derecha.\n  Medido: enfrentado a la lluvia real de IMERG **sobre el mismo poligono**, en diez fechas\n  repartidas por todo el rango, la correlacion es de **+0,20** con ventanas de 1 a 30 dias. Hay\n  fechas que lo dejan claro: el 31-ago-2026 marca **+4,79** con 0,45 mm/dia de lluvia, y el\n  14-mar-2019 marca **+1,75** con 20,91 mm/dia. Su forma es la de una **anomalia tipificada**\n  (desviaciones respecto a lo normal del mes), lo que explicaria justo eso — pero **no esta\n  confirmado**: INAMHI no publica metadatos de estas capas, y el unico documento metodologico\n  localizable describe otro producto (anomalias porcentuales del acumulado enero-mayo).\n  **Leelo como mas humedo / mas seco de lo normal, no como milimetros.**\n- **La relacion Nino 1+2 <-> lluvia costera es real pero no determinista**: r entre 0,38 y\n  0,75 segun la estacion. 1983 fue el ene-abr mas lluvioso del registro, pero 2016 —con un\n  indice tambien alto— se quedo por debajo de la mediana. El indice inclina la balanza; no\n  decide la temporada.\n- Que son las once zonas tampoco esta claro: no coinciden con las diez demarcaciones\n  hidrograficas ni con las regiones de precipitacion. Se etiquetan por numero y por su forma:\n  81 es Galapagos, 31-39 la costa, 20-21 el oriente, 26-27 la sierra.\nEl mapa **recorre el tiempo**. Abre en el evento en curso; para ver 2016 o 2018, ensancha el\nrango. Con la ventana ancha se apilan todas las fechas que quepan en ella: estrechala con la\nbarra del propio mapa, o dale al play. El detalle de los poligonos ahi es de ~1 km, porque va\nuna geometria por fecha y con el detalle fino los once anos serian 86 MB en vez de 15.\n\nDatos: **INAMHI** (`geoservicios.inamhi.gob.ec`) via el servicio `elnino`, y **NOAA PSL**.",
+                "content": "# El Nino en Ecuador\n\nVigilancia del impacto, **no pronostico del fenomeno**: eso pide un modelo acoplado\noceano-atmosfera que ninguna de estas fuentes tiene.\n\n**Hay evento en curso, y creciendo.** El semanal del CPC da **Nino 1+2 = +4,6 el 2 de\nseptiembre de 2026**, y el nivel del mar en La Libertad esta entre los diez meses mas\naltos de un registro que arranca en **1949**. La pestana **Oceano** lo desarrolla.\n\n**Pero el oceano y la atmosfera no van al mismo paso.** Los informes oficiales\n—ERFEN 08-2026 y BAC 430— insisten en que sobre Ecuador **todavia no** hay respuesta\npluviometrica persistente: la ZCIT sigue al norte, la Interandina en seco y agosto\nconcentro el 48 % de los incendios del ano. Leer un +4,6 como «lluvias ya» seria leer\nmal el tablero.\n\n**Para Ecuador manda Nino 1+2, no el 3.4.** El \"Nino costero\" de 2017 inundo la costa con el\n3.4 en neutro: un tablero que solo mire el ONI se pierde justo el evento que mas importa aqui.\n\n## Limites, que un tablero de ENSO que no los diga miente\n\n- **El mismo indice tiene dos numeros, y los dos son correctos.** El semanal del CPC\n  (OISST, base **1991-2020**) es el que abre los boletines y el que sale de portada aqui:\n  **+4,6 el 2 de septiembre**. El mensual de NOAA PSL (ERSST **V6**, base **1981-2010**) va\n  mas bajo y con ~1 mes de retraso: **+3,28 en agosto**. La grafica de abajo lleva los dos\n  encima —la linea de puntos es el mensual— para que la diferencia se vea en vez de aparecer\n  como una contradiccion entre pestañas.\n  Medido sobre agosto, que es un mes ya cerrado: el mensual da +3,28 y las semanas de ese\n  mismo agosto promedian +4,08. Esos **0,80** son solo producto y climatologia; el resto de\n  la brecha hasta +4,6 es que el evento sigue subiendo. Y la diferencia **crece con el\n  evento**: 0,35 en junio, 0,63 en julio, 0,80 en agosto. No son intercambiables.\n- INAMHI publica **~2 dias** despues de la fecha, y **solo durante los eventos**: hay 68\n  fechas en 2026 y **ninguna en 2021-22**. El eje de tiempo tiene agujeros de verdad; no se\n  interpola entre ellos.\n- La anomalia de INAMHI es de **once zonas**, no de 571 cuencas: las 571 filas de su WFS son\n  trozos de poligono que repiten el valor de su zona.\n- **El indice de INAMHI no esta definido en ninguna parte, y NO es una cantidad de lluvia.**\n  Sus valores van de **-5,4 a +10,1** (mediana 0,08), centrados en cero y sesgados a la derecha.\n  Medido: enfrentado a la lluvia real de IMERG **sobre el mismo poligono**, en diez fechas\n  repartidas por todo el rango, la correlacion es de **+0,20** con ventanas de 1 a 30 dias. Hay\n  fechas que lo dejan claro: el 31-ago-2026 marca **+4,79** con 0,45 mm/dia de lluvia, y el\n  14-mar-2019 marca **+1,75** con 20,91 mm/dia. Su forma es la de una **anomalia tipificada**\n  (desviaciones respecto a lo normal del mes), lo que explicaria justo eso — pero **no esta\n  confirmado**: INAMHI no publica metadatos de estas capas, y el unico documento metodologico\n  localizable describe otro producto (anomalias porcentuales del acumulado enero-mayo).\n  **Leelo como mas humedo / mas seco de lo normal, no como milimetros.**\n- **La relacion Nino 1+2 <-> lluvia costera es real pero no determinista**: r entre 0,38 y\n  0,75 segun la estacion. 1983 fue el ene-abr mas lluvioso del registro, pero 2016 —con un\n  indice tambien alto— se quedo por debajo de la mediana. El indice inclina la balanza; no\n  decide la temporada.\n- Que son las once zonas tampoco esta claro: no coinciden con las diez demarcaciones\n  hidrograficas ni con las regiones de precipitacion. Se etiquetan por numero y por su forma:\n  81 es Galapagos, 31-39 la costa, 20-21 el oriente, 26-27 la sierra.\nEl mapa **recorre el tiempo**. Abre en el evento en curso; para ver 2016 o 2018, ensancha el\nrango. Con la ventana ancha se apilan todas las fechas que quepan en ella: estrechala con la\nbarra del propio mapa, o dale al play. El detalle de los poligonos ahi es de ~1 km, porque va\nuna geometria por fecha y con el detalle fino los once anos serian 86 MB en vez de 15.\n\nDatos: **INAMHI** (`geoservicios.inamhi.gob.ec`) via el servicio `elnino`, y **NOAA PSL**.",
                 "mode": "markdown"
               },
               "fieldConfig": {
@@ -407,7 +407,7 @@
         "spec": {
           "id": 2,
           "title": "Indices Nino: la fase en que estamos",
-          "description": "Anomalia de SST de las regiones Nino, de NOAA PSL (ERSST V6, base 1981-2010). 1+2 es la costa de Ecuador y Peru; 3.4 el que sale en la prensa. OJO: el CPC publica sobre otra base (1991-2020) y da otros numeros para el mismo mes.",
+          "description": "Dos medidas del MISMO indice, y no dan lo mismo a proposito. La mensual es ERSST v6 sobre base 1981-2010 (NOAA PSL); la semanal es OISST sobre base 1991-2020 (CPC). Medido en agosto de 2026, mes ya cerrado: mensual +3,28 y semanal promediada +4,08, o sea 0,80 de diferencia que es solo producto y climatologia. El resto de la brecha con el ultimo dato es que el evento sube: el 2 de septiembre iba por +4,6. La semanal manda para saber donde estamos hoy; la mensual, para comparar con 1950.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -426,7 +426,7 @@
                       "spec": {
                         "format": 1,
                         "rawQuery": true,
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\nSELECT fecha::TIMESTAMP AS time,\n       max(CASE WHEN indice = 'nino12' THEN valor END) AS \"Nino 1+2\",\n       max(CASE WHEN indice = 'nino34' THEN valor END) AS \"Nino 3.4\"\nFROM read_parquet($svc || '/indices/indices.parquet')\nWHERE indice IN ('nino12', 'nino34')\nGROUP BY fecha\nORDER BY time"
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Las dos resoluciones juntas. Separarlas en pestañas distintas dejaba el mismo\n-- indice valiendo 3,28 en una y 4,6 en otra sin explicacion a la vista.\n-- El FULL OUTER JOIN porque las fechas no coinciden: la mensual cae en dia 1 y\n-- la semanal en el centro de su semana, asi que cada fila trae una u otra.\nWITH m AS (\n  SELECT fecha::TIMESTAMP AS time,\n         max(CASE WHEN indice = 'nino12' THEN valor END) AS n12,\n         max(CASE WHEN indice = 'nino34' THEN valor END) AS n34\n  FROM read_parquet($svc || '/indices/indices.parquet')\n  WHERE indice IN ('nino12', 'nino34') GROUP BY 1),\ns AS (\n  SELECT fecha::TIMESTAMP AS time, anomalia AS n12s\n  FROM read_parquet($svc || '/indices/nino_semanal.parquet')\n  WHERE indice = 'nino12')\nSELECT coalesce(m.time, s.time) AS time,\n       m.n12  AS \"Nino 1+2 (mensual)\",\n       m.n34  AS \"Nino 3.4 (mensual)\",\n       s.n12s AS \"Nino 1+2 (semanal)\"\nFROM m FULL OUTER JOIN s ON m.time = s.time\nORDER BY time"
                       }
                     },
                     "refId": "A",
@@ -492,38 +492,67 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "Nino 1+2"
+                      "options": "Nino 1+2 (semanal)"
                     },
                     "properties": [
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "red",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "red"
                         }
                       },
                       {
                         "id": "custom.lineWidth",
-                        "value": 3
+                        "value": 2
                       }
                     ]
                   },
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "Nino 3.4"
+                      "options": "Nino 1+2 (mensual)"
                     },
                     "properties": [
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "semi-dark-blue",
-                          "mode": "fixed"
+                          "mode": "fixed",
+                          "fixedColor": "orange"
                         }
                       },
                       {
-                        "id": "custom.fillOpacity",
-                        "value": 0
+                        "id": "custom.lineWidth",
+                        "value": 1
+                      },
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "fill": "dash",
+                          "dash": [
+                            8,
+                            4
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Nino 3.4 (mensual)"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "blue"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 1
                       }
                     ]
                   }
@@ -729,8 +758,8 @@
         "kind": "Panel",
         "spec": {
           "id": 3,
-          "title": "Nino 1+2 ahora",
-          "description": "El ultimo valor publicado por el CPC. Por encima de +0,5 sostenido, hay Nino.",
+          "title": "Nino 1+2 · ultima semana",
+          "description": "El semanal del CPC, que es el numero con el que abren los boletines y el mismo que enseña la pestaña Oceano. La linea de puntos de la grafica de al lado es la version mensual, que va mas baja por otra climatologia y otro producto: la descripcion de ese panel lo desglosa.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -771,7 +800,7 @@
                   "calcs": [
                     "lastNotNull"
                   ],
-                  "fields": "/^Nino 1\\+2$/",
+                  "fields": "/^Nino 1\\+2 \\(semanal\\)$/",
                   "values": false
                 },
                 "textMode": "auto"
@@ -779,7 +808,7 @@
               "fieldConfig": {
                 "defaults": {
                   "unit": "celsius",
-                  "decimals": 2,
+                  "decimals": 1,
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
