@@ -1,0 +1,495 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "El oleaje del WAVEWATCH III de la NOAA sobre Ecuador y Galapagos como campo de flujo, leido de ERDDAP con read_csv. Reproduce el producto que INOCAR solo publica como imagen.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "El **oleaje del WAVEWATCH III de la NOAA** sobre la costa ecuatoriana y Galapagos, dibujado como campo de flujo: el fondo es la **altura significativa** en metros y las lineas corren en la direccion de la mar.\n\n**Las lineas van hacia donde viaja la mar.** `Tdir` es una direccion *de procedencia* -- su `standard_name` en el servidor es `sea_surface_wave_from_direction_...` -- que es el mismo convenio que espera la capa, asi que no se corrige nada: 220 grados es mar de fondo del suroeste, y se dibuja viajando al noreste.\n\n**El color es la altura, en metros, con cortes fijos** -- 0,5 / 1 / 1,5 / 2 / 2,5 / 3 / 4 -- que es como se lee la barra de INOCAR. Lo lleva la rejilla del fondo, un cuadrado de medio grado por celda del modelo; las lineas van en un gris claro plano y solo dicen direccion. Que los cortes sean fijos y no cuantiles es lo que permite comparar dos pasos del pronostico entre si: con una escala relativa, un dia en calma se pintaria igual que una marejada.\n\n**El reloj del mapa no recorre el pronostico.** Es un bucle de sesenta segundos que anima las estelas. **La hora sale del desplegable de arriba**, que relanza la consulta: un campo de flujo sostiene un instante -- el panel se queda con el primero que la consulta ofrece y descarta el resto junto con la columna de tiempo -- asi que no hay pronostico que un reloj pueda caminar.\n\n**Un solo rectangulo** de medio grado, 897 celdas de las cuales 709 tienen mar; la tierra no viaja como fila, viaja como hueco. Acotarlo no saldria mas barato: manda la latencia de ERDDAP, no el numero de puntos. **Medio grado son unos 55 km**, asi que esto resuelve el mar de fondo que domina el oleaje ecuatoriano pero no la refraccion costera: lo que ocurre dentro del golfo de Guayaquil o al pie de Manta no esta aqui.\n\n**Por que no es el modelo de INOCAR.** El [SWAN operacional del INOCAR](https://www.inocar.mil.ec/web/index.php/modelo-swan) corre justo esta variable sobre rejillas finas de la costa, y es lo que deberia estar dibujado. Pero solo lo publica como imagen ya dibujada (`/modelnum/swan/imagenes/*.png`): no hay WMS, ni THREDDS, ni ERDDAP, ni descarga del NetCDF. Esto reproduce su producto con el dato abierto que si existe, y las horas coinciden sin interpolar -- INOCAR publica a las 19:00, 22:00, 01:00 locales, que son las 00:00, 03:00, 06:00 UTC.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "12.0.10",
+      "title": "Que estas viendo",
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 22,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "id": 2,
+      "options": {
+        "basemap": "auto",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": true,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [
+                    40,
+                    63,
+                    93
+                  ],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [
+                    4,
+                    9,
+                    17
+                  ],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [
+                    114.75,
+                    114.75,
+                    114.75
+                  ],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [
+                    9,
+                    16,
+                    29
+                  ],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [
+                    17,
+                    35,
+                    48
+                  ]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": -1.2,
+              "longitude": -84.0,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_2D",
+              "maxPitch": 60,
+              "pitch": 0,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 5.35
+            },
+            "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
+              ],
+              "mapStyles": {},
+              "styleType": "dark-matter",
+              "threeDBuildingColor": [
+                9.311499150948377,
+                9.311499150948377,
+                9.311499150948377
+              ],
+              "topLayerGroups": {},
+              "visibleLayerGroups": {
+                "label": true,
+                "road": false
+              }
+            },
+            "uiState": {
+              "locale": "es",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "currentTime": null,
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "speed"
+                      },
+                      {
+                        "name": "direction"
+                      }
+                    ]
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "flowfield-grafana-A",
+                "hs-grafana-A"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "color": [
+                      232,
+                      238,
+                      245
+                    ],
+                    "columnMode": "polar",
+                    "columns": {
+                      "direction": "direction",
+                      "lat": "latitude",
+                      "lng": "longitude",
+                      "speed": "speed"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Oleaje",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "colorBySpeed": false,
+                      "colorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#2E5A88",
+                          "#3E8FC1",
+                          "#4FC3D9",
+                          "#7DE0C0",
+                          "#C3F0A0",
+                          "#FFF3B0"
+                        ],
+                        "name": "Ocean",
+                        "type": "sequential"
+                      },
+                      "cycleSeconds": 60,
+                      "density": 7000,
+                      "elevationScale": 1,
+                      "heightMeters": 0,
+                      "lifeFraction": 0.55,
+                      "lineLength": 40,
+                      "opacity": 0.85,
+                      "seamlessLoop": true,
+                      "smoothing": 1,
+                      "thickness": 1.8,
+                      "trailShare": 10,
+                      "zoomResponse": 0.25
+                    }
+                  },
+                  "id": "flowfield-grafana-A",
+                  "type": "flowfield",
+                  "visualChannels": {
+                    "colorScale": "quantile",
+                    "sizeScale": "linear"
+                  }
+                },
+                {
+                  "config": {
+                    "color": [
+                      30,
+                      150,
+                      190
+                    ],
+                    "columnMode": "geojson",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Altura significativa",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "colorRange": {
+                        "category": "Custom",
+                        "colorLegends": {},
+                        "colorMap": [
+                          [
+                            0.5,
+                            "#08306B"
+                          ],
+                          [
+                            1.0,
+                            "#1F6FB5"
+                          ],
+                          [
+                            1.5,
+                            "#2FA9D6"
+                          ],
+                          [
+                            2.0,
+                            "#4FD0C0"
+                          ],
+                          [
+                            2.5,
+                            "#8FDC6B"
+                          ],
+                          [
+                            3.0,
+                            "#F2C94C"
+                          ],
+                          [
+                            4.0,
+                            "#E2523B"
+                          ]
+                        ],
+                        "colors": [
+                          "#08306B",
+                          "#1F6FB5",
+                          "#2FA9D6",
+                          "#4FD0C0",
+                          "#8FDC6B",
+                          "#F2C94C",
+                          "#E2523B"
+                        ],
+                        "name": "Altura significativa (m)",
+                        "type": "custom"
+                      },
+                      "elevationScale": 5,
+                      "enable3d": false,
+                      "filled": true,
+                      "opacity": 0.55,
+                      "radius": 10,
+                      "radiusRange": [
+                        0,
+                        50
+                      ],
+                      "sizeRange": [
+                        0,
+                        10
+                      ],
+                      "strokeOpacity": 0.8,
+                      "stroked": false,
+                      "thickness": 0.5,
+                      "wireframe": false
+                    }
+                  },
+                  "id": "hs-grafana-A",
+                  "type": "geojson",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "speed",
+                      "type": "real"
+                    },
+                    "colorScale": "custom",
+                    "heightScale": "linear",
+                    "radiusScale": "linear",
+                    "sizeScale": "linear",
+                    "strokeColorScale": "quantile"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "showSidePanel": true,
+        "timeSync": "off",
+        "tripLayerMode": "table"
+      },
+      "pluginVersion": "1.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Una peticion, dos variables, y las DOS subexpresiones escritas exactamente\n-- igual: Thgt (altura significativa) y Tdir (direccion del pico). Si difieren\n-- aunque sea en un caracter, ERDDAP contesta 400 y DuckDB lo entrega catorce\n-- segundos despues como `HTTP 0 Internal Server Error`, sin decir que fue el\n-- servidor quien se quejo.\n--\n-- `.csv0` no trae cabecera ni fila de unidades, asi que read_csv nombra por\n-- posicion. Solo `[` y `]` necesitan escaparse (%5B/%5D); parentesis, dos puntos\n-- y comas viajan crudos.\n--\n-- OJO con la variable: este datasource entrecomilla por su cuenta en consulta de\n-- panel, y aqui el paso va DENTRO de un literal, asi que necesita `:raw` -- las\n-- comillas ya las pone el literal.\nWITH celdas AS (\n  SELECT column2       AS latitude,\n         column3 - 360 AS longitude,  -- ERDDAP publica la longitud en 0..360\n         column4       AS speed,      -- Hs en metros: la magnitud del campo\n         column5       AS direction   -- de donde VIENE la mar, 0=N, horario\n  FROM read_csv('https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ww3_global.csv0?Thgt%5B(${paso:raw})%5D%5B(0.0)%5D%5B(-7.0):1:(4.0)%5D%5B(265.0):1:(284.0)%5D,Tdir%5B(${paso:raw})%5D%5B(0.0)%5D%5B(-7.0):1:(4.0)%5D%5B(265.0):1:(284.0)%5D',\n    header = false,\n    columns = {'c0': 'TIMESTAMP', 'c1': 'DOUBLE', 'column2': 'DOUBLE',\n               'column3': 'DOUBLE', 'column4': 'DOUBLE', 'column5': 'DOUBLE'},\n    nullstr = 'NaN')\n  -- La tierra NO puede viajar como fila. El campo lee el par polar con\n  -- Number(valor), y Number(null) es 0, no NaN: una celda de tierra devuelta con\n  -- NULL entraria en la rejilla como calma chicha -- justo lo que el enmascarado\n  -- existe para evitar -- en vez de como hueco. Solo la celda que nunca llega se\n  -- queda en NaN. De las 897 del rectangulo, 709 tienen mar.\n  --\n  -- Y no rompe la rejilla: el paso se deduce como el hueco MINIMO entre valores\n  -- distintos, y la mitad oeste es oceano abierto, asi que el minimo es 0.5 y todo\n  -- valor cae en la reticula.\n  --\n  -- Sin columna de tiempo, a proposito: el campo se queda con un solo instante y\n  -- descarta el resto junto con esa columna. La hora la fija el desplegable.\n  WHERE column4 IS NOT NULL\n)\n-- El fondo coloreado sale de ESTAS MISMAS filas, como un cuadrado de medio grado\n-- centrado en cada celda del modelo. Una capa `grid` de kepler tambien pinta un\n-- fondo, pero agrupa por un tamano en kilometros que no casa con una reticula en\n-- grados: a esta latitud dejaba una columna entera de casillas vacias y los\n-- bordes en escalera. El poligono explicito no tiene ese problema, va alineado\n-- por construccion y no cuesta otra peticion.\n--\n-- `geojson` es uno de los nombres que el panel reconoce como geometria, y la\n-- renombra a `_geojson`, que es a lo que apunta la capa en mapConfig.\nSELECT latitude, longitude, speed, direction,\n       '{\"type\":\"Polygon\",\"coordinates\":[['\n         || '[' || (longitude - 0.25) || ',' || (latitude - 0.25) || '],'\n         || '[' || (longitude - 0.25) || ',' || (latitude + 0.25) || '],'\n         || '[' || (longitude + 0.25) || ',' || (latitude + 0.25) || '],'\n         || '[' || (longitude + 0.25) || ',' || (latitude - 0.25) || '],'\n         || '[' || (longitude - 0.25) || ',' || (latitude - 0.25) || ']'\n       || ']]}' AS geojson\nFROM celdas\nORDER BY latitude, longitude\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Oleaje -- altura significativa y direccion del pico - ${paso:text}",
+      "type": "ubica-keplergl-panel"
+    }
+  ],
+  "preload": false,
+  "schemaVersion": 41,
+  "tags": [
+    "erddap",
+    "ww3",
+    "flow",
+    "oleaje",
+    "duckdb"
+  ],
+  "templating": {
+    "list": [
+      {
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "definition": "",
+        "description": "Que hora del pronostico dibuja el campo. Es el unico reloj que hay aqui: un campo de flujo sostiene un instante, asi que la barra de tiempo del mapa no tiene nada que recorrer.",
+        "includeAll": false,
+        "label": "Paso",
+        "name": "paso",
+        "options": [],
+        "query": "-- Los pasos que el propio servidor tiene, no una fecha escrita a mano: de\n-- `last-168` a `last` de tres en tres sobre un eje horario son ~57 marcas, un dia\n-- de analisis y seis de pronostico, y la lista se mueve sola con cada pasada.\n--\n-- `now-1day` / `now+7days` NO valen en este ERDDAP (contesta Start=NaN). `last` y\n-- `last-N` si.\n--\n-- Se lee como VARCHAR y se devuelve tal cual: lo que ERDDAP escribio es\n-- exactamente lo que ERDDAP acepta de vuelta, y ningun huso lo toca por el\n-- camino. El cast es solo para la etiqueta, que va en hora local (UTC-5) porque\n-- es como lo publica INOCAR -- y cuadra: su primer paso son las 19:00 locales,\n-- que son las 00:00 UTC del mismo retículo de tres horas.\n--\n-- OJO: en una consulta de VARIABLE este datasource no entrecomilla nada, al\n-- reves que en un panel.\nSELECT strftime(paso::TIMESTAMP - INTERVAL '5 hours', '%d %b %H:%M') || ' local' AS __text,\n       paso AS __value\nFROM read_csv('https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ww3_global.csv0?time%5Blast-168:3:last%5D',\n              header = false, columns = {'paso': 'VARCHAR'})\n-- Grafana toma la PRIMERA opcion por defecto, asi que el corte deja el tablero\n-- abierto en el paso vigente y el analisis reciente queda detras, elegible.\nWHERE paso::TIMESTAMP >= date_trunc('hour', now() AT TIME ZONE 'UTC') - INTERVAL '3 hours'\nORDER BY paso\n",
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now+7d"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Oleaje en Ecuador -- WAVEWATCH III sobre ERDDAP",
+  "uid": "oleaje-ecuador",
+  "version": 1
+}

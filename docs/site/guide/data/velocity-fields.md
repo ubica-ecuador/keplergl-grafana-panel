@@ -48,7 +48,15 @@ What most sources give you: Open-Meteo, GFS, national weather services.
 
 `direction` is read as the **meteorological convention**: the bearing the wind blows _from_. A
 direction of 270° is a westerly — air moving towards the east. If your source uses the
-oceanographic convention (the direction of travel), add 180 in the query.
+oceanographic convention (the direction of travel), add 180 in the query:
+`(direction + 180) % 360`.
+
+Ask the source rather than guessing, because a field drawn backwards looks entirely plausible. A
+CF-compliant dataset says which it means in the variable's `standard_name`: `..._from_direction`
+needs no correction, `..._to_direction` needs the 180. Wave data is where this bites — the word
+"oceanographic" suggests direction of travel, but WAVEWATCH III's peak wave direction is published
+as `sea_surface_wave_from_direction_at_variance_spectral_density_maximum`, a _from_ direction like
+the wind.
 
 ### U and V components
 
@@ -73,6 +81,15 @@ into it. Both roles still arrive as ordinary columns — the tile server is aske
 at once and the query turns its answer into rows. Worked end to end, with the trap that makes the
 field look calm instead of broken:
 [a wind field from an Icechunk archive](../sources/icechunk#a-wind-field-from-the-same-archive).
+
+### When the field is on an ERDDAP server
+
+Oceanographic agencies publish through ERDDAP, and it will hand you a rectangle of any gridded
+dataset as headerless CSV — so `read_csv` is the entire adapter, with no extension and no client
+library. The roles arrive by aliasing two variables to `speed` and `direction`. The trap there is
+the land mask: a cell the model does not cover must be **absent**, never a row of NULLs, because
+`Number(null)` is zero and zero draws as dead calm.
+[Gridded ocean data from ERDDAP](../sources/erddap).
 
 ## What disqualifies a query
 
@@ -228,9 +245,18 @@ Every knob is in the layer's own panel, grouped as **Colour**, **Streamlines**, 
 | Cycle | Animation | The length of the loop, in seconds. |
 | Line lifetime | Animation | The share of the cycle one line lives for, and so how much of the field is lit at once. |
 | Seamless loop | Animation | Carries a line whose life runs past the end of the cycle round to the start of it. On by default. |
-| Smoothing | Field | Blur radius in cells. |
+| Smoothing | Field | Blur radius in **cells**, not kilometres — so the same number means something very different on a 0.25° lattice and on a 0.5° one. |
 | Height (m) | Field | What this level *is*, when no altitude column is bound. Counts against the other levels. |
 | Vertical exaggeration | Field | How tall the stack is drawn. The one that moves a lone layer. |
+
+::: warning The line colour is relative, always
+With **Colour by speed** on, the ramp is stretched between the slowest and fastest line *currently
+traced* — it is not an absolute scale, and two moments of a forecast cannot be compared by eye.
+When the magnitude is the point, turn it off, give the field one flat colour, and put the
+magnitude in a layer underneath that can pin its own breaks — see
+[painting the field as well as tracing it](../sources/erddap#painting-the-field-as-well-as-tracing-it).
+:::
+
 
 **Trail length** is the one that changes the character of the map most: short reads as drifting
 particles, long as complete streamlines, closer to a classic wind chart. It is a *share of the

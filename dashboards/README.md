@@ -2,13 +2,19 @@
 
 Everything under `provisioning-sources/dashboards/` is loaded into the sources bench on startup.
 This directory is for dashboards that are worth keeping in the repository but are **not** wired into
-provisioning, and there is one reason to prefer it: the provider in
-`provisioning-sources/dashboards/default.yaml` does not set `allowUiUpdates`, so a provisioned
-dashboard is **read-only in Grafana**. A dashboard still being built has to stay editable, and it
-cannot be both.
+provisioning.
 
-Import one by hand — **Dashboards → New → Import → Upload JSON file** — or move it into
-`provisioning-sources/dashboards/` once it stops changing, accepting the read-only trade.
+It used to say the reason was that a provisioned dashboard is read-only. That stopped being true the
+day after this file was written: `provisioning-sources/dashboards/default.yaml` sets
+`allowUiUpdates: true` since `c3b07f2`, so a provisioned dashboard on the sources bench **is**
+editable and saveable in the UI. The trade it carries instead is that the file still wins whenever
+it changes on disk — edit freely, but export a change worth keeping back over the file, or the next
+`git pull` that touches it takes the edits with it.
+
+So what is left here are dashboards that cannot be provisioned for some *other* reason — they point
+at services this compose file does not run, or they exist in two variants neither of which is the
+canonical one. Import one by hand — **Dashboards → New → Import → Upload JSON file** — or move it
+into `provisioning-sources/dashboards/` once it stops changing.
 
 ## `r5-accesibilidad.json`
 
@@ -75,7 +81,7 @@ devuelve como v2beta1 con su layout intacto, y un `TabsLayout` se ve con pestañ
 en el navegador. Al quitar el fichero, Grafana lo retira solo.
 
 Así lo hace `provisioning-sources/dashboards/enso-ecuador.json`, que es v2beta1
-con seis pestañas y sigue versionado como cualquier otro. La receta para
+con siete pestañas y sigue versionado como cualquier otro. La receta para
 escribirlo sin adivinar la forma: provisionar el v1, pedirlo a
 `/apis/dashboard.grafana.app/v2beta1/namespaces/default/dashboards/<uid>` —Grafana
 lo traduce— y sustituir el `GridLayout` que devuelve por un `TabsLayout`.

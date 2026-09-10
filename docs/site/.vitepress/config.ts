@@ -140,6 +140,7 @@ export default defineConfig({
           { text: 'Measuring imagery', link: '/guide/sources/measuring-imagery' },
           { text: 'STAC catalogues', link: '/guide/sources/stac-catalogs' },
           { text: 'Icechunk — forecast archives', link: '/guide/sources/icechunk' },
+          { text: 'ERDDAP — gridded ocean data', link: '/guide/sources/erddap' },
         ],
       },
       {

@@ -375,13 +375,14 @@ services:
   # name would not resolve.
   #
   # Built from ./docker/titiler rather than pulled directly: that is the same
-  # pinned 2.2.1 image carrying two changes. One comparison in rio-tiler is given
-  # a tolerance, so a global 0.4° store whose south edge misses by 4e-13 degrees
-  # stops answering 500 to every tile; and the `/zarr` router is remounted with
-  # an opener that also reads Icechunk repositories, which is the only way an
-  # archive published as Icechunk — dynamical.org's NOAA GFS — reaches the map at
-  # all, since the browser cannot resolve one itself. The Dockerfile explains the
-  # first, `icechunk_app.py` the second.
+  # pinned 2.2.1 image carrying two changes. rio-tiler is floored at the release
+  # that gives one bounds comparison a tolerance, so a global 0.4° store whose
+  # south edge misses by 4e-13 degrees stops answering 500 to every tile — the
+  # base image still locks a version below it; and the `/zarr` router is
+  # remounted with an opener that also reads Icechunk repositories, which is the
+  # only way an archive published as Icechunk — dynamical.org's NOAA GFS —
+  # reaches the map at all, since the browser cannot resolve one itself. The
+  # Dockerfile explains the first, `icechunk_app.py` the second.
   titiler:
     build:
       context: ./docker/titiler
