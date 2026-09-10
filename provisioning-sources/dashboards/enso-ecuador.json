@@ -30,7 +30,7 @@
       }
     ],
     "cursorSync": "Off",
-    "description": "Vigilancia del impacto de El Nino en Ecuador: indices del CPC y la anomalia oficial de INAMHI, servida por el servicio elnino.",
+    "description": "Qué está haciendo El Niño en el mar, en la lluvia y en los ríos del Ecuador. Datos de INAMHI, INOCAR y la NOAA, actualizados todos los días.",
     "editable": true,
     "elements": {
       "panel-1": {
@@ -53,7 +53,7 @@
             "version": "",
             "spec": {
               "options": {
-                "content": "# El Nino en Ecuador\n\nVigilancia del impacto, **no pronostico del fenomeno**: eso pide un modelo acoplado\noceano-atmosfera que ninguna de estas fuentes tiene.\n\n**Hay evento en curso, y creciendo.** El semanal del CPC da **Nino 1+2 = +4,6 el 2 de\nseptiembre de 2026**, y el nivel del mar en La Libertad esta entre los diez meses mas\naltos de un registro que arranca en **1949**. La pestana **Oceano** lo desarrolla.\n\n**Pero el oceano y la atmosfera no van al mismo paso.** Los informes oficiales\n—ERFEN 08-2026 y BAC 430— insisten en que sobre Ecuador **todavia no** hay respuesta\npluviometrica persistente: la ZCIT sigue al norte, la Interandina en seco y agosto\nconcentro el 48 % de los incendios del ano. Leer un +4,6 como «lluvias ya» seria leer\nmal el tablero.\n\n**Para Ecuador manda Nino 1+2, no el 3.4.** El \"Nino costero\" de 2017 inundo la costa con el\n3.4 en neutro: un tablero que solo mire el ONI se pierde justo el evento que mas importa aqui.\n\n## Limites, que un tablero de ENSO que no los diga miente\n\n- **El mismo indice tiene dos numeros, y los dos son correctos.** El semanal del CPC\n  (OISST, base **1991-2020**) es el que abre los boletines y el que sale de portada aqui:\n  **+4,6 el 2 de septiembre**. El mensual de NOAA PSL (ERSST **V6**, base **1981-2010**) va\n  mas bajo y con ~1 mes de retraso: **+3,28 en agosto**. La grafica de abajo lleva los dos\n  encima —la linea de puntos es el mensual— para que la diferencia se vea en vez de aparecer\n  como una contradiccion entre pestañas.\n  Medido sobre agosto, que es un mes ya cerrado: el mensual da +3,28 y las semanas de ese\n  mismo agosto promedian +4,08. Esos **0,80** son solo producto y climatologia; el resto de\n  la brecha hasta +4,6 es que el evento sigue subiendo. Y la diferencia **crece con el\n  evento**: 0,35 en junio, 0,63 en julio, 0,80 en agosto. No son intercambiables.\n- INAMHI publica **~2 dias** despues de la fecha, y **solo durante los eventos**: hay 68\n  fechas en 2026 y **ninguna en 2021-22**. El eje de tiempo tiene agujeros de verdad; no se\n  interpola entre ellos.\n- La anomalia de INAMHI es de **once zonas**, no de 571 cuencas: las 571 filas de su WFS son\n  trozos de poligono que repiten el valor de su zona.\n- **El indice de INAMHI no esta definido en ninguna parte, y NO es una cantidad de lluvia.**\n  Sus valores van de **-5,4 a +10,1** (mediana 0,08), centrados en cero y sesgados a la derecha.\n  Medido: enfrentado a la lluvia real de IMERG **sobre el mismo poligono**, en diez fechas\n  repartidas por todo el rango, la correlacion es de **+0,20** con ventanas de 1 a 30 dias. Hay\n  fechas que lo dejan claro: el 31-ago-2026 marca **+4,79** con 0,45 mm/dia de lluvia, y el\n  14-mar-2019 marca **+1,75** con 20,91 mm/dia. Su forma es la de una **anomalia tipificada**\n  (desviaciones respecto a lo normal del mes), lo que explicaria justo eso — pero **no esta\n  confirmado**: INAMHI no publica metadatos de estas capas, y el unico documento metodologico\n  localizable describe otro producto (anomalias porcentuales del acumulado enero-mayo).\n  **Leelo como mas humedo / mas seco de lo normal, no como milimetros.**\n- **La relacion Nino 1+2 <-> lluvia costera es real pero no determinista**: r entre 0,38 y\n  0,75 segun la estacion. 1983 fue el ene-abr mas lluvioso del registro, pero 2016 —con un\n  indice tambien alto— se quedo por debajo de la mediana. El indice inclina la balanza; no\n  decide la temporada.\n- Que son las once zonas tampoco esta claro: no coinciden con las diez demarcaciones\n  hidrograficas ni con las regiones de precipitacion. Se etiquetan por numero y por su forma:\n  81 es Galapagos, 31-39 la costa, 20-21 el oriente, 26-27 la sierra.\nEl mapa **recorre el tiempo**. Abre en el evento en curso; para ver 2016 o 2018, ensancha el\nrango. Con la ventana ancha se apilan todas las fechas que quepan en ella: estrechala con la\nbarra del propio mapa, o dale al play. El detalle de los poligonos ahi es de ~1 km, porque va\nuna geometria por fecha y con el detalle fino los once anos serian 86 MB en vez de 15.\n\nDatos: **INAMHI** (`geoservicios.inamhi.gob.ec`) via el servicio `elnino`, y **NOAA PSL**.",
+                "content": "# El Niño en Ecuador\n\n## Qué es y por qué nos afecta\n\nCada cierto número de años, el océano Pacífico frente a nuestras costas se calienta más de\nlo normal. Eso cambia el clima de todo el país: en la Costa suele traer lluvias fuertes e\ninundaciones, y en la Sierra y la Amazonía puede hacer lo contrario, dejar sequía.\n\nHay una cosa que casi nunca se dice y aquí importa mucho. El número que sale en las noticias\nmundiales mide el Pacífico central, lejos de nosotros. **Al Ecuador lo que le afecta es el mar\nque tiene enfrente**, y no siempre van juntos: en 2017 el mar frente a Manta y Esmeraldas se\ncalentó, hubo inundaciones graves en la Costa, y el índice del que hablaba el mundo estaba\ntranquilo. Por eso este tablero mira primero nuestro mar.\n\n## Cómo estamos hoy\n\n**Hay un evento en curso y va en aumento.** El mar frente a Ecuador está **4,6 grados más\ncaliente** de lo normal para esta época, y el nivel del mar en La Libertad está entre los\ndiez meses más altos desde que se mide, en 1949.\n\n**Pero el mar y el cielo no van al mismo paso.** Los informes oficiales del ERFEN y de la\nComisión Permanente del Pacífico Sur insisten en lo mismo: el océano ya está caliente, pero\n**todavía no ha llegado la lluvia**. La Sierra sigue seca y agosto fue el peor mes de\nincendios del año. Ver un 4,6 y entender \"ya empezaron las lluvias\" sería leer mal esta\npantalla.\n\nLo que viene puede cambiar eso. La Organización Meteorológica Mundial da por seguro que el\nevento sigue hasta febrero de 2027, y podría ser fuerte hacia fin de año.\n\n## Qué encontrarás aquí\n\n| | |\n|---|---|\n| **Mar** | El calentamiento y el nivel del mar, hoy y en los últimos 77 años |\n| **Ahora** | Mapas de lo que está pasando en este momento, con el detalle de cada estación |\n| **Caudales** | Lo que llovió y lo que van a hacer los ríos |\n| **Historia** | Cómo fueron los eventos anteriores, incluidos el del 82-83 y el del 97-98 |\n| **Futuro** | Lo que los modelos esperan en los próximos días y semanas |\n| **Oleaje** | El estado de la mar frente a la costa |\n\n## Lo que este tablero no hace\n\n**No pronostica El Niño.** Vigila lo que está pasando y lo que dicen los modelos de lluvia y\nde ríos para los próximos días. Predecir cuánto durará el fenómeno o qué tan fuerte será\nrequiere modelos del océano y la atmósfera que no están aquí.\n\nTampoco reemplaza a los boletines oficiales. Si necesitas una alerta o una decisión formal,\nla fuente es el **INAMHI**, el **INOCAR** y el **Servicio Nacional de Gestión de Riesgos**.\n",
                 "mode": "markdown"
               },
               "fieldConfig": {
@@ -68,8 +68,8 @@
         "kind": "Panel",
         "spec": {
           "id": 10,
-          "title": "Caudal pronosticado · la estacion pinchada, o la del selector",
-          "description": "Quince dias de caudal en m3/s, del modelo global de GEOGLOWS via el visor de INAMHI. La banda entre el escenario bajo y el alto es la incertidumbre del modelo: se abre con el horizonte. Para una hidroelectrica esto es mas directo que la lluvia — el caudal es lo que mueve la turbina. Solo 27 de las 651 estaciones hidrologicas tienen tramo del modelo asociado.",
+          "title": "Caudal esperado del río",
+          "description": "Quince días de pronóstico de cuánta agua va a llevar el río, en metros cúbicos por segundo. La franja se abre a medida que avanza el pronóstico: eso es la incertidumbre del modelo. Solo 27 estaciones tienen un río asociado en el modelo.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -88,7 +88,7 @@
                       "spec": {
                         "format": 1,
                         "rawQuery": true,
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Pronostico de caudal de GEOGLOWS, quince dias cada tres horas. Solo 27 de las\n-- 651 estaciones hidrologicas tienen tramo del modelo asociado.\n-- Eje en DIAS por delante, no en fechas: son futuras y el rango del tablero\n-- (2015-hoy) dejaria el panel vacio.\nSELECT round(date_diff('hour', now(), strptime(fecha, '%Y-%m-%dT%H:%M:%SZ')) / 24.0, 2) AS dia,\n       round(mediana, 1) AS \"caudal mediano (m3/s)\",\n       round(minimo, 1)  AS \"el escenario bajo\",\n       round(maximo, 1)  AS \"el escenario alto\"\nFROM read_parquet($svc || '/geoglows/caudal.parquet')\n-- Sigue al clic si lo hay; si no, al desplegable.\nWHERE estacion = (\n  -- El clic manda SOLO si esa estacion tiene pronostico: 27 de las 651 lo\n  -- tienen, y pinchar una meteorologica vaciaba el panel pisando al selector.\n  SELECT coalesce(\n    max(CASE WHEN estacion = try_cast(nullif($estacionSel, '') AS BIGINT)\n             THEN estacion END),\n    coalesce(try_cast($rio AS BIGINT),\n             try_cast($estacionVer AS BIGINT)))\n  FROM read_parquet($svc || '/geoglows/caudal.parquet'))\nORDER BY dia"
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Pronostico de caudal de GEOGLOWS, quince dias cada tres horas. Solo 27 de las\n-- 651 estaciones hidrologicas tienen tramo del modelo asociado.\n-- Eje en DIAS por delante, no en fechas: son futuras y el rango del tablero\n-- (2015-hoy) dejaria el panel vacio.\nSELECT round(date_diff('hour', now(), strptime(fecha, '%Y-%m-%dT%H:%M:%SZ')) / 24.0, 2) AS dia,\n       round(mediana, 1) AS \"caudal esperado (m³/s)\",\n       round(minimo, 1)  AS \"si llueve menos\",\n       round(maximo, 1)  AS \"si llueve más\"\nFROM read_parquet($svc || '/geoglows/caudal.parquet')\n-- Sigue al clic si lo hay; si no, al desplegable.\nWHERE estacion = (\n  -- El clic manda SOLO si esa estacion tiene pronostico: 27 de las 651 lo\n  -- tienen, y pinchar una meteorologica vaciaba el panel pisando al selector.\n  SELECT coalesce(\n    max(CASE WHEN estacion = try_cast(nullif($estacionSel, '') AS BIGINT)\n             THEN estacion END),\n    coalesce(try_cast($rio AS BIGINT),\n             try_cast($estacionVer AS BIGINT)))\n  FROM read_parquet($svc || '/geoglows/caudal.parquet'))\nORDER BY dia"
                       }
                     },
                     "refId": "A",
@@ -122,7 +122,7 @@
                 "defaults": {
                   "decimals": 1,
                   "custom": {
-                    "axisLabel": "caudal (m3/s)",
+                    "axisLabel": "caudal (m³/s)",
                     "drawStyle": "line",
                     "fillOpacity": 0,
                     "lineWidth": 2,
@@ -139,14 +139,14 @@
                     "properties": [
                       {
                         "id": "custom.axisLabel",
-                        "value": "dias por delante"
+                        "value": "días por delante"
                       }
                     ]
                   },
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "caudal mediano (m3/s)"
+                      "options": "caudal esperado (m³/s)"
                     },
                     "properties": [
                       {
@@ -169,7 +169,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "el escenario bajo"
+                      "options": "si llueve menos"
                     },
                     "properties": [
                       {
@@ -192,7 +192,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "el escenario alto"
+                      "options": "si llueve más"
                     },
                     "properties": [
                       {
@@ -222,8 +222,8 @@
         "kind": "Panel",
         "spec": {
           "id": 11,
-          "title": "El cielo de Ecuador · $capa · con las estaciones encima",
-          "description": "Segundo mapa, con su propio reloj: estas capas son de ahora y de los proximos tres dias, mientras el mapa de arriba recorre once anos. Fuente: GeoServer de GEOGLOWS. Comprobado hoy que las cuatro estan vivas; imerg_early_run_* lleva 189 dias parada y wrf_precipitation_weekly, 152. Los puntos son las 220 estaciones que transmiten, con la lluvia que han medido en 24 h: sirven para contrastar lo que ve el satelite con lo que se midio en el suelo.",
+          "title": "El cielo del Ecuador · $capa · con las estaciones encima",
+          "description": "Puedes cambiar lo que se ve con el selector de arriba: lluvia caída, lluvia pronosticada para los próximos tres días, viento, nubes o humedad del suelo. Este mapa tiene su propio reloj porque muestra los días recientes, no los once años del otro.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -329,7 +329,7 @@
                             },
                             "dataId": "grafana-B",
                             "isVisible": true,
-                            "label": "Estaciones INAMHI · lluvia 24 h",
+                            "label": "Estaciones · lluvia de 24 h",
                             "visConfig": {
                               "colorRange": {
                                 "category": "Uber",
@@ -406,8 +406,8 @@
         "kind": "Panel",
         "spec": {
           "id": 2,
-          "title": "Indices Nino: la fase en que estamos",
-          "description": "Dos medidas del MISMO indice, y no dan lo mismo a proposito. La mensual es ERSST v6 sobre base 1981-2010 (NOAA PSL); la semanal es OISST sobre base 1991-2020 (CPC). Medido en agosto de 2026, mes ya cerrado: mensual +3,28 y semanal promediada +4,08, o sea 0,80 de diferencia que es solo producto y climatologia. El resto de la brecha con el ultimo dato es que el evento sube: el 2 de septiembre iba por +4,6. La semanal manda para saber donde estamos hoy; la mensual, para comparar con 1950.",
+          "title": "Qué tan caliente está el mar",
+          "description": "La línea roja es el mar frente a Ecuador, semana a semana. La azul es el Pacífico central, que es el que sale en las noticias mundiales. Cuando la roja pasa de +0,5 grados durante varios meses seguidos, hay Niño. La línea de puntos es la misma medición nuestra pero promediada por mes: va más suave y llega con algo de retraso, por eso marca un poco menos que la del día.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -426,7 +426,7 @@
                       "spec": {
                         "format": 1,
                         "rawQuery": true,
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Las dos resoluciones juntas. Separarlas en pestañas distintas dejaba el mismo\n-- indice valiendo 3,28 en una y 4,6 en otra sin explicacion a la vista.\n-- El FULL OUTER JOIN porque las fechas no coinciden: la mensual cae en dia 1 y\n-- la semanal en el centro de su semana, asi que cada fila trae una u otra.\nWITH m AS (\n  SELECT fecha::TIMESTAMP AS time,\n         max(CASE WHEN indice = 'nino12' THEN valor END) AS n12,\n         max(CASE WHEN indice = 'nino34' THEN valor END) AS n34\n  FROM read_parquet($svc || '/indices/indices.parquet')\n  WHERE indice IN ('nino12', 'nino34') GROUP BY 1),\ns AS (\n  SELECT fecha::TIMESTAMP AS time, anomalia AS n12s\n  FROM read_parquet($svc || '/indices/nino_semanal.parquet')\n  WHERE indice = 'nino12')\nSELECT coalesce(m.time, s.time) AS time,\n       m.n12  AS \"Nino 1+2 (mensual)\",\n       m.n34  AS \"Nino 3.4 (mensual)\",\n       s.n12s AS \"Nino 1+2 (semanal)\"\nFROM m FULL OUTER JOIN s ON m.time = s.time\nORDER BY time"
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Las dos resoluciones juntas. Separarlas en pestañas distintas dejaba el mismo\n-- indice valiendo 3,28 en una y 4,6 en otra sin explicacion a la vista.\n-- El FULL OUTER JOIN porque las fechas no coinciden: la mensual cae en dia 1 y\n-- la semanal en el centro de su semana, asi que cada fila trae una u otra.\nWITH m AS (\n  SELECT fecha::TIMESTAMP AS time,\n         max(CASE WHEN indice = 'nino12' THEN valor END) AS n12,\n         max(CASE WHEN indice = 'nino34' THEN valor END) AS n34\n  FROM read_parquet($svc || '/indices/indices.parquet')\n  WHERE indice IN ('nino12', 'nino34') GROUP BY 1),\ns AS (\n  SELECT fecha::TIMESTAMP AS time, anomalia AS n12s\n  FROM read_parquet($svc || '/indices/nino_semanal.parquet')\n  WHERE indice = 'nino12')\nSELECT coalesce(m.time, s.time) AS time,\n       m.n12  AS \"Frente a Ecuador (mes a mes)\",\n       m.n34  AS \"Pacífico central (mes a mes)\",\n       s.n12s AS \"Frente a Ecuador (semana a semana)\"\nFROM m FULL OUTER JOIN s ON m.time = s.time\nORDER BY time"
                       }
                     },
                     "refId": "A",
@@ -492,7 +492,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "Nino 1+2 (semanal)"
+                      "options": "Frente a Ecuador (semana a semana)"
                     },
                     "properties": [
                       {
@@ -511,7 +511,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "Nino 1+2 (mensual)"
+                      "options": "Frente a Ecuador (mes a mes)"
                     },
                     "properties": [
                       {
@@ -540,7 +540,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "Nino 3.4 (mensual)"
+                      "options": "Pacífico central (mes a mes)"
                     },
                     "properties": [
                       {
@@ -566,8 +566,8 @@
         "kind": "Panel",
         "spec": {
           "id": 20,
-          "title": "Lluvia de la estacion · sus ultimos 10 dias",
-          "description": "Pincha una estacion en cualquiera de los dos mapas. Sin cuenta de INAMHI, diez dias es todo lo que hay.",
+          "title": "Lluvia de la estación elegida",
+          "description": "Hora a hora, los últimos diez días. Es todo el historial que INAMHI publica abiertamente. Las estaciones que miden ríos y no lluvia salen vacías aquí, con razón.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -636,8 +636,8 @@
         "kind": "Panel",
         "spec": {
           "id": 21,
-          "title": "Ficha de la estacion",
-          "description": "Lo que INAMHI publica de ella.",
+          "title": "Datos de la estación",
+          "description": "Dónde está y quién la opera.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -689,8 +689,8 @@
         "kind": "Panel",
         "spec": {
           "id": 22,
-          "title": "Los once anos de la zona pinchada",
-          "description": "Pincha una zona en el mapa de arriba. La banda min-max es la dispersion dentro de la zona.",
+          "title": "Once años de la región elegida",
+          "description": "Cómo ha ido esta región desde 2015. La banda muestra la diferencia entre el punto más húmedo y el más seco dentro de la misma región.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -709,7 +709,7 @@
                       "spec": {
                         "format": 1,
                         "rawQuery": true,
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Los once anos de UNA zona, aislada de las otras diez: en el panel general se\n-- ven todas encimadas y no se distingue cual hace que.\n-- Solo el indice: `min` y `max` son extremos POR PIXEL dentro de la zona,\n-- van de -75 a +100 y aplastan la escala de lo que importa.\nSELECT fecha::TIMESTAMP AS time,\n       mean AS \"indice de la zona\"\nFROM read_parquet($svc || '/inamhi/anomalias.parquet')\nWHERE zona_id = coalesce(try_cast(nullif($zonaSel, '') AS BIGINT),\n                    try_cast($zonaVer AS BIGINT))\nORDER BY time"
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Los once anos de UNA zona, aislada de las otras diez: en el panel general se\n-- ven todas encimadas y no se distingue cual hace que.\n-- Solo el indice: `min` y `max` son extremos POR PIXEL dentro de la zona,\n-- van de -75 a +100 y aplastan la escala de lo que importa.\nSELECT fecha::TIMESTAMP AS time,\n       mean AS \"índice de la región\"\nFROM read_parquet($svc || '/inamhi/anomalias.parquet')\nWHERE zona_id = coalesce(try_cast(nullif($zonaSel, '') AS BIGINT),\n                    try_cast($zonaVer AS BIGINT))\nORDER BY time"
                       }
                     },
                     "refId": "A",
@@ -758,8 +758,8 @@
         "kind": "Panel",
         "spec": {
           "id": 3,
-          "title": "Nino 1+2 · ultima semana",
-          "description": "El semanal del CPC, que es el numero con el que abren los boletines y el mismo que enseña la pestaña Oceano. La linea de puntos de la grafica de al lado es la version mensual, que va mas baja por otra climatologia y otro producto: la descripcion de ese panel lo desglosa.",
+          "title": "El mar frente a Ecuador, esta semana",
+          "description": "Cuántos grados por encima de lo normal está el mar frente a nuestra costa. Hasta +0,5 es una época corriente. De +1,5 en adelante es un evento fuerte.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -800,7 +800,7 @@
                   "calcs": [
                     "lastNotNull"
                   ],
-                  "fields": "/^Nino 1\\+2 \\(semanal\\)$/",
+                  "fields": "/^Frente a Ecuador \\(semana a semana\\)$/",
                   "values": false
                 },
                 "textMode": "auto"
@@ -848,8 +848,8 @@
         "kind": "Panel",
         "spec": {
           "id": 4,
-          "title": "Ecuador ahora: el indice de INAMHI por zona, y donde esta lloviendo",
-          "description": "Dos cosas a la vez. El COLOR DE FONDO es el indice de anomalia de INAMHI por zona (marron = por debajo de lo normal, verde-azulado = por encima; no son milimetros). Los PUNTOS son las 220 estaciones que transmiten ahora mismo, del tamano y color de la lluvia que han medido en las ultimas 24 horas. El fondo recorre once anos con la barra del mapa; los puntos son siempre de hoy.",
+          "title": "Cómo está el país ahora mismo",
+          "description": "El color de fondo dice si cada región está más lluviosa o más seca de lo normal: café es por debajo, verde y azul por encima. Los puntos son las estaciones de INAMHI, y su tamaño es la lluvia que midieron en las últimas 24 horas. Pincha una zona o una estación y su detalle aparece más abajo.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -980,7 +980,7 @@
                             },
                             "dataId": "grafana-B",
                             "isVisible": true,
-                            "label": "Estaciones INAMHI · lluvia 24 h",
+                            "label": "Estaciones · lluvia de 24 h",
                             "visConfig": {
                               "colorRange": {
                                 "category": "Uber",
@@ -1033,7 +1033,7 @@
                             },
                             "dataId": "grafana-A",
                             "isVisible": true,
-                            "label": "Indice INAMHI (unidad sin confirmar)",
+                            "label": "Qué tan lluviosa está cada región",
                             "visConfig": {
                               "colorRange": {
                                 "category": "ColorBrewer",
@@ -1111,8 +1111,8 @@
         "kind": "Panel",
         "spec": {
           "id": 5,
-          "title": "Once anos de anomalia, zona a zona",
-          "description": "Sin geometria son 79 KB, asi que aqui caben los once anos enteros. Puntos y no lineas: INAMHI publica a rachas y unir dos fechas con dos anos de por medio seria inventar. Arrastra sobre la grafica para acotar el rango: el mapa te sigue.",
+          "title": "Once años, región por región",
+          "description": "Cada punto es una medición de INAMHI. Son puntos y no una línea porque solo se publica durante los eventos: entre 2021 y 2022 no hay nada, y ese vacío es real, no un error.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1196,8 +1196,8 @@
         "kind": "Panel",
         "spec": {
           "id": 6,
-          "title": "Cuanto llovio cada temporada (ene-abr)",
-          "description": "Acumulado de enero a abril desde 1945, de GHCN-Daily. Es lo unico que alcanza el 82-83 y el 97-98: el ASOS de dynamical.org no tiene Ecuador. Eje de categorias, no de tiempo: no depende del rango del tablero.",
+          "title": "Cuánto llovió cada temporada (enero a abril)",
+          "description": "La temporada de lluvias de cada año, desde 1945, en una estación con registro largo. La línea de referencia es lo normal. Aquí se ven los grandes eventos: 1983 se sale de la gráfica.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1281,8 +1281,8 @@
         "kind": "Panel",
         "spec": {
           "id": 7,
-          "title": "Mar mas caliente = temporada mas lluviosa",
-          "description": "Cada punto es una temporada: el Nino 1+2 promedio de dic-ene-feb frente a la lluvia de ene-abr en la estacion elegida. La relacion es real pero NO determinista: medida sobre las cuatro estaciones costeras con registro largo da r entre 0,38 (Pichilingue) y 0,75 (San Juan La Mana), o sea entre el 14 % y el 57 % de la variacion explicada. 1983 (indice 2,35) fue el mas lluvioso del registro con 2.648 mm, pero 2016 (indice 1,61) se quedo en 1.513, por debajo de la mediana.",
+          "title": "Mar más caliente, temporada más lluviosa",
+          "description": "Cada punto es una temporada. A la derecha, los años con el mar más caliente; arriba, los más lluviosos. La nube sube hacia la derecha: la relación existe, pero no es una regla exacta, y por eso hay puntos que se salen.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1369,7 +1369,7 @@
                     "properties": [
                       {
                         "id": "custom.axisLabel",
-                        "value": "Nino 1+2 (dic-ene-feb), °C"
+                        "value": "Mar frente a Ecuador en dic-ene-feb (°C sobre lo normal)"
                       },
                       {
                         "id": "decimals",
@@ -1387,7 +1387,7 @@
         "kind": "Panel",
         "spec": {
           "id": 8,
-          "title": "",
+          "title": "Cómo se leen estas dos gráficas",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1403,7 +1403,7 @@
             "version": "",
             "spec": {
               "options": {
-                "content": "### Como se leen estos dos\n\n**El de barras**: cada barra es **un ano**. Su altura es **cuanta lluvia cayo entre enero\ny abril** en la estacion elegida — la temporada lluviosa de la costa. La barra que se\nsale es **1983**, el Nino que inundo el pais.\n\n**El de puntos**: cada punto es **una temporada**.\n\n- Hacia la **derecha**: mas caliente estaba el mar frente a la costa en dic-ene-feb.\n- Hacia **arriba**: mas llovio despues, de enero a abril.\n\nSi el mar mandara del todo, los puntos formarian una linea. Suben hacia la derecha, si,\npero **dispersos**: la correlacion va de **0,38 a 0,75** segun la estacion. El mar\ninclina la balanza; no decide la temporada.\n\nEstos dos vienen de **GHCN-Daily** (NOAA), que solo tiene **15 estaciones en Ecuador**\npero llega a **1945** — y es lo unico que alcanza el 82-83. La red densa de INAMHI, la\ndel mapa, solo deja ver **diez dias** sin credenciales.",
+                "content": "### Cómo se leen estas dos gráficas\n\n**La de barras**: cada barra es un año, y su altura es cuánta lluvia cayó entre enero y\nabril, que es la temporada lluviosa de la Costa. La barra que se sale de la pantalla es\n**1983**, el Niño que inundó el país.\n\n**La de puntos**: cada punto es una temporada. Hacia la derecha, los años en que el mar\nestuvo más caliente; hacia arriba, los años en que llovió más después.\n\nLos puntos suben hacia la derecha, así que la relación existe: **mar caliente en diciembre\nsuele traer una temporada lluviosa**. Pero están dispersos, y esa dispersión es la parte\nimportante. Un mar caliente hace más probable una temporada de lluvias fuertes; no la\ngarantiza. Hay años que se salen de la nube en las dos direcciones.\n",
                 "mode": "markdown"
               },
               "fieldConfig": {
@@ -1418,8 +1418,8 @@
         "kind": "Panel",
         "spec": {
           "id": 9,
-          "title": "Que viene: los 31 miembros del GEFS, hasta 35 dias",
-          "description": "Cada horizonte lleva los 31 miembros del ensemble del GEFS sobre Ecuador. La banda entre p10 y p90 es la discrepancia entre ellos: cuanto mas ancha, menos acuerdo. Pasada la semana 2 el modelo no acierta dias concretos, solo tendencia. Eje en dias de horizonte, no en fechas.",
+          "title": "Lluvia esperada en las próximas cinco semanas",
+          "description": "El modelo se corre 31 veces con condiciones ligeramente distintas. La franja muestra entre qué valores caen la mayoría de esas 31 versiones: cuanto más ancha, menos seguro está el modelo. Pasada la segunda semana ya no acierta días concretos, solo tendencias.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1438,7 +1438,7 @@
                       "spec": {
                         "format": 1,
                         "rawQuery": true,
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El ensemble del GEFS a 35 dias, cosechado por el servicio. Se lee de un\n-- parquet y no en vivo porque el abanico entero tarda ~15 s contra TiTiler y el\n-- http_client de DuckDB abandona a los 10 s.\n-- Eje en DIAS de horizonte, no en fechas: las fechas son futuras y el rango del\n-- tablero (2015-hoy) dejaria el panel vacio.\nSELECT lead_h / 24.0 AS dia,\n       round(p50, 2) AS \"mediana (mm/dia)\",\n       round(p10, 2) AS \"p10 · el escenario seco\",\n       round(p90, 2) AS \"p90 · el escenario humedo\",\n       round(prob * 100) AS \"prob. de pasar el umbral (%)\"\nFROM read_parquet($svc || '/gefs/gefs.parquet')\nWHERE miembros > 0\nORDER BY dia"
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El ensemble del GEFS a 35 dias, cosechado por el servicio. Se lee de un\n-- parquet y no en vivo porque el abanico entero tarda ~15 s contra TiTiler y el\n-- http_client de DuckDB abandona a los 10 s.\n-- Eje en DIAS de horizonte, no en fechas: las fechas son futuras y el rango del\n-- tablero (2015-hoy) dejaria el panel vacio.\nSELECT lead_h / 24.0 AS dia,\n       round(p50, 2) AS \"lo más probable (mm/día)\",\n       round(p10, 2) AS \"si sale seco\",\n       round(p90, 2) AS \"si sale lluvioso\",\n       round(prob * 100) AS \"probabilidad de lluvia fuerte (%)\"\nFROM read_parquet($svc || '/gefs/gefs.parquet')\nWHERE miembros > 0\nORDER BY dia"
                       }
                     },
                     "refId": "A",
@@ -1490,14 +1490,14 @@
                     "properties": [
                       {
                         "id": "custom.axisLabel",
-                        "value": "dias por delante"
+                        "value": "días por delante"
                       }
                     ]
                   },
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "mediana (mm/dia)"
+                      "options": "lo más probable (mm/día)"
                     },
                     "properties": [
                       {
@@ -1516,7 +1516,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "p10 · el escenario seco"
+                      "options": "si sale seco"
                     },
                     "properties": [
                       {
@@ -1539,7 +1539,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "p90 · el escenario humedo"
+                      "options": "si sale lluvioso"
                     },
                     "properties": [
                       {
@@ -1558,7 +1558,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "prob. de pasar el umbral (%)"
+                      "options": "probabilidad de lluvia fuerte (%)"
                     },
                     "properties": [
                       {
@@ -1600,7 +1600,7 @@
         "kind": "Panel",
         "spec": {
           "id": 23,
-          "title": "Que estas viendo en esta pestana",
+          "title": "Qué estás viendo",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1617,7 +1617,7 @@
             "spec": {
               "options": {
                 "mode": "markdown",
-                "content": "### Dos mapas, dos relojes\n\n**Arriba — el indice de INAMHI por zona.** El color de fondo es el indice oficial de anomalia\nde las **once zonas** que INAMHI distingue (no son 571 cuencas: sus 571 filas son trozos de\npoligono que repiten el valor de su zona). Marron es por debajo de lo normal, verde-azulado por\nencima. **No son milimetros** — medido contra la lluvia real de IMERG sobre el mismo poligono da\nuna correlacion de +0,20. Leelo como *mas humedo / mas seco de lo normal*.\n\nSu barra de tiempo recorre **once anos**, de diciembre de 2015 a hoy, y tiene agujeros de verdad:\nINAMHI publica solo durante los eventos, asi que 2021 y 2022 estan vacios. Con la ventana abierta\ndel todo se apilan todas las fechas y el mapa sale palido; estrechala o dale al play.\n\n**Abajo — el cielo de ahora.** Siete capas conmutables del GeoServer de GEOGLOWS: lluvia caida\npor satelite (PERSIANN), lluvia y viento pronosticados a tres dias (WRF), la nube en color real\n(GOES, con pasos de diez minutos) y la humedad del suelo. Tiene **su propio reloj** porque estas\ncapas son de ahora y de los proximos dias; compartirlo con el de arriba arrastraria a uno a un\ntiempo donde el otro no tiene nada.\n\n**Los puntos, en los dos mapas**, son las 220 estaciones de INAMHI que transmiten, del color de\nla lluvia que han medido en 24 h. **Pinchando una** se llena el detalle, que esta justo debajo en esta misma pestana."
+                "content": "### Dos mapas del momento\n\n**El de la izquierda** pinta el país por regiones según lo lluviosas o secas que estén\nrespecto a lo normal, con las estaciones de medición encima. **El de la derecha** deja\nelegir qué capa ver: lluvia de las últimas horas, pronóstico a tres días, viento, nubes o\nhumedad del suelo.\n\n**Pincha cualquier punto o región** y su detalle se llena aquí abajo: la lluvia y la\ntemperatura de esa estación en los últimos diez días, sus datos, y el caudal esperado del\nrío si tiene uno cerca.\n\n### Un aviso sobre los datos\n\nVienen tal como los publica INAMHI, sin corregir. Hay estaciones que fallan: algunas marcan\ncero durante días aunque esté lloviendo, y **dos han registrado cantidades imposibles**\n—Quinindé en Esmeraldas y Captación Central en Napo, con horas de 75 y 122 milímetros\ncuando lo normal en toda la red no llega a 5—. Si un dato te parece raro, probablemente lo\nsea. Preferimos mostrarlos y decirlo, antes que borrarlos en silencio.\n"
               },
               "fieldConfig": {
                 "defaults": {},
@@ -1648,7 +1648,7 @@
             "spec": {
               "options": {
                 "mode": "markdown",
-                "content": "### Pincha un punto o una zona en los mapas de arriba\n\nEl detalle vive **debajo de los mapas y no en otra pestana** a proposito: el clic nace\narriba y cae aqui, sin salto. Tambien puedes elegir a mano en los desplegables\n**estacion del detalle** y **zona del detalle**; el clic los pisa.\n\n- **Lluvia de la estacion** — su serie horaria. Son **diez dias y no mas**: es el tope que\n  impone INAMHI a quien consulta sin cuenta. Las estaciones **hidrologicas** no miden lluvia, asi\n  que su panel sale vacio con razon.\n- **Ficha** — lo que INAMHI publica de ella: codigo, provincia, canton, altitud, propietario.\n- **Los once anos de la zona** — el indice de esa zona sola. En el panel general de Historia se\n  ven las once encimadas y no se distingue cual hace que.\n- **Caudal** — quince dias de pronostico de GEOGLOWS. Solo **27 de las 651** estaciones\n  hidrologicas tienen tramo de rio del modelo asociado; si pinchas una que no lo tiene, el panel\n  se queda con la del selector en vez de vaciarse."
+                "content": "### Elige un punto en los mapas de arriba\n\nTodo lo de esta sección cambia según la estación o la región que pinches. También puedes\nelegirlas a mano en los selectores de arriba de la pestaña.\n\n- **Lluvia** — hora a hora, los últimos diez días.\n- **Temperatura** — máxima, media y mínima de cada hora.\n- **Datos de la estación** — dónde está, a qué altura y quién la opera.\n- **Once años de la región** — para ver este momento en contexto, no aislado.\n- **Caudal del río** — quince días de pronóstico, si hay un río del modelo cerca.\n"
               },
               "fieldConfig": {
                 "defaults": {},
@@ -1662,7 +1662,7 @@
         "kind": "Panel",
         "spec": {
           "id": 25,
-          "title": "Que estas viendo en esta pestana",
+          "title": "Qué estás viendo",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1679,7 +1679,7 @@
             "spec": {
               "options": {
                 "mode": "markdown",
-                "content": "### La memoria larga, que es lo que ninguna otra fuente da\n\nINAMHI empieza en 2015 y las estaciones automaticas dan diez dias. Para comparar el Nino de ahora\ncon el del 82-83 hace falta otra cosa: **GHCN-Daily**, el archivo climatico global de NOAA. Solo\ntiene **quince estaciones en Ecuador** —y solo cuatro con registro largo de lluvia— pero llega a\n**1945**.\n\n- **Cuanto llovio cada temporada** — acumulado de enero a abril, la temporada lluviosa de la\n  costa, ano a ano. La barra que se sale es **1983**.\n- **Mar mas caliente = temporada mas lluviosa** — cada punto una temporada. La relacion es real\n  pero **no determinista**: la correlacion va de **0,38 a 0,75** segun la estacion. 1983 fue el\n  mas lluvioso del registro con un indice de 2,35, pero **2016, con 1,61, se quedo por debajo de\n  la mediana**. El mar inclina la balanza; no decide la temporada.\n- **Once anos de anomalia** — las once zonas de INAMHI juntas. Para aislar una, pinchala en el\n  mapa de **Ahora** y mirala en el detalle de esa misma pestana."
+                "content": "### Para saber si esto ya pasó antes\n\nUn número suelto no dice mucho. Saber que **1983 fue el año más lluvioso desde que hay\nregistro** en Pichilingue, con casi el doble de lo normal, sí dice algo sobre lo que un Niño\nfuerte puede hacer.\n\nAquí están los eventos anteriores con datos ecuatorianos: la temporada de lluvias año por\naño desde 1945, la relación entre el mar caliente y la lluvia que vino después, y el detalle\nde cada región desde 2015.\n\n**Ojo con los vacíos.** La serie por regiones tiene huecos de verdad: entre 2021 y 2022 no\nhay nada porque no se publicó, no porque no lloviera. Por eso son puntos sueltos y no una\nlínea continua.\n\nSi quieres ir más atrás, la pestaña **Mar** tiene el nivel del mar desde 1949, que alcanza\nel evento de 1982-83.\n"
               },
               "fieldConfig": {
                 "defaults": {},
@@ -1693,7 +1693,7 @@
         "kind": "Panel",
         "spec": {
           "id": 26,
-          "title": "Que estas viendo en esta pestana",
+          "title": "Qué estás viendo",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1710,7 +1710,7 @@
             "spec": {
               "options": {
                 "mode": "markdown",
-                "content": "### Probabilidad, no pronostico de un dia\n\nLos 31 miembros del ensemble del GEFS sobre Ecuador, hasta 35 dias. Cada horizonte lleva los 31,\ny de ahi salen las tres lineas: la **mediana** es el escenario central, y la banda entre **p10** y\n**p90** es cuanto discrepan entre si. **Cuanto mas ancha la banda, menos acuerdo hay.** La linea\nroja del eje derecho es la probabilidad de superar el umbral de lluvia.\n\n**Pasada la semana 2 esto no acierta dias concretos, solo tendencia.** Un modelo global a treinta\ndias no dice si llovera el martes; dice si el mes pinta humedo o seco. Leerlo de otra manera es\npedirle lo que no puede dar.\n\nEl eje va en **dias por delante** y no en fechas porque las fechas son futuras: con un eje\ntemporal, el rango del tablero (2015 → hoy) dejaria el panel vacio."
+                "content": "### Lo que se espera, y hasta dónde creerlo\n\nPredecir lluvia es distinto según el plazo, y conviene saber cuál es cuál.\n\n**Los próximos tres días** tienen pronóstico de verdad, con detalle suficiente para ver\ndónde va a llover. Está en el mapa de la pestaña **Ahora**, eligiendo la capa de lluvia\npronosticada.\n\n**Hasta cinco semanas** es lo que muestra esta pestaña, y ya no funciona igual. El modelo se\ncorre 31 veces cambiando un poco las condiciones de partida, y lo que se dibuja es el rango\nen el que caen esas 31 versiones. Si la franja es ancha, ni el modelo lo sabe.\n\n**Pasada la segunda semana no hay que leer días concretos.** Que marque lluvia un martes\ndentro de tres semanas no significa nada; que toda la franja esté por encima de lo normal\ndurante dos semanas seguidas, sí.\n\n**Más allá de eso**, lo que hay son las probabilidades del evento en conjunto, y esas las\npublican los organismos oficiales. La Organización Meteorológica Mundial da por seguro que\neste Niño sigue hasta febrero de 2027.\n"
               },
               "fieldConfig": {
                 "defaults": {},
@@ -1725,7 +1725,7 @@
         "spec": {
           "id": 50,
           "title": "${riosResp:text}",
-          "description": "A la IZQUIERDA del cero, la lluvia acumulada de las ultimas 24 h en la estacion mas cercana (mm, eje izquierdo). A la DERECHA, el caudal que GEOGLOWS pronostica (m3/s, eje derecho). El cero es ahora. Acumulado movil y no barras diarias porque asi las dos curvas son comparables paso a paso.",
+          "description": "A la izquierda del cero, lo que ya llovió cerca de este río en los últimos diez días. A la derecha, el caudal que se espera en los próximos quince. El cero es ahora mismo.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1744,7 +1744,7 @@
                         "name": "duckdb"
                       },
                       "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Un panel por rio. Se le pega la lluvia de la estacion de INAMHI MAS CERCANA\n-- al limnigrafo (distancia plana con correccion de coseno; a estas distancias\n-- sobra). Medido: mediana 13 km, 22 de los 27 rios por debajo de 25 km.\nWITH rio AS (SELECT try_cast($riosResp AS BIGINT) AS id),\nsitio AS (\n  SELECT e.latitude AS lat, e.longitude AS lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.id_estacion = (SELECT id FROM rio)),\nmala AS (\n-- Fuera de la eleccion los sensores implausibles: el p99 de las 34.616 lecturas\n-- horarias de la red es 4,4 mm/h, y solo dos estaciones pasan de 60 (Captacion\n-- Central 121,6 y QUININDE 74,6). No se ocultan —siguen en el mapa de Ahora—,\n-- pero elegir un sensor averiado como referencia de lluvia seria elegir mal.\n-- Es una regla medida, no una lista negra: si otro se estropea, cae solo.\n  SELECT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  GROUP BY 1 HAVING max(valor) > 60),\ncerca AS (\n  SELECT e.id_estacion\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e, sitio s\n  WHERE e.id_estacion IN (\n    SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n    AND e.id_estacion NOT IN (SELECT estacion FROM mala)\n  ORDER BY 111.19 * sqrt(pow(e.latitude - s.lat, 2)\n         + pow((e.longitude - s.lon) * cos(radians(s.lat)), 2))\n  LIMIT 1),\nh AS (\n  SELECT strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') AS t, valor\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE estacion = (SELECT id_estacion FROM cerca)),\n-- Acumulado MOVIL de 24 h, no barras por dia: las barras salen del ancho del\n-- paso mas fino de la serie (el caudal, cada 3 h) y quedan en un pelo. Ademas\n-- un acumulado de 24 h es lo que de verdad se compara con un caudal.\nlluvia AS (\n  SELECT round(date_diff('hour', now(), t) / 24.0, 3) AS dia,\n         round(sum(valor) OVER (ORDER BY t\n                RANGE BETWEEN INTERVAL 23 HOUR PRECEDING AND CURRENT ROW), 1) AS \"lluvia 24h\",\n         NULL::DOUBLE AS \"caudal\", NULL::DOUBLE AS \"bajo\", NULL::DOUBLE AS \"alto\"\n  FROM h),\ncaudal AS (\n  SELECT round(date_diff('hour', now(), strptime(fecha, '%Y-%m-%dT%H:%M:%SZ')) / 24.0, 3) AS dia,\n         NULL::DOUBLE, round(mediana, 1), round(minimo, 1), round(maximo, 1)\n  FROM read_parquet($svc || '/geoglows/caudal.parquet')\n  WHERE estacion = (SELECT id FROM rio))\nSELECT * FROM lluvia UNION ALL SELECT * FROM caudal ORDER BY dia",
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Un panel por rio. Se le pega la lluvia de la estacion de INAMHI MAS CERCANA\n-- al limnigrafo (distancia plana con correccion de coseno; a estas distancias\n-- sobra). Medido: mediana 13 km, 22 de los 27 rios por debajo de 25 km.\nWITH rio AS (SELECT try_cast($riosResp AS BIGINT) AS id),\nsitio AS (\n  SELECT e.latitude AS lat, e.longitude AS lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.id_estacion = (SELECT id FROM rio)),\nmala AS (\n-- Fuera de la eleccion los sensores implausibles: el p99 de las 34.616 lecturas\n-- horarias de la red es 4,4 mm/h, y solo dos estaciones pasan de 60 (Captacion\n-- Central 121,6 y QUININDE 74,6). No se ocultan —siguen en el mapa de Ahora—,\n-- pero elegir un sensor averiado como referencia de lluvia seria elegir mal.\n-- Es una regla medida, no una lista negra: si otro se estropea, cae solo.\n  SELECT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  GROUP BY 1 HAVING max(valor) > 60),\ncerca AS (\n  SELECT e.id_estacion\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e, sitio s\n  WHERE e.id_estacion IN (\n    SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n    AND e.id_estacion NOT IN (SELECT estacion FROM mala)\n  ORDER BY 111.19 * sqrt(pow(e.latitude - s.lat, 2)\n         + pow((e.longitude - s.lon) * cos(radians(s.lat)), 2))\n  LIMIT 1),\nh AS (\n  SELECT strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') AS t, valor\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE estacion = (SELECT id_estacion FROM cerca)),\n-- Acumulado MOVIL de 24 h, no barras por dia: las barras salen del ancho del\n-- paso mas fino de la serie (el caudal, cada 3 h) y quedan en un pelo. Ademas\n-- un acumulado de 24 h es lo que de verdad se compara con un caudal.\nlluvia AS (\n  SELECT round(date_diff('hour', now(), t) / 24.0, 3) AS dia,\n         round(sum(valor) OVER (ORDER BY t\n                RANGE BETWEEN INTERVAL 23 HOUR PRECEDING AND CURRENT ROW), 1) AS \"lluvia (mm en 24 h)\",\n         NULL::DOUBLE AS \"caudal (m³/s)\", NULL::DOUBLE AS \"si llueve menos\", NULL::DOUBLE AS \"si llueve más\"\n  FROM h),\ncaudal AS (\n  SELECT round(date_diff('hour', now(), strptime(fecha, '%Y-%m-%dT%H:%M:%SZ')) / 24.0, 3) AS dia,\n         NULL::DOUBLE, round(mediana, 1), round(minimo, 1), round(maximo, 1)\n  FROM read_parquet($svc || '/geoglows/caudal.parquet')\n  WHERE estacion = (SELECT id FROM rio))\nSELECT * FROM lluvia UNION ALL SELECT * FROM caudal ORDER BY dia",
                         "rawQuery": true,
                         "format": 1
                       }
@@ -1784,7 +1784,7 @@
                     "fillOpacity": 0,
                     "showPoints": "never",
                     "spanNulls": true,
-                    "axisLabel": "m3/s",
+                    "axisLabel": "m³/s",
                     "axisPlacement": "right"
                   }
                 },
@@ -1797,7 +1797,7 @@
                     "properties": [
                       {
                         "id": "custom.axisLabel",
-                        "value": "dias respecto a ahora  (- pasado | + pronostico)"
+                        "value": "días respecto a ahora  (– pasado | + pronóstico)"
                       },
                       {
                         "id": "unit",
@@ -1812,7 +1812,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "lluvia 24h"
+                      "options": "lluvia (mm en 24 h)"
                     },
                     "properties": [
                       {
@@ -1829,7 +1829,7 @@
                       },
                       {
                         "id": "custom.axisLabel",
-                        "value": "lluvia acumulada 24 h (mm)"
+                        "value": "lluvia de las últimas 24 h (mm)"
                       },
                       {
                         "id": "custom.axisSoftMax",
@@ -1851,7 +1851,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "caudal"
+                      "options": "caudal (m³/s)"
                     },
                     "properties": [
                       {
@@ -1870,7 +1870,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "bajo"
+                      "options": "si llueve menos"
                     },
                     "properties": [
                       {
@@ -1889,7 +1889,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "alto"
+                      "options": "si llueve más"
                     },
                     "properties": [
                       {
@@ -1915,9 +1915,9 @@
         "kind": "Panel",
         "spec": {
           "id": 51,
-          "title": "Con que lluvia se empareja cada rio",
+          "title": "Qué estación de lluvia le toca a cada río",
           "links": [],
-          "description": "El emparejamiento es por cercania, no por cuenca: la estacion puede estar cerca en linea recta y en otra vertiente.",
+          "description": "Se empareja cada río con la estación de lluvia más cercana. La distancia importa: a más de 50 kilómetros, la lluvia medida puede ser de otra vertiente y no tener nada que ver.",
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -1935,7 +1935,7 @@
                         "name": "duckdb"
                       },
                       "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Con que estacion se empareja cada rio, y a que distancia. Va en la pestaña\n-- porque la distancia es el limite de todo esto: a 65 km, la lluvia de al lado\n-- no es la que alimenta ese rio.\nWITH r AS (\n  SELECT e.id_estacion, e.nombre, e.latitude lat, e.longitude lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.provincia = $provincia\n    AND e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/geoglows/caudal.parquet'))),\nmala AS (\n-- Fuera de la eleccion los sensores implausibles: el p99 de las 34.616 lecturas\n-- horarias de la red es 4,4 mm/h, y solo dos estaciones pasan de 60 (Captacion\n-- Central 121,6 y QUININDE 74,6). No se ocultan —siguen en la mapa de Ahora—,\n-- pero elegir un sensor averiado como referencia de lluvia seria elegir mal.\n-- Es una regla medida, no una lista negra: si otro se estropea, cae solo.\n  SELECT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  GROUP BY 1 HAVING max(valor) > 60),\np AS (\n  SELECT e.id_estacion, e.nombre, e.latitude lat, e.longitude lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n    AND e.id_estacion NOT IN (SELECT estacion FROM mala))\n-- La columna «mm 10d» no es adorno: 51 de las 166 estaciones marcan\n-- exactamente 0,0 mm en la ventana, algunas en plena vertiente amazonica donde\n-- llueve casi a diario. Sin este dato, un panel plano se lee como «no llovio»\n-- cuando lo que dice es «este pluviometro no midio». No se filtran: se enseña.\nSELECT r.nombre AS \"rio\", p.nombre AS \"lluvia de\",\n       round(111.19 * sqrt(pow(r.lat-p.lat,2) + pow((r.lon-p.lon)*cos(radians(r.lat)),2)), 1) AS \"km\",\n       round(coalesce((SELECT sum(o.valor) FROM read_parquet($svc || '/inamhi/observaciones.parquet') o\n                       WHERE o.estacion = p.id_estacion), 0), 1) AS \"mm 10d\"\nFROM r JOIN p ON true\nQUALIFY row_number() OVER (PARTITION BY r.id_estacion ORDER BY \"km\") = 1\nORDER BY \"km\" ",
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Con que estacion se empareja cada rio, y a que distancia. Va en la pestaña\n-- porque la distancia es el limite de todo esto: a 65 km, la lluvia de al lado\n-- no es la que alimenta ese rio.\nWITH r AS (\n  SELECT e.id_estacion, e.nombre, e.latitude lat, e.longitude lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.provincia = $provincia\n    AND e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/geoglows/caudal.parquet'))),\nmala AS (\n-- Fuera de la eleccion los sensores implausibles: el p99 de las 34.616 lecturas\n-- horarias de la red es 4,4 mm/h, y solo dos estaciones pasan de 60 (Captacion\n-- Central 121,6 y QUININDE 74,6). No se ocultan —siguen en la mapa de Ahora—,\n-- pero elegir un sensor averiado como referencia de lluvia seria elegir mal.\n-- Es una regla medida, no una lista negra: si otro se estropea, cae solo.\n  SELECT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  GROUP BY 1 HAVING max(valor) > 60),\np AS (\n  SELECT e.id_estacion, e.nombre, e.latitude lat, e.longitude lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n    AND e.id_estacion NOT IN (SELECT estacion FROM mala))\n-- La columna «mm 10d» no es adorno: 51 de las 166 estaciones marcan\n-- exactamente 0,0 mm en la ventana, algunas en plena vertiente amazonica donde\n-- llueve casi a diario. Sin este dato, un panel plano se lee como «no llovio»\n-- cuando lo que dice es «este pluviometro no midio». No se filtran: se enseña.\nSELECT r.nombre AS \"río\", p.nombre AS \"su estación de lluvia\",\n       round(111.19 * sqrt(pow(r.lat-p.lat,2) + pow((r.lon-p.lon)*cos(radians(r.lat)),2)), 1) AS \"km\",\n       round(coalesce((SELECT sum(o.valor) FROM read_parquet($svc || '/inamhi/observaciones.parquet') o\n                       WHERE o.estacion = p.id_estacion), 0), 1) AS \"mm en 10 días\"\nFROM r JOIN p ON true\nQUALIFY row_number() OVER (PARTITION BY r.id_estacion ORDER BY \"km\") = 1\nORDER BY \"km\" ",
                         "rawQuery": true,
                         "format": 1
                       }
@@ -2001,7 +2001,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "mm 10d"
+                      "options": "mm en 10 días"
                     },
                     "properties": [
                       {
@@ -2042,7 +2042,7 @@
         "kind": "Panel",
         "spec": {
           "id": 52,
-          "title": "Que estas viendo, y que no",
+          "title": "Qué estás viendo, y qué no",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2059,7 +2059,7 @@
             "spec": {
               "options": {
                 "mode": "markdown",
-                "content": "### Prueba: ¿se ve la lluvia empujando al rio?\n\nCada panel junta las dos mitades en **un solo eje**: a la izquierda del cero lo que **ya llovio**\n(barras, mm/dia) y a la derecha lo que **GEOGLOWS pronostica** de caudal (linea, m³/s, eje\nderecho). El cero es ahora.\n\n### Lo que esto NO es\n\nNo es una correlacion, y conviene decirlo antes de que el ojo la invente. Las dos series\n**apenas se tocan**: la lluvia de INAMHI llega hasta hoy y el pronostico de caudal empieza hoy,\nasi que **se solapan un solo dia**. Lo que ves es una secuencia —llovio esto, el modelo dice que\nel rio hara aquello—, no una relacion medida.\n\nDe la eleccion quedan fuera **Captacion Central - CCS** y **QUININDE**, los dos sensores cuyas\nhoras de 121,6 y 74,6 mm no parecen lluvia (el p99 de la red es 4,4 mm/h). No se ocultan —siguen en el mapa de\n**Ahora**, y pinchandolas se ven sus cifras abajo— pero no sirven de referencia. La regla es el umbral, no los nombres.\n\nY el emparejamiento es por **cercania en linea recta**, no por cuenca: la tabla de al lado dice\na cuantos kilometros esta cada estacion. Por debajo de 25 km (22 de los 27 rios) la cosa se\nsostiene; en los tres que pasan de 50, la lluvia de al lado puede ser de otra vertiente.\n\n### Y un hallazgo que conviene mirar de frente\n\n**51 de las 166 estaciones marcan exactamente 0,0 mm en los diez dias.** Alguna esta en la\nvertiente amazonica, donde llueve casi a diario: eso no es sequia, es un pluviometro que no\nmide. Por eso la tabla trae la columna **mm 10d**, en rojo cuando es cero. Si el panel sale\nplano, mirala antes de concluir nada: puede que no lloviera, o puede que nadie lo apuntara.\n\n### Que haria falta para medir la relacion de verdad\n\nHistoria en las dos series. El caudal la tiene: el **retrospectivo diario de GEOGLOWS** existe y\nresponde (612 dias en 13 s por rio, sin poder pedir varios de golpe; los 27 saldrian en ~90 s\ncon el abanico que el servicio ya usa). La lluvia es el eslabon flojo: INAMHI corta en **10 dias**\npara quien consulta sin cuenta, y GHCN, que si tiene historia, solo deja **7 de 27** rios con una\nestacion a menos de 30 km y ademas se quedo en agosto de 2025.\n"
+                "content": "### La lluvia de arriba y el río de abajo\n\nCuando llueve en la cabecera de una cuenca, el agua tarda horas o días en llegar al río de\nabajo. Esta pestaña pone las dos cosas en la misma línea de tiempo para que se vea esa\nrelación: **a la izquierda del cero lo que ya cayó, a la derecha lo que se espera del río**.\n\n### Lo que esto no es\n\nNo es una demostración de que una cosa causa la otra. Las dos mitades **casi no se solapan**:\nla lluvia que publica INAMHI llega hasta hoy, y el pronóstico del río empieza hoy. Lo que ves\nes una secuencia, no una relación medida.\n\nY la estación de lluvia que se muestra es simplemente **la más cercana en línea recta**, que\nno siempre es la que alimenta ese río. La tabla del lado dice a cuántos kilómetros está cada\nuna: por debajo de 25 la cosa se sostiene, por encima de 50 tómala con pinzas.\n\nDos estaciones quedan fuera de esta comparación por medir cantidades imposibles. Siguen\nvisibles en el mapa de **Ahora**, con su aviso.\n"
               },
               "fieldConfig": {
                 "defaults": {},
@@ -2073,9 +2073,9 @@
         "kind": "Panel",
         "spec": {
           "id": 53,
-          "title": "El par sobre el mapa · ${provincia:raw}",
+          "title": "Dónde está cada río y su estación de lluvia · ${provincia:raw}",
           "links": [],
-          "description": "Azul: el limnigrafo, del tamaño de su caudal. Naranja: la estacion de lluvia con la que se empareja, del tamaño de lo que midio en diez dias. La linea gris es la distancia entre los dos, que es de lo que hay que desconfiar. El encuadre arranca fijo en el pais: el panel sabe ajustarse a los datos (fitMapToBounds) pero eso solo esta cableado a la capa de flujo, asi que encuadrar por provincia pediria tocar el plugin. Con la rueda se acerca.",
+          "description": "En azul el punto donde se mide el río, del tamaño de su caudal. En naranja la estación de lluvia que le corresponde, del tamaño de lo que llovió en diez días. La línea gris une las dos: cuanto más larga, menos tiene que ver esa lluvia con ese río.",
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -2093,7 +2093,7 @@
                         "name": "duckdb"
                       },
                       "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El MISMO emparejamiento que usan el panel y la tabla: la estacion de lluvia\n-- mas cercana, descartando los dos sensores implausibles por umbral medido\n-- (p99 de la red = 4,4 mm/h; solo dos pasan de 60). Si esto se desviara del\n-- criterio del panel, el mapa contaria otra cosa que la grafica.\nWITH mala AS (\n  SELECT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  GROUP BY 1 HAVING max(valor) > 60),\nr AS (\n  SELECT e.id_estacion, e.nombre, e.latitude AS lat, e.longitude AS lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.provincia = $provincia\n    AND e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/geoglows/caudal.parquet'))),\np AS (\n  SELECT e.id_estacion, e.nombre, e.latitude AS lat, e.longitude AS lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n    AND e.id_estacion NOT IN (SELECT estacion FROM mala)),\npar AS (\n  SELECT r.id_estacion AS rio_id, r.nombre AS rio, r.lat AS rlat, r.lon AS rlon,\n         p.id_estacion AS est_id, p.nombre AS est, p.lat AS plat, p.lon AS plon,\n         round(111.19 * sqrt(pow(r.lat-p.lat,2) + pow((r.lon-p.lon)*cos(radians(r.lat)),2)), 1) AS km\n  FROM r JOIN p ON true\n  QUALIFY row_number() OVER (PARTITION BY r.id_estacion ORDER BY km) = 1)\n-- A: el limnigrafo, con el caudal que el modelo da para ahora mismo.\nSELECT par.rio_id AS id_estacion, par.rlat AS latitude, par.rlon AS longitude,\n       par.rio AS nombre, par.est AS \"lluvia de\", par.km,\n       round((SELECT min_by(c.mediana, c.fecha) FROM read_parquet($svc || '/geoglows/caudal.parquet') c\n              WHERE c.estacion = par.rio_id), 1) AS caudal_ahora\nFROM par ORDER BY km",
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El MISMO emparejamiento que usan el panel y la tabla: la estacion de lluvia\n-- mas cercana, descartando los dos sensores implausibles por umbral medido\n-- (p99 de la red = 4,4 mm/h; solo dos pasan de 60). Si esto se desviara del\n-- criterio del panel, el mapa contaria otra cosa que la grafica.\nWITH mala AS (\n  SELECT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  GROUP BY 1 HAVING max(valor) > 60),\nr AS (\n  SELECT e.id_estacion, e.nombre, e.latitude AS lat, e.longitude AS lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.provincia = $provincia\n    AND e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/geoglows/caudal.parquet'))),\np AS (\n  SELECT e.id_estacion, e.nombre, e.latitude AS lat, e.longitude AS lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n    AND e.id_estacion NOT IN (SELECT estacion FROM mala)),\npar AS (\n  SELECT r.id_estacion AS rio_id, r.nombre AS rio, r.lat AS rlat, r.lon AS rlon,\n         p.id_estacion AS est_id, p.nombre AS est, p.lat AS plat, p.lon AS plon,\n         round(111.19 * sqrt(pow(r.lat-p.lat,2) + pow((r.lon-p.lon)*cos(radians(r.lat)),2)), 1) AS km\n  FROM r JOIN p ON true\n  QUALIFY row_number() OVER (PARTITION BY r.id_estacion ORDER BY km) = 1)\n-- A: el limnigrafo, con el caudal que el modelo da para ahora mismo.\nSELECT par.rio_id AS id_estacion, par.rlat AS latitude, par.rlon AS longitude,\n       par.rio AS nombre, par.est AS \"su estación de lluvia\", par.km,\n       round((SELECT min_by(c.mediana, c.fecha) FROM read_parquet($svc || '/geoglows/caudal.parquet') c\n              WHERE c.estacion = par.rio_id), 1) AS caudal_ahora\nFROM par ORDER BY km",
                         "rawQuery": true,
                         "format": 1
                       }
@@ -2203,7 +2203,7 @@
                           "type": "point",
                           "config": {
                             "dataId": "grafana-A",
-                            "label": "Rio · caudal ahora (m3/s)",
+                            "label": "Río · caudal actual",
                             "columnMode": "points",
                             "columns": {
                               "lat": "latitude",
@@ -2263,7 +2263,7 @@
                           "type": "point",
                           "config": {
                             "dataId": "grafana-B",
-                            "label": "Lluvia · mm en 10 dias",
+                            "label": "Estación de lluvia · mm en 10 días",
                             "columnMode": "points",
                             "columns": {
                               "lat": "latitude",
@@ -2322,7 +2322,7 @@
                           "type": "geojson",
                           "config": {
                             "dataId": "grafana-C",
-                            "label": "El par (largo = sospechoso)",
+                            "label": "Distancia entre el río y su estación",
                             "columns": {
                               "geojson": "_geojson"
                             },
@@ -2353,7 +2353,7 @@
                           "type": "geojson",
                           "config": {
                             "dataId": "grafana-D",
-                            "label": "Cuenca de aporte del tramo",
+                            "label": "Zona que drena a ese tramo",
                             "columns": {
                               "geojson": "_geojson"
                             },
@@ -2455,8 +2455,8 @@
         "kind": "Panel",
         "spec": {
           "id": 60,
-          "title": "Nino 1+2 esta semana",
-          "description": "Anomalia de la temperatura del mar en la region Nino 1+2, la que baña Ecuador. Semanal, base 1991-2020, fuente CPC.",
+          "title": "El mar frente a Ecuador, esta semana",
+          "description": "Cuántos grados por encima de lo normal está el mar frente a nuestra costa esta semana. Es el mismo número que aparece en la portada.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2475,7 +2475,7 @@
                         "name": "duckdb"
                       },
                       "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- SEMANAL, no mensual. El informe ERFEN del 4-sep abria con +4,1 y el tablero\n-- decia +3,28: el mensual de agosto. Ir un mes por detras en el numero que\n-- todo el mundo mira primero no es un detalle.\nSELECT fecha::TIMESTAMP AS time, anomalia AS \"Nino 1+2 (semanal, CPC)\"\nFROM read_parquet($svc || '/indices/nino_semanal.parquet')\nWHERE indice = 'nino12' AND fecha >= '2024-01-01'\nORDER BY time",
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- SEMANAL, no mensual. El informe ERFEN del 4-sep abria con +4,1 y el tablero\n-- decia +3,28: el mensual de agosto. Ir un mes por detras en el numero que\n-- todo el mundo mira primero no es un detalle.\nSELECT fecha::TIMESTAMP AS time, anomalia AS \"Frente a Ecuador\"\nFROM read_parquet($svc || '/indices/nino_semanal.parquet')\nWHERE indice = 'nino12' AND fecha >= '2024-01-01'\nORDER BY time",
                         "rawQuery": true,
                         "format": 1
                       }
@@ -2545,8 +2545,8 @@
         "kind": "Panel",
         "spec": {
           "id": 61,
-          "title": "Nivel del mar en La Libertad, desde 1949",
-          "description": "Anomalia mensual contra la climatologia 1991-2020 del propio mareografo. Cada mareografo tiene su cero, asi que las alturas crudas no son comparables entre si; las anomalias, si. Fuente: UHSLC.",
+          "title": "El nivel del mar en La Libertad, desde 1949",
+          "description": "Cuántos milímetros por encima o por debajo de lo habitual está el mar cada mes. Cuando el agua se calienta se dilata y sube, así que esta línea es la huella que El Niño deja en nuestra costa. Los dos picos más altos de la historia son el evento de 1982-83 y el de 1997-98. La segunda línea es Galápagos.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2565,7 +2565,7 @@
                         "name": "duckdb"
                       },
                       "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El registro instrumental ecuatoriano mas largo que tenemos de El Nino.\n-- INAMHI arranca en 2015, asi que sin esto el tablero no puede enseñar ni el\n-- 82-83 ni el 97-98 con dato de aqui.\nSELECT fecha::TIMESTAMP AS time,\n       max(CASE WHEN nombre = 'La Libertad' THEN anomalia_mm END) AS \"La Libertad\",\n       max(CASE WHEN nombre LIKE 'Baltra%' THEN anomalia_mm END) AS \"Baltra (Galapagos)\"\nFROM read_parquet($svc || '/oceano/nivel_mar.parquet')\nGROUP BY fecha ORDER BY time",
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El registro instrumental ecuatoriano mas largo que tenemos de El Nino.\n-- INAMHI arranca en 2015, asi que sin esto el tablero no puede enseñar ni el\n-- 82-83 ni el 97-98 con dato de aqui.\nSELECT fecha::TIMESTAMP AS time,\n       max(CASE WHEN nombre = 'La Libertad' THEN anomalia_mm END) AS \"La Libertad\",\n       max(CASE WHEN nombre LIKE 'Baltra%' THEN anomalia_mm END) AS \"Galápagos\"\nFROM read_parquet($svc || '/oceano/nivel_mar.parquet')\nGROUP BY fecha ORDER BY time",
                         "rawQuery": true,
                         "format": 1
                       }
@@ -2576,7 +2576,7 @@
               "transformations": [],
               "queryOptions": {
                 "timeFrom": "80y",
-                "hideTimeOverride": false
+                "hideTimeOverride": true
               }
             }
           },
@@ -2606,7 +2606,7 @@
                     "fillOpacity": 12,
                     "showPoints": "never",
                     "spanNulls": false,
-                    "axisLabel": "anomalia (mm)"
+                    "axisLabel": "milímetros sobre lo normal"
                   }
                 },
                 "overrides": [
@@ -2632,7 +2632,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "Baltra (Galapagos)"
+                      "options": "Galápagos"
                     },
                     "properties": [
                       {
@@ -2654,8 +2654,8 @@
         "kind": "Panel",
         "spec": {
           "id": 62,
-          "title": "Los meses de mar mas alto en 77 anos",
-          "description": "El evento en curso ya esta entre los diez mas altos del registro, y va por la mitad.",
+          "title": "Los meses con el mar más alto en 77 años",
+          "description": "El mar alto es lo que convierte un aguaje corriente en una inundación en el malecón. Que el evento de ahora ya aparezca en esta lista, yendo por la mitad, es la señal a la que hay que prestar atención.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2674,7 +2674,7 @@
                         "name": "duckdb"
                       },
                       "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El ranking es casi el ranking de los Niños, y por eso vale como panel: no\n-- lo dice un argumento, lo dice el mareografo.\nSELECT strftime(fecha, '%Y-%m') AS \"mes\", round(anomalia_mm) AS \"anomalia mm\"\nFROM read_parquet($svc || '/oceano/nivel_mar.parquet')\nWHERE nombre = 'La Libertad' AND anomalia_mm IS NOT NULL\nORDER BY anomalia_mm DESC LIMIT 12",
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El ranking es casi el ranking de los Niños, y por eso vale como panel: no\n-- lo dice un argumento, lo dice el mareografo.\nSELECT strftime(fecha, '%Y-%m') AS \"mes\", round(anomalia_mm) AS \"mm sobre lo normal\"\nFROM read_parquet($svc || '/oceano/nivel_mar.parquet')\nWHERE nombre = 'La Libertad' AND anomalia_mm IS NOT NULL\nORDER BY anomalia_mm DESC LIMIT 12",
                         "rawQuery": true,
                         "format": 1
                       }
@@ -2701,7 +2701,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "anomalia mm"
+                      "options": "mm sobre lo normal"
                     },
                     "properties": [
                       {
@@ -2747,8 +2747,8 @@
         "kind": "Panel",
         "spec": {
           "id": 63,
-          "title": "El mar ahora mismo, al minuto",
-          "description": "Altura sobre el cero de cada mareografo, cada minuto. INOCAR publica solo 24 h, asi que esto es el pulso, no la historia. OJO: INOCAR tiene otra red publicada, la regional de coos.inocar.mil.ec, que responde 200 y esta congelada en abril de 2021.",
+          "title": "La marea, minuto a minuto",
+          "description": "Las últimas 24 horas en los ocho mareógrafos del INOCAR en la costa. Cada uno mide desde su propio punto de referencia, así que lo que se compara entre ellos es la forma de la curva, no la altura. El cero de la escala de abajo es este momento.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2767,7 +2767,7 @@
                         "name": "duckdb"
                       },
                       "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Las ultimas 24 h de los ocho mareografos de INOCAR, una columna por estacion.\n-- Va en HORAS respecto a ahora y en un panel `trend`, no `timeseries`: el rango\n-- del tablero arranca en 2015 y aplastaria un dia entero contra el borde, y un\n-- timeseries con eje x numerico falla con «Data is missing a time field».\nSELECT round(date_diff('minute', now(), fecha) / 60.0, 2) AS hora,\n       max(CASE WHEN nombre = 'Esmeraldas' THEN altura_m END)         AS \"Esmeraldas\",\n       max(CASE WHEN nombre = 'San Lorenzo' THEN altura_m END)        AS \"San Lorenzo\",\n       max(CASE WHEN nombre = 'Bahia de Caraquez' THEN altura_m END)  AS \"Bahia de Caraquez\",\n       max(CASE WHEN nombre = 'Puerto Lopez' THEN altura_m END)       AS \"Puerto Lopez\",\n       max(CASE WHEN nombre = 'Puerto Atun' THEN altura_m END)        AS \"Puerto Atun\",\n       max(CASE WHEN nombre = 'Rio Guayas' THEN altura_m END)         AS \"Rio Guayas\",\n       max(CASE WHEN nombre = 'Puna' THEN altura_m END)               AS \"Puna\",\n       max(CASE WHEN nombre = 'Puerto Bolivar' THEN altura_m END)     AS \"Puerto Bolivar\"\nFROM read_parquet($svc || '/oceano/mareas.parquet')\nGROUP BY hora ORDER BY hora",
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Las ultimas 24 h de los ocho mareografos de INOCAR, una columna por estacion.\n-- Va en HORAS respecto a ahora y en un panel `trend`, no `timeseries`: el rango\n-- del tablero arranca en 2015 y aplastaria un dia entero contra el borde, y un\n-- timeseries con eje x numerico falla con «Data is missing a time field».\nSELECT round(date_diff('minute', now(), fecha) / 60.0, 2) AS hora,\n       max(CASE WHEN nombre = 'Esmeraldas' THEN altura_m END)         AS \"Esmeraldas\",\n       max(CASE WHEN nombre = 'San Lorenzo' THEN altura_m END)        AS \"San Lorenzo\",\n       max(CASE WHEN nombre = 'Bahia de Caraquez' THEN altura_m END)  AS \"Bahía de Caráquez\",\n       max(CASE WHEN nombre = 'Puerto Lopez' THEN altura_m END)       AS \"Puerto López\",\n       max(CASE WHEN nombre = 'Puerto Atun' THEN altura_m END)        AS \"Puerto Atún\",\n       max(CASE WHEN nombre = 'Rio Guayas' THEN altura_m END)         AS \"Río Guayas\",\n       max(CASE WHEN nombre = 'Puna' THEN altura_m END)               AS \"Puná\",\n       max(CASE WHEN nombre = 'Puerto Bolivar' THEN altura_m END)     AS \"Puerto Bolívar\"\nFROM read_parquet($svc || '/oceano/mareas.parquet')\nGROUP BY hora ORDER BY hora",
                         "rawQuery": true,
                         "format": 1
                       }
@@ -2806,7 +2806,7 @@
                     "fillOpacity": 0,
                     "showPoints": "never",
                     "spanNulls": true,
-                    "axisLabel": "altura sobre el cero (m)"
+                    "axisLabel": "altura del mar (m)"
                   }
                 },
                 "overrides": [
@@ -2840,8 +2840,8 @@
         "kind": "Panel",
         "spec": {
           "id": 64,
-          "title": "Los indices con los que se declara el evento",
-          "description": "ONI: media movil de 3 meses de Niño 3.4, el indice con el que se declara el evento. OLR negativo = mas conveccion. El agua calida es 120E-80W (el BAC dibuja 180-100W: parientes, no el mismo numero). OJO con el SOI: cada agencia lo normaliza distinto —el boletin da -2,4 para julio y PSL -4,0 para el mismo mes— asi que el signo y la tendencia se comparan, el valor absoluto no. Y el PDO de PSL llega solo hasta agosto de 2025.",
+          "title": "Otras señales del fenómeno, desde 1950",
+          "description": "Cuatro medidas que los organismos oficiales miran junto con la temperatura del mar. El ONI es el índice con el que se declara oficialmente un Niño. El SOI baja y el OLR baja cuando la atmósfera empieza a responder al mar caliente. El agua cálida es el calor acumulado bajo la superficie, y suele adelantarse varios meses a lo que se ve arriba.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2860,7 +2860,7 @@
                         "name": "duckdb"
                       },
                       "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- ONI declara el evento; SOI y OLR dicen si la atmosfera se acoplo; el agua\n-- calida es el deposito que alimenta lo que viene. Los cuatro juntos son la\n-- lectura que hacen los boletines, y ninguno estaba en el tablero.\nWITH i AS (SELECT fecha, indice, valor FROM read_parquet($svc || '/indices/indices.parquet')\n           UNION ALL\n           SELECT fecha, indice, valor FROM read_parquet($svc || '/indices/wwv.parquet'))\nSELECT fecha::TIMESTAMP AS time,\n       max(CASE WHEN indice='oni' THEN valor END) AS \"ONI\",\n       max(CASE WHEN indice='soi' THEN valor END) AS \"SOI\",\n       max(CASE WHEN indice='olr' THEN valor END) AS \"OLR\",\n       max(CASE WHEN indice='wwv' THEN valor END) AS \"Agua calida (1e14 m3)\",\n       max(CASE WHEN indice='pdo' THEN valor END) AS \"PDO\"\nFROM i\nGROUP BY fecha ORDER BY time",
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- ONI declara el evento; SOI y OLR dicen si la atmosfera se acoplo; el agua\n-- calida es el deposito que alimenta lo que viene. Los cuatro juntos son la\n-- lectura que hacen los boletines, y ninguno estaba en el tablero.\nWITH i AS (SELECT fecha, indice, valor FROM read_parquet($svc || '/indices/indices.parquet')\n           UNION ALL\n           SELECT fecha, indice, valor FROM read_parquet($svc || '/indices/wwv.parquet'))\nSELECT fecha::TIMESTAMP AS time,\n       max(CASE WHEN indice='oni' THEN valor END) AS \"Índice oficial (ONI)\",\n       max(CASE WHEN indice='soi' THEN valor END) AS \"Presión del aire (SOI)\",\n       max(CASE WHEN indice='olr' THEN valor END) AS \"Nubes (OLR)\",\n       max(CASE WHEN indice='wwv' THEN valor END) AS \"Calor bajo el mar\",\n       max(CASE WHEN indice='pdo' THEN valor END) AS \"Ciclo largo del Pacífico (PDO)\"\nFROM i\nGROUP BY fecha ORDER BY time",
                         "rawQuery": true,
                         "format": 1
                       }
@@ -2871,7 +2871,7 @@
               "transformations": [],
               "queryOptions": {
                 "timeFrom": "80y",
-                "hideTimeOverride": false
+                "hideTimeOverride": true
               }
             }
           },
@@ -2906,7 +2906,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "ONI"
+                      "options": "Índice oficial (ONI)"
                     },
                     "properties": [
                       {
@@ -2925,7 +2925,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "Agua calida (1e14 m3)"
+                      "options": "Calor bajo el mar"
                     },
                     "properties": [
                       {
@@ -2944,7 +2944,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "PDO"
+                      "options": "Ciclo largo del Pacífico (PDO)"
                     },
                     "properties": [
                       {
@@ -2970,7 +2970,7 @@
         "kind": "Panel",
         "spec": {
           "id": 65,
-          "title": "Como leer esto, y que dicen los informes oficiales",
+          "title": "Cómo leer esta pestaña",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2987,7 +2987,7 @@
             "spec": {
               "options": {
                 "mode": "markdown",
-                "content": "### Oceano extremo, atmosfera todavia no\n\nEsto es lo que los dos informes oficiales repiten y el tablero no decia. El\n**ERFEN 08-2026** (4 de septiembre) y el **BAC 430** de la CPPS coinciden:\n\n> «Estos eventos **no reflejan todavia** una respuesta pluviometrica persistente y\n> generalizada asociada a El Nino... **no pueden atribuirse de manera directa y\n> generalizada** al evento.»\n\nEl mar esta en su sitio: Nino 1+2 por encima de +4, nivel del mar entre los mas altos\nde 77 anos, agua calida acumulada. **La atmosfera sobre Ecuador no ha respondido**: la\nZCIT sigue al norte, la Interandina en seco, y agosto concentro el **48 % de los\nincendios del ano y el 66 % de la superficie quemada** (2.831 eventos y 18.028 ha en lo\nque va de 2026). El pronostico de INAMHI para septiembre es «normal a **bajo** la\nnormal» en Interandina y Amazonia.\n\nUn tablero que pone un +4,6 grande junto a mapas de lluvia invita a la inferencia\ncontraria. Hoy la lectura honesta es esa: **oceano si, atmosfera aun no**, y lo que\ndecidira el trimestre es si la respuesta atmosferica se consolida.\n\n### Lo que dicen que viene\n\nLa OMM da **~100 % de probabilidad** de que el evento persista hasta febrero de 2027, con\nposible intensidad muy fuerte hacia finales de 2026 y maximo en noviembre. Para\ncaudales, entre el 4 y el 19 de septiembre el ERFEN espera **incremento progresivo en el\nLitoral**, sobre todo en rios del norte; Interandina estable con ligeras disminuciones; y\nAmazonia estable con ascensos localizados a mediados de mes. La pestaña **Respuesta** se puede\nleer contra eso.\n\n### De donde sale cada numero de esta pestana\n\n| | |\n|---|---|\n| Nino 1+2 semanal | CPC `wksst9120.for`. Ojo: `wksst8110.for` responde pero esta **congelado en enero de 2021** |\n| ONI, SOI, OLR, PDO | NOAA PSL. El PDO llega solo a agosto de 2025 |\n| Agua calida | PMEL/TAO, 120E-80W |\n| Nivel del mar historico | UHSLC, diario. La Libertad **desde 1949** |\n| Nivel del mar ahora | INOCAR, red **nacional**, cada minuto. Su red **regional** responde 200 y esta parada desde abril de 2021 |\n"
+                "content": "### El mar caliente no llega solo\n\nCuando el Pacífico se calienta frente a nuestra costa pasan tres cosas a la vez, y las tres\nestán en esta pantalla.\n\n**El agua sube.** Al calentarse se dilata. Unos centímetros parecen poco, pero cuando\ncoinciden con un aguaje —la marea alta de luna llena o luna nueva— el agua entra donde\nnormalmente no llega. El informe oficial de este año cuenta **18 inundaciones por aguaje**\ncon 41 personas afectadas, y **seis eventos de oleaje** con 1.480.\n\n**El aire de encima se humedece**, y con el tiempo eso se convierte en lluvia sobre la Costa.\nCon el tiempo: entre que el mar se calienta y que llueve pueden pasar semanas o meses.\n\n**El calor se acumula abajo antes de verse arriba.** Por eso la línea del agua cálida importa:\navisa con meses de anticipación de si el evento va a seguir creciendo.\n\n### Dónde estamos ahora\n\nEl mar está claramente caliente y alto. La atmósfera todavía no ha respondido: sigue sin\nllover como en un Niño hecho y derecho. Eso puede cambiar en las próximas semanas, y es\njustamente lo que hay que vigilar.\n\n### De dónde salen estos datos\n\nLa temperatura del mar y las señales del fenómeno son de la **NOAA** de Estados Unidos. El\nnivel del mar histórico viene de la red mundial de mareógrafos, y la marea de ahora mismo es\ndel **INOCAR**, que mantiene los ocho mareógrafos de nuestra costa.\n"
               },
               "fieldConfig": {
                 "defaults": {},
@@ -3001,9 +3001,9 @@
         "kind": "Panel",
         "spec": {
           "id": 66,
-          "title": "Temperatura del aire de la estacion · sus ultimos 10 dias",
+          "title": "Temperatura del aire en la estación elegida",
           "links": [],
-          "description": "Maxima, media y minima horarias. Sale de `meteo.parquet` y no de `observaciones.parquet`: la lluvia va sola a proposito, porque trece consultas del tablero dan ese fichero por «esto es lluvia». La publican 93 de las 166 estaciones; en las demas el panel sale vacio con razon.",
+          "description": "Máxima, media y mínima de cada hora en los últimos diez días. No todas las estaciones miden temperatura; si esta no lo hace, el panel sale vacío.",
           "data": {
             "kind": "QueryGroup",
             "spec": {
@@ -3021,7 +3021,7 @@
                         "name": "duckdb"
                       },
                       "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El informe ERFEN abre con «+5,3 °C de anomalia en la Costa» y «38,0 °C en El\n-- Coca», y teniamos estos sensores sin preguntarles.\nSELECT strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') AS time,\n       max(CASE WHEN estadistico = 'MAXIMA'   THEN valor END) AS \"maxima\",\n       max(CASE WHEN estadistico = 'PROMEDIO' THEN valor END) AS \"media\",\n       max(CASE WHEN estadistico = 'MINIMA'   THEN valor END) AS \"minima\"\nFROM read_parquet($svc || '/inamhi/meteo.parquet')\nWHERE variable = 'TEMPERATURA DEL AIRE'\n  -- Variable DESNUDA: en una consulta de panel el datasource entrecomilla solo.\n  AND estacion = coalesce(try_cast(nullif($estacionSel, '') AS BIGINT),\n                          try_cast($estacionVer AS BIGINT))\nGROUP BY time ORDER BY time",
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El informe ERFEN abre con «+5,3 °C de anomalia en la Costa» y «38,0 °C en El\n-- Coca», y teniamos estos sensores sin preguntarles.\nSELECT strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') AS time,\n       max(CASE WHEN estadistico = 'MAXIMA'   THEN valor END) AS \"máxima\",\n       max(CASE WHEN estadistico = 'PROMEDIO' THEN valor END) AS \"media\",\n       max(CASE WHEN estadistico = 'MINIMA'   THEN valor END) AS \"mínima\"\nFROM read_parquet($svc || '/inamhi/meteo.parquet')\nWHERE variable = 'TEMPERATURA DEL AIRE'\n  -- Variable DESNUDA: en una consulta de panel el datasource entrecomilla solo.\n  AND estacion = coalesce(try_cast(nullif($estacionSel, '') AS BIGINT),\n                          try_cast($estacionVer AS BIGINT))\nGROUP BY time ORDER BY time",
                         "rawQuery": true,
                         "format": 1
                       }
@@ -3065,7 +3065,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "maxima"
+                      "options": "máxima"
                     },
                     "properties": [
                       {
@@ -3095,7 +3095,7 @@
                   {
                     "matcher": {
                       "id": "byName",
-                      "options": "minima"
+                      "options": "mínima"
                     },
                     "properties": [
                       {
@@ -3117,8 +3117,8 @@
         "kind": "Panel",
         "spec": {
           "id": 70,
-          "title": "Oleaje · altura significativa y direccion · ${paso:text}",
-          "description": "WAVEWATCH III de la NOAA leido de ERDDAP. El fondo es la altura significativa en metros con cortes fijos (0,5/1/1,5/2/2,5/3/4) y las lineas corren hacia donde viaja la mar.",
+          "title": "Oleaje frente a la costa · ${paso:text}",
+          "description": "El color es la altura de las olas en metros y las líneas corren hacia donde viaja la mar. Con el selector de arriba se cambia la hora del pronóstico.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -3320,7 +3320,7 @@
                               255
                             ],
                             "isVisible": true,
-                            "label": "Oleaje",
+                            "label": "Dirección de la mar",
                             "textLabel": [
                               {
                                 "alignment": "center",
@@ -3408,7 +3408,7 @@
                               255
                             ],
                             "isVisible": true,
-                            "label": "Altura significativa",
+                            "label": "Altura de las olas",
                             "textLabel": [
                               {
                                 "alignment": "center",
@@ -3544,7 +3544,7 @@
         "kind": "Panel",
         "spec": {
           "id": 71,
-          "title": "Que estas viendo",
+          "title": "Qué estás viendo",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -3561,7 +3561,7 @@
             "spec": {
               "options": {
                 "mode": "markdown",
-                "content": "### Por que esto esta en un tablero de El Nino\n\nEl ERFEN 08-2026 cuenta **seis eventos de oleaje con 1.480 personas afectadas** en lo que va de evento, y los atribuye a mar de fondo coincidiendo con el nivel del mar alto que se ve en la pestana **Oceano**. Esa era la unica pieza de impacto que el tablero no tenia.\n\n**OJO con la dependencia**: este panel lee ERDDAP **en vivo**, no del servicio. Si Hawai no contesta, el mapa se queda vacio -- que es exactamente lo que paso con el host del CPC el 2026-09-09 y se llevo dos paneles por delante. Cosecharlo esta pendiente.\n\nEl **oleaje del WAVEWATCH III de la NOAA** sobre la costa ecuatoriana y Galapagos, dibujado como campo de flujo: el fondo es la **altura significativa** en metros y las lineas corren en la direccion de la mar.\n\n**Las lineas van hacia donde viaja la mar.** `Tdir` es una direccion *de procedencia* -- su `standard_name` en el servidor es `sea_surface_wave_from_direction_...` -- que es el mismo convenio que espera la capa, asi que no se corrige nada: 220 grados es mar de fondo del suroeste, y se dibuja viajando al noreste.\n\n**El color es la altura, en metros, con cortes fijos** -- 0,5 / 1 / 1,5 / 2 / 2,5 / 3 / 4 -- que es como se lee la barra de INOCAR. Lo lleva la rejilla del fondo, un cuadrado de medio grado por celda del modelo; las lineas van en un gris claro plano y solo dicen direccion. Que los cortes sean fijos y no cuantiles es lo que permite comparar dos pasos del pronostico entre si: con una escala relativa, un dia en calma se pintaria igual que una marejada.\n\n**El reloj del mapa no recorre el pronostico.** Es un bucle de sesenta segundos que anima las estelas. **La hora sale del desplegable de arriba**, que relanza la consulta: un campo de flujo sostiene un instante -- el panel se queda con el primero que la consulta ofrece y descarta el resto junto con la columna de tiempo -- asi que no hay pronostico que un reloj pueda caminar.\n\n**Un solo rectangulo** de medio grado, 897 celdas de las cuales 709 tienen mar; la tierra no viaja como fila, viaja como hueco. Acotarlo no saldria mas barato: manda la latencia de ERDDAP, no el numero de puntos. **Medio grado son unos 55 km**, asi que esto resuelve el mar de fondo que domina el oleaje ecuatoriano pero no la refraccion costera: lo que ocurre dentro del golfo de Guayaquil o al pie de Manta no esta aqui.\n\n**Por que no es el modelo de INOCAR.** El [SWAN operacional del INOCAR](https://www.inocar.mil.ec/web/index.php/modelo-swan) corre justo esta variable sobre rejillas finas de la costa, y es lo que deberia estar dibujado. Pero solo lo publica como imagen ya dibujada (`/modelnum/swan/imagenes/*.png`): no hay WMS, ni THREDDS, ni ERDDAP, ni descarga del NetCDF. Esto reproduce su producto con el dato abierto que si existe, y las horas coinciden sin interpolar -- INOCAR publica a las 19:00, 22:00, 01:00 locales, que son las 00:00, 03:00, 06:00 UTC."
+                "content": "### El estado de la mar, hora por hora\n\nEl color de fondo es la **altura de las olas** en metros: verde es mar tranquila, azul\noscuro es marejada. Las líneas blancas corren **hacia donde viaja la mar**, no de donde\nviene. Con el selector de arriba eliges la hora, desde ayer hasta seis días adelante.\n\n### Por qué está en un tablero de El Niño\n\nPorque el oleaje es una de las formas en que el fenómeno hace daño, y no la más conocida.\nEl informe oficial de este año cuenta **seis eventos de oleaje con 1.480 personas\nafectadas**. Cuando un mar de fondo fuerte coincide con el nivel del mar alto que se ve en\nla pestaña **Mar**, el agua llega donde normalmente no llega.\n\n### Hasta dónde llega este mapa\n\nCada casilla mide unos **55 kilómetros de lado**. Eso alcanza para ver el mar de fondo que\ndomina nuestro oleaje, pero no lo que pasa pegado a la costa: lo que ocurre dentro del golfo\nde Guayaquil o al pie de un acantilado no está aquí.\n\nLos colores tienen cortes fijos, los mismos que usa el INOCAR. Eso permite comparar dos\nhoras distintas entre sí: un día en calma se ve verde y una marejada azul, siempre.\n\n### De dónde sale\n\nDel modelo mundial de oleaje de la **NOAA**. El INOCAR corre su propio modelo con mucho más\ndetalle para nuestra costa, pero lo publica solo como imágenes, así que no se puede\nconsultar así.\n"
               },
               "fieldConfig": {
                 "defaults": {},
@@ -3631,7 +3631,7 @@
           {
             "kind": "TabsLayoutTab",
             "spec": {
-              "title": "Oceano",
+              "title": "Mar",
               "layout": {
                 "kind": "GridLayout",
                 "spec": {
@@ -3896,10 +3896,10 @@
                     ],
                     "multi": false,
                     "includeAll": false,
-                    "label": "capa del cielo",
+                    "label": "qué ver en el mapa",
                     "hide": "dontHide",
                     "skipUrlSync": false,
-                    "description": "Las etiquetas no pueden llevar comas: una variable custom separa sus opciones por coma.",
+                    "description": "Cambia la capa del mapa de la derecha: lluvia, pronóstico, viento, nubes o humedad del suelo.",
                     "allowCustomValue": true
                   }
                 },
@@ -3963,8 +3963,8 @@
                   "kind": "QueryVariable",
                   "spec": {
                     "name": "estacionVer",
-                    "label": "estacion del detalle",
-                    "description": "Puerta de entrada a la pestaña Detalle. Pinchar una estacion en un mapa la pisa.",
+                    "label": "estación",
+                    "description": "Elige una estación a mano. Pinchar una en el mapa hace lo mismo.",
                     "hide": "dontHide",
                     "refresh": "onDashboardLoad",
                     "skipUrlSync": false,
@@ -3996,8 +3996,8 @@
                   "kind": "QueryVariable",
                   "spec": {
                     "name": "zonaVer",
-                    "label": "zona del detalle",
-                    "description": "Idem para las zonas. Pinchar una zona en el mapa de arriba la pisa.",
+                    "label": "región",
+                    "description": "Elige una región a mano. Pinchar una en el mapa hace lo mismo.",
                     "hide": "dontHide",
                     "refresh": "onDashboardLoad",
                     "skipUrlSync": false,
@@ -4033,7 +4033,7 @@
                       "text": "",
                       "value": ""
                     },
-                    "label": "rio",
+                    "label": "río",
                     "hide": "dontHide",
                     "refresh": "onDashboardLoad",
                     "skipUrlSync": false,
@@ -4054,7 +4054,8 @@
                     "options": [],
                     "multi": false,
                     "includeAll": false,
-                    "allowCustomValue": true
+                    "allowCustomValue": true,
+                    "description": "El río del que se muestra el caudal esperado."
                   }
                 }
               ]
@@ -4063,7 +4064,7 @@
           {
             "kind": "TabsLayoutTab",
             "spec": {
-              "title": "Respuesta",
+              "title": "Caudales",
               "layout": {
                 "kind": "GridLayout",
                 "spec": {
@@ -4133,9 +4134,9 @@
                   "kind": "QueryVariable",
                   "spec": {
                     "name": "riosResp",
-                    "label": "rios",
+                    "label": "ríos",
                     "hide": "dontHide",
-                    "description": "Todas las de la provincia elegida. Quita las que no te interesen.",
+                    "description": "Los ríos de la provincia elegida. Quita los que no te interesen.",
                     "refresh": "onDashboardLoad",
                     "skipUrlSync": false,
                     "current": {
@@ -4254,7 +4255,7 @@
                       "text": "",
                       "value": ""
                     },
-                    "label": "estacion",
+                    "label": "estación",
                     "hide": "dontHide",
                     "refresh": "onDashboardLoad",
                     "skipUrlSync": false,
@@ -4275,7 +4276,8 @@
                     "options": [],
                     "multi": false,
                     "includeAll": false,
-                    "allowCustomValue": true
+                    "allowCustomValue": true,
+                    "description": "La estación con registro largo cuya temporada de lluvias se muestra."
                   }
                 }
               ]
@@ -4284,7 +4286,7 @@
           {
             "kind": "TabsLayoutTab",
             "spec": {
-              "title": "Pronostico",
+              "title": "Futuro",
               "layout": {
                 "kind": "GridLayout",
                 "spec": {
@@ -4362,9 +4364,9 @@
                   "kind": "QueryVariable",
                   "spec": {
                     "name": "paso",
-                    "label": "Paso",
+                    "label": "hora",
                     "hide": "dontHide",
-                    "description": "Que hora del pronostico dibuja el campo. Es el unico reloj que hay aqui: un campo de flujo sostiene un instante, asi que la barra de tiempo del mapa no tiene nada que recorrer.",
+                    "description": "Qué hora del pronóstico se dibuja. Desde ayer hasta seis días adelante, cada tres horas.",
                     "refresh": "onDashboardLoad",
                     "skipUrlSync": false,
                     "current": {
@@ -4426,7 +4428,7 @@
       "hideTimepicker": false,
       "fiscalYearStartMonth": 0
     },
-    "title": "El Nino en Ecuador",
+    "title": "El Niño en Ecuador",
     "variables": [
       {
         "kind": "ConstantVariable",
@@ -4437,10 +4439,10 @@
             "text": "http://host.docker.internal:8092",
             "value": "http://host.docker.internal:8092"
           },
-          "label": "servicio elnino",
+          "label": "servicio",
           "hide": "hideVariable",
           "skipUrlSync": true,
-          "description": "Base del servicio elnino (~/dev/elnino). En despliegue pasa a https://enso.ubica.ec"
+          "description": "De dónde se leen los datos."
         }
       },
       {
@@ -4476,7 +4478,7 @@
         "spec": {
           "name": "provincia",
           "label": "provincia",
-          "description": "Acota el mapa y las listas de las pestañas Lluvia y Rios.",
+          "description": "Acota el mapa y las listas de las pestañas Caudales.",
           "hide": "dontHide",
           "refresh": "onDashboardLoad",
           "skipUrlSync": false,
