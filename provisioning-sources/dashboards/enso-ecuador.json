@@ -53,7 +53,7 @@
             "version": "",
             "spec": {
               "options": {
-                "content": "# El Nino en Ecuador\n\nVigilancia del impacto, **no pronostico del fenomeno**: eso pide un modelo acoplado\noceano-atmosfera que ninguna de estas fuentes tiene.\n\n**Hay evento en curso, y creciendo.** El indice Nino 1+2 paso de -0,26 en enero de 2026 a\n**+3,28 en agosto**, y la ultima anomalia de INAMHI, del 7 de septiembre, sigue en positivo.\n\n**Para Ecuador manda Nino 1+2, no el 3.4.** El \"Nino costero\" de 2017 inundo la costa con el\n3.4 en neutro: un tablero que solo mire el ONI se pierde justo el evento que mas importa aqui.\n\n## Limites, que un tablero de ENSO que no los diga miente\n\n- Los indices son de **NOAA PSL**: ERSST V6 sobre base **1981-2010**, con ~1 mes de retraso.\n  El CPC publica los mismos indices sobre **1991-2020** y da otros numeros para el mismo mes\n  (junio de 2026: +2,48 aqui, +2,82 alli). No son intercambiables.\n- INAMHI publica **~2 dias** despues de la fecha, y **solo durante los eventos**: hay 68\n  fechas en 2026 y **ninguna en 2021-22**. El eje de tiempo tiene agujeros de verdad; no se\n  interpola entre ellos.\n- La anomalia de INAMHI es de **once zonas**, no de 571 cuencas: las 571 filas de su WFS son\n  trozos de poligono que repiten el valor de su zona.\n- **El indice de INAMHI no esta definido en ninguna parte, y NO es una cantidad de lluvia.**\n  Sus valores van de **-5,4 a +10,1** (mediana 0,08), centrados en cero y sesgados a la derecha.\n  Medido: enfrentado a la lluvia real de IMERG **sobre el mismo poligono**, en diez fechas\n  repartidas por todo el rango, la correlacion es de **+0,20** con ventanas de 1 a 30 dias. Hay\n  fechas que lo dejan claro: el 31-ago-2026 marca **+4,79** con 0,45 mm/dia de lluvia, y el\n  14-mar-2019 marca **+1,75** con 20,91 mm/dia. Su forma es la de una **anomalia tipificada**\n  (desviaciones respecto a lo normal del mes), lo que explicaria justo eso — pero **no esta\n  confirmado**: INAMHI no publica metadatos de estas capas, y el unico documento metodologico\n  localizable describe otro producto (anomalias porcentuales del acumulado enero-mayo).\n  **Leelo como mas humedo / mas seco de lo normal, no como milimetros.**\n- **La relacion Nino 1+2 <-> lluvia costera es real pero no determinista**: r entre 0,38 y\n  0,75 segun la estacion. 1983 fue el ene-abr mas lluvioso del registro, pero 2016 —con un\n  indice tambien alto— se quedo por debajo de la mediana. El indice inclina la balanza; no\n  decide la temporada.\n- Que son las once zonas tampoco esta claro: no coinciden con las diez demarcaciones\n  hidrograficas ni con las regiones de precipitacion. Se etiquetan por numero y por su forma:\n  81 es Galapagos, 31-39 la costa, 20-21 el oriente, 26-27 la sierra.\nEl mapa **recorre el tiempo**. Abre en el evento en curso; para ver 2016 o 2018, ensancha el\nrango. Con la ventana ancha se apilan todas las fechas que quepan en ella: estrechala con la\nbarra del propio mapa, o dale al play. El detalle de los poligonos ahi es de ~1 km, porque va\nuna geometria por fecha y con el detalle fino los once anos serian 86 MB en vez de 15.\n\nDatos: **INAMHI** (`geoservicios.inamhi.gob.ec`) via el servicio `elnino`, y **NOAA PSL**.",
+                "content": "# El Nino en Ecuador\n\nVigilancia del impacto, **no pronostico del fenomeno**: eso pide un modelo acoplado\noceano-atmosfera que ninguna de estas fuentes tiene.\n\n**Hay evento en curso, y creciendo.** El semanal del CPC da **Nino 1+2 = +4,6 el 2 de\nseptiembre de 2026**, y el nivel del mar en La Libertad esta entre los diez meses mas\naltos de un registro que arranca en **1949**. La pestana **Oceano** lo desarrolla.\n\n**Pero el oceano y la atmosfera no van al mismo paso.** Los informes oficiales\n—ERFEN 08-2026 y BAC 430— insisten en que sobre Ecuador **todavia no** hay respuesta\npluviometrica persistente: la ZCIT sigue al norte, la Interandina en seco y agosto\nconcentro el 48 % de los incendios del ano. Leer un +4,6 como «lluvias ya» seria leer\nmal el tablero.\n\n**Para Ecuador manda Nino 1+2, no el 3.4.** El \"Nino costero\" de 2017 inundo la costa con el\n3.4 en neutro: un tablero que solo mire el ONI se pierde justo el evento que mas importa aqui.\n\n## Limites, que un tablero de ENSO que no los diga miente\n\n- Los indices son de **NOAA PSL**: ERSST V6 sobre base **1981-2010**, con ~1 mes de retraso.\n  El CPC publica los mismos indices sobre **1991-2020** y da otros numeros para el mismo mes\n  (junio de 2026: +2,48 aqui, +2,82 alli). No son intercambiables.\n- INAMHI publica **~2 dias** despues de la fecha, y **solo durante los eventos**: hay 68\n  fechas en 2026 y **ninguna en 2021-22**. El eje de tiempo tiene agujeros de verdad; no se\n  interpola entre ellos.\n- La anomalia de INAMHI es de **once zonas**, no de 571 cuencas: las 571 filas de su WFS son\n  trozos de poligono que repiten el valor de su zona.\n- **El indice de INAMHI no esta definido en ninguna parte, y NO es una cantidad de lluvia.**\n  Sus valores van de **-5,4 a +10,1** (mediana 0,08), centrados en cero y sesgados a la derecha.\n  Medido: enfrentado a la lluvia real de IMERG **sobre el mismo poligono**, en diez fechas\n  repartidas por todo el rango, la correlacion es de **+0,20** con ventanas de 1 a 30 dias. Hay\n  fechas que lo dejan claro: el 31-ago-2026 marca **+4,79** con 0,45 mm/dia de lluvia, y el\n  14-mar-2019 marca **+1,75** con 20,91 mm/dia. Su forma es la de una **anomalia tipificada**\n  (desviaciones respecto a lo normal del mes), lo que explicaria justo eso — pero **no esta\n  confirmado**: INAMHI no publica metadatos de estas capas, y el unico documento metodologico\n  localizable describe otro producto (anomalias porcentuales del acumulado enero-mayo).\n  **Leelo como mas humedo / mas seco de lo normal, no como milimetros.**\n- **La relacion Nino 1+2 <-> lluvia costera es real pero no determinista**: r entre 0,38 y\n  0,75 segun la estacion. 1983 fue el ene-abr mas lluvioso del registro, pero 2016 —con un\n  indice tambien alto— se quedo por debajo de la mediana. El indice inclina la balanza; no\n  decide la temporada.\n- Que son las once zonas tampoco esta claro: no coinciden con las diez demarcaciones\n  hidrograficas ni con las regiones de precipitacion. Se etiquetan por numero y por su forma:\n  81 es Galapagos, 31-39 la costa, 20-21 el oriente, 26-27 la sierra.\nEl mapa **recorre el tiempo**. Abre en el evento en curso; para ver 2016 o 2018, ensancha el\nrango. Con la ventana ancha se apilan todas las fechas que quepan en ella: estrechala con la\nbarra del propio mapa, o dale al play. El detalle de los poligonos ahi es de ~1 km, porque va\nuna geometria por fecha y con el detalle fino los once anos serian 86 MB en vez de 15.\n\nDatos: **INAMHI** (`geoservicios.inamhi.gob.ec`) via el servicio `elnino`, y **NOAA PSL**.",
                 "mode": "markdown"
               },
               "fieldConfig": {
@@ -3020,6 +3020,668 @@
             }
           }
         }
+      },
+      "panel-60": {
+        "kind": "Panel",
+        "spec": {
+          "id": 60,
+          "title": "Nino 1+2 esta semana",
+          "description": "Anomalia de la temperatura del mar en la region Nino 1+2, la que baña Ecuador. Semanal, base 1991-2020, fuente CPC.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- SEMANAL, no mensual. El informe ERFEN del 4-sep abria con +4,1 y el tablero\n-- decia +3,28: el mensual de agosto. Ir un mes por detras en el numero que\n-- todo el mundo mira primero no es un detalle.\nSELECT fecha::TIMESTAMP AS time, anomalia AS \"Nino 1+2 (semanal, CPC)\"\nFROM read_parquet($svc || '/indices/nino_semanal.parquet')\nWHERE indice = 'nino12' AND fecha >= '2024-01-01'\nORDER BY time",
+                        "rawQuery": true,
+                        "format": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "",
+            "spec": {
+              "options": {
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "textMode": "value_and_name",
+                "colorMode": "background",
+                "graphMode": "area",
+                "justifyMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "celsius",
+                  "decimals": 1,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "blue",
+                        "value": null
+                      },
+                      {
+                        "color": "green",
+                        "value": -0.5
+                      },
+                      {
+                        "color": "yellow",
+                        "value": 0.5
+                      },
+                      {
+                        "color": "orange",
+                        "value": 1.5
+                      },
+                      {
+                        "color": "red",
+                        "value": 3.0
+                      }
+                    ]
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-61": {
+        "kind": "Panel",
+        "spec": {
+          "id": 61,
+          "title": "Nivel del mar en La Libertad, desde 1949",
+          "description": "Anomalia mensual contra la climatologia 1991-2020 del propio mareografo. Cada mareografo tiene su cero, asi que las alturas crudas no son comparables entre si; las anomalias, si. Fuente: UHSLC.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El registro instrumental ecuatoriano mas largo que tenemos de El Nino.\n-- INAMHI arranca en 2015, asi que sin esto el tablero no puede enseñar ni el\n-- 82-83 ni el 97-98 con dato de aqui.\nSELECT fecha::TIMESTAMP AS time,\n       max(CASE WHEN nombre = 'La Libertad' THEN anomalia_mm END) AS \"La Libertad\",\n       max(CASE WHEN nombre LIKE 'Baltra%' THEN anomalia_mm END) AS \"Baltra (Galapagos)\"\nFROM read_parquet($svc || '/oceano/nivel_mar.parquet')\nGROUP BY fecha ORDER BY time",
+                        "rawQuery": true,
+                        "format": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "timeFrom": "80y",
+                "hideTimeOverride": false
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "",
+            "spec": {
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "lengthmm",
+                  "decimals": 0,
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineWidth": 1,
+                    "fillOpacity": 12,
+                    "showPoints": "never",
+                    "spanNulls": false,
+                    "axisLabel": "anomalia (mm)"
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "La Libertad"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "orange"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Baltra (Galapagos)"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "blue"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-62": {
+        "kind": "Panel",
+        "spec": {
+          "id": 62,
+          "title": "Los meses de mar mas alto en 77 anos",
+          "description": "El evento en curso ya esta entre los diez mas altos del registro, y va por la mitad.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El ranking es casi el ranking de los Niños, y por eso vale como panel: no\n-- lo dice un argumento, lo dice el mareografo.\nSELECT strftime(fecha, '%Y-%m') AS \"mes\", round(anomalia_mm) AS \"anomalia mm\"\nFROM read_parquet($svc || '/oceano/nivel_mar.parquet')\nWHERE nombre = 'La Libertad' AND anomalia_mm IS NOT NULL\nORDER BY anomalia_mm DESC LIMIT 12",
+                        "rawQuery": true,
+                        "format": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "table",
+            "version": "",
+            "spec": {
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm"
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "anomalia mm"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-background",
+                          "mode": "gradient"
+                        }
+                      },
+                      {
+                        "id": "thresholds",
+                        "value": {
+                          "mode": "absolute",
+                          "steps": [
+                            {
+                              "color": "yellow",
+                              "value": null
+                            },
+                            {
+                              "color": "orange",
+                              "value": 200
+                            },
+                            {
+                              "color": "red",
+                              "value": 280
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 110
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-63": {
+        "kind": "Panel",
+        "spec": {
+          "id": 63,
+          "title": "El mar ahora mismo, al minuto",
+          "description": "Altura sobre el cero de cada mareografo, cada minuto. INOCAR publica solo 24 h, asi que esto es el pulso, no la historia. OJO: INOCAR tiene otra red publicada, la regional de coos.inocar.mil.ec, que responde 200 y esta congelada en abril de 2021.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Las ultimas 24 h de los ocho mareografos de INOCAR, una columna por estacion.\n-- Va en HORAS respecto a ahora y en un panel `trend`, no `timeseries`: el rango\n-- del tablero arranca en 2015 y aplastaria un dia entero contra el borde, y un\n-- timeseries con eje x numerico falla con «Data is missing a time field».\nSELECT round(date_diff('minute', now(), fecha) / 60.0, 2) AS hora,\n       max(CASE WHEN nombre = 'Esmeraldas' THEN altura_m END)         AS \"Esmeraldas\",\n       max(CASE WHEN nombre = 'San Lorenzo' THEN altura_m END)        AS \"San Lorenzo\",\n       max(CASE WHEN nombre = 'Bahia de Caraquez' THEN altura_m END)  AS \"Bahia de Caraquez\",\n       max(CASE WHEN nombre = 'Puerto Lopez' THEN altura_m END)       AS \"Puerto Lopez\",\n       max(CASE WHEN nombre = 'Puerto Atun' THEN altura_m END)        AS \"Puerto Atun\",\n       max(CASE WHEN nombre = 'Rio Guayas' THEN altura_m END)         AS \"Rio Guayas\",\n       max(CASE WHEN nombre = 'Puna' THEN altura_m END)               AS \"Puna\",\n       max(CASE WHEN nombre = 'Puerto Bolivar' THEN altura_m END)     AS \"Puerto Bolivar\"\nFROM read_parquet($svc || '/oceano/mareas.parquet')\nGROUP BY hora ORDER BY hora",
+                        "rawQuery": true,
+                        "format": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "trend",
+            "version": "",
+            "spec": {
+              "options": {
+                "xField": "hora",
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "lengthm",
+                  "decimals": 2,
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineWidth": 1,
+                    "fillOpacity": 0,
+                    "showPoints": "never",
+                    "spanNulls": true,
+                    "axisLabel": "altura sobre el cero (m)"
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "hora"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "horas respecto a ahora"
+                      },
+                      {
+                        "id": "unit",
+                        "value": "none"
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 0
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-64": {
+        "kind": "Panel",
+        "spec": {
+          "id": 64,
+          "title": "Los indices con los que se declara el evento",
+          "description": "ONI: media movil de 3 meses de Niño 3.4, el indice con el que se declara el evento. OLR negativo = mas conveccion. El agua calida es 120E-80W (el BAC dibuja 180-100W: parientes, no el mismo numero). OJO con el SOI: cada agencia lo normaliza distinto —el boletin da -2,4 para julio y PSL -4,0 para el mismo mes— asi que el signo y la tendencia se comparan, el valor absoluto no. Y el PDO de PSL llega solo hasta agosto de 2025.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- ONI declara el evento; SOI y OLR dicen si la atmosfera se acoplo; el agua\n-- calida es el deposito que alimenta lo que viene. Los cuatro juntos son la\n-- lectura que hacen los boletines, y ninguno estaba en el tablero.\nWITH i AS (SELECT fecha, indice, valor FROM read_parquet($svc || '/indices/indices.parquet')\n           UNION ALL\n           SELECT fecha, indice, valor FROM read_parquet($svc || '/indices/wwv.parquet'))\nSELECT fecha::TIMESTAMP AS time,\n       max(CASE WHEN indice='oni' THEN valor END) AS \"ONI\",\n       max(CASE WHEN indice='soi' THEN valor END) AS \"SOI\",\n       max(CASE WHEN indice='olr' THEN valor END) AS \"OLR\",\n       max(CASE WHEN indice='wwv' THEN valor END) AS \"Agua calida (1e14 m3)\",\n       max(CASE WHEN indice='pdo' THEN valor END) AS \"PDO\"\nFROM i\nGROUP BY fecha ORDER BY time",
+                        "rawQuery": true,
+                        "format": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "timeFrom": "80y",
+                "hideTimeOverride": false
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "",
+            "spec": {
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "decimals": 2,
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineWidth": 2,
+                    "fillOpacity": 0,
+                    "showPoints": "never",
+                    "spanNulls": true
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "ONI"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "red"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 3
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Agua calida (1e14 m3)"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "purple"
+                        }
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 10
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "PDO"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "text"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-65": {
+        "kind": "Panel",
+        "spec": {
+          "id": 65,
+          "title": "Como leer esto, y que dicen los informes oficiales",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "text",
+            "version": "",
+            "spec": {
+              "options": {
+                "mode": "markdown",
+                "content": "### Oceano extremo, atmosfera todavia no\n\nEsto es lo que los dos informes oficiales repiten y el tablero no decia. El\n**ERFEN 08-2026** (4 de septiembre) y el **BAC 430** de la CPPS coinciden:\n\n> «Estos eventos **no reflejan todavia** una respuesta pluviometrica persistente y\n> generalizada asociada a El Nino... **no pueden atribuirse de manera directa y\n> generalizada** al evento.»\n\nEl mar esta en su sitio: Nino 1+2 por encima de +4, nivel del mar entre los mas altos\nde 77 anos, agua calida acumulada. **La atmosfera sobre Ecuador no ha respondido**: la\nZCIT sigue al norte, la Interandina en seco, y agosto concentro el **48 % de los\nincendios del ano y el 66 % de la superficie quemada** (2.831 eventos y 18.028 ha en lo\nque va de 2026). El pronostico de INAMHI para septiembre es «normal a **bajo** la\nnormal» en Interandina y Amazonia.\n\nUn tablero que pone un +4,6 grande junto a mapas de lluvia invita a la inferencia\ncontraria. Hoy la lectura honesta es esa: **oceano si, atmosfera aun no**, y lo que\ndecidira el trimestre es si la respuesta atmosferica se consolida.\n\n### Lo que dicen que viene\n\nLa OMM da **~100 % de probabilidad** de que el evento persista hasta febrero de 2027, con\nposible intensidad muy fuerte hacia finales de 2026 y maximo en noviembre. Para\ncaudales, entre el 4 y el 19 de septiembre el ERFEN espera **incremento progresivo en el\nLitoral**, sobre todo en rios del norte; Interandina estable con ligeras disminuciones; y\nAmazonia estable con ascensos localizados a mediados de mes. La pestaña **Rios** se puede\nleer contra eso.\n\n### De donde sale cada numero de esta pestana\n\n| | |\n|---|---|\n| Nino 1+2 semanal | CPC `wksst9120.for`. Ojo: `wksst8110.for` responde pero esta **congelado en enero de 2021** |\n| ONI, SOI, OLR, PDO | NOAA PSL. El PDO llega solo a agosto de 2025 |\n| Agua calida | PMEL/TAO, 120E-80W |\n| Nivel del mar historico | UHSLC, diario. La Libertad **desde 1949** |\n| Nivel del mar ahora | INOCAR, red **nacional**, cada minuto. Su red **regional** responde 200 y esta parada desde abril de 2021 |\n"
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-66": {
+        "kind": "Panel",
+        "spec": {
+          "id": 66,
+          "title": "Temperatura del aire de la estacion · sus ultimos 10 dias",
+          "links": [],
+          "description": "Maxima, media y minima horarias. Sale de `meteo.parquet` y no de `observaciones.parquet`: la lluvia va sola a proposito, porque trece consultas del tablero dan ese fichero por «esto es lluvia». La publican 93 de las 166 estaciones; en las demas el panel sale vacio con razon.",
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- El informe ERFEN abre con «+5,3 °C de anomalia en la Costa» y «38,0 °C en El\n-- Coca», y teniamos estos sensores sin preguntarles.\nSELECT strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') AS time,\n       max(CASE WHEN estadistico = 'MAXIMA'   THEN valor END) AS \"maxima\",\n       max(CASE WHEN estadistico = 'PROMEDIO' THEN valor END) AS \"media\",\n       max(CASE WHEN estadistico = 'MINIMA'   THEN valor END) AS \"minima\"\nFROM read_parquet($svc || '/inamhi/meteo.parquet')\nWHERE variable = 'TEMPERATURA DEL AIRE'\n  -- Variable DESNUDA: en una consulta de panel el datasource entrecomilla solo.\n  AND estacion = coalesce(try_cast(nullif($estacionSel, '') AS BIGINT),\n                          try_cast($estacionVer AS BIGINT))\nGROUP BY time ORDER BY time",
+                        "rawQuery": true,
+                        "format": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "",
+            "spec": {
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "celsius",
+                  "decimals": 1,
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineWidth": 2,
+                    "fillOpacity": 0,
+                    "showPoints": "never",
+                    "spanNulls": true
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "maxima"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "red"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "media"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "yellow"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "minima"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "blue"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
       }
     },
     "layout": {
@@ -3070,6 +3732,97 @@
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-3"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "TabsLayoutTab",
+            "spec": {
+              "title": "Oceano",
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 6,
+                        "height": 6,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-60"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 6,
+                        "y": 0,
+                        "width": 18,
+                        "height": 6,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-61"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 6,
+                        "width": 6,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-62"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 6,
+                        "y": 6,
+                        "width": 18,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-63"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 16,
+                        "width": 24,
+                        "height": 9,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-64"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 25,
+                        "width": 24,
+                        "height": 16,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-65"
                         }
                       }
                     }
@@ -3286,7 +4039,7 @@
                         "height": 10,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-22"
+                          "name": "panel-66"
                         }
                       }
                     },
@@ -3295,6 +4048,19 @@
                       "spec": {
                         "x": 0,
                         "y": 20,
+                        "width": 24,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-22"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 30,
                         "width": 24,
                         "height": 11,
                         "element": {
@@ -3307,7 +4073,7 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 0,
-                        "y": 31,
+                        "y": 41,
                         "width": 24,
                         "height": 11,
                         "element": {
