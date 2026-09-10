@@ -1690,6 +1690,342 @@
             }
           }
         }
+      },
+      "panel-30": {
+        "kind": "Panel",
+        "spec": {
+          "id": 30,
+          "title": "Los rios con pronostico",
+          "description": "Los 24 tramos que el modelo de GEOGLOWS cubre en Ecuador, del tamano y color del caudal que llevan ahora. Pinchando uno se llena la pestana Detalle.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Los 24 rios con pronostico, con el caudal que llevan ahora.\nWITH ahora AS (\n  SELECT estacion, min_by(mediana, fecha) AS q0\n  FROM read_parquet($svc || '/geoglows/caudal.parquet') GROUP BY 1)\nSELECT e.id_estacion, e.latitude, e.longitude, e.nombre, e.provincia,\n       round(a.q0, 1) AS caudal_ahora\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nJOIN ahora a ON a.estacion = e.id_estacion\nORDER BY caudal_ahora DESC",
+                        "rawQuery": true,
+                        "format": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "ubica-keplergl-panel",
+            "version": "",
+            "spec": {
+              "options": {
+                "showSidePanel": false,
+                "followGrafanaTheme": true,
+                "timeSync": "off",
+                "basemap": "dark-matter",
+                "variableMappings": [
+                  {
+                    "field": "id_estacion",
+                    "variable": "estacionSel",
+                    "source": "click"
+                  }
+                ],
+                "mapConfig": {
+                  "version": "v1",
+                  "config": {
+                    "mapState": {
+                      "latitude": -1.4,
+                      "longitude": -78.6,
+                      "zoom": 5.9,
+                      "bearing": 0,
+                      "pitch": 0,
+                      "dragRotate": false
+                    },
+                    "mapStyle": {
+                      "styleType": "dark-matter"
+                    },
+                    "visState": {
+                      "layers": [
+                        {
+                          "id": "rios",
+                          "type": "point",
+                          "config": {
+                            "dataId": "grafana-A",
+                            "label": "Caudal ahora (m3/s)",
+                            "columnMode": "points",
+                            "columns": {
+                              "lat": "latitude",
+                              "lng": "longitude"
+                            },
+                            "isVisible": true,
+                            "color": [
+                              100,
+                              180,
+                              220
+                            ],
+                            "visConfig": {
+                              "filled": true,
+                              "opacity": 0.95,
+                              "outline": true,
+                              "thickness": 1,
+                              "strokeColor": [
+                                255,
+                                255,
+                                255
+                              ],
+                              "radius": 10,
+                              "radiusRange": [
+                                8,
+                                45
+                              ],
+                              "colorRange": {
+                                "name": "Caudal",
+                                "type": "sequential",
+                                "category": "Uber",
+                                "colors": [
+                                  "#C6E4E6",
+                                  "#7FC5CC",
+                                  "#37A3AD",
+                                  "#0B7C89",
+                                  "#04525C",
+                                  "#022E36"
+                                ]
+                              }
+                            }
+                          },
+                          "visualChannels": {
+                            "colorField": {
+                              "name": "caudal_ahora",
+                              "type": "real"
+                            },
+                            "colorScale": "quantize",
+                            "sizeField": {
+                              "name": "caudal_ahora",
+                              "type": "real"
+                            },
+                            "sizeScale": "sqrt"
+                          }
+                        }
+                      ],
+                      "interactionConfig": {
+                        "tooltip": {
+                          "enabled": true,
+                          "fieldsToShow": {
+                            "grafana-A": [
+                              {
+                                "name": "nombre",
+                                "format": null
+                              },
+                              {
+                                "name": "provincia",
+                                "format": null
+                              },
+                              {
+                                "name": "caudal_ahora",
+                                "format": null
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-31": {
+        "kind": "Panel",
+        "spec": {
+          "id": 31,
+          "title": "${rios:text}",
+          "description": "Quince dias de caudal pronosticado. La banda entre el escenario bajo y el alto se abre con el horizonte: es cuanto discrepa el modelo consigo mismo.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Un panel por rio: la repeticion pasa UN valor cada vez en $rios.\nSELECT round(date_diff('hour', now(), strptime(fecha, '%Y-%m-%dT%H:%M:%SZ')) / 24.0, 2) AS dia,\n       round(mediana, 1) AS \"mediana\",\n       round(minimo, 1)  AS \"bajo\",\n       round(maximo, 1)  AS \"alto\"\nFROM read_parquet($svc || '/geoglows/caudal.parquet')\nWHERE estacion = $rios\nORDER BY dia",
+                        "rawQuery": true,
+                        "format": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "trend",
+            "version": "",
+            "spec": {
+              "options": {
+                "xField": "dia",
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "decimals": 1,
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineWidth": 2,
+                    "fillOpacity": 0,
+                    "showPoints": "never",
+                    "spanNulls": true,
+                    "axisLabel": "m3/s"
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "dia"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "dias por delante"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "mediana"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "blue"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 3
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "bajo"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "orange"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 1
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "alto"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "super-light-blue"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-32": {
+        "kind": "Panel",
+        "spec": {
+          "id": 32,
+          "title": "Que estas viendo en esta pestana",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "text",
+            "version": "",
+            "spec": {
+              "options": {
+                "mode": "markdown",
+                "content": "### Un panel por rio, y la lista la eliges tu\n\nEl mapa de la izquierda son los **24 tramos de rio** que el modelo global de GEOGLOWS cubre en\nEcuador, del tamano y color del caudal que llevan **ahora**. Los grandes de la Amazonia —Napo,\nCoca, Pastaza— y el Esmeraldas se ven enseguida.\n\nA la derecha, **un panel por cada rio del desplegable**: anade o quita en `rios` y la columna\ncrece o mengua sola. No hay que tocar el tablero.\n\nCada panel lleva quince dias de pronostico. La linea gruesa es la **mediana**; la banda entre el\nescenario **bajo** y el **alto** es cuanto discrepa el modelo consigo mismo, y **se abre con el\nhorizonte** — a un dia vista casi no hay banda, a los catorce puede triplicar.\n\n**Es un pronostico, no una medicion.** Sale del modelo global de GEOGLOWS, no del caudalimetro:\npor eso hay serie incluso donde la estacion no transmite. Y solo lo tienen **24 de las 651**\nestaciones hidrologicas de INAMHI, las que tienen un tramo del modelo asociado."
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
       }
     },
     "layout": {
@@ -2089,6 +2425,109 @@
                   }
                 }
               ]
+            }
+          },
+          {
+            "kind": "TabsLayoutTab",
+            "spec": {
+              "title": "Rios",
+              "variables": [
+                {
+                  "kind": "QueryVariable",
+                  "spec": {
+                    "name": "rios",
+                    "label": "rios",
+                    "hide": "dontHide",
+                    "description": "Cada rio elegido se dibuja en su propio panel. Anade o quita y la fila crece o mengua.",
+                    "refresh": "onDashboardLoad",
+                    "skipUrlSync": false,
+                    "current": {
+                      "text": [
+                        "ESMERALDAS EN SAN MATEO — ESMERALDAS",
+                        "NAPO EN NUEVO ROCAFUERTE — ORELLANA",
+                        "NAPO EN FRANCISCO DE ORELLANA — ORELLANA",
+                        "COCA EN SAN SEBASTIAN — ORELLANA"
+                      ],
+                      "value": [
+                        "64383",
+                        "62385",
+                        "65024",
+                        "34"
+                      ]
+                    },
+                    "options": [],
+                    "multi": true,
+                    "includeAll": true,
+                    "allValue": "",
+                    "allowCustomValue": false,
+                    "regex": "",
+                    "sort": "disabled",
+                    "definition": "INSTALL httpfs; LOAD httpfs;\n-- Los 24 con tramo del modelo asociado, de mas caudal a menos: los primeros\n-- son los que mueven las hidroelectricas.\nWITH ahora AS (\n  SELECT estacion, max(mediana) AS pico\n  FROM read_parquet('${svc}/geoglows/caudal.parquet') GROUP BY 1)\nSELECT e.nombre || ' — ' || e.provincia AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN ahora a ON a.estacion = e.id_estacion\nORDER BY a.pico DESC",
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- Los 24 con tramo del modelo asociado, de mas caudal a menos: los primeros\n-- son los que mueven las hidroelectricas.\nWITH ahora AS (\n  SELECT estacion, max(mediana) AS pico\n  FROM read_parquet('${svc}/geoglows/caudal.parquet') GROUP BY 1)\nSELECT e.nombre || ' — ' || e.provincia AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN ahora a ON a.estacion = e.id_estacion\nORDER BY a.pico DESC"
+                      }
+                    }
+                  }
+                }
+              ],
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 10,
+                        "height": 22,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-30"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 10,
+                        "y": 0,
+                        "width": 14,
+                        "height": 11,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-31"
+                        },
+                        "repeat": {
+                          "mode": "variable",
+                          "value": "rios",
+                          "direction": "v"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 22,
+                        "width": 24,
+                        "height": 11,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-32"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
             }
           },
           {
