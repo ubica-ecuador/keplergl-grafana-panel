@@ -2091,6 +2091,271 @@
             }
           }
         }
+      },
+      "panel-40": {
+        "kind": "Panel",
+        "spec": {
+          "id": 40,
+          "title": "Las estaciones elegidas",
+          "description": "Solo las del desplegable, del tamano y color de la lluvia que han medido en 24 h. Pinchando una se llena la pestana Detalle.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Solo las elegidas arriba: el mapa sigue a la seleccion.\nWITH l AS (\n  SELECT estacion, sum(valor) AS mm24\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\nSELECT e.id_estacion, e.latitude, e.longitude, e.nombre, e.provincia,\n       round(coalesce(l.mm24, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN l ON l.estacion = e.id_estacion\nWHERE ',' || '${estaciones:csv}' || ',' LIKE '%,' || e.id_estacion::VARCHAR || ',%'\nORDER BY lluvia_24h DESC",
+                        "rawQuery": true,
+                        "format": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "ubica-keplergl-panel",
+            "version": "",
+            "spec": {
+              "options": {
+                "showSidePanel": false,
+                "followGrafanaTheme": true,
+                "timeSync": "off",
+                "basemap": "dark-matter",
+                "variableMappings": [
+                  {
+                    "field": "id_estacion",
+                    "variable": "estacionSel",
+                    "source": "click"
+                  }
+                ],
+                "mapConfig": {
+                  "version": "v1",
+                  "config": {
+                    "mapState": {
+                      "latitude": -1.4,
+                      "longitude": -78.6,
+                      "zoom": 5.9,
+                      "bearing": 0,
+                      "pitch": 0,
+                      "dragRotate": false
+                    },
+                    "mapStyle": {
+                      "styleType": "dark-matter"
+                    },
+                    "visState": {
+                      "layers": [
+                        {
+                          "id": "estaciones-lluvia",
+                          "type": "point",
+                          "config": {
+                            "dataId": "grafana-A",
+                            "label": "Lluvia 24 h (mm)",
+                            "columnMode": "points",
+                            "columns": {
+                              "lat": "latitude",
+                              "lng": "longitude"
+                            },
+                            "isVisible": true,
+                            "color": [
+                              150,
+                              160,
+                              170
+                            ],
+                            "visConfig": {
+                              "filled": true,
+                              "opacity": 0.95,
+                              "outline": true,
+                              "thickness": 1.5,
+                              "strokeColor": [
+                                255,
+                                255,
+                                255
+                              ],
+                              "radius": 12,
+                              "radiusRange": [
+                                10,
+                                48
+                              ],
+                              "colorRange": {
+                                "name": "Lluvia",
+                                "type": "sequential",
+                                "category": "Uber",
+                                "colors": [
+                                  "#9AA5AB",
+                                  "#7FC5CC",
+                                  "#37A3AD",
+                                  "#0B7C89",
+                                  "#04525C",
+                                  "#022E36"
+                                ]
+                              }
+                            }
+                          },
+                          "visualChannels": {
+                            "colorField": {
+                              "name": "lluvia_24h",
+                              "type": "real"
+                            },
+                            "colorScale": "quantize",
+                            "sizeField": {
+                              "name": "lluvia_24h",
+                              "type": "real"
+                            },
+                            "sizeScale": "sqrt"
+                          }
+                        }
+                      ],
+                      "interactionConfig": {
+                        "tooltip": {
+                          "enabled": true,
+                          "fieldsToShow": {
+                            "grafana-A": [
+                              {
+                                "name": "nombre",
+                                "format": null
+                              },
+                              {
+                                "name": "provincia",
+                                "format": null
+                              },
+                              {
+                                "name": "lluvia_24h",
+                                "format": null
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-41": {
+        "kind": "Panel",
+        "spec": {
+          "id": 41,
+          "title": "${estaciones:text}",
+          "description": "Lluvia hora a hora. Son diez dias y no mas: el tope que INAMHI impone sin cuenta.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Un panel por estacion: la repeticion pasa UN valor cada vez.\nSELECT strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') AS time,\n       valor AS \"mm en esa hora\"\nFROM read_parquet($svc || '/inamhi/observaciones.parquet')\nWHERE estacion = $estaciones\nORDER BY time",
+                        "rawQuery": true,
+                        "format": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {
+                "timeFrom": "10d"
+              }
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "",
+            "spec": {
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false
+                },
+                "tooltip": {
+                  "mode": "single",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "lengthmm",
+                  "decimals": 1,
+                  "custom": {
+                    "drawStyle": "bars",
+                    "fillOpacity": 80,
+                    "lineWidth": 1,
+                    "axisLabel": "mm en esa hora"
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-42": {
+        "kind": "Panel",
+        "spec": {
+          "id": 42,
+          "title": "Que estas viendo, y de que desconfiar",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "text",
+            "version": "",
+            "spec": {
+              "options": {
+                "mode": "markdown",
+                "content": "### Un panel por estacion, con la lluvia hora a hora\n\nElige en `estaciones` y la columna de la derecha crece o mengua sola; el mapa de la izquierda\nsigue a la misma seleccion. Son **diez dias y no mas**: el tope que INAMHI impone a quien\nconsulta sin cuenta. Pinchando un punto se llena ademas la pestana **Detalle**.\n\n### Hay estaciones que miden mal, y conviene saberlo\n\nEl dato viene tal como INAMHI lo publica, **sin filtrar**. Y midiendo la red entera aparecen\ndos que no encajan:\n\n- **QUININDE (Esmeraldas)** acumula **2.277 mm en diez dias** —2,3 metros, casi su lluvia de un\n  ano entero— sosteniendo horas de 50 a 75 mm/h durante dias seguidos.\n- **Captacion Central - CCS (Napo)** llega a **121,6 mm en una sola hora**.\n\nPara poner eso en escala: el **percentil 99 de las 34.616 lecturas horarias de toda la red es\nde 4,4 mm/h**, y esas dos estaciones acaparan **las once lecturas** que superan los 60 mm/h.\nNo parece lluvia: parece un sensor averiado o mal escalado.\n\nPor eso no vienen elegidas por defecto, aunque encabecen la lista del desplegable. Si las\nseleccionas, lo que veras son sus cifras, no una correccion nuestra."
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
       }
     },
     "layout": {
@@ -2495,6 +2760,108 @@
           {
             "kind": "TabsLayoutTab",
             "spec": {
+              "title": "Lluvia",
+              "variables": [
+                {
+                  "kind": "QueryVariable",
+                  "spec": {
+                    "name": "estaciones",
+                    "label": "estaciones",
+                    "hide": "dontHide",
+                    "description": "Cada estacion elegida se dibuja en su propio panel.",
+                    "refresh": "onDashboardLoad",
+                    "skipUrlSync": false,
+                    "current": {
+                      "text": [
+                        "IBARRA - 1 — IMBABURA",
+                        "EL CARMEN — MANABI",
+                        "PICHINCHA - CELEC EP — GUAYAS",
+                        "Embalse Compensador - CCS — NAPO"
+                      ],
+                      "value": [
+                        "63624",
+                        "64181",
+                        "66896",
+                        "65009"
+                      ]
+                    },
+                    "options": [],
+                    "multi": true,
+                    "includeAll": false,
+                    "allowCustomValue": false,
+                    "regex": "",
+                    "sort": "disabled",
+                    "definition": "INSTALL httpfs; LOAD httpfs;\n-- Las que han transmitido lluvia, de mas acumulado a menos en los diez dias.\nWITH t AS (\n  SELECT estacion, sum(valor) AS mm\n  FROM read_parquet('${svc}/inamhi/observaciones.parquet') GROUP BY 1)\nSELECT e.nombre || ' — ' || e.provincia AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN t ON t.estacion = e.id_estacion\nORDER BY t.mm DESC",
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- Las que han transmitido lluvia, de mas acumulado a menos en los diez dias.\nWITH t AS (\n  SELECT estacion, sum(valor) AS mm\n  FROM read_parquet('${svc}/inamhi/observaciones.parquet') GROUP BY 1)\nSELECT e.nombre || ' — ' || e.provincia AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN t ON t.estacion = e.id_estacion\nORDER BY t.mm DESC"
+                      }
+                    }
+                  }
+                }
+              ],
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 10,
+                        "height": 22,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-40"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 10,
+                        "y": 0,
+                        "width": 14,
+                        "height": 11,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-41"
+                        },
+                        "repeat": {
+                          "mode": "variable",
+                          "value": "estaciones",
+                          "direction": "v"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 22,
+                        "width": 24,
+                        "height": 12,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-42"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "TabsLayoutTab",
+            "spec": {
               "title": "Rios",
               "variables": [
                 {
@@ -2522,8 +2889,7 @@
                     },
                     "options": [],
                     "multi": true,
-                    "includeAll": true,
-                    "allValue": "",
+                    "includeAll": false,
                     "allowCustomValue": false,
                     "regex": "",
                     "sort": "disabled",
