@@ -4434,15 +4434,15 @@
         "kind": "ConstantVariable",
         "spec": {
           "name": "svc",
-          "query": "http://host.docker.internal:8092",
+          "query": "http://elnino",
           "current": {
-            "text": "http://host.docker.internal:8092",
-            "value": "http://host.docker.internal:8092"
+            "text": "http://elnino",
+            "value": "http://elnino"
           },
           "label": "servicio",
           "hide": "hideVariable",
           "skipUrlSync": true,
-          "description": "De dónde se leen los datos."
+          "description": "De dónde se leen los datos. Es el nombre del contenedor en la red de Docker: sólo lo resuelve el servidor de Grafana, que es el único que lee de aquí. El navegador nunca le habla, así que no necesita dominio ni certificado."
         }
       },
       {
