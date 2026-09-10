@@ -1695,7 +1695,7 @@
         "kind": "Panel",
         "spec": {
           "id": 30,
-          "title": "Los rios de $provRio",
+          "title": "Rios de $provRio",
           "description": "Todos los tramos con pronostico de la provincia elegida, del tamano y color del caudal de ahora, con la cuenca del tramo en amarillo. Elige alguno en `rios` para ver su serie a la derecha.",
           "links": [],
           "data": {
@@ -1715,7 +1715,7 @@
                         "name": "duckdb"
                       },
                       "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Toda la provincia, no solo lo elegido: asi la pestaña nunca llega vacia\n-- y se ve donde estan los que se pueden elegir.\nWITH ahora AS (\n  SELECT estacion, min_by(mediana, fecha) AS q0\n  FROM read_parquet($svc || '/geoglows/caudal.parquet') GROUP BY 1)\nSELECT e.id_estacion, e.latitude, e.longitude, e.nombre, e.provincia,\n       round(a.q0, 1) AS caudal_ahora\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nJOIN ahora a ON a.estacion = e.id_estacion\nWHERE ',' || '${provRio:csv}' || ',' LIKE '%,' || e.provincia || ',%'\nORDER BY caudal_ahora DESC",
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Toda la provincia, no solo lo elegido: asi la pestaña nunca llega vacia\n-- y se ve donde estan los que se pueden elegir.\nWITH ahora AS (\n  SELECT estacion, min_by(mediana, fecha) AS q0\n  FROM read_parquet($svc || '/geoglows/caudal.parquet') GROUP BY 1)\nSELECT e.id_estacion, e.latitude, e.longitude, e.nombre, e.provincia,\n       round(a.q0, 1) AS caudal_ahora\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nJOIN ahora a ON a.estacion = e.id_estacion\nWHERE e.provincia = $provRio\nORDER BY caudal_ahora DESC",
                         "rawQuery": true,
                         "format": 1
                       }
@@ -1735,7 +1735,7 @@
                         "name": "duckdb"
                       },
                       "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- La cuenca de aporte de cada tramo elegido. Son CUENCAS DE TRAMO, no de rio ni\n-- la linea del cauce: 1 a 70 km2, la porcion que drena directamente a ese\n-- pedazo de rio. Es lo unico con geometria que publica GEOGLOWS para el modelo.\nWITH rio AS (\n  SELECT DISTINCT estacion, river_id\n  FROM read_parquet($svc || '/geoglows/caudal.parquet'))\nSELECT c.river_id, e.nombre, e.provincia, c.geojson\nFROM read_parquet($svc || '/geoglows/cuencas_rio.parquet') c\nJOIN rio r ON r.river_id = c.river_id\nJOIN read_parquet($svc || '/inamhi/estaciones.parquet') e ON e.id_estacion = r.estacion\nWHERE ',' || '${provRio:csv}' || ',' LIKE '%,' || e.provincia || ',%'",
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- La cuenca de aporte de cada tramo elegido. Son CUENCAS DE TRAMO, no de rio ni\n-- la linea del cauce: 1 a 70 km2, la porcion que drena directamente a ese\n-- pedazo de rio. Es lo unico con geometria que publica GEOGLOWS para el modelo.\nWITH rio AS (\n  SELECT DISTINCT estacion, river_id\n  FROM read_parquet($svc || '/geoglows/caudal.parquet'))\nSELECT c.river_id, e.nombre, e.provincia, c.geojson\nFROM read_parquet($svc || '/geoglows/cuencas_rio.parquet') c\nJOIN rio r ON r.river_id = c.river_id\nJOIN read_parquet($svc || '/inamhi/estaciones.parquet') e ON e.id_estacion = r.estacion\nWHERE e.provincia = $provRio",
                         "rawQuery": true,
                         "format": 1
                       }
@@ -2096,7 +2096,7 @@
         "kind": "Panel",
         "spec": {
           "id": 40,
-          "title": "Las estaciones de $provLluvia",
+          "title": "Estaciones de $provLluvia",
           "description": "Todas las de la provincia elegida, del tamano y color de la lluvia que han medido en 24 h. Elige alguna en `estaciones` para verla hora a hora a la derecha. Pinchando una se llena ademas la pestana Detalle.",
           "links": [],
           "data": {
@@ -2116,7 +2116,7 @@
                         "name": "duckdb"
                       },
                       "spec": {
-                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Toda la provincia, no solo lo elegido: asi la pestaña nunca llega vacia\n-- y se ve donde estan las que se pueden elegir.\nWITH l AS (\n  SELECT estacion, sum(valor) AS mm24\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\nSELECT e.id_estacion, e.latitude, e.longitude, e.nombre, e.provincia,\n       round(coalesce(l.mm24, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN l ON l.estacion = e.id_estacion\nWHERE e.id_estacion IN (\n        SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n  AND ',' || '${provLluvia:csv}' || ',' LIKE '%,' || e.provincia || ',%'\nORDER BY lluvia_24h DESC",
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Toda la provincia, no solo lo elegido: asi la pestaña nunca llega vacia\n-- y se ve donde estan las que se pueden elegir.\nWITH l AS (\n  SELECT estacion, sum(valor) AS mm24\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') >= now() - INTERVAL '24 hours'\n  GROUP BY 1)\nSELECT e.id_estacion, e.latitude, e.longitude, e.nombre, e.provincia,\n       round(coalesce(l.mm24, 0), 1) AS lluvia_24h\nFROM read_parquet($svc || '/inamhi/estaciones.parquet') e\nLEFT JOIN l ON l.estacion = e.id_estacion\nWHERE e.id_estacion IN (\n        SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n  AND e.provincia = $provLluvia\nORDER BY lluvia_24h DESC",
                         "rawQuery": true,
                         "format": 1
                       }
@@ -2766,22 +2766,18 @@
                   "kind": "QueryVariable",
                   "spec": {
                     "name": "provLluvia",
-                    "label": "provincia",
-                    "description": "Acota la lista de abajo. Con 167 estaciones repartidas por 22 provincias, elegir sin acotar es el cuello de botella.",
+                    "label": "provincia del mapa",
+                    "description": "Acota el MAPA de la izquierda a una provincia. La lista de al lado sigue completa: Grafana no deja encadenarla sin romper los valores por defecto.",
                     "hide": "dontHide",
                     "refresh": "onDashboardLoad",
                     "skipUrlSync": false,
                     "current": {
-                      "text": [
-                        "IMBABURA"
-                      ],
-                      "value": [
-                        "IMBABURA"
-                      ]
+                      "text": "IMBABURA",
+                      "value": "IMBABURA"
                     },
                     "options": [],
-                    "multi": true,
-                    "includeAll": true,
+                    "multi": false,
+                    "includeAll": false,
                     "allowCustomValue": false,
                     "regex": "",
                     "sort": "disabled",
@@ -2805,12 +2801,22 @@
                     "name": "estaciones",
                     "label": "estaciones",
                     "hide": "dontHide",
-                    "description": "Elige una o varias y cada una se dibuja en su propio panel. La lista la acota la provincia de al lado.",
+                    "description": "Cada una se dibuja en su propio panel. El desplegable tiene buscador y van agrupadas por provincia.",
                     "refresh": "onDashboardLoad",
                     "skipUrlSync": false,
                     "current": {
-                      "text": [],
-                      "value": []
+                      "text": [
+                        "IMBABURA · IBARRA - 1",
+                        "MANABI · EL CARMEN",
+                        "NAPO · Embalse Compensador - CCS",
+                        "GUAYAS · PICHINCHA - CELEC EP"
+                      ],
+                      "value": [
+                        "63624",
+                        "64181",
+                        "65009",
+                        "66896"
+                      ]
                     },
                     "options": [],
                     "multi": true,
@@ -2818,7 +2824,7 @@
                     "allowCustomValue": false,
                     "regex": "",
                     "sort": "disabled",
-                    "definition": "INSTALL httpfs; LOAD httpfs;\n-- Encadenada a la provincia de arriba: al cambiarla, esta lista se rehace.\nWITH t AS (SELECT estacion, sum(valor) AS v\n  FROM read_parquet('${svc}/inamhi/observaciones.parquet') GROUP BY 1)\nSELECT e.nombre || ' — ' || e.provincia AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN t ON t.estacion = e.id_estacion\nWHERE ',' || '${provLluvia:csv}' || ',' LIKE '%,' || e.provincia || ',%'\nORDER BY t.v DESC",
+                    "definition": "INSTALL httpfs; LOAD httpfs;\n-- SIN encadenar a la provincia, a proposito: un hijo encadenado no adopta el\n-- valor con el que se provisiona —Grafana lo valida contra la lista nueva y lo\n-- vacia— y el tablero abria con un panel roto. Ordenada por provincia para que\n-- el buscador del desplegable las agrupe.\nWITH t AS (SELECT estacion, sum(valor) AS v\n  FROM read_parquet('${svc}/inamhi/observaciones.parquet') GROUP BY 1)\nSELECT e.provincia || ' · ' || e.nombre AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN t ON t.estacion = e.id_estacion\nORDER BY e.provincia, t.v DESC",
                     "query": {
                       "kind": "DataQuery",
                       "group": "motherduck-duckdb-datasource",
@@ -2827,7 +2833,7 @@
                         "name": "duckdb"
                       },
                       "spec": {
-                        "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- Encadenada a la provincia de arriba: al cambiarla, esta lista se rehace.\nWITH t AS (SELECT estacion, sum(valor) AS v\n  FROM read_parquet('${svc}/inamhi/observaciones.parquet') GROUP BY 1)\nSELECT e.nombre || ' — ' || e.provincia AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN t ON t.estacion = e.id_estacion\nWHERE ',' || '${provLluvia:csv}' || ',' LIKE '%,' || e.provincia || ',%'\nORDER BY t.v DESC"
+                        "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- SIN encadenar a la provincia, a proposito: un hijo encadenado no adopta el\n-- valor con el que se provisiona —Grafana lo valida contra la lista nueva y lo\n-- vacia— y el tablero abria con un panel roto. Ordenada por provincia para que\n-- el buscador del desplegable las agrupe.\nWITH t AS (SELECT estacion, sum(valor) AS v\n  FROM read_parquet('${svc}/inamhi/observaciones.parquet') GROUP BY 1)\nSELECT e.provincia || ' · ' || e.nombre AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN t ON t.estacion = e.id_estacion\nORDER BY e.provincia, t.v DESC"
                       }
                     }
                   }
@@ -2895,22 +2901,18 @@
                   "kind": "QueryVariable",
                   "spec": {
                     "name": "provRio",
-                    "label": "provincia",
-                    "description": "Acota la lista de abajo. Con 167 estaciones repartidas por 22 provincias, elegir sin acotar es el cuello de botella.",
+                    "label": "provincia del mapa",
+                    "description": "Acota el MAPA de la izquierda a una provincia. La lista de al lado sigue completa: Grafana no deja encadenarla sin romper los valores por defecto.",
                     "hide": "dontHide",
                     "refresh": "onDashboardLoad",
                     "skipUrlSync": false,
                     "current": {
-                      "text": [
-                        "ORELLANA"
-                      ],
-                      "value": [
-                        "ORELLANA"
-                      ]
+                      "text": "ORELLANA",
+                      "value": "ORELLANA"
                     },
                     "options": [],
-                    "multi": true,
-                    "includeAll": true,
+                    "multi": false,
+                    "includeAll": false,
                     "allowCustomValue": false,
                     "regex": "",
                     "sort": "disabled",
@@ -2934,12 +2936,22 @@
                     "name": "rios",
                     "label": "rios",
                     "hide": "dontHide",
-                    "description": "Elige una o varias y cada una se dibuja en su propio panel. La lista la acota la provincia de al lado.",
+                    "description": "Cada una se dibuja en su propio panel. El desplegable tiene buscador y van agrupadas por provincia.",
                     "refresh": "onDashboardLoad",
                     "skipUrlSync": false,
                     "current": {
-                      "text": [],
-                      "value": []
+                      "text": [
+                        "ESMERALDAS · ESMERALDAS EN SAN MATEO",
+                        "ORELLANA · NAPO EN NUEVO ROCAFUERTE",
+                        "ORELLANA · COCA EN SAN SEBASTIAN",
+                        "AZUAY · PAUTE EN PAUTE(DJ GUALACEO)"
+                      ],
+                      "value": [
+                        "64383",
+                        "62385",
+                        "34",
+                        "62179"
+                      ]
                     },
                     "options": [],
                     "multi": true,
@@ -2947,7 +2959,7 @@
                     "allowCustomValue": false,
                     "regex": "",
                     "sort": "disabled",
-                    "definition": "INSTALL httpfs; LOAD httpfs;\n-- Encadenada a la provincia de arriba: al cambiarla, esta lista se rehace.\nWITH t AS (SELECT estacion, max(mediana) AS v\n  FROM read_parquet('${svc}/geoglows/caudal.parquet') GROUP BY 1)\nSELECT e.nombre || ' — ' || e.provincia AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN t ON t.estacion = e.id_estacion\nWHERE ',' || '${provRio:csv}' || ',' LIKE '%,' || e.provincia || ',%'\nORDER BY t.v DESC",
+                    "definition": "INSTALL httpfs; LOAD httpfs;\n-- Sin encadenar, por lo mismo que la de estaciones.\nWITH t AS (SELECT estacion, max(mediana) AS v\n  FROM read_parquet('${svc}/geoglows/caudal.parquet') GROUP BY 1)\nSELECT e.provincia || ' · ' || e.nombre AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN t ON t.estacion = e.id_estacion\nORDER BY e.provincia, t.v DESC",
                     "query": {
                       "kind": "DataQuery",
                       "group": "motherduck-duckdb-datasource",
@@ -2956,7 +2968,7 @@
                         "name": "duckdb"
                       },
                       "spec": {
-                        "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- Encadenada a la provincia de arriba: al cambiarla, esta lista se rehace.\nWITH t AS (SELECT estacion, max(mediana) AS v\n  FROM read_parquet('${svc}/geoglows/caudal.parquet') GROUP BY 1)\nSELECT e.nombre || ' — ' || e.provincia AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN t ON t.estacion = e.id_estacion\nWHERE ',' || '${provRio:csv}' || ',' LIKE '%,' || e.provincia || ',%'\nORDER BY t.v DESC"
+                        "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- Sin encadenar, por lo mismo que la de estaciones.\nWITH t AS (SELECT estacion, max(mediana) AS v\n  FROM read_parquet('${svc}/geoglows/caudal.parquet') GROUP BY 1)\nSELECT e.provincia || ' · ' || e.nombre AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN t ON t.estacion = e.id_estacion\nORDER BY e.provincia, t.v DESC"
                       }
                     }
                   }
