@@ -2356,6 +2356,355 @@
             }
           }
         }
+      },
+      "panel-50": {
+        "kind": "Panel",
+        "spec": {
+          "id": 50,
+          "title": "${riosResp:text}",
+          "description": "A la IZQUIERDA del cero, la lluvia acumulada de las ultimas 24 h en la estacion mas cercana (mm, eje izquierdo). A la DERECHA, el caudal que GEOGLOWS pronostica (m3/s, eje derecho). El cero es ahora. Acumulado movil y no barras diarias porque asi las dos curvas son comparables paso a paso.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Un panel por rio. Se le pega la lluvia de la estacion de INAMHI MAS CERCANA\n-- al limnigrafo (distancia plana con correccion de coseno; a estas distancias\n-- sobra). Medido: mediana 13 km, 22 de los 27 rios por debajo de 25 km.\nWITH rio AS (SELECT try_cast($riosResp AS BIGINT) AS id),\nsitio AS (\n  SELECT e.latitude AS lat, e.longitude AS lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.id_estacion = (SELECT id FROM rio)),\nmala AS (\n-- Fuera de la eleccion los sensores implausibles: el p99 de las 34.616 lecturas\n-- horarias de la red es 4,4 mm/h, y solo dos estaciones pasan de 60 (Captacion\n-- Central 121,6 y QUININDE 74,6). No se ocultan —siguen en la pestaña Lluvia—,\n-- pero elegir un sensor averiado como referencia de lluvia seria elegir mal.\n-- Es una regla medida, no una lista negra: si otro se estropea, cae solo.\n  SELECT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  GROUP BY 1 HAVING max(valor) > 60),\ncerca AS (\n  SELECT e.id_estacion\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e, sitio s\n  WHERE e.id_estacion IN (\n    SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n    AND e.id_estacion NOT IN (SELECT estacion FROM mala)\n  ORDER BY 111.19 * sqrt(pow(e.latitude - s.lat, 2)\n         + pow((e.longitude - s.lon) * cos(radians(s.lat)), 2))\n  LIMIT 1),\nh AS (\n  SELECT strptime(fecha, '%Y-%m-%dT%H:%M:%SZ') AS t, valor\n  FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  WHERE estacion = (SELECT id_estacion FROM cerca)),\n-- Acumulado MOVIL de 24 h, no barras por dia: las barras salen del ancho del\n-- paso mas fino de la serie (el caudal, cada 3 h) y quedan en un pelo. Ademas\n-- un acumulado de 24 h es lo que de verdad se compara con un caudal.\nlluvia AS (\n  SELECT round(date_diff('hour', now(), t) / 24.0, 3) AS dia,\n         round(sum(valor) OVER (ORDER BY t\n                RANGE BETWEEN INTERVAL 23 HOUR PRECEDING AND CURRENT ROW), 1) AS \"lluvia 24h\",\n         NULL::DOUBLE AS \"caudal\", NULL::DOUBLE AS \"bajo\", NULL::DOUBLE AS \"alto\"\n  FROM h),\ncaudal AS (\n  SELECT round(date_diff('hour', now(), strptime(fecha, '%Y-%m-%dT%H:%M:%SZ')) / 24.0, 3) AS dia,\n         NULL::DOUBLE, round(mediana, 1), round(minimo, 1), round(maximo, 1)\n  FROM read_parquet($svc || '/geoglows/caudal.parquet')\n  WHERE estacion = (SELECT id FROM rio))\nSELECT * FROM lluvia UNION ALL SELECT * FROM caudal ORDER BY dia",
+                        "rawQuery": true,
+                        "format": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "trend",
+            "version": "",
+            "spec": {
+              "options": {
+                "xField": "dia",
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "decimals": 1,
+                  "unit": "m3/s",
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineWidth": 2,
+                    "fillOpacity": 0,
+                    "showPoints": "never",
+                    "spanNulls": true,
+                    "axisLabel": "m3/s",
+                    "axisPlacement": "right"
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "dia"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "dias respecto a ahora  (- pasado | + pronostico)"
+                      },
+                      {
+                        "id": "unit",
+                        "value": "none"
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 0
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "lluvia 24h"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.drawStyle",
+                        "value": "line"
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 35
+                      },
+                      {
+                        "id": "custom.axisPlacement",
+                        "value": "left"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "lluvia acumulada 24 h (mm)"
+                      },
+                      {
+                        "id": "custom.axisSoftMax",
+                        "value": 30
+                      },
+                      {
+                        "id": "unit",
+                        "value": "lengthmm"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "semi-dark-blue"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "caudal"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "green"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 3
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "bajo"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "orange"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 1
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "alto"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "super-light-green"
+                        }
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-51": {
+        "kind": "Panel",
+        "spec": {
+          "id": 51,
+          "title": "Con que lluvia se empareja cada rio",
+          "links": [],
+          "description": "El emparejamiento es por cercania, no por cuenca: la estacion puede estar cerca en linea recta y en otra vertiente.",
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "refId": "A",
+                    "hidden": false,
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "rawSql": "INSTALL httpfs; LOAD httpfs;\n-- Con que estacion se empareja cada rio, y a que distancia. Va en la pestaña\n-- porque la distancia es el limite de todo esto: a 65 km, la lluvia de al lado\n-- no es la que alimenta ese rio.\nWITH r AS (\n  SELECT e.id_estacion, e.nombre, e.latitude lat, e.longitude lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.provincia = $provincia\n    AND e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/geoglows/caudal.parquet'))),\nmala AS (\n-- Fuera de la eleccion los sensores implausibles: el p99 de las 34.616 lecturas\n-- horarias de la red es 4,4 mm/h, y solo dos estaciones pasan de 60 (Captacion\n-- Central 121,6 y QUININDE 74,6). No se ocultan —siguen en la pestaña Lluvia—,\n-- pero elegir un sensor averiado como referencia de lluvia seria elegir mal.\n-- Es una regla medida, no una lista negra: si otro se estropea, cae solo.\n  SELECT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet')\n  GROUP BY 1 HAVING max(valor) > 60),\np AS (\n  SELECT e.id_estacion, e.nombre, e.latitude lat, e.longitude lon\n  FROM read_parquet($svc || '/inamhi/estaciones.parquet') e\n  WHERE e.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet($svc || '/inamhi/observaciones.parquet'))\n    AND e.id_estacion NOT IN (SELECT estacion FROM mala))\n-- La columna «mm 10d» no es adorno: 51 de las 166 estaciones marcan\n-- exactamente 0,0 mm en la ventana, algunas en plena vertiente amazonica donde\n-- llueve casi a diario. Sin este dato, un panel plano se lee como «no llovio»\n-- cuando lo que dice es «este pluviometro no midio». No se filtran: se enseña.\nSELECT r.nombre AS \"rio\", p.nombre AS \"lluvia de\",\n       round(111.19 * sqrt(pow(r.lat-p.lat,2) + pow((r.lon-p.lon)*cos(radians(r.lat)),2)), 1) AS \"km\",\n       round(coalesce((SELECT sum(o.valor) FROM read_parquet($svc || '/inamhi/observaciones.parquet') o\n                       WHERE o.estacion = p.id_estacion), 0), 1) AS \"mm 10d\"\nFROM r JOIN p ON true\nQUALIFY row_number() OVER (PARTITION BY r.id_estacion ORDER BY \"km\") = 1\nORDER BY \"km\" ",
+                        "rawQuery": true,
+                        "format": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "table",
+            "version": "",
+            "spec": {
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm"
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "km"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-background",
+                          "mode": "gradient"
+                        }
+                      },
+                      {
+                        "id": "thresholds",
+                        "value": {
+                          "mode": "absolute",
+                          "steps": [
+                            {
+                              "color": "green",
+                              "value": null
+                            },
+                            {
+                              "color": "yellow",
+                              "value": 25
+                            },
+                            {
+                              "color": "red",
+                              "value": 50
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 58
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "mm 10d"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-text"
+                        }
+                      },
+                      {
+                        "id": "thresholds",
+                        "value": {
+                          "mode": "absolute",
+                          "steps": [
+                            {
+                              "color": "red",
+                              "value": null
+                            },
+                            {
+                              "color": "text",
+                              "value": 0.1
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 74
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-52": {
+        "kind": "Panel",
+        "spec": {
+          "id": 52,
+          "title": "Que estas viendo, y que no",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "text",
+            "version": "",
+            "spec": {
+              "options": {
+                "mode": "markdown",
+                "content": "### Prueba: ¿se ve la lluvia empujando al rio?\n\nCada panel junta las dos mitades en **un solo eje**: a la izquierda del cero lo que **ya llovio**\n(barras, mm/dia) y a la derecha lo que **GEOGLOWS pronostica** de caudal (linea, m³/s, eje\nderecho). El cero es ahora.\n\n### Lo que esto NO es\n\nNo es una correlacion, y conviene decirlo antes de que el ojo la invente. Las dos series\n**apenas se tocan**: la lluvia de INAMHI llega hasta hoy y el pronostico de caudal empieza hoy,\nasi que **se solapan un solo dia**. Lo que ves es una secuencia —llovio esto, el modelo dice que\nel rio hara aquello—, no una relacion medida.\n\nDe la eleccion quedan fuera **Captacion Central - CCS** y **QUININDE**, los dos sensores cuyas\nhoras de 121,6 y 74,6 mm no parecen lluvia (el p99 de la red es 4,4 mm/h). No se ocultan —siguen\nen la pestaña **Lluvia**— pero no sirven de referencia. La regla es el umbral, no los nombres.\n\nY el emparejamiento es por **cercania en linea recta**, no por cuenca: la tabla de al lado dice\na cuantos kilometros esta cada estacion. Por debajo de 25 km (22 de los 27 rios) la cosa se\nsostiene; en los tres que pasan de 50, la lluvia de al lado puede ser de otra vertiente.\n\n### Y un hallazgo que conviene mirar de frente\n\n**51 de las 166 estaciones marcan exactamente 0,0 mm en los diez dias.** Alguna esta en la\nvertiente amazonica, donde llueve casi a diario: eso no es sequia, es un pluviometro que no\nmide. Por eso la tabla trae la columna **mm 10d**, en rojo cuando es cero. Si el panel sale\nplano, mirala antes de concluir nada: puede que no lloviera, o puede que nadie lo apuntara.\n\n### Que haria falta para medir la relacion de verdad\n\nHistoria en las dos series. El caudal la tiene: el **retrospectivo diario de GEOGLOWS** existe y\nresponde (612 dias en 13 s por rio, sin poder pedir varios de golpe; los 27 saldrian en ~90 s\ncon el abanico que el servicio ya usa). La lluvia es el eslabon flojo: INAMHI corta en **10 dias**\npara quien consulta sin cuenta, y GHCN, que si tiene historia, solo deja **7 de 27** rios con una\nestacion a menos de 30 km y ademas se quedo en agosto de 2025.\n"
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
       }
     },
     "layout": {
@@ -2947,6 +3296,102 @@
                   ]
                 }
               }
+            }
+          },
+          {
+            "kind": "TabsLayoutTab",
+            "spec": {
+              "title": "Respuesta",
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 14,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-50"
+                        },
+                        "repeat": {
+                          "mode": "variable",
+                          "value": "riosResp",
+                          "direction": "v"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 14,
+                        "y": 0,
+                        "width": 10,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-51"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 10,
+                        "width": 24,
+                        "height": 12,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-52"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              "variables": [
+                {
+                  "kind": "QueryVariable",
+                  "spec": {
+                    "name": "riosResp",
+                    "label": "rios",
+                    "hide": "dontHide",
+                    "description": "Todas las de la provincia elegida. Quita las que no te interesen.",
+                    "refresh": "onDashboardLoad",
+                    "skipUrlSync": false,
+                    "current": {
+                      "text": [
+                        "All"
+                      ],
+                      "value": [
+                        "$__all"
+                      ]
+                    },
+                    "options": [],
+                    "multi": true,
+                    "includeAll": true,
+                    "allowCustomValue": false,
+                    "regex": "",
+                    "sort": "disabled",
+                    "definition": "INSTALL httpfs; LOAD httpfs;\n-- Sin encadenar, por lo mismo que la de estaciones.\nWITH t AS (SELECT estacion, max(mediana) AS v\n  FROM read_parquet('${svc}/geoglows/caudal.parquet') GROUP BY 1)\nSELECT e.provincia || ' · ' || e.nombre AS __text,\n       e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN t ON t.estacion = e.id_estacion\nORDER BY e.provincia, t.v DESC",
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "__legacyStringValue": "INSTALL httpfs; LOAD httpfs;\n-- Encadenada a $provincia (ambito tablero), igual que la de estaciones.\nWITH t AS (SELECT estacion, max(mediana) AS v\n  FROM read_parquet('${svc}/geoglows/caudal.parquet') GROUP BY 1)\nSELECT e.nombre AS __text, e.id_estacion::VARCHAR AS __value\nFROM read_parquet('${svc}/inamhi/estaciones.parquet') e\nJOIN t ON t.estacion = e.id_estacion\nWHERE e.provincia = '${provincia}'\nUNION ALL\n-- Seis provincias tienen lluvia pero ningun tramo del modelo. Sin esta fila la\n-- lista sale vacia, y una lista vacia con repeat da un panel titulado «All»:\n-- feo y parece averia. Con ella sale un panel que dice lo que pasa. El id 0 no\n-- existe, asi que el panel queda en «No data», que es la verdad.\nSELECT '— ${provincia} no tiene tramos con pronostico —' AS __text, '0' AS __value\nWHERE NOT EXISTS (\n  SELECT 1 FROM read_parquet('${svc}/inamhi/estaciones.parquet') e2\n  WHERE e2.provincia = '${provincia}'\n    AND e2.id_estacion IN (SELECT DISTINCT estacion FROM read_parquet('${svc}/geoglows/caudal.parquet')))\nORDER BY 1"
+                      }
+                    }
+                  }
+                }
+              ]
             }
           },
           {
