@@ -74,8 +74,25 @@ export interface FlowFieldSummary {
   animationDomain: [number, number] | null;
   /** How many streamlines the layer traced. */
   lines: number;
+  /**
+   * Where the first few hundred streamlines start and how far they travel.
+   *
+   * The whole geometry is far too much to hand back over the bridge, and a
+   * single average is too little: a field that converges has no net direction
+   * at all, and telling it from a dead one means knowing which side of the
+   * valley each line started on.
+   */
+  sample: StreamlineSample[];
   /** The knobs, as the layer panel left them. */
   visConfig: Record<string, unknown>;
+}
+
+/** Where one streamline begins, and how far it travels, in degrees. */
+export interface StreamlineSample {
+  lng: number;
+  lat: number;
+  eastward: number;
+  northward: number;
 }
 
 /**
@@ -109,10 +126,38 @@ export async function readFlowField(map: Locator): Promise<FlowFieldSummary | nu
       return null;
     }
     const layer = visState.layers[index];
+    const lines = (visState.layerData?.[index]?.data ?? []) as Array<{ path: number[][] }>;
+    // Written as a loop, and every vertex checked, because this runs inside the
+    // page: an exception here does not fail the assertion that asked for it, it
+    // makes `expect.poll` retry until it times out — a clean failure turned into
+    // a sixty-second plantón with the wrong explanation attached.
+    const sample: Array<{ lng: number; lat: number; eastward: number; northward: number }> = [];
+    for (const line of lines.slice(0, 300)) {
+      const path = line?.path ?? [];
+      if (path.length < 2) {
+        continue;
+      }
+      const first = path[0];
+      const last = path[path.length - 1];
+      if (!first || !last) {
+        continue;
+      }
+      const entry = {
+        lng: first[0],
+        lat: first[1],
+        eastward: last[0] - first[0],
+        northward: last[1] - first[1],
+      };
+      if (Object.values(entry).every((value) => Number.isFinite(value))) {
+        sample.push(entry);
+      }
+    }
+
     return {
       domain: layer.config?.animation?.domain ?? null,
       animationDomain: visState.animationConfig?.domain ?? null,
-      lines: visState.layerData?.[index]?.data?.length ?? 0,
+      lines: lines.length,
+      sample,
       visConfig: layer.config?.visConfig ?? {},
     };
   });
