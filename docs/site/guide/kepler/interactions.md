@@ -65,5 +65,5 @@ programmatically instead — a text box or a table data link becomes the search 
 
 **Upstream:** [Interactions](https://docs.kepler.gl/docs/user-guides/g-interactions)
 
-Written against **kepler.gl 3.3.0-alpha.10**. See
+Written against **kepler.gl 3.3.0-alpha.11**. See
 [Upstream documentation](../../reference/upstream-docs).

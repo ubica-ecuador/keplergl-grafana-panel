@@ -13,8 +13,7 @@ import { readTimeFragment, shareMetadata } from './wmsTimeLayer';
  * deck's own `updateState` refetches the image without being asked.
  *
  * Kept apart from `wmsTimeLayer.ts` so that module stays free of kepler and
- * loaders.gl imports and can be tested without loading the whole graph, the way
- * `tripLayerFix` is.
+ * loaders.gl imports and can be tested without loading the whole graph.
  */
 
 /**

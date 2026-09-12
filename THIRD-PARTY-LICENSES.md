@@ -7,19 +7,18 @@ compiled third-party code and vendored assets. Their notices follow.
 
 | Library | Version | Licence | Copyright |
 | --- | --- | --- | --- |
-| kepler.gl and its `@kepler.gl/*` packages | 3.3.0-alpha.9 | MIT | Copyright contributors to the kepler.gl project |
-| @deck.gl/core, /layers, /geo-layers and the rest | 9.3.10 | MIT | Copyright Vis.gl contributors. |
+| kepler.gl and its `@kepler.gl/*` packages | 3.3.0-alpha.11 | MIT | Copyright contributors to the kepler.gl project |
+| @deck.gl/core, /layers, /geo-layers and the rest | 9.3.11 | MIT | Copyright Vis.gl contributors. |
 | @luma.gl/core and the rest | 9.3.6 | MIT | Copyright (c) 2020 vis.gl contributors |
 | @deck.gl-community/editable-layers | 9.3.8 | MIT | Copyright (c) 2020 vis.gl a Series of LF Projects, LLC |
 | @flowmap.gl/data, @flowmap.gl/layers | 9.4.0 | Apache-2.0 | See the package's own LICENSE |
 | @hubble.gl/react, @hubble.gl/core | 2.0.0-alpha.4 | MIT | Copyright (c) 2021 Uber Technologies, Inc.; Copyright Vis.gl contributors. |
-| react-palm | 3.3.11 | MIT | Copyright (c) 2019 Brian Ford |
 | styled-components | 6.4.3 | MIT | Copyright (c) 2016-present Glen Maddern and Maximilian Stoiber |
-| @loaders.gl/core and the rest (25+ sub-packages) | 4.4.1 – 4.4.4 | MIT | Copyright (c) vis.gl contributors |
+| @loaders.gl/core and the rest (30+ sub-packages) | 4.4.1 – 4.5.1 | MIT | Copyright (c) vis.gl contributors |
 | @math.gl/core, /web-mercator, /culling and the rest | 4.1.0 | MIT | Copyright (c) 2017 Uber Technologies, Inc. |
-| @probe.gl/log, /env, /stats | 4.1.1 | MIT | Copyright Vis.gl contributors. |
-| mjolnir.js | 3.0.1 | MIT | Copyright (c) 2017 Uber Technologies, Inc. |
-| react-map-gl | 8.1.2 | MIT | Copyright Vis.gl contributors. |
+| @probe.gl/log, /env, /stats | 4.1.2 | MIT | Copyright Vis.gl contributors. |
+| mjolnir.js | 3.1.1 | MIT | Copyright (c) 2017 Uber Technologies, Inc. |
+| react-map-gl | 8.1.3 | MIT | Copyright Vis.gl contributors. |
 | @vis.gl/react-maplibre | 8.1.1 | MIT | Copyright Vis.gl contributors. |
 | maplibre-gl | 4.7.1 | BSD-3-Clause | Copyright (c) 2023, MapLibre contributors |
 | mapbox-gl (the 1.13.1 copy nested under `@kepler.gl/utils`) | 1.13.1 | BSD-3-Clause | Copyright (c) 2020, Mapbox |
@@ -42,7 +41,9 @@ section below. `d3-ease` is not part of the ISC family at all: its own `LICENSE`
 a second copyright holder (Robert Penner, for the original easing equations), confirmed by reading it
 in full, not by its filename resembling its siblings'.
 
-Every line above was read from that package's own `LICENSE` file in `node_modules` on 2026-08-31. The
+Every line above was read from that package's own `LICENSE` file in `node_modules` on 2026-08-31, and
+re-read on 2026-09-11 for every row whose version moved with the kepler.gl 3.3.0-alpha.11 bump — each
+copyright line came back unchanged. The
 `@kepler.gl/*` packages published to npm do not ship a `LICENSE` file individually; their notice is
 confirmed instead by the `// SPDX-License-Identifier: MIT` / `// Copyright contributors to the
 kepler.gl project` header carried in their own compiled output, and by `node_modules/kepler.gl/LICENSE`

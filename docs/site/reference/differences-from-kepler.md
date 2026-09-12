@@ -15,7 +15,7 @@ settings:
 enableFlowLayer: true
 ```
 
-The Flow layer is why this plugin pins **kepler.gl 3.3.0-alpha.10** rather than the 3.2.6 stable
+The Flow layer is why this plugin pins **kepler.gl 3.3.0-alpha.11** rather than the 3.2.6 stable
 release: it exists nowhere else. Stating it explicitly rather than relying on the upstream default
 means a change in that default cannot silently remove the feature the plugin is partly built around.
 
@@ -149,7 +149,7 @@ re-runs.
 ## Where upstream documentation is behind this plugin
 
 kepler.gl's public documentation describes the **3.2 stable line**. This plugin bundles
-**3.3.0-alpha.10**. Two consequences when you follow an outbound link:
+**3.3.0-alpha.11**. Two consequences when you follow an outbound link:
 
 - Upstream lists **fifteen** layer types. The bundled pre-release registers **twenty-one** — the Flow
   layer among them, which upstream does not document at all.

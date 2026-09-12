@@ -12,7 +12,7 @@ import { settle } from './keplerHelpers';
  * holds `null` for every float — and returned no pixel range, so the layer
  * mounted and then asked for nothing: no tiles, no error, an empty map. The
  * range for those types has to come from the band statistics the STAC metadata
- * carries, which is what the patched `getPixelRange` now reads.
+ * carries, which is what `getPixelRange` now reads.
  *
  * What is pinned here is that first half, because it is the half a browser can
  * observe: a float32 scene whose STAC declares statistics produces `.npy` tile
@@ -20,7 +20,11 @@ import { settle } from './keplerHelpers';
  * because its "no upper bound" default sat below the FLT_MAX a mask marks valid
  * data with — happens inside a shader, and this suite does not compare
  * screenshots (see `panel.spec.ts` on why). It was verified by hand against a
- * real TiTiler; both fixes travel together in `patches/`.
+ * real TiTiler; both fixes travel together.
+ *
+ * Both were carried as local patches until kepler.gl 3.3.0-alpha.11, which is
+ * the first release to ship them; this spec now guards the upstream code rather
+ * than a patch of ours.
  *
  * Upstream: https://github.com/keplergl/kepler.gl/pull/3704
  */

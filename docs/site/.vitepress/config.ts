@@ -11,7 +11,7 @@ import { defineConfig } from 'vitepress';
  * the sentence that sent them there was true of.
  */
 export const VERSIONS = {
-  kepler: '3.3.0-alpha.10',
+  kepler: '3.3.0-alpha.11',
   deck: '9.3.11',
   maplibre: '4',
 };

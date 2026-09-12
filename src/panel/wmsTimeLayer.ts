@@ -1,7 +1,7 @@
 /**
  * Makes kepler's WMS layer able to ask for a date.
  *
- * kepler 3.3.0-alpha.10 draws a WMS, but always the same picture: the layer
+ * kepler 3.3.0-alpha.11 draws a WMS, but always the same picture: the layer
  * hands deck.gl `metadata.tilesetDataUrl` as a plain string, and the request it
  * builds from that carries no `TIME`. A time-aware service — a GeoServer over
  * an ImageMosaic, which is how most environmental data in the region is
@@ -33,9 +33,9 @@
  * - Leaving the date alone leaves the string alone, so a drag of the time
  *   widget that stays between two dates costs nothing at all.
  *
- * Wrapped as a class, in the registry, for the same reason as `tripLayerFix`:
- * kepler builds its layers itself, and by the time an instance could be reached
- * the deck layer has already been handed to the renderer.
+ * Wrapped as a class, in the layer registry, because kepler builds its layers
+ * itself: by the time an instance could be reached from the panel, the deck
+ * layer has already been handed to the renderer.
  */
 
 /** The fragment key. Short because it is on every tile url in the network tab. */

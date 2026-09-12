@@ -24,10 +24,9 @@ import { RangeBrushFactory } from '@kepler.gl/components';
  * `pointer-events: none`, so dragging still works — the slider is invisible,
  * not inert, which is why this reads as a styling bug.
  *
- * The defect is upstream: the same order is in the pinned 3.3.0-alpha.10 — it
- * survived alpha.8 and alpha.9 untouched — and on kepler's master, and it
- * cannot be answered in CSS,
- * because `z-index` has no effect on SVG children. So the brush is lifted in
+ * The defect is upstream: the same order is in the pinned 3.3.0-alpha.11 — it
+ * has survived every alpha from 8 on untouched — and on kepler's master, and it
+ * cannot be answered in CSS, because `z-index` has no effect on SVG children. So the brush is lifted in
  * the DOM instead — after every commit the group the plot renders it into is
  * moved to the end of the enclosing `<svg>`, which is where kepler's own
  * *masked* histogram already puts it.

@@ -211,11 +211,11 @@ the STAC 1.1 `bands[].statistics`. TiTiler's `/cog/stac` writes them, so a float
 draws. Without them there is no range at all, and the layer requests no tiles, draws nothing and
 reports nothing.
 
-Two limits remain. Only **single-band** scenes take that path — a float composite such as true colour
-still has no range — and this rests on a patch this plugin carries against kepler.gl
-([PR #3704](https://github.com/keplergl/kepler.gl/pull/3704)); stock kepler.gl draws no float raster at
-all. `uint16` avoids the question entirely, which is why a raster you compute yourself is usually
-scaled onto it — see [Measuring imagery](../sources/measuring-imagery).
+One limit remains: only **single-band** scenes take that path — a float composite such as true colour
+still has no range. Reading the statistics at all is a fix this plugin contributed upstream
+([PR #3704](https://github.com/keplergl/kepler.gl/pull/3704)), released in kepler.gl 3.3.0-alpha.11;
+before it, kepler.gl drew no float raster at all. `uint16` avoids the question entirely, which is why
+a raster you compute yourself is usually scaled onto it — see [Measuring imagery](../sources/measuring-imagery).
 :::
 
 ::: warning A strict CSP needs `connect-src`, not `img-src`

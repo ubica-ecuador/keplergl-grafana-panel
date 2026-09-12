@@ -8,7 +8,6 @@ import { buildEsriImageDeckLayer } from './esriImageDeckLayer';
 import { makeEsriImageLayer } from './esriImageLayer';
 import { buildFlowFieldDeckLayer, makeScreenCamera } from './flowFieldDeckLayer';
 import { makeFlowFieldLayer } from './flowFieldLayer';
-import { withTripGpuFilterFix } from './tripLayerFix';
 import { buildTimedWmsLayer } from './wmsDeckLayer';
 import { withWmsTime } from './wmsTimeLayer';
 import { buildZarrDeckLayer } from './zarrDeckLayer';
@@ -39,18 +38,16 @@ export function iconOf(LayerClass: unknown): unknown {
 const ARC_ICON = iconOf(LayerClasses.arc);
 
 /**
- * kepler's layer classes, with the Trip layer repaired, the WMS layer taught to
- * ask for a date, and two layers added that kepler has no equivalent of.
+ * kepler's layer classes, with the WMS layer taught to ask for a date and four
+ * layers added that kepler has no equivalent of.
  *
  * kepler builds layers from `visState.layerClasses`, so replacing an entry here
- * is the whole of the change — see `tripLayerFix.ts` for what is wrong with the
- * stock Trip layer and why it has to be done at the class rather than the
- * instance, and `wmsTimeLayer.ts` for why a time-aware WMS cannot be driven
- * from outside the layer at all.
+ * is the whole of the change — see `wmsTimeLayer.ts` for why a time-aware WMS
+ * cannot be driven from outside the layer at all, and why that has to be done
+ * at the class rather than at the instance.
  */
 const layerClasses = {
   ...LayerClasses,
-  trip: withTripGpuFilterFix(LayerClasses.trip),
   wms: withWmsTime(LayerClasses.wms, buildTimedWmsLayer),
   // Not a repair but an addition: kepler ships no generic raster tileset —
   // `RemoteTileFormat` is mvt, pmtiles or wms, and its raster path is wired to
@@ -91,8 +88,10 @@ const layerClasses = {
  * is that react-redux's context is overridden inside that subtree, which is why
  * no `@grafana/ui` component may be rendered inside the kepler subtree.
  *
- * `enhanceReduxMiddleware` adds react-palm's taskMiddleware, which kepler.gl
- * needs for its side effects (tile loading, file parsing, geocoding).
+ * `enhanceReduxMiddleware` adds the task middleware kepler.gl needs for its side
+ * effects — tile loading, file parsing, geocoding. It used to come from
+ * react-palm; since 3.3.0-alpha.11 kepler ships its own in `@kepler.gl/tasks`,
+ * which is why this plugin no longer depends on react-palm.
  */
 export function createKeplerStore(): Store {
   // kepler.gl's components look their state up at `state.keplerGl` by default.

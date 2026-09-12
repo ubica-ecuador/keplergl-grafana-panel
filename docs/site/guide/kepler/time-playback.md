@@ -72,5 +72,5 @@ the rows are genuinely gone. That is the ratchet described in
 
 **Upstream:** [Time playback](https://docs.kepler.gl/docs/user-guides/h-playback)
 
-Written against **kepler.gl 3.3.0-alpha.10**. See
+Written against **kepler.gl 3.3.0-alpha.11**. See
 [Upstream documentation](../../reference/upstream-docs).

@@ -9,9 +9,15 @@
  *
  * It is worse than wasted bandwidth. The browser opens six connections per
  * origin, so the tiles of the scene you actually stopped on queue behind every
- * obsolete one, and kepler does not pass deck's abort signal to its fetch —
+ * obsolete one, and the layers this paces — the Image Service, COG and Zarr
+ * timelines, all of them this plugin's own — fetch without deck's abort signal,
  * measured elsewhere in this repo at zero aborts in 350 requests. Nothing
  * cancels; the map simply takes a long time to show what you asked for.
+ *
+ * kepler's own raster tile layer stopped being one of those in 3.3.0-alpha.11
+ * (keplergl/kepler.gl#3715, contributed from this repo), so tiles it has
+ * already asked for are now dropped when deck loses interest. Not issuing the
+ * request at all is still cheaper, which is what this does.
  *
  * So this runs the job **once at the start** of a burst and **once more at the
  * end** of it, and never in between.

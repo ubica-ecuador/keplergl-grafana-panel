@@ -37,7 +37,7 @@ import { AnimationControllerFactory } from '@kepler.gl/components';
  * on its way past.
  *
  * Nothing else changes: free, point and interval windows are handed straight
- * back to kepler. The defect is upstream in 3.3.0-alpha.10; delete this module
+ * back to kepler. The defect is upstream in 3.3.0-alpha.11; delete this module
  * when the pin moves to a kepler.gl whose incremental step ends on the data.
  */
 
@@ -108,8 +108,9 @@ export function nextIncrementalWindow({
   return [anchor, Math.min(value[1] + delta, end)];
 }
 
-// The usual mixin constructor type; `any[]` for the same reason as in
-// `tripLayerFix` — constructor parameters are checked contravariantly.
+// The usual mixin constructor type. `any[]` rather than `unknown[]` on purpose:
+// constructor parameters are checked contravariantly, so `unknown[]` would reject
+// every concrete class — including kepler's own, whose constructor takes props.
 type Constructor<T> = new (...args: any[]) => T;
 
 /** The shape of the one controller method this overrides. */

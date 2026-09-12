@@ -107,26 +107,7 @@ These dashboards set no layers where they can avoid it, so what renders is what 
 produces. That makes the gallery a regression test you scroll: a layer type that stops rendering
 after a kepler.gl bump is a blank map on a page.
 
-## Patched dependencies
-
-`patches/` holds two changes to kepler.gl, applied by
-[patch-package](https://www.npmjs.com/package/patch-package): a float32 raster reaches the tile
-server, and the float mask stops discarding every valid pixel. Both are upstream in
-[keplergl/kepler.gl#3704](https://github.com/keplergl/kepler.gl/pull/3704) — **delete the patches and
-this section when the pin moves to a kepler.gl that carries them**. `tests/rasterFloat32.spec.ts`
-fails the moment they stop being applied.
-
-They are **not** applied by `postinstall`. `.npmrc` sets `ignore-scripts=true` on purpose, so no
-lifecycle script runs on install — a dependency's or ours. Instead `npm run build`, `npm run dev` and
-`npm run test:ci` each run `patch-package` first, which is what makes an unpatched bundle impossible
-to produce by accident. After a bare `npm ci`, `node_modules` is stock kepler until one of those
-runs; `npm run patch` applies them on their own.
-
-To change a patch, edit the file under `node_modules/@kepler.gl/…`, then
-`npx patch-package @kepler.gl/<package>` to rewrite it. Both the ESM and the CommonJS build of a
-package need the edit: webpack bundles the first and jest loads the second.
-
-### One deck.gl, one luma.gl
+## One deck.gl, one luma.gl
 
 `overrides` in `package.json` pins every `@deck.gl/*` and `@luma.gl/*` package to a single version.
 kepler declares ranges (`^9.3.1`) that now resolve to 9.4, so without the pins npm installs a second
