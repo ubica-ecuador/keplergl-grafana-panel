@@ -1,0 +1,712 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Manhattan's building heights against the MTA subway, from a public GeoLens catalogue.",
+  "editable": true,
+  "id": null,
+  "links": [],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": [
+    "duckdb",
+    "geolens",
+    "3d"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "radius",
+        "label": "Walk to a station",
+        "type": "custom",
+        "query": "200 m : 200, 400 m : 400, 800 m : 800",
+        "current": {
+          "selected": true,
+          "text": "400 m",
+          "value": "400"
+        },
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "name": "minHeight",
+        "label": "Taller than",
+        "type": "custom",
+        "query": "anything : 0, 50 ft : 50, 100 ft : 100, 250 ft : 250, 500 ft : 500",
+        "current": {
+          "selected": true,
+          "text": "anything",
+          "value": "0"
+        },
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "name": "era",
+        "label": "Built in",
+        "type": "custom",
+        "query": "Pre-1900, 1900-1929, 1930-1949, 1950-1979, 1980-1999, 2000-2014, 2015+, Unknown",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "options": [],
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "hidden": true
+  },
+  "timezone": "utc",
+  "title": "Manhattan, by height and by subway",
+  "uid": "nyc-skyline",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "# Manhattan, by height and by subway\n\nTwo open datasets and one question: how much of Manhattan is actually within\nwalking distance of a train?\n\nThe buildings are NYC Open Data's footprints — 22,324 across Lower and Midtown,\neach with a surveyed roof height and a year of construction. The subway is the\nMTA's own open data: 29 services and 496 stations, with step-free access marked\non each. Neither was downloaded from its publisher: both came through a public\n[GeoLens](https://datasets.geolibre.app) catalogue, found by following a shared\nGeoLibre project, and are mirrored under `testdata/` by `make-nycdata.py`.\n\nThree things worth knowing before you read the map:\n\n- **Press play on the map's clock.** Every building carries its year, so the\n  timeline runs from 1719 to today and the city rises as it plays.\n- **The years belong to the lot, not to the tower.** The file's second-tallest\n  building, 1,428 ft, is dated 1924 — a year when the tallest thing in New York\n  was the 792 ft Woolworth Building. `construction_year` records the earliest\n  structure on the site, not the one measured here.\n- **The areas here are recomputed.** The file ships a `shape_area` column\n  measured in Web Mercator, which at this latitude inflates every area by about\n  74 %. Every square metre on this dashboard is measured from the geometry in\n  UTM 18N instead.\n\nThe radius, the floor on height and the eras are dashboard variables: the\ncoverage figure, the table and the map all move together."
+      }
+    },
+    {
+      "id": 2,
+      "type": "ubica-keplergl-panel",
+      "title": "Every building, raised to its own height",
+      "description": "Colour is the era it went up; height is the surveyed roof, in metres. Press play to watch the city arrive.",
+      "gridPos": {
+        "h": 24,
+        "w": 17,
+        "x": 0,
+        "y": 9
+      },
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawSql": "SELECT\n  bin,\n  height_roof AS height_ft,\n  height_roof * 0.3048 AS height_m,\n  era,\n  construction_year,\n  -- The map's clock. Years before 1600 are the file's way of saying \"no idea\",\n  -- and a NULL keeps those buildings out of the animation rather than parking\n  -- them all on one impossible date.\n  CASE WHEN construction_year >= 1600\n       THEN make_timestamp(construction_year, 1, 1, 0, 0, 0) END AS time,\n  round(ST_Area(ST_Transform(geometry, 'EPSG:4326', 'EPSG:32618', always_xy := true))) AS footprint_m2,\n  ST_AsText(geometry) AS geom\nFROM read_parquet('http://sources-data/nyc-buildings.parquet')\nWHERE height_roof >= CAST($minHeight AS DOUBLE)\n    AND era IN (${era:singlequote})",
+          "format": 1
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawSql": "SELECT service, service_name, ST_AsText(geometry) AS geom\nFROM read_parquet('http://sources-data/nyc-subway-lines.parquet')",
+          "format": 1
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawSql": "SELECT\n  stop_name,\n  daytime_routes AS routes,\n  CASE ada WHEN 1 THEN 'Full' WHEN 2 THEN 'Partial' ELSE 'None' END AS step_free,\n  structure,\n  ST_Y(ST_Centroid(geometry)) AS latitude,\n  ST_X(ST_Centroid(geometry)) AS longitude\nFROM read_parquet('http://sources-data/nyc-subway-stations.parquet')",
+          "format": 1
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "followGrafanaTheme": false,
+        "basemap": "dark-matter",
+        "timeSync": "off",
+        "publishWhilePlaying": false,
+        "peerTimeSync": false,
+        "tripLayerMode": "table",
+        "flowRenderMode": "straight",
+        "windDensity": 9000,
+        "variableMappings": [],
+        "viewportVariables": {},
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": 40.7385,
+              "longitude": -73.9885,
+              "zoom": 13.4,
+              "bearing": 18,
+              "pitch": 55,
+              "dragRotate": true
+            },
+            "mapStyle": {
+              "styleType": "dark-matter"
+            },
+            "visState": {
+              "layerBlending": "normal",
+              "layerOrder": [
+                "stations",
+                "subway",
+                "buildings"
+              ],
+              "filters": [
+                {
+                  "dataId": [
+                    "grafana-A"
+                  ],
+                  "id": "built",
+                  "name": [
+                    "time"
+                  ],
+                  "type": "timeRange",
+                  "value": [
+                    -7920806400000,
+                    1798761600000
+                  ],
+                  "plotType": {
+                    "type": "histogram",
+                    "interval": "1-year"
+                  },
+                  "animationWindow": "incremental",
+                  "yAxis": null,
+                  "view": "minified",
+                  "speed": 2,
+                  "timeFormat": "YYYY",
+                  "enabled": true
+                }
+              ],
+              "layers": [
+                {
+                  "id": "buildings",
+                  "type": "geojson",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Buildings, extruded by roof height",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "isVisible": true,
+                    "color": [
+                      136,
+                      160,
+                      184
+                    ],
+                    "visConfig": {
+                      "opacity": 0.9,
+                      "strokeOpacity": 0.4,
+                      "thickness": 0.2,
+                      "stroked": false,
+                      "filled": true,
+                      "enable3d": true,
+                      "wireframe": false,
+                      "heightRange": [
+                        0,
+                        472
+                      ],
+                      "elevationScale": 1,
+                      "enableElevationZoomFactor": false,
+                      "colorRange": {
+                        "name": "Manhattan eras",
+                        "type": "custom",
+                        "category": "Custom",
+                        "colors": [
+                          "#2b3a67",
+                          "#3f6c9c",
+                          "#5fa0b8",
+                          "#93c4a0",
+                          "#e0c26b",
+                          "#e08a48",
+                          "#d1495b",
+                          "#6c6c6c"
+                        ],
+                        "colorMap": [
+                          [
+                            "Pre-1900",
+                            "#2b3a67"
+                          ],
+                          [
+                            "1900-1929",
+                            "#3f6c9c"
+                          ],
+                          [
+                            "1930-1949",
+                            "#5fa0b8"
+                          ],
+                          [
+                            "1950-1979",
+                            "#93c4a0"
+                          ],
+                          [
+                            "1980-1999",
+                            "#e0c26b"
+                          ],
+                          [
+                            "2000-2014",
+                            "#e08a48"
+                          ],
+                          [
+                            "2015+",
+                            "#d1495b"
+                          ],
+                          [
+                            "Unknown",
+                            "#6c6c6c"
+                          ]
+                        ]
+                      }
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "era",
+                      "type": "string"
+                    },
+                    "colorScale": "customOrdinal",
+                    "heightField": {
+                      "name": "height_m",
+                      "type": "real"
+                    },
+                    "heightScale": "linear",
+                    "sizeField": null,
+                    "strokeColorField": null
+                  }
+                },
+                {
+                  "id": "subway",
+                  "type": "geojson",
+                  "config": {
+                    "dataId": "grafana-B",
+                    "label": "Subway services",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "isVisible": true,
+                    "color": [
+                      246,
+                      227,
+                      138
+                    ],
+                    "visConfig": {
+                      "opacity": 0.75,
+                      "thickness": 1.2,
+                      "stroked": true,
+                      "filled": false,
+                      "enable3d": false,
+                      "strokeColor": [
+                        246,
+                        227,
+                        138
+                      ]
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": null,
+                    "sizeField": null,
+                    "strokeColorField": null
+                  }
+                },
+                {
+                  "id": "stations",
+                  "type": "point",
+                  "config": {
+                    "dataId": "grafana-C",
+                    "label": "Stations",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "radius": 45,
+                      "opacity": 0.95,
+                      "outline": false,
+                      "filled": true,
+                      "radiusRange": [
+                        3,
+                        40
+                      ],
+                      "colorRange": {
+                        "name": "Step-free",
+                        "type": "custom",
+                        "category": "Custom",
+                        "colors": [
+                          "#7ee787",
+                          "#e3b341",
+                          "#8b949e"
+                        ],
+                        "colorMap": [
+                          [
+                            "Full",
+                            "#7ee787"
+                          ],
+                          [
+                            "Partial",
+                            "#e3b341"
+                          ],
+                          [
+                            "None",
+                            "#8b949e"
+                          ]
+                        ]
+                      }
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "step_free",
+                      "type": "string"
+                    },
+                    "colorScale": "customOrdinal"
+                  }
+                }
+              ],
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": true,
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "height_ft"
+                      },
+                      {
+                        "name": "construction_year"
+                      },
+                      {
+                        "name": "era"
+                      },
+                      {
+                        "name": "footprint_m2"
+                      },
+                      {
+                        "name": "bin"
+                      }
+                    ],
+                    "grafana-B": [
+                      {
+                        "name": "service"
+                      },
+                      {
+                        "name": "service_name"
+                      }
+                    ],
+                    "grafana-C": [
+                      {
+                        "name": "stop_name"
+                      },
+                      {
+                        "name": "routes"
+                      },
+                      {
+                        "name": "step_free"
+                      },
+                      {
+                        "name": "structure"
+                      }
+                    ]
+                  }
+                },
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "geocoder": {
+                  "enabled": false
+                },
+                "coordinate": {
+                  "enabled": false
+                }
+              }
+            }
+          }
+        },
+        "saveRequest": 0
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Within ${radius:text} of a station",
+      "gridPos": {
+        "h": 7,
+        "w": 7,
+        "x": 17,
+        "y": 9
+      },
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawSql": "WITH b AS (\n  SELECT bin, height_roof,\n         ST_Transform(ST_Centroid(geometry), 'EPSG:4326', 'EPSG:32618', always_xy := true) AS pt,\n         ST_Area(ST_Transform(geometry, 'EPSG:4326', 'EPSG:32618', always_xy := true)) AS footprint_m2\n  FROM read_parquet('http://sources-data/nyc-buildings.parquet')\n  WHERE height_roof >= CAST($minHeight AS DOUBLE)\n    AND era IN (${era:singlequote})\n), s AS (\n  SELECT stop_name, daytime_routes, borough, ada,\n         ST_Transform(geometry, 'EPSG:4326', 'EPSG:32618', always_xy := true) AS pt\n  FROM read_parquet('http://sources-data/nyc-subway-stations.parquet')\n)\n, tagged AS (\n  SELECT EXISTS (\n    SELECT 1 FROM s WHERE ST_DWithin(b.pt, s.pt, CAST($radius AS DOUBLE))\n  ) AS served\n  FROM b\n)\nSELECT\n  round(100.0 * count(*) FILTER (WHERE served) / nullif(count(*), 0), 1) AS \"Within reach\",\n  count(*) FILTER (WHERE served) AS \"Buildings served\",\n  count(*) AS \"Buildings shown\"\nFROM tagged",
+          "format": 1
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "vertical",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "decimals": 0,
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Within reach"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Stations, by how much of the city they stand in",
+      "description": "Buildings whose centre falls within $radius m of the station, and what they add up to.",
+      "gridPos": {
+        "h": 17,
+        "w": 7,
+        "x": 17,
+        "y": 16
+      },
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawSql": "WITH b AS (\n  SELECT bin, height_roof,\n         ST_Transform(ST_Centroid(geometry), 'EPSG:4326', 'EPSG:32618', always_xy := true) AS pt,\n         ST_Area(ST_Transform(geometry, 'EPSG:4326', 'EPSG:32618', always_xy := true)) AS footprint_m2\n  FROM read_parquet('http://sources-data/nyc-buildings.parquet')\n  WHERE height_roof >= CAST($minHeight AS DOUBLE)\n    AND era IN (${era:singlequote})\n), s AS (\n  SELECT stop_name, daytime_routes, borough, ada,\n         ST_Transform(geometry, 'EPSG:4326', 'EPSG:32618', always_xy := true) AS pt\n  FROM read_parquet('http://sources-data/nyc-subway-stations.parquet')\n)\nSELECT\n  s.stop_name AS \"Station\",\n  s.daytime_routes AS \"Routes\",\n  CASE s.borough WHEN 'M' THEN 'Manhattan' WHEN 'Bk' THEN 'Brooklyn'\n                 WHEN 'Bx' THEN 'Bronx'    WHEN 'Q'  THEN 'Queens'\n                 WHEN 'SI' THEN 'Staten Island' END AS \"Borough\",\n  CASE s.ada WHEN 1 THEN 'Full' WHEN 2 THEN 'Partial' ELSE 'None' END AS \"Step-free\",\n  count(b.bin) AS \"Buildings\",\n  round(max(b.height_roof)) AS \"Tallest (ft)\",\n  round(sum(b.footprint_m2)) AS \"Footprint (m2)\"\nFROM s LEFT JOIN b ON ST_DWithin(s.pt, b.pt, CAST($radius AS DOUBLE))\nGROUP BY 1, 2, 3, 4\nHAVING count(b.bin) > 0\nORDER BY 5 DESC",
+          "format": 1
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Buildings"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "fieldMinMax",
+                "value": true
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-BlYlRd"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Footprint (m2)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "areaM2"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "type": "barchart",
+      "title": "What each era left behind",
+      "description": "How many buildings survive from each era, and how tall they were built.",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 33
+      },
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "rawSql": "SELECT\n  era,\n  count(*) AS buildings,\n  round(avg(height_roof), 1) AS avg_height_ft\nFROM read_parquet('http://sources-data/nyc-buildings.parquet')\nWHERE height_roof >= CAST($minHeight AS DOUBLE)\n    AND era IN (${era:singlequote})\nGROUP BY era\nORDER BY min(coalesce(construction_year, 9999))",
+          "format": 1
+        }
+      ],
+      "options": {
+        "orientation": "auto",
+        "xField": "era",
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.7,
+        "barWidth": 0.85,
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "axisPlacement": "left",
+            "fillOpacity": 80,
+            "lineWidth": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg_height_ft"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "lengthft"
+              },
+              {
+                "id": "displayName",
+                "value": "Average roof height"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "buildings"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Buildings standing"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
