@@ -32,8 +32,12 @@ export const FLOW_FIELD_MESSAGES: Record<string, string> = {
   'flowfield.heightMeters': 'Height (m), when no column',
   'flowfield.elevationScale': 'Vertical exaggeration',
   'flowfield.colorBySpeed': 'Colour by speed',
+  'flowfield.gradientDirection': 'Direction',
+  'flowfield.gradientDirection.downhill': 'Downhill',
+  'flowfield.gradientDirection.uphill': 'Uphill',
+  'flowfield.gradientDirection.contours': 'Along the contours',
 
-  // The column pickers kepler renders for this layer's two column modes. It
+  // The column pickers kepler renders for this layer's column modes. It
   // knows `lat`, `lng` and `altitude` already; the four that name a velocity
   // have never been columns of anything before — until now they were read from
   // the query and consumed to trace, and never reached kepler as columns at all.
@@ -41,6 +45,10 @@ export const FLOW_FIELD_MESSAGES: Record<string, string> = {
   'columns.v': 'v (northward)',
   'columns.speed': 'speed',
   'columns.direction': 'direction (from)',
+  // The gradient mode's scalar. Deliberately not `altitude`: that column names
+  // the height this level is *drawn* at, and one column cannot mean both the
+  // ground the flow runs over and the shelf the whole layer sits on.
+  'columns.value': 'value (terrain, pressure, …)',
 };
 
 /**

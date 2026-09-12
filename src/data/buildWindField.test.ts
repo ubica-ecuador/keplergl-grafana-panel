@@ -1,6 +1,12 @@
 import { FieldType, toDataFrame } from '@grafana/data';
 
-import { buildWindField, sampleWindField, smoothWindField, WindField } from './buildWindField';
+import {
+  buildGradientField,
+  buildWindField,
+  sampleWindField,
+  smoothWindField,
+  WindField,
+} from './buildWindField';
 
 describe('buildWindField', () => {
   it('builds a field from a regular u/v grid and samples it at a node', () => {
@@ -291,4 +297,105 @@ describe('buildWindField — scattered points are not a field', () => {
 
     expect(buildWindField(masked, { latitude: 'lat', longitude: 'lon', u: 'u', v: 'v' })).not.toBeNull();
   });
+});
+
+describe('buildGradientField', () => {
+  /** A scalar sampled over a regular lat/lon grid, as a frame. */
+  const scalarFrame = (lons: number[], lats: number[], z: (lon: number, lat: number) => number) => {
+    const lat: number[] = [];
+    const lon: number[] = [];
+    const value: number[] = [];
+    for (const y of lats) {
+      for (const x of lons) {
+        lat.push(y);
+        lon.push(x);
+        value.push(z(x, y));
+      }
+    }
+    return toDataFrame({
+      fields: [
+        { name: 'lat', type: FieldType.number, values: lat },
+        { name: 'lon', type: FieldType.number, values: lon },
+        { name: 'elev', type: FieldType.number, values: value },
+      ],
+    });
+  };
+
+  const COLUMNS = { latitude: 'lat', longitude: 'lon', value: 'elev' };
+
+  it('points a tilted plane downhill, at the slope in metres per metre', () => {
+    // A plane rising 100 m for every degree east. Downhill is therefore due
+    // west, and the speed a *slope* — metres of fall per metre travelled — which
+    // at the equator is 100 over the 111,320 m a degree of longitude spans.
+    const frame = scalarFrame([0, 1, 2], [0, 1, 2], (lon) => 100 * lon);
+
+    const field = buildGradientField(frame, COLUMNS, { direction: 'downhill' })!;
+    const [u, v] = sampleWindField(field, 1, 1)!;
+
+    expect(u).toBeCloseTo(-100 / 111_320, 6);
+    expect(v).toBeCloseTo(0, 9);
+  });
+
+  it('runs uphill as the exact opposite of downhill', () => {
+    const frame = scalarFrame([0, 1, 2], [0, 1, 2], (lon) => 100 * lon);
+
+    const down = sampleWindField(buildGradientField(frame, COLUMNS, { direction: 'downhill' })!, 1, 1)!;
+    const up = sampleWindField(buildGradientField(frame, COLUMNS, { direction: 'uphill' })!, 1, 1)!;
+
+    expect(up[0]).toBeCloseTo(-down[0], 9);
+    expect(up[1]).toBeCloseTo(-down[1], 9);
+    expect(up[0]).toBeGreaterThan(0);
+  });
+
+  it('runs along the contours with the high ground on the right', () => {
+    // The only reading that makes sense of a pressure or temperature field: air
+    // does not flow downhill across the isobars, it flows along them, with the
+    // high to its right in the northern hemisphere. Ground rising east, so a
+    // flow along the contours heads north.
+    const frame = scalarFrame([0, 1, 2], [0, 1, 2], (lon) => 100 * lon);
+
+    const [u, v] = sampleWindField(buildGradientField(frame, COLUMNS, { direction: 'contours' })!, 1, 1)!;
+
+    expect(u).toBeCloseTo(0, 9);
+    expect(v).toBeCloseTo(100 / 111_320, 6);
+  });
+
+  it('keeps a hole a hole, and still gives its neighbour a one-sided slope', () => {
+    // A hole is not flat ground: nothing is known about the scalar there, so
+    // nothing is known about the flow. Its neighbours are another matter — they
+    // have a sample on their far side, which is a slope measured over one cell
+    // instead of two rather than no slope at all.
+    const frame = scalarFrame([0, 1, 2, 3, 4], [0, 1, 2, 3, 4], (lon, lat) =>
+      lon === 2 && lat === 2 ? NaN : 100 * lon
+    );
+
+    const field = buildGradientField(frame, COLUMNS, { direction: 'downhill' })!;
+    const at = (column: number, row: number) => {
+      const k = 2 * (row * field.columns + column);
+      return [field.data[k], field.data[k + 1]];
+    };
+
+    expect(at(2, 2)[0]).toBeNaN();
+    expect(at(3, 2)[0]).toBeCloseTo(-100 / (111_320 * Math.cos((2 * Math.PI) / 180)), 6);
+  });
+
+  /** A ramp falling west, with one node a thousand metres too high. */
+  const spiked = () =>
+    scalarFrame([0, 1, 2, 3, 4, 5, 6], [0, 1, 2], (lon, lat) =>
+      100 * lon + (lon === 3 && lat === 1 ? 1000 : 0)
+    );
+
+  /** The downhill east-west component at the node east of the spike. */
+  const eastOfSpike = (field: WindField) => field.data[2 * (1 * field.columns + 4)];
+
+  it('smooths the scalar enough that a spike does not reverse the flow', () => {
+    // One bad sample in a terrain model is not a hill, but the derivative cannot
+    // tell: beside a spike the ground appears to rise westwards, and the flow
+    // there turns round and runs back up the real slope.
+    const frame = spiked();
+
+    expect(eastOfSpike(buildGradientField(frame, COLUMNS)!)).toBeGreaterThan(0);
+    expect(eastOfSpike(buildGradientField(frame, COLUMNS, { smoothing: 2 })!)).toBeLessThan(0);
+  });
+
 });

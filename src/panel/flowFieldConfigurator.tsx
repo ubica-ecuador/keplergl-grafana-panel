@@ -1,10 +1,14 @@
 import React from 'react';
+import { useIntl } from 'react-intl';
 import {
   ConfigGroupCollapsibleContent,
+  ItemSelector,
   LayerColorRangeSelector,
   LayerColorSelector,
   LayerConfigGroup,
   LayerConfiguratorFactory,
+  PanelLabel,
+  SidePanelSection,
   VisConfigSlider,
   VisConfigSwitch,
 } from '@kepler.gl/components';
@@ -31,12 +35,59 @@ type Factory = typeof LayerConfiguratorFactory;
 /** What kepler hands a `_render…LayerConfig` method. */
 interface ConfiguratorArgs {
   layer: {
-    config: { visConfig: Record<string, unknown> };
+    config: { visConfig: Record<string, unknown>; columnMode?: string };
     /** Each entry is the slider/switch definition the layer registered. */
     visConfigSettings: Record<string, Record<string, unknown>>;
   };
   visConfiguratorProps: Record<string, unknown>;
   layerConfiguratorProps: Record<string, unknown>;
+}
+
+/**
+ * Which way the gradient is read as a flow.
+ *
+ * A choice among words rather than a number, so none of kepler's sliders fit;
+ * `ItemSelector` is what it uses for its own `select` knobs. Both the label and
+ * the three values go through react-intl, because a selector showing
+ * `downhill` is the same failure as a label reading "Flowfield.Density" — the
+ * key reaching the screen because nothing translated it.
+ *
+ * Absent outside the gradient mode: u and v already say which way the air
+ * goes, and a knob that does nothing is worse than no knob.
+ */
+function GradientDirection({ layer, visConfiguratorProps }: Omit<ConfiguratorArgs, 'layerConfiguratorProps'>) {
+  const intl = useIntl();
+  const setting = layer.visConfigSettings.gradientDirection as { options?: string[] } | undefined;
+
+  if (layer.config.columnMode !== 'gradient' || !setting?.options) {
+    return null;
+  }
+
+  const onChange = visConfiguratorProps.onChange as (patch: Record<string, unknown>) => void;
+
+  return (
+    <SidePanelSection>
+      <PanelLabel>{intl.formatMessage({ id: 'flowfield.gradientDirection' })}</PanelLabel>
+      <ItemSelector
+        selectedItems={(layer.config.visConfig.gradientDirection as string) ?? 'downhill'}
+        options={setting.options}
+        multiSelect={false}
+        searchable={false}
+        getOptionValue={(option: string) => option}
+        displayOption={(option: string) =>
+          intl.formatMessage({ id: `flowfield.gradientDirection.${option}` })
+        }
+        // `ItemSelector` types its handler for the multi-select case too, so
+        // the value arrives as the union of everything it can hand back. Ours
+        // is single-select over strings; anything else is not an answer.
+        onChange={(value) => {
+          if (typeof value === 'string') {
+            onChange({ gradientDirection: value });
+          }
+        }}
+      />
+    </SidePanelSection>
+  );
 }
 
 function FlowFieldLayerConfig({ layer, visConfiguratorProps, layerConfiguratorProps }: ConfiguratorArgs) {
@@ -89,6 +140,7 @@ function FlowFieldLayerConfig({ layer, visConfiguratorProps, layerConfiguratorPr
           stack is drawn, and is the one that moves a lone layer. Hiding either
           would leave the other looking broken. */}
       <LayerConfigGroup label={'flowfield.group.field'} collapsible>
+        <GradientDirection layer={layer} visConfiguratorProps={visConfiguratorProps} />
         {slider('smoothing')}
         {slider('heightMeters')}
         {slider('elevationScale')}

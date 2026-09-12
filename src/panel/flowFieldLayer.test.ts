@@ -191,6 +191,38 @@ describe('flow field layer — tracing', () => {
     expect(line.path[1][0]).toBeGreaterThan(line.path[0][0]);
   });
 
+  /** A lattice whose scalar rises 100 m per degree east. */
+  function slopedGrid(side: number) {
+    const rows: Array<Record<string, number>> = [];
+    for (let j = 0; j < side; j++) {
+      for (let i = 0; i < side; i++) {
+        rows.push({ latitude: j, longitude: i, elev: 100 * i });
+      }
+    }
+    return gridDataset(rows);
+  }
+
+  const GRADIENT = { lat: 'latitude', lng: 'longitude', value: 'elev' };
+
+  it('runs downhill when the field is the gradient of a scalar column', () => {
+    // Ground rising east, so water runs west — the opposite of what the same
+    // numbers would mean read as a u component.
+    const dataset = slopedGrid(6);
+    const layer = layerOver(dataset, GRADIENT, {}, 'gradient');
+
+    const [line] = layer.formatLayerData({ 'grafana-A': dataset }).data;
+
+    const lons = line.path.map((vertex: number[]) => vertex[0]);
+    expect(lons.every((lon: number, i: number) => i === 0 || lon < lons[i - 1])).toBe(true);
+  });
+
+  it('draws nothing when the gradient mode has no column to derive', () => {
+    const dataset = slopedGrid(6);
+    const layer = layerOver(dataset, { lat: 'latitude', lng: 'longitude' }, {}, 'gradient');
+
+    expect(layer.formatLayerData({ 'grafana-A': dataset }).data).toEqual([]);
+  });
+
   it('traces the grid as it came when the smoothing is turned off', () => {
     // Zero has to survive as zero: read as "missing" it would silently smooth,
     // and the two pictures differ most exactly where the field is roughest.
@@ -626,6 +658,15 @@ describe('traceSignature', () => {
     const painted = { columns: {}, visConfig: { density: 900, trailShare: 30, colorBySpeed: false } };
 
     expect(traceSignature(painted)).toBe(traceSignature(base));
+  });
+
+  it('changes when the flow is turned round to run uphill', () => {
+    // The direction is not paint: it reverses every line, so a trace kept from
+    // before it changed would leave the map drawing the opposite of the truth.
+    const before = { columns: {}, visConfig: { gradientDirection: 'downhill' } };
+    const after = { columns: {}, visConfig: { gradientDirection: 'uphill' } };
+
+    expect(traceSignature(after)).not.toBe(traceSignature(before));
   });
 
   it('changes when the columns are pointed somewhere else', () => {

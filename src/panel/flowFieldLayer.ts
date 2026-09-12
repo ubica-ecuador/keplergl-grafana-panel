@@ -1,6 +1,8 @@
 import type { LayerIcon } from './cogPaintedLayer';
 import {
+  buildGradientField,
   buildWindField,
+  GradientDirection,
   GridFrame,
   smoothWindField,
   WindField,
@@ -211,6 +213,14 @@ export const FLOW_FIELD_VIS_CONFIGS = {
     group: 'display',
     property: 'seamlessLoop',
   },
+  gradientDirection: {
+    type: 'select',
+    defaultValue: 'downhill',
+    options: ['downhill', 'uphill', 'contours'],
+    label: 'flowfield.gradientDirection',
+    group: 'display',
+    property: 'gradientDirection',
+  },
   zoomResponse: {
     type: 'number',
     defaultValue: 0,
@@ -241,6 +251,12 @@ export const FLOW_FIELD_COLUMN_MODES = [
     key: 'polar',
     label: 'Speed / direction',
     requiredColumns: ['lat', 'lng', 'speed', 'direction'],
+    optionalColumns: ['altitude'],
+  },
+  {
+    key: 'gradient',
+    label: 'Gradient of a value',
+    requiredColumns: ['lat', 'lng', 'value'],
     optionalColumns: ['altitude'],
   },
 ];
@@ -322,6 +338,7 @@ export function traceSignature(config: FlowFieldLayerLike['config']): string {
     visConfig.lifeFraction,
     visConfig.seamlessLoop,
     visConfig.smoothing,
+    visConfig.gradientDirection,
     visConfig.heightMeters,
     visConfig.elevationScale,
     visConfig.zoomResponse,
@@ -635,6 +652,27 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
         return null;
       }
 
+      const smoothing = Math.round(setting(visConfig.smoothing, 3));
+
+      // The gradient mode smooths the scalar it derives from rather than the
+      // vectors it derives — see `buildGradientField` — so it takes the knob
+      // itself and returns a field that is already as smooth as it is going to
+      // get.
+      if (this.config.columnMode === 'gradient') {
+        const value = named('value');
+        if (!value) {
+          return null;
+        }
+        return buildGradientField(
+          frame,
+          { latitude, longitude, value },
+          {
+            direction: (visConfig.gradientDirection as GradientDirection) ?? 'downhill',
+            smoothing,
+          }
+        );
+      }
+
       const spec: WindFieldColumns =
         this.config.columnMode === 'polar'
           ? { latitude, longitude, speed: named('speed'), direction: named('direction') }
@@ -648,7 +686,6 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       // A 0.25° grid carries detail the tracer cannot use: adjacent cells
       // disagree enough to make a particle jitter between them, and the line
       // comes out wobbly rather than flowing.
-      const smoothing = Math.round(setting(visConfig.smoothing, 3));
       return smoothing > 0 ? smoothWindField(raw, smoothing) : raw;
     }
 
