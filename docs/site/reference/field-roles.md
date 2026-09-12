@@ -56,7 +56,10 @@ FROM journeys GROUP BY 1, 2;
 
 The four velocity roles are never renamed, because the flow field layer is pointed at whatever the
 query called them — and once the layer exists, they can be re-pointed from its own **Columns**
-section. The raster and WMS roles are not renamed either, for a different reason: each becomes a
+section. The flow field's third spelling, [the gradient of a
+value](../guide/data/velocity-fields#the-gradient-of-a-value), has no role at all and is not
+detected: any numeric column could be a scalar field, so that one is chosen on the layer or not at
+all. The raster and WMS roles are not renamed either, for a different reason: each becomes a
 dataset of its own.
 :::
 

@@ -33,9 +33,10 @@ the lattice itself, honestly drawn and not what the query is about. Add one back
 if you want to see where your samples are.
 :::
 
-## Two ways to give velocity
+## Three ways to give velocity
 
-Both pairs are all-or-nothing — half of one describes nothing.
+Two of them name the velocity directly; both pairs are all-or-nothing, since half of one describes
+nothing. The third does not name a velocity at all — it derives one from a single scalar column.
 
 ### Speed and direction
 
@@ -73,6 +74,40 @@ Autodetection only picks the layer's opening guess. The four velocity columns ar
 layer's own **Columns** section, which also carries the switch between the two spellings — so a
 query whose names are in neither list above needs no aliasing, just a different column picked.
 :::
+
+### The gradient of a value
+
+A single column of numbers over a lattice — terrain height, pressure, temperature, a rainfall
+anomaly — already describes a flow, and this mode draws it: water runs down a hill the way air runs
+along a pressure field.
+
+Choose **Gradient of a value** in the layer's **Columns** section and point `value` at the column.
+There is no role for it and nothing detects it: any numeric column could be a scalar field, and a
+panel that guessed would turn every query with an `elevation` column into a flow map. The choice is
+yours to make, on the layer.
+
+**Field → Direction** then decides what the gradient means:
+
+| Direction              | What it draws                                                        |
+| ---------------------- | -------------------------------------------------------------------- |
+| Downhill               | The fall line — runoff over a terrain model. The default.            |
+| Uphill                 | The same lines, reversed.                                            |
+| Along the contours     | A quarter turn, so the flow runs along the level lines with the high ground on its right. |
+
+The third is the one that makes sense of pressure or temperature: air does not pour off a high, it
+circles it, which is the geostrophic reading of a synoptic chart. Downhill over a pressure field
+draws something that looks plausible and is wrong.
+
+::: warning The colour ramp means slope here, not speed
+These vectors are a gradient, so their magnitude is metres of fall per metre travelled — a slope,
+not m/s. The animation is unaffected, since the tracer normalises it to a legible number of pixels
+per cycle either way, but **Colour by speed** is colouring by steepness.
+:::
+
+Smoothing matters more in this mode than in any other. A derivative amplifies whatever noise the
+samples carry, and one bad sample in a terrain model becomes a pit steep enough to turn the flow
+beside it back up the real slope. It is applied to the scalar before the derivative is taken, so
+**Field → Smoothing** is smoothing the ground rather than the flow.
 
 ### When the wind is in an archive, not in a table
 
@@ -136,7 +171,8 @@ over about a synoptic feature: enough to stop the tracer jittering between adjac
 enough to erase anything a 25 km model actually resolves.
 
 **Smoothing (cells)** under **Field** changes it. Zero traces the grid as it came, which on a coarse
-lattice makes the lines visibly wobble between cells.
+lattice makes the lines visibly wobble between cells. In the gradient mode the same knob blurs the
+scalar before the slope is taken from it, where it is doing considerably more than tidying.
 
 ## The lines follow the view
 

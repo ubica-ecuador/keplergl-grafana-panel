@@ -181,6 +181,8 @@ half-broken grid produces a patchy map rather than a smooth wrong one.
 
 ## Where to go from here
 
-- [Wind and other velocity fields](../guide/data/velocity-fields) — the full reference.
+- [Wind and other velocity fields](../guide/data/velocity-fields) — the full reference, including
+  [the gradient mode](../guide/data/velocity-fields#the-gradient-of-a-value), which draws the same
+  streamlines from a single column of terrain, pressure or temperature.
 - [DuckDB](../guide/sources/duckdb-geoparquet) — the other things `read_json_auto` and `ST_Read` open.
 - The [layer gallery](../layers/) — everything else the panel can draw.
