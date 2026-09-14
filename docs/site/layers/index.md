@@ -73,6 +73,7 @@ choosing the dataset and pointing the layer's columns at it.
 | trip                | a trip id **and** a time **and** a position                |
 | flow                | origin and destination columns                             |
 | flowfield           | a position **and** a velocity, **and no trip id** — a layer type this plugin adds, which kepler does not have. See [Velocity fields](../guide/data/velocity-fields). |
+| vectorfield         | never guessed — switch a flow field's type, or add it from **Add Layer**. Arrows and wind barbs over the same grid. See [Velocity fields](../guide/data/velocity-fields#arrows-and-wind-barbs). |
 
 See [How a query becomes a map](../guide/data/how-a-query-becomes-a-map).
 

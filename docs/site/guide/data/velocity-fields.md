@@ -265,6 +265,24 @@ proportion to each other. One layer at 3,000 m and one at 500 m draw six times a
 3,000 m on its own draws exactly where one at 500 m would.
 :::
 
+## Arrows and wind barbs
+
+The same grid can be marked instead of traced. Switch the layer's type to **Vector field** in its
+panel — or add one from **Add Layer** — and every column, the colour ramp and the speed range carry
+over.
+
+| Knob | Does what |
+| --- | --- |
+| Symbol | **Arrow** points where the flow goes. **Classified arrow** sizes and colours it by class — as many classes as the ramp has colours, the same bins as the legend. **Wind barb** is the WMO symbol, its staff pointing where the wind comes from. |
+| Data speed unit | Barbs only. Barbs count in knots — a half barb is 5, a full barb 10, a pennant 50 — so the layer needs to know what unit the query is in. |
+| Size, Size by speed, Size range | A fixed size in pixels, or a size between two that follows the speed. |
+| Placement | **Screen grid** puts one symbol in every cell of the screen, interpolated, the same density at every zoom. **Data cells** puts one on every sample the query returned, exactly as it came. |
+| Spacing (px) | The screen grid's cell, 50 by default. |
+
+Barbs south of the equator fly on the other side of the staff, as the WMO convention has it, and a
+field over Ecuador draws both. Over a gradient there is no wind to count in knots, so the layer
+offers arrows only. Smoothing starts at 0 here: a symbol on a sample should show that sample.
+
 ## Styling
 
 Every knob is in the layer's own panel, grouped as **Colour**, **Streamlines**, **Animation** and

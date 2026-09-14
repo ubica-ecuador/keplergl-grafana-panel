@@ -285,3 +285,68 @@ export function urlVariable(page: Page, name: string): string | null {
   const match = query.match(new RegExp(`var-${name}=([^&]*)`));
   return match ? decodeURIComponent(match[1]) : null;
 }
+
+/** What the vector field spec asserts about the layer. */
+export interface VectorFieldSummary {
+  symbols: number;
+  columnMode: string;
+  columns: Record<string, string | null>;
+  hasCamera: boolean;
+  /** The icon keys the first symbols would be drawn with. */
+  iconKeys: string[];
+  /** Every key the atlas carries. */
+  atlasKeys: string[];
+}
+
+/**
+ * The first vector field layer's state, asked of the layer itself — as
+ * `deckVisibility` does for the flow field — because what a software renderer
+ * paints says nothing reliable about which icon was asked for.
+ */
+export async function readVectorField(map: Locator): Promise<VectorFieldSummary | null> {
+  return map.evaluate((node) => {
+    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
+    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
+    let store = null;
+    while (fiber) {
+      const candidate = fiber.memoizedProps && fiber.memoizedProps.store;
+      if (candidate && typeof candidate.getState === 'function') {
+        store = candidate;
+        break;
+      }
+      fiber = fiber.return;
+    }
+    if (!store) {
+      throw new Error('kepler store not found from map node');
+    }
+    const visState = (Object.values(store.getState().keplerGl ?? {})[0] as any)?.visState;
+    const index = (visState?.layers ?? []).findIndex((l: { type?: string }) => l.type === 'vectorfield');
+    if (index < 0) {
+      return null;
+    }
+    const layer = visState.layers[index];
+    const layerData = visState.layerData?.[index];
+    const symbols = (layerData?.data ?? []) as unknown[];
+    const built = symbols.length > 0 ? layer.renderLayer({ data: layerData }) : [];
+    const props = built[0]?.props;
+    const iconKeys: string[] = [];
+    // A loop with its own guard, for the reason `readFlowField` gives: an
+    // exception in here makes `expect.poll` time out instead of failing.
+    for (const symbol of (props?.data ?? []).slice(0, 200)) {
+      const key = props?.getIcon?.(symbol);
+      if (typeof key === 'string' && !iconKeys.includes(key)) {
+        iconKeys.push(key);
+      }
+    }
+    return {
+      symbols: symbols.length,
+      columnMode: layer.config.columnMode ?? '',
+      columns: Object.fromEntries(
+        Object.entries(layer.config.columns ?? {}).map(([key, column]: [string, any]) => [key, column?.value ?? null])
+      ),
+      hasCamera: Boolean(layer.config.visConfig?.flowContext?.camera),
+      iconKeys,
+      atlasKeys: props?.iconMapping ? Object.keys(props.iconMapping) : [],
+    };
+  });
+}
