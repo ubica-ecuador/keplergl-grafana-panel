@@ -25,7 +25,7 @@ supported range.
 
 ## What each dashboard shows
 
-Eight of these draw as soon as the bench is up. Five are end-to-end test fixtures that point at
+Nine of these draw as soon as the bench is up. Five are end-to-end test fixtures that point at
 hosts which do not resolve; they are listed last and their titles say so.
 
 | Dashboard | Shows |
@@ -38,6 +38,7 @@ hosts which do not resolve; they are listed last and their titles say so.
 | **Kepler.gl time variables** | The reverse direction: the map's own time slider publishing its window into two dashboard variables. |
 | **Kepler.gl cross-filter** | All five cross-filtering channels at once — filter, click, coordinate, drawn area and viewport — each writing to a dashboard variable, with a text panel showing what the map has published. |
 | **Kepler.gl — temporal WMS** | A time-aware WMS drawn from a single row. **Needs internet**: it reads its dates from the live GetCapabilities of `services.geoglows.org`. |
+| **Kepler.gl — photogrammetric mesh (3D Tiles)** | A photogrammetric mesh added straight from its URL and brought down to the map's ground, under a 69.5° camera you can rotate with Ctrl + drag. **Needs internet**: the tiles come from a public bucket, and weigh around 300 MB of GPU memory at close range. |
 
 ### End-to-end test fixtures
 

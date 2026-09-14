@@ -1,0 +1,229 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "A photogrammetric 3D Tiles mesh drawn from its URL, sitting on the ground under a steep camera.",
+  "editable": true,
+  "id": null,
+  "links": [],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 41,
+  "tags": ["ubica", "3d-tiles"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Kepler.gl — photogrammetric mesh (3D Tiles)",
+  "uid": "tile3d",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "## A photogrammetric mesh, drawn where it stands\n\nA **3D Tiles** tileset — the AGI headquarters in Exton, Pennsylvania, surveyed from the air — added straight from its URL, with no data source behind it.\n\nTwo things had to change for it to draw at all. A tileset states its geometry at its **real altitude**, and this map's ground is flat at zero, so the mesh floated some 300 m up and vanished from any close or tilted camera: the layer now **brings it down to the ground**. And the camera stopped at 60°, short of the 69.5° this view needs.\n\n**Ctrl + drag** to rotate and tilt. To move the mesh, open the side panel with the arrow at the top left of the map, expand the layer, and look under **Position**.\n\n**Needs internet**: the tiles come from a public bucket, and they are heavy — around 300 MB of GPU memory at close range."
+      }
+    },
+    {
+      "id": 2,
+      "type": "ubica-keplergl-panel",
+      "title": "AGI HQ, Exton · a 3D Tiles mesh on the ground",
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[]"
+        }
+      ],
+      "options": {
+        "basemap": "grafana-satellite",
+        "showSidePanel": false,
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "bearing": 1.6,
+              "dragRotate": true,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [40, 63, 93],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [4, 9, 17],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [114.75, 114.75, 114.75],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [9, 16, 29],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [17, 35, 48]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": 40.0389023116457,
+              "longitude": -75.59686465858522,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_3D",
+              "maxPitch": 85,
+              "pitch": 69.5,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 18.4
+            },
+            "mapStyle": {
+              "backgroundColor": [0, 0, 0],
+              "mapStyles": {},
+              "styleType": "grafana-satellite",
+              "threeDBuildingColor": [9.311499150948377, 9.311499150948377, 9.311499150948377],
+              "topLayerGroups": {},
+              "visibleLayerGroups": {
+                "label": true,
+                "road": true
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "3la57e1nb": []
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": ["agi-hq"],
+              "layers": [
+                {
+                  "config": {
+                    "color": [255, 255, 255],
+                    "columns": {},
+                    "dataId": "agi-hq-mesh",
+                    "hidden": false,
+                    "highlightColor": [252, 242, 26, 255],
+                    "isVisible": true,
+                    "label": "AGI HQ, Exton",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [0, 0, 200, 255],
+                        "color": [255, 255, 255],
+                        "offset": [0, 0],
+                        "outlineColor": [255, 0, 0, 255],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "opacity": 1,
+                      "pointSize": 2,
+                      "groundTileset": true,
+                      "altitudeOffset": 0
+                    }
+                  },
+                  "id": "agi-hq",
+                  "type": "tile3d",
+                  "visualChannels": {}
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "datasets": [
+            {
+              "version": "v1",
+              "data": {
+                "id": "agi-hq-mesh",
+                "label": "AGI HQ, Exton",
+                "type": "tile-3d",
+                "color": [0, 92, 255],
+                "allData": [],
+                "fields": [],
+                "disableDataOperation": true,
+                "metadata": {
+                  "tile3dUrl": "https://pelican-public.s3.amazonaws.com/3dtiles/agi-hq/tileset.json"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
