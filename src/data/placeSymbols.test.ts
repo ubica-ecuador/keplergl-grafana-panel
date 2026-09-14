@@ -51,6 +51,32 @@ describe('onScreenGrid', () => {
 
     expect(placed).toHaveLength(12);
   });
+
+  it('skips screen cells that fall over a hole in the data', () => {
+    // 3 columns × 2 rows: two column-cells, west (lng -12..0) and east
+    // (lng 0..12), each spanning the full latitude range because with only
+    // two rows `sampleWindField` always interpolates between them. The NaN
+    // sits at the field's own corner (col 0, row 0), which belongs only to
+    // the west cell — the east one references none of it and stays whole.
+    const field: WindField = {
+      data: Float32Array.from([NaN, NaN, 3, 3, 5, 5, 2, 2, 4, 4, 6, 6]),
+      columns: 3,
+      rows: 2,
+      west: -12,
+      south: -5,
+      stepLon: 12,
+      stepLat: 10,
+    };
+    const camera = cameraOver({ west: -12, east: 12, south: -5, north: 5 });
+
+    // Spacing 400 over an 800 × 400 camera gives exactly two candidate
+    // centres: x = 200 (lng -6, inside the holed west cell) and x = 600
+    // (lng 6, inside the intact east cell). Only the second survives.
+    const placed = onScreenGrid(field, camera, 400);
+
+    expect(placed).toHaveLength(1);
+    expect(placed[0].lng).toBeCloseTo(6, 6);
+  });
 });
 
 describe('onDataCells', () => {
