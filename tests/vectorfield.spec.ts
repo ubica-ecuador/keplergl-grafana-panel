@@ -7,16 +7,26 @@ import { readFlowField, readVectorField, settle } from './keplerHelpers';
 test.describe.configure({ timeout: 180_000 });
 
 /**
- * Clicks through the mouse, like `effects.spec.ts`: under software WebGL the
- * render loop keeps kepler's dropdowns from ever reporting themselves stable.
+ * Clicks a side-panel control through Playwright's own `locator.click()`.
+ *
+ * Every control this spec clicks — the layer type selector, its options, the
+ * item-selector dropdowns — sits in kepler's side panel, off to the side of
+ * the map canvas, not over it. Nothing there is being repainted every frame,
+ * so `locator.click()`'s actionability wait (visible, stable, receiving
+ * events) settles almost immediately and the click is reliable. That is not
+ * true of a control layered over the map itself — see `effects.spec.ts`,
+ * where the target sits on top of the continuously repainting canvas and a
+ * raw coordinate click is used instead, because there the actionability wait
+ * can stall on an element that never reports itself stable. Confusing the
+ * two here bit us once: a one-shot `page.mouse.click` at a computed centre
+ * can land between two repaints of the map elsewhere on the page and miss
+ * its target's hit-test entirely, with no error — `locator.click()` doesn't
+ * have that gap, since it re-checks the element is actually there to be
+ * clicked immediately before clicking it.
  */
-async function clickCenter(page: Page, locator: Locator): Promise<void> {
+async function click(locator: Locator): Promise<void> {
   await expect(locator).toBeVisible({ timeout: 30_000 });
-  const box = await locator.boundingBox();
-  if (!box) {
-    throw new Error('element has no bounding box');
-  }
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await locator.click({ timeout: 30_000 });
 }
 
 /** Picks an option of one of the layer panel's own selectors, found by its label. */
@@ -27,8 +37,8 @@ async function choose(page: Page, label: string, option: string): Promise<void> 
     .locator('label.side-panel-panel__label', { hasText: new RegExp(`^${label}$`) })
     .first()
     .locator('xpath=following::div[contains(@class,"item-selector__dropdown")][1]');
-  await clickCenter(page, selector);
-  await clickCenter(page, page.locator('.list__item', { hasText: option }).first());
+  await click(selector);
+  await click(page.locator('.list__item', { hasText: option }).first());
 }
 
 test(
@@ -45,9 +55,13 @@ test(
 
     // Switch the type from the layer's own panel. kepler keeps every key the new
     // layer also has, so the columns and the mode survive the switch.
+    //
+    // Dispatched rather than clicked, like `flowfield.spec.ts`: the header is
+    // mostly the layer's name field, so a real pointer lands in that input and
+    // only focuses it; kepler's expand handler sits on the container around it.
     await page.locator('.layer-panel__header__content').first().dispatchEvent('click');
-    await clickCenter(page, page.locator('.layer-config__type').first());
-    await clickCenter(page, page.locator('.layer-type-selector__item', { hasText: 'Vector field' }).first());
+    await click(page.locator('.layer-config__type').first());
+    await click(page.locator('.layer-type-selector__item', { hasText: 'Vector field' }).first());
 
     await expect.poll(async () => (await readVectorField(map))?.symbols ?? 0, { timeout: 60_000 }).toBeGreaterThan(0);
     const switched = (await readVectorField(map))!;
