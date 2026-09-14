@@ -22,7 +22,7 @@ import {
   VELOCITY_LEGEND_CHANNEL,
   VELOCITY_VIS_CONFIGS,
 } from './velocityField';
-import { barbIconKey, barbParts, SpeedUnit, toKnots } from './windBarb';
+import { barbIconKey, barbParts, SPEED_UNITS, SpeedUnit, toKnots } from './windBarb';
 
 /**
  * The kepler layer that marks a grid of velocities with arrows and wind barbs —
@@ -110,7 +110,10 @@ export const VECTOR_FIELD_VIS_CONFIGS = {
   speedUnit: {
     type: 'select',
     defaultValue: 'm/s',
-    options: ['m/s', 'km/h', 'kn', 'ft/s', 'mph'],
+    // Spread rather than passed directly: `SPEED_UNITS` is a mutable array so
+    // its own type is widened to `SpeedUnit[]`, but this registry wants the
+    // literal tuple type `select`'s options carry.
+    options: [...SPEED_UNITS],
     label: 'vectorfield.speedUnit',
     group: 'display',
     property: 'speedUnit',
@@ -142,6 +145,16 @@ export interface VectorSymbol {
 export interface VectorFieldLayerData {
   /** `data`, because kepler asks `layerData.data.length` before drawing at all. */
   data: VectorSymbol[];
+  /**
+   * `data` with the still symbols already dropped — what an arrow or a
+   * classified arrow actually draws. Computed once here rather than by
+   * `renderLayer`'s `.filter`, which ran on every call: kepler calls
+   * `renderLayer` on every map render (every pan, every hover, every frame of
+   * an animated layer) and deck.gl compares `data` by reference to decide
+   * whether to touch the GPU buffers, so a fresh array each time defeated
+   * that check for no reason — the trace is already cached by `signature`.
+   */
+  moving: VectorSymbol[];
   speedDomain: [number, number];
   signature: string;
   container: unknown;
@@ -191,7 +204,10 @@ export function symbolSignature(config: Pick<VectorFieldLayerLike['config'], 'co
     visConfig.gradientDirection,
     visConfig.directionConvention,
     visConfig.placement,
-    visConfig.spacingPx,
+    // Spacing only re-places anything on the screen grid; on the data cells
+    // placement the symbols sit on the samples regardless of it, so it must
+    // not force a re-place there — folded to null keeps it out of the compare.
+    onScreen ? visConfig.spacingPx : null,
     visConfig.heightMeters,
     visConfig.elevationScale,
     context.tallest,
@@ -277,7 +293,7 @@ export function makeVectorFieldLayer<C extends Constructor<object>>(
       const frame = gridFrameOf(dataset, columns);
       const field = frame ? buildVelocityField(frame, columns, this.config.columnMode, visConfig, 0) : null;
       if (!frame || !field) {
-        return { data: [], speedDomain: [0, 1], signature, container: dataset.dataContainer };
+        return { data: [], moving: [], speedDomain: [0, 1], signature, container: dataset.dataContainer };
       }
 
       const speedDomain = fieldSpeedDomain(field);
@@ -301,9 +317,11 @@ export function makeVectorFieldLayer<C extends Constructor<object>>(
         bearingTo: bearingOf(p.u, p.v),
         southern: p.lat < 0,
       }));
+      // Still air has no direction for an arrow to point in — see `renderLayer`.
+      const moving = data.filter((s) => s.speed > 0);
 
       this.updateLegend(speedDomain);
-      return { data, speedDomain, signature, container: dataset.dataContainer };
+      return { data, moving, speedDomain, signature, container: dataset.dataContainer };
     }
 
     renderLayer(opts?: { data?: VectorFieldLayerData; visible?: boolean }): unknown[] {
@@ -311,6 +329,9 @@ export function makeVectorFieldLayer<C extends Constructor<object>>(
       if (!symbols || symbols.length === 0) {
         return [];
       }
+      // Cached by `formatLayerData` under the same signature, so its identity
+      // stays put between renders — see the comment on `VectorFieldLayerData`.
+      const moving = opts?.data?.moving ?? symbols;
 
       const visConfig = this.config.visConfig ?? {};
       const kind = kindOf(this.config.columnMode, visConfig.symbol);
@@ -345,28 +366,30 @@ export function makeVectorFieldLayer<C extends Constructor<object>>(
         return fixedSize;
       };
 
-      return [
-        buildDeckLayer({
-          id: `${this.id}-vectorfield`,
-          // Still air has no direction for an arrow to point in; a barb draws it as calm.
-          data: kind === 'barb' ? symbols : symbols.filter((s) => s.speed > 0),
-          visible: this.config.isVisible !== false && shownInPane(opts),
-          opacity: setting(visConfig.opacity, 1),
-          getIcon: (s: VectorSymbol) =>
-            kind === 'barb' ? barbIconKey(barbParts(toKnots(s.speed, unit)), s.southern) : 'arrow',
-          // deck turns counter-clockwise, and every glyph points north. An arrow
-          // points where the flow goes; a barb's staff where the wind comes from.
-          getAngle: (s: VectorSymbol) => (kind === 'barb' ? -(s.bearingTo + 180) : -s.bearingTo),
-          getSize: size,
-          getColor: (s: VectorSymbol) => colorOf(s.speed),
-          updateTriggers: {
-            getIcon: [kind, unit],
-            getAngle: [kind],
-            getSize: [kind, fixedSize, sizeBySpeed, smallest, largest, classes, speedDomain.join(',')],
-            getColor: [bySpeed, colors.join(','), speedDomain.join(','), flat.join(','), opacityBySpeed, calm],
-          },
-        }),
-      ];
+      const deckLayer = buildDeckLayer({
+        id: `${this.id}-vectorfield`,
+        // Still air has no direction for an arrow to point in; a barb draws it as calm.
+        data: kind === 'barb' ? symbols : moving,
+        visible: this.config.isVisible !== false && shownInPane(opts),
+        opacity: setting(visConfig.opacity, 1),
+        getIcon: (s: VectorSymbol) =>
+          kind === 'barb' ? barbIconKey(barbParts(toKnots(s.speed, unit)), s.southern) : 'arrow',
+        // deck turns counter-clockwise, and every glyph points north. An arrow
+        // points where the flow goes; a barb's staff where the wind comes from.
+        getAngle: (s: VectorSymbol) => (kind === 'barb' ? -(s.bearingTo + 180) : -s.bearingTo),
+        getSize: size,
+        getColor: (s: VectorSymbol) => colorOf(s.speed),
+        updateTriggers: {
+          getIcon: [kind, unit],
+          getAngle: [kind],
+          getSize: [kind, fixedSize, sizeBySpeed, smallest, largest, classes, speedDomain.join(',')],
+          getColor: [bySpeed, colors.join(','), speedDomain.join(','), flat.join(','), opacityBySpeed, calm],
+        },
+      });
+      // `buildVectorFieldDeckLayer` returns null when it cannot paint its atlas
+      // (no 2D canvas context left) — dropping it here loses this layer's
+      // symbols for the frame rather than taking the whole map render down.
+      return deckLayer ? [deckLayer] : [];
     }
   }
 

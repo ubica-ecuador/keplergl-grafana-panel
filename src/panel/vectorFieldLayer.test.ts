@@ -96,9 +96,12 @@ function layerOver(
   dataset: ReturnType<typeof gridDataset>,
   columnKeys: Record<string, string>,
   visConfig: Record<string, unknown> = {},
-  columnMode = 'components'
+  columnMode = 'components',
+  // A different layer class only for the one test that needs a deck factory
+  // that fails to build — every other caller wants the module's own.
+  LayerClass: new (props?: Record<string, unknown>) => any = VectorFieldLayer
 ) {
-  const layer = new VectorFieldLayer({ dataId: 'grafana-A' });
+  const layer = new LayerClass({ dataId: 'grafana-A' });
   layer.config.dataId = 'grafana-A';
   layer.config.columnMode = columnMode;
   layer.config.columns = Object.fromEntries(
@@ -214,6 +217,20 @@ describe('symbolSignature', () => {
   it('follows the camera on the screen grid', () => {
     expect(at({ placement: 'screen', flowContext: camera(0) })).not.toBe(at({ placement: 'screen', flowContext: camera(5) }));
   });
+
+  it('ignores the spacing slider on the data cells placement, which it changes nothing for', () => {
+    expect(at({ placement: 'cells', spacingPx: 40 })).toBe(at({ placement: 'cells', spacingPx: 90 }));
+  });
+
+  it('follows the spacing slider on the screen grid, which it re-places symbols for', () => {
+    expect(at({ placement: 'screen', spacingPx: 40 })).not.toBe(at({ placement: 'screen', spacingPx: 90 }));
+  });
+
+  it('follows the direction convention, which flips every bearing', () => {
+    expect(at({ placement: 'cells', directionConvention: 'from' })).not.toBe(
+      at({ placement: 'cells', directionConvention: 'towards' })
+    );
+  });
 });
 
 describe('vector field layer — drawing', () => {
@@ -309,6 +326,33 @@ describe('vector field layer — drawing', () => {
     expect(props.data).toHaveLength(0);
   });
 
+  it('hands deck the same array on every render, so it need not redo per-symbol work each frame', () => {
+    // kepler calls renderLayer on every map render — every pan, every hover,
+    // sixty times a second while the layer is animated — and deck compares
+    // `data` by reference to decide whether to touch the GPU buffers at all.
+    // A fresh `.filter` on each call would defeat that, however cheap the
+    // filter itself is.
+    const rows = [
+      { latitude: 0, longitude: 0, u: 10, v: 0 },
+      { latitude: 0, longitude: 1, u: 0, v: 0 },
+      { latitude: 1, longitude: 0, u: 10, v: 0 },
+      { latitude: 1, longitude: 1, u: 10, v: 0 },
+    ];
+    const dataset = gridDataset(rows);
+    const layer = layerOver(dataset, COMPONENTS, { placement: 'cells', symbol: 'arrow', colorRange: RAMP });
+    const data = layer.formatLayerData({ 'grafana-A': dataset });
+
+    layer.renderLayer({ data });
+    const first = built[built.length - 1].data;
+    layer.renderLayer({ data });
+    const second = built[built.length - 1].data;
+
+    expect(second).toBe(first);
+    // Still drops the still node, same as the test above.
+    expect(first).toHaveLength(3);
+    expect(first.every((s: { speed: number }) => s.speed > 0)).toBe(true);
+  });
+
   it('switches itself off when hidden or out of its split pane', () => {
     const dataset = eastwardGrid(3);
     const layer = layerOver(dataset, COMPONENTS, { placement: 'cells' });
@@ -327,5 +371,25 @@ describe('vector field layer — drawing', () => {
     const large = drawnWith({ symbol: 'arrow', sizeBySpeed: true, sizeRange: [10, 60] }).props.updateTriggers.getSize;
 
     expect(large).not.toEqual(small);
+  });
+
+  it('tells deck to fetch icons again when the speed unit changes', () => {
+    const kn = drawnWith({ symbol: 'barb', speedUnit: 'kn' }).props.updateTriggers.getIcon;
+    const ms = drawnWith({ symbol: 'barb', speedUnit: 'm/s' }).props.updateTriggers.getIcon;
+
+    expect(kn).not.toEqual(ms);
+  });
+
+  it('drops a null deck layer instead of taking the map down with it', () => {
+    // What `buildVectorFieldDeckLayer` returns when there is no 2D canvas
+    // context left to paint the atlas into — see `vectorFieldDeckLayer.ts`.
+    const FailingLayer = makeVectorFieldLayer(FakeBaseLayer, () => null, fakeCamera as never) as unknown as new (
+      props?: Record<string, unknown>
+    ) => any;
+    const dataset = eastwardGrid(3);
+    const layer = layerOver(dataset, COMPONENTS, { placement: 'cells', symbol: 'arrow', colorRange: RAMP }, 'components', FailingLayer);
+    const data = layer.formatLayerData({ 'grafana-A': dataset });
+
+    expect(layer.renderLayer({ data })).toEqual([]);
   });
 });

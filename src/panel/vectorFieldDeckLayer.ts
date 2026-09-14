@@ -14,8 +14,17 @@ import { atlasSize, glyphCatalogue, IconFrame, paintAtlas, Painter } from './vec
 
 let atlas: { canvas: HTMLCanvasElement; mapping: Record<string, IconFrame> } | null = null;
 
-/** The atlas, painted the first time a vector field is drawn and shared after. */
-function vectorFieldAtlas() {
+/**
+ * The atlas, painted the first time a vector field is drawn and shared after.
+ *
+ * Returns null rather than throwing when there is no 2D context to paint
+ * into — a browser out of canvas contexts, say. This runs inside kepler's own
+ * layer rendering, one layer among many on the map; a thrown error there
+ * would take the whole render pass down instead of costing just this layer's
+ * symbols. Nothing is cached on that path, so the next call tries again
+ * rather than remembering the failure as if it were a built atlas.
+ */
+function vectorFieldAtlas(): { canvas: HTMLCanvasElement; mapping: Record<string, IconFrame> } | null {
   if (!atlas) {
     const glyphs = glyphCatalogue();
     const { width, height } = atlasSize(glyphs.length);
@@ -24,16 +33,20 @@ function vectorFieldAtlas() {
     canvas.height = height;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      throw new Error('vector field: no 2D canvas to paint the symbols into');
+      return null;
     }
     atlas = { canvas, mapping: paintAtlas(glyphs, ctx as unknown as Painter) };
   }
   return atlas;
 }
 
-/** Builds the icon layer, in the shape `makeVectorFieldLayer` asks for. */
+/** Builds the icon layer, in the shape `makeVectorFieldLayer` asks for — or null when the atlas could not be painted. */
 export const buildVectorFieldDeckLayer = (props: Record<string, unknown>): unknown => {
-  const { canvas, mapping } = vectorFieldAtlas();
+  const built = vectorFieldAtlas();
+  if (!built) {
+    return null;
+  }
+  const { canvas, mapping } = built;
   return new IconLayer({
     iconAtlas: canvas,
     iconMapping: mapping,
