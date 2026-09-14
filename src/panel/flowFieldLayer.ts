@@ -311,7 +311,34 @@ interface FlowFieldLayerLike {
   updateLayerConfig(patch: Record<string, unknown>): unknown;
   updateMeta(meta: Record<string, unknown>): unknown;
   getDefaultLayerConfig(props?: Record<string, unknown>): Record<string, unknown>;
+  getVisualChannelDescription(key: string): { label: string; measure?: string };
 }
+
+/**
+ * The colour channel this layer shows kepler's legend.
+ *
+ * kepler's legend draws a layer's colours from whatever channel the layer
+ * offers, looking each of the channel's keys up on the config — scale, field and
+ * domain — and the colours in `visConfig`. A flow field's colour is the speed of
+ * lines traced through the field, which is no column of its dataset, so the
+ * channel points at keys of its own that `formatLayerData` fills in.
+ *
+ * Deliberately not kepler's `colorField`. That one kepler owns: it saves it with
+ * the map and, on loading, looks for a column of that name in the dataset —
+ * and there is no `speed` column to find. Keys of our own are neither saved nor
+ * validated, and are written again on every trace.
+ */
+const FLOW_LEGEND_CHANNEL = {
+  key: 'color',
+  property: 'color',
+  field: 'flowColorField',
+  scale: 'flowColorScale',
+  domain: 'flowColorDomain',
+  range: 'colorRange',
+  // kepler's `CHANNEL_SCALES.color`. The legend keeps only colour channels, and
+  // tells them apart by this.
+  channelScaleType: 'color',
+} as const;
 
 /** The kepler dataset a flow field reads: rows, and the columns they are in. */
 export interface FlowFieldDataset {
@@ -592,6 +619,49 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       return FLOW_FIELD_COLUMN_MODES;
     }
 
+    /** See `FLOW_LEGEND_CHANNEL`. */
+    getLegendVisualChannels() {
+      return { color: FLOW_LEGEND_CHANNEL };
+    }
+
+    /**
+     * What the colour is a measure of, which is what switches kepler's legend
+     * from a single swatch to a ramp. No measure while the lines are one colour.
+     */
+    getVisualChannelDescription(key: string): { label: string; measure?: string } {
+      if (key !== FLOW_LEGEND_CHANNEL.key || this.config.visConfig?.colorBySpeed === false) {
+        return super.getVisualChannelDescription(key);
+      }
+      const field = (this.config as Record<string, unknown>)[FLOW_LEGEND_CHANNEL.field] as
+        | { displayName?: string }
+        | undefined;
+      return { label: '', measure: field?.displayName };
+    }
+
+    /**
+     * Writes the legend's keys, and only when one of them changed.
+     *
+     * Only when changed because this runs on every frame of the animation — see
+     * `traceSignature` — and a config replaced sixty times a second is sixty
+     * re-renders of every panel that reads it.
+     */
+    private updateLegend(fieldDomain: [number, number]): void {
+      const domain = paintDomain(this.config.visConfig ?? {}, fieldDomain);
+      // A gradient's vectors are metres of fall per metre, not metres a second.
+      const measure = this.config.columnMode === 'gradient' ? 'Slope' : 'Speed';
+      const current = this.config as Record<string, unknown>;
+      const had = current[FLOW_LEGEND_CHANNEL.domain] as [number, number] | undefined;
+      const field = current[FLOW_LEGEND_CHANNEL.field] as { displayName?: string } | undefined;
+      if (had && had[0] === domain[0] && had[1] === domain[1] && field?.displayName === measure) {
+        return;
+      }
+      this.updateLayerConfig({
+        [FLOW_LEGEND_CHANNEL.scale]: 'quantize',
+        [FLOW_LEGEND_CHANNEL.domain]: domain,
+        [FLOW_LEGEND_CHANNEL.field]: { name: measure.toLowerCase(), displayName: measure, type: 'real' },
+      });
+    }
+
     /**
      * Animatable, and with a domain of its own.
      *
@@ -643,6 +713,9 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
         oldLayerData.signature === signature &&
         oldLayerData.container === dataset.dataContainer
       ) {
+        // A range set by hand is paint and keeps the trace, but the legend has
+        // to follow it or it describes a ramp the map is no longer drawing.
+        this.updateLegend(oldLayerData.speedDomain);
         return oldLayerData;
       }
 
@@ -702,6 +775,7 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
         altitudeMeters,
       });
 
+      this.updateLegend(speedDomain);
       return { data, speedDomain, signature, container: dataset.dataContainer };
     }
 

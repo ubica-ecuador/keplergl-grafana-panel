@@ -44,6 +44,11 @@ class FakeBaseLayer {
     this.meta = { ...this.meta, ...meta };
     return this;
   }
+
+  /** kepler's answer for a layer with no field bound to a channel. */
+  getVisualChannelDescription(_key: string): { label: string; measure?: string } {
+    return { label: '', measure: undefined };
+  }
 }
 
 const built: Array<Record<string, unknown>> = [];
@@ -684,6 +689,91 @@ describe('flow field layer — the colour domain', () => {
     // Zero width divides by zero, lands on no colour at all, and the hex parser
     // then throws inside deck's accessor — which blanks every layer on the map.
     expect(colourOfALine({ fixedSpeedRange: true, speedRange: [12, 12] })).toEqual([0, 0, 0]);
+  });
+});
+
+describe('flow field layer — the legend', () => {
+  const RAMP = { colors: ['#000000', '#ffffff'] };
+
+  /**
+   * What kepler's legend would draw for this layer, read the way its legend
+   * reads it: the colour channel the layer offers, then each of that channel's
+   * keys looked up on the config.
+   */
+  const legendOf = (layer: any) => {
+    const channel = layer.getLegendVisualChannels().color;
+    return {
+      channelScaleType: channel.channelScaleType,
+      measure: layer.getVisualChannelDescription(channel.key).measure,
+      scale: layer.config[channel.scale],
+      domain: layer.config[channel.domain],
+      field: layer.config[channel.field],
+      colors: layer.config.visConfig[channel.range],
+    };
+  };
+
+  it('hands the legend the ramp and the range the lines are painted with', () => {
+    const dataset = eastwardGrid(6);
+    const layer = layerOver(dataset, COMPONENTS, {
+      colorRange: RAMP,
+      fixedSpeedRange: true,
+      speedRange: [0, 20],
+    });
+
+    layer.formatLayerData({ 'grafana-A': dataset });
+
+    expect(legendOf(layer)).toEqual({
+      // The legend keeps only channels of this type; any other and it draws
+      // nothing for the layer at all.
+      channelScaleType: 'color',
+      measure: 'Speed',
+      scale: 'quantize',
+      domain: [0, 20],
+      field: { name: 'speed', displayName: 'Speed', type: 'real' },
+      colors: RAMP,
+    });
+  });
+
+  it('follows the range set by hand without tracing the field again', () => {
+    // A range is paint. The trace is kept — but the legend still has to move,
+    // or it would describe a ramp the map is no longer drawing.
+    const dataset = eastwardGrid(6);
+    const layer = layerOver(dataset, COMPONENTS, { colorRange: RAMP });
+    const first = layer.formatLayerData({ 'grafana-A': dataset });
+    expect(legendOf(layer).domain).toEqual([12, 13]);
+
+    layer.config.visConfig = { ...layer.config.visConfig, fixedSpeedRange: true, speedRange: [0, 40] };
+    const second = layer.formatLayerData({ 'grafana-A': dataset }, first);
+
+    expect(second).toBe(first);
+    expect(legendOf(layer).domain).toEqual([0, 40]);
+  });
+
+  it('calls the measure a slope when the field is a gradient', () => {
+    // The vectors there are metres of fall per metre, not metres a second, and
+    // a legend reading "Speed" over a terrain would be a small lie.
+    const rows: Array<Record<string, number>> = [];
+    for (let j = 0; j < 6; j++) {
+      for (let i = 0; i < 6; i++) {
+        rows.push({ latitude: j, longitude: i, elev: 100 * i });
+      }
+    }
+    const dataset = gridDataset(rows);
+    const layer = layerOver(dataset, { lat: 'latitude', lng: 'longitude', value: 'elev' }, {}, 'gradient');
+
+    layer.formatLayerData({ 'grafana-A': dataset });
+
+    expect(legendOf(layer).measure).toBe('Slope');
+  });
+
+  it('shows one colour when the lines are not coloured by speed', () => {
+    // No measure is what tells kepler's legend to draw the single swatch.
+    const dataset = eastwardGrid(6);
+    const layer = layerOver(dataset, COMPONENTS, { colorBySpeed: false });
+
+    layer.formatLayerData({ 'grafana-A': dataset });
+
+    expect(legendOf(layer).measure).toBeUndefined();
   });
 });
 
