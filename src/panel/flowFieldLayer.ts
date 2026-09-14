@@ -232,9 +232,10 @@ export const FLOW_FIELD_VIS_CONFIGS = {
     property: 'zoomResponse',
   },
   /**
-   * The colour ramp's range, when it is set by hand rather than taken from the
-   * field. Set by hand it is the same on every level and every panel, which is
-   * the only way two of them can be compared by colour.
+   * The speed range the colour, the width and the opacity are measured against,
+   * when it is set by hand rather than taken from the field. Set by hand it is
+   * the same on every level and every panel, which is the only way two of them
+   * can be compared by eye.
    *
    * No default of its own: wind runs to tens of metres a second and a gradient's
    * slope to a few hundredths, so any fixed number is wrong for one of them. The
@@ -256,6 +257,48 @@ export const FLOW_FIELD_VIS_CONFIGS = {
     step: 0.1,
     group: 'color',
     property: 'speedRange',
+  },
+  /**
+   * Width and opacity following speed, Esri's size and opacity variables.
+   *
+   * Both per line, from the line's mean speed, because deck draws a path at one
+   * width. Both off by default, so a map drawn before they existed comes back
+   * the same. The calm end of the opacity is a knob rather than zero: a field
+   * whose slack air vanishes entirely reads as holes in the data.
+   */
+  widthBySpeed: {
+    type: 'boolean',
+    defaultValue: false,
+    label: 'flowfield.widthBySpeed',
+    group: 'stroke',
+    property: 'widthBySpeed',
+  },
+  widthRange: {
+    type: 'number',
+    defaultValue: [1, 4],
+    label: 'flowfield.widthRange',
+    isRanged: true,
+    range: [0, 20],
+    step: 0.5,
+    group: 'stroke',
+    property: 'widthRange',
+  },
+  opacityBySpeed: {
+    type: 'boolean',
+    defaultValue: false,
+    label: 'flowfield.opacityBySpeed',
+    group: 'color',
+    property: 'opacityBySpeed',
+  },
+  calmOpacity: {
+    type: 'number',
+    defaultValue: 0.2,
+    label: 'flowfield.calmOpacity',
+    isRanged: false,
+    range: [0, 1],
+    step: 0.05,
+    group: 'color',
+    property: 'calmOpacity',
   },
 } as const;
 
@@ -541,15 +584,22 @@ export function fieldSpeedDomain(field: WindField): [number, number] {
  * its number boxes do not.
  */
 export function paintDomain(visConfig: Record<string, unknown>, fieldDomain: [number, number]): [number, number] {
-  const range = visConfig.speedRange;
-  if (visConfig.fixedSpeedRange !== true || !Array.isArray(range)) {
-    return fieldDomain;
+  const range = visConfig.fixedSpeedRange === true ? rangeOf(visConfig.speedRange) : null;
+  return range ? widened(range[0], range[1]) : fieldDomain;
+}
+
+/** A `[min, max]` knob the right way round, or null when it holds no such thing. */
+function rangeOf(value: unknown): [number, number] | null {
+  if (!Array.isArray(value)) {
+    return null;
   }
-  const [a, b] = range.map(Number);
-  if (!Number.isFinite(a) || !Number.isFinite(b)) {
-    return fieldDomain;
-  }
-  return widened(Math.min(a, b), Math.max(a, b));
+  const [a, b] = value.map(Number);
+  return Number.isFinite(a) && Number.isFinite(b) ? [Math.min(a, b), Math.max(a, b)] : null;
+}
+
+/** Where a speed sits in a range: 0 at its calm end, 1 at its fast one, held at both. */
+function shareOfRange([min, max]: [number, number], speed: number): number {
+  return Math.min(1, Math.max(0, (speed - min) / (max - min)));
 }
 
 /** `#rrggbb` as deck's `[r, g, b]`. */
@@ -853,6 +903,14 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       const bySpeed = visConfig.colorBySpeed !== false && colors.length > 0;
       const flat = this.config.color ?? [255, 255, 255];
 
+      // The width and the opacity follow the same range the colour does, so all
+      // three agree on what counts as fast.
+      const widthBySpeed = visConfig.widthBySpeed === true;
+      const [thinnest, thickest] = rangeOf(visConfig.widthRange) ?? [1, 4];
+      const opacityBySpeed = visConfig.opacityBySpeed === true;
+      const calm = Math.min(1, Math.max(0, setting(visConfig.calmOpacity, 0.2)));
+      const share = (line: Streamline) => shareOfRange(speedDomain, line.speed);
+
       return [
         buildDeckLayer({
           id: `${this.id}-flowfield`,
@@ -862,12 +920,19 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
           // same base the domain starts at.
           currentTime: (currentTime as number) - domain0,
           trailLength: (cycleMs * setting(visConfig.trailShare, 4)) / 100,
-          getWidth: setting(visConfig.thickness, 2),
+          getWidth: widthBySpeed
+            ? (line: Streamline) => thinnest + share(line) * (thickest - thinnest)
+            : setting(visConfig.thickness, 2),
           opacity: setting(visConfig.opacity, 1),
-          getColor: (line: Streamline) =>
-            bySpeed ? colorForSpeed(colors, speedDomain, line.speed) : flat,
+          getColor: (line: Streamline) => {
+            const rgb = bySpeed ? colorForSpeed(colors, speedDomain, line.speed) : flat;
+            // The alpha rides in the colour because the trail fades by
+            // multiplying it: the slack lines fade along with their trails.
+            return opacityBySpeed ? [...rgb, Math.round(255 * (calm + share(line) * (1 - calm)))] : rgb;
+          },
           updateTriggers: {
-            getColor: [bySpeed, colors.join(','), speedDomain.join(','), flat.join(',')],
+            getColor: [bySpeed, colors.join(','), speedDomain.join(','), flat.join(','), opacityBySpeed, calm],
+            getWidth: [widthBySpeed, thinnest, thickest, speedDomain.join(',')],
           },
         }),
       ];

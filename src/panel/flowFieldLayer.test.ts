@@ -692,6 +692,83 @@ describe('flow field layer — the colour domain', () => {
   });
 });
 
+describe('flow field layer — width and opacity by speed', () => {
+  const RAMP = { colors: ['#000000', '#ffffff'] };
+
+  beforeEach(() => {
+    built.length = 0;
+  });
+
+  /** What deck is handed for a field blowing 12 m/s everywhere, and its first line. */
+  const drawnWith = (visConfig: Record<string, unknown>) => {
+    const dataset = eastwardGrid(6);
+    const layer = layerOver(dataset, COMPONENTS, { colorRange: RAMP, ...visConfig });
+    const data = layer.formatLayerData({ 'grafana-A': dataset });
+    layer.renderLayer({ data, animationConfig: { currentTime: 5_000 } });
+    const props = built[built.length - 1];
+    const line = data.data[0];
+    return {
+      props,
+      widthOf: () =>
+        typeof props.getWidth === 'function' ? (props.getWidth as (l: unknown) => number)(line) : props.getWidth,
+      colourOf: () => Array.from((props.getColor as (l: unknown) => number[])(line)),
+    };
+  };
+
+  // 12 is half of 0–24, so every encoding that follows speed lands on its midpoint.
+  const HALFWAY = { fixedSpeedRange: true, speedRange: [0, 24] };
+
+  it('widens a line in proportion to its speed', () => {
+    expect(drawnWith({ ...HALFWAY, widthBySpeed: true, widthRange: [2, 10] }).widthOf()).toBe(6);
+  });
+
+  it('draws every line at the one width while the switch is off', () => {
+    expect(drawnWith({ ...HALFWAY, widthBySpeed: false, widthRange: [2, 10], thickness: 3 }).widthOf()).toBe(3);
+  });
+
+  it('fades a line towards the calm opacity as its speed drops', () => {
+    // 0.2, plus half of the remaining 0.8, is 0.6 of opaque: 153 of 255.
+    expect(drawnWith({ ...HALFWAY, opacityBySpeed: true, calmOpacity: 0.2 }).colourOf()).toEqual([
+      255, 255, 255, 153,
+    ]);
+  });
+
+  it('leaves every line opaque while the switch is off', () => {
+    const colour = drawnWith({ ...HALFWAY, opacityBySpeed: false, calmOpacity: 0.2 }).colourOf();
+
+    expect(colour[3] ?? 255).toBe(255);
+  });
+
+  it('holds a line slower than the range at the calm end, not beyond it', () => {
+    // 12 m/s against 20–30: the thinnest and the faintest there is, and no less.
+    const drawn = drawnWith({
+      fixedSpeedRange: true,
+      speedRange: [20, 30],
+      widthBySpeed: true,
+      widthRange: [2, 10],
+      opacityBySpeed: true,
+      calmOpacity: 0.2,
+    });
+
+    expect(drawn.widthOf()).toBe(2);
+    expect(drawn.colourOf()[3]).toBe(51);
+  });
+
+  it('tells deck to work the widths and alphas out again when their knobs move', () => {
+    // deck keeps what an accessor returned and asks again only when a trigger
+    // changes: a slider that moves without one moves nothing on the map.
+    const triggers = (visConfig: Record<string, unknown>) =>
+      drawnWith({ ...HALFWAY, widthBySpeed: true, opacityBySpeed: true, ...visConfig }).props
+        .updateTriggers as Record<string, unknown>;
+
+    const before = triggers({ widthRange: [2, 10], calmOpacity: 0.2 });
+    const after = triggers({ widthRange: [2, 14], calmOpacity: 0.5 });
+
+    expect(after.getWidth).not.toEqual(before.getWidth);
+    expect(after.getColor).not.toEqual(before.getColor);
+  });
+});
+
 describe('flow field layer — the legend', () => {
   const RAMP = { colors: ['#000000', '#ffffff'] };
 

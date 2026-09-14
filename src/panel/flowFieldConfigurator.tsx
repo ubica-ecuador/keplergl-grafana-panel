@@ -148,6 +148,8 @@ function FixedSpeedRange({ layer, visConfiguratorProps }: Omit<ConfiguratorArgs,
 function FlowFieldLayerConfig({ layer, visConfiguratorProps, layerConfiguratorProps }: ConfiguratorArgs) {
   const settings = layer.visConfigSettings;
   const bySpeed = layer.config.visConfig.colorBySpeed !== false;
+  const widthBySpeed = layer.config.visConfig.widthBySpeed === true;
+  const opacityBySpeed = layer.config.visConfig.opacityBySpeed === true;
 
   /** Every slider is spread the same way; kepler's own configurators do this inline. */
   const slider = (key: string) => <VisConfigSlider {...settings[key]} {...visConfiguratorProps} />;
@@ -161,13 +163,17 @@ function FlowFieldLayerConfig({ layer, visConfiguratorProps, layerConfiguratorPr
             channel selector. */}
         <VisConfigSwitch {...settings.colorBySpeed} {...visConfiguratorProps} />
         {bySpeed ? (
-          <>
-            <LayerColorRangeSelector {...visConfiguratorProps} />
-            <FixedSpeedRange layer={layer} visConfiguratorProps={visConfiguratorProps} />
-          </>
+          <LayerColorRangeSelector {...visConfiguratorProps} />
         ) : (
           <LayerColorSelector {...layerConfiguratorProps} />
         )}
+        <VisConfigSwitch {...settings.opacityBySpeed} {...visConfiguratorProps} />
+        {opacityBySpeed ? slider('calmOpacity') : null}
+        {/* The range is what colour, width and opacity are all measured against,
+            so it stays while any of them follows speed — not only the colour. */}
+        {bySpeed || widthBySpeed || opacityBySpeed ? (
+          <FixedSpeedRange layer={layer} visConfiguratorProps={visConfiguratorProps} />
+        ) : null}
         <ConfigGroupCollapsibleContent>{slider('opacity')}</ConfigGroupCollapsibleContent>
       </LayerConfigGroup>
 
@@ -178,7 +184,8 @@ function FlowFieldLayerConfig({ layer, visConfiguratorProps, layerConfiguratorPr
       <LayerConfigGroup label={'flowfield.group.streamlines'} collapsible>
         {slider('density')}
         {slider('zoomResponse')}
-        {slider('thickness')}
+        <VisConfigSwitch {...settings.widthBySpeed} {...visConfiguratorProps} />
+        {widthBySpeed ? slider('widthRange') : slider('thickness')}
         {slider('trailShare')}
         <ConfigGroupCollapsibleContent>{slider('lineLength')}</ConfigGroupCollapsibleContent>
       </LayerConfigGroup>

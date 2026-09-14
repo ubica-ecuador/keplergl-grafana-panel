@@ -136,6 +136,30 @@ describe('the colour range set by hand', () => {
   });
 });
 
+describe('width and opacity by speed', () => {
+  const panelText = (visConfig: Record<string, unknown>) =>
+    renderPanel('components', { visConfig, meta: { speedDomain: [2, 14] } }).container.textContent ?? '';
+
+  it('offers a width range in place of the one width while widths follow speed', () => {
+    const text = panelText({ widthBySpeed: true, widthRange: [1, 4] });
+
+    expect(text).toContain('Width range (px)');
+    expect(text).not.toContain('Stroke Width (Pixels)');
+  });
+
+  it('offers the calm opacity only while opacity follows speed', () => {
+    expect(panelText({ opacityBySpeed: false })).not.toContain('Opacity in calm air');
+    expect(panelText({ opacityBySpeed: true })).toContain('Opacity in calm air');
+  });
+
+  it('still offers the fixed range when only the widths follow speed', () => {
+    // The range is what all three encodings are measured against. Hidden along
+    // with the colour, it would leave the widths with no way to be made the
+    // same on two panels.
+    expect(panelText({ colorBySpeed: false, widthBySpeed: true })).toContain('Fixed speed range');
+  });
+});
+
 describe('speedRangeBounds', () => {
   it('gives a wind room above its fastest cell, in steps a person can drag', () => {
     const { range, step } = speedRangeBounds([2, 14]);
