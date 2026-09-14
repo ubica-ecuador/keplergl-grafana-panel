@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import type { Store } from 'redux';
 
-import { fitMapToBounds, readLayerBoundsUnion, readMapState, restoreViewport } from './keplerAdapter';
+import { fitMapToBounds, keepSavedFraming, readLayerBoundsUnion, readMapState, restoreViewport } from './keplerAdapter';
+import { restoredTilesetIds } from './tile3dFraming';
 import { decideViewportGuard, GUARD_WINDOW_MS, savedViewportOf } from './viewportGuard';
 import type { SavedMapConfig } from '../data/mapConfig';
 
@@ -33,6 +34,10 @@ interface Params {
  * live in `viewportGuard.ts`; the cap and the exact-default fingerprint are
  * what guarantee the guard can never fight the user's own panning.
  *
+ * It also holds the 3D tilesets a saved config restores from framing the map
+ * around themselves when they load, which would otherwise replace the saved
+ * zoom a second after it landed — see `tile3dFraming.ts`.
+ *
  * Same structural rule as the sibling hooks: dispatches happen on a
  * microtask, never inside the store subscription.
  */
@@ -44,6 +49,9 @@ export function useViewportGuard({ store, isReady, mapConfig, arm }: Params): vo
 
     const armedAt = Date.now();
     const saved = savedViewportOf(mapConfig);
+    // Only a map that has a viewport of its own needs its tilesets held back
+    // from framing themselves; one without is meant to be framed on its data.
+    const tilesets = saved ? restoredTilesetIds(mapConfig) : new Set<string>();
     let attempts = 0;
     let disarmed = false;
     let pending = false;
@@ -62,6 +70,15 @@ export function useViewportGuard({ store, isReady, mapConfig, arm }: Params): vo
     const check = () => {
       if (disarmed) {
         return;
+      }
+      // A restored 3D tileset frames the map around itself when its tileset
+      // loads — later, on its own, ignoring the `centerMap` the load set. Its
+      // layer only appears once kepler's dataset tasks settle, which is why the
+      // hold runs here, on every change of the window, and not after
+      // `loadDatasets`. Setting a flag is not a dispatch, so this path is safe
+      // for it. See `tile3dFraming.ts`.
+      if (tilesets.size > 0) {
+        keepSavedFraming(store, tilesets);
       }
       const mapState = readMapState(store);
       if (!mapState || typeof mapState.latitude !== 'number' || typeof mapState.longitude !== 'number') {

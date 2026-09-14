@@ -57,6 +57,7 @@ import { COG_PAINTED_TYPE } from './cogPaintedLayer';
 import { ESRI_IMAGE_TYPE } from './esriImageLayer';
 import { splitEsriRefresh, splitRasterRefresh, splitRefresh, splitWmsRefresh, splitZarrRefresh } from './loadDecision';
 import { KEPLER_INSTANCE_ID } from './constants';
+import { holdTilesetFraming } from './tile3dFraming';
 
 /**
  * The ONLY module that talks to the kepler.gl API.
@@ -1636,6 +1637,19 @@ export function restoreViewport(
   }
   dispatch(wrapTo(KEPLER_INSTANCE_ID, updateMap(viewport as Parameters<typeof updateMap>[0], 0)));
   return true;
+}
+
+/**
+ * Keeps the 3D tilesets a saved config restores from re-framing the map when
+ * their tileset loads, and returns how many layers it held.
+ *
+ * Called by the viewport guard on every store change of its load window, not
+ * straight after `loadDatasets`: kepler builds a restored config's layers only
+ * once its dataset tasks settle, so at that point there is nothing to hold yet.
+ * See `tile3dFraming.ts`.
+ */
+export function keepSavedFraming(store: Store, restoredDataIds: ReadonlySet<string>): number {
+  return holdTilesetFraming(getVisState(store)?.layers, restoredDataIds);
 }
 
 /**
