@@ -245,6 +245,66 @@ function FlowFieldLayerConfig({ layer, visConfiguratorProps, layerConfiguratorPr
   );
 }
 
+/**
+ * The layer panel for the vector field.
+ *
+ * Grouped like the flow field's, so a layer switched from one type to the other
+ * finds its colour where it left it. What is offered follows what is drawn: a
+ * speed unit only for barbs, which count in knots; a spacing only on the screen
+ * grid; a size range only where a size follows speed; no barb over a gradient.
+ */
+function VectorFieldLayerConfig({ layer, visConfiguratorProps, layerConfiguratorProps }: ConfiguratorArgs) {
+  const settings = layer.visConfigSettings;
+  const visConfig = layer.config.visConfig;
+  const gradient = layer.config.columnMode === 'gradient';
+  const bySpeed = visConfig.colorBySpeed !== false;
+  const opacityBySpeed = visConfig.opacityBySpeed === true;
+  const sizeBySpeed = visConfig.sizeBySpeed === true;
+  const symbol = gradient && visConfig.symbol === 'barb' ? 'arrow' : ((visConfig.symbol as string) ?? 'arrow');
+
+  const slider = (key: string) => <VisConfigSlider {...settings[key]} {...visConfiguratorProps} />;
+  const select = (property: string, options?: string[]) => (
+    <SelectKnob layer={layer} visConfiguratorProps={visConfiguratorProps} property={property} options={options} />
+  );
+
+  return (
+    <div>
+      <LayerConfigGroup label={'layer.color'} collapsible>
+        <VisConfigSwitch {...settings.colorBySpeed} {...visConfiguratorProps} />
+        {bySpeed ? (
+          <LayerColorRangeSelector {...visConfiguratorProps} />
+        ) : (
+          <LayerColorSelector {...layerConfiguratorProps} />
+        )}
+        <VisConfigSwitch {...settings.opacityBySpeed} {...visConfiguratorProps} />
+        {opacityBySpeed ? slider('calmOpacity') : null}
+        <FixedSpeedRange layer={layer} visConfiguratorProps={visConfiguratorProps} />
+        <ConfigGroupCollapsibleContent>{slider('opacity')}</ConfigGroupCollapsibleContent>
+      </LayerConfigGroup>
+
+      <LayerConfigGroup label={'vectorfield.group.symbols'} collapsible>
+        {select('symbol', gradient ? ['arrow', 'classified'] : undefined)}
+        {symbol === 'barb' ? select('speedUnit') : null}
+        {symbol === 'arrow' ? <VisConfigSwitch {...settings.sizeBySpeed} {...visConfiguratorProps} /> : null}
+        {symbol === 'classified' || (symbol === 'arrow' && sizeBySpeed) ? slider('sizeRange') : slider('symbolSize')}
+      </LayerConfigGroup>
+
+      <LayerConfigGroup label={'vectorfield.group.placement'} collapsible>
+        {select('placement')}
+        {visConfig.placement !== 'cells' ? slider('spacingPx') : null}
+      </LayerConfigGroup>
+
+      <LayerConfigGroup label={'flowfield.group.field'} collapsible>
+        {gradient ? select('gradientDirection') : null}
+        {layer.config.columnMode === 'polar' ? select('directionConvention') : null}
+        {slider('smoothing')}
+        {slider('heightMeters')}
+        {slider('elevationScale')}
+      </LayerConfigGroup>
+    </div>
+  );
+}
+
 CustomLayerConfiguratorFactory.deps = LayerConfiguratorFactory.deps;
 
 function CustomLayerConfiguratorFactory(...deps: Parameters<typeof LayerConfiguratorFactory>) {
@@ -257,6 +317,10 @@ function CustomLayerConfiguratorFactory(...deps: Parameters<typeof LayerConfigur
     // type + `LayerConfig`. Rename the layer type and this must follow.
     _renderFlowfieldLayerConfig(args: ConfiguratorArgs) {
       return <FlowFieldLayerConfig {...args} />;
+    }
+
+    _renderVectorfieldLayerConfig(args: ConfiguratorArgs) {
+      return <VectorFieldLayerConfig {...args} />;
     }
 
     // The three layers whose picture arrives already drawn share one panel —

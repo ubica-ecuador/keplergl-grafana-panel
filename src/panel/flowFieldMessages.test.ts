@@ -1,5 +1,6 @@
 import { FLOW_FIELD_COLUMN_MODES, FLOW_FIELD_VIS_CONFIGS } from './flowFieldLayer';
 import { FLOW_FIELD_MESSAGES, registerFlowFieldMessages } from './flowFieldMessages';
+import { VECTOR_FIELD_VIS_CONFIGS } from './vectorFieldLayer';
 
 describe('registerFlowFieldMessages', () => {
   it('teaches every locale the layer’s own words', () => {
@@ -61,6 +62,23 @@ describe('registerFlowFieldMessages', () => {
     // panel's CSS — the tell being a label that reads "Flowfield.Density".
     for (const id of Object.keys(FLOW_FIELD_MESSAGES)) {
       expect(FLOW_FIELD_MESSAGES[id]).not.toBe('');
+    }
+  });
+
+  it('names every knob the vector field registers, and every choice it offers', () => {
+    expect(FLOW_FIELD_MESSAGES['layer.type.vectorfield']).toBe('Vector field');
+
+    for (const knob of Object.values(VECTOR_FIELD_VIS_CONFIGS) as Array<Record<string, unknown>>) {
+      const label = knob?.label;
+      if (typeof label !== 'string' || !/^(flowfield|vectorfield)\./.test(label)) {
+        continue;
+      }
+      expect(FLOW_FIELD_MESSAGES[label]).toBeDefined();
+      if (Array.isArray(knob.options)) {
+        for (const option of knob.options as string[]) {
+          expect(FLOW_FIELD_MESSAGES[`${label}.${option}`]).toBeDefined();
+        }
+      }
     }
   });
 });

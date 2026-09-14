@@ -15,6 +15,27 @@
 /** Message id -> English, flat, the shape kepler's catalogues take. */
 export const FLOW_FIELD_MESSAGES: Record<string, string> = {
   'layer.type.flowfield': 'Flow field',
+  'layer.type.vectorfield': 'Vector field',
+
+  'vectorfield.group.symbols': 'Symbols',
+  'vectorfield.group.placement': 'Placement',
+  'vectorfield.symbol': 'Symbol',
+  'vectorfield.symbol.arrow': 'Arrow',
+  'vectorfield.symbol.classified': 'Classified arrow',
+  'vectorfield.symbol.barb': 'Wind barb',
+  'vectorfield.placement': 'Placement',
+  'vectorfield.placement.screen': 'Screen grid',
+  'vectorfield.placement.cells': 'Data cells',
+  'vectorfield.spacingPx': 'Spacing (px)',
+  'vectorfield.symbolSize': 'Size (px)',
+  'vectorfield.sizeBySpeed': 'Size by speed',
+  'vectorfield.sizeRange': 'Size range (px)',
+  'vectorfield.speedUnit': 'Data speed unit',
+  'vectorfield.speedUnit.m/s': 'm/s',
+  'vectorfield.speedUnit.km/h': 'km/h',
+  'vectorfield.speedUnit.kn': 'knots',
+  'vectorfield.speedUnit.ft/s': 'ft/s',
+  'vectorfield.speedUnit.mph': 'mph',
 
   'flowfield.group.streamlines': 'Streamlines',
   'flowfield.group.animation': 'Animation',
