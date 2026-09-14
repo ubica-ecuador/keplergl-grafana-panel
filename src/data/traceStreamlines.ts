@@ -379,6 +379,12 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
    * trail still slows through slack air. What is lost is the speed contrast
    * *between* lines; that moves to colour, which is why `speed` rides along.
    *
+   * The window is a whole line's, not each line's own. A line cut short by a
+   * hole or the edge of the field lives for less of it rather than being
+   * stretched over all of it: stretched, a line of ten vertices spent three
+   * times as long on each as a line of thirty, and crawled through the same
+   * wind — exactly where a field has holes.
+   *
    * A line whose life runs past the end of the cycle is emitted a second time,
    * with every vertex time a whole cycle earlier. The two are the same geometry
    * seen either side of the loop: as the playhead reaches the end the first is
@@ -405,13 +411,18 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
     }
 
     const cycleMs = options.cycleMs;
-    const life = Math.min(1, Math.max(0.05, options.lifeFraction ?? 1)) * cycleMs;
+    const share = Math.min(1, Math.max(0.05, options.lifeFraction ?? 1));
+    const life = share * cycleMs;
     const birth = birthWithin(cycleMs, life);
     const timeAt = (shift: number) => (p: Vertex) =>
-      options.baseMs + birth - shift + Math.round((p.seconds / total) * life);
+      options.baseMs + birth - shift + Math.round(p.seconds * 1000 * share);
 
+    // What this line actually lives for, which is less than `life` when it was
+    // cut short: only a line that genuinely overruns the cycle has a crossing to
+    // carry.
+    const lived = total * 1000 * share;
     const lines = [{ path: pathOf(timeAt(0)), speed }];
-    if (options.seamless && birth + life > cycleMs) {
+    if (options.seamless && birth + lived > cycleMs) {
       lines.push({ path: pathOf(timeAt(cycleMs)), speed });
     }
     return lines;

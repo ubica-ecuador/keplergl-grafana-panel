@@ -342,6 +342,59 @@ describe('traceStreamlines — continuous respawn', () => {
   });
 });
 
+describe('traceStreamlines — lines cut short', () => {
+  /**
+   * A field so narrow that every particle leaves it long before its thirty
+   * vertices are up: 0.01° is about 1.1 km, and at 100 m/s with a one-second
+   * step a particle crosses it in a dozen.
+   */
+  const narrow: WindField = {
+    data: Float32Array.from([100, 0, 100, 0, 100, 0, 100, 0]),
+    columns: 2,
+    rows: 2,
+    west: 0,
+    south: 0,
+    stepLon: 0.01,
+    stepLat: 0.01,
+  };
+
+  // 29 s over 29 steps is a step of exactly one second, and so exactly 1000 ms
+  // between vertices for a line that runs its whole length.
+  const options = { count: 20, seed: 5, baseMs: 0, cycleMs: 29_000, maxVertices: 30 };
+
+  it('moves a line cut short at the same pace as a whole one in the same wind', () => {
+    // The defect: every line was stretched over the same lifetime, so a line
+    // with a third of the vertices spent three times as long on each of them
+    // and crawled — right where a field has holes and edges.
+    const drawn = traceStreamlines(narrow, { ...options, seamless: false });
+
+    expect(drawn.length).toBeGreaterThan(0);
+    for (const line of drawn) {
+      expect(line.path.length).toBeLessThan(30);
+      const times = line.path.map((vertex) => vertex[3]);
+      for (let i = 1; i < times.length; i++) {
+        expect(times[i] - times[i - 1]).toBe(1000);
+      }
+    }
+  });
+
+  it('does not draw a short line a second time when it ends before the loop', () => {
+    // The second drawing exists to carry a line across the seam. A line that is
+    // over before the cycle is has nothing to carry, and a ghost of it a whole
+    // cycle early is a line drawn where nothing is happening.
+    const drawn = traceStreamlines(narrow, { ...options, lifeFraction: 1, seamless: true });
+
+    for (const line of drawn) {
+      const start = line.path[0][3];
+      const end = line.path[line.path.length - 1][3];
+      if (start < 0) {
+        // A ghost: its twin must genuinely have overrun the cycle.
+        expect(end + 29_000).toBeGreaterThan(29_000);
+      }
+    }
+  });
+});
+
 describe('traceStreamlines — travel stays inside small patches', () => {
   it('shortens the travel when the data covers only a small patch of screen', () => {
     // 130 px of travel per cycle reads well across a country. Inside a patch a
