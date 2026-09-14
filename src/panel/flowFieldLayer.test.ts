@@ -1,11 +1,11 @@
 import {
   colorForSpeed,
   fieldBounds,
+  fieldSpeedDomain,
   FlowFieldContext,
   levelHeight,
   makeFlowFieldLayer,
   setting,
-  speedDomainOf,
   traceSignature,
 } from './flowFieldLayer';
 
@@ -622,15 +622,95 @@ describe('setting', () => {
   });
 });
 
-describe('speedDomainOf', () => {
-  it('spans the speeds the lines actually carry', () => {
-    expect(speedDomainOf([{ path: [], speed: 3 }, { path: [], speed: 11 }])).toEqual([3, 11]);
+describe('flow field layer — the colour domain', () => {
+  /** A lattice whose eastward wind strengthens by 1 m/s a column, from 1 to `side`. */
+  function strengtheningGrid(side: number) {
+    const rows: Array<Record<string, number>> = [];
+    for (let j = 0; j < side; j++) {
+      for (let i = 0; i < side; i++) {
+        rows.push({ latitude: j, longitude: i, u: i + 1, v: 0 });
+      }
+    }
+    return gridDataset(rows);
+  }
+
+  const RAMP = { colors: ['#000000', '#ffffff'] };
+
+  beforeEach(() => {
+    built.length = 0;
+  });
+
+  it('spans the whole field rather than the lines the camera happens to show', () => {
+    // The defect: the ramp was stretched over the lines just traced, and those
+    // follow the camera — so panning from the slack west to the windy east
+    // repainted the same 3 m/s from the top of the ramp to the bottom.
+    const dataset = strengtheningGrid(8);
+    const domainLooking = (west: number, east: number) =>
+      layerOver(dataset, COMPONENTS, {
+        smoothing: 0,
+        flowContext: { ...CONTEXT, camera: cameraShowing({ west, east, south: 0, north: 7 }) },
+      }).formatLayerData({ 'grafana-A': dataset }).speedDomain;
+
+    expect(domainLooking(0, 2)).toEqual([1, 8]);
+    expect(domainLooking(5, 7)).toEqual([1, 8]);
+  });
+
+  /** The colour deck is told to give the first line, under these knobs. */
+  const colourOfALine = (visConfig: Record<string, unknown>) => {
+    const dataset = eastwardGrid(6); // 12 m/s everywhere
+    const layer = layerOver(dataset, COMPONENTS, { colorRange: RAMP, ...visConfig });
+    const data = layer.formatLayerData({ 'grafana-A': dataset });
+    layer.renderLayer({ data, animationConfig: { currentTime: 5_000 } });
+    const getColor = built[built.length - 1].getColor as (line: unknown) => number[];
+    return Array.from(getColor(data.data[0])).slice(0, 3);
+  };
+
+  it('paints against the range set by hand when there is one', () => {
+    // 12 of 0–20 is past the middle of a two-colour ramp: the second colour.
+    expect(colourOfALine({ fixedSpeedRange: true, speedRange: [0, 20] })).toEqual([255, 255, 255]);
+  });
+
+  it('ignores the range set by hand while the switch is off', () => {
+    // The field's own domain is [12, 13], and 12 is its bottom.
+    expect(colourOfALine({ fixedSpeedRange: false, speedRange: [0, 20] })).toEqual([0, 0, 0]);
+  });
+
+  it('reads a range typed backwards the right way round', () => {
+    // kepler's slider keeps its thumbs in order, but its number boxes do not.
+    expect(colourOfALine({ fixedSpeedRange: true, speedRange: [20, 0] })).toEqual([255, 255, 255]);
+  });
+
+  it('survives a range set by hand with no width', () => {
+    // Zero width divides by zero, lands on no colour at all, and the hex parser
+    // then throws inside deck's accessor — which blanks every layer on the map.
+    expect(colourOfALine({ fixedSpeedRange: true, speedRange: [12, 12] })).toEqual([0, 0, 0]);
+  });
+});
+
+describe('fieldSpeedDomain', () => {
+  const fieldOf = (data: number[]) => ({
+    data: Float32Array.from(data),
+    columns: 2,
+    rows: 2,
+    west: 0,
+    south: 0,
+    stepLon: 1,
+    stepLat: 1,
+  });
+
+  it('spans the speeds of the cells, stepping over the holes', () => {
+    // 3-4-5 and 6-8-10 triangles, a calm-ish 0/1 cell, and a hole.
+    expect(fieldSpeedDomain(fieldOf([3, 4, NaN, NaN, 0, 1, 6, 8]))).toEqual([1, 10]);
   });
 
   it('never returns a zero-width domain', () => {
     // A field of uniform speed would divide by zero and paint every line the
     // ramp's first colour, which reads as the ramp being broken.
-    expect(speedDomainOf([{ path: [], speed: 7 }])).toEqual([7, 8]);
+    expect(fieldSpeedDomain(fieldOf([5, 0, 5, 0, 5, 0, 5, 0]))).toEqual([5, 6]);
+  });
+
+  it('answers something drawable for a field that is all holes', () => {
+    expect(fieldSpeedDomain(fieldOf([NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN]))).toEqual([0, 1]);
   });
 });
 

@@ -39,6 +39,8 @@ interface ConfiguratorArgs {
     config: { visConfig: Record<string, unknown>; columnMode?: string };
     /** Each entry is the slider/switch definition the layer registered. */
     visConfigSettings: Record<string, Record<string, unknown>>;
+    /** What the layer learnt from tracing — see `formatLayerData`. */
+    meta?: { speedDomain?: [number, number] };
   };
   visConfiguratorProps: Record<string, unknown>;
   layerConfiguratorProps: Record<string, unknown>;
@@ -91,6 +93,58 @@ function GradientDirection({ layer, visConfiguratorProps }: Omit<ConfiguratorArg
   );
 }
 
+/**
+ * How far the range slider reaches, and how finely it moves.
+ *
+ * Twice the field's fastest cell, rounded up to a 1, 2 or 5, so a range can be
+ * set a little above the field for comparing it with a windier one — and past
+ * that, kepler's own number boxes take over. The step is a five-hundredth of
+ * that, because the same slider serves a wind of tens of metres a second and a
+ * slope of a few hundredths: a wind-sized step on a slope leaves the thumb two
+ * places to be.
+ */
+export function speedRangeBounds(domain: [number, number]): { range: [number, number]; step: number } {
+  const target = Math.max(domain[1], 0) * 2;
+  if (!(target > 0)) {
+    return { range: [0, 1], step: 0.002 };
+  }
+  const magnitude = 10 ** Math.floor(Math.log10(target));
+  const top = [1, 2, 5, 10].find((m) => m * magnitude >= target)! * magnitude;
+  return { range: [0, top], step: top / 500 };
+}
+
+/**
+ * The switch that fixes the colour ramp's range, and the range it fixes.
+ *
+ * The switch is kepler's, with its change widened by one thing: the first time
+ * it is turned on, the range starts at the field's own. The layer registers no
+ * default range because no number suits both a wind and a slope, so without
+ * this the slider would open on nothing at all.
+ */
+function FixedSpeedRange({ layer, visConfiguratorProps }: Omit<ConfiguratorArgs, 'layerConfiguratorProps'>) {
+  const settings = layer.visConfigSettings;
+  const visConfig = layer.config.visConfig;
+  const onChange = visConfiguratorProps.onChange as (patch: Record<string, unknown>) => void;
+  const fieldDomain = layer.meta?.speedDomain;
+  const chosen = Array.isArray(visConfig.speedRange) ? (visConfig.speedRange as [number, number]) : null;
+
+  const toggle = (patch: Record<string, unknown>) =>
+    onChange(patch.fixedSpeedRange === true && !chosen && fieldDomain ? { ...patch, speedRange: fieldDomain } : patch);
+
+  return (
+    <>
+      <VisConfigSwitch {...settings.fixedSpeedRange} {...visConfiguratorProps} onChange={toggle} />
+      {visConfig.fixedSpeedRange === true && chosen ? (
+        <VisConfigSlider
+          {...settings.speedRange}
+          {...visConfiguratorProps}
+          {...speedRangeBounds(fieldDomain ?? chosen)}
+        />
+      ) : null}
+    </>
+  );
+}
+
 function FlowFieldLayerConfig({ layer, visConfiguratorProps, layerConfiguratorProps }: ConfiguratorArgs) {
   const settings = layer.visConfigSettings;
   const bySpeed = layer.config.visConfig.colorBySpeed !== false;
@@ -107,7 +161,10 @@ function FlowFieldLayerConfig({ layer, visConfiguratorProps, layerConfiguratorPr
             channel selector. */}
         <VisConfigSwitch {...settings.colorBySpeed} {...visConfiguratorProps} />
         {bySpeed ? (
-          <LayerColorRangeSelector {...visConfiguratorProps} />
+          <>
+            <LayerColorRangeSelector {...visConfiguratorProps} />
+            <FixedSpeedRange layer={layer} visConfiguratorProps={visConfiguratorProps} />
+          </>
         ) : (
           <LayerColorSelector {...layerConfiguratorProps} />
         )}

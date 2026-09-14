@@ -231,6 +231,32 @@ export const FLOW_FIELD_VIS_CONFIGS = {
     group: 'display',
     property: 'zoomResponse',
   },
+  /**
+   * The colour ramp's range, when it is set by hand rather than taken from the
+   * field. Set by hand it is the same on every level and every panel, which is
+   * the only way two of them can be compared by colour.
+   *
+   * No default of its own: wind runs to tens of metres a second and a gradient's
+   * slope to a few hundredths, so any fixed number is wrong for one of them. The
+   * panel starts it at the field's own range the first time it is switched on.
+   */
+  fixedSpeedRange: {
+    type: 'boolean',
+    defaultValue: false,
+    label: 'flowfield.fixedSpeedRange',
+    group: 'color',
+    property: 'fixedSpeedRange',
+  },
+  speedRange: {
+    type: 'number',
+    defaultValue: null,
+    label: 'flowfield.speedRange',
+    isRanged: true,
+    range: [0, 50],
+    step: 0.1,
+    group: 'color',
+    property: 'speedRange',
+  },
 } as const;
 
 /**
@@ -302,7 +328,11 @@ export interface FlowFieldLayerData {
    * nothing, instead of the base class quietly skipping a layer that had lines.
    */
   data: Streamline[];
-  /** The speed range the colour ramp is stretched over. */
+  /**
+   * The speed range of the whole field — what the colour ramp is stretched over
+   * unless a range is set by hand. Taken from the field and not from the lines,
+   * because the lines follow the camera.
+   */
   speedDomain: [number, number];
   /** Why this trace is what it is — see `traceSignature`. */
   signature: string;
@@ -447,20 +477,52 @@ export function setting(value: unknown, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-/** The speed range the traced lines span, never zero-width. */
-export function speedDomainOf(lines: Streamline[]): [number, number] {
-  if (lines.length === 0) {
-    return [0, 1];
-  }
-  let min = Infinity;
-  let max = -Infinity;
-  for (const line of lines) {
-    min = Math.min(min, line.speed);
-    max = Math.max(max, line.speed);
-  }
+/** A domain that can be divided by: a zero-width one becomes one unit wide. */
+function widened(min: number, max: number): [number, number] {
   // A field of uniform speed would otherwise divide by zero and paint every
   // line the ramp's first colour, which reads as the ramp being broken.
   return max > min ? [min, max] : [min, min + 1];
+}
+
+/**
+ * The speed range of every cell of the field, holes stepped over.
+ *
+ * The whole field rather than the lines traced through it. The lines are
+ * seeded from the camera, so a ramp stretched over them moved with the view:
+ * panning from slack air into a jet repainted the same speed from the top of the
+ * ramp to the bottom, and no colour meant anything from one moment to the next.
+ */
+export function fieldSpeedDomain(field: WindField): [number, number] {
+  let min = Infinity;
+  let max = -Infinity;
+  for (let k = 0; k < field.data.length; k += 2) {
+    const speed = Math.hypot(field.data[k], field.data[k + 1]);
+    if (!Number.isFinite(speed)) {
+      continue;
+    }
+    min = Math.min(min, speed);
+    max = Math.max(max, speed);
+  }
+  return Number.isFinite(min) ? widened(min, max) : [0, 1];
+}
+
+/**
+ * The range the lines are painted against: the one set by hand when the switch
+ * is on and the range is usable, the field's own otherwise.
+ *
+ * Put the right way round, because kepler's slider keeps its thumbs in order but
+ * its number boxes do not.
+ */
+export function paintDomain(visConfig: Record<string, unknown>, fieldDomain: [number, number]): [number, number] {
+  const range = visConfig.speedRange;
+  if (visConfig.fixedSpeedRange !== true || !Array.isArray(range)) {
+    return fieldDomain;
+  }
+  const [a, b] = range.map(Number);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) {
+    return fieldDomain;
+  }
+  return widened(Math.min(a, b), Math.max(a, b));
 }
 
 /** `#rrggbb` as deck's `[r, g, b]`. */
@@ -598,7 +660,11 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       // that keeps this to itself opens the map over kepler's default San
       // Francisco while the data sits in Ecuador — and it will, because the one
       // layer that would have known better is the Point layer this one replaces.
-      this.updateMeta({ bounds: fieldBounds(field) });
+      //
+      // The field's speed range rides along for the panel, which starts a range
+      // set by hand from it and sizes that range's slider to it.
+      const speedDomain = fieldSpeedDomain(field);
+      this.updateMeta({ bounds: fieldBounds(field), speedDomain });
 
       // The tracer produces its own geometry, so the altitude has to be handed
       // to it as a value. The exaggeration follows the view, because levels a
@@ -636,7 +702,7 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
         altitudeMeters,
       });
 
-      return { data, speedDomain: speedDomainOf(data), signature, container: dataset.dataContainer };
+      return { data, speedDomain, signature, container: dataset.dataContainer };
     }
 
     /** The field the rows describe, smoothed, or null when they describe none. */
@@ -709,7 +775,7 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       }
 
       const colors = ((visConfig.colorRange as { colors?: string[] })?.colors ?? []) as string[];
-      const speedDomain = opts?.data?.speedDomain ?? [0, 1];
+      const speedDomain = paintDomain(visConfig, opts?.data?.speedDomain ?? [0, 1]);
       const bySpeed = visConfig.colorBySpeed !== false && colors.length > 0;
       const flat = this.config.color ?? [255, 255, 255];
 

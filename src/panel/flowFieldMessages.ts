@@ -32,6 +32,8 @@ export const FLOW_FIELD_MESSAGES: Record<string, string> = {
   'flowfield.heightMeters': 'Height (m), when no column',
   'flowfield.elevationScale': 'Vertical exaggeration',
   'flowfield.colorBySpeed': 'Colour by speed',
+  'flowfield.fixedSpeedRange': 'Fixed colour range',
+  'flowfield.speedRange': 'Range (min, max)',
   'flowfield.gradientDirection': 'Direction',
   'flowfield.gradientDirection.downhill': 'Downhill',
   'flowfield.gradientDirection.uphill': 'Uphill',
