@@ -14,6 +14,7 @@ import {
 } from '@kepler.gl/components';
 
 import { PaintedTilesetConfig } from './paintedTilesetConfigurator';
+import { Tile3dLayerConfig } from './tile3dConfigurator';
 
 /**
  * The layer panel for the flow field.
@@ -177,6 +178,14 @@ function CustomLayerConfiguratorFactory(...deps: Parameters<typeof LayerConfigur
 
     _renderZarrLayerConfig(args: ConfiguratorArgs) {
       return <PaintedTilesetConfig {...args} />;
+    }
+
+    // The one layer here that kepler does ship a panel for. Overridden rather
+    // than left alone because the two knobs `tile3dAltitudeLayer.ts` registers
+    // would otherwise be unreachable — and one of them is the difference
+    // between a mesh that draws and one that silently does not.
+    _renderTile3dLayerConfig(args: ConfiguratorArgs) {
+      return <Tile3dLayerConfig {...args} />;
     }
   }
 

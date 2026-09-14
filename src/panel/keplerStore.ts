@@ -8,6 +8,7 @@ import { buildEsriImageDeckLayer } from './esriImageDeckLayer';
 import { makeEsriImageLayer } from './esriImageLayer';
 import { buildFlowFieldDeckLayer, makeScreenCamera } from './flowFieldDeckLayer';
 import { makeFlowFieldLayer } from './flowFieldLayer';
+import { withTile3dAltitude } from './tile3dAltitudeLayer';
 import { buildTimedWmsLayer } from './wmsDeckLayer';
 import { withWmsTime } from './wmsTimeLayer';
 import { buildZarrDeckLayer } from './zarrDeckLayer';
@@ -49,6 +50,11 @@ const ARC_ICON = iconOf(LayerClasses.arc);
 const layerClasses = {
   ...LayerClasses,
   wms: withWmsTime(LayerClasses.wms, buildTimedWmsLayer),
+  // A repair, like the WMS one above. A 3D tileset states its geometry at its
+  // real altitude and this map's ground is a plane at zero, so a mesh surveyed
+  // on a hill draws in mid-air — and past a certain camera does not draw at
+  // all, with no error to explain it. `tile3dAltitude.ts` has the measurements.
+  tile3d: withTile3dAltitude(LayerClasses.tile3d),
   // Not a repair but an addition: kepler ships no generic raster tileset —
   // `RemoteTileFormat` is mvt, pmtiles or wms, and its raster path is wired to
   // STAC and PMTiles — so a Zarr rendered by TiTiler has nothing upstream to
