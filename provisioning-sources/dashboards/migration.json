@@ -1,0 +1,714 @@
+{
+  "uid": "international-migration",
+  "title": "International migration — UN DESA migrant stock",
+  "description": "Core replica of the IOM Global Migration Data Portal's largest-groups view, read live from UN DESA's International Migrant Stock 2024.",
+  "tags": [
+    "kepler",
+    "duckdb",
+    "un-desa",
+    "migration"
+  ],
+  "editable": true,
+  "graphTooltip": 0,
+  "links": [],
+  "refresh": "",
+  "schemaVersion": 42,
+  "timezone": "utc",
+  "time": {
+    "from": "1990-01-01T00:00:00.000Z",
+    "to": "2025-01-01T00:00:00.000Z"
+  },
+  "timepicker": {
+    "hidden": true
+  },
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "query",
+        "name": "country",
+        "label": "Country",
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "description": "Country or area in UN DESA's International Migrant Stock 2024.",
+        "query": "INSTALL excel; LOAD excel; INSTALL httpfs; LOAD httpfs;\n\nSELECT regexp_replace(\"Region, development group, country or area\", '\\*', '', 'g') AS __text,\n       CAST(CAST(\"Location code\" AS INTEGER) AS VARCHAR) AS __value\nFROM read_xlsx('https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/undesa_pd_2024_ims_stock_by_sex_and_destination.xlsx',\n               sheet = 'Table 1', header = true, all_varchar = true, range = 'A11:AC400')\nWHERE TRY_CAST(\"Location code\" AS INTEGER) < 900\nORDER BY __text\n",
+        "definition": "",
+        "refresh": 1,
+        "sort": 0,
+        "regex": "",
+        "includeAll": false,
+        "multi": false,
+        "hide": 0,
+        "current": {
+          "text": "Ecuador",
+          "value": "218"
+        },
+        "options": []
+      },
+      {
+        "type": "custom",
+        "name": "direction",
+        "label": "Direction",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "query": "Immigrants : immigrants,Emigrants : emigrants",
+        "current": {
+          "text": "Immigrants",
+          "value": "immigrants"
+        },
+        "options": [
+          {
+            "text": "Immigrants",
+            "value": "immigrants",
+            "selected": true
+          },
+          {
+            "text": "Emigrants",
+            "value": "emigrants",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "type": "custom",
+        "name": "sex",
+        "label": "Sex",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "query": "Both sexes : both,Males : male,Females : female",
+        "current": {
+          "text": "Both sexes",
+          "value": "both"
+        },
+        "options": [
+          {
+            "text": "Both sexes",
+            "value": "both",
+            "selected": true
+          },
+          {
+            "text": "Males",
+            "value": "male",
+            "selected": false
+          },
+          {
+            "text": "Females",
+            "value": "female",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "type": "custom",
+        "name": "top",
+        "label": "Corridors",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "query": "5 : 5,10 : 10,20 : 20",
+        "current": {
+          "text": "5",
+          "value": "5"
+        },
+        "options": [
+          {
+            "text": "5",
+            "value": "5",
+            "selected": true
+          },
+          {
+            "text": "10",
+            "value": "10",
+            "selected": false
+          },
+          {
+            "text": "20",
+            "value": "20",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "mapFrom",
+        "label": "Clock from",
+        "hide": 2,
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
+        "type": "textbox",
+        "name": "mapTo",
+        "label": "Clock to",
+        "hide": 2,
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "ubica-keplergl-panel",
+      "title": "Migrant corridors",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Largest corridors of the selected country (arcs) over every country's international migrant stock (grey). Play the clock or narrow it to a year.",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL excel; LOAD excel; INSTALL httpfs; LOAD httpfs;\n\n-- Map dataset A: the $top largest corridors of $country, one row per year\n-- 1990-2024. UN DESA estimates 8 years; each one holds until the next.\nWITH od AS (\n  SELECT CAST(\"Location code of destination\" AS INTEGER) AS dest,\n         CAST(\"Location code of origin\" AS INTEGER) AS orig,\n         regexp_replace(\"Region, development group, country or area of destination\", '\\*', '', 'g') AS dest_name,\n         regexp_replace(\"Region, development group, country or area of origin\", '\\*', '', 'g') AS orig_name,\n         COLUMNS('^(1990|1995|2000|2005|2010|2015|2020|2024)(_[12])?$')\n  FROM read_xlsx('https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/undesa_pd_2024_ims_stock_by_sex_destination_and_origin.xlsx',\n                 sheet = 'Table 1', header = true, all_varchar = true, range = 'A11:AE40000')\n  WHERE TRY_CAST(\"Location code of destination\" AS INTEGER) < 900\n    AND TRY_CAST(\"Location code of origin\" AS INTEGER) < 900\n    AND CAST($country AS INTEGER) = CASE $direction\n          WHEN 'emigrants' THEN TRY_CAST(\"Location code of origin\" AS INTEGER)\n          ELSE TRY_CAST(\"Location code of destination\" AS INTEGER) END\n), cells AS (\n  UNPIVOT od ON COLUMNS(* EXCLUDE (dest, orig, dest_name, orig_name)) INTO NAME col VALUE v\n), flows AS (\n  SELECT orig, dest,\n         CASE $direction WHEN 'emigrants' THEN dest ELSE orig END AS partner,\n         CASE $direction WHEN 'emigrants' THEN dest_name ELSE orig_name END AS partner_name,\n         CAST(left(col, 4) AS INTEGER) AS est_year,\n         TRY_CAST(v AS DOUBLE) AS people\n  FROM cells\n  WHERE CASE right(col, 2) WHEN '_1' THEN 'male' WHEN '_2' THEN 'female' ELSE 'both' END = $sex\n), ranked AS (\n  SELECT * FROM flows\n  WHERE people > 0\n  QUALIFY row_number() OVER (PARTITION BY est_year ORDER BY people DESC) <= CAST($top AS INTEGER)\n), ne AS (\n  SELECT f.properties.ISO_N3 AS iso_n3, f.properties.ISO_N3_EH AS iso_n3_eh, f.properties.UN_A3 AS un_a3,\n         f.properties.LABEL_X AS lng, f.properties.LABEL_Y AS lat\n  FROM (SELECT unnest(features) AS f\n        FROM read_json('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson',\n                       maximum_object_size = 200000000))\n), cent AS (\n  -- One centroid per M49 code: ISO_N3 first, then ISO_N3_EH (France and\n  -- Norway carry -99 in ISO_N3), then UN_A3.\n  SELECT code, arg_min(lng, prio) AS lng, arg_min(lat, prio) AS lat\n  FROM (SELECT TRY_CAST(iso_n3 AS INTEGER) AS code, 1 AS prio, lng, lat FROM ne\n        UNION ALL SELECT TRY_CAST(iso_n3_eh AS INTEGER), 2, lng, lat FROM ne\n        UNION ALL SELECT TRY_CAST(un_a3 AS INTEGER), 3, lng, lat FROM ne)\n  WHERE code > 0\n  GROUP BY code\n), steps AS (\n  SELECT r.y AS year, max(est.e) AS est_year\n  FROM range(1990, 2025) r(y)\n  JOIN (VALUES (1990), (1995), (2000), (2005), (2010), (2015), (2020), (2024)) est(e) ON est.e <= r.y\n  GROUP BY r.y\n)\nSELECT make_timestamp(s.year, 7, 1, 0, 0, 0) AS time,\n       t.partner_name AS partner,\n       t.people,\n       o.lat AS lat0, o.lng AS lng0,\n       d.lat AS lat1, d.lng AS lng1,\n       p.lat AS partner_lat, p.lng AS partner_lng,\n       t.partner_name || ': ' || CASE\n         WHEN t.people >= 1e6 THEN printf('%.1fM', t.people / 1e6)\n         WHEN t.people >= 1e3 THEN printf('%.0fk', t.people / 1e3)\n         ELSE printf('%.0f', t.people) END AS label\nFROM steps s\nJOIN ranked t USING (est_year)\nJOIN cent o ON o.code = t.orig\nJOIN cent d ON d.code = t.dest\nJOIN cent p ON p.code = t.partner\nORDER BY time, t.people DESC\n",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL excel; LOAD excel; INSTALL httpfs; LOAD httpfs;\n\n-- Map dataset B: international migrant stock of every country, one row per\n-- country and year 1990-2024, each estimate held until the next.\nWITH d AS (\n  SELECT CAST(\"Location code\" AS INTEGER) AS code,\n         regexp_replace(\"Region, development group, country or area\", '\\*', '', 'g') AS country,\n         COLUMNS('^(1990|1995|2000|2005|2010|2015|2020|2024)(_[12])?$')\n  FROM read_xlsx('https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/undesa_pd_2024_ims_stock_by_sex_and_destination.xlsx',\n                 sheet = 'Table 1', header = true, all_varchar = true, range = 'A11:AC400')\n  WHERE TRY_CAST(\"Location code\" AS INTEGER) < 900\n), cells AS (\n  UNPIVOT d ON COLUMNS(* EXCLUDE (code, country)) INTO NAME col VALUE v\n), stock AS (\n  SELECT code, country, CAST(left(col, 4) AS INTEGER) AS est_year, TRY_CAST(v AS DOUBLE) AS stock\n  FROM cells\n  WHERE CASE right(col, 2) WHEN '_1' THEN 'male' WHEN '_2' THEN 'female' ELSE 'both' END = $sex\n), ne AS (\n  SELECT f.properties.ISO_N3 AS iso_n3, f.properties.ISO_N3_EH AS iso_n3_eh, f.properties.UN_A3 AS un_a3,\n         f.properties.LABEL_X AS lng, f.properties.LABEL_Y AS lat\n  FROM (SELECT unnest(features) AS f\n        FROM read_json('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson',\n                       maximum_object_size = 200000000))\n), cent AS (\n  SELECT code, arg_min(lng, prio) AS lng, arg_min(lat, prio) AS lat\n  FROM (SELECT TRY_CAST(iso_n3 AS INTEGER) AS code, 1 AS prio, lng, lat FROM ne\n        UNION ALL SELECT TRY_CAST(iso_n3_eh AS INTEGER), 2, lng, lat FROM ne\n        UNION ALL SELECT TRY_CAST(un_a3 AS INTEGER), 3, lng, lat FROM ne)\n  WHERE code > 0\n  GROUP BY code\n), steps AS (\n  SELECT r.y AS year, max(est.e) AS est_year\n  FROM range(1990, 2025) r(y)\n  JOIN (VALUES (1990), (1995), (2000), (2005), (2010), (2015), (2020), (2024)) est(e) ON est.e <= r.y\n  GROUP BY r.y\n)\nSELECT make_timestamp(s.year, 7, 1, 0, 0, 0) AS time,\n       k.country,\n       k.stock,\n       c.lat,\n       c.lng\nFROM steps s\nJOIN stock k USING (est_year)\nJOIN cent c USING (code)\nWHERE k.stock > 0\nORDER BY time, k.stock DESC\n",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showSidePanel": false,
+        "followGrafanaTheme": false,
+        "basemap": "positron",
+        "timeSync": "variables",
+        "timeVariables": {
+          "from": "mapFrom",
+          "to": "mapTo"
+        },
+        "publishWhilePlaying": false,
+        "peerTimeSync": false,
+        "tripLayerMode": "table",
+        "flowRenderMode": "straight",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": 20,
+              "longitude": 10,
+              "zoom": 1.2,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "visState": {
+              "layerBlending": "normal",
+              "splitMaps": [],
+              "filters": [
+                {
+                  "id": "clock",
+                  "dataId": [
+                    "grafana-A",
+                    "grafana-B"
+                  ],
+                  "name": [
+                    "time",
+                    "time"
+                  ],
+                  "type": "timeRange",
+                  "value": [
+                    1704067200000,
+                    1735689600000
+                  ],
+                  "enabled": true,
+                  "plotType": {
+                    "type": "histogram",
+                    "interval": "1-year"
+                  },
+                  "animationWindow": "interval",
+                  "yAxis": null,
+                  "view": "minified",
+                  "speed": 1
+                }
+              ],
+              "layers": [
+                {
+                  "id": "partners",
+                  "type": "point",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Partner countries",
+                    "columns": {
+                      "lat": "partner_lat",
+                      "lng": "partner_lng"
+                    },
+                    "isVisible": true,
+                    "color": [
+                      255,
+                      153,
+                      31
+                    ],
+                    "visConfig": {
+                      "radius": 10,
+                      "opacity": 0.9,
+                      "outline": false,
+                      "filled": true,
+                      "radiusRange": [
+                        0,
+                        50
+                      ]
+                    },
+                    "textLabel": [
+                      {
+                        "field": {
+                          "name": "label",
+                          "type": "string"
+                        },
+                        "color": [
+                          33,
+                          33,
+                          33
+                        ],
+                        "size": 13,
+                        "weight": 600,
+                        "offset": [
+                          10,
+                          0
+                        ],
+                        "anchor": "start",
+                        "alignment": "center",
+                        "outlineWidth": 3,
+                        "outlineColor": [
+                          255,
+                          255,
+                          255,
+                          255
+                        ],
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ]
+                      }
+                    ]
+                  },
+                  "visualChannels": {}
+                },
+                {
+                  "id": "corridors",
+                  "type": "arc",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Corridors",
+                    "columns": {
+                      "lat0": "lat0",
+                      "lng0": "lng0",
+                      "lat1": "lat1",
+                      "lng1": "lng1"
+                    },
+                    "columnMode": "points",
+                    "isVisible": true,
+                    "color": [
+                      255,
+                      153,
+                      31
+                    ],
+                    "visConfig": {
+                      "opacity": 0.85,
+                      "thickness": 2,
+                      "sizeRange": [
+                        1,
+                        14
+                      ],
+                      "targetColor": [
+                        18,
+                        147,
+                        154
+                      ]
+                    }
+                  },
+                  "visualChannels": {
+                    "sizeField": {
+                      "name": "people",
+                      "type": "integer"
+                    },
+                    "sizeScale": "linear"
+                  }
+                },
+                {
+                  "id": "stock",
+                  "type": "point",
+                  "config": {
+                    "dataId": "grafana-B",
+                    "label": "International migrant stock",
+                    "columns": {
+                      "lat": "lat",
+                      "lng": "lng"
+                    },
+                    "isVisible": true,
+                    "color": [
+                      130,
+                      130,
+                      130
+                    ],
+                    "visConfig": {
+                      "radius": 10,
+                      "opacity": 0.35,
+                      "outline": false,
+                      "filled": true,
+                      "radiusRange": [
+                        2,
+                        60
+                      ]
+                    }
+                  },
+                  "visualChannels": {
+                    "sizeField": {
+                      "name": "stock",
+                      "type": "integer"
+                    },
+                    "sizeScale": "sqrt"
+                  }
+                }
+              ],
+              "layerOrder": [
+                "partners",
+                "corridors",
+                "stock"
+              ],
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": true,
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "partner",
+                        "format": null
+                      },
+                      {
+                        "name": "people",
+                        "format": null
+                      }
+                    ],
+                    "grafana-B": [
+                      {
+                        "name": "country",
+                        "format": null
+                      },
+                      {
+                        "name": "stock",
+                        "format": null
+                      }
+                    ]
+                  }
+                },
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "coordinate": {
+                  "enabled": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Key figures",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "UN DESA estimate in force at the year on the map's clock. Share female is for both sexes.",
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL excel; LOAD excel; INSTALL httpfs; LOAD httpfs;\n\n-- Key figures for $country at the estimate in force on the map clock. The\n-- clock window's end is exclusive, hence the millisecond.\nWITH clock AS (\n  SELECT max(est.e) AS est_year\n  FROM (VALUES (1990), (1995), (2000), (2005), (2010), (2015), (2020), (2024)) est(e)\n  WHERE est.e <= greatest(1990, COALESCE(year(TRY_CAST(NULLIF($mapTo, '') AS TIMESTAMP) - INTERVAL 1 MILLISECOND), 2024))\n), sel AS (\n  SELECT est_year,\n         CAST(est_year AS VARCHAR) AS col_both,\n         CAST(est_year AS VARCHAR) || CASE $sex WHEN 'male' THEN '_1' WHEN 'female' THEN '_2' ELSE '' END AS col\n  FROM clock\n), stock AS (\n  UNPIVOT (SELECT COLUMNS('^(1990|1995|2000|2005|2010|2015|2020|2024)(_[12])?$')\n           FROM read_xlsx('https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/undesa_pd_2024_ims_stock_by_sex_and_destination.xlsx',\n                          sheet = 'Table 1', header = true, all_varchar = true, range = 'A11:AC400')\n           WHERE TRY_CAST(\"Location code\" AS INTEGER) = CAST($country AS INTEGER))\n  ON COLUMNS(*) INTO NAME col VALUE v\n), share AS (\n  UNPIVOT (SELECT COLUMNS('^(1990|1995|2000|2005|2010|2015|2020|2024)(_[12])?$')\n           FROM read_xlsx('https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/undesa_pd_2024_ims_stock_by_sex_and_destination.xlsx',\n                          sheet = 'Table 3', header = true, all_varchar = true, range = 'A11:AC400')\n           WHERE TRY_CAST(\"Location code\" AS INTEGER) = CAST($country AS INTEGER))\n  ON COLUMNS(*) INTO NAME col VALUE v\n), female AS (\n  UNPIVOT (SELECT COLUMNS('^(1990|1995|2000|2005|2010|2015|2020|2024)$')\n           FROM read_xlsx('https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/undesa_pd_2024_ims_stock_by_sex_and_destination.xlsx',\n                          sheet = 'Table 4', header = true, all_varchar = true, range = 'A11:M400')\n           WHERE TRY_CAST(\"Location code\" AS INTEGER) = CAST($country AS INTEGER))\n  ON COLUMNS(*) INTO NAME col VALUE v\n), emigrants AS (\n  UNPIVOT (SELECT COLUMNS('^(1990|1995|2000|2005|2010|2015|2020|2024)(_[12])?$')\n           FROM read_xlsx('https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/undesa_pd_2024_ims_stock_by_sex_and_origin.xlsx',\n                          sheet = 'Table 1', header = true, all_varchar = true, range = 'A11:AC400')\n           WHERE TRY_CAST(\"Location code\" AS INTEGER) = CAST($country AS INTEGER))\n  ON COLUMNS(*) INTO NAME col VALUE v\n)\nSELECT sel.est_year AS \"Estimate year\",\n       (SELECT TRY_CAST(v AS DOUBLE) FROM stock WHERE stock.col = sel.col) AS \"International migrants\",\n       (SELECT TRY_CAST(v AS DOUBLE) FROM share WHERE share.col = sel.col) AS \"Share of population\",\n       (SELECT TRY_CAST(v AS DOUBLE) FROM female WHERE female.col = sel.col_both) AS \"Share female\",\n       (SELECT TRY_CAST(v AS DOUBLE) FROM emigrants WHERE emigrants.col = sel.col) AS \"Emigrants\"\nFROM sel\n",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "unit": "short",
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Estimate year"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Share of population"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Share female"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false
+      }
+    },
+    {
+      "id": 3,
+      "type": "table",
+      "title": "Largest corridors",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "At the year on the map's clock. Share of total is of all the country's immigrants or emigrants.",
+      "gridPos": {
+        "x": 16,
+        "y": 8,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL excel; LOAD excel; INSTALL httpfs; LOAD httpfs;\n\n-- The $top largest corridors at the estimate in force on the map clock, with\n-- each one's share of the country's total (the World row, code 900).\nWITH clock AS (\n  SELECT max(est.e) AS est_year\n  FROM (VALUES (1990), (1995), (2000), (2005), (2010), (2015), (2020), (2024)) est(e)\n  WHERE est.e <= greatest(1990, COALESCE(year(TRY_CAST(NULLIF($mapTo, '') AS TIMESTAMP) - INTERVAL 1 MILLISECOND), 2024))\n), sel AS (\n  SELECT CAST(est_year AS VARCHAR) || CASE $sex WHEN 'male' THEN '_1' WHEN 'female' THEN '_2' ELSE '' END AS col\n  FROM clock\n), od AS (\n  SELECT CAST(\"Location code of destination\" AS INTEGER) AS dest,\n         CAST(\"Location code of origin\" AS INTEGER) AS orig,\n         regexp_replace(\"Region, development group, country or area of destination\", '\\*', '', 'g') AS dest_name,\n         regexp_replace(\"Region, development group, country or area of origin\", '\\*', '', 'g') AS orig_name,\n         COLUMNS('^(1990|1995|2000|2005|2010|2015|2020|2024)(_[12])?$')\n  FROM read_xlsx('https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/undesa_pd_2024_ims_stock_by_sex_destination_and_origin.xlsx',\n                 sheet = 'Table 1', header = true, all_varchar = true, range = 'A11:AE40000')\n  WHERE CAST($country AS INTEGER) = CASE $direction\n          WHEN 'emigrants' THEN TRY_CAST(\"Location code of origin\" AS INTEGER)\n          ELSE TRY_CAST(\"Location code of destination\" AS INTEGER) END\n    AND CASE $direction\n          WHEN 'emigrants' THEN TRY_CAST(\"Location code of destination\" AS INTEGER)\n          ELSE TRY_CAST(\"Location code of origin\" AS INTEGER) END <= 900\n), cells AS (\n  UNPIVOT od ON COLUMNS(* EXCLUDE (dest, orig, dest_name, orig_name)) INTO NAME col VALUE v\n), flows AS (\n  SELECT CASE $direction WHEN 'emigrants' THEN dest ELSE orig END AS partner,\n         CASE $direction WHEN 'emigrants' THEN dest_name ELSE orig_name END AS partner_name,\n         TRY_CAST(v AS DOUBLE) AS people\n  FROM cells\n  JOIN sel USING (col)\n)\nSELECT partner_name AS \"Country\",\n       people AS \"People\",\n       round(100 * people / (SELECT people FROM flows WHERE partner = 900), 1) AS \"Share of total\"\nFROM flows\nWHERE partner < 900 AND people > 0\nORDER BY people DESC\nLIMIT CAST($top AS INTEGER)\n",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "People"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "locale"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Share of total"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "International migrants, % of population",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Only the eight years UN DESA estimates; no step.",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 16,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL excel; LOAD excel; INSTALL httpfs; LOAD httpfs;\n\n-- International migrants as a share of the population, $country against the\n-- World, at the 8 years UN DESA actually estimates. PIVOT names each column\n-- after the country, so the legend needs no override.\nWITH d AS (\n  SELECT CAST(\"Location code\" AS INTEGER) AS code,\n         regexp_replace(\"Region, development group, country or area\", '\\*', '', 'g') AS name,\n         COLUMNS('^(1990|1995|2000|2005|2010|2015|2020|2024)(_[12])?$')\n  FROM read_xlsx('https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/undesa_pd_2024_ims_stock_by_sex_and_destination.xlsx',\n                 sheet = 'Table 3', header = true, all_varchar = true, range = 'A11:AC400')\n  WHERE TRY_CAST(\"Location code\" AS INTEGER) IN (900, CAST($country AS INTEGER))\n), cells AS (\n  UNPIVOT d ON COLUMNS(* EXCLUDE (code, name)) INTO NAME col VALUE v\n), points AS (\n  SELECT make_timestamp(CAST(left(col, 4) AS INTEGER), 7, 1, 0, 0, 0) AS time,\n         name,\n         TRY_CAST(v AS DOUBLE) AS share\n  FROM cells\n  WHERE CASE right(col, 2) WHEN '_1' THEN 'male' WHEN '_2' THEN 'female' ELSE 'both' END = $sex\n)\nSELECT * FROM (PIVOT points ON name USING first(share) GROUP BY time)\nORDER BY time\n",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "lineInterpolation": "linear",
+            "showPoints": "always",
+            "pointSize": 7,
+            "spanNulls": true,
+            "fillOpacity": 0,
+            "axisLabel": ""
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "text",
+      "title": "Source and notes",
+      "gridPos": {
+        "x": 16,
+        "y": 16,
+        "w": 8,
+        "h": 10
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Source.** United Nations Department of Economic and Social Affairs, Population Division (2024). *International Migrant Stock 2024.* [un.org](https://www.un.org/development/desa/pd/content/international-migrant-stock) · CC BY 3.0 IGO. Centroids: Natural Earth.\n\n**Reading the map.** UN DESA estimates 1990, 1995, 2000, 2005, 2010, 2015, 2020 and 2024. The clock steps through every year and shows the latest estimate at or before it, so the map changes only in those eight years. Arcs run from origin (orange) to destination (teal).\n\n**Live data.** Every panel reads the UN DESA spreadsheets when it loads, so the dashboard takes a few seconds. Pause the clock to update the key figures and the table.\n\n**Not on the map.** Mayotte, French Guiana, Gibraltar, Guadeloupe, Martinique, Bonaire/Sint Eustatius/Saba, Réunion, Tokelau and the Channel Islands have no Natural Earth centroid; they still appear in the table."
+      }
+    }
+  ]
+}
