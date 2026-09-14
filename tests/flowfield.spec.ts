@@ -123,6 +123,61 @@ test('re-traces the field when the layer panel asks for fewer lines', async ({
   await expect.poll(async () => (await readFlowField(map))?.lines ?? 0, { timeout: 30_000 }).toBeLessThan(before / 2);
 });
 
+test('shows its colour ramp in the legend, and follows a range set by hand', async ({
+  gotoPanelEditPage,
+  readProvisionedDashboard,
+  page,
+}) => {
+  test.slow();
+  // The legend reads a layer's colours through keys it looks up on the layer's
+  // config. A flow field's colour is the speed of lines that are no column of
+  // its dataset, so until the layer offered keys of its own the legend showed
+  // one swatch for a map painted in six colours.
+  const dashboard = await readProvisionedDashboard({ fileName: 'flowfield.json' });
+  const panelEditPage = await gotoPanelEditPage({ dashboard, id: '1' });
+
+  const map = panelEditPage.panel.locator.locator('canvas').first();
+  await expect(map).toBeVisible({ timeout: 60_000 });
+  await settle(page);
+  await expect.poll(async () => (await readFlowField(map))?.lines ?? 0, { timeout: 60_000 }).toBeGreaterThan(100);
+
+  // Looked for on the page, not inside the panel: kepler mounts the legend only
+  // while its control is active, and on a narrow map portals it to the body.
+  // One kepler panel on this dashboard, so there is no other legend to find.
+  const legend = page.locator('.map-legend');
+  if ((await legend.count()) === 0) {
+    // Through the mouse, like `effects.spec.ts`: under software WebGL the render
+    // loop keeps a map-control button from ever reporting itself stable. And
+    // only when closed, because the button toggles.
+    const button = panelEditPage.panel.locator.locator('button.show-legend');
+    await expect(button).toBeVisible({ timeout: 30_000 });
+    const box = await button.boundingBox();
+    await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  }
+
+  // The provisioned vortex runs from 3.864 to 8.411 m/s across the whole field —
+  // the whole field, not the lines on screen, which span much less of it.
+  //
+  // The bins are read as input values, not text: kepler draws each label as an
+  // editable box, and a box's value is no part of the legend's text content.
+  const firstBin = legend.locator('input').first();
+  await expect(legend).toContainText('Speed', { timeout: 30_000 });
+  await expect(firstBin).toHaveValue(/^3\.864 to /);
+  await expect(legend.locator('input')).toHaveCount(6);
+
+  // Switched on, the range starts at the field's own, rounded outwards to the
+  // slider's step: 3.84 to 8.44.
+  await page.locator('.layer-panel__header__content').first().dispatchEvent('click');
+  const fixedRange = page.locator('label[for$="-fixedSpeedRange-switch"]');
+  await expect(fixedRange).toBeVisible({ timeout: 30_000 });
+  await fixedRange.click();
+
+  await expect
+    .poll(async () => (await readFlowField(map))?.visConfig.speedRange, { timeout: 30_000 })
+    .toEqual([3.84, 8.44]);
+  await expect(firstBin).toHaveValue(/^3\.84 to /, { timeout: 30_000 });
+});
+
 /**
  * What this layer would hand deck right now, asked of the layer itself.
  *

@@ -273,9 +273,12 @@ Every knob is in the layer's own panel, grouped as **Colour**, **Streamlines**, 
 | Knob | Where | Does what |
 | --- | --- | --- |
 | Colour by speed | Colour | On, each line takes its colour from its mean speed through the ramp below. Off, the whole field is one colour. |
+| Opacity by speed | Colour | Fades each line from **Opacity in calm air** (0.2 by default) up to opaque as its speed rises. Off by default. |
+| Fixed speed range | Colour | Measures colour, width and opacity against **Range (min, max)** instead of the field's own range. Off by default. |
 | Lines per screen | Streamlines | The density budget. |
 | Zoom response | Streamlines | Whether that budget is for the screen (0) or for the whole field (1). |
 | Stroke width | Streamlines | Line width in **pixels**, so it holds as you zoom. |
+| Width by speed | Streamlines | Replaces the one width with **Width range (px)**: slow lines draw at its low end, fast ones at its high end. Off by default. |
 | Trail length | Streamlines | How much of the cycle the moving trail spans, as a percentage. |
 | Line length | Streamlines | Vertices per streamline — how far a line reaches, not how much of it is lit. |
 | Cycle | Animation | The length of the loop, in seconds. |
@@ -285,13 +288,26 @@ Every knob is in the layer's own panel, grouped as **Colour**, **Streamlines**, 
 | Height (m) | Field | What this level *is*, when no altitude column is bound. Counts against the other levels. |
 | Vertical exaggeration | Field | How tall the stack is drawn. The one that moves a lone layer. |
 
-::: warning The line colour is relative, always
-With **Colour by speed** on, the ramp is stretched between the slowest and fastest line *currently
-traced* — it is not an absolute scale, and two moments of a forecast cannot be compared by eye.
-When the magnitude is the point, turn it off, give the field one flat colour, and put the
-magnitude in a layer underneath that can pin its own breaks — see
-[painting the field as well as tracing it](../sources/erddap#painting-the-field-as-well-as-tracing-it).
-:::
+### Comparing by colour
+
+With **Colour by speed** on, the ramp is stretched over the speeds of the **whole field** — every
+cell of the grid, not just the lines on screen — so panning and zooming never repaint a line. The
+map's **Legend** control shows the same ramp, bin by bin, under **Speed**; in the gradient mode it
+reads **Slope**.
+
+That range still belongs to this field, though: two levels, two panels, or two moments of a
+forecast each get their own, and cannot be compared by eye. To compare them, switch on
+**Fixed speed range** in each and give them the same **Range (min, max)**. The first time it is
+switched on it starts at the field's own range, rounded outwards to the slider's step. A speed
+beyond it takes the colour at that end of the ramp.
+
+When the magnitude itself is the point, a layer underneath can still paint it with breaks of its
+own — see [painting the field as well as tracing it](../sources/erddap#painting-the-field-as-well-as-tracing-it).
+
+**Width by speed** and **Opacity by speed** follow the same range the colour does, so all three
+agree on what counts as fast. Each line is drawn at one width and one opacity, from its mean speed.
+The calm end of the opacity is 0.2 rather than zero on purpose: slack air that vanishes altogether
+reads as holes in the data.
 
 
 **Trail length** is the one that changes the character of the map most: short reads as drifting
@@ -317,3 +333,7 @@ With the seamless loop on, **Line lifetime** says only how much of the field is 
 a little over half the lines are mid-flight at any instant, and at 1 all of them are. Raise it for a
 fuller field, lower it for scattered particles. Either way the density holds steady through the
 cycle.
+
+A line cut short by a hole or by the edge of the field lives for less of the cycle than a whole one,
+rather than being stretched over all of it, so it moves at the pace of the wind it is in. Next to
+the edges and the holes, fewer lines are lit at once.
