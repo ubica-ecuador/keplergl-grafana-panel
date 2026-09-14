@@ -1,0 +1,491 @@
+import {
+  buildGradientField,
+  buildWindField,
+  GradientDirection,
+  GridFrame,
+  smoothWindField,
+  WindField,
+  WindFieldColumns,
+} from '../data/buildWindField';
+import type { ScreenCamera } from '../data/traceStreamlines';
+
+/**
+ * What the two layers that draw a grid of velocities share: the flow field,
+ * which traces it into streamlines, and the vector field, which marks it with
+ * arrows and wind barbs.
+ *
+ * Pure, like both of them. Everything here is about reading the field and
+ * measuring speeds against a range; nothing here knows how either layer draws.
+ */
+
+/**
+ * Where the map is looking from, in the plain numbers kepler keeps.
+ *
+ * A camera and not a rectangle of ground, because those stop being the same
+ * thing the moment the map is tilted — see `ScreenCamera`. Plain numbers because
+ * this travels through `visConfig`, which is saved with the dashboard.
+ */
+export interface CameraState {
+  latitude: number;
+  longitude: number;
+  zoom: number;
+  pitch: number;
+  bearing: number;
+  width: number;
+  height: number;
+}
+
+/** Turns that into something that can unproject — see `flowFieldDeckLayer.ts`. */
+export type ScreenCameraFactory = (camera: CameraState) => ScreenCamera | null;
+
+/**
+ * What the panel knows and the layer cannot work out for itself.
+ *
+ * Written into `visConfig` by `useFlowFieldContext`, and deliberately absent
+ * from the layer panel — none of it is a choice the user makes. It travels
+ * through `visConfig` because that is the one channel that reaches a layer
+ * without touching its dataset, the same road `visConfig.zarrLabel` takes.
+ */
+export interface FlowFieldContext {
+  /** Where the map is looking from, so seeding and step length follow the screen. */
+  camera?: CameraState;
+  /** Epoch ms the animation starts from — the dashboard range's start. */
+  baseMs: number;
+  /**
+   * The tallest level on the map, in metres.
+   *
+   * Shared across the flow field layers rather than taken from each layer's own
+   * altitude: the exaggeration scales the whole stack to a share of the view, so
+   * a layer computing it from its own height would draw every level at the same
+   * altitude and flatten the stack it exists to separate.
+   */
+  tallest?: number;
+}
+
+/**
+ * How the query spells the velocity, and which columns each spelling needs.
+ *
+ * kepler renders a column picker per required and optional column of the
+ * selected mode, which is the whole reason the four velocity roles finally have
+ * a place in the interface: until now they were autodetect-only.
+ */
+export const VELOCITY_COLUMN_MODES = [
+  {
+    key: 'components',
+    label: 'U / V components',
+    requiredColumns: ['lat', 'lng', 'u', 'v'],
+    optionalColumns: ['altitude'],
+  },
+  {
+    key: 'polar',
+    label: 'Speed / direction',
+    requiredColumns: ['lat', 'lng', 'speed', 'direction'],
+    optionalColumns: ['altitude'],
+  },
+  {
+    key: 'gradient',
+    label: 'Gradient of a value',
+    requiredColumns: ['lat', 'lng', 'value'],
+    optionalColumns: ['altitude'],
+  },
+];
+
+/** One column of a kepler layer, as kepler stores it once the config is parsed. */
+export interface LayerColumn {
+  value?: string | null;
+  fieldIdx?: number;
+}
+
+/**
+ * The knobs both velocity layers carry, under the same names — which is what
+ * lets kepler keep them when a layer's type is switched from one to the other:
+ * `assignConfigToLayer` copies every key the new layer also has.
+ */
+export const VELOCITY_VIS_CONFIGS = {
+  opacity: 'opacity',
+  colorRange: 'colorRange',
+  heightMeters: {
+    type: 'number',
+    defaultValue: 0,
+    label: 'flowfield.heightMeters',
+    isRanged: false,
+    range: [0, 20000],
+    step: 100,
+    group: 'display',
+    property: 'heightMeters',
+  },
+  elevationScale: {
+    type: 'number',
+    defaultValue: 1,
+    label: 'flowfield.elevationScale',
+    isRanged: false,
+    range: [0, 5],
+    step: 0.1,
+    group: 'display',
+    property: 'elevationScale',
+  },
+  colorBySpeed: {
+    type: 'boolean',
+    defaultValue: true,
+    label: 'flowfield.colorBySpeed',
+    group: 'color',
+    property: 'colorBySpeed',
+  },
+  gradientDirection: {
+    type: 'select',
+    defaultValue: 'downhill',
+    options: ['downhill', 'uphill', 'contours'],
+    label: 'flowfield.gradientDirection',
+    group: 'display',
+    property: 'gradientDirection',
+  },
+  /**
+   * The speed range the colour, the width and the opacity are measured against,
+   * when it is set by hand rather than taken from the field. Set by hand it is
+   * the same on every level and every panel, which is the only way two of them
+   * can be compared by eye.
+   *
+   * No default of its own: wind runs to tens of metres a second and a gradient's
+   * slope to a few hundredths, so any fixed number is wrong for one of them. The
+   * panel starts it at the field's own range the first time it is switched on.
+   */
+  fixedSpeedRange: {
+    type: 'boolean',
+    defaultValue: false,
+    label: 'flowfield.fixedSpeedRange',
+    group: 'color',
+    property: 'fixedSpeedRange',
+  },
+  speedRange: {
+    type: 'number',
+    defaultValue: null,
+    label: 'flowfield.speedRange',
+    isRanged: true,
+    range: [0, 50],
+    step: 0.1,
+    group: 'color',
+    property: 'speedRange',
+  },
+  opacityBySpeed: {
+    type: 'boolean',
+    defaultValue: false,
+    label: 'flowfield.opacityBySpeed',
+    group: 'color',
+    property: 'opacityBySpeed',
+  },
+  calmOpacity: {
+    type: 'number',
+    defaultValue: 0.2,
+    label: 'flowfield.calmOpacity',
+    isRanged: false,
+    range: [0, 1],
+    step: 0.05,
+    group: 'color',
+    property: 'calmOpacity',
+  },
+} as const;
+
+/**
+ * The colour channel this layer shows kepler's legend.
+ *
+ * kepler's legend draws a layer's colours from whatever channel the layer
+ * offers, looking each of the channel's keys up on the config — scale, field and
+ * domain — and the colours in `visConfig`. A flow field's colour is the speed of
+ * lines traced through the field, which is no column of its dataset, so the
+ * channel points at keys of its own that `formatLayerData` fills in.
+ *
+ * Deliberately not kepler's `colorField`. That one kepler owns: it saves it with
+ * the map and, on loading, looks for a column of that name in the dataset —
+ * and there is no `speed` column to find. Keys of our own are neither saved nor
+ * validated, and are written again on every trace.
+ */
+export const VELOCITY_LEGEND_CHANNEL = {
+  key: 'color',
+  property: 'color',
+  field: 'flowColorField',
+  scale: 'flowColorScale',
+  domain: 'flowColorDomain',
+  range: 'colorRange',
+  // kepler's `CHANNEL_SCALES.color`. The legend keeps only colour channels, and
+  // tells them apart by this.
+  channelScaleType: 'color',
+} as const;
+
+/** The kepler dataset a velocity layer reads: rows, and the columns they are in. */
+export interface VelocityDataset {
+  dataContainer?: { numRows(): number; valueAt(row: number, column: number): unknown };
+  fields?: Array<{ name: string }>;
+}
+
+/**
+ * The rows kepler holds, in the shape `buildWindField` reads.
+ *
+ * Only the columns the layer was pointed at are materialised. A velocity query
+ * is normally narrow, but there is no reason to copy a column nobody reads.
+ */
+export function gridFrameOf(
+  dataset: VelocityDataset,
+  columns: Record<string, LayerColumn>
+): GridFrame | null {
+  const container = dataset.dataContainer;
+  if (!container) {
+    return null;
+  }
+
+  const length = container.numRows();
+  const fields: GridFrame['fields'] = [];
+
+  for (const column of Object.values(columns)) {
+    const name = column?.value;
+    const index = column?.fieldIdx;
+    if (!name || index === undefined || index < 0) {
+      continue;
+    }
+    const values = new Float64Array(length);
+    for (let row = 0; row < length; row++) {
+      values[row] = Number(container.valueAt(row, index));
+    }
+    fields.push({ name, values });
+  }
+
+  return { length, fields };
+}
+
+/** The grid's extent, as kepler's `[west, south, east, north]`. */
+export function fieldBounds(field: WindField): [number, number, number, number] {
+  return [
+    field.west,
+    field.south,
+    field.west + (field.columns - 1) * field.stepLon,
+    field.south + (field.rows - 1) * field.stepLat,
+  ];
+}
+
+/**
+ * How high this level is, in metres.
+ *
+ * A bound altitude column wins, and the knob answers for a query that returns no
+ * height at all — which is the ordinary case, since nothing autodetects an
+ * altitude and a level's height is usually a property of the query rather than
+ * of its rows.
+ *
+ * Shared with the adapter on purpose. The exaggeration is derived from the
+ * tallest level *on the map*, so the reader that finds that tallest has to
+ * answer this question exactly as the layer does; two spellings drifting apart
+ * would flatten a stack for reasons nobody could see.
+ */
+export function levelHeight(
+  columnValue: string | null | undefined,
+  fromColumn: number,
+  visConfig: Record<string, unknown>
+): number {
+  return columnValue ? fromColumn : setting(visConfig.heightMeters, 0);
+}
+
+/** The value of a column that is the same for every row — a level's height. */
+export function constantOf(frame: GridFrame, column?: string | null): number {
+  const field = column ? frame.fields.find((f) => f.name === column) : undefined;
+  if (!field) {
+    return 0;
+  }
+  for (let row = 0; row < frame.length; row++) {
+    const value = Number(field.values[row]);
+    if (Number.isFinite(value)) {
+      return value;
+    }
+  }
+  return 0;
+}
+
+/**
+ * A knob's value, or its default when the layer is carrying no answer.
+ *
+ * Neither of the obvious spellings is right. `Number(x) ?? d` never falls back,
+ * because `Number(undefined)` is `NaN` and `??` only catches null — the value
+ * then poisons whatever it is multiplied into, which for the exaggeration means
+ * every vertex at `NaN` metres and an invisible layer. `Number(x) || d` falls
+ * back on **zero**, and zero is a real answer to two of these: no smoothing, and
+ * a flat stack. Absence is checked before the parse rather than after it, since
+ * `Number(null)` is zero and would be read as an answer.
+ */
+export function setting(value: unknown, fallback: number): number {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+/** A domain that can be divided by: a zero-width one becomes one unit wide. */
+function widened(min: number, max: number): [number, number] {
+  // A field of uniform speed would otherwise divide by zero and paint every
+  // line the ramp's first colour, which reads as the ramp being broken.
+  return max > min ? [min, max] : [min, min + 1];
+}
+
+/**
+ * The speed range of every cell of the field, holes stepped over.
+ *
+ * The whole field rather than the lines traced through it. The lines are
+ * seeded from the camera, so a ramp stretched over them moved with the view:
+ * panning from slack air into a jet repainted the same speed from the top of the
+ * ramp to the bottom, and no colour meant anything from one moment to the next.
+ */
+export function fieldSpeedDomain(field: WindField): [number, number] {
+  let min = Infinity;
+  let max = -Infinity;
+  for (let k = 0; k < field.data.length; k += 2) {
+    const speed = Math.hypot(field.data[k], field.data[k + 1]);
+    if (!Number.isFinite(speed)) {
+      continue;
+    }
+    min = Math.min(min, speed);
+    max = Math.max(max, speed);
+  }
+  return Number.isFinite(min) ? widened(min, max) : [0, 1];
+}
+
+/**
+ * The range the lines are painted against: the one set by hand when the switch
+ * is on and the range is usable, the field's own otherwise.
+ *
+ * Put the right way round, because kepler's slider keeps its thumbs in order but
+ * its number boxes do not.
+ */
+export function paintDomain(visConfig: Record<string, unknown>, fieldDomain: [number, number]): [number, number] {
+  const range = visConfig.fixedSpeedRange === true ? rangeOf(visConfig.speedRange) : null;
+  return range ? widened(range[0], range[1]) : fieldDomain;
+}
+
+/** A `[min, max]` knob the right way round, or null when it holds no such thing. */
+export function rangeOf(value: unknown): [number, number] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const [a, b] = value.map(Number);
+  return Number.isFinite(a) && Number.isFinite(b) ? [Math.min(a, b), Math.max(a, b)] : null;
+}
+
+/** Where a speed sits in a range: 0 at its calm end, 1 at its fast one, held at both. */
+export function shareOfRange([min, max]: [number, number], speed: number): number {
+  return Math.min(1, Math.max(0, (speed - min) / (max - min)));
+}
+
+/** `#rrggbb` as deck's `[r, g, b]`. */
+function parseHex(hex: string): [number, number, number] {
+  const value = Number.parseInt(hex.replace('#', ''), 16);
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+}
+
+/**
+ * The colour a speed lands on, quantised over the ramp's own steps.
+ *
+ * Quantised rather than interpolated because that is what kepler's colour ramps
+ * are: six or eight chosen colours, not two ends to blend between.
+ */
+export function colorForSpeed(
+  colors: string[],
+  domain: [number, number],
+  speed: number
+): [number, number, number] {
+  if (colors.length === 0) {
+    return [255, 255, 255];
+  }
+  const [min, max] = domain;
+  const t = (speed - min) / (max - min);
+  const index = Math.min(colors.length - 1, Math.max(0, Math.floor(t * colors.length)));
+  return parseHex(colors[index]);
+}
+
+/**
+ * The field the rows describe, smoothed, or null when they describe none.
+ *
+ * The smoothing default is the caller's because the two layers disagree on it,
+ * and for a reason: the flow field traces particles that jitter on a raw 0.25°
+ * grid, while an arrow on a data cell has to show the sample as it came.
+ */
+export function buildVelocityField(
+  frame: GridFrame,
+  columns: Record<string, LayerColumn>,
+  columnMode: string | undefined,
+  visConfig: Record<string, unknown>,
+  defaultSmoothing: number
+): WindField | null {
+  const named = (key: string): string | undefined => columns[key]?.value ?? undefined;
+  const latitude = named('lat');
+  const longitude = named('lng');
+  if (!latitude || !longitude) {
+    return null;
+  }
+
+  const smoothing = Math.round(setting(visConfig.smoothing, defaultSmoothing));
+
+  // The gradient mode smooths the scalar it derives from rather than the
+  // vectors it derives — see `buildGradientField`.
+  if (columnMode === 'gradient') {
+    const value = named('value');
+    if (!value) {
+      return null;
+    }
+    return buildGradientField(
+      frame,
+      { latitude, longitude, value },
+      { direction: (visConfig.gradientDirection as GradientDirection) ?? 'downhill', smoothing }
+    );
+  }
+
+  const spec: WindFieldColumns =
+    columnMode === 'polar'
+      ? { latitude, longitude, speed: named('speed'), direction: named('direction') }
+      : { latitude, longitude, u: named('u'), v: named('v') };
+
+  const raw = buildWindField(frame, spec);
+  if (!raw) {
+    return null;
+  }
+  return smoothing > 0 ? smoothWindField(raw, smoothing) : raw;
+}
+
+/**
+ * The legend keys to write, or null when the config already carries them.
+ *
+ * Null rather than the same keys again because the flow field calls this on
+ * every frame of its animation, and a config replaced sixty times a second is
+ * sixty re-renders of every panel that reads it.
+ */
+export function legendPatch(
+  config: Record<string, unknown>,
+  fieldDomain: [number, number]
+): Record<string, unknown> | null {
+  const visConfig = (config.visConfig ?? {}) as Record<string, unknown>;
+  const domain = paintDomain(visConfig, fieldDomain);
+  // A gradient's vectors are metres of fall per metre, not metres a second.
+  const measure = config.columnMode === 'gradient' ? 'Slope' : 'Speed';
+  const had = config[VELOCITY_LEGEND_CHANNEL.domain] as [number, number] | undefined;
+  const field = config[VELOCITY_LEGEND_CHANNEL.field] as { displayName?: string } | undefined;
+  if (had && had[0] === domain[0] && had[1] === domain[1] && field?.displayName === measure) {
+    return null;
+  }
+  return {
+    [VELOCITY_LEGEND_CHANNEL.scale]: 'quantize',
+    [VELOCITY_LEGEND_CHANNEL.domain]: domain,
+    [VELOCITY_LEGEND_CHANNEL.field]: { name: measure.toLowerCase(), displayName: measure, type: 'real' },
+  };
+}
+
+/**
+ * What the colour is a measure of, or null to leave the answer to kepler's base
+ * layer — for any other channel, and while the symbols are one colour, which is
+ * what makes the legend draw a single swatch.
+ */
+export function legendDescription(
+  config: Record<string, unknown>,
+  key: string
+): { label: string; measure?: string } | null {
+  const visConfig = (config.visConfig ?? {}) as Record<string, unknown>;
+  if (key !== VELOCITY_LEGEND_CHANNEL.key || visConfig.colorBySpeed === false) {
+    return null;
+  }
+  const field = config[VELOCITY_LEGEND_CHANNEL.field] as { displayName?: string } | undefined;
+  return { label: '', measure: field?.displayName };
+}
