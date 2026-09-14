@@ -127,6 +127,21 @@ describe('the colour range set by hand', () => {
     expect(onChange).toHaveBeenCalledWith({ fixedSpeedRange: true, speedRange: [2, 14] });
   });
 
+  it('rounds the range it starts from outwards, to the slider’s own step', () => {
+    // A real field's range is whatever floats the magnitudes came to, and the
+    // number boxes print them whole: "3.8644261360168457". Rounded outwards so
+    // the fastest and slowest lines stay inside it. Measured 2–8.4 m/s gives a
+    // slider to 20 in steps of 0.04, so 3.84 and 8.44.
+    const { container, onChange } = renderPanel('components', {
+      visConfig: { fixedSpeedRange: false, speedRange: null },
+      meta: { speedDomain: [3.8644261360168457, 8.411197630750438] },
+    });
+
+    fireEvent.click(theSwitch(container));
+
+    expect(onChange).toHaveBeenCalledWith({ fixedSpeedRange: true, speedRange: [3.84, 8.44] });
+  });
+
   it('keeps a range already chosen when it is switched back on', () => {
     const { container, onChange } = wind({ fixedSpeedRange: false, speedRange: [0, 40] });
 

@@ -114,6 +114,23 @@ export function speedRangeBounds(domain: [number, number]): { range: [number, nu
 }
 
 /**
+ * A range rounded outwards to a step, and printed without floating-point noise.
+ *
+ * Outwards so the slowest and fastest lines stay inside it. The quotient is
+ * tidied before it is floored or ceiled: a division that should land on a
+ * whole number of steps can come out a hair above it, and the ceiling of that
+ * would widen the range by a whole step for nothing.
+ */
+function roundedOutwards([min, max]: [number, number], step: number): [number, number] {
+  const decimals = Math.max(0, -Math.floor(Math.log10(step)));
+  const steps = (value: number) => Number((value / step).toPrecision(12));
+  return [
+    Number((Math.floor(steps(min)) * step).toFixed(decimals)),
+    Number((Math.ceil(steps(max)) * step).toFixed(decimals)),
+  ];
+}
+
+/**
  * The switch that fixes the colour ramp's range, and the range it fixes.
  *
  * The switch is kepler's, with its change widened by one thing: the first time
@@ -129,7 +146,11 @@ function FixedSpeedRange({ layer, visConfiguratorProps }: Omit<ConfiguratorArgs,
   const chosen = Array.isArray(visConfig.speedRange) ? (visConfig.speedRange as [number, number]) : null;
 
   const toggle = (patch: Record<string, unknown>) =>
-    onChange(patch.fixedSpeedRange === true && !chosen && fieldDomain ? { ...patch, speedRange: fieldDomain } : patch);
+    onChange(
+      patch.fixedSpeedRange === true && !chosen && fieldDomain
+        ? { ...patch, speedRange: roundedOutwards(fieldDomain, speedRangeBounds(fieldDomain).step) }
+        : patch
+    );
 
   return (
     <>
