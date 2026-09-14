@@ -46,6 +46,18 @@ describe('buildVelocityField', () => {
     expect(field!.data[1]).toBeCloseTo(0, 5);
   });
 
+  it('reads the direction as where the flow goes when the layer says so', () => {
+    const field = buildVelocityField(
+      frameOf(lattice(3, () => ({ ws: 10, wd: 270 }))),
+      columnsOf({ lat: 'latitude', lng: 'longitude', speed: 'ws', direction: 'wd' }),
+      'polar',
+      { directionConvention: 'towards' },
+      0
+    );
+
+    expect(field!.data[0]).toBeCloseTo(-10, 5);
+  });
+
   it('describes no field without both coordinates', () => {
     const rows = frameOf(lattice(3, () => ({ u: 5, v: 0 })));
 

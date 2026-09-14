@@ -922,4 +922,13 @@ describe('traceSignature', () => {
 
     expect(traceSignature(after)).not.toBe(traceSignature(before));
   });
+
+  it('changes when the direction is read the other way round', () => {
+    // Reading it backwards reverses every line: a kept trace would draw the
+    // opposite of the truth.
+    const before = { columns: {}, visConfig: { directionConvention: 'from' } };
+    const after = { columns: {}, visConfig: { directionConvention: 'towards' } };
+
+    expect(traceSignature(after)).not.toBe(traceSignature(before));
+  });
 });

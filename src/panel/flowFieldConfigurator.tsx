@@ -47,45 +47,50 @@ interface ConfiguratorArgs {
 }
 
 /**
- * Which way the gradient is read as a flow.
+ * A choice among words, for a knob the layer registered as a `select`.
  *
- * A choice among words rather than a number, so none of kepler's sliders fit;
- * `ItemSelector` is what it uses for its own `select` knobs. Both the label and
- * the three values go through react-intl, because a selector showing
- * `downhill` is the same failure as a label reading "Flowfield.Density" — the
- * key reaching the screen because nothing translated it.
+ * kepler's sliders do not fit a choice among words; `ItemSelector` is what it
+ * uses for its own. The label is the knob's own message id, and each option is
+ * `<label>.<option>` — both through react-intl, because a selector showing
+ * `downhill` is the same failure as a label reading "Flowfield.Density".
  *
- * Absent outside the gradient mode: u and v already say which way the air
- * goes, and a knob that does nothing is worse than no knob.
+ * `options` narrows the registered list when a mode makes some of them
+ * meaningless, rather than offering a knob that does nothing.
  */
-function GradientDirection({ layer, visConfiguratorProps }: Omit<ConfiguratorArgs, 'layerConfiguratorProps'>) {
+export function SelectKnob({
+  layer,
+  visConfiguratorProps,
+  property,
+  options,
+}: Omit<ConfiguratorArgs, 'layerConfiguratorProps'> & { property: string; options?: string[] }) {
   const intl = useIntl();
-  const setting = layer.visConfigSettings.gradientDirection as { options?: string[] } | undefined;
+  const setting = layer.visConfigSettings[property] as
+    | { options?: string[]; defaultValue?: string; label?: string }
+    | undefined;
+  const choices = options ?? setting?.options;
 
-  if (layer.config.columnMode !== 'gradient' || !setting?.options) {
+  if (!setting?.label || !choices) {
     return null;
   }
 
   const onChange = visConfiguratorProps.onChange as (patch: Record<string, unknown>) => void;
+  const chosen = layer.config.visConfig[property] as string | undefined;
 
   return (
     <SidePanelSection>
-      <PanelLabel>{intl.formatMessage({ id: 'flowfield.gradientDirection' })}</PanelLabel>
+      <PanelLabel>{intl.formatMessage({ id: setting.label })}</PanelLabel>
       <ItemSelector
-        selectedItems={(layer.config.visConfig.gradientDirection as string) ?? 'downhill'}
-        options={setting.options}
+        selectedItems={chosen && choices.includes(chosen) ? chosen : choices[0]}
+        options={choices}
         multiSelect={false}
         searchable={false}
         getOptionValue={(option: string) => option}
-        displayOption={(option: string) =>
-          intl.formatMessage({ id: `flowfield.gradientDirection.${option}` })
-        }
-        // `ItemSelector` types its handler for the multi-select case too, so
-        // the value arrives as the union of everything it can hand back. Ours
-        // is single-select over strings; anything else is not an answer.
+        displayOption={(option: string) => intl.formatMessage({ id: `${setting.label}.${option}` })}
+        // `ItemSelector` types its handler for the multi-select case too; ours
+        // is single-select over strings, and anything else is not an answer.
         onChange={(value) => {
           if (typeof value === 'string') {
-            onChange({ gradientDirection: value });
+            onChange({ [property]: value });
           }
         }}
       />
@@ -226,7 +231,12 @@ function FlowFieldLayerConfig({ layer, visConfiguratorProps, layerConfiguratorPr
           stack is drawn, and is the one that moves a lone layer. Hiding either
           would leave the other looking broken. */}
       <LayerConfigGroup label={'flowfield.group.field'} collapsible>
-        <GradientDirection layer={layer} visConfiguratorProps={visConfiguratorProps} />
+        {layer.config.columnMode === 'gradient' ? (
+          <SelectKnob layer={layer} visConfiguratorProps={visConfiguratorProps} property="gradientDirection" />
+        ) : null}
+        {layer.config.columnMode === 'polar' ? (
+          <SelectKnob layer={layer} visConfiguratorProps={visConfiguratorProps} property="directionConvention" />
+        ) : null}
         {slider('smoothing')}
         {slider('heightMeters')}
         {slider('elevationScale')}

@@ -97,6 +97,11 @@ describe('the flow field panel', () => {
 
     expect(container.textContent).not.toContain('Downhill');
   });
+
+  it('asks which way a direction is read only when the query spells it as one', () => {
+    expect(renderPanel('polar').container.textContent).toContain('Direction is');
+    expect(renderPanel('components').container.textContent).not.toContain('Direction is');
+  });
 });
 
 describe('the colour range set by hand', () => {

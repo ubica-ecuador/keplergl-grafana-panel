@@ -47,14 +47,14 @@ What most sources give you: Open-Meteo, GFS, national weather services.
 | Speed     | `wind_speed`, `windspeed`, `wind_speed_10m`, `speed`, `ws`                             |
 | Direction | `wind_direction`, `winddirection`, `wind_direction_10m`, `direction`, `wind_dir`, `wd` |
 
-`direction` is read as the **meteorological convention**: the bearing the wind blows _from_. A
-direction of 270° is a westerly — air moving towards the east. If your source uses the
-oceanographic convention (the direction of travel), add 180 in the query:
-`(direction + 180) % 360`.
+`direction` is read as the **meteorological convention** by default: the bearing the wind blows
+_from_. A direction of 270° is a westerly — air moving towards the east. If your source gives the
+direction of travel instead, as ocean currents often do, set **Field → Direction is** to
+**Where it goes** in the layer's panel.
 
 Ask the source rather than guessing, because a field drawn backwards looks entirely plausible. A
 CF-compliant dataset says which it means in the variable's `standard_name`: `..._from_direction`
-needs no correction, `..._to_direction` needs the 180. Wave data is where this bites — the word
+needs no correction, `..._to_direction` needs **Where it goes**. Wave data is where this bites — the word
 "oceanographic" suggests direction of travel, but WAVEWATCH III's peak wave direction is published
 as `sea_surface_wave_from_direction_at_variance_spectral_density_maximum`, a _from_ direction like
 the wind.

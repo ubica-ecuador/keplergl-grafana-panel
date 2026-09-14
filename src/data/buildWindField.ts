@@ -22,6 +22,9 @@ export interface WindField {
   stepLat: number;
 }
 
+/** Which way a direction column is read: where the flow comes from, or where it goes. */
+export type DirectionConvention = 'from' | 'towards';
+
 /** The columns a wind query supplies, by name. */
 export interface WindFieldColumns {
   latitude: string;
@@ -30,6 +33,12 @@ export interface WindFieldColumns {
   v?: string;
   speed?: string;
   direction?: string;
+  /**
+   * How `direction` is read. Meteorology gives the bearing the wind blows
+   * *from*; oceanography often gives the bearing a current flows *towards*.
+   * Defaults to `from`, which is what this read before the choice existed.
+   */
+  directionConvention?: DirectionConvention;
   /**
    * When the query spans several timesteps, the column that separates them.
    * Only the earliest is used — see `earliestTimestepRows`.
@@ -58,7 +67,7 @@ export function buildWindField(frame: GridFrame, columns: WindFieldColumns): Win
   const componentsAt = hasComponents
     ? (i: number): [number, number] => [Number(uField!.values[i]), Number(vField!.values[i])]
     : (i: number): [number, number] =>
-        speedDirToUV(Number(speedField!.values[i]), Number(directionField!.values[i]));
+        speedDirToUV(Number(speedField!.values[i]), Number(directionField!.values[i]), columns.directionConvention);
 
   const indices = earliestTimestepRows(frame, columns.time);
 
@@ -453,17 +462,24 @@ export function earliestTimestepRows(frame: GridFrame, timeColumn?: string): num
 }
 
 /**
- * Wind speed and meteorological direction to `u,v` components.
+ * Wind speed and direction to `u,v` components.
  *
- * `direction` is the bearing the wind blows **from**, clockwise from north —
- * the convention Open-Meteo, GFS and INAMHI all use. Hence the negative signs:
- * a north wind (0°) travels southwards, so `v` is negative. Reading it as the
- * bearing the wind blows *towards* mirrors and rotates the whole field, which
- * shows up as a vortex that looks like a source or a sink.
+ * `direction` is clockwise from north. Read as `from` — the convention
+ * Open-Meteo, GFS and INAMHI all use — a north wind (0°) travels southwards,
+ * so `v` is negative. Reading it the other way round without saying so mirrors
+ * and rotates the whole field, which shows up as a vortex that looks like a
+ * source or a sink.
  */
-export function speedDirToUV(speed: number, directionFromDegrees: number): [number, number] {
-  const theta = (directionFromDegrees * Math.PI) / 180;
-  return [-speed * Math.sin(theta), -speed * Math.cos(theta)];
+export function speedDirToUV(
+  speed: number,
+  directionDegrees: number,
+  convention: DirectionConvention = 'from'
+): [number, number] {
+  const theta = (directionDegrees * Math.PI) / 180;
+  // A bearing the flow goes *towards* points the way it moves; one it comes
+  // *from* points the other way.
+  const sign = convention === 'towards' ? 1 : -1;
+  return [sign * speed * Math.sin(theta), sign * speed * Math.cos(theta)];
 }
 
 /**

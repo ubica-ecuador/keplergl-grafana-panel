@@ -42,6 +42,9 @@ export const FLOW_FIELD_MESSAGES: Record<string, string> = {
   'flowfield.gradientDirection.downhill': 'Downhill',
   'flowfield.gradientDirection.uphill': 'Uphill',
   'flowfield.gradientDirection.contours': 'Along the contours',
+  'flowfield.directionConvention': 'Direction is',
+  'flowfield.directionConvention.from': 'Where it comes from',
+  'flowfield.directionConvention.towards': 'Where it goes',
 
   // The column pickers kepler renders for this layer's column modes. It
   // knows `lat`, `lng` and `altitude` already; the four that name a velocity
@@ -50,7 +53,7 @@ export const FLOW_FIELD_MESSAGES: Record<string, string> = {
   'columns.u': 'u (eastward)',
   'columns.v': 'v (northward)',
   'columns.speed': 'speed',
-  'columns.direction': 'direction (from)',
+  'columns.direction': 'direction',
   // The gradient mode's scalar. Deliberately not `altitude`: that column names
   // the height this level is *drawn* at, and one column cannot mean both the
   // ground the flow runs over and the shelf the whole layer sits on.

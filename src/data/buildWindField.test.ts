@@ -5,6 +5,7 @@ import {
   buildWindField,
   sampleWindField,
   smoothWindField,
+  speedDirToUV,
   WindField,
 } from './buildWindField';
 
@@ -398,4 +399,21 @@ describe('buildGradientField', () => {
     expect(eastOfSpike(buildGradientField(frame, COLUMNS, { smoothing: 2 })!)).toBeLessThan(0);
   });
 
+});
+
+describe('speedDirToUV', () => {
+  it('reads a direction as where the wind comes from by default', () => {
+    const [u, v] = speedDirToUV(10, 270);
+
+    expect(u).toBeCloseTo(10, 6);
+    expect(v).toBeCloseTo(0, 6);
+  });
+
+  it('reads it as where the flow goes when told so', () => {
+    // A current "towards 270" runs west: the opposite of a westerly wind.
+    const [u, v] = speedDirToUV(10, 270, 'towards');
+
+    expect(u).toBeCloseTo(-10, 6);
+    expect(v).toBeCloseTo(0, 6);
+  });
 });

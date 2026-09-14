@@ -269,6 +269,7 @@ export function traceSignature(config: FlowFieldLayerLike['config']): string {
     visConfig.seamlessLoop,
     visConfig.smoothing,
     visConfig.gradientDirection,
+    visConfig.directionConvention,
     visConfig.heightMeters,
     visConfig.elevationScale,
     visConfig.zoomResponse,

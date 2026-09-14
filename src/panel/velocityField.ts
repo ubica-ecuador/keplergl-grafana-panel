@@ -139,6 +139,14 @@ export const VELOCITY_VIS_CONFIGS = {
     group: 'display',
     property: 'gradientDirection',
   },
+  directionConvention: {
+    type: 'select',
+    defaultValue: 'from',
+    options: ['from', 'towards'],
+    label: 'flowfield.directionConvention',
+    group: 'display',
+    property: 'directionConvention',
+  },
   /**
    * The speed range the colour, the width and the opacity are measured against,
    * when it is set by hand rather than taken from the field. Set by hand it is
@@ -436,7 +444,13 @@ export function buildVelocityField(
 
   const spec: WindFieldColumns =
     columnMode === 'polar'
-      ? { latitude, longitude, speed: named('speed'), direction: named('direction') }
+      ? {
+          latitude,
+          longitude,
+          speed: named('speed'),
+          direction: named('direction'),
+          directionConvention: visConfig.directionConvention === 'towards' ? 'towards' : 'from',
+        }
       : { latitude, longitude, u: named('u'), v: named('v') };
 
   const raw = buildWindField(frame, spec);
