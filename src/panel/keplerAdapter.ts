@@ -479,7 +479,8 @@ export function applyLayerVisConfigById(
 export const FLOW_FIELD_TYPE = 'flowfield';
 
 /**
- * The flow field layers on the map, with the height of the level each draws.
+ * The flow field and vector field layers on the map, with the height of the
+ * level each draws.
  *
  * The height is read here, from the rows kepler holds, rather than carried from
  * the query: the user can point the layer's altitude column somewhere else, and

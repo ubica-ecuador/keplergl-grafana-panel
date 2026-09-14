@@ -331,9 +331,16 @@ export async function readVectorField(map: Locator): Promise<VectorFieldSummary 
     const props = built[0]?.props;
     const iconKeys: string[] = [];
     // A loop with its own guard, for the reason `readFlowField` gives: an
-    // exception in here makes `expect.poll` time out instead of failing.
+    // exception in here makes `expect.poll` time out instead of failing. The
+    // try/catch is what actually makes that true — it skips just the symbol
+    // whose key could not be computed, rather than the whole read.
     for (const symbol of (props?.data ?? []).slice(0, 200)) {
-      const key = props?.getIcon?.(symbol);
+      let key: unknown;
+      try {
+        key = props?.getIcon?.(symbol);
+      } catch {
+        continue;
+      }
       if (typeof key === 'string' && !iconKeys.includes(key)) {
         iconKeys.push(key);
       }
