@@ -58,6 +58,7 @@ import { ESRI_IMAGE_TYPE } from './esriImageLayer';
 import { splitEsriRefresh, splitRasterRefresh, splitRefresh, splitWmsRefresh, splitZarrRefresh } from './loadDecision';
 import { KEPLER_INSTANCE_ID } from './constants';
 import { holdTilesetFraming } from './tile3dFraming';
+import { VECTOR_FIELD_TYPE } from './vectorFieldLayer';
 
 /**
  * The ONLY module that talks to the kepler.gl API.
@@ -495,7 +496,9 @@ export function readFlowFieldLayers(store: Store): FlowFieldLayerState[] {
   }
 
   return visState.layers
-    .filter((layer) => (layer as { type?: string }).type === FLOW_FIELD_TYPE)
+    // The vector field needs the same context: the camera for its screen grid,
+    // and a place in the stack of levels.
+    .filter((layer) => [FLOW_FIELD_TYPE, VECTOR_FIELD_TYPE].includes((layer as { type?: string }).type ?? ''))
     .map((layer) => {
       const config = layer.config as {
         dataId?: string;

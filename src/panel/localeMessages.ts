@@ -23,6 +23,7 @@ export const OWN_LAYER_LABELS: Record<string, string> = {
   cogpainted: 'Raster (painted)',
   esriimage: 'ArcGIS Image Service',
   flowfield: 'Flow field',
+  vectorfield: 'Vector field',
 };
 
 /** kepler's message catalogue: locale → flat id → text. */

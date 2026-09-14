@@ -9,6 +9,8 @@ import { makeEsriImageLayer } from './esriImageLayer';
 import { buildFlowFieldDeckLayer, makeScreenCamera } from './flowFieldDeckLayer';
 import { makeFlowFieldLayer } from './flowFieldLayer';
 import { withTile3dAltitude } from './tile3dAltitudeLayer';
+import { buildVectorFieldDeckLayer } from './vectorFieldDeckLayer';
+import { makeVectorFieldLayer } from './vectorFieldLayer';
 import { buildTimedWmsLayer } from './wmsDeckLayer';
 import { withWmsTime } from './wmsTimeLayer';
 import { buildZarrDeckLayer } from './zarrDeckLayer';
@@ -37,6 +39,9 @@ export function iconOf(LayerClass: unknown): unknown {
 
 /** The arc layer's icon, which the flow field borrows: both draw curves. */
 const ARC_ICON = iconOf(LayerClasses.arc);
+
+/** The icon layer's icon, which the vector field borrows: both draw icons. */
+const ICON_LAYER_ICON = iconOf(LayerClasses.icon);
 
 /**
  * kepler's layer classes, with the WMS layer taught to ask for a date and four
@@ -83,6 +88,11 @@ const layerClasses = {
   // the Trip layer it ultimately paints is all about turning rows into paths,
   // and every part of that would have to be overridden.
   flowfield: makeFlowFieldLayer(Layer as never, buildFlowFieldDeckLayer, makeScreenCamera, ARC_ICON),
+  // The flow field's sibling: the same grid of velocities, marked with arrows
+  // and wind barbs instead of traced. Same column modes and shared knobs under
+  // the same names, so kepler keeps them when a layer's type is switched between
+  // the two.
+  vectorfield: makeVectorFieldLayer(Layer as never, buildVectorFieldDeckLayer, makeScreenCamera, ICON_LAYER_ICON),
 };
 
 /**

@@ -1,6 +1,7 @@
 import { makeCogPaintedLayer } from './cogPaintedLayer';
 import { makeEsriImageLayer } from './esriImageLayer';
 import { makeFlowFieldLayer } from './flowFieldLayer';
+import { makeVectorFieldLayer } from './vectorFieldLayer';
 import { makeZarrLayer } from './zarrTileLayer';
 
 /**
@@ -54,6 +55,11 @@ describe('the icon each own layer shows', () => {
 
   it('gives the flow field the icon it was handed', () => {
     expect(make(makeFlowFieldLayer(FakeBaseLayer, build, camera, ArcIcon)).layerIcon).toBe(ArcIcon);
+  });
+
+  it('gives the vector field the icon it was handed', () => {
+    const IconLayerIcon = () => null;
+    expect(make(makeVectorFieldLayer(FakeBaseLayer, build, camera, IconLayerIcon)).layerIcon).toBe(IconLayerIcon);
   });
 
   it('leaves the base class’s icon alone when none is given', () => {
