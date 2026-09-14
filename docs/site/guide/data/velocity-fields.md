@@ -271,6 +271,8 @@ The same grid can be marked instead of traced. Switch the layer's type to **Vect
 panel — or add one from **Add Layer** — and every column, the colour ramp and the speed range carry
 over.
 
+![Arrows on a screen grid over the swell off the coast of Ecuador, drawn on top of the same field's streamlines](/img/guide-vector-field-arrows.jpg)
+
 | Knob | Does what |
 | --- | --- |
 | Symbol | **Arrow** points where the flow goes. **Classified arrow** sizes and colours it by class — as many classes as the ramp has colours, the same bins as the legend. **Wind barb** is the WMO symbol, its staff pointing where the wind comes from. |
