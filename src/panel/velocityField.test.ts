@@ -1,4 +1,4 @@
-import { buildVelocityField, legendDescription, legendPatch } from './velocityField';
+import { buildVelocityField, legendDescription, legendPatch, speedColorOf, stackedAltitude } from './velocityField';
 
 /** A GridFrame from plain rows, the shape `buildWindField` reads. */
 const frameOf = (rows: Array<Record<string, number>>) => ({
@@ -122,5 +122,41 @@ describe('legendDescription', () => {
 
   it('leaves the single colour to kepler when the lines are not coloured by speed', () => {
     expect(legendDescription({ ...written, visConfig: { colorBySpeed: false } }, 'color')).toBeNull();
+  });
+});
+
+describe('speedColorOf', () => {
+  const RAMP = ['#000000', '#ffffff'];
+  const domain: [number, number] = [0, 20];
+
+  it('colours by speed when the ramp says so', () => {
+    expect(speedColorOf({ colorBySpeed: true }, RAMP, [9, 9, 9], domain)(10)).toEqual([255, 255, 255]);
+  });
+
+  it('adds an alpha from the calm opacity up to opaque when opacity follows speed', () => {
+    // 0.2, plus half of the remaining 0.8, is 153 of 255.
+    expect(
+      speedColorOf({ colorBySpeed: true, opacityBySpeed: true, calmOpacity: 0.2 }, RAMP, [9, 9, 9], domain)(10)
+    ).toEqual([255, 255, 255, 153]);
+  });
+
+  it("falls back to the layer's one colour when it is not coloured by speed", () => {
+    expect(speedColorOf({ colorBySpeed: false }, RAMP, [9, 9, 9], domain)(10)).toEqual([9, 9, 9]);
+  });
+});
+
+describe('stackedAltitude', () => {
+  // Only `columns` and `visConfig` are read when there is no altitude column
+  // bound, so a single arbitrary row is enough of a frame.
+  const frame = frameOf([{ latitude: 0, longitude: 0 }]);
+
+  it('rests on the height knob with no altitude column and no camera', () => {
+    expect(stackedAltitude(frame, {}, { heightMeters: 2500 }, { baseMs: 0, tallest: 0 }, null)).toBe(2500);
+  });
+
+  it('is scaled by the elevation knob', () => {
+    expect(
+      stackedAltitude(frame, {}, { heightMeters: 2500, elevationScale: 2 }, { baseMs: 0, tallest: 0 }, null)
+    ).toBe(5000);
   });
 });

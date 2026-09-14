@@ -7,7 +7,7 @@ import {
   WindField,
   WindFieldColumns,
 } from '../data/buildWindField';
-import type { ScreenCamera } from '../data/traceStreamlines';
+import { stackExaggeration, type ScreenCamera } from '../data/traceStreamlines';
 
 /**
  * What the two layers that draw a grid of velocities share: the flow field,
@@ -306,6 +306,35 @@ export function constantOf(frame: GridFrame, column?: string | null): number {
 }
 
 /**
+ * How high a level is drawn: its height (column or knob, see `levelHeight`),
+ * exaggerated against the tallest level on the map and the width of the view,
+ * then scaled by the user's exaggeration. Shared so a level drawn as streamlines
+ * and as arrows sits at one height.
+ */
+export function stackedAltitude(
+  frame: GridFrame,
+  columns: Record<string, LayerColumn>,
+  visConfig: Record<string, unknown>,
+  context: FlowFieldContext,
+  camera: ScreenCamera | null
+): number {
+  const rawAltitude = levelHeight(
+    columns.altitude?.value,
+    constantOf(frame, columns.altitude?.value),
+    visConfig
+  );
+  // How wide the view is across its middle, which is what a person means by
+  // it — and unlike the ground the camera can see, it does not balloon when
+  // the map is tilted.
+  const metresAcross = camera ? camera.metresPerPixel * camera.widthPx : undefined;
+  return (
+    rawAltitude *
+    stackExaggeration(setting(context.tallest, rawAltitude), metresAcross) *
+    setting(visConfig.elevationScale, 1)
+  );
+}
+
+/**
  * A knob's value, or its default when the layer is carrying no answer.
  *
  * Neither of the obvious spellings is right. `Number(x) ?? d` never falls back,
@@ -403,6 +432,32 @@ export function colorForSpeed(
   const t = (speed - min) / (max - min);
   const index = Math.min(colors.length - 1, Math.max(0, Math.floor(t * colors.length)));
   return parseHex(colors[index]);
+}
+
+/**
+ * The colour a speed is painted: the ramp's step when colouring by speed, the
+ * layer's one colour otherwise, with an alpha from the calm opacity up to opaque
+ * when opacity follows speed. Shared so both velocity layers agree on it.
+ */
+export function speedColorOf(
+  visConfig: Record<string, unknown>,
+  colors: string[],
+  flat: [number, number, number],
+  speedDomain: [number, number]
+): (speed: number) => number[] {
+  const bySpeed = visConfig.colorBySpeed !== false && colors.length > 0;
+  const opacityBySpeed = visConfig.opacityBySpeed === true;
+  const calm = Math.min(1, Math.max(0, setting(visConfig.calmOpacity, 0.2)));
+
+  return (speed: number): number[] => {
+    const rgb = bySpeed ? colorForSpeed(colors, speedDomain, speed) : flat;
+    // The alpha rides in the colour rather than a separate channel, so a
+    // caller that fades what it draws by multiplying colour — the flow
+    // field's trail — fades the slack parts along with it.
+    return opacityBySpeed
+      ? [...rgb, Math.round(255 * (calm + shareOfRange(speedDomain, speed) * (1 - calm)))]
+      : rgb;
+  };
 }
 
 /**

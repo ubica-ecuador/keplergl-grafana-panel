@@ -1,11 +1,10 @@
 import type { LayerIcon } from './cogPaintedLayer';
-import { stackExaggeration, Streamline, traceStreamlines } from '../data/traceStreamlines';
+import { Streamline, traceStreamlines } from '../data/traceStreamlines';
 import { shownInPane } from './paneVisibility';
 import {
   buildVelocityField,
   CameraState,
   colorForSpeed,
-  constantOf,
   fieldBounds,
   fieldSpeedDomain,
   FlowFieldContext,
@@ -19,6 +18,8 @@ import {
   ScreenCameraFactory,
   setting,
   shareOfRange,
+  speedColorOf,
+  stackedAltitude,
   VelocityDataset,
   VELOCITY_COLUMN_MODES,
   VELOCITY_LEGEND_CHANNEL,
@@ -422,21 +423,10 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       // to it as a value. The exaggeration follows the view, because levels a
       // few kilometres apart are invisible over a region hundreds of kilometres
       // wide, and a factor that reads over a country puts the top level off the
-      // screen over a city.
-      const rawAltitude = levelHeight(
-        columns.altitude?.value,
-        constantOf(frame, columns.altitude?.value),
-        visConfig
-      );
+      // screen over a city. Shared with the vector field via `stackedAltitude`,
+      // so a level drawn as streamlines and as arrows sits at the same height.
       const camera = context.camera ? makeCamera(context.camera) : null;
-      // How wide the view is across its middle, which is what a person means by
-      // it — and unlike the ground the camera can see, it does not balloon when
-      // the map is tilted.
-      const metresAcross = camera ? camera.metresPerPixel * camera.widthPx : undefined;
-      const altitudeMeters =
-        rawAltitude *
-        stackExaggeration(setting(context.tallest, rawAltitude), metresAcross) *
-        setting(visConfig.elevationScale, 1);
+      const altitudeMeters = stackedAltitude(frame, columns, visConfig, context, camera);
 
       const data = traceStreamlines(field, {
         // Traced from zero rather than from `baseMs`: deck holds a vertex time
@@ -479,13 +469,15 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
 
       const colors = ((visConfig.colorRange as { colors?: string[] })?.colors ?? []) as string[];
       const speedDomain = paintDomain(visConfig, opts?.data?.speedDomain ?? [0, 1]);
-      const bySpeed = visConfig.colorBySpeed !== false && colors.length > 0;
-      const flat = this.config.color ?? [255, 255, 255];
+      const flat: [number, number, number] = this.config.color ?? [255, 255, 255];
+      const colorOf = speedColorOf(visConfig, colors, flat, speedDomain);
 
       // The width and the opacity follow the same range the colour does, so all
-      // three agree on what counts as fast.
+      // three agree on what counts as fast. Recomputed here, alongside
+      // `speedColorOf`, only because `updateTriggers` needs them as cache keys.
       const widthBySpeed = visConfig.widthBySpeed === true;
       const [thinnest, thickest] = rangeOf(visConfig.widthRange) ?? [1, 4];
+      const bySpeed = visConfig.colorBySpeed !== false && colors.length > 0;
       const opacityBySpeed = visConfig.opacityBySpeed === true;
       const calm = Math.min(1, Math.max(0, setting(visConfig.calmOpacity, 0.2)));
       const share = (line: Streamline) => shareOfRange(speedDomain, line.speed);
@@ -503,12 +495,7 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
             ? (line: Streamline) => thinnest + share(line) * (thickest - thinnest)
             : setting(visConfig.thickness, 2),
           opacity: setting(visConfig.opacity, 1),
-          getColor: (line: Streamline) => {
-            const rgb = bySpeed ? colorForSpeed(colors, speedDomain, line.speed) : flat;
-            // The alpha rides in the colour because the trail fades by
-            // multiplying it: the slack lines fade along with their trails.
-            return opacityBySpeed ? [...rgb, Math.round(255 * (calm + share(line) * (1 - calm)))] : rgb;
-          },
+          getColor: (line: Streamline) => colorOf(line.speed),
           updateTriggers: {
             getColor: [bySpeed, colors.join(','), speedDomain.join(','), flat.join(','), opacityBySpeed, calm],
             getWidth: [widthBySpeed, thinnest, thickest, speedDomain.join(',')],
