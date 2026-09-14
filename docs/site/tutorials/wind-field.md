@@ -91,7 +91,8 @@ not a field, and shredding it into streamlines would draw lines that mean nothin
 disqualifying.
 
 `direction` is read as the **meteorological convention**: the bearing the wind blows _from_. 270° is
-a westerly, air moving east. If your source gives the direction of travel, add 180 in the query.
+a westerly, air moving east. If your source gives the direction of travel instead, leave the query
+as it is and set **Field → Direction is** to **Where it goes** in the layer's panel.
 
 ::: tip u/v components work too
 `u` and `v` are recognised, including the GRIB2 short names `ugrd` and `vgrd`, so a table converted
