@@ -61,6 +61,64 @@ Which is the argument for eventually lifting those hosts into dashboard variable
 dashboard keeps its data root in a `firedata` constant. Until then, import whichever matches where
 you are.
 
+## `r5-calles.json`
+
+_Cuenca in 30 minutes — streets by travel time_ — the same R5 travel-time surface, drawn on the
+street network instead of on cells. Every street reachable from the white dot takes the minute R5
+reaches it, from cyan at the origin to magenta at the cutoff. Additive blending makes the network
+glow over a dark base map. Click to move the origin; press play and the city lights up minute by
+minute.
+
+The streets are not stored anywhere. They come from Overture Maps' GeoParquet on S3, through three
+variables that run once per dashboard load and feed one another:
+
+| variable | what it does | measured |
+| --- | --- | --- |
+| `ov_release` | reads the latest release from Overture's STAC catalogue | ~0.4 s |
+| `ov_url` | finds, in that release's `collections.parquet`, the segment file whose bbox covers the isochrone service's bounds | ~0.6 s |
+| `calles` | `CREATE TABLE IF NOT EXISTS "calles_ov_<release>"`: reads that one file with a bbox filter and cuts every road into 50 m pieces | 7–27 s cold, ~3 s once the table exists |
+
+The map query then joins those pieces to `cells.json`. Each piece takes the minute of the R5 cell
+under its midpoint, and the join costs milliseconds. A new Overture release gets a new table name,
+so nothing goes stale.
+
+Three details break it silently if changed:
+
+- **The file URL is `https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/…`, not `s3://…`.**
+  The data source sets no S3 region, and `s3://` resolves to us-east-1 and fails.
+- **The file is resolved in a variable, not inline**, because `read_parquet` cannot take a subquery.
+  Reading the whole theme with a glob instead costs ~90 s in file footers alone.
+- **The map query names `$calles` in a comment.** That is what makes Grafana wait for the table
+  before running the query.
+
+**Known weakness: the cold load.** Inside Grafana the S3 read is erratic. On an idle bench it
+measured anywhere from 7.6 s to past the query deadline (31–51 s), against 5–9 s for the same
+DuckDB version outside Grafana, and the plugin has no timeout to raise. When the read misses, the
+map stays empty until a reload. Once the table exists it lives in the data source's memory until
+the plugin restarts.
+
+It needs the isochrone service too, so it comes in the same two variants as `r5-accesibilidad`:
+`r5-calles-deployed.json` differs only in calling `http://iso-cuenca:8099` where the bench copy
+calls `http://host.docker.internal:8099`.
+
+On a laptop, an SSH tunnel to the server's instance does not work: the service publishes no port,
+and the server's own host cannot reach the container's address either. Run it locally instead, from
+the `app.py` and `Dockerfile` in the server's `apps/iso-cuenca`, against the public R5:
+
+```sh
+docker build -t iso-cuenca:local iso-cuenca/
+docker run -d --name iso-cuenca-local --user "$(id -u):$(id -g)" -e HOME=/tmp \
+  -e R5_API=https://r5.ubica.ec -v "$PWD/iso-cuenca/cache:/cache" \
+  -p 172.17.0.1:8099:8099 iso-cuenca:local
+```
+
+Binding to the Docker bridge address keeps the port off the local network while the bench still
+reaches it as `host.docker.internal`. `HOME=/tmp` is there because DuckDB installs its `raster`
+extension on first use and needs a writable home.
+
+When checking that the service is reachable, do not use `/health`: it answers HEAD with 405, and
+DuckDB, which sends HEAD first, reports that as "HTTP 0", which looks like no connection at all.
+
 ## The fire-emissions dashboard is not here, and not in `provisioning-sources/` either
 
 It is worth writing down, because it has now been re-added by mistake once.
