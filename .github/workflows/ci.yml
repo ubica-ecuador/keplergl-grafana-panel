@@ -186,7 +186,11 @@ jobs:
 
   playwright-tests:
     needs: [resolve-versions, build]
-    timeout-minutes: 15
+    # 15 came with the scaffold, when the suite was a handful of tests. With 53,
+    # one worker and software WebGL, Grafana 13 runs each test about 1.8× slower
+    # than 12: the whole suite took 17.6 min locally with CI=true and every test
+    # passing, so 15 cut the 13.x and nightly jobs off even on a green run.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
