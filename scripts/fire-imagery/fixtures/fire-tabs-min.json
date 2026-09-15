@@ -1,0 +1,47 @@
+{
+  "apiVersion": "dashboard.grafana.app/v2beta1",
+  "kind": "Dashboard",
+  "metadata": { "name": "fire-emissions-tabs", "namespace": "default", "resourceVersion": "1788491652325008", "generation": 3 },
+  "spec": {
+    "title": "Fire Emissions Watch — CAMS replica (tabs)",
+    "variables": [
+      { "kind": "TextVariable", "spec": { "name": "area", "current": { "text": "", "value": "" }, "query": "", "label": "Drawn area", "hide": "hideVariable", "skipUrlSync": false } },
+      { "kind": "TextVariable", "spec": { "name": "playFrom", "current": { "text": "", "value": "" }, "query": "", "label": "Play from", "hide": "hideVariable", "skipUrlSync": false } }
+    ],
+    "elements": {
+      "panel-1": { "kind": "Panel", "spec": { "id": 1, "title": "Where it burns — 0.1° grid cells", "description": "", "links": [],
+        "data": { "kind": "QueryGroup", "spec": { "queries": [], "transformations": [], "queryOptions": {} } },
+        "vizConfig": { "kind": "VizConfig", "group": "ubica-keplergl-panel", "version": "0.3.0", "spec": { "options": { "areaVariable": "area" }, "fieldConfig": { "defaults": {}, "overrides": [] } } } } },
+      "panel-8": { "kind": "Panel", "spec": { "id": 8, "title": "Daily playback", "description": "", "links": [],
+        "data": { "kind": "QueryGroup", "spec": { "queries": [
+          { "kind": "PanelQuery", "spec": { "query": { "kind": "DataQuery", "group": "motherduck-duckdb-datasource", "version": "v0", "datasource": { "name": "duckdb" },
+            "spec": { "editorMode": "code", "format": 1, "rawQuery": true, "rawSql": "SELECT dt AS \"time\", lat AS latitude, lon AS longitude, value FROM px WHERE $__timeFilter(dt)" } }, "refId": "A", "hidden": false } },
+          { "kind": "PanelQuery", "spec": { "query": { "kind": "DataQuery", "group": "motherduck-duckdb-datasource", "version": "v0", "datasource": { "name": "duckdb" },
+            "spec": { "editorMode": "code", "format": 1, "rawQuery": true, "rawSql": "SELECT 'smoke' AS zarr_url" } }, "refId": "B", "hidden": false } }
+        ], "transformations": [], "queryOptions": {} } },
+        "vizConfig": { "kind": "VizConfig", "group": "ubica-keplergl-panel", "version": "0.3.0", "spec": {
+          "options": {
+            "basemap": "dark-matter", "peerTimeSync": true, "publishWhilePlaying": false, "rasterServerUrl": "https://titiler.ubica.ec",
+            "rasterColormap": "[[[0,8],[255,244,240,16]]]", "showSidePanel": false, "timeSync": "variables",
+            "timeVariables": { "from": "playFrom", "to": "playTo" }, "windDensity": 9000, "zarrRescale": "0,1",
+            "variableMappings": [ { "field": "value", "source": "filter", "variable": "minval", "variableTo": "maxval" } ],
+            "mapConfig": { "version": "v1", "config": {
+              "mapState": { "latitude": 6, "longitude": -25, "zoom": 1.9, "pitch": 0, "bearing": 0 },
+              "mapStyle": { "styleType": "dark-matter" },
+              "visState": { "filters": [], "interactionConfig": {}, "splitMaps": [],
+                "layerOrder": [ "puntos", "grafana-B-zarr-layer" ],
+                "layers": [
+                  { "id": "puntos", "type": "point", "config": { "dataId": "grafana-A", "label": "Cells of the day", "columns": { "lat": "latitude", "lng": "longitude" }, "isVisible": true }, "visualChannels": {} },
+                  { "id": "grafana-B-zarr-layer", "type": "zarr", "config": { "dataId": "grafana-B-zarr", "label": "Smoke", "columns": {}, "isVisible": true }, "visualChannels": {} }
+                ] } } }
+          },
+          "fieldConfig": { "defaults": {}, "overrides": [] } } } } }
+    },
+    "layout": { "kind": "TabsLayout", "spec": { "tabs": [
+      { "kind": "TabsLayoutTab", "spec": { "title": "Global", "layout": { "kind": "GridLayout", "spec": { "items": [
+        { "kind": "GridLayoutItem", "spec": { "x": 0, "y": 0, "width": 24, "height": 16, "element": { "kind": "ElementReference", "name": "panel-1" } } } ] } } } },
+      { "kind": "TabsLayoutTab", "spec": { "title": "Timeline - playback", "layout": { "kind": "AutoGridLayout", "spec": { "items": [
+        { "kind": "AutoGridLayoutItem", "spec": { "element": { "kind": "ElementReference", "name": "panel-8" } } } ] } } } }
+    ] } }
+  }
+}
