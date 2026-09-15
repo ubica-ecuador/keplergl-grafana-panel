@@ -23,6 +23,10 @@ def fixture():
     return json.loads((HERE / 'fixtures' / 'fire-tabs-min.json').read_text())
 
 
+def stac_join_fixture():
+    return json.loads((build.REPO / 'provisioning-sources' / 'dashboards' / 'stac-join.json').read_text())
+
+
 class GraftTest(unittest.TestCase):
     def setUp(self):
         self.dash = fixture()
@@ -187,6 +191,32 @@ class ImageryPanelsTest(unittest.TestCase):
     def test_sheet_and_figures_run_their_own_sql(self):
         self.assertEqual(self.raw_sql('panel-23')['A'], build.panel_sql('contact_sheet'))
         self.assertEqual(self.raw_sql('panel-24')['A'], build.panel_sql('figures'))
+
+
+class SentinelMapConfigValidationTest(unittest.TestCase):
+    def kepler_panel(self, stac):
+        return next(p for p in stac['panels'] if p['type'] == build.KEPLER_GROUP)
+
+    def test_sentinel_map_config_refuses_a_duplicated_layer_type(self):
+        stac = stac_join_fixture()
+        layers = self.kepler_panel(stac)['options']['mapConfig']['config']['visState']['layers']
+        geojson_layer = next(layer for layer in layers if layer['type'] == 'geojson')
+        layers.append(copy.deepcopy(geojson_layer))
+        with self.assertRaisesRegex(build.GraftError, 'geojson'):
+            build.sentinel_map_config(stac)
+
+    def test_sentinel_map_config_refuses_a_missing_layer_type(self):
+        stac = stac_join_fixture()
+        vis_state = self.kepler_panel(stac)['options']['mapConfig']['config']['visState']
+        vis_state['layers'] = [layer for layer in vis_state['layers'] if layer['type'] != 'rasterTile']
+        with self.assertRaisesRegex(build.GraftError, 'rasterTile'):
+            build.sentinel_map_config(stac)
+
+    def test_sentinel_map_config_refuses_a_dashboard_without_a_kepler_panel(self):
+        stac = stac_join_fixture()
+        stac['panels'] = [p for p in stac['panels'] if p['type'] != build.KEPLER_GROUP]
+        with self.assertRaisesRegex(build.GraftError, 'stac-join'):
+            build.sentinel_map_config(stac)
 
 
 if __name__ == '__main__':

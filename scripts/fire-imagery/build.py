@@ -127,24 +127,34 @@ def by_name(name, *properties):
             'properties': [{'id': key, 'value': value} for key, value in properties]}
 
 
-def sentinel_map_config():
+def sentinel_map_config(stac=None):
     """La config guardada del mapa de stac-join, reapuntada a las tres consultas.
 
     Se parte de ella y no de un literal porque ese mapa ya pinta escenas de
     earth-search por el mismo TiTiler: el visConfig del ráster está probado.
     """
-    stac = json.loads((REPO / 'provisioning-sources' / 'dashboards' / 'stac-join.json').read_text())
-    source = next(p for p in stac['panels'] if p['type'] == KEPLER_GROUP)
+    if stac is None:
+        stac = json.loads((REPO / 'provisioning-sources' / 'dashboards' / 'stac-join.json').read_text())
+    kepler_panels = [p for p in stac['panels'] if p['type'] == KEPLER_GROUP]
+    if len(kepler_panels) != 1:
+        raise GraftError(f'stac-join.json: expected exactly one {KEPLER_GROUP} panel, '
+                          f'found {len(kepler_panels)}')
+    source = kepler_panels[0]
     config = copy.deepcopy(source['options']['mapConfig'])
     root = config['config']
     root['mapState'].update({'latitude': 6, 'longitude': -25, 'zoom': 1.9})
     vis = root['visState']
     vis['editor'] = {'features': [], 'visible': True}
+    for layer_type in ('rasterTile', 'geojson'):
+        count = sum(1 for layer in vis['layers'] if layer['type'] == layer_type)
+        if count != 1:
+            raise GraftError(f'stac-join.json: expected exactly one {layer_type} layer, found {count}')
     by_type = {layer['type']: layer for layer in vis['layers']}
 
     scene = by_type['rasterTile']
     scene['id'] = 's2scene'
     scene['config']['label'] = 'Sentinel-2 scene'
+    scene['config']['dataId'] = 'grafana-B-raster'
     # kepler guarda "TrueColor" y no sabe releerlo: siempre en minúscula.
     scene['config']['visConfig']['preset'] = 'trueColor'
 
