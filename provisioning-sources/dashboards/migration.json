@@ -76,6 +76,31 @@
       },
       {
         "type": "custom",
+        "name": "view",
+        "label": "Map view",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "query": "Arcs (by Direction) : arcs,Flows (both directions) : flows",
+        "current": {
+          "text": "Arcs (by Direction)",
+          "value": "arcs"
+        },
+        "options": [
+          {
+            "text": "Arcs (by Direction)",
+            "value": "arcs",
+            "selected": true
+          },
+          {
+            "text": "Flows (both directions)",
+            "value": "flows",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "type": "custom",
         "name": "sex",
         "label": "Sex",
         "hide": 0,
@@ -171,7 +196,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Largest corridors of the selected country (arcs) over every country's international migrant stock (grey). Click a country to select it. Play the clock or narrow it to a year.",
+      "description": "Largest corridors of the selected country (arcs) over every country's international migrant stock (grey). Click a country to select it. Map view swaps the arcs for flows in both directions. Play the clock or narrow it to a year.",
       "gridPos": {
         "x": 0,
         "y": 0,
@@ -187,7 +212,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "INSTALL excel; LOAD excel; INSTALL httpfs; LOAD httpfs;\n\n-- Map dataset A: the $top largest corridors of $country, one row per year\n-- 1990-2024. UN DESA estimates 8 years; each one holds until the next.\nWITH od AS (\n  SELECT CAST(\"Location code of destination\" AS INTEGER) AS dest,\n         CAST(\"Location code of origin\" AS INTEGER) AS orig,\n         regexp_replace(\"Region, development group, country or area of destination\", '\\*', '', 'g') AS dest_name,\n         regexp_replace(\"Region, development group, country or area of origin\", '\\*', '', 'g') AS orig_name,\n         COLUMNS('^(1990|1995|2000|2005|2010|2015|2020|2024)(_[12])?$')\n  FROM read_xlsx('https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/undesa_pd_2024_ims_stock_by_sex_destination_and_origin.xlsx',\n                 sheet = 'Table 1', header = true, all_varchar = true, range = 'A11:AE40000')\n  WHERE TRY_CAST(\"Location code of destination\" AS INTEGER) < 900\n    AND TRY_CAST(\"Location code of origin\" AS INTEGER) < 900\n    AND CAST($country AS INTEGER) = CASE $direction\n          WHEN 'emigrants' THEN TRY_CAST(\"Location code of origin\" AS INTEGER)\n          ELSE TRY_CAST(\"Location code of destination\" AS INTEGER) END\n), cells AS (\n  UNPIVOT od ON COLUMNS(* EXCLUDE (dest, orig, dest_name, orig_name)) INTO NAME col VALUE v\n), flows AS (\n  SELECT orig, dest,\n         CASE $direction WHEN 'emigrants' THEN dest ELSE orig END AS partner,\n         CASE $direction WHEN 'emigrants' THEN dest_name ELSE orig_name END AS partner_name,\n         CAST(left(col, 4) AS INTEGER) AS est_year,\n         TRY_CAST(v AS DOUBLE) AS people\n  FROM cells\n  WHERE CASE right(col, 2) WHEN '_1' THEN 'male' WHEN '_2' THEN 'female' ELSE 'both' END = $sex\n), ranked AS (\n  -- Ties break by name, the same way as the table, so both show the same partners.\n  SELECT * FROM flows\n  WHERE people > 0\n  QUALIFY row_number() OVER (PARTITION BY est_year ORDER BY people DESC, partner_name) <= CAST($top AS INTEGER)\n), ne AS (\n  SELECT f.properties.ISO_N3 AS iso_n3, f.properties.ISO_N3_EH AS iso_n3_eh, f.properties.UN_A3 AS un_a3,\n         f.properties.NAME AS name, f.properties.POP_EST AS pop_est,\n         f.properties.LABEL_X AS lng, f.properties.LABEL_Y AS lat\n  FROM (SELECT unnest(features) AS f\n        FROM read_json('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_50m_admin_0_countries.geojson',\n                       maximum_object_size = 200000000))\n), cent AS (\n  -- One centroid per M49 code: ISO_N3 first, then ISO_N3_EH (France and\n  -- Norway carry -99 in ISO_N3), then UN_A3, then the label points below.\n  -- Within a priority the most populous feature wins (code 36 is both\n  -- Australia and Ashmore and Cartier Is.), then the name; lng and lat always\n  -- come from the same feature.\n  SELECT code, arg_min({'lng': lng, 'lat': lat}, (prio, -pop_est, name)) AS pick\n  FROM (SELECT TRY_CAST(iso_n3 AS INTEGER) AS code, 1 AS prio, pop_est, name, lng, lat FROM ne\n        UNION ALL SELECT TRY_CAST(iso_n3_eh AS INTEGER), 2, pop_est, name, lng, lat FROM ne\n        UNION ALL SELECT TRY_CAST(un_a3 AS INTEGER), 3, pop_est, name, lng, lat FROM ne\n        -- Approximate label points, entered by hand, used only for the nine\n        -- territories Natural Earth has no match for.\n        UNION ALL SELECT code, 4, 0, name, lng, lat\n        FROM (VALUES (175, 'Mayotte', 45.14, -12.83), (254, 'French Guiana', -53.13, 3.93),\n                     (292, 'Gibraltar', -5.35, 36.14), (312, 'Guadeloupe', -61.58, 16.25),\n                     (474, 'Martinique', -61.02, 14.64), (535, 'Bonaire, Sint Eustatius and Saba', -68.26, 12.18),\n                     (638, 'Réunion', 55.54, -21.12), (772, 'Tokelau', -171.85, -9.20),\n                     (830, 'Channel Islands', -2.35, 49.35)) label_points(code, name, lng, lat))\n  WHERE code > 0\n  GROUP BY code\n), steps AS (\n  SELECT r.y AS year, max(est.e) AS est_year\n  FROM range(1990, 2025) r(y)\n  JOIN (VALUES (1990), (1995), (2000), (2005), (2010), (2015), (2020), (2024)) est(e) ON est.e <= r.y\n  GROUP BY r.y\n), arcs AS (\n  SELECT make_timestamp(s.year, 7, 1, 0, 0, 0) AS time,\n         t.partner_name AS partner,\n         t.people,\n         o.pick.lat AS lat0, o.pick.lng AS lng0,\n         d.pick.lat AS lat1, d.pick.lng AS lng1,\n         p.pick.lat AS partner_lat, p.pick.lng AS partner_lng,\n         t.partner_name || ': ' || CASE\n           WHEN t.people >= 999500 THEN printf('%.1fM', t.people / 1e6)\n           WHEN t.people >= 1e3 THEN printf('%.0fk', t.people / 1e3)\n           ELSE printf('%.0f', t.people) END AS label,\n         -- The partner's M49 code: a click on the arc or its label selects that country.\n         CAST(t.partner AS VARCHAR) AS code\n  FROM steps s\n  JOIN ranked t USING (est_year)\n  JOIN cent o ON o.code = t.orig\n  JOIN cent d ON d.code = t.dest\n  JOIN cent p ON p.code = t.partner\n)\nSELECT * FROM arcs\n-- No corridor at all (no immigrants into the Holy See, say): one empty row, so\n-- the map replaces the previous country's arcs instead of keeping them.\nUNION ALL\nSELECT make_timestamp(2024, 7, 1, 0, 0, 0), NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL\nWHERE NOT EXISTS (SELECT 1 FROM arcs)\nORDER BY time, people DESC, partner\n",
+          "rawSql": "INSTALL excel; LOAD excel; INSTALL httpfs; LOAD httpfs;\n\n-- Map dataset A: the $top largest corridors of $country, one row per year\n-- 1990-2024. UN DESA estimates 8 years; each one holds until the next.\nWITH od AS (\n  SELECT CAST(\"Location code of destination\" AS INTEGER) AS dest,\n         CAST(\"Location code of origin\" AS INTEGER) AS orig,\n         regexp_replace(\"Region, development group, country or area of destination\", '\\*', '', 'g') AS dest_name,\n         regexp_replace(\"Region, development group, country or area of origin\", '\\*', '', 'g') AS orig_name,\n         COLUMNS('^(1990|1995|2000|2005|2010|2015|2020|2024)(_[12])?$')\n  FROM read_xlsx('https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/undesa_pd_2024_ims_stock_by_sex_destination_and_origin.xlsx',\n                 sheet = 'Table 1', header = true, all_varchar = true, range = 'A11:AE40000')\n  WHERE TRY_CAST(\"Location code of destination\" AS INTEGER) < 900\n    AND TRY_CAST(\"Location code of origin\" AS INTEGER) < 900\n    AND CAST($country AS INTEGER) = CASE $direction\n          WHEN 'emigrants' THEN TRY_CAST(\"Location code of origin\" AS INTEGER)\n          ELSE TRY_CAST(\"Location code of destination\" AS INTEGER) END\n    -- Only in the arcs view; the flows view leaves the placeholder row below.\n    AND $view = 'arcs'\n), cells AS (\n  UNPIVOT od ON COLUMNS(* EXCLUDE (dest, orig, dest_name, orig_name)) INTO NAME col VALUE v\n), flows AS (\n  SELECT orig, dest,\n         CASE $direction WHEN 'emigrants' THEN dest ELSE orig END AS partner,\n         CASE $direction WHEN 'emigrants' THEN dest_name ELSE orig_name END AS partner_name,\n         CAST(left(col, 4) AS INTEGER) AS est_year,\n         TRY_CAST(v AS DOUBLE) AS people\n  FROM cells\n  WHERE CASE right(col, 2) WHEN '_1' THEN 'male' WHEN '_2' THEN 'female' ELSE 'both' END = $sex\n), ranked AS (\n  -- Ties break by name, the same way as the table, so both show the same partners.\n  SELECT * FROM flows\n  WHERE people > 0\n  QUALIFY row_number() OVER (PARTITION BY est_year ORDER BY people DESC, partner_name) <= CAST($top AS INTEGER)\n), ne AS (\n  SELECT f.properties.ISO_N3 AS iso_n3, f.properties.ISO_N3_EH AS iso_n3_eh, f.properties.UN_A3 AS un_a3,\n         f.properties.NAME AS name, f.properties.POP_EST AS pop_est,\n         f.properties.LABEL_X AS lng, f.properties.LABEL_Y AS lat\n  FROM (SELECT unnest(features) AS f\n        FROM read_json('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_50m_admin_0_countries.geojson',\n                       maximum_object_size = 200000000))\n), cent AS (\n  -- One centroid per M49 code: ISO_N3 first, then ISO_N3_EH (France and\n  -- Norway carry -99 in ISO_N3), then UN_A3, then the label points below.\n  -- Within a priority the most populous feature wins (code 36 is both\n  -- Australia and Ashmore and Cartier Is.), then the name; lng and lat always\n  -- come from the same feature.\n  SELECT code, arg_min({'lng': lng, 'lat': lat}, (prio, -pop_est, name)) AS pick\n  FROM (SELECT TRY_CAST(iso_n3 AS INTEGER) AS code, 1 AS prio, pop_est, name, lng, lat FROM ne\n        UNION ALL SELECT TRY_CAST(iso_n3_eh AS INTEGER), 2, pop_est, name, lng, lat FROM ne\n        UNION ALL SELECT TRY_CAST(un_a3 AS INTEGER), 3, pop_est, name, lng, lat FROM ne\n        -- Approximate label points, entered by hand, used only for the nine\n        -- territories Natural Earth has no match for.\n        UNION ALL SELECT code, 4, 0, name, lng, lat\n        FROM (VALUES (175, 'Mayotte', 45.14, -12.83), (254, 'French Guiana', -53.13, 3.93),\n                     (292, 'Gibraltar', -5.35, 36.14), (312, 'Guadeloupe', -61.58, 16.25),\n                     (474, 'Martinique', -61.02, 14.64), (535, 'Bonaire, Sint Eustatius and Saba', -68.26, 12.18),\n                     (638, 'Réunion', 55.54, -21.12), (772, 'Tokelau', -171.85, -9.20),\n                     (830, 'Channel Islands', -2.35, 49.35)) label_points(code, name, lng, lat))\n  WHERE code > 0\n  GROUP BY code\n), steps AS (\n  SELECT r.y AS year, max(est.e) AS est_year\n  FROM range(1990, 2025) r(y)\n  JOIN (VALUES (1990), (1995), (2000), (2005), (2010), (2015), (2020), (2024)) est(e) ON est.e <= r.y\n  GROUP BY r.y\n), arcs AS (\n  SELECT make_timestamp(s.year, 7, 1, 0, 0, 0) AS time,\n         t.partner_name AS partner,\n         t.people,\n         o.pick.lat AS lat0, o.pick.lng AS lng0,\n         d.pick.lat AS lat1, d.pick.lng AS lng1,\n         p.pick.lat AS partner_lat, p.pick.lng AS partner_lng,\n         t.partner_name || ': ' || CASE\n           WHEN t.people >= 999500 THEN printf('%.1fM', t.people / 1e6)\n           WHEN t.people >= 1e3 THEN printf('%.0fk', t.people / 1e3)\n           ELSE printf('%.0f', t.people) END AS label,\n         -- The partner's M49 code: a click on the arc or its label selects that country.\n         CAST(t.partner AS VARCHAR) AS code\n  FROM steps s\n  JOIN ranked t USING (est_year)\n  JOIN cent o ON o.code = t.orig\n  JOIN cent d ON d.code = t.dest\n  JOIN cent p ON p.code = t.partner\n)\nSELECT * FROM arcs\n-- No corridor at all (no immigrants into the Holy See, say): one empty row, so\n-- the map replaces the previous country's arcs instead of keeping them.\nUNION ALL\nSELECT make_timestamp(2024, 7, 1, 0, 0, 0), NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL\nWHERE NOT EXISTS (SELECT 1 FROM arcs)\nORDER BY time, people DESC, partner\n",
           "refId": "A"
         },
         {
@@ -200,6 +225,17 @@
           "rawQuery": true,
           "rawSql": "INSTALL excel; LOAD excel; INSTALL httpfs; LOAD httpfs;\n\n-- Map dataset B: international migrant stock of every country, one row per\n-- country and year 1990-2024, each estimate held until the next.\nWITH d AS (\n  SELECT CAST(\"Location code\" AS INTEGER) AS code,\n         regexp_replace(\"Region, development group, country or area\", '\\*', '', 'g') AS country,\n         COLUMNS('^(1990|1995|2000|2005|2010|2015|2020|2024)(_[12])?$')\n  FROM read_xlsx('https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/undesa_pd_2024_ims_stock_by_sex_and_destination.xlsx',\n                 sheet = 'Table 1', header = true, all_varchar = true, range = 'A11:AC400')\n  WHERE TRY_CAST(\"Location code\" AS INTEGER) < 900\n), cells AS (\n  UNPIVOT d ON COLUMNS(* EXCLUDE (code, country)) INTO NAME col VALUE v\n), stock AS (\n  SELECT code, country, CAST(left(col, 4) AS INTEGER) AS est_year, TRY_CAST(v AS DOUBLE) AS stock\n  FROM cells\n  WHERE CASE right(col, 2) WHEN '_1' THEN 'male' WHEN '_2' THEN 'female' ELSE 'both' END = $sex\n), ne AS (\n  SELECT f.properties.ISO_N3 AS iso_n3, f.properties.ISO_N3_EH AS iso_n3_eh, f.properties.UN_A3 AS un_a3,\n         f.properties.NAME AS name, f.properties.POP_EST AS pop_est,\n         f.properties.LABEL_X AS lng, f.properties.LABEL_Y AS lat\n  FROM (SELECT unnest(features) AS f\n        FROM read_json('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_50m_admin_0_countries.geojson',\n                       maximum_object_size = 200000000))\n), cent AS (\n  -- One centroid per M49 code: ISO_N3 first, then ISO_N3_EH (France and\n  -- Norway carry -99 in ISO_N3), then UN_A3, then the label points below.\n  -- Within a priority the most populous feature wins (code 36 is both\n  -- Australia and Ashmore and Cartier Is.), then the name; lng and lat always\n  -- come from the same feature.\n  SELECT code, arg_min({'lng': lng, 'lat': lat}, (prio, -pop_est, name)) AS pick\n  FROM (SELECT TRY_CAST(iso_n3 AS INTEGER) AS code, 1 AS prio, pop_est, name, lng, lat FROM ne\n        UNION ALL SELECT TRY_CAST(iso_n3_eh AS INTEGER), 2, pop_est, name, lng, lat FROM ne\n        UNION ALL SELECT TRY_CAST(un_a3 AS INTEGER), 3, pop_est, name, lng, lat FROM ne\n        -- Approximate label points, entered by hand, used only for the nine\n        -- territories Natural Earth has no match for.\n        UNION ALL SELECT code, 4, 0, name, lng, lat\n        FROM (VALUES (175, 'Mayotte', 45.14, -12.83), (254, 'French Guiana', -53.13, 3.93),\n                     (292, 'Gibraltar', -5.35, 36.14), (312, 'Guadeloupe', -61.58, 16.25),\n                     (474, 'Martinique', -61.02, 14.64), (535, 'Bonaire, Sint Eustatius and Saba', -68.26, 12.18),\n                     (638, 'Réunion', 55.54, -21.12), (772, 'Tokelau', -171.85, -9.20),\n                     (830, 'Channel Islands', -2.35, 49.35)) label_points(code, name, lng, lat))\n  WHERE code > 0\n  GROUP BY code\n), steps AS (\n  SELECT r.y AS year, max(est.e) AS est_year\n  FROM range(1990, 2025) r(y)\n  JOIN (VALUES (1990), (1995), (2000), (2005), (2010), (2015), (2020), (2024)) est(e) ON est.e <= r.y\n  GROUP BY r.y\n)\nSELECT make_timestamp(s.year, 7, 1, 0, 0, 0) AS time,\n       k.country,\n       k.stock,\n       c.pick.lat AS latitude,\n       c.pick.lng AS longitude,\n       -- The country's M49 code: a click on its bubble selects it.\n       CAST(k.code AS VARCHAR) AS code\nFROM steps s\nJOIN stock k USING (est_year)\nJOIN cent c USING (code)\nWHERE k.stock > 0\nORDER BY time, k.stock DESC\n",
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL excel; LOAD excel; INSTALL httpfs; LOAD httpfs;\n\n-- Map dataset C: the $top largest inflows and the $top largest outflows of\n-- $country, one row per year 1990-2024, each estimate held until the next.\n-- Only in the flows view; in the arcs view one empty row keeps the dataset.\nWITH od AS (\n  SELECT CAST(\"Location code of destination\" AS INTEGER) AS dest,\n         CAST(\"Location code of origin\" AS INTEGER) AS orig,\n         regexp_replace(\"Region, development group, country or area of destination\", '\\*', '', 'g') AS dest_name,\n         regexp_replace(\"Region, development group, country or area of origin\", '\\*', '', 'g') AS orig_name,\n         COLUMNS('^(1990|1995|2000|2005|2010|2015|2020|2024)(_[12])?$')\n  FROM read_xlsx('https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/undesa_pd_2024_ims_stock_by_sex_destination_and_origin.xlsx',\n                 sheet = 'Table 1', header = true, all_varchar = true, range = 'A11:AE40000')\n  WHERE TRY_CAST(\"Location code of destination\" AS INTEGER) < 900\n    AND TRY_CAST(\"Location code of origin\" AS INTEGER) < 900\n    AND CAST($country AS INTEGER) IN (TRY_CAST(\"Location code of destination\" AS INTEGER),\n                                      TRY_CAST(\"Location code of origin\" AS INTEGER))\n    AND $view = 'flows'\n), cells AS (\n  UNPIVOT od ON COLUMNS(* EXCLUDE (dest, orig, dest_name, orig_name)) INTO NAME col VALUE v\n), moves AS (\n  SELECT orig, dest,\n         CASE WHEN dest = CAST($country AS INTEGER) THEN 'in' ELSE 'out' END AS direction,\n         CASE WHEN dest = CAST($country AS INTEGER) THEN orig ELSE dest END AS partner,\n         CASE WHEN dest = CAST($country AS INTEGER) THEN orig_name ELSE dest_name END AS partner_name,\n         CAST(left(col, 4) AS INTEGER) AS est_year,\n         TRY_CAST(v AS DOUBLE) AS people\n  FROM cells\n  WHERE CASE right(col, 2) WHEN '_1' THEN 'male' WHEN '_2' THEN 'female' ELSE 'both' END = $sex\n), ranked AS (\n  -- Ties break by name, the same way as the table.\n  SELECT * FROM moves\n  WHERE people > 0\n  QUALIFY row_number() OVER (PARTITION BY est_year, direction ORDER BY people DESC, partner_name) <= CAST($top AS INTEGER)\n), ne AS (\n  SELECT f.properties.ISO_N3 AS iso_n3, f.properties.ISO_N3_EH AS iso_n3_eh, f.properties.UN_A3 AS un_a3,\n         f.properties.NAME AS name, f.properties.POP_EST AS pop_est,\n         f.properties.LABEL_X AS lng, f.properties.LABEL_Y AS lat\n  FROM (SELECT unnest(features) AS f\n        FROM read_json('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_50m_admin_0_countries.geojson',\n                       maximum_object_size = 200000000))\n), cent AS (\n  -- The same centroids as corridors.sql and bubbles.sql.\n  SELECT code, arg_min({'lng': lng, 'lat': lat}, (prio, -pop_est, name)) AS pick\n  FROM (SELECT TRY_CAST(iso_n3 AS INTEGER) AS code, 1 AS prio, pop_est, name, lng, lat FROM ne\n        UNION ALL SELECT TRY_CAST(iso_n3_eh AS INTEGER), 2, pop_est, name, lng, lat FROM ne\n        UNION ALL SELECT TRY_CAST(un_a3 AS INTEGER), 3, pop_est, name, lng, lat FROM ne\n        UNION ALL SELECT code, 4, 0, name, lng, lat\n        FROM (VALUES (175, 'Mayotte', 45.14, -12.83), (254, 'French Guiana', -53.13, 3.93),\n                     (292, 'Gibraltar', -5.35, 36.14), (312, 'Guadeloupe', -61.58, 16.25),\n                     (474, 'Martinique', -61.02, 14.64), (535, 'Bonaire, Sint Eustatius and Saba', -68.26, 12.18),\n                     (638, 'Réunion', 55.54, -21.12), (772, 'Tokelau', -171.85, -9.20),\n                     (830, 'Channel Islands', -2.35, 49.35)) label_points(code, name, lng, lat))\n  WHERE code > 0\n  GROUP BY code\n), steps AS (\n  SELECT r.y AS year, max(est.e) AS est_year\n  FROM range(1990, 2025) r(y)\n  JOIN (VALUES (1990), (1995), (2000), (2005), (2010), (2015), (2020), (2024)) est(e) ON est.e <= r.y\n  GROUP BY r.y\n), flows AS (\n  SELECT make_timestamp(s.year, 7, 1, 0, 0, 0) AS time,\n         t.direction,\n         t.partner_name AS partner,\n         CAST(t.partner AS VARCHAR) AS code,\n         t.people AS count,\n         o.pick.lat AS lat0, o.pick.lng AS lng0,\n         d.pick.lat AS lat1, d.pick.lng AS lng1\n  FROM steps s\n  JOIN ranked t USING (est_year)\n  JOIN cent o ON o.code = t.orig\n  JOIN cent d ON d.code = t.dest\n)\nSELECT * FROM flows\nUNION ALL\nSELECT make_timestamp(2024, 7, 1, 0, 0, 0), NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL\nWHERE NOT EXISTS (SELECT 1 FROM flows)\nORDER BY time, direction, count DESC, partner\n",
+          "refId": "C"
         }
       ],
       "fieldConfig": {
@@ -218,7 +254,7 @@
         "publishWhilePlaying": false,
         "peerTimeSync": false,
         "tripLayerMode": "table",
-        "flowRenderMode": "straight",
+        "flowRenderMode": "curved",
         "mapConfig": {
           "version": "v1",
           "config": {
@@ -239,9 +275,11 @@
                   "id": "clock",
                   "dataId": [
                     "grafana-A",
-                    "grafana-B"
+                    "grafana-B",
+                    "grafana-C"
                   ],
                   "name": [
+                    "time",
                     "time",
                     "time"
                   ],
@@ -368,6 +406,50 @@
                   }
                 },
                 {
+                  "id": "flows",
+                  "type": "flow",
+                  "config": {
+                    "dataId": "grafana-C",
+                    "label": "Flows (both directions)",
+                    "columns": {
+                      "lat0": "lat0",
+                      "lng0": "lng0",
+                      "lat1": "lat1",
+                      "lng1": "lng1",
+                      "count": "count"
+                    },
+                    "columnMode": "LAT_LNG",
+                    "isVisible": true,
+                    "visConfig": {
+                      "flowLinesRenderingMode": "curved",
+                      "flowLineCurviness": 1,
+                      "flowLineThicknessScale": 2,
+                      "flowAdaptiveScalesEnabled": true,
+                      "flowClusteringEnabled": false,
+                      "flowFadeEnabled": false,
+                      "flowFadeAmount": 50,
+                      "flowLocationTotalsEnabled": true,
+                      "maxTopFlowsDisplayNum": 5000,
+                      "darkBaseMapEnabled": false,
+                      "opacity": 0.9,
+                      "colorRange": {
+                        "name": "Migration flows",
+                        "type": "sequential",
+                        "category": "Custom",
+                        "colors": [
+                          "#F2C9A0",
+                          "#F0A868",
+                          "#F08A24",
+                          "#D9601A",
+                          "#B23A12",
+                          "#7A1F0A"
+                        ]
+                      }
+                    }
+                  },
+                  "visualChannels": {}
+                },
+                {
                   "id": "stock",
                   "type": "point",
                   "config": {
@@ -406,6 +488,7 @@
               "layerOrder": [
                 "partners",
                 "corridors",
+                "flows",
                 "stock"
               ],
               "interactionConfig": {
@@ -431,6 +514,20 @@
                       },
                       {
                         "name": "stock",
+                        "format": null
+                      }
+                    ],
+                    "grafana-C": [
+                      {
+                        "name": "partner",
+                        "format": null
+                      },
+                      {
+                        "name": "direction",
+                        "format": null
+                      },
+                      {
+                        "name": "count",
                         "format": null
                       }
                     ]
@@ -656,7 +753,7 @@
         "x": 0,
         "y": 16,
         "w": 16,
-        "h": 12
+        "h": 14
       },
       "targets": [
         {
@@ -712,11 +809,327 @@
         "x": 16,
         "y": 16,
         "w": 8,
-        "h": 12
+        "h": 14
       },
       "options": {
         "mode": "markdown",
-        "content": "**Source.** United Nations Department of Economic and Social Affairs, Population Division (2024). *International Migrant Stock 2024.* [un.org](https://www.un.org/development/desa/pd/content/international-migrant-stock) · [CC BY 3.0 IGO](https://creativecommons.org/licenses/by/3.0/igo/). Adapted: estimates carried forward between UN DESA's estimate years; country names without footnote marks. Centroids: Natural Earth.\n\n**Reading the map.** UN DESA estimates 1990, 1995, 2000, 2005, 2010, 2015, 2020 and 2024. The clock steps through every year and shows the latest estimate at or before it, so the map changes only in those eight years. Arcs run from origin (orange) to destination (teal). Click a bubble, an arc or a label to select that country; a click on the sea keeps the current one. Right-drag to tilt or rotate.\n\n**Live data.** Every panel reads the UN DESA spreadsheets when it loads, so the dashboard takes a few seconds. Pause the clock to update the key figures and the table."
+        "content": "**Source.** United Nations Department of Economic and Social Affairs, Population Division (2024). *International Migrant Stock 2024.* [un.org](https://www.un.org/development/desa/pd/content/international-migrant-stock) · [CC BY 3.0 IGO](https://creativecommons.org/licenses/by/3.0/igo/). Adapted: estimates carried forward between UN DESA's estimate years; country names without footnote marks. Centroids: Natural Earth.\n\n**Reading the map.** UN DESA estimates 1990, 1995, 2000, 2005, 2010, 2015, 2020 and 2024. The clock steps through every year and shows the latest estimate at or before it, so the map changes only in those eight years. Arcs run from origin (orange) to destination (teal). Click a bubble, an arc or a label to select that country; a click on the sea keeps the current one. Right-drag to tilt or rotate. Map view swaps the arcs for flows in both directions: arrows show the direction, widths the people, rings each country's totals.\n\n**Live data.** Every panel reads the UN DESA spreadsheets when it loads, so the dashboard takes a few seconds. Pause the clock to update the key figures and the table."
+      }
+    },
+    {
+      "id": 6,
+      "type": "barchart",
+      "title": "Men and women by corridor",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Men (left) and women (right) in the country's largest corridors, for the Direction picker and the year on the map's clock. Ranked by both sexes.",
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 8,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL excel; LOAD excel; INSTALL httpfs; LOAD httpfs;\n\n-- Men and women in the $top largest corridors of $country ($direction), at the\n-- estimate in force on the map clock. Ranked by both sexes, like the table.\nWITH clock AS (\n  SELECT max(est.e) AS est_year\n  FROM (VALUES (1990), (1995), (2000), (2005), (2010), (2015), (2020), (2024)) est(e)\n  WHERE est.e <= greatest(1990, COALESCE(year(TRY_CAST(NULLIF($mapTo, '') AS TIMESTAMP) - INTERVAL 1 MILLISECOND), 2024))\n), od AS (\n  SELECT CAST(\"Location code of destination\" AS INTEGER) AS dest,\n         CAST(\"Location code of origin\" AS INTEGER) AS orig,\n         regexp_replace(\"Region, development group, country or area of destination\", '\\*', '', 'g') AS dest_name,\n         regexp_replace(\"Region, development group, country or area of origin\", '\\*', '', 'g') AS orig_name,\n         COLUMNS('^(1990|1995|2000|2005|2010|2015|2020|2024)(_[12])?$')\n  FROM read_xlsx('https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/undesa_pd_2024_ims_stock_by_sex_destination_and_origin.xlsx',\n                 sheet = 'Table 1', header = true, all_varchar = true, range = 'A11:AE40000')\n  WHERE CAST($country AS INTEGER) = CASE $direction\n          WHEN 'emigrants' THEN TRY_CAST(\"Location code of origin\" AS INTEGER)\n          ELSE TRY_CAST(\"Location code of destination\" AS INTEGER) END\n    AND CASE $direction\n          WHEN 'emigrants' THEN TRY_CAST(\"Location code of destination\" AS INTEGER)\n          ELSE TRY_CAST(\"Location code of origin\" AS INTEGER) END < 900\n), cells AS (\n  UNPIVOT od ON COLUMNS(* EXCLUDE (dest, orig, dest_name, orig_name)) INTO NAME col VALUE v\n), wide AS (\n  SELECT CASE $direction WHEN 'emigrants' THEN dest_name ELSE orig_name END AS partner_name,\n         max(TRY_CAST(v AS DOUBLE)) FILTER (WHERE length(col) = 4) AS both_sexes,\n         max(TRY_CAST(v AS DOUBLE)) FILTER (WHERE right(col, 2) = '_1') AS men,\n         max(TRY_CAST(v AS DOUBLE)) FILTER (WHERE right(col, 2) = '_2') AS women\n  FROM cells, clock\n  WHERE CAST(left(col, 4) AS INTEGER) = clock.est_year\n  GROUP BY 1\n)\nSELECT partner_name AS \"Country\", men AS \"Men\", women AS \"Women\"\nFROM wide\nWHERE both_sexes > 0\nORDER BY both_sexes DESC, partner_name\nLIMIT CAST($top AS INTEGER)\n",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "gradientMode": "none",
+            "axisCenteredZero": true,
+            "axisPlacement": "auto",
+            "axisLabel": ""
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Men"
+            },
+            "properties": [
+              {
+                "id": "custom.transform",
+                "value": "negative-Y"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Women"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "Country",
+        "stacking": "normal",
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "barRadius": 0,
+        "xTickLabelRotation": 0,
+        "xTickLabelMaxLength": 18,
+        "fullHighlight": false,
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "showValue": "never"
+      }
+    },
+    {
+      "id": 7,
+      "type": "barchart",
+      "title": "Women's share by corridor",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "The same corridors, each split 100% into women and men, most female first.",
+      "gridPos": {
+        "x": 8,
+        "y": 30,
+        "w": 8,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL excel; LOAD excel; INSTALL httpfs; LOAD httpfs;\n\n-- The same corridors as the men-and-women pyramid, each split 100% into women\n-- and men, most female first.\nWITH clock AS (\n  SELECT max(est.e) AS est_year\n  FROM (VALUES (1990), (1995), (2000), (2005), (2010), (2015), (2020), (2024)) est(e)\n  WHERE est.e <= greatest(1990, COALESCE(year(TRY_CAST(NULLIF($mapTo, '') AS TIMESTAMP) - INTERVAL 1 MILLISECOND), 2024))\n), od AS (\n  SELECT CAST(\"Location code of destination\" AS INTEGER) AS dest,\n         CAST(\"Location code of origin\" AS INTEGER) AS orig,\n         regexp_replace(\"Region, development group, country or area of destination\", '\\*', '', 'g') AS dest_name,\n         regexp_replace(\"Region, development group, country or area of origin\", '\\*', '', 'g') AS orig_name,\n         COLUMNS('^(1990|1995|2000|2005|2010|2015|2020|2024)(_[12])?$')\n  FROM read_xlsx('https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/undesa_pd_2024_ims_stock_by_sex_destination_and_origin.xlsx',\n                 sheet = 'Table 1', header = true, all_varchar = true, range = 'A11:AE40000')\n  WHERE CAST($country AS INTEGER) = CASE $direction\n          WHEN 'emigrants' THEN TRY_CAST(\"Location code of origin\" AS INTEGER)\n          ELSE TRY_CAST(\"Location code of destination\" AS INTEGER) END\n    AND CASE $direction\n          WHEN 'emigrants' THEN TRY_CAST(\"Location code of destination\" AS INTEGER)\n          ELSE TRY_CAST(\"Location code of origin\" AS INTEGER) END < 900\n), cells AS (\n  UNPIVOT od ON COLUMNS(* EXCLUDE (dest, orig, dest_name, orig_name)) INTO NAME col VALUE v\n), wide AS (\n  SELECT CASE $direction WHEN 'emigrants' THEN dest_name ELSE orig_name END AS partner_name,\n         max(TRY_CAST(v AS DOUBLE)) FILTER (WHERE length(col) = 4) AS both_sexes,\n         max(TRY_CAST(v AS DOUBLE)) FILTER (WHERE right(col, 2) = '_1') AS men,\n         max(TRY_CAST(v AS DOUBLE)) FILTER (WHERE right(col, 2) = '_2') AS women\n  FROM cells, clock\n  WHERE CAST(left(col, 4) AS INTEGER) = clock.est_year\n  GROUP BY 1\n), top AS (\n  SELECT * FROM wide\n  WHERE both_sexes > 0 AND men + women > 0\n  ORDER BY both_sexes DESC, partner_name\n  LIMIT CAST($top AS INTEGER)\n)\nSELECT partner_name AS \"Country\",\n       100 * women / (men + women) AS \"Women\",\n       100 * men / (men + women) AS \"Men\"\nFROM top\nORDER BY \"Women\" DESC, \"Country\"\n",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisLabel": ""
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Women"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Men"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "Country",
+        "stacking": "normal",
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "barRadius": 0,
+        "xTickLabelRotation": 0,
+        "xTickLabelMaxLength": 18,
+        "fullHighlight": false,
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "showValue": "auto"
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Women among migrants · ${country:text}",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Share of women among the country's immigrants and emigrants at UN DESA's eight estimate years, with the world share for reference (the world's immigrants and emigrants are the same people).",
+      "gridPos": {
+        "x": 16,
+        "y": 30,
+        "w": 8,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL excel; LOAD excel; INSTALL httpfs; LOAD httpfs;\n\n-- The share of women among $country's immigrants (UN DESA Table 4 by\n-- destination) and among its emigrants (Table 1 by origin, women over both\n-- sexes), with the World for reference: the world's immigrants and emigrants\n-- are the same people, so one line serves both.\nWITH immigrants AS (\n  UNPIVOT (SELECT CAST(\"Location code\" AS INTEGER) AS code,\n                  COLUMNS('^(1990|1995|2000|2005|2010|2015|2020|2024)$')\n           FROM read_xlsx('https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/undesa_pd_2024_ims_stock_by_sex_and_destination.xlsx',\n                          sheet = 'Table 4', header = true, all_varchar = true, range = 'A11:M400')\n           WHERE TRY_CAST(\"Location code\" AS INTEGER) IN (900, CAST($country AS INTEGER)))\n  ON COLUMNS(* EXCLUDE (code)) INTO NAME col VALUE v\n), emigrants AS (\n  UNPIVOT (SELECT COLUMNS('^(1990|1995|2000|2005|2010|2015|2020|2024)(_2)?$')\n           FROM read_xlsx('https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/undesa_pd_2024_ims_stock_by_sex_and_origin.xlsx',\n                          sheet = 'Table 1', header = true, all_varchar = true, range = 'A11:AC400')\n           WHERE TRY_CAST(\"Location code\" AS INTEGER) = CAST($country AS INTEGER))\n  ON COLUMNS(*) INTO NAME col VALUE v\n), points AS (\n  SELECT CAST(left(col, 4) AS INTEGER) AS year,\n         CASE WHEN code = 900 THEN 'World' ELSE 'Among immigrants' END AS series,\n         TRY_CAST(v AS DOUBLE) AS share\n  FROM immigrants\n  UNION ALL\n  SELECT CAST(left(col, 4) AS INTEGER),\n         'Among emigrants',\n         100 * max(TRY_CAST(v AS DOUBLE)) FILTER (WHERE right(col, 2) = '_2')\n             / max(TRY_CAST(v AS DOUBLE)) FILTER (WHERE length(col) = 4)\n  FROM emigrants\n  GROUP BY 1\n)\nSELECT * FROM (\n  PIVOT (SELECT make_timestamp(year, 7, 1, 0, 0, 0) AS time, series, share FROM points)\n  ON series USING first(share) GROUP BY time\n)\nORDER BY time\n",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "lineInterpolation": "linear",
+            "showPoints": "always",
+            "pointSize": 6,
+            "spanNulls": true,
+            "fillOpacity": 0,
+            "axisLabel": ""
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Among immigrants"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#12939A"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Among emigrants"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#F08A24"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "World"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8E8E8E"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       }
     }
   ]
