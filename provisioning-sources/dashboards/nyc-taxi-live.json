@@ -35,7 +35,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "## New York City taxis, live\nOne real week of 2015 — 3.09 million trips — replayed to the New York clock: the same weekday and the same time of day as there right now. Refreshes every 5 seconds.",
+        "content": "## New York City taxis, live\nOne real week of 2015 — 3.09 million trips — replayed to the New York clock: the same weekday and the same time of day as there right now. Refreshes every 5 seconds.\n\nPick a cab type above, or click a hexagon on the pickups or dropoffs map to follow only the trips that start or end there.",
         "mode": "markdown"
       },
       "pluginVersion": "13.2.1",
@@ -194,7 +194,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- One flow per pair of H3 hexagons (resolution 8, ~0.7 km²) with trips that\n-- started in the last 10 minutes. origin_h3/dest_h3/trips are names the panel\n-- recognizes on its own to build the flow layer.\nSELECT pickup_h3_8 AS origin_h3,\n       dropoff_h3_8 AS dest_h3,\n       count(*)::BIGINT AS trips\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\n  AND pickup_h3_8 <> dropoff_h3_8\nGROUP BY 1, 2",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- One flow per pair of H3 hexagons (resolution 8, ~0.7 km²) with trips that\n-- started in the last 10 minutes. origin_h3/dest_h3/trips are names the panel\n-- recognizes on its own to build the flow layer.\n-- Cross-filtering: the cab type picker, and the hexagon clicked on the pickups\n-- map ($from_zone) or the dropoffs map ($to_zone). Empty means everywhere.\nSELECT pickup_h3_8 AS origin_h3,\n       dropoff_h3_8 AS dest_h3,\n       count(*)::BIGINT AS trips\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\n  AND pickup_h3_8 <> dropoff_h3_8\n  AND cab_type IN (${cab_type:sqlstring})\n  AND ($from_zone = '' OR pickup_h3_9 = $from_zone)\n  AND ($to_zone = '' OR dropoff_h3_9 = $to_zone)\nGROUP BY 1, 2",
           "refId": "A"
         }
       ],
@@ -340,7 +340,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- In transit: picked up in the last 3 hours and not dropped off yet.\nSELECT count(*)::BIGINT AS taxis,\n       sum(passengers)::BIGINT AS passengers\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (pickup_time > t - INTERVAL 3 HOUR AND pickup_time <= t AND dropoff_time > t)\n   OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 3 HOUR AND pickup_time <= t + INTERVAL 7 DAY\n       AND dropoff_time > t + INTERVAL 7 DAY)",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- In transit: picked up in the last 3 hours and not dropped off yet. The two\n-- halves of the week wrap sit inside one pair of parentheses, so the filters\n-- below apply to both.\n-- Cross-filtering: the cab type picker, and the hexagon clicked on the pickups\n-- map ($from_zone) or the dropoffs map ($to_zone). Empty means everywhere.\nSELECT count(*)::BIGINT AS taxis,\n       sum(passengers)::BIGINT AS passengers\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 3 HOUR AND pickup_time <= t AND dropoff_time > t)\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 3 HOUR AND pickup_time <= t + INTERVAL 7 DAY\n        AND dropoff_time > t + INTERVAL 7 DAY)\n  )\n  AND cab_type IN (${cab_type:sqlstring})\n  AND ($from_zone = '' OR pickup_h3_9 = $from_zone)\n  AND ($to_zone = '' OR dropoff_h3_9 = $to_zone)",
           "refId": "A"
         }
       ],
@@ -413,7 +413,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- In transit: picked up in the last 3 hours and not dropped off yet.\nSELECT count(*)::BIGINT AS taxis,\n       sum(passengers)::BIGINT AS passengers\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (pickup_time > t - INTERVAL 3 HOUR AND pickup_time <= t AND dropoff_time > t)\n   OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 3 HOUR AND pickup_time <= t + INTERVAL 7 DAY\n       AND dropoff_time > t + INTERVAL 7 DAY)",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- In transit: picked up in the last 3 hours and not dropped off yet. The two\n-- halves of the week wrap sit inside one pair of parentheses, so the filters\n-- below apply to both.\n-- Cross-filtering: the cab type picker, and the hexagon clicked on the pickups\n-- map ($from_zone) or the dropoffs map ($to_zone). Empty means everywhere.\nSELECT count(*)::BIGINT AS taxis,\n       sum(passengers)::BIGINT AS passengers\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 3 HOUR AND pickup_time <= t AND dropoff_time > t)\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 3 HOUR AND pickup_time <= t + INTERVAL 7 DAY\n        AND dropoff_time > t + INTERVAL 7 DAY)\n  )\n  AND cab_type IN (${cab_type:sqlstring})\n  AND ($from_zone = '' OR pickup_h3_9 = $from_zone)\n  AND ($to_zone = '' OR dropoff_h3_9 = $to_zone)",
           "refId": "A"
         }
       ],
@@ -486,7 +486,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Since midnight in New York. The sum() is cast: without it Grafana receives a\n-- HUGEINT as text and the stat cannot draw it.\nSELECT count(*)::BIGINT AS trips,\n       sum(total)::DOUBLE AS revenue\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE pickup_time >= date_trunc('day', t) AND pickup_time <= t",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Since midnight in New York. The sum() is cast: without it Grafana receives a\n-- HUGEINT as text and the stat cannot draw it.\n-- Cross-filtering: the cab type picker, and the hexagon clicked on the pickups\n-- map ($from_zone) or the dropoffs map ($to_zone). Empty means everywhere.\nSELECT count(*)::BIGINT AS trips,\n       sum(total)::DOUBLE AS revenue\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE pickup_time >= date_trunc('day', t) AND pickup_time <= t\n  AND cab_type IN (${cab_type:sqlstring})\n  AND ($from_zone = '' OR pickup_h3_9 = $from_zone)\n  AND ($to_zone = '' OR dropoff_h3_9 = $to_zone)",
           "refId": "A"
         }
       ],
@@ -559,7 +559,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Since midnight in New York. The sum() is cast: without it Grafana receives a\n-- HUGEINT as text and the stat cannot draw it.\nSELECT count(*)::BIGINT AS trips,\n       sum(total)::DOUBLE AS revenue\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE pickup_time >= date_trunc('day', t) AND pickup_time <= t",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Since midnight in New York. The sum() is cast: without it Grafana receives a\n-- HUGEINT as text and the stat cannot draw it.\n-- Cross-filtering: the cab type picker, and the hexagon clicked on the pickups\n-- map ($from_zone) or the dropoffs map ($to_zone). Empty means everywhere.\nSELECT count(*)::BIGINT AS trips,\n       sum(total)::DOUBLE AS revenue\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE pickup_time >= date_trunc('day', t) AND pickup_time <= t\n  AND cab_type IN (${cab_type:sqlstring})\n  AND ($from_zone = '' OR pickup_h3_9 = $from_zone)\n  AND ($to_zone = '' OR dropoff_h3_9 = $to_zone)",
           "refId": "A"
         }
       ],
@@ -571,7 +571,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Pickups per H3 hexagon at resolution 9 (~0.1 km²): height and color say how many.",
+      "description": "Pickups per H3 hexagon at resolution 9 (~0.1 km²): height and color say how many. Click a hexagon to show only the trips that start there across the whole dashboard; click empty map to clear.",
       "gridPos": {
         "h": 16,
         "w": 12,
@@ -717,7 +717,13 @@
         "showSidePanel": false,
         "timeSync": "off",
         "tripLayerMode": "table",
-        "variableMappings": [],
+        "variableMappings": [
+          {
+            "field": "h3",
+            "source": "click",
+            "variable": "from_zone"
+          }
+        ],
         "viewportVariables": {},
         "windDensity": 9000
       },
@@ -731,7 +737,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Pickups in the last 10 minutes per H3 hexagon at resolution 9 (~0.1 km²).\nSELECT pickup_h3_9 AS h3,\n       count(*)::BIGINT AS pickups\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\nGROUP BY 1",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Pickups in the last 10 minutes per H3 hexagon at resolution 9 (~0.1 km²).\n-- Filtered by the dropoff hexagon but never by its own ($from_zone): the map\n-- you click on keeps showing every hexagon, so another one can be picked.\nSELECT pickup_h3_9 AS h3,\n       count(*)::BIGINT AS pickups\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\n  AND cab_type IN (${cab_type:sqlstring})\n  AND ($to_zone = '' OR dropoff_h3_9 = $to_zone)\nGROUP BY 1",
           "refId": "A"
         }
       ],
@@ -743,7 +749,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Dropoffs per H3 hexagon at resolution 9. Next to the pickups map, it shows where the city is emptying and filling up at this hour.",
+      "description": "Dropoffs per H3 hexagon at resolution 9. Click a hexagon to show only the trips that end there across the whole dashboard; click empty map to clear. With a hexagon picked on the pickups map, this map shows where those trips go.",
       "gridPos": {
         "h": 16,
         "w": 12,
@@ -889,7 +895,13 @@
         "showSidePanel": false,
         "timeSync": "off",
         "tripLayerMode": "table",
-        "variableMappings": [],
+        "variableMappings": [
+          {
+            "field": "h3",
+            "source": "click",
+            "variable": "to_zone"
+          }
+        ],
         "viewportVariables": {},
         "windDensity": 9000
       },
@@ -903,7 +915,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Dropoffs in the last 10 minutes per H3 hexagon at resolution 9.\nSELECT dropoff_h3_9 AS h3,\n       count(*)::BIGINT AS dropoffs\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (dropoff_time > t - INTERVAL 10 MINUTE AND dropoff_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (dropoff_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND dropoff_time <= t + INTERVAL 7 DAY)\n  )\nGROUP BY 1",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Dropoffs in the last 10 minutes per H3 hexagon at resolution 9. Filtered by\n-- the pickup hexagon but never by its own ($to_zone), like the pickups map.\nSELECT dropoff_h3_9 AS h3,\n       count(*)::BIGINT AS dropoffs\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (dropoff_time > t - INTERVAL 10 MINUTE AND dropoff_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (dropoff_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND dropoff_time <= t + INTERVAL 7 DAY)\n  )\n  AND cab_type IN (${cab_type:sqlstring})\n  AND ($from_zone = '' OR pickup_h3_9 = $from_zone)\nGROUP BY 1",
           "refId": "A"
         }
       ],
@@ -1328,7 +1340,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- The same trips aggregated to large hexagons (H3 resolution 7, ~5 km²):\n-- from which neighborhood to which, without street-level detail.\nSELECT pickup_h3_7 AS origin_h3,\n       dropoff_h3_7 AS dest_h3,\n       count(*)::BIGINT AS trips\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\n  AND pickup_h3_7 <> dropoff_h3_7\nGROUP BY 1, 2",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- The same trips aggregated to large hexagons (H3 resolution 7, ~5 km²):\n-- from which neighborhood to which, without street-level detail.\n-- Cross-filtering: the cab type picker, and the hexagon clicked on the pickups\n-- map ($from_zone) or the dropoffs map ($to_zone). Empty means everywhere.\nSELECT pickup_h3_7 AS origin_h3,\n       dropoff_h3_7 AS dest_h3,\n       count(*)::BIGINT AS trips\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\n  AND pickup_h3_7 <> dropoff_h3_7\n  AND cab_type IN (${cab_type:sqlstring})\n  AND ($from_zone = '' OR pickup_h3_9 = $from_zone)\n  AND ($to_zone = '' OR dropoff_h3_9 = $to_zone)\nGROUP BY 1, 2",
           "refId": "A"
         },
         {
@@ -1339,7 +1351,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- One arc per trip in the last 10 minutes. pickup_lat/pickup_lon and\n-- dropoff_lat/dropoff_lon are names the panel recognizes as origin and destination.\n-- The fare is `amount`, not `total`: the panel reads a column named `total` as a\n-- flow count and renames it.\nSELECT pickup_lat, pickup_lon, dropoff_lat, dropoff_lon,\n       passengers,\n       total AS amount\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- One arc per trip in the last 10 minutes. pickup_lat/pickup_lon and\n-- dropoff_lat/dropoff_lon are names the panel recognizes as origin and destination.\n-- The fare is `amount`, not `total`: the panel reads a column named `total` as a\n-- flow count and renames it.\n-- Cross-filtering: the cab type picker, and the hexagon clicked on the pickups\n-- map ($from_zone) or the dropoffs map ($to_zone). Empty means everywhere.\nSELECT pickup_lat, pickup_lon, dropoff_lat, dropoff_lon,\n       passengers,\n       total AS amount\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\n  AND cab_type IN (${cab_type:sqlstring})\n  AND ($from_zone = '' OR pickup_h3_9 = $from_zone)\n  AND ($to_zone = '' OR dropoff_h3_9 = $to_zone)",
           "refId": "B"
         }
       ],
@@ -1439,7 +1451,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Trips per minute since midnight, returned as instants of today so that\n-- Grafana's time axis puts them in place.\nSELECT (time_bucket(INTERVAL 1 MINUTE, pickup_time)\n        + (date_trunc('day', now() AT TIME ZONE 'America/New_York') - date_trunc('day', t)))\n       AT TIME ZONE 'America/New_York' AS time,\n       count(*)::BIGINT AS \"Trips per minute\"\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE pickup_time >= date_trunc('day', t) AND pickup_time <= t\nGROUP BY 1\nORDER BY 1",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Trips per minute since midnight, returned as instants of today so that\n-- Grafana's time axis puts them in place.\n-- Cross-filtering: the cab type picker, and the hexagon clicked on the pickups\n-- map ($from_zone) or the dropoffs map ($to_zone). Empty means everywhere.\nSELECT (time_bucket(INTERVAL 1 MINUTE, pickup_time)\n        + (date_trunc('day', now() AT TIME ZONE 'America/New_York') - date_trunc('day', t)))\n       AT TIME ZONE 'America/New_York' AS time,\n       count(*)::BIGINT AS \"Trips per minute\"\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE pickup_time >= date_trunc('day', t) AND pickup_time <= t\n  AND cab_type IN (${cab_type:sqlstring})\n  AND ($from_zone = '' OR pickup_h3_9 = $from_zone)\n  AND ($to_zone = '' OR dropoff_h3_9 = $to_zone)\nGROUP BY 1\nORDER BY 1",
           "refId": "A"
         }
       ],
@@ -1550,7 +1562,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Tip against fare for trips in the last 30 minutes. Only trips paid with a\n-- tip: cash tips are not recorded.\nSELECT fare AS \"Fare\",\n       tip AS \"Tip\"\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 30 MINUTE AND pickup_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 30 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\n  AND fare BETWEEN 2.5 AND 70 AND tip > 0 AND tip < 15",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Tip against fare for trips in the last 30 minutes. Only trips paid with a\n-- tip: cash tips are not recorded.\n-- Cross-filtering: the cab type picker, and the hexagon clicked on the pickups\n-- map ($from_zone) or the dropoffs map ($to_zone). Empty means everywhere.\nSELECT fare AS \"Fare\",\n       tip AS \"Tip\"\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 30 MINUTE AND pickup_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 30 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\n  AND fare BETWEEN 2.5 AND 70 AND tip > 0 AND tip < 15\n  AND cab_type IN (${cab_type:sqlstring})\n  AND ($from_zone = '' OR pickup_h3_9 = $from_zone)\n  AND ($to_zone = '' OR dropoff_h3_9 = $to_zone)",
           "refId": "A"
         }
       ],
@@ -1609,5 +1621,54 @@
   },
   "timezone": "America/New_York",
   "title": "New York City Taxis — Live",
-  "uid": "nyc-taxi-live"
+  "uid": "nyc-taxi-live",
+  "templating": {
+    "list": [
+      {
+        "type": "custom",
+        "name": "cab_type",
+        "label": "Cab type",
+        "description": "Yellow cabs pick up anywhere; green cabs cannot pick up in most of Manhattan.",
+        "query": "yellow,green",
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "options": [],
+        "hide": 0
+      },
+      {
+        "type": "textbox",
+        "name": "from_zone",
+        "label": "From hexagon",
+        "description": "Set by clicking a hexagon on the pickups map; clear it to see every origin.",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "hide": 0
+      },
+      {
+        "type": "textbox",
+        "name": "to_zone",
+        "label": "To hexagon",
+        "description": "Set by clicking a hexagon on the dropoffs map; clear it to see every destination.",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": [],
+        "hide": 0
+      }
+    ]
+  }
 }
