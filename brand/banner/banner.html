@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kepler Geospatial Maps banner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inter+Tight:wght@500;600&display=block" rel="stylesheet">
+<style>
+  :root {
+    --ground: #111217;
+    --text: #efeff1;
+    --text-2: #a7aab3;
+  }
+  html, body { margin: 0; background: var(--ground); }
+  .banner {
+    position: relative;
+    width: 1234px;
+    height: 450px;
+    overflow: hidden;
+    background: var(--ground);
+    font-family: Inter, system-ui, sans-serif;
+  }
+  .brand { position: absolute; left: 64px; top: 84px; width: 560px; }
+  .brand img { display: block; width: 64px; height: 64px; }
+  .brand h1 {
+    margin: 26px 0 0;
+    font: 600 46px/1.02 'Inter Tight', Inter, system-ui, sans-serif;
+    letter-spacing: -0.025em;
+    color: var(--text);
+  }
+  .brand .for {
+    margin: 6px 0 0;
+    font: 500 26px/1.1 'Inter Tight', Inter, system-ui, sans-serif;
+    letter-spacing: -0.01em;
+    color: var(--text-2);
+  }
+  .brand .tagline {
+    margin: 26px 0 0;
+    font: 400 18px/1.45 Inter, system-ui, sans-serif;
+    color: var(--text-2);
+  }
+  svg.art { position: absolute; inset: 0; }
+  svg text { font-family: Inter, system-ui, sans-serif; }
+</style>
+</head>
+<body>
+<div class="banner">
+  <svg class="art" id="art" width="1234" height="450" viewBox="0 0 1234 450" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div class="brand">
+    <img src="../logo-large.svg" alt="">
+    <h1>Kepler Geospatial Maps</h1>
+    <p class="for">for Grafana</p>
+    <p class="tagline">Where and when, straight from your queries.</p>
+  </div>
+</div>
+
+<script>
+  // ---- Geography of the slices -------------------------------------------------
+  // Every texture is a square cut from a panel captured at this viewport (capture.mjs,
+  // crop.py), so one projection places a city on all three.
+  const VIEW = { lat: -6, lng: -62, zoom: 3.6, dpr: 2 };
+  const CROP = 1600; // capture px per side, as in crop.py
+  const worldPx = 512 * 2 ** VIEW.zoom * VIEW.dpr;
+  const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+  function toUV(lat, lng) {
+    const x = CROP / 2 + ((lng - VIEW.lng) / 360) * worldPx;
+    const y = CROP / 2 - ((mercY(lat) - mercY(VIEW.lat)) * worldPx) / (2 * Math.PI);
+    return { u: x / CROP, v: y / CROP };
+  }
+  const CUENCA = toUV(-2.9, -79.0);
+
+  // ---- Palette -------------------------------------------------------------------
+  // The logo's ramp, bottom layer to top.
+  const RAMP = ['#f46800', '#ff9830', '#fbca0a'];
+
+  // Bottom to top, each slice standing for a family of sources the panel reads: a GFS
+  // Zarr cube, CAMS fire cells as a heatmap, HydroSHEDS rivers as vectors. The flow
+  // field goes on top because it is the one slice that has to be seen whole: the
+  // lower slices show only the part the next one leaves open.
+  const SLICES = [
+    { src: 'slices/gfs.jpg', title: 'Cloud-native raster', sub: 'COG, Zarr, WMS, PMTiles' },
+    { src: 'slices/fires.jpg', title: 'Aggregations', sub: 'H3, S2, hexbins' },
+    { src: 'slices/flow.jpg', title: 'Vector formats', sub: 'GeoParquet, GeoJSON, CSV' },
+  ];
+
+  // ---- Geometry ------------------------------------------------------------------
+  const SW = 328;   // slice width, left to right vertex
+  const SH = 164;   // slice height, top to bottom vertex: 2:1 isometric
+  const DEPTH = 6;  // slab thickness
+  const STEP = 116; // vertical distance between slices
+  const CX = 814;   // leaves the longest label the same 64 px margin as the text
+  const TOP_CY = 97;
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.getElementById('art');
+  function el(name, attrs, parent) {
+    const node = document.createElementNS(NS, name);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+    parent.appendChild(node);
+    return node;
+  }
+  const pts = (list) => list.map((p) => p.join(',')).join(' ');
+  function shade(hex, amount) {
+    const n = parseInt(hex.slice(1), 16);
+    const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round(v * (1 - amount)));
+    return `rgb(${c.join(',')})`;
+  }
+
+  // Paint order: grid, time bar, stack, the probe through it.
+  const defs = el('defs', {}, svg);
+  const gridLayer = el('g', {}, svg);
+  const barLayer = el('g', {}, svg);
+  const stackLayer = el('g', {}, svg);
+  const probeLayer = el('g', {}, svg);
+
+  const blur = el('filter', { id: 'shadow', x: '-20%', y: '-20%', width: '140%', height: '160%' }, defs);
+  el('feGaussianBlur', { stdDeviation: 9 }, blur);
+
+  // ---- Faint dashboard grid, fading in from the text column -----------------------
+  const dots = el('pattern', { id: 'dots', width: 20, height: 20, patternUnits: 'userSpaceOnUse' }, defs);
+  el('circle', { cx: 10, cy: 10, r: 0.9, fill: '#ffffff', 'fill-opacity': 0.08 }, dots);
+  const fade = el('linearGradient', { id: 'fade', x1: 0, x2: 1, y1: 0, y2: 0 }, defs);
+  el('stop', { offset: '0.44', 'stop-color': '#fff', 'stop-opacity': 0 }, fade);
+  el('stop', { offset: '0.66', 'stop-color': '#fff', 'stop-opacity': 1 }, fade);
+  const mask = el('mask', { id: 'grid-mask' }, defs);
+  el('rect', { x: 0, y: 0, width: 1234, height: 450, fill: 'url(#fade)' }, mask);
+  el('rect', { x: 0, y: 0, width: 1234, height: 392, fill: 'url(#dots)', mask: 'url(#grid-mask)' }, gridLayer);
+
+  // ---- Stack ---------------------------------------------------------------------
+  const iso = (cy, u, v) => [CX + ((u - v) * SW) / 2, cy - SH / 2 + ((u + v) * SH) / 2];
+  const cyOf = (i) => TOP_CY + (SLICES.length - 1 - i) * STEP;
+
+  SLICES.forEach((slice, i) => {
+    const edge = RAMP[i];
+    const cy = cyOf(i);
+    const top = [CX, cy - SH / 2];
+    const right = [CX + SW / 2, cy];
+    const bottom = [CX, cy + SH / 2];
+    const left = [CX - SW / 2, cy];
+    const down = (p) => [p[0], p[1] + DEPTH];
+
+    const g = el('g', {}, stackLayer);
+    el('polygon', {
+      points: pts([top, right, bottom, left].map((p) => [p[0], p[1] + DEPTH + 10])),
+      fill: '#000', 'fill-opacity': 0.6, filter: 'url(#shadow)',
+    }, g);
+    el('polygon', { points: pts([left, bottom, down(bottom), down(left)]), fill: shade(edge, 0.62) }, g);
+    el('polygon', { points: pts([bottom, right, down(right), down(bottom)]), fill: shade(edge, 0.38) }, g);
+
+    // The texture's north-west corner sits on the top vertex.
+    el('image', {
+      href: slice.src, x: 0, y: 0, width: 1, height: 1, preserveAspectRatio: 'none',
+      transform: `matrix(${SW / 2} ${SH / 2} ${-SW / 2} ${SH / 2} ${top[0]} ${top[1]})`,
+    }, g);
+    el('polygon', {
+      points: pts([top, right, bottom, left]), fill: 'none',
+      stroke: edge, 'stroke-width': 1.5, 'stroke-linejoin': 'round',
+    }, g);
+
+    // Label off the right vertex.
+    el('line', { x1: right[0] + 8, y1: cy, x2: right[0] + 28, y2: cy, stroke: edge, 'stroke-width': 1.5 }, g);
+    const t = el('text', { x: right[0] + 36, y: cy - 3, fill: '#e4e5e9', 'font-size': 13, 'font-weight': 600 }, g);
+    t.textContent = slice.title;
+    const s = el('text', { x: right[0] + 36, y: cy + 14, fill: '#8f929b', 'font-size': 12 }, g);
+    s.textContent = slice.sub;
+  });
+
+  // ---- The place, through every layer ----------------------------------------
+  const pierce = SLICES.map((_, i) => iso(cyOf(i), CUENCA.u, CUENCA.v));
+  const [px] = pierce[0];
+  const yBottom = pierce[0][1];
+  const yTop = pierce[pierce.length - 1][1];
+  el('line', { x1: px, y1: yBottom, x2: px, y2: yTop, stroke: '#111217', 'stroke-width': 7, 'stroke-linecap': 'round' }, probeLayer);
+  el('line', { x1: px, y1: yBottom, x2: px, y2: yTop, stroke: '#fbca0a', 'stroke-width': 3, 'stroke-linecap': 'round' }, probeLayer);
+  pierce.slice(0, -1).forEach(([x, y]) => {
+    el('circle', { cx: x, cy: y, r: 4.5, fill: '#fbca0a', stroke: '#111217', 'stroke-width': 2.5 }, probeLayer);
+  });
+
+  // Pin, drawn as in the logo, its tip on the top slice.
+  const pin = el('g', { transform: `translate(${px} ${yTop}) scale(0.95)` }, probeLayer);
+  el('ellipse', { cx: 0, cy: 0, rx: 8.2, ry: 4.1, fill: '#000', 'fill-opacity': 0.5 }, pin);
+  el('path', { d: 'M0 0 L13 -22.5 A15 15 0 1 0 -13 -22.5 Z', fill: '#fbca0a', stroke: '#111217', 'stroke-width': 3, 'stroke-linejoin': 'round' }, pin);
+  el('circle', { cx: 0, cy: -30, r: 5.7, fill: '#111217' }, pin);
+  const city = el('text', { x: px - 22, y: yTop - 26, fill: '#e4e5e9', 'font-size': 12, 'font-weight': 500, 'text-anchor': 'end' }, probeLayer);
+  city.textContent = 'Cuenca';
+
+  // ---- Time bar, under the stack ---------------------------------------------------
+  // "now" is the day the slices were captured: 15 Sep 2026.
+  const TRACK = { x0: 332, x1: 1170, y: 414 };
+  const DAY0 = Date.UTC(2026, 8, 8);
+  const DAYS = 23; // 8 Sep to 1 Oct
+  const day = (m, d) => Date.UTC(2026, m - 1, d);
+  const xOf = (d) => TRACK.x0 + ((d - DAY0) / 86400000 / DAYS) * (TRACK.x1 - TRACK.x0);
+
+  // Time picker chip.
+  el('rect', { x: 64.5, y: 399.5, width: 236, height: 30, rx: 4, fill: '#181b1f', stroke: '#2c2f37' }, barLayer);
+  el('circle', { cx: 84, cy: 414.5, r: 6.5, fill: 'none', stroke: '#a7aab3', 'stroke-width': 1.5 }, barLayer);
+  el('path', { d: 'M84 410.5 V414.5 L86.8 416.2', fill: 'none', stroke: '#a7aab3', 'stroke-width': 1.5, 'stroke-linecap': 'round' }, barLayer);
+  const range = el('text', { x: 100, y: 419, fill: '#d6d7dc', 'font-size': 13, 'font-weight': 500 }, barLayer);
+  range.textContent = 'now-7d to now+16d';
+
+  el('line', { x1: TRACK.x0, y1: TRACK.y, x2: TRACK.x1, y2: TRACK.y, stroke: '#2c2f37', 'stroke-width': 2, 'stroke-linecap': 'round' }, barLayer);
+  for (let i = 0; i <= DAYS; i++) {
+    const x = TRACK.x0 + (i / DAYS) * (TRACK.x1 - TRACK.x0);
+    el('line', { x1: x, y1: TRACK.y - 7, x2: x, y2: TRACK.y - 3, stroke: '#2c2f37', 'stroke-width': 1 }, barLayer);
+  }
+  // What each slice covers on the clock, in its slice's edge colour.
+  el('line', { x1: xOf(day(9, 8)), y1: TRACK.y, x2: xOf(day(9, 14)), y2: TRACK.y, stroke: RAMP[1], 'stroke-width': 4, 'stroke-linecap': 'round' }, barLayer);
+  el('line', { x1: xOf(day(9, 16)), y1: TRACK.y, x2: xOf(day(10, 1)), y2: TRACK.y, stroke: RAMP[0], 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-dasharray': '1 7' }, barLayer);
+  el('circle', { cx: xOf(day(9, 15)), cy: TRACK.y, r: 6.5, fill: '#efeff1', stroke: '#111217', 'stroke-width': 3 }, barLayer);
+
+  [[day(9, 8), 'Sep 8', 'start'], [day(9, 15), 'now', 'middle'], [day(10, 1), 'Oct 1', 'end']].forEach(([d, label, anchor]) => {
+    const t = el('text', { x: xOf(d), y: 440, fill: '#7d808a', 'font-size': 11, 'text-anchor': anchor }, barLayer);
+    t.textContent = label;
+  });
+
+  // ---- Ready once every texture and the logo have decoded --------------------------
+  Promise.all([...SLICES.map((s) => s.src), '../logo-large.svg'].map((src) => {
+    const img = new Image();
+    img.src = src;
+    return img.decode();
+  })).then(() => document.fonts.ready).then(() => { window.bannerReady = true; });
+</script>
+</body>
+</html>

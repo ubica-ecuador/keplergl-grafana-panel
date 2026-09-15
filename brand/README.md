@@ -63,3 +63,60 @@ rather than SVG:
 rsvg-convert -w 48 -h 48 logo-small.svg -o logo-48.png
 rsvg-convert -w 512 -h 512 logo-large.svg -o logo-512.png
 ```
+
+## Banner
+
+The wide strip at the top of the README, under the docs home hero, and first in
+the catalog screenshots. It carries the logo's idea at full size: three map
+slices of South America stacked in the logo's ramp, one per family of sources the
+panel reads, crossed at Cuenca by the track and pin, standing on a Grafana time bar.
+
+| Slice | Label | Captured from |
+|---|---|---|
+| top, `#FBCA0A` | Vector formats | HydroSHEDS rivers and flow field (`adwxgg7`, panel 3) |
+| middle, `#FF9830` | Aggregations | CAMS fire cells as a heatmap (`fire-emissions-tabs`, panel 1) |
+| bottom, `#F46800` | Cloud-native raster | GFS 2 m temperature from Zarr (`gfs-forecast`, panel 2) |
+
+The flow field is on top because it is the one slice that has to be seen whole;
+the lower two show only what the slice above leaves open.
+
+### The files
+
+| File | Role |
+|---|---|
+| `banner/capture.mjs` | Screenshots one panel with a forced viewport. Rewrites the dashboard JSON in flight, saves nothing. |
+| `banner/crop.py` | Cuts the square textures out of the captures into `banner/slices/`. |
+| `banner/banner.html` | The layout: text, isometric stack, time bar. Places Cuenca on every slice from the capture viewport. |
+| `banner/render.mjs` | Renders the page to `banner/banner@2x.png`, 2468x900. |
+
+### Regenerating
+
+All three captures must share one viewport, or the slices stop lining up. The
+flow field needs `HEADED=1`: software WebGL never settles a frame while it
+animates, and the headless screenshot hangs.
+
+```bash
+RAW=$(mktemp -d)
+HEADED=1 node brand/banner/capture.mjs https://grafana.ubica.ec adwxgg7 3 $RAW/raw-flow.png -6 -62 3.6 "" 35000
+node brand/banner/capture.mjs https://grafana.ubica.ec fire-emissions-tabs 1 $RAW/raw-fires.png -6 -62 3.6 "" 40000
+node brand/banner/capture.mjs http://localhost:3002 gfs-forecast 2 $RAW/raw-gfs.png -6 -62 3.6 admin:admin 45000
+python3 brand/banner/crop.py $RAW
+node brand/banner/render.mjs
+```
+
+`crop.py` holds each canvas centre as a constant. A dashboard that gains or loses
+a row of variables moves its canvas, so check the crops after re-capturing.
+
+Then copy it out — PNG for GitHub and the plugin package, JPEG for the docs site:
+
+```bash
+python3 -c "
+from PIL import Image
+im = Image.open('brand/banner/banner@2x.png').convert('RGB')
+im.save('src/img/banner.png', optimize=True)
+im.save('docs/site/public/img/banner.jpg', quality=88, optimize=True, progressive=True)
+"
+```
+
+The previous banner, the Amazon flow field on its own, ships on as
+`src/img/screenshot-flow-field.png`.

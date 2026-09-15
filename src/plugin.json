@@ -29,8 +29,12 @@
     ],
     "screenshots": [
       {
-        "name": "The Amazon drainage as a velocity field, traced from origin-destination rows",
+        "name": "Vector, aggregated and cloud-native raster layers of one place, stacked on a Grafana time bar",
         "path": "img/banner.png"
+      },
+      {
+        "name": "The Amazon drainage as a velocity field, traced from origin-destination rows",
+        "path": "img/screenshot-flow-field.png"
       },
       {
         "name": "Global seismicity, read as remote GeoParquet by DuckDB",

@@ -1,6 +1,6 @@
 # Kepler Geospatial Maps for Grafana
 
-![The Amazon basin drawn as a velocity field: every tributary traced by streamlines over a dark basemap](https://raw.githubusercontent.com/ubica-ecuador/keplergl-grafana-panel/main/src/img/banner.png)
+![Kepler Geospatial Maps for Grafana: vector, aggregated and cloud-native raster layers of South America stacked over a Grafana time bar, crossed at one place](https://raw.githubusercontent.com/ubica-ecuador/keplergl-grafana-panel/main/src/img/banner.png)
 
 Interactive [kepler.gl](https://kepler.gl) maps inside Grafana dashboards, fed by any Grafana data
 source. Built for advanced spatio-temporal mobility data — points, trajectories and origin-destination flows visualizations.

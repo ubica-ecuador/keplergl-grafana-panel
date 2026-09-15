@@ -2,7 +2,7 @@
   <div class="banner">
     <img
       src="/img/banner.jpg"
-      alt="The Amazon basin drawn as a velocity field: every tributary traced by streamlines over a dark basemap"
+      alt="Kepler Geospatial Maps for Grafana: vector, aggregated and cloud-native raster layers of South America stacked over a Grafana time bar, crossed at one place"
       width="1234"
       height="450"
     />
