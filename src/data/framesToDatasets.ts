@@ -6,13 +6,20 @@ import { buildTripLayer, TripLayerConfig, TripLayerMode } from './buildTripLayer
 import { buildTrips } from './buildTrips';
 import { earliestTimestepRows } from './buildWindField';
 import { detectFields, FieldRoleOverrides, FieldRoles, resolveRoles } from './detectFields';
-import { KeplerRow, toKeplerRows } from './toKeplerDataset';
+import { KeplerColumn, KeplerRow, toKeplerColumns, toKeplerRows } from './toKeplerDataset';
 
 /** One kepler dataset per Grafana query. */
 export interface PanelDataset {
   id: string;
   label: string;
   rows: KeplerRow[];
+  /**
+   * The query's columns, when it returned no rows. An empty result is ordinary —
+   * a query waiting on a variable nobody has set yet — and a saved layer on it
+   * needs its columns to exist: without them kepler parks the layer as pending,
+   * and saving the map configuration then drops it.
+   */
+  columns?: KeplerColumn[];
   /**
    * A flow layer to add for this dataset, when the query is origin-destination.
    * kepler does not auto-detect flow layers, so the panel adds it explicitly.
@@ -85,10 +92,12 @@ export function framesToDatasets(
     // is the layers that ride along: kepler auto-detects points and geometry
     // but neither trips (its heuristic wants a column named `id`) nor flows, so
     // the panel supplies those two itself.
+    const rows = toKeplerRows(frame, roles);
     return {
       id,
       label,
-      rows: toKeplerRows(frame, roles),
+      rows,
+      columns: rows.length === 0 ? toKeplerColumns(frame, roles) : undefined,
       tripLayer: buildTripLayer(roles, id) ?? undefined,
       flowLayer: buildFlows(roles, id, { renderingMode: opts.flowRenderMode }) ?? undefined,
     };

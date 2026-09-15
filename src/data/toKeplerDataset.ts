@@ -1,4 +1,4 @@
-import { DataFrame } from '@grafana/data';
+import { DataFrame, FieldType } from '@grafana/data';
 
 import { FieldRoles } from './detectFields';
 import { wkbToGeoJson } from './wkbToGeoJson';
@@ -68,6 +68,37 @@ export const KEPLER_COLUMN: Record<RenamedRole, string> = {
   count: 'count',
 };
 
+/** A column as kepler will know it: its kepler name and the Grafana type behind it. */
+export interface KeplerColumn {
+  name: string;
+  type: FieldType;
+}
+
+/**
+ * The columns `toKeplerRows` produces for a frame, in order.
+ *
+ * What a query that returned no rows still owes kepler: row objects carry the
+ * column names, so an empty result has none, and a saved layer reading those
+ * columns would stay parked until rows arrive.
+ */
+export function toKeplerColumns(frame: DataFrame, roles: FieldRoles): KeplerColumn[] {
+  const renames = keplerRenames(roles);
+  return frame.fields.map((field) => ({ name: renames.get(field.name) ?? field.name, type: field.type }));
+}
+
+/** Source column name → the name kepler reads it by, for every role that renames. */
+function keplerRenames(roles: FieldRoles): Map<string, string> {
+  const renames = new Map<string, string>();
+  for (const [role, sourceName] of Object.entries(roles)) {
+    const target = KEPLER_COLUMN[role as RenamedRole];
+    // A role with no kepler column — the wind ones — leaves its column alone.
+    if (sourceName && target) {
+      renames.set(sourceName, target);
+    }
+  }
+  return renames;
+}
+
 /**
  * Converts a Grafana DataFrame into plain row objects for kepler.
  *
@@ -82,14 +113,7 @@ export const KEPLER_COLUMN: Record<RenamedRole, string> = {
  * case rather than the odd one.
  */
 export function toKeplerRows(frame: DataFrame, roles: FieldRoles, indices?: number[]): KeplerRow[] {
-  const renames = new Map<string, string>();
-  for (const [role, sourceName] of Object.entries(roles)) {
-    const target = KEPLER_COLUMN[role as RenamedRole];
-    // A role with no kepler column — the wind ones — leaves its column alone.
-    if (sourceName && target) {
-      renames.set(sourceName, target);
-    }
-  }
+  const renames = keplerRenames(roles);
 
   const geometrySource = roles.geometry;
   const rows: KeplerRow[] = [];

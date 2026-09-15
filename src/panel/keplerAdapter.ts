@@ -10,6 +10,7 @@ import {
   removeDataset,
   removeFilter,
   removeLayer,
+  reorderLayer,
   toggleLayerAnimation,
   replaceDataInMap,
   setLayerAnimationTime,
@@ -26,7 +27,11 @@ import KeplerGlSchema, { datasetSchema, VERSIONS, type SavedDatasetV1 } from '@k
 import type { ProtoDataset } from '@kepler.gl/types';
 import type { Dispatch, Store } from 'redux';
 
+import { FieldType } from '@grafana/data';
+
 import type { PanelDataset } from '../data/framesToDatasets';
+import type { KeplerColumn } from '../data/toKeplerDataset';
+import type { LayerOrderEntry } from './layerOrderGuard';
 import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
 import { isPanelWmsId, wmsCalendarDatasetId, type WmsDataset } from '../data/wmsDataset';
 import { type EsriDataset } from '../data/esriDataset';
@@ -78,17 +83,47 @@ export type KeplerDataset = {
  *
  * `processRowObject` is what infers each column's type and analyzer, which is
  * how kepler decides what a column can be used for. Datasets it cannot process
- * (empty results, for instance) are dropped rather than passed on as null.
+ * are dropped rather than passed on as null. An empty result is not one of
+ * them: `processRowObject([])` returns a dataset with no fields, which is why a
+ * query that returned no rows goes through `columnsOnly` when its columns are
+ * known.
  */
 export function toKeplerDatasets(datasets: PanelDataset[]): KeplerDataset[] {
   const out: KeplerDataset[] = [];
-  for (const { id, label, rows } of datasets) {
-    const data = processRowObject(rows);
+  for (const { id, label, rows, columns } of datasets) {
+    const data = rows.length === 0 && columns?.length ? columnsOnly(columns) : processRowObject(rows);
     if (data) {
       out.push({ info: { id, label }, data });
     }
   }
   return out;
+}
+
+/**
+ * kepler fields for a query that returned no rows, and no rows.
+ *
+ * kepler builds fields by analysing values, so the columns go through the same
+ * analysis as a single stand-in row and the row is thrown away. Each stand-in
+ * is shaped like what `toKeplerRows` hands over for that type, so the dataset
+ * keeps its field types when a later refresh fills it in.
+ */
+function columnsOnly(columns: KeplerColumn[]): KeplerDataset['data'] | null {
+  const standIn = Object.fromEntries(columns.map(({ name, type }) => [name, standInValue(type)]));
+  const analysed = processRowObject([standIn]);
+  return analysed ? { ...analysed, rows: [] } : null;
+}
+
+function standInValue(type: FieldType): unknown {
+  switch (type) {
+    case FieldType.number:
+      return 0.5;
+    case FieldType.time:
+      return Date.now();
+    case FieldType.boolean:
+      return true;
+    default:
+      return 'text';
+  }
 }
 
 /**
@@ -966,6 +1001,23 @@ export function replaceDatasetData(dispatch: Dispatch, dataset: PanelDataset): v
       })
     )
   );
+}
+
+/**
+ * kepler's layer order, and how many saved layers are still parked waiting to
+ * be merged into it. Null before the instance has registered.
+ */
+export function readLayerOrder(store: Store): { layerOrder: LayerOrderEntry[]; pending: number } | null {
+  const visState = getVisState(store) as { layerOrder?: LayerOrderEntry[]; layerToBeMerged?: unknown[] } | null;
+  if (!visState) {
+    return null;
+  }
+  return { layerOrder: visState.layerOrder ?? [], pending: visState.layerToBeMerged?.length ?? 0 };
+}
+
+/** Puts the layers back in `order`, topmost first. */
+export function restoreLayerOrder(dispatch: Dispatch, order: string[]): void {
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, reorderLayer(order)));
 }
 
 /** Minimal view of the kepler vis-state these helpers read. */

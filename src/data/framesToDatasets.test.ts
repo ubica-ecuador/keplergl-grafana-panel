@@ -21,6 +21,29 @@ describe('framesToDatasets', () => {
     expect(dataset.rows[0]).toEqual({ latitude: -2.9, longitude: -79.0 });
   });
 
+  it('keeps the columns of a query that returned no rows', () => {
+    // An empty result is ordinary — the bunched pair before any row is clicked —
+    // and a saved layer on it still needs its columns to exist. Without them
+    // kepler parks the layer as pending, and saving the map drops it.
+    const frame = toDataFrame({
+      refId: 'B',
+      fields: [
+        { name: 'unidad', type: FieldType.string, values: [] },
+        { name: 'lat', type: FieldType.number, values: [] },
+        { name: 'lon', type: FieldType.number, values: [] },
+      ],
+    });
+
+    const [dataset] = framesToDatasets([frame]);
+
+    expect(dataset.rows).toEqual([]);
+    expect(dataset.columns).toEqual([
+      { name: 'unidad', type: FieldType.string },
+      { name: 'latitude', type: FieldType.number },
+      { name: 'longitude', type: FieldType.number },
+    ]);
+  });
+
   it('keeps a trip query tabular and attaches a trip layer', () => {
     const frame = toDataFrame({
       refId: 'A',

@@ -51,6 +51,7 @@ import { useWmsTimeline } from './useWmsTimeline';
 import { useEsriTimeline } from './useEsriTimeline';
 import { useZarrTimeline } from './useZarrTimeline';
 import { useViewportGuard } from './useViewportGuard';
+import { useLayerOrderGuard } from './useLayerOrderGuard';
 import { savedViewportOf } from './viewportGuard';
 import { useViewportSync } from './useViewportSync';
 import type { ViewportVariables } from './viewportSync';
@@ -196,6 +197,8 @@ export function KeplerMap({
   // dates came from.
   const wms = useWmsCalendar(wmsLayers);
 
+  const captureLayerOrder = useLayerOrderGuard(store);
+
   useEffect(() => {
     // A saved tileset is content in its own right: a panel whose map is one
     // vector tile layer over a base map has no query rows at all, and waiting
@@ -241,6 +244,10 @@ export function KeplerMap({
       // view state echo can overwrite it — so arm the guard that defends it.
       setGuardArm((n) => n + 1);
     } else {
+      // Before any dataset is replaced: kepler parks the layers of each one and
+      // merges them back, and with two or more queries it can merge them back
+      // reversed. The guard remembers the order and puts it back.
+      captureLayerOrder();
       refreshDatasets(store, store.dispatch, datasets);
       // Deliberately on the refresh path and never on rebuild. A rebuild frames
       // the viewport around the data and re-arms the viewport guard, so routing
@@ -259,7 +266,7 @@ export function KeplerMap({
       // endpoint or renderer; changing the year moves a `visConfig` instead.
       refreshEsri(store, store.dispatch, esriLayers);
     }
-  }, [isReady, datasets, rasters, wms, zarrLayers, esriLayers, mapConfig, store]);
+  }, [isReady, datasets, rasters, wms, zarrLayers, esriLayers, mapConfig, store, captureLayerOrder]);
 
   useViewportGuard({ store, isReady, mapConfig, arm: guardArm });
 
