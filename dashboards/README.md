@@ -75,7 +75,7 @@ variables that run once per dashboard load and feed one another:
 | variable | what it does | measured |
 | --- | --- | --- |
 | `ov_release` | reads the latest release from Overture's STAC catalogue | ~0.4 s |
-| `ov_url` | finds, in that release's `collections.parquet`, the segment file whose bbox covers the isochrone service's bounds | ~0.6 s |
+| `ov_files` | reads that release's `collections.parquet` once and returns every file whose bbox covers the isochrone service's bounds — segment, land use, buildings — as one string | ~0.7 s |
 | `calles` | `CREATE TABLE IF NOT EXISTS "calles_ov_<release>"`: reads that one file with a bbox filter and cuts every road into 50 m pieces | 7–27 s cold, ~3 s once the table exists |
 
 The map query then joins those pieces to `cells.json`. Each piece takes the minute of the R5 cell
@@ -87,6 +87,8 @@ Three details break it silently if changed:
 - **The file URL is `https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/…`, not `s3://…`.**
   The data source sets no S3 region, and `s3://` resolves to us-east-1 and fails.
 - **The file is resolved in a variable, not inline**, because `read_parquet` cannot take a subquery.
+  It can take an expression over a literal, which is how `calles` picks its file out of `ov_files`:
+  `read_parquet(regexp_extract('${ov_files}', 'segment=([^;]*)', 1))`.
   Reading the whole theme with a glob instead costs ~90 s in file footers alone.
 - **The map query names `$calles` in a comment.** That is what makes Grafana wait for the table
   before running the query.
@@ -96,6 +98,80 @@ measured anywhere from 7.6 s to past the query deadline (31–51 s), against 5�
 DuckDB version outside Grafana, and the plugin has no timeout to raise. When the read misses, the
 map stays empty until a reload. Once the table exists it lives in the data source's memory until
 the plugin restarts.
+
+### Services along the way
+
+The map also carries the services the journey reaches, taken from Overture's **base** theme, which
+is OpenStreetMap, rather than from its `places` theme. That choice was measured, not assumed.
+Against the 167 official schools in Llactalab's `edpa_escuelas_universo` layer, `places` (99 %
+Meta) finds only 64 % of the public ones within 100 m, while base finds 75 %. And `places` counts
+117 "hospitals" where fewer than a third are one.
+
+Four categories, built by one more load-time variable, `servicios`, which fills
+`"servicios_ov_<release>"`:
+
+| category | source | rule | in the table |
+| --- | --- | --- | --- |
+| Salud | `land_use` | `class = 'hospital'` (subcentros de salud are tagged this way) | 23 |
+| Educación | `land_use` | `class IN ('school', 'college')`; kindergartens and universities are left out | 205 |
+| Parques | `land_use` | `class = 'park'`, named **or** at least 1 000 m² (drops 85 unnamed slivers) | 200 |
+| Centros comerciales | `building` + `land_use` | by **name**, at least 50 m²: base has no class for a mall | 13 |
+
+The last row is the weak one. `land_use` `retail`/`commercial` mixes markets, the Prefectura and a
+roundabout, and the buildings that are real malls (Mall del Río, Millennium Plaza, Monay Shopping)
+mostly carry no class at all. So they are matched by the pattern
+`mall|shopping|centro comercial|plaza de las américas|millennium plaza|racar plaza`, and a building
+inside a matching `land_use` polygon is not counted twice. A new mall with another kind of name will
+not appear until the pattern learns it.
+
+Their files come from the same `ov_files` value the streets use: `servicios` picks
+`land_use=` (three files) with `string_split(regexp_extract(...), ',')` and `building=` (one) with
+`regexp_extract` alone, inside `read_parquet` itself.
+
+A service is **reached** at the first minute any R5 cell touches its footprint (`ST_Intersects` on
+the polygon), not at its centroid, so a large park counts from its nearest edge. It is drawn at
+`ST_PointOnSurface`. Below the map:
+
+- how many of each are reachable within the cutoff;
+- the minutes to the nearest one (a dash when none is);
+- the cumulative count, minute by minute;
+- the list, nearest first.
+
+All four follow the **end of the map's time window**, not just the cutoff. The map panel runs with
+`timeSync: variables`, so its brush publishes its window into `t_ini`/`t_fin` once it comes to rest
+(or the animation pauses), and each panel counts only what is reached by the minute `t_fin` falls
+on, capped at the cutoff. `t_ini`/`t_fin` are seeded to the saved window (07:02–07:15), and on load
+the variables drive the brush, so a shared link restores the same moment. Measured on the bench:
+dragging the brush end to 07:08 sent exactly the four panel queries and none from the map, and the
+counts moved from 2/23/28/2 to 0/8/7/1.
+
+**Map categories** filters only the dots on the map. It is a multi-value custom variable bound to
+the `categoria` column through the panel's `variableMappings` (`source: filter`), so the plugin sets
+a kepler `multiSelect` filter instead of re-running a query; `All` removes it. No panel reads
+`$categoria`, which is what keeps it map-only. Measured by watching the network: picking Salud,
+then Parques + Centros comerciales, then All sent **no** query at all, and the clock filter kept its
+id and window throughout.
+
+**The STAC index can throttle.** On 2026-09-15, after a day of heavy testing, CloudFront in front
+of `stac.overturemaps.org` answered **429 to every request from one IP**, even a single HEAD, while
+`catalog.json` still answered 200. The dashboard kept working only because both tables already
+existed in memory: the three variables that each read `collections.parquet` failed together, and
+the `CREATE`s behind them failed on an empty file list. A freshly restarted Grafana on a throttled
+IP would show an empty map. The server logged no 429 in the previous 72 hours.
+
+What changed because of it: the index is now read **once per load, never in parallel**. `ov_files`
+returns every file the dashboard needs as one plain string,
+`building=<url>;land_use=<url>,<url>,<url>;segment=<url>`, and `calles` and `servicios` pick theirs
+out of it inside `read_parquet` with `regexp_extract` (plus `string_split` for a list).
+`read_parquet` refuses a subquery but accepts an expression over a literal, and after interpolation
+`'${ov_files}'` is exactly that. It used to be three variables — `ov_url`, `ov_lu`, `ov_bu` — which
+Grafana fired at the same moment because each depended only on `ov_release`. That reduces the
+pressure on the index; it does not remove the dependency. A throttled first load still leaves the
+tables uncreated until a reload succeeds. Measured against the server: `ov_files` 0.7 s, the
+streets' read 3.5 s, the services' read 7.0 s.
+
+Measured: building the table costs ~27 s cold on the bench and ~7 s of S3 reads on the server. The
+panel queries run in ~0.05 s each.
 
 It needs the isochrone service too, so it comes in the same two variants as `r5-accesibilidad`:
 `r5-calles-deployed.json` differs only in calling `http://iso-cuenca:8099` where the bench copy

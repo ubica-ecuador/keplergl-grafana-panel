@@ -25,9 +25,9 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Streets are Overture Maps segments, read straight from its GeoParquet on S3 and cut into 50 m pieces in DuckDB. Each piece takes the travel time of the R5 cell under its midpoint. Click to move the origin; press play to watch the city light up minute by minute.",
+      "description": "Streets are Overture Maps segments, read straight from its GeoParquet on S3 and cut into 50 m pieces in DuckDB. Each piece takes the travel time of the R5 cell under its midpoint. The dots are services from Overture's base theme (OpenStreetMap): Salud, Educación, Parques and Centros comerciales, each shown at the minute R5 first reaches its footprint. Click to move the origin; press play to watch the city light up minute by minute.",
       "gridPos": {
-        "h": 26,
+        "h": 19,
         "w": 24,
         "x": 0,
         "y": 0
@@ -148,11 +148,13 @@
                 {
                   "animationWindow": "incremental",
                   "dataId": [
-                    "grafana-A"
+                    "grafana-A",
+                    "grafana-C"
                   ],
                   "enabled": true,
                   "id": "reloj-calles",
                   "name": [
+                    "time",
                     "time"
                   ],
                   "plotType": {
@@ -194,13 +196,28 @@
                         "name": "class"
                       }
                     ],
-                    "grafana-B": []
+                    "grafana-B": [],
+                    "grafana-C": [
+                      {
+                        "format": null,
+                        "name": "nombre"
+                      },
+                      {
+                        "format": null,
+                        "name": "categoria"
+                      },
+                      {
+                        "format": null,
+                        "name": "minutos"
+                      }
+                    ]
                   }
                 }
               },
               "layerBlending": "additive",
               "layerOrder": [
                 "origen",
+                "servicios",
                 "core",
                 "glow"
               ],
@@ -311,6 +328,83 @@
                     "colorScale": "quantile",
                     "sizeScale": "linear",
                     "strokeColorScale": "quantile"
+                  }
+                },
+                {
+                  "config": {
+                    "color": [
+                      255,
+                      210,
+                      63
+                    ],
+                    "columnMode": "points",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "dataId": "grafana-C",
+                    "hidden": false,
+                    "highlightColor": [
+                      255,
+                      255,
+                      255,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Services",
+                    "visConfig": {
+                      "allowHover": true,
+                      "colorRange": {
+                        "category": "Custom",
+                        "colorMap": [
+                          [
+                            "Salud",
+                            "#FF4B4B"
+                          ],
+                          [
+                            "Educación",
+                            "#FFD23F"
+                          ],
+                          [
+                            "Parques",
+                            "#7CF36B"
+                          ],
+                          [
+                            "Centros comerciales",
+                            "#FF8A1F"
+                          ]
+                        ],
+                        "colors": [
+                          "#FF4B4B",
+                          "#FFD23F",
+                          "#7CF36B",
+                          "#FF8A1F"
+                        ],
+                        "name": "servicios",
+                        "type": "custom"
+                      },
+                      "filled": true,
+                      "fixedRadius": false,
+                      "opacity": 0.95,
+                      "outline": false,
+                      "radius": 38,
+                      "radiusRange": [
+                        0,
+                        50
+                      ],
+                      "thickness": 2
+                    }
+                  },
+                  "id": "servicios",
+                  "type": "point",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "categoria",
+                      "type": "string"
+                    },
+                    "colorScale": "customOrdinal",
+                    "sizeField": null,
+                    "sizeScale": "linear"
                   }
                 },
                 {
@@ -588,7 +682,11 @@
         "rasterPainted": false,
         "saveRequest": 1,
         "showSidePanel": false,
-        "timeSync": "off",
+        "timeSync": "variables",
+        "timeVariables": {
+          "from": "t_ini",
+          "to": "t_fin"
+        },
         "tripLayerMode": "table",
         "variableMappings": [
           {
@@ -596,6 +694,11 @@
             "source": "coordinate",
             "variable": "lat",
             "variableTo": "lng"
+          },
+          {
+            "field": "categoria",
+            "source": "filter",
+            "variable": "categoria"
           }
         ]
       },
@@ -618,10 +721,568 @@
           "format": 1,
           "rawSql": "SELECT try_cast($lat AS DOUBLE) AS latitude, try_cast($lng AS DOUBLE) AS longitude",
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "-- Waits on $servicios, which materialises Overture's services once per dashboard load.\nWITH alcance AS (\n  SELECT s.id, s.categoria, s.nombre, s.latitude, s.longitude, min(c.minutos) AS minutos\n  FROM \"servicios_ov_${ov_release:raw}\" s\n  JOIN (SELECT minutos, ST_GeomFromHEXWKB(geom) AS cg FROM read_json_auto('http://host.docker.internal:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff)) c\n    ON ST_Intersects(s.g, c.cg)\n  GROUP BY ALL\n)\nSELECT categoria, nombre, minutos, latitude, longitude,\n       (($fecha || ' 07:00:00')::TIMESTAMP + INTERVAL (minutos) MINUTE) AS time\nFROM alcance",
+          "refId": "C"
         }
       ],
       "title": "Every street reachable from the white dot, coloured by the minute R5 reaches it",
       "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "How many of each kind of service R5 reaches from the white dot by the end of the map's time window — drag the brush or pause the animation and this follows. Never past the cutoff. The Map categories filter does not apply here.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "text",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Salud"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FF4B4B",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Educación"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FFD23F",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Parques"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#7CF36B",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Centros comerciales"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FF8A1F",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 0,
+        "y": 19
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 13,
+          "valueSize": 30
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "-- Waits on $servicios. Counts what is reached by the end of the map's time window ($t_fin).\nWITH alcance AS (\n  SELECT s.id, s.categoria, s.nombre, s.latitude, s.longitude, min(c.minutos) AS minutos\n  FROM \"servicios_ov_${ov_release:raw}\" s\n  JOIN (SELECT minutos, ST_GeomFromHEXWKB(geom) AS cg FROM read_json_auto('http://host.docker.internal:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff)) c\n    ON ST_Intersects(s.g, c.cg)\n  GROUP BY ALL\n)\nSELECT\n       count(DISTINCT id) FILTER (WHERE categoria = 'Salud') AS \"Salud\",\n       count(DISTINCT id) FILTER (WHERE categoria = 'Educación') AS \"Educación\",\n       count(DISTINCT id) FILTER (WHERE categoria = 'Parques') AS \"Parques\",\n       count(DISTINCT id) FILTER (WHERE categoria = 'Centros comerciales') AS \"Centros comerciales\"\nFROM alcance WHERE minutos <= greatest(0, least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n    try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)), try_cast($cutoff AS INTEGER)),\n  try_cast($cutoff AS INTEGER)))",
+          "refId": "A"
+        }
+      ],
+      "title": "Services reached by the end of the time window",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Travel time to the closest service of each kind among those reached by the end of the map's time window. A dash means none is reached yet.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "text",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "m"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Salud"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FF4B4B",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Educación"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FFD23F",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Parques"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#7CF36B",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Centros comerciales"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FF8A1F",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 19
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 13,
+          "valueSize": 30
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "-- Waits on $servicios. Nearest of each kind reached by the end of the map's time window ($t_fin).\nWITH alcance AS (\n  SELECT s.id, s.categoria, s.nombre, s.latitude, s.longitude, min(c.minutos) AS minutos\n  FROM \"servicios_ov_${ov_release:raw}\" s\n  JOIN (SELECT minutos, ST_GeomFromHEXWKB(geom) AS cg FROM read_json_auto('http://host.docker.internal:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff)) c\n    ON ST_Intersects(s.g, c.cg)\n  GROUP BY ALL\n)\nSELECT\n       min(minutos) FILTER (WHERE categoria = 'Salud') AS \"Salud\",\n       min(minutos) FILTER (WHERE categoria = 'Educación') AS \"Educación\",\n       min(minutos) FILTER (WHERE categoria = 'Parques') AS \"Parques\",\n       min(minutos) FILTER (WHERE categoria = 'Centros comerciales') AS \"Centros comerciales\"\nFROM alcance WHERE minutos <= greatest(0, least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n    try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)), try_cast($cutoff AS INTEGER)),\n  try_cast($cutoff AS INTEGER)))",
+          "refId": "A"
+        }
+      ],
+      "title": "Minutes to the nearest",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Cumulative count of each kind of service reached by every minute of the journey, up to the end of the map's time window.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "unit": "locale"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Salud"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FF4B4B",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Educación"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FFD23F",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Parques"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#7CF36B",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Centros comerciales"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FF8A1F",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Minutes"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 14,
+        "x": 0,
+        "y": 24
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "xField": "Minutes"
+      },
+      "pluginVersion": "13.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "-- Waits on $servicios. Services reached by each minute, up to the end of the map's time window ($t_fin).\nWITH alcance AS (\n  SELECT s.id, s.categoria, s.nombre, s.latitude, s.longitude, min(c.minutos) AS minutos\n  FROM \"servicios_ov_${ov_release:raw}\" s\n  JOIN (SELECT minutos, ST_GeomFromHEXWKB(geom) AS cg FROM read_json_auto('http://host.docker.internal:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff)) c\n    ON ST_Intersects(s.g, c.cg)\n  GROUP BY ALL\n),\nm AS (SELECT range AS minuto FROM range(0, (greatest(0, least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n    try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)), try_cast($cutoff AS INTEGER)),\n  try_cast($cutoff AS INTEGER))))::BIGINT + 1))\nSELECT m.minuto AS \"Minutes\",\n       count(DISTINCT a.id) FILTER (WHERE a.categoria = 'Salud' AND a.minutos <= m.minuto) AS \"Salud\",\n       count(DISTINCT a.id) FILTER (WHERE a.categoria = 'Educación' AND a.minutos <= m.minuto) AS \"Educación\",\n       count(DISTINCT a.id) FILTER (WHERE a.categoria = 'Parques' AND a.minutos <= m.minuto) AS \"Parques\",\n       count(DISTINCT a.id) FILTER (WHERE a.categoria = 'Centros comerciales' AND a.minutos <= m.minuto) AS \"Centros comerciales\"\nFROM m LEFT JOIN alcance a ON true\nGROUP BY 1 ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Services reached, minute by minute",
+      "type": "trend"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Every service reached by the end of the map's time window, nearest first. Names come from OpenStreetMap through Overture; an unnamed one shows its category.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Category"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "Centros comerciales": {
+                        "color": "#FF8A1F",
+                        "index": 3
+                      },
+                      "Educación": {
+                        "color": "#FFD23F",
+                        "index": 1
+                      },
+                      "Parques": {
+                        "color": "#7CF36B",
+                        "index": 2
+                      },
+                      "Salud": {
+                        "color": "#FF4B4B",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Minutes"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "m"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 14,
+        "y": 24
+      },
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "count"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "Minutes"
+          }
+        ]
+      },
+      "pluginVersion": "13.2.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "-- Waits on $servicios. Every service reached by the end of the map's time window ($t_fin), nearest first.\nWITH alcance AS (\n  SELECT s.id, s.categoria, s.nombre, s.latitude, s.longitude, min(c.minutos) AS minutos\n  FROM \"servicios_ov_${ov_release:raw}\" s\n  JOIN (SELECT minutos, ST_GeomFromHEXWKB(geom) AS cg FROM read_json_auto('http://host.docker.internal:8099/cells.json?' || 'lat=' || $lat || '&lon=' || $lng || '&date=' || $fecha ||\n         '&calle=' || $calle || '&transit=${publico:csv}' ||\n         '&walk=' || $apie || '&rides=' || $trasbordos || '&max=' || $cutoff)) c\n    ON ST_Intersects(s.g, c.cg)\n  GROUP BY ALL\n)\nSELECT nombre AS \"Name\", categoria AS \"Category\", minutos AS \"Minutes\"\nFROM alcance WHERE minutos <= greatest(0, least(coalesce(date_diff('minute', ($fecha || ' 07:00:00')::TIMESTAMP,\n    try_cast(try_cast($t_fin AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)), try_cast($cutoff AS INTEGER)),\n  try_cast($cutoff AS INTEGER)))\nORDER BY minutos, categoria, nombre",
+          "refId": "A"
+        }
+      ],
+      "title": "Services reached",
+      "type": "table"
     }
   ],
   "preload": false,
@@ -636,25 +1297,25 @@
     "list": [
       {
         "current": {
-          "text": "-2.9236",
-          "value": "-2.9236"
+          "text": "-2.901111",
+          "value": "-2.901111"
         },
         "hide": 2,
         "label": "Latitude",
         "name": "lat",
-        "query": "-2.9236",
+        "query": "-2.901111",
         "skipUrlSync": false,
         "type": "textbox"
       },
       {
         "current": {
-          "text": "-78.9933",
-          "value": "-78.9933"
+          "text": "-79.005801",
+          "value": "-79.005801"
         },
         "hide": 2,
         "label": "Longitude",
         "name": "lng",
-        "query": "-78.9933",
+        "query": "-79.005801",
         "skipUrlSync": false,
         "type": "textbox"
       },
@@ -691,12 +1352,10 @@
         "allowCustomValue": true,
         "current": {
           "text": [
-            "Bus",
-            "Tram"
+            "None"
           ],
           "value": [
-            "BUS",
-            "TRAM"
+            "none"
           ]
         },
         "hide": 0,
@@ -762,6 +1421,50 @@
         "valuesFormat": "csv"
       },
       {
+        "allowCustomValue": false,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "description": "Only filters the dots on the map. The panels below keep counting every category.",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Map categories",
+        "multi": true,
+        "name": "categoria",
+        "options": [],
+        "query": "Salud,Educación,Parques,Centros comerciales",
+        "skipUrlSync": false,
+        "type": "custom",
+        "valuesFormat": "csv"
+      },
+      {
+        "current": {
+          "text": "2026-09-02T07:02:00.000Z",
+          "value": "2026-09-02T07:02:00.000Z"
+        },
+        "hide": 2,
+        "name": "t_ini",
+        "query": "2026-09-02T07:02:00.000Z",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "2026-09-02T07:15:00.000Z",
+          "value": "2026-09-02T07:15:00.000Z"
+        },
+        "hide": 2,
+        "name": "t_fin",
+        "query": "2026-09-02T07:15:00.000Z",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
         "allowCustomValue": true,
         "current": {
           "text": "",
@@ -795,13 +1498,13 @@
           "type": "motherduck-duckdb-datasource",
           "uid": "duckdb"
         },
-        "definition": "SELECT replace(assets.aws.alternate.s3.href, 's3://overturemaps-us-west-2/',\n               'https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/') AS href\nFROM 'https://stac.overturemaps.org/${ov_release}/collections.parquet'\nWHERE collection = 'segment' AND bbox.xmin <= -78.87 AND bbox.xmax >= -79.11 AND bbox.ymin <= -2.76 AND bbox.ymax >= -3.02",
+        "definition": "-- One read of Overture's STAC index per load: every file this dashboard needs, as\n-- 'building=<url>;land_use=<url>,<url>,...;segment=<url>'. calles and servicios pick theirs out of it.\nSELECT string_agg(collection || '=' || hrefs, ';' ORDER BY collection) FROM (\n  SELECT collection,\n         string_agg(replace(assets.aws.alternate.s3.href, 's3://overturemaps-us-west-2/',\n                            'https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/'), ',' ORDER BY id) AS hrefs\n  FROM 'https://stac.overturemaps.org/${ov_release}/collections.parquet'\n  WHERE collection IN ('segment', 'land_use', 'building') AND bbox.xmin <= -78.87 AND bbox.xmax >= -79.11 AND bbox.ymin <= -2.76 AND bbox.ymax >= -3.02\n  GROUP BY collection)",
         "hide": 2,
         "includeAll": false,
         "multi": false,
-        "name": "ov_url",
+        "name": "ov_files",
         "options": [],
-        "query": "SELECT replace(assets.aws.alternate.s3.href, 's3://overturemaps-us-west-2/',\n               'https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/') AS href\nFROM 'https://stac.overturemaps.org/${ov_release}/collections.parquet'\nWHERE collection = 'segment' AND bbox.xmin <= -78.87 AND bbox.xmax >= -79.11 AND bbox.ymin <= -2.76 AND bbox.ymax >= -3.02",
+        "query": "-- One read of Overture's STAC index per load: every file this dashboard needs, as\n-- 'building=<url>;land_use=<url>,<url>,...;segment=<url>'. calles and servicios pick theirs out of it.\nSELECT string_agg(collection || '=' || hrefs, ';' ORDER BY collection) FROM (\n  SELECT collection,\n         string_agg(replace(assets.aws.alternate.s3.href, 's3://overturemaps-us-west-2/',\n                            'https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/'), ',' ORDER BY id) AS hrefs\n  FROM 'https://stac.overturemaps.org/${ov_release}/collections.parquet'\n  WHERE collection IN ('segment', 'land_use', 'building') AND bbox.xmin <= -78.87 AND bbox.xmax >= -79.11 AND bbox.ymin <= -2.76 AND bbox.ymax >= -3.02\n  GROUP BY collection)",
         "refresh": 1,
         "regex": "",
         "regexApplyTo": "value",
@@ -819,16 +1522,39 @@
           "type": "motherduck-duckdb-datasource",
           "uid": "duckdb"
         },
-        "definition": "CREATE TABLE IF NOT EXISTS \"calles_ov_${ov_release}\" AS\nWITH s AS (\n  SELECT id, class, geometry AS g,\n         greatest(1, ceil(ST_Length(geometry) * 111320 / 50))::INT AS n\n  FROM read_parquet('${ov_url}')\n  WHERE subtype = 'road' AND bbox.xmin <= -78.87 AND bbox.xmax >= -79.11 AND bbox.ymin <= -2.76 AND bbox.ymax >= -3.02\n)\nSELECT id, class, ST_LineSubstring(g, i / n, (i + 1) / n) AS g FROM s, range(n) r(i)",
+        "definition": "CREATE TABLE IF NOT EXISTS \"calles_ov_${ov_release}\" AS\nWITH s AS (\n  SELECT id, class, geometry AS g,\n         greatest(1, ceil(ST_Length(geometry) * 111320 / 50))::INT AS n\n  FROM read_parquet(regexp_extract('${ov_files}', 'segment=([^;]*)', 1))\n  WHERE subtype = 'road' AND bbox.xmin <= -78.87 AND bbox.xmax >= -79.11 AND bbox.ymin <= -2.76 AND bbox.ymax >= -3.02\n)\nSELECT id, class, ST_LineSubstring(g, i / n, (i + 1) / n) AS g FROM s, range(n) r(i)",
         "hide": 2,
         "includeAll": false,
         "multi": false,
         "name": "calles",
         "options": [],
-        "query": "CREATE TABLE IF NOT EXISTS \"calles_ov_${ov_release}\" AS\nWITH s AS (\n  SELECT id, class, geometry AS g,\n         greatest(1, ceil(ST_Length(geometry) * 111320 / 50))::INT AS n\n  FROM read_parquet('${ov_url}')\n  WHERE subtype = 'road' AND bbox.xmin <= -78.87 AND bbox.xmax >= -79.11 AND bbox.ymin <= -2.76 AND bbox.ymax >= -3.02\n)\nSELECT id, class, ST_LineSubstring(g, i / n, (i + 1) / n) AS g FROM s, range(n) r(i)",
+        "query": "CREATE TABLE IF NOT EXISTS \"calles_ov_${ov_release}\" AS\nWITH s AS (\n  SELECT id, class, geometry AS g,\n         greatest(1, ceil(ST_Length(geometry) * 111320 / 50))::INT AS n\n  FROM read_parquet(regexp_extract('${ov_files}', 'segment=([^;]*)', 1))\n  WHERE subtype = 'road' AND bbox.xmin <= -78.87 AND bbox.xmax >= -79.11 AND bbox.ymin <= -2.76 AND bbox.ymax >= -3.02\n)\nSELECT id, class, ST_LineSubstring(g, i / n, (i + 1) / n) AS g FROM s, range(n) r(i)",
         "refresh": 1,
         "regex": "",
         "regexApplyTo": "value",
+        "skipUrlSync": true,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "allowCustomValue": true,
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "definition": "CREATE TABLE IF NOT EXISTS \"servicios_ov_${ov_release}\" AS\nWITH lu AS (\n  SELECT id, subtype, class, names.primary AS nombre, ST_GeomFromText(ST_AsText(geometry)) AS g\n  FROM read_parquet(string_split(regexp_extract('${ov_files}', 'land_use=([^;]*)', 1), ','))\n  WHERE bbox.xmin <= -78.87 AND bbox.xmax >= -79.11 AND bbox.ymin <= -2.76 AND bbox.ymax >= -3.02 AND class IN ('hospital', 'school', 'college', 'park', 'retail', 'commercial')\n),\nbu AS (\n  SELECT id, names.primary AS nombre, ST_GeomFromText(ST_AsText(geometry)) AS g\n  FROM read_parquet(regexp_extract('${ov_files}', 'building=([^;]*)', 1))\n  WHERE bbox.xmin <= -78.87 AND bbox.xmax >= -79.11 AND bbox.ymin <= -2.76 AND bbox.ymax >= -3.02 AND regexp_matches(lower(names.primary), 'mall|shopping|centro comercial|plaza de las am[eé]ricas|mill?enn?ium plaza|racar plaza')\n),\ns AS (\n  SELECT id, 'Salud' AS categoria, nombre, g FROM lu WHERE class = 'hospital'\n  UNION ALL SELECT id, 'Educación', nombre, g FROM lu WHERE class IN ('school', 'college')\n  UNION ALL SELECT id, 'Parques', nombre, g FROM lu WHERE class = 'park' AND (nombre IS NOT NULL OR ST_Area_Spheroid(g) >= 1000)\n  UNION ALL SELECT id, 'Centros comerciales', nombre, g FROM lu\n    WHERE class IN ('retail', 'commercial') AND regexp_matches(lower(nombre), 'mall|shopping|centro comercial|plaza de las am[eé]ricas|mill?enn?ium plaza|racar plaza') AND ST_Area_Spheroid(g) >= 50\n  UNION ALL SELECT b.id, 'Centros comerciales', b.nombre, b.g FROM bu b\n    WHERE ST_Area_Spheroid(b.g) >= 50\n      AND NOT EXISTS (SELECT 1 FROM lu WHERE lu.class IN ('retail', 'commercial') AND ST_Intersects(lu.g, b.g))\n)\nSELECT id, categoria, coalesce(nombre, categoria) AS nombre, g,\n       ST_Y(ST_PointOnSurface(g)) AS latitude, ST_X(ST_PointOnSurface(g)) AS longitude\nFROM s",
+        "hide": 2,
+        "includeAll": false,
+        "multi": false,
+        "name": "servicios",
+        "options": [],
+        "query": "CREATE TABLE IF NOT EXISTS \"servicios_ov_${ov_release}\" AS\nWITH lu AS (\n  SELECT id, subtype, class, names.primary AS nombre, ST_GeomFromText(ST_AsText(geometry)) AS g\n  FROM read_parquet(string_split(regexp_extract('${ov_files}', 'land_use=([^;]*)', 1), ','))\n  WHERE bbox.xmin <= -78.87 AND bbox.xmax >= -79.11 AND bbox.ymin <= -2.76 AND bbox.ymax >= -3.02 AND class IN ('hospital', 'school', 'college', 'park', 'retail', 'commercial')\n),\nbu AS (\n  SELECT id, names.primary AS nombre, ST_GeomFromText(ST_AsText(geometry)) AS g\n  FROM read_parquet(regexp_extract('${ov_files}', 'building=([^;]*)', 1))\n  WHERE bbox.xmin <= -78.87 AND bbox.xmax >= -79.11 AND bbox.ymin <= -2.76 AND bbox.ymax >= -3.02 AND regexp_matches(lower(names.primary), 'mall|shopping|centro comercial|plaza de las am[eé]ricas|mill?enn?ium plaza|racar plaza')\n),\ns AS (\n  SELECT id, 'Salud' AS categoria, nombre, g FROM lu WHERE class = 'hospital'\n  UNION ALL SELECT id, 'Educación', nombre, g FROM lu WHERE class IN ('school', 'college')\n  UNION ALL SELECT id, 'Parques', nombre, g FROM lu WHERE class = 'park' AND (nombre IS NOT NULL OR ST_Area_Spheroid(g) >= 1000)\n  UNION ALL SELECT id, 'Centros comerciales', nombre, g FROM lu\n    WHERE class IN ('retail', 'commercial') AND regexp_matches(lower(nombre), 'mall|shopping|centro comercial|plaza de las am[eé]ricas|mill?enn?ium plaza|racar plaza') AND ST_Area_Spheroid(g) >= 50\n  UNION ALL SELECT b.id, 'Centros comerciales', b.nombre, b.g FROM bu b\n    WHERE ST_Area_Spheroid(b.g) >= 50\n      AND NOT EXISTS (SELECT 1 FROM lu WHERE lu.class IN ('retail', 'commercial') AND ST_Intersects(lu.g, b.g))\n)\nSELECT id, categoria, coalesce(nombre, categoria) AS nombre, g,\n       ST_Y(ST_PointOnSurface(g)) AS latitude, ST_X(ST_PointOnSurface(g)) AS longitude\nFROM s",
+        "refresh": 1,
+        "regex": "",
         "skipUrlSync": true,
         "sort": 0,
         "type": "query"
