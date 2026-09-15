@@ -17,7 +17,9 @@ search AS (
   FROM aoi
 ),
 features AS (
-  SELECT name, geom, unnest(json_extract(r->>'body', '$.features[*]')) AS f
+  -- Un cuerpo que no es JSON (página de error, o el vacío del tope de 10 s)
+  -- no debe romper el panel: TRY lo vuelve NULL y unnest(NULL) da cero filas.
+  SELECT name, geom, unnest(TRY(json_extract(r->>'body', '$.features[*]'))) AS f
   FROM search
 ),
 scenes AS (

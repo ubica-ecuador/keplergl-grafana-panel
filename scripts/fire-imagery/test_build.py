@@ -120,6 +120,15 @@ class SqlTest(unittest.TestCase):
         self.assertTrue(full.endswith(build.read_sql('map_scenes')))
         self.assertNotIn('http_get', build.panel_sql('map_box', with_search=False))
 
+    def test_catalogue_body_is_parsed_defensively(self):
+        # Un cuerpo que no es JSON (una página de error, o el vacío del tope de
+        # tiempo) no debe romper el panel: TRY lo convierte en NULL.
+        for name in ('search', 'figures'):
+            sql = build.read_sql(name)
+            count = sql.count('json_extract(')
+            self.assertGreaterEqual(count, 1, name)
+            self.assertEqual(sql.count('TRY(json_extract('), count, name)
+
 
 if __name__ == '__main__':
     unittest.main()

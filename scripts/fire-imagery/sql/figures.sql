@@ -10,8 +10,10 @@ SELECT count(h.scene_id)                                   AS "Scenes",
        -- El estado y el recuento del catálogo, para que un fallo o un recorte no
        -- se lean como "no hay escenas".
        any_value(s.r->>'status')                           AS "HTTP",
-       CAST(json_extract(any_value(s.r->>'body'), '$.numberMatched') AS INTEGER)  AS "Matched",
-       CAST(json_extract(any_value(s.r->>'body'), '$.numberReturned') AS INTEGER) AS "Returned"
+       -- Un cuerpo que no es JSON no debe romper el panel: TRY lo vuelve NULL
+       -- (TRY no admite un agregado dentro, así que any_value va por fuera).
+       CAST(any_value(TRY(json_extract(s.r->>'body', '$.numberMatched'))) AS INTEGER)  AS "Matched",
+       CAST(any_value(TRY(json_extract(s.r->>'body', '$.numberReturned'))) AS INTEGER) AS "Returned"
 FROM aoi a
 JOIN search s ON s.name = a.name
 LEFT JOIN hit h ON h.name = a.name
