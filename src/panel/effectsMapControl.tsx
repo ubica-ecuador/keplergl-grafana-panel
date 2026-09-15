@@ -32,12 +32,17 @@ const StyledMapControlContextPanel = styled.div`
   }
 `;
 
+/* z-index 10 is kepler's own control column's. This overlay wraps that column, so
+   its value is the one that competes with the map's other absolute children — the
+   attribution, the scale and the loading badge, all at 1. Tied at 1, the
+   attribution comes later in the DOM and wins: on a short panel it covered the
+   legend button, and a click on the button opened kepler.gl/policy. */
 const StyledMapControlOverlay = styled.div<{ top?: number; rightPanelVisible: boolean }>`
   position: absolute;
   display: flex;
   top: ${(props) => props.top ?? 0}px;
   right: 0;
-  z-index: 1;
+  z-index: 10;
   pointer-events: none !important;
   & > * {
     pointer-events: all;
