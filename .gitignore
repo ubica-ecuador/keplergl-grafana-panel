@@ -100,6 +100,9 @@ testdata/fire/
 # HydroRIVERS — both public sources, both rebuilt by running the script.
 testdata/ancestry/
 testdata/hydro/
+# And `make-taxidata.py`: a week of 2015 NYC taxi trips, 83 MB, mirrored from
+# QuestDB's public demo for the nyc-taxi-live dashboard.
+testdata/taxi/
 
 # Where those two park the source archives they download, so a second run does
 # not fetch ~300 MB again. Not the repository-root `/.cache/` above, which is

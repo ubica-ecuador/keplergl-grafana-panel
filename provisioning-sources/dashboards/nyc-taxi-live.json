@@ -1,0 +1,1613 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Réplica del tablero de taxis de QuestDB sobre nuestro stack: una semana de 2015 repetida al ritmo del reloj de Nueva York, con flujos H3 animados, arcos con brush y DuckDB leyendo un Parquet local. Necesita testdata/make-taxidata.py.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "liveNow": false,
+  "panels": [
+    {
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "## Taxis de Nueva York, en vivo\nUna semana real de 2015 —3,09 millones de viajes— repetida al compás del reloj de Nueva York: el mismo día de la semana y la misma hora que allí ahora. Se refresca cada 5 segundos.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [],
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Cada línea animada une dos hexágonos H3 con viajes entre ellos; su grosor y color, cuántos. Los círculos de cada hexágono se parten en lo que sale y lo que llega. Todo se calcula en DuckDB sobre un Parquet local en cada refresco.",
+      "gridPos": {
+        "h": 20,
+        "w": 18,
+        "x": 0,
+        "y": 3
+      },
+      "id": 2,
+      "options": {
+        "basemap": "dark-matter",
+        "flowRenderMode": "animated-straight",
+        "followGrafanaTheme": false,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 24,
+              "dragRotate": true,
+              "isSplit": false,
+              "latitude": 40.705,
+              "longitude": -73.905,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_3D",
+              "pitch": 45,
+              "zoom": 11.2
+            },
+            "mapStyle": {
+              "styleType": "dark-matter",
+              "topLayerGroups": {},
+              "visibleLayerGroups": {
+                "border": false,
+                "building": false,
+                "label": true,
+                "land": true,
+                "road": true,
+                "water": true
+              }
+            },
+            "uiState": {
+              "mapControls": {
+                "mapLegend": {
+                  "active": false,
+                  "show": true
+                }
+              }
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "effects": [],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false
+                },
+                "tooltip": {
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": []
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "flow-grafana-A"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "columnMode": "H3",
+                    "columns": {
+                      "count": "count",
+                      "sourceH3": "source_h3",
+                      "targetH3": "target_h3"
+                    },
+                    "dataId": "grafana-A",
+                    "isVisible": true,
+                    "label": "Viajes · últimos 10 min",
+                    "visConfig": {
+                      "colorRange": {
+                        "category": "Custom",
+                        "colors": [
+                          "#b5176f",
+                          "#d6246e",
+                          "#f0386b",
+                          "#ff6b4a",
+                          "#ffa62b",
+                          "#ffe066"
+                        ],
+                        "name": "Viajes · últimos 10 min",
+                        "type": "sequential"
+                      },
+                      "darkBaseMapEnabled": true,
+                      "flowAdaptiveScalesEnabled": true,
+                      "flowClusteringEnabled": false,
+                      "flowFadeAmount": 20,
+                      "flowFadeEnabled": true,
+                      "flowLineCurviness": 1,
+                      "flowLineThicknessScale": 2.4,
+                      "flowLinesRenderingMode": "animated-straight",
+                      "flowLocationTotalsEnabled": true,
+                      "maxTopFlowsDisplayNum": 5000,
+                      "opacity": 1
+                    }
+                  },
+                  "id": "flow-grafana-A",
+                  "type": "flow",
+                  "visualChannels": {}
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "rasterColormap": "",
+        "rasterPainted": false,
+        "saveRequest": 0,
+        "showSidePanel": false,
+        "timeSync": "off",
+        "tripLayerMode": "table",
+        "variableMappings": [],
+        "viewportVariables": {},
+        "windDensity": 9000
+      },
+      "pluginVersion": "1.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Un flujo por par de hexágonos H3 (resolución 8, ~0,7 km²) con viajes que\n-- salieron en los últimos 10 minutos. origin_h3/dest_h3/trips son los nombres\n-- que el panel reconoce solo para montar la capa de flujo.\nSELECT pickup_h3_8 AS origin_h3,\n       dropoff_h3_8 AS dest_h3,\n       count(*)::BIGINT AS trips\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Pasada la medianoche del lunes, la ventana sigue en el final del domingo.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\n  AND pickup_h3_8 <> dropoff_h3_8\nGROUP BY 1, 2",
+          "refId": "A"
+        }
+      ],
+      "title": "Flujos · viajes que salieron en los últimos 10 minutos",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "La hora de la repetición: el mismo día de la semana y la misma hora que en Nueva York ahora, en septiembre de 2015.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "text",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 3
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^hora$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "valueSize": 34
+        },
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\nSELECT ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'][isodow(t)]\n       || ' ' || strftime(t, '%H:%M') AS hora\nFROM clock",
+          "refId": "A"
+        }
+      ],
+      "title": "Hora en Nueva York",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Viajes que ya empezaron y todavía no terminan.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#35c6dc",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 7
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^taxis$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "valueSize": 40
+        },
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- En tránsito: subieron en las últimas 3 horas y todavía no han bajado.\nSELECT count(*)::BIGINT AS taxis,\n       sum(passengers)::BIGINT AS pasajeros\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (pickup_time > t - INTERVAL 3 HOUR AND pickup_time <= t AND dropoff_time > t)\n   OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 3 HOUR AND pickup_time <= t + INTERVAL 7 DAY\n       AND dropoff_time > t + INTERVAL 7 DAY)",
+          "refId": "A"
+        }
+      ],
+      "title": "Taxis en tránsito",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Suma de pasajeros de los taxis en tránsito.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#7fe3ea",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 11
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^pasajeros$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "valueSize": 40
+        },
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- En tránsito: subieron en las últimas 3 horas y todavía no han bajado.\nSELECT count(*)::BIGINT AS taxis,\n       sum(passengers)::BIGINT AS pasajeros\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (pickup_time > t - INTERVAL 3 HOUR AND pickup_time <= t AND dropoff_time > t)\n   OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 3 HOUR AND pickup_time <= t + INTERVAL 7 DAY\n       AND dropoff_time > t + INTERVAL 7 DAY)",
+          "refId": "A"
+        }
+      ],
+      "title": "Pasajeros a bordo",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Viajes iniciados desde la medianoche de Nueva York.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#ffa62b",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 15
+      },
+      "id": 6,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^viajes$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "valueSize": 40
+        },
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Desde la medianoche de Nueva York. Los sum() van casteados: sin eso Grafana\n-- recibe un HUGEINT como texto y el stat no lo pinta.\nSELECT count(*)::BIGINT AS viajes,\n       sum(total)::DOUBLE AS recaudado\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE pickup_time >= date_trunc('day', t) AND pickup_time <= t",
+          "refId": "A"
+        }
+      ],
+      "title": "Viajes hoy",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Importe total cobrado (tarifa, recargos, peajes y propinas) desde la medianoche.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#ffe066",
+            "mode": "fixed"
+          },
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "currencyUSD"
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 19
+      },
+      "id": 7,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^recaudado$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "valueSize": 40
+        },
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Desde la medianoche de Nueva York. Los sum() van casteados: sin eso Grafana\n-- recibe un HUGEINT como texto y el stat no lo pinta.\nSELECT count(*)::BIGINT AS viajes,\n       sum(total)::DOUBLE AS recaudado\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE pickup_time >= date_trunc('day', t) AND pickup_time <= t",
+          "refId": "A"
+        }
+      ],
+      "title": "Recaudado hoy",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Recogidas por hexágono H3 de resolución 9 (~0,1 km²): la altura y el color dicen cuántas.",
+      "gridPos": {
+        "h": 16,
+        "w": 12,
+        "x": 0,
+        "y": 23
+      },
+      "id": 8,
+      "options": {
+        "basemap": "dark-matter",
+        "flowRenderMode": "animated-straight",
+        "followGrafanaTheme": false,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 29,
+              "dragRotate": true,
+              "isSplit": false,
+              "latitude": 40.727,
+              "longitude": -73.945,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_3D",
+              "pitch": 50,
+              "zoom": 11.4
+            },
+            "mapStyle": {
+              "styleType": "dark-matter",
+              "topLayerGroups": {},
+              "visibleLayerGroups": {
+                "border": false,
+                "building": false,
+                "label": true,
+                "land": true,
+                "road": true,
+                "water": true
+              }
+            },
+            "uiState": {
+              "mapControls": {
+                "mapLegend": {
+                  "active": false,
+                  "show": true
+                }
+              }
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "effects": [],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false
+                },
+                "tooltip": {
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "recogidas"
+                      }
+                    ]
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "recogidas"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "columns": {
+                      "hex_id": "h3"
+                    },
+                    "dataId": "grafana-A",
+                    "isVisible": true,
+                    "label": "Recogidas · últimos 10 min",
+                    "visConfig": {
+                      "colorRange": {
+                        "category": "Custom",
+                        "colors": [
+                          "#083d5c",
+                          "#0b5f86",
+                          "#0f86ad",
+                          "#18a9c9",
+                          "#35c6dc",
+                          "#7fe3ea"
+                        ],
+                        "name": "Recogidas · últimos 10 min",
+                        "type": "sequential"
+                      },
+                      "coverage": 0.85,
+                      "coverageRange": [
+                        0,
+                        1
+                      ],
+                      "elevationScale": 2.5,
+                      "enable3d": true,
+                      "enableElevationZoomFactor": true,
+                      "opacity": 0.85,
+                      "sizeRange": [
+                        0,
+                        300
+                      ]
+                    }
+                  },
+                  "id": "recogidas",
+                  "type": "hexagonId",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "recogidas",
+                      "type": "integer"
+                    },
+                    "colorScale": "quantile",
+                    "coverageScale": "linear",
+                    "sizeField": {
+                      "name": "recogidas",
+                      "type": "integer"
+                    },
+                    "sizeScale": "sqrt"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "rasterColormap": "",
+        "rasterPainted": false,
+        "saveRequest": 0,
+        "showSidePanel": false,
+        "timeSync": "off",
+        "tripLayerMode": "table",
+        "variableMappings": [],
+        "viewportVariables": {},
+        "windDensity": 9000
+      },
+      "pluginVersion": "1.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Recogidas de los últimos 10 minutos por hexágono H3 de resolución 9 (~0,1 km²).\nSELECT pickup_h3_9 AS h3,\n       count(*)::BIGINT AS recogidas\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Pasada la medianoche del lunes, la ventana sigue en el final del domingo.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\nGROUP BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Dónde se suben · últimos 10 minutos",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Bajadas por hexágono H3 de resolución 9. Comparado con el mapa de al lado se ve hacia dónde se vacía y se llena la ciudad a esta hora.",
+      "gridPos": {
+        "h": 16,
+        "w": 12,
+        "x": 12,
+        "y": 23
+      },
+      "id": 9,
+      "options": {
+        "basemap": "dark-matter",
+        "flowRenderMode": "animated-straight",
+        "followGrafanaTheme": false,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 29,
+              "dragRotate": true,
+              "isSplit": false,
+              "latitude": 40.727,
+              "longitude": -73.945,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_3D",
+              "pitch": 50,
+              "zoom": 11.4
+            },
+            "mapStyle": {
+              "styleType": "dark-matter",
+              "topLayerGroups": {},
+              "visibleLayerGroups": {
+                "border": false,
+                "building": false,
+                "label": true,
+                "land": true,
+                "road": true,
+                "water": true
+              }
+            },
+            "uiState": {
+              "mapControls": {
+                "mapLegend": {
+                  "active": false,
+                  "show": true
+                }
+              }
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "effects": [],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false
+                },
+                "tooltip": {
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "bajadas"
+                      }
+                    ]
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "bajadas"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "columns": {
+                      "hex_id": "h3"
+                    },
+                    "dataId": "grafana-A",
+                    "isVisible": true,
+                    "label": "Bajadas · últimos 10 min",
+                    "visConfig": {
+                      "colorRange": {
+                        "category": "Custom",
+                        "colors": [
+                          "#4a0f3a",
+                          "#7d1650",
+                          "#b31f5f",
+                          "#e0406a",
+                          "#ff7a59",
+                          "#ffb26b"
+                        ],
+                        "name": "Bajadas · últimos 10 min",
+                        "type": "sequential"
+                      },
+                      "coverage": 0.85,
+                      "coverageRange": [
+                        0,
+                        1
+                      ],
+                      "elevationScale": 2.5,
+                      "enable3d": true,
+                      "enableElevationZoomFactor": true,
+                      "opacity": 0.85,
+                      "sizeRange": [
+                        0,
+                        300
+                      ]
+                    }
+                  },
+                  "id": "bajadas",
+                  "type": "hexagonId",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "bajadas",
+                      "type": "integer"
+                    },
+                    "colorScale": "quantile",
+                    "coverageScale": "linear",
+                    "sizeField": {
+                      "name": "bajadas",
+                      "type": "integer"
+                    },
+                    "sizeScale": "sqrt"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "rasterColormap": "",
+        "rasterPainted": false,
+        "saveRequest": 0,
+        "showSidePanel": false,
+        "timeSync": "off",
+        "tripLayerMode": "table",
+        "variableMappings": [],
+        "viewportVariables": {},
+        "windDensity": 9000
+      },
+      "pluginVersion": "1.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Bajadas de los últimos 10 minutos por hexágono H3 de resolución 9.\nSELECT dropoff_h3_9 AS h3,\n       count(*)::BIGINT AS bajadas\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (dropoff_time > t - INTERVAL 10 MINUTE AND dropoff_time <= t)\n    -- Pasada la medianoche del lunes, la ventana sigue en el final del domingo.\n    OR (dropoff_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND dropoff_time <= t + INTERVAL 7 DAY)\n  )\nGROUP BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Dónde se bajan · últimos 10 minutos",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Cada arco es un viaje de los últimos 10 minutos, cian donde empieza y magenta donde termina. Con el cursor sobre el mapa solo quedan los arcos que empiezan o terminan a menos de 1 km. Debajo, en ámbar, los mismos viajes agregados de barrio a barrio (hexágonos H3 de ~5 km²); esas líneas no responden al cursor.",
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 39
+      },
+      "id": 10,
+      "options": {
+        "basemap": "dark-matter",
+        "flowRenderMode": "curved",
+        "followGrafanaTheme": false,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 32.88592394929953,
+              "dragRotate": true,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [
+                    40,
+                    63,
+                    93
+                  ],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [
+                    4,
+                    9,
+                    17
+                  ],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [
+                    114.75,
+                    114.75,
+                    114.75
+                  ],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [
+                    9,
+                    16,
+                    29
+                  ],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [
+                    17,
+                    35,
+                    48
+                  ]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": 40.72550142342595,
+              "longitude": -73.93440106201068,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_3D",
+              "maxPitch": 85,
+              "pitch": 64.80689936413478,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 11
+            },
+            "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
+              ],
+              "mapStyles": {},
+              "styleType": "dark-matter",
+              "threeDBuildingColor": [
+                15.035172933000911,
+                15.035172933000911,
+                15.035172933000911
+              ],
+              "topLayerGroups": {},
+              "visibleLayerGroups": {
+                "3d building": false,
+                "border": false,
+                "building": false,
+                "label": true,
+                "land": true,
+                "road": true,
+                "water": true
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false,
+                  "show": true
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [
+                {
+                  "animationWindow": "free",
+                  "dataId": [
+                    "grafana-B"
+                  ],
+                  "enabled": true,
+                  "id": "c526v1g3d",
+                  "name": [
+                    "pasajeros"
+                  ],
+                  "plotType": {
+                    "type": "histogram"
+                  },
+                  "speed": 1,
+                  "type": "range",
+                  "value": [
+                    1.09,
+                    6.1
+                  ],
+                  "view": "side"
+                },
+                {
+                  "animationWindow": "free",
+                  "dataId": [
+                    "grafana-B"
+                  ],
+                  "enabled": true,
+                  "id": "0fdmndn3th",
+                  "name": [
+                    "importe"
+                  ],
+                  "plotType": {
+                    "type": "histogram"
+                  },
+                  "speed": 1,
+                  "type": "range",
+                  "value": [
+                    1.7999999999999998,
+                    106.45
+                  ],
+                  "view": "side"
+                }
+              ],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": true,
+                  "size": 0.7
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": false,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "source_h3"
+                      },
+                      {
+                        "name": "target_h3"
+                      },
+                      {
+                        "name": "count"
+                      }
+                    ],
+                    "grafana-B": [
+                      {
+                        "name": "pasajeros"
+                      },
+                      {
+                        "name": "importe"
+                      }
+                    ]
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "arcos",
+                "flow-grafana-A"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "color": [
+                      53,
+                      198,
+                      220
+                    ],
+                    "columnMode": "points",
+                    "columns": {
+                      "lat0": "lat0",
+                      "lat1": "lat1",
+                      "lng0": "lng0",
+                      "lng1": "lng1"
+                    },
+                    "dataId": "grafana-B",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Viajes · últimos 10 min",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "colorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#4C0035",
+                          "#880030",
+                          "#B72F15",
+                          "#D6610A",
+                          "#EF9100",
+                          "#FFC300"
+                        ],
+                        "name": "Global Warming",
+                        "type": "sequential"
+                      },
+                      "opacity": 0.75,
+                      "sizeRange": [
+                        0,
+                        10
+                      ],
+                      "targetColor": [
+                        240,
+                        56,
+                        107
+                      ],
+                      "thickness": 0.7
+                    }
+                  },
+                  "id": "arcos",
+                  "type": "arc",
+                  "visualChannels": {
+                    "colorScale": "quantile",
+                    "sizeScale": "linear"
+                  }
+                },
+                {
+                  "config": {
+                    "color": [
+                      34,
+                      63,
+                      154
+                    ],
+                    "columnMode": "H3",
+                    "columns": {
+                      "count": "count",
+                      "sourceH3": "source_h3",
+                      "targetH3": "target_h3"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Barrio a barrio · últimos 10 min",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "colorRange": {
+                        "category": "Custom",
+                        "colors": [
+                          "#5c3a0a",
+                          "#8a5a0f",
+                          "#b87d16",
+                          "#e0a526",
+                          "#f7c64b",
+                          "#ffe08a"
+                        ],
+                        "name": "Barrio a barrio · últimos 10 min",
+                        "type": "sequential"
+                      },
+                      "darkBaseMapEnabled": true,
+                      "flowAdaptiveScalesEnabled": true,
+                      "flowClusteringEnabled": true,
+                      "flowFadeAmount": 11,
+                      "flowFadeEnabled": true,
+                      "flowLineCurviness": 1,
+                      "flowLineThicknessScale": 2.1,
+                      "flowLinesRenderingMode": "straight",
+                      "flowLocationTotalsEnabled": false,
+                      "maxTopFlowsDisplayNum": 5000,
+                      "opacity": 0.45
+                    }
+                  },
+                  "id": "flow-grafana-A",
+                  "type": "flow",
+                  "visualChannels": {
+                    "colorScale": "quantile",
+                    "sizeScale": "linear"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "rasterColormap": "",
+        "rasterPainted": false,
+        "saveRequest": 1,
+        "showSidePanel": false,
+        "timeSync": "off",
+        "tripLayerMode": "table",
+        "variableMappings": [],
+        "viewportVariables": {},
+        "windDensity": 9000
+      },
+      "pluginVersion": "1.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Los mismos viajes agregados a hexágonos grandes (H3 resolución 7, ~5 km²):\n-- de qué barrio a qué barrio, sin el detalle de cada calle.\nSELECT pickup_h3_7 AS origin_h3,\n       dropoff_h3_7 AS dest_h3,\n       count(*)::BIGINT AS trips\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Pasada la medianoche del lunes, la ventana sigue en el final del domingo.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\n  AND pickup_h3_7 <> dropoff_h3_7\nGROUP BY 1, 2",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Un arco por viaje de los últimos 10 minutos. pickup_lat/pickup_lon y\n-- dropoff_lat/dropoff_lon son nombres que el panel reconoce como origen y destino.\nSELECT pickup_lat, pickup_lon, dropoff_lat, dropoff_lon,\n       passengers AS pasajeros,\n       total AS importe\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Pasada la medianoche del lunes, la ventana sigue en el final del domingo.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )",
+          "refId": "B"
+        }
+      ],
+      "title": "Viaje por viaje · pasa el ratón por el mapa para ver qué sale y llega a cada zona",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#ffa62b",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        }
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 14,
+        "x": 0,
+        "y": 59
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Viajes por minuto desde la medianoche, devueltos como instantes de hoy para\n-- que el eje del tiempo de Grafana los ponga en su sitio.\nSELECT (time_bucket(INTERVAL 1 MINUTE, pickup_time)\n        + (date_trunc('day', now() AT TIME ZONE 'America/New_York') - date_trunc('day', t)))\n       AT TIME ZONE 'America/New_York' AS time,\n       count(*)::BIGINT AS \"Viajes por minuto\"\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE pickup_time >= date_trunc('day', t) AND pickup_time <= t\nGROUP BY 1\nORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Viajes por minuto, desde la medianoche",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Cada punto es un viaje pagado con propina en la última media hora.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#35c6dc",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 45,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "pointShape": "circle",
+            "pointSize": {
+              "fixed": 4
+            },
+            "pointStrokeWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "show": "points"
+          },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "currencyUSD"
+        }
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 10,
+        "x": 14,
+        "y": 59
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "mapping": "manual",
+        "series": [
+          {
+            "frame": {
+              "matcher": {
+                "id": "byIndex",
+                "options": 0
+              }
+            },
+            "x": {
+              "matcher": {
+                "id": "byName",
+                "options": "Tarifa"
+              }
+            },
+            "y": {
+              "matcher": {
+                "id": "byName",
+                "options": "Propina"
+              }
+            }
+          }
+        ],
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Propina frente a tarifa de los viajes de los últimos 30 minutos. Solo los\n-- pagados con propina: en efectivo la propina no queda registrada.\nSELECT fare AS \"Tarifa\",\n       tip AS \"Propina\"\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 30 MINUTE AND pickup_time <= t)\n    -- Pasada la medianoche del lunes, la ventana sigue en el final del domingo.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 30 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\n  AND fare BETWEEN 2.5 AND 70 AND tip > 0 AND tip < 15",
+          "refId": "A"
+        }
+      ],
+      "title": "Propina frente a tarifa · últimos 30 minutos",
+      "type": "xychart"
+    },
+    {
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 68
+      },
+      "id": 13,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "**Cómo está hecho.** Un Parquet leído por el datasource DuckDB y cuatro paneles kepler.gl; los flujos salen solos de columnas llamadas `origin_h3`, `dest_h3` y `trips`, y los arcos de `pickup_lat`/`pickup_lon` y `dropoff_lat`/`dropoff_lon`. **Datos:** NYC Taxi & Limousine Commission, taxis amarillos y verdes, 14–20 sep 2015, extraídos de la [demo pública de QuestDB](https://demo.questdb.io). Inspirado en su [tablero de taxis](https://questdb.com/dashboards/taxi/).",
+        "mode": "markdown"
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [],
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    }
+  ],
+  "preload": false,
+  "refresh": "5s",
+  "schemaVersion": 42,
+  "tags": [
+    "kepler",
+    "duckdb",
+    "nyc",
+    "taxi",
+    "tiempo-real"
+  ],
+  "time": {
+    "from": "now/d",
+    "to": "now"
+  },
+  "timepicker": {
+    "hidden": true,
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "10m",
+      "30m",
+      "60m"
+    ]
+  },
+  "timezone": "America/New_York",
+  "title": "Taxis de Nueva York — en vivo",
+  "uid": "nyc-taxi-live"
+}
