@@ -42,7 +42,9 @@ export interface ClickDecision {
  *
  * A deselect clears the mapped variables, but only when `published` says the
  * running selection is this panel's own — a dashboard opened from a shared
- * link keeps its variable until the user actually selects something here.
+ * link keeps its variable until the user actually selects something here —
+ * and never a mapping marked `keepOnDeselect`, whose variable only another
+ * click changes.
  */
 export function decideClickPublish({
   selection,
@@ -67,8 +69,8 @@ export function decideClickPublish({
   if (selection === null) {
     const writes: Record<string, string> = {};
     if (published) {
-      for (const { variable } of mappings) {
-        if (normalizeFilterKey(variableValues[variable]) !== noValue) {
+      for (const { variable, keepOnDeselect } of mappings) {
+        if (!keepOnDeselect && normalizeFilterKey(variableValues[variable]) !== noValue) {
           // Empty keeps the SQL guard (`$vehicle != ''`) literal on the
           // consumer side, same convention as the area sync.
           writes[variable] = '';

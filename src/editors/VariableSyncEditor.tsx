@@ -1,7 +1,18 @@
 import React from 'react';
 import { StandardEditorProps } from '@grafana/data';
 import { getTemplateSrv } from '@grafana/runtime';
-import { Button, Combobox, ComboboxOption, IconButton, InlineField, InlineFieldRow, Input, Stack, Text } from '@grafana/ui';
+import {
+  Button,
+  Combobox,
+  ComboboxOption,
+  IconButton,
+  InlineField,
+  InlineFieldRow,
+  InlineSwitch,
+  Input,
+  Stack,
+  Text,
+} from '@grafana/ui';
 
 import { VariableMapping } from '../panel/variableSync';
 import { KeplerPanelOptions } from '../types';
@@ -110,6 +121,19 @@ export function VariableSyncEditor({ value, onChange, context }: Props) {
               onChange={(o) => setRow(index, { variable: o?.value ?? '' })}
             />
           </InlineField>
+          {mapping.source === 'click' && (
+            <InlineField
+              label="Keep on empty click"
+              labelWidth={20}
+              tooltip="Clicking empty map leaves this variable as it is instead of clearing it. For a variable every query needs, such as a selected country."
+            >
+              <InlineSwitch
+                value={mapping.keepOnDeselect ?? false}
+                // Off is the default, stored as an absence like `source`.
+                onChange={(e) => setRow(index, { keepOnDeselect: e.currentTarget.checked || undefined })}
+              />
+            </InlineField>
+          )}
           {mapping.source !== 'click' && (
             <InlineField
               label={mapping.source === 'coordinate' || mapping.source === 'center' ? 'Lng' : 'Max'}

@@ -39,6 +39,15 @@ export interface VariableMapping {
    * Absent, the map keeps whatever zoom it has.
    */
   zoom?: number;
+
+  /**
+   * For a `click` mapping only: a deselect — a click on empty map, or closing
+   * the popover — leaves this variable as it is instead of clearing it. For a
+   * variable every consuming query needs, such as the selected country, where
+   * an empty value would break the dashboard rather than widen it. The
+   * variable still changes when another entity is clicked.
+   */
+  keepOnDeselect?: boolean;
 }
 
 /** Whether a mapping publishes a numeric range as a min/max variable pair. */

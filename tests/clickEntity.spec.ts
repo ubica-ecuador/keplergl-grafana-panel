@@ -57,6 +57,33 @@ test('clicking a point publishes its column value, an empty click clears it', as
   await expect.poll(() => urlVariable(page, 'site'), { timeout: 10_000 }).toBe('');
 });
 
+test('an empty click leaves a keep-on-empty-click variable as it is', async ({
+  gotoDashboardPage,
+  readProvisionedDashboard,
+  page,
+}) => {
+  test.slow();
+  const map = await gotoCrossFilterPanel(gotoDashboardPage, readProvisionedDashboard, page);
+
+  const rows = await projectRows(map);
+  expect(rows.length).toBeGreaterThan(0);
+  const target = rows[0];
+  await page.mouse.click(target.x, target.y);
+  await settle(page);
+
+  // The same column feeds two click mappings: `site` clears on deselect,
+  // `siteKept` is marked keepOnDeselect.
+  const site = String(target.values.site);
+  await expect.poll(() => urlVariable(page, 'site'), { timeout: 10_000 }).toBe(site);
+  await expect.poll(() => urlVariable(page, 'siteKept'), { timeout: 10_000 }).toBe(site);
+
+  const empty = await emptyPoint(map);
+  await page.mouse.click(empty.x, empty.y);
+  await settle(page);
+  await expect.poll(() => urlVariable(page, 'site'), { timeout: 10_000 }).toBe('');
+  expect(urlVariable(page, 'siteKept')).toBe(site);
+});
+
 test('a preset variable from a shared link survives stray empty clicks', async ({
   gotoDashboardPage,
   readProvisionedDashboard,

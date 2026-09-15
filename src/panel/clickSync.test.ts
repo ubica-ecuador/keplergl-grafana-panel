@@ -126,6 +126,27 @@ describe('decideClickPublish', () => {
     ).toEqual({ writes: { vehicle: '' }, published: false });
   });
 
+  it('keeps a keepOnDeselect variable when the user deselects after a publish', () => {
+    // A dashboard whose every query needs the variable — the selected country
+    // — must not be blanked by a click on the sea.
+    const country: VariableMapping = { field: 'code', variable: 'country', source: 'click', keepOnDeselect: true };
+    expect(
+      decideClickPublish({ selection: null, mappings: [country], variableValues: { country: '276' }, published: true })
+    ).toEqual({ writes: {}, published: false });
+  });
+
+  it('clears only the mappings without keepOnDeselect when both kinds deselect together', () => {
+    const country: VariableMapping = { field: 'code', variable: 'country', source: 'click', keepOnDeselect: true };
+    expect(
+      decideClickPublish({
+        selection: null,
+        mappings: [vehicle, country],
+        variableValues: { vehicle: 'v7', country: '276' },
+        published: true,
+      })
+    ).toEqual({ writes: { vehicle: '' }, published: false });
+  });
+
   it('leaves the variables alone on deselect when this panel never published', () => {
     // The dashboard arrived at ?var-vehicle=v7 from a shared link; a stray
     // click on the map background must not clear it.

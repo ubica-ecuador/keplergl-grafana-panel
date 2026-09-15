@@ -73,6 +73,10 @@ Click empty ocean and it clears — but only if the value currently in the varia
 **this** panel. A value that arrived in a shared link survives a stray click, which is the behaviour
 you want when someone sends you a dashboard.
 
+Some variables should never go empty: a selected country that every query of the dashboard filters
+on, say. Turn on **Keep on empty click** in that row and a click on empty map leaves the variable as
+it is; only clicking another entity changes it.
+
 This channel is **one way**: map → variable. Changing the variable does not move the selection.
 
 ::: warning A one-pixel target is a one-pixel target

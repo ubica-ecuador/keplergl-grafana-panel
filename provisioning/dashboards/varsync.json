@@ -60,6 +60,19 @@
         "skipUrlSync": false
       },
       {
+        "name": "siteKept",
+        "type": "textbox",
+        "label": "Site (kept on empty click)",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
         "name": "lat",
         "type": "textbox",
         "label": "Lat",
@@ -171,6 +184,12 @@
             "source": "click"
           },
           {
+            "field": "site",
+            "variable": "siteKept",
+            "source": "click",
+            "keepOnDeselect": true
+          },
+          {
             "field": "",
             "variable": "lat",
             "variableTo": "lng",
@@ -214,7 +233,7 @@
       },
       "id": 2,
       "options": {
-        "content": "| Variable | Value now |\n|---|---|\n| `$​category` | ${category} |\n| `$​valueMin` / `$​valueMax` | ${valueMin} / ${valueMax} |\n| `$​site` | ${site} |\n| `$​lat` / `$​lng` | ${lat} / ${lng} |\n| `$​west` / `$​south` / `$​east` / `$​north` | ${west} / ${south} / ${east} / ${north} |\n\n**Filters — two ways.** Set a filter on `category` in the map's own filter panel and the variable follows at once; type in the picker above and the map's filter follows. A filter on `value` (a numeric column) publishes its histogram brush as the min/max pair ~300 ms after the brush rests — one write per gesture, not one per frame — and consumers read `value BETWEEN '$​valueMin' AND '$​valueMax'`. Both go blank when the filter is removed.\n\n**Click → entity.** Clicking a point publishes its `site` column, for `WHERE site = '$​site'` on any other panel. Clicking empty map clears it — but only a selection this panel published, so a shared link's preset survives. One way only.\n\n**Click → place.** The same click also pins the coordinate, for a spatial query elsewhere: `ST_DWithin(geom, ST_MakePoint($​lng, $​lat)::geography, $​radius)`. Clicking again unpins on the map, but the pair keeps the last spot until the next pin.\n\n**Place → map.** The pair read back: type into Lat/Lng above — or click a row in a table that writes them — and the map centres there at zoom 13. The map's own clicks are recognised and never re-centre it.\n\n**Viewport → bbox.** Pan or zoom, and once the map rests the four edges of what it shows follow. Another panel filters to the view with `WHERE lng BETWEEN $​west AND $​east AND lat BETWEEN $​south AND $​north`. Never put those in this map's own query: its data would shrink to what is on screen, and zooming out could not bring the rows back.",
+        "content": "| Variable | Value now |\n|---|---|\n| `$​category` | ${category} |\n| `$​valueMin` / `$​valueMax` | ${valueMin} / ${valueMax} |\n| `$​site` | ${site} |\n| `$​siteKept` | ${siteKept} |\n| `$​lat` / `$​lng` | ${lat} / ${lng} |\n| `$​west` / `$​south` / `$​east` / `$​north` | ${west} / ${south} / ${east} / ${north} |\n\n**Filters — two ways.** Set a filter on `category` in the map's own filter panel and the variable follows at once; type in the picker above and the map's filter follows. A filter on `value` (a numeric column) publishes its histogram brush as the min/max pair ~300 ms after the brush rests — one write per gesture, not one per frame — and consumers read `value BETWEEN '$​valueMin' AND '$​valueMax'`. Both go blank when the filter is removed.\n\n**Click → entity.** Clicking a point publishes its `site` column, for `WHERE site = '$​site'` on any other panel. Clicking empty map clears it — but only a selection this panel published, so a shared link's preset survives. One way only. `siteKept` reads the same column with **Keep on empty click** on, so an empty click leaves it as it is.\n\n**Click → place.** The same click also pins the coordinate, for a spatial query elsewhere: `ST_DWithin(geom, ST_MakePoint($​lng, $​lat)::geography, $​radius)`. Clicking again unpins on the map, but the pair keeps the last spot until the next pin.\n\n**Place → map.** The pair read back: type into Lat/Lng above — or click a row in a table that writes them — and the map centres there at zoom 13. The map's own clicks are recognised and never re-centre it.\n\n**Viewport → bbox.** Pan or zoom, and once the map rests the four edges of what it shows follow. Another panel filters to the view with `WHERE lng BETWEEN $​west AND $​east AND lat BETWEEN $​south AND $​north`. Never put those in this map's own query: its data would shrink to what is on screen, and zooming out could not bring the rows back.",
         "mode": "markdown"
       },
       "title": "What the map publishes",
