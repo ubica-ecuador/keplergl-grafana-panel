@@ -129,6 +129,12 @@ test('shows its colour ramp in the legend, and follows a range set by hand', asy
   page,
 }) => {
   test.slow();
+  // The legend button is the last in kepler's control column. At the default
+  // 1280×720 the panel editor of Grafana 13.0 leaves the map 214 px tall, the
+  // column runs past the panel's bottom edge and the button is clipped: still
+  // "visible" to Playwright, but a click at its centre lands on Grafana's
+  // layout. Same fix as `effects.spec.ts`, only for the test that needs it.
+  await page.setViewportSize({ width: 1920, height: 1080 });
   // The legend reads a layer's colours through keys it looks up on the layer's
   // config. A flow field's colour is the speed of lines that are no column of
   // its dataset, so until the layer offered keys of its own the legend showed

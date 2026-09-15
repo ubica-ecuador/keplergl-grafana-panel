@@ -77,6 +77,13 @@ services:
     # resolves to Grafana itself.
     extra_hosts:
       - 'host.docker.internal:host-gateway'
+    # The e2e suite logs in once and every test reuses that session cookie. Grafana
+    # rotates the token every 10 minutes by default; from Grafana 13 on, a context
+    # that still presents the pre-rotation cookie is sent to the login page, so CI
+    # (anonymous access off) had every test after minute ten time out on
+    # "Welcome to Grafana". Merged key by key with the base file's environment.
+    environment:
+      GF_AUTH_TOKEN_ROTATION_INTERVAL_MINUTES: '60'
     # Only this one waits for the build. It is the bench a reviewer is pointed
     # at, and it is the one that has to work from a clone with a single command;
     # the other three are developer benches, where dist/ is always already there.
