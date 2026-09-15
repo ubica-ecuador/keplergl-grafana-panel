@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Réplica del tablero de taxis de QuestDB sobre nuestro stack: una semana de 2015 repetida al ritmo del reloj de Nueva York, con flujos H3 animados, arcos con brush y DuckDB leyendo un Parquet local. Necesita testdata/make-taxidata.py.",
+  "description": "A replica of QuestDB's taxi dashboard on our stack: one week of 2015 replayed to the New York clock, with animated H3 flows, brushable arcs and DuckDB reading a local Parquet file. Requires testdata/make-taxidata.py.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -35,7 +35,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "## Taxis de Nueva York, en vivo\nUna semana real de 2015 —3,09 millones de viajes— repetida al compás del reloj de Nueva York: el mismo día de la semana y la misma hora que allí ahora. Se refresca cada 5 segundos.",
+        "content": "## New York City taxis, live\nOne real week of 2015 — 3.09 million trips — replayed to the New York clock: the same weekday and the same time of day as there right now. Refreshes every 5 seconds.",
         "mode": "markdown"
       },
       "pluginVersion": "13.2.1",
@@ -49,7 +49,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Cada línea animada une dos hexágonos H3 con viajes entre ellos; su grosor y color, cuántos. Los círculos de cada hexágono se parten en lo que sale y lo que llega. Todo se calcula en DuckDB sobre un Parquet local en cada refresco.",
+      "description": "Each animated line joins two H3 hexagons with trips between them; its width and color say how many. The circle at each hexagon splits into what leaves and what arrives. Everything is computed in DuckDB over a local Parquet file on every refresh.",
       "gridPos": {
         "h": 20,
         "w": 18,
@@ -133,7 +133,7 @@
                     },
                     "dataId": "grafana-A",
                     "isVisible": true,
-                    "label": "Viajes · últimos 10 min",
+                    "label": "Trips · last 10 min",
                     "visConfig": {
                       "colorRange": {
                         "category": "Custom",
@@ -145,7 +145,7 @@
                           "#ffa62b",
                           "#ffe066"
                         ],
-                        "name": "Viajes · últimos 10 min",
+                        "name": "Trips · last 10 min",
                         "type": "sequential"
                       },
                       "darkBaseMapEnabled": true,
@@ -194,11 +194,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Un flujo por par de hexágonos H3 (resolución 8, ~0,7 km²) con viajes que\n-- salieron en los últimos 10 minutos. origin_h3/dest_h3/trips son los nombres\n-- que el panel reconoce solo para montar la capa de flujo.\nSELECT pickup_h3_8 AS origin_h3,\n       dropoff_h3_8 AS dest_h3,\n       count(*)::BIGINT AS trips\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Pasada la medianoche del lunes, la ventana sigue en el final del domingo.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\n  AND pickup_h3_8 <> dropoff_h3_8\nGROUP BY 1, 2",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- One flow per pair of H3 hexagons (resolution 8, ~0.7 km²) with trips that\n-- started in the last 10 minutes. origin_h3/dest_h3/trips are names the panel\n-- recognizes on its own to build the flow layer.\nSELECT pickup_h3_8 AS origin_h3,\n       dropoff_h3_8 AS dest_h3,\n       count(*)::BIGINT AS trips\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\n  AND pickup_h3_8 <> dropoff_h3_8\nGROUP BY 1, 2",
           "refId": "A"
         }
       ],
-      "title": "Flujos · viajes que salieron en los últimos 10 minutos",
+      "title": "Flows · trips that started in the last 10 minutes",
       "type": "ubica-keplergl-panel"
     },
     {
@@ -206,7 +206,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "La hora de la repetición: el mismo día de la semana y la misma hora que en Nueva York ahora, en septiembre de 2015.",
+      "description": "The replay time: the same weekday and time of day as in New York right now, in September 2015.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -247,7 +247,7 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "/^hora$/",
+          "fields": "/^ny_time$/",
           "values": false
         },
         "showPercentChange": false,
@@ -267,11 +267,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\nSELECT ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'][isodow(t)]\n       || ' ' || strftime(t, '%H:%M') AS hora\nFROM clock",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\nSELECT strftime(t, '%a %H:%M') AS ny_time\nFROM clock",
           "refId": "A"
         }
       ],
-      "title": "Hora en Nueva York",
+      "title": "Time in New York",
       "type": "stat"
     },
     {
@@ -279,7 +279,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Viajes que ya empezaron y todavía no terminan.",
+      "description": "Trips that have started and not ended yet.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -340,11 +340,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- En tránsito: subieron en las últimas 3 horas y todavía no han bajado.\nSELECT count(*)::BIGINT AS taxis,\n       sum(passengers)::BIGINT AS pasajeros\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (pickup_time > t - INTERVAL 3 HOUR AND pickup_time <= t AND dropoff_time > t)\n   OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 3 HOUR AND pickup_time <= t + INTERVAL 7 DAY\n       AND dropoff_time > t + INTERVAL 7 DAY)",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- In transit: picked up in the last 3 hours and not dropped off yet.\nSELECT count(*)::BIGINT AS taxis,\n       sum(passengers)::BIGINT AS passengers\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (pickup_time > t - INTERVAL 3 HOUR AND pickup_time <= t AND dropoff_time > t)\n   OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 3 HOUR AND pickup_time <= t + INTERVAL 7 DAY\n       AND dropoff_time > t + INTERVAL 7 DAY)",
           "refId": "A"
         }
       ],
-      "title": "Taxis en tránsito",
+      "title": "Taxis in transit",
       "type": "stat"
     },
     {
@@ -352,7 +352,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Suma de pasajeros de los taxis en tránsito.",
+      "description": "Total passengers in the taxis in transit.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -393,7 +393,7 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "/^pasajeros$/",
+          "fields": "/^passengers$/",
           "values": false
         },
         "showPercentChange": false,
@@ -413,11 +413,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- En tránsito: subieron en las últimas 3 horas y todavía no han bajado.\nSELECT count(*)::BIGINT AS taxis,\n       sum(passengers)::BIGINT AS pasajeros\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (pickup_time > t - INTERVAL 3 HOUR AND pickup_time <= t AND dropoff_time > t)\n   OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 3 HOUR AND pickup_time <= t + INTERVAL 7 DAY\n       AND dropoff_time > t + INTERVAL 7 DAY)",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- In transit: picked up in the last 3 hours and not dropped off yet.\nSELECT count(*)::BIGINT AS taxis,\n       sum(passengers)::BIGINT AS passengers\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (pickup_time > t - INTERVAL 3 HOUR AND pickup_time <= t AND dropoff_time > t)\n   OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 3 HOUR AND pickup_time <= t + INTERVAL 7 DAY\n       AND dropoff_time > t + INTERVAL 7 DAY)",
           "refId": "A"
         }
       ],
-      "title": "Pasajeros a bordo",
+      "title": "Passengers on board",
       "type": "stat"
     },
     {
@@ -425,7 +425,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Viajes iniciados desde la medianoche de Nueva York.",
+      "description": "Trips started since midnight in New York.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -466,7 +466,7 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "/^viajes$/",
+          "fields": "/^trips$/",
           "values": false
         },
         "showPercentChange": false,
@@ -486,11 +486,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Desde la medianoche de Nueva York. Los sum() van casteados: sin eso Grafana\n-- recibe un HUGEINT como texto y el stat no lo pinta.\nSELECT count(*)::BIGINT AS viajes,\n       sum(total)::DOUBLE AS recaudado\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE pickup_time >= date_trunc('day', t) AND pickup_time <= t",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Since midnight in New York. The sum() is cast: without it Grafana receives a\n-- HUGEINT as text and the stat cannot draw it.\nSELECT count(*)::BIGINT AS trips,\n       sum(total)::DOUBLE AS revenue\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE pickup_time >= date_trunc('day', t) AND pickup_time <= t",
           "refId": "A"
         }
       ],
-      "title": "Viajes hoy",
+      "title": "Trips today",
       "type": "stat"
     },
     {
@@ -498,7 +498,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Importe total cobrado (tarifa, recargos, peajes y propinas) desde la medianoche.",
+      "description": "Total amount charged (fare, surcharges, tolls and tips) since midnight.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -539,7 +539,7 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "/^recaudado$/",
+          "fields": "/^revenue$/",
           "values": false
         },
         "showPercentChange": false,
@@ -559,11 +559,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Desde la medianoche de Nueva York. Los sum() van casteados: sin eso Grafana\n-- recibe un HUGEINT como texto y el stat no lo pinta.\nSELECT count(*)::BIGINT AS viajes,\n       sum(total)::DOUBLE AS recaudado\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE pickup_time >= date_trunc('day', t) AND pickup_time <= t",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Since midnight in New York. The sum() is cast: without it Grafana receives a\n-- HUGEINT as text and the stat cannot draw it.\nSELECT count(*)::BIGINT AS trips,\n       sum(total)::DOUBLE AS revenue\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE pickup_time >= date_trunc('day', t) AND pickup_time <= t",
           "refId": "A"
         }
       ],
-      "title": "Recaudado hoy",
+      "title": "Revenue today",
       "type": "stat"
     },
     {
@@ -571,7 +571,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Recogidas por hexágono H3 de resolución 9 (~0,1 km²): la altura y el color dicen cuántas.",
+      "description": "Pickups per H3 hexagon at resolution 9 (~0.1 km²): height and color say how many.",
       "gridPos": {
         "h": 16,
         "w": 12,
@@ -638,7 +638,7 @@
                   "fieldsToShow": {
                     "grafana-A": [
                       {
-                        "name": "recogidas"
+                        "name": "pickups"
                       }
                     ]
                   }
@@ -646,7 +646,7 @@
               },
               "layerBlending": "normal",
               "layerOrder": [
-                "recogidas"
+                "pickups"
               ],
               "layers": [
                 {
@@ -656,7 +656,7 @@
                     },
                     "dataId": "grafana-A",
                     "isVisible": true,
-                    "label": "Recogidas · últimos 10 min",
+                    "label": "Pickups · last 10 min",
                     "visConfig": {
                       "colorRange": {
                         "category": "Custom",
@@ -668,7 +668,7 @@
                           "#35c6dc",
                           "#7fe3ea"
                         ],
-                        "name": "Recogidas · últimos 10 min",
+                        "name": "Pickups · last 10 min",
                         "type": "sequential"
                       },
                       "coverage": 0.85,
@@ -686,17 +686,17 @@
                       ]
                     }
                   },
-                  "id": "recogidas",
+                  "id": "pickups",
                   "type": "hexagonId",
                   "visualChannels": {
                     "colorField": {
-                      "name": "recogidas",
+                      "name": "pickups",
                       "type": "integer"
                     },
                     "colorScale": "quantile",
                     "coverageScale": "linear",
                     "sizeField": {
-                      "name": "recogidas",
+                      "name": "pickups",
                       "type": "integer"
                     },
                     "sizeScale": "sqrt"
@@ -731,11 +731,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Recogidas de los últimos 10 minutos por hexágono H3 de resolución 9 (~0,1 km²).\nSELECT pickup_h3_9 AS h3,\n       count(*)::BIGINT AS recogidas\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Pasada la medianoche del lunes, la ventana sigue en el final del domingo.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\nGROUP BY 1",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Pickups in the last 10 minutes per H3 hexagon at resolution 9 (~0.1 km²).\nSELECT pickup_h3_9 AS h3,\n       count(*)::BIGINT AS pickups\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\nGROUP BY 1",
           "refId": "A"
         }
       ],
-      "title": "Dónde se suben · últimos 10 minutos",
+      "title": "Where people get in · last 10 minutes",
       "type": "ubica-keplergl-panel"
     },
     {
@@ -743,7 +743,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Bajadas por hexágono H3 de resolución 9. Comparado con el mapa de al lado se ve hacia dónde se vacía y se llena la ciudad a esta hora.",
+      "description": "Dropoffs per H3 hexagon at resolution 9. Next to the pickups map, it shows where the city is emptying and filling up at this hour.",
       "gridPos": {
         "h": 16,
         "w": 12,
@@ -810,7 +810,7 @@
                   "fieldsToShow": {
                     "grafana-A": [
                       {
-                        "name": "bajadas"
+                        "name": "dropoffs"
                       }
                     ]
                   }
@@ -818,7 +818,7 @@
               },
               "layerBlending": "normal",
               "layerOrder": [
-                "bajadas"
+                "dropoffs"
               ],
               "layers": [
                 {
@@ -828,7 +828,7 @@
                     },
                     "dataId": "grafana-A",
                     "isVisible": true,
-                    "label": "Bajadas · últimos 10 min",
+                    "label": "Dropoffs · last 10 min",
                     "visConfig": {
                       "colorRange": {
                         "category": "Custom",
@@ -840,7 +840,7 @@
                           "#ff7a59",
                           "#ffb26b"
                         ],
-                        "name": "Bajadas · últimos 10 min",
+                        "name": "Dropoffs · last 10 min",
                         "type": "sequential"
                       },
                       "coverage": 0.85,
@@ -858,17 +858,17 @@
                       ]
                     }
                   },
-                  "id": "bajadas",
+                  "id": "dropoffs",
                   "type": "hexagonId",
                   "visualChannels": {
                     "colorField": {
-                      "name": "bajadas",
+                      "name": "dropoffs",
                       "type": "integer"
                     },
                     "colorScale": "quantile",
                     "coverageScale": "linear",
                     "sizeField": {
-                      "name": "bajadas",
+                      "name": "dropoffs",
                       "type": "integer"
                     },
                     "sizeScale": "sqrt"
@@ -903,11 +903,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Bajadas de los últimos 10 minutos por hexágono H3 de resolución 9.\nSELECT dropoff_h3_9 AS h3,\n       count(*)::BIGINT AS bajadas\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (dropoff_time > t - INTERVAL 10 MINUTE AND dropoff_time <= t)\n    -- Pasada la medianoche del lunes, la ventana sigue en el final del domingo.\n    OR (dropoff_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND dropoff_time <= t + INTERVAL 7 DAY)\n  )\nGROUP BY 1",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Dropoffs in the last 10 minutes per H3 hexagon at resolution 9.\nSELECT dropoff_h3_9 AS h3,\n       count(*)::BIGINT AS dropoffs\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (dropoff_time > t - INTERVAL 10 MINUTE AND dropoff_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (dropoff_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND dropoff_time <= t + INTERVAL 7 DAY)\n  )\nGROUP BY 1",
           "refId": "A"
         }
       ],
-      "title": "Dónde se bajan · últimos 10 minutos",
+      "title": "Where people get out · last 10 minutes",
       "type": "ubica-keplergl-panel"
     },
     {
@@ -915,7 +915,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Cada arco es un viaje de los últimos 10 minutos, cian donde empieza y magenta donde termina. Con el cursor sobre el mapa solo quedan los arcos que empiezan o terminan a menos de 1 km. Debajo, en ámbar, los mismos viajes agregados de barrio a barrio (hexágonos H3 de ~5 km²); esas líneas no responden al cursor.",
+      "description": "Each arc is a trip from the last 10 minutes, cyan where it starts and magenta where it ends. With the cursor over the map, only the arcs that start or end within 0.7 km remain. Underneath, in amber, the same trips aggregated neighborhood to neighborhood (H3 hexagons of ~5 km²); those lines do not react to the cursor.",
       "gridPos": {
         "h": 20,
         "w": 24,
@@ -1042,7 +1042,7 @@
                   "enabled": true,
                   "id": "c526v1g3d",
                   "name": [
-                    "pasajeros"
+                    "passengers"
                   ],
                   "plotType": {
                     "type": "histogram"
@@ -1063,7 +1063,7 @@
                   "enabled": true,
                   "id": "0fdmndn3th",
                   "name": [
-                    "importe"
+                    "amount"
                   ],
                   "plotType": {
                     "type": "histogram"
@@ -1107,10 +1107,10 @@
                     ],
                     "grafana-B": [
                       {
-                        "name": "pasajeros"
+                        "name": "passengers"
                       },
                       {
-                        "name": "importe"
+                        "name": "amount"
                       }
                     ]
                   }
@@ -1118,7 +1118,7 @@
               },
               "layerBlending": "normal",
               "layerOrder": [
-                "arcos",
+                "arcs",
                 "flow-grafana-A"
               ],
               "layers": [
@@ -1145,7 +1145,7 @@
                       255
                     ],
                     "isVisible": true,
-                    "label": "Viajes · últimos 10 min",
+                    "label": "Trips · last 10 min",
                     "textLabel": [
                       {
                         "alignment": "center",
@@ -1204,7 +1204,7 @@
                       "thickness": 0.7
                     }
                   },
-                  "id": "arcos",
+                  "id": "arcs",
                   "type": "arc",
                   "visualChannels": {
                     "colorScale": "quantile",
@@ -1233,7 +1233,7 @@
                       255
                     ],
                     "isVisible": true,
-                    "label": "Barrio a barrio · últimos 10 min",
+                    "label": "Neighborhood to neighborhood · last 10 min",
                     "textLabel": [
                       {
                         "alignment": "center",
@@ -1276,7 +1276,7 @@
                           "#f7c64b",
                           "#ffe08a"
                         ],
-                        "name": "Barrio a barrio · últimos 10 min",
+                        "name": "Neighborhood to neighborhood · last 10 min",
                         "type": "sequential"
                       },
                       "darkBaseMapEnabled": true,
@@ -1328,7 +1328,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Los mismos viajes agregados a hexágonos grandes (H3 resolución 7, ~5 km²):\n-- de qué barrio a qué barrio, sin el detalle de cada calle.\nSELECT pickup_h3_7 AS origin_h3,\n       dropoff_h3_7 AS dest_h3,\n       count(*)::BIGINT AS trips\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Pasada la medianoche del lunes, la ventana sigue en el final del domingo.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\n  AND pickup_h3_7 <> dropoff_h3_7\nGROUP BY 1, 2",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- The same trips aggregated to large hexagons (H3 resolution 7, ~5 km²):\n-- from which neighborhood to which, without street-level detail.\nSELECT pickup_h3_7 AS origin_h3,\n       dropoff_h3_7 AS dest_h3,\n       count(*)::BIGINT AS trips\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\n  AND pickup_h3_7 <> dropoff_h3_7\nGROUP BY 1, 2",
           "refId": "A"
         },
         {
@@ -1339,11 +1339,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Un arco por viaje de los últimos 10 minutos. pickup_lat/pickup_lon y\n-- dropoff_lat/dropoff_lon son nombres que el panel reconoce como origen y destino.\nSELECT pickup_lat, pickup_lon, dropoff_lat, dropoff_lon,\n       passengers AS pasajeros,\n       total AS importe\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Pasada la medianoche del lunes, la ventana sigue en el final del domingo.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- One arc per trip in the last 10 minutes. pickup_lat/pickup_lon and\n-- dropoff_lat/dropoff_lon are names the panel recognizes as origin and destination.\n-- The fare is `amount`, not `total`: the panel reads a column named `total` as a\n-- flow count and renames it.\nSELECT pickup_lat, pickup_lon, dropoff_lat, dropoff_lon,\n       passengers,\n       total AS amount\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 10 MINUTE AND pickup_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 10 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )",
           "refId": "B"
         }
       ],
-      "title": "Viaje por viaje · pasa el ratón por el mapa para ver qué sale y llega a cada zona",
+      "title": "Trip by trip · hover over the map to see what leaves and arrives in each area",
       "type": "ubica-keplergl-panel"
     },
     {
@@ -1439,11 +1439,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Viajes por minuto desde la medianoche, devueltos como instantes de hoy para\n-- que el eje del tiempo de Grafana los ponga en su sitio.\nSELECT (time_bucket(INTERVAL 1 MINUTE, pickup_time)\n        + (date_trunc('day', now() AT TIME ZONE 'America/New_York') - date_trunc('day', t)))\n       AT TIME ZONE 'America/New_York' AS time,\n       count(*)::BIGINT AS \"Viajes por minuto\"\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE pickup_time >= date_trunc('day', t) AND pickup_time <= t\nGROUP BY 1\nORDER BY 1",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Trips per minute since midnight, returned as instants of today so that\n-- Grafana's time axis puts them in place.\nSELECT (time_bucket(INTERVAL 1 MINUTE, pickup_time)\n        + (date_trunc('day', now() AT TIME ZONE 'America/New_York') - date_trunc('day', t)))\n       AT TIME ZONE 'America/New_York' AS time,\n       count(*)::BIGINT AS \"Trips per minute\"\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE pickup_time >= date_trunc('day', t) AND pickup_time <= t\nGROUP BY 1\nORDER BY 1",
           "refId": "A"
         }
       ],
-      "title": "Viajes por minuto, desde la medianoche",
+      "title": "Trips per minute, since midnight",
       "type": "timeseries"
     },
     {
@@ -1451,7 +1451,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Cada punto es un viaje pagado con propina en la última media hora.",
+      "description": "Each dot is a trip paid with a tip in the last half hour.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1523,13 +1523,13 @@
             "x": {
               "matcher": {
                 "id": "byName",
-                "options": "Tarifa"
+                "options": "Fare"
               }
             },
             "y": {
               "matcher": {
                 "id": "byName",
-                "options": "Propina"
+                "options": "Tip"
               }
             }
           }
@@ -1550,11 +1550,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- El reloj de la repetición: la hora de Nueva York de ahora mismo, llevada a la\n-- semana del lunes 14 de septiembre de 2015 con el mismo día de la semana y la\n-- misma hora. Los datos guardan la hora de pared de Nueva York, sin zona.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Propina frente a tarifa de los viajes de los últimos 30 minutos. Solo los\n-- pagados con propina: en efectivo la propina no queda registrada.\nSELECT fare AS \"Tarifa\",\n       tip AS \"Propina\"\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 30 MINUTE AND pickup_time <= t)\n    -- Pasada la medianoche del lunes, la ventana sigue en el final del domingo.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 30 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\n  AND fare BETWEEN 2.5 AND 70 AND tip > 0 AND tip < 15",
+          "rawSql": "-- The replay clock: the current time in New York, carried over to the week of\n-- Monday 14 September 2015 with the same weekday and time of day. The data\n-- holds New York wall-clock time, with no time zone.\nWITH clock AS (\n  SELECT TIMESTAMP '2015-09-14'\n         + ((now() AT TIME ZONE 'America/New_York')\n            - date_trunc('week', now() AT TIME ZONE 'America/New_York')) AS t\n)\n-- Tip against fare for trips in the last 30 minutes. Only trips paid with a\n-- tip: cash tips are not recorded.\nSELECT fare AS \"Fare\",\n       tip AS \"Tip\"\nFROM read_parquet('/testdata/taxi/trips-2015-w38.parquet'), clock\nWHERE (\n    (pickup_time > t - INTERVAL 30 MINUTE AND pickup_time <= t)\n    -- Past midnight on Monday, the window carries on at the end of Sunday.\n    OR (pickup_time > t + INTERVAL 7 DAY - INTERVAL 30 MINUTE AND pickup_time <= t + INTERVAL 7 DAY)\n  )\n  AND fare BETWEEN 2.5 AND 70 AND tip > 0 AND tip < 15",
           "refId": "A"
         }
       ],
-      "title": "Propina frente a tarifa · últimos 30 minutos",
+      "title": "Tip against fare · last 30 minutes",
       "type": "xychart"
     },
     {
@@ -1571,7 +1571,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "**Cómo está hecho.** Un Parquet leído por el datasource DuckDB y cuatro paneles kepler.gl; los flujos salen solos de columnas llamadas `origin_h3`, `dest_h3` y `trips`, y los arcos de `pickup_lat`/`pickup_lon` y `dropoff_lat`/`dropoff_lon`. **Datos:** NYC Taxi & Limousine Commission, taxis amarillos y verdes, 14–20 sep 2015, extraídos de la [demo pública de QuestDB](https://demo.questdb.io). Inspirado en su [tablero de taxis](https://questdb.com/dashboards/taxi/).",
+        "content": "**How it's built.** A Parquet file read by the DuckDB data source and four kepler.gl panels; the flows come straight from columns named `origin_h3`, `dest_h3` and `trips`, and the arcs from `pickup_lat`/`pickup_lon` and `dropoff_lat`/`dropoff_lon`. **Data:** NYC Taxi & Limousine Commission, yellow and green cabs, 14–20 Sep 2015, extracted from [QuestDB's public demo](https://demo.questdb.io). Inspired by their [taxi dashboard](https://questdb.com/dashboards/taxi/).",
         "mode": "markdown"
       },
       "pluginVersion": "13.2.1",
@@ -1589,7 +1589,7 @@
     "duckdb",
     "nyc",
     "taxi",
-    "tiempo-real"
+    "real-time"
   ],
   "time": {
     "from": "now/d",
@@ -1608,6 +1608,6 @@
     ]
   },
   "timezone": "America/New_York",
-  "title": "Taxis de Nueva York — en vivo",
+  "title": "New York City Taxis — Live",
   "uid": "nyc-taxi-live"
 }
