@@ -6,6 +6,7 @@ había cambie, y que un segundo injerto no duplique la pestaña.
 import copy
 import json
 import pathlib
+import re
 import sys
 import unittest
 
@@ -93,6 +94,31 @@ class GraftTest(unittest.TestCase):
         self.assertEqual(out['metadata'], {'name': 'fire-emissions-tabs-local'})
         self.assertTrue(out['spec']['title'].endswith(' (local copy)'))
         self.assertEqual(out['apiVersion'], 'dashboard.grafana.app/v2beta1')
+
+
+SQL_NAMES = ['prelude', 'search', 'map_box', 'map_scenes', 'map_footprints', 'contact_sheet', 'figures']
+
+
+class SqlTest(unittest.TestCase):
+    def test_no_comment_names_a_grafana_macro(self):
+        # La expansión de macros es textual: uno dentro de un comentario la rompe.
+        for name in SQL_NAMES:
+            for number, line in enumerate(build.read_sql(name).splitlines(), 1):
+                comment = line.split('--', 1)[1] if '--' in line else ''
+                self.assertNotIn('$__', comment, f'{name}.sql:{number}')
+
+    def test_only_known_variables_are_referenced(self):
+        known = {variable['spec']['name'] for variable in build.variables()}
+        for name in SQL_NAMES:
+            referenced = set(re.findall(r'\$\{?([A-Za-z]\w*)', build.read_sql(name)))
+            self.assertLessEqual(referenced, known, name)
+
+    def test_panel_sql_joins_prelude_search_and_select(self):
+        full = build.panel_sql('map_scenes')
+        self.assertTrue(full.startswith(build.read_sql('prelude')))
+        self.assertIn(build.read_sql('search'), full)
+        self.assertTrue(full.endswith(build.read_sql('map_scenes')))
+        self.assertNotIn('http_get', build.panel_sql('map_box', with_search=False))
 
 
 if __name__ == '__main__':

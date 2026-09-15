@@ -108,6 +108,19 @@ def grid_item(name, x, y, w, h):
         'element': {'kind': 'ElementReference', 'name': name}}}
 
 
+def read_sql(name):
+    return (HERE / 'sql' / f'{name}.sql').read_text()
+
+
+def panel_sql(select_name, with_search=True):
+    """Preludio, búsqueda y la SELECT del panel: una sola consulta por panel."""
+    parts = [read_sql('prelude')]
+    if with_search:
+        parts.append(read_sql('search'))
+    parts.append(read_sql(select_name))
+    return '\n'.join(parts)
+
+
 def fire_map_element(panel8):
     """El mapa de la pestaña Timeline, sin humo y publicando su propia ventana."""
     source = panel8['spec']
