@@ -247,7 +247,10 @@ def figures_element():
             by_name('Matched', ('decimals', 0)),
             by_name('Returned', ('decimals', 0)),
         ]}
-    options = {'colorMode': 'none', 'graphMode': 'none', 'justifyMode': 'auto', 'orientation': 'vertical',
+    # En esta versión de Grafana 'horizontal' es lo que apila los tiles a lo
+    # alto del panel (uno debajo de otro); 'vertical' los pone en fila. No
+    # "corregir" esto sin volver a medir en el contenedor real.
+    options = {'colorMode': 'none', 'graphMode': 'none', 'justifyMode': 'auto', 'orientation': 'horizontal',
                'reduceOptions': {'calcs': ['lastNotNull'], 'fields': '/.*/', 'values': False},
                'showPercentChange': False, 'textMode': 'value_and_name', 'wideLayout': False}
     return panel(

@@ -198,7 +198,7 @@ class ImageryPanelsTest(unittest.TestCase):
         self.assertGreaterEqual(widths['panel-24'], 8)
         self.assertEqual(widths['panel-23'] + widths['panel-24'], 24)
         options = self.options('panel-24')
-        self.assertEqual(options['orientation'], 'vertical')
+        self.assertEqual(options['orientation'], 'horizontal')
         self.assertIs(options['wideLayout'], False)
 
     def test_fire_map_description_explains_how_to_draw(self):
