@@ -130,5 +130,64 @@ class SqlTest(unittest.TestCase):
             self.assertEqual(sql.count('TRY(json_extract('), count, name)
 
 
+class ImageryPanelsTest(unittest.TestCase):
+    def setUp(self):
+        dash = fixture()
+        self.out = build.graft(dash, build.imagery_elements(dash))
+        self.elements = self.out['spec']['elements']
+
+    def options(self, key):
+        return self.elements[key]['spec']['vizConfig']['spec']['options']
+
+    def raw_sql(self, key):
+        return {q['spec']['refId']: q['spec']['query']['spec']['rawSql']
+                for q in self.elements[key]['spec']['data']['spec']['queries']}
+
+    def test_tab_lays_out_the_four_panels(self):
+        items = self.out['spec']['layout']['spec']['tabs'][-1]['spec']['layout']['spec']['items']
+        got = [(i['spec']['element']['name'], i['spec']['x'], i['spec']['y'], i['spec']['width'], i['spec']['height'])
+               for i in items]
+        self.assertEqual(got, build.LAYOUT)
+
+    def test_sentinel_map_flies_to_the_box_then_to_the_picked_scene(self):
+        options = self.options('panel-22')
+        self.assertNotIn('areaVariable', options)
+        centres = [(m['variable'], m['variableTo'], m['zoom'])
+                   for m in options['variableMappings'] if m['source'] == 'center']
+        self.assertEqual(centres, [('aLat', 'aLng', 10), ('sLat', 'sLng', 11)])
+        self.assertEqual(options['timeSync'], 'off')
+        self.assertEqual(options['rasterServerUrl'], 'https://titiler.ubica.ec')
+
+    def test_sentinel_map_queries(self):
+        sql = self.raw_sql('panel-22')
+        self.assertEqual(sorted(sql), ['A', 'B', 'C'])
+        self.assertNotIn('http_get', sql['A'])
+        self.assertIn('raster_url', sql['B'])
+        self.assertIn('ST_AsGeoJSON(footprint)', sql['C'])
+
+    def test_sentinel_map_config(self):
+        vis = self.options('panel-22')['mapConfig']['config']['visState']
+        self.assertEqual(vis['layerOrder'], ['boxoutline', 'footprints', 's2scene'])
+        layers = {layer['id']: layer for layer in vis['layers']}
+        self.assertEqual(layers['s2scene']['config']['dataId'], 'grafana-B-raster')
+        self.assertEqual(layers['s2scene']['config']['visConfig']['preset'], 'trueColor')
+        self.assertEqual(layers['boxoutline']['config']['dataId'], 'grafana-A')
+        self.assertEqual(layers['footprints']['config']['dataId'], 'grafana-C')
+        for layer_id in ('boxoutline', 'footprints'):
+            self.assertFalse(layers[layer_id]['config']['visConfig']['filled'])
+        self.assertEqual(vis['editor']['features'], [])
+
+    def test_contact_sheet_link_keeps_the_tab_and_sets_the_scene_first(self):
+        defaults = self.elements['panel-23']['spec']['vizConfig']['spec']['fieldConfig']['defaults']
+        link = defaults['links'][0]['url']
+        self.assertIn('dtab=Imagery', link)
+        for fixed in ('var-scene=', 'var-sLat=', 'var-sLng='):
+            self.assertLess(link.index(fixed), link.index('${__all_variables}'))
+
+    def test_sheet_and_figures_run_their_own_sql(self):
+        self.assertEqual(self.raw_sql('panel-23')['A'], build.panel_sql('contact_sheet'))
+        self.assertEqual(self.raw_sql('panel-24')['A'], build.panel_sql('figures'))
+
+
 if __name__ == '__main__':
     unittest.main()

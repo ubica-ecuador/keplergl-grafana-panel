@@ -15,6 +15,7 @@ import pathlib
 import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
+REPO = HERE.parent.parent
 
 TAB_TITLE = 'Imagery'
 LOCAL_UID = 'fire-emissions-tabs-local'
@@ -121,6 +122,131 @@ def panel_sql(select_name, with_search=True):
     return '\n'.join(parts)
 
 
+def by_name(name, *properties):
+    return {'matcher': {'id': 'byName', 'options': name},
+            'properties': [{'id': key, 'value': value} for key, value in properties]}
+
+
+def sentinel_map_config():
+    """La config guardada del mapa de stac-join, reapuntada a las tres consultas.
+
+    Se parte de ella y no de un literal porque ese mapa ya pinta escenas de
+    earth-search por el mismo TiTiler: el visConfig del ráster está probado.
+    """
+    stac = json.loads((REPO / 'provisioning-sources' / 'dashboards' / 'stac-join.json').read_text())
+    source = next(p for p in stac['panels'] if p['type'] == KEPLER_GROUP)
+    config = copy.deepcopy(source['options']['mapConfig'])
+    root = config['config']
+    root['mapState'].update({'latitude': 6, 'longitude': -25, 'zoom': 1.9})
+    vis = root['visState']
+    vis['editor'] = {'features': [], 'visible': True}
+    by_type = {layer['type']: layer for layer in vis['layers']}
+
+    scene = by_type['rasterTile']
+    scene['id'] = 's2scene'
+    scene['config']['label'] = 'Sentinel-2 scene'
+    # kepler guarda "TrueColor" y no sabe releerlo: siempre en minúscula.
+    scene['config']['visConfig']['preset'] = 'trueColor'
+
+    box = copy.deepcopy(by_type['geojson'])
+    box['id'] = 'boxoutline'
+    box['config'].update({'dataId': 'grafana-A', 'label': 'Your box', 'color': [255, 120, 0]})
+    box['config']['visConfig'].update({'strokeColor': [255, 120, 0], 'thickness': 2.5, 'strokeOpacity': 1,
+                                       'filled': False, 'stroked': True})
+
+    footprints = copy.deepcopy(by_type['geojson'])
+    footprints['id'] = 'footprints'
+    footprints['config'].update({'dataId': 'grafana-C', 'label': 'Scene footprints', 'color': [255, 255, 255]})
+    footprints['config']['visConfig'].update({'strokeColor': [255, 255, 255], 'thickness': 1, 'strokeOpacity': 0.6,
+                                              'filled': False, 'stroked': True})
+
+    vis['layers'] = [box, footprints, scene]
+    vis['layerOrder'] = ['boxoutline', 'footprints', 's2scene']
+    vis['interactionConfig']['tooltip']['fieldsToShow'] = {
+        'grafana-A': [],
+        'grafana-B': [{'name': n} for n in ('scene_id', 'acquired_at', 'cloud_cover', 'covers_pct')],
+        'grafana-B-raster': [],
+        'grafana-C': [{'name': n} for n in ('scene_id', 'acquired_on')],
+    }
+    return config
+
+
+def sentinel_map_element(version):
+    options = {
+        'basemap': 'auto', 'followGrafanaTheme': True, 'showSidePanel': False, 'peerTimeSync': False,
+        'publishWhilePlaying': False, 'timeSync': 'off', 'rasterServerUrl': TILER, 'rasterPainted': False,
+        'rasterColormap': '', 'tripLayerMode': 'table', 'flowRenderMode': 'straight',
+        'variableMappings': [
+            # Al dibujar un recuadro, el mapa vuela a él...
+            {'field': '', 'source': 'center', 'variable': 'aLat', 'variableTo': 'aLng', 'zoom': 10},
+            # ...y al elegir una miniatura, a lo que enseña esa miniatura.
+            {'field': '', 'source': 'center', 'variable': 'sLat', 'variableTo': 'sLng', 'zoom': 11},
+        ],
+        'mapConfig': sentinel_map_config(),
+    }
+    queries = [
+        duck_query('A', panel_sql('map_box', with_search=False)),
+        duck_query('B', panel_sql('map_scenes')),
+        duck_query('C', panel_sql('map_footprints')),
+    ]
+    return panel(
+        22, 'Sentinel-2 — the scene over your box',
+        'The clearest Sentinel-2 scene of the box you drew, from the paused window to the days after it. '
+        'Pick another in the table below. Orange is your box; white lines are the scene footprints.',
+        queries, KEPLER_GROUP, version, options)
+
+
+SCENE_LINK = ('/d/${__dashboard.uid}?dtab=' + TAB_TITLE
+              # Lo que se fija va ANTES de ${__all_variables}: con un var-x
+              # repetido, Grafana se queda con el primero.
+              + '&var-scene=${__data.fields.scene_url:percentencode}'
+              + '&var-sLat=${__data.fields.centre_lat}&var-sLng=${__data.fields.centre_lng}'
+              + '&${__url_time_range}&${__all_variables}')
+
+
+def contact_sheet_element():
+    field_config = {
+        'defaults': {'custom': {'align': 'auto', 'cellOptions': {'type': 'auto'}, 'inspect': False},
+                     'links': [{'title': 'Show this scene on the map', 'url': SCENE_LINK}], 'mappings': []},
+        'overrides': [
+            by_name('View', ('custom.cellOptions', {'type': 'image'}), ('custom.width', 67)),
+            by_name('Date', ('custom.width', 164)),
+            by_name('Cloud %', ('unit', 'percent'), ('custom.width', 83)),
+            by_name('Covers %', ('unit', 'percent')),
+            by_name('centre_lat', ('custom.hidden', True)),
+            by_name('centre_lng', ('custom.hidden', True)),
+            by_name('scene_url', ('custom.hidden', True)),
+        ]}
+    options = {'cellHeight': 'lg', 'showHeader': True,
+               'footer': {'show': False, 'countRows': False, 'fields': '', 'reducer': ['sum']}}
+    return panel(
+        23, 'Scenes of your box, as pictures',
+        'Every Sentinel-2 scene that passes the cloud and coverage cuts, oldest first. Each thumbnail is your box '
+        'cut out of that scene by the tile server. Click a row to show that scene on the map.',
+        [duck_query('A', panel_sql('contact_sheet'))], 'table', '13.2.0', options, field_config)
+
+
+def figures_element():
+    field_config = {
+        'defaults': {'color': {'mode': 'thresholds'}, 'decimals': 1, 'mappings': [],
+                     'thresholds': {'mode': 'absolute', 'steps': [{'color': 'text', 'value': None}]}},
+        'overrides': [
+            by_name('Min cloud', ('unit', 'percent')),
+            by_name('Box covered', ('unit', 'percent')),
+            by_name('Scenes', ('decimals', 0)),
+            by_name('Matched', ('decimals', 0)),
+            by_name('Returned', ('decimals', 0)),
+        ]}
+    options = {'colorMode': 'none', 'graphMode': 'none', 'justifyMode': 'auto', 'orientation': 'horizontal',
+               'reduceOptions': {'calcs': ['lastNotNull'], 'fields': '/.*/', 'values': False},
+               'showPercentChange': False, 'textMode': 'value_and_name', 'wideLayout': True}
+    return panel(
+        24, 'Your box in the catalogue',
+        'Box covered is what all the listed scenes see together. Matched is what the catalogue found; if Returned '
+        'is lower, the list was cut. HTTP other than 200 means the search failed, not that there are no scenes.',
+        [duck_query('A', panel_sql('figures'))], 'stat', '13.2.0', options, field_config)
+
+
 def fire_map_element(panel8):
     """El mapa de la pestaña Timeline, sin humo y publicando su propia ventana."""
     source = panel8['spec']
@@ -152,7 +278,13 @@ def imagery_elements(dashboard):
     elements = dashboard['spec']['elements']
     if 'panel-8' not in elements:
         raise GraftError('panel-8 (Daily playback) not found: nothing to copy the fire map from')
-    return {'panel-21': fire_map_element(elements['panel-8'])}
+    panel8 = elements['panel-8']
+    return {
+        'panel-21': fire_map_element(panel8),
+        'panel-22': sentinel_map_element(panel8['spec']['vizConfig']['version']),
+        'panel-23': contact_sheet_element(),
+        'panel-24': figures_element(),
+    }
 
 
 def graft(dashboard, elements):
