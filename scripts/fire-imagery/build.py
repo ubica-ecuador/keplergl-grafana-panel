@@ -27,8 +27,8 @@ TILER = 'https://titiler.ubica.ec'
 LAYOUT = [
     ('panel-21', 0, 0, 12, 16),
     ('panel-22', 12, 0, 12, 16),
-    ('panel-23', 0, 16, 18, 12),
-    ('panel-24', 18, 16, 6, 12),
+    ('panel-23', 0, 16, 16, 12),
+    ('panel-24', 16, 16, 8, 12),
 ]
 
 
@@ -247,9 +247,9 @@ def figures_element():
             by_name('Matched', ('decimals', 0)),
             by_name('Returned', ('decimals', 0)),
         ]}
-    options = {'colorMode': 'none', 'graphMode': 'none', 'justifyMode': 'auto', 'orientation': 'horizontal',
+    options = {'colorMode': 'none', 'graphMode': 'none', 'justifyMode': 'auto', 'orientation': 'vertical',
                'reduceOptions': {'calcs': ['lastNotNull'], 'fields': '/.*/', 'values': False},
-               'showPercentChange': False, 'textMode': 'value_and_name', 'wideLayout': True}
+               'showPercentChange': False, 'textMode': 'value_and_name', 'wideLayout': False}
     return panel(
         24, 'Your box in the catalogue',
         'Box covered is what all the listed scenes see together. Matched is what the catalogue found; if Returned '
@@ -279,6 +279,7 @@ def fire_map_element(panel8):
     return panel(
         21, 'Fires — pause on a day, then draw a box',
         'Play the days, pause on the one you care about, and draw a rectangle with the map draw tool. '
+        'Draw it by pressing, dragging and releasing; a click, move, click does not close it on this map. '
         'The map on the right searches Sentinel-2 for that box, from the paused window to the days after it. '
         'The rectangle hides the cells outside it; delete it to see them again.',
         query_a, KEPLER_GROUP, source['vizConfig']['version'], options)

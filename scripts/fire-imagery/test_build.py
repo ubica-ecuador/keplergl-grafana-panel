@@ -192,6 +192,20 @@ class ImageryPanelsTest(unittest.TestCase):
         self.assertEqual(self.raw_sql('panel-23')['A'], build.panel_sql('contact_sheet'))
         self.assertEqual(self.raw_sql('panel-24')['A'], build.panel_sql('figures'))
 
+    def test_figures_panel_is_wide_enough_to_read(self):
+        items = self.out['spec']['layout']['spec']['tabs'][-1]['spec']['layout']['spec']['items']
+        widths = {i['spec']['element']['name']: i['spec']['width'] for i in items}
+        self.assertGreaterEqual(widths['panel-24'], 8)
+        self.assertEqual(widths['panel-23'] + widths['panel-24'], 24)
+        options = self.options('panel-24')
+        self.assertEqual(options['orientation'], 'vertical')
+        self.assertIs(options['wideLayout'], False)
+
+    def test_fire_map_description_explains_how_to_draw(self):
+        description = self.elements['panel-21']['spec']['description']
+        self.assertIn('drag', description.lower())
+        self.assertIn('hides the cells outside it', description)
+
 
 class SentinelMapConfigValidationTest(unittest.TestCase):
     def kepler_panel(self, stac):
