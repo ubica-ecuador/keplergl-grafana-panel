@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Observabilidad de un sistema de transporte público a partir de GTFS Realtime: salud del feed, operación en calle y confiabilidad del servicio, sobre los feeds públicos de la MBTA leídos en vivo por DuckDB.",
+  "description": "Observability of a public transit system from GTFS Realtime: feed health, street operations and service reliability, on the MBTA public feeds read live by DuckDB.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -35,7 +35,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "### Observabilidad de un sistema de transporte con GTFS Realtime\n\nDemostración sobre el feed público de la **MBTA** (Boston), en tres niveles: **salud del feed** — ¿llegan los datos y a tiempo? —, **operación en calle** — ¿dónde están los vehículos y cuáles circulan pegados? — y **confiabilidad del servicio** — ¿se cumple el intervalo programado?\n\nLos filtros de arriba — **modo, ruta, estado y ocupación** — cruzan todo el tablero: el mapa se filtra al instante y las tablas, estadísticas e historia del metro se recalculan (estado y ocupación solo aplican a vehículos; la antigüedad del feed no se filtra).\n\nTodo se consulta en vivo con DuckDB, sin base de datos intermedia: los feeds GTFS-RT en JSON pasan por una caché de 15 s (la MBTA pide no más de una petición cada 10 s) y la historia sale de los Parquet diarios de **LAMP**, el archivo de desempeño de la MBTA. Los umbrales de frescura siguen las buenas prácticas de GTFS Realtime (datos de menos de 90 s).\n\n<small>Datos: Massachusetts Bay Transportation Authority, bajo la MassDOT Developers License Agreement. Tablero independiente, sin afiliación con la MBTA.</small>",
+        "content": "### Public transit observability with GTFS Realtime\n\nA demo on the public feed of the **MBTA** (Boston), on three levels: **feed health** — is the data arriving, and on time? —, **street operations** — where are the vehicles, and which ones are running bunched? — and **service reliability** — is the scheduled headway being kept?\n\nThe filters at the top — **mode, route, status and occupancy** — apply across the whole dashboard: the map filters instantly, and the tables, stats and subway history recompute (status and occupancy only apply to vehicles; feed age is not filtered).\n\nEverything is queried live with DuckDB, with no intermediate database: the GTFS-RT JSON feeds go through a 15 s cache (the MBTA asks for no more than one request every 10 s) and the history comes from the daily Parquet files of **LAMP**, the MBTA's performance archive. Freshness thresholds follow GTFS Realtime best practices (data younger than 90 s).\n\n<small>Data: Massachusetts Bay Transportation Authority, under the MassDOT Developers License Agreement. Independent dashboard, not affiliated with the MBTA.</small>",
         "mode": "markdown"
       },
       "pluginVersion": "13.2.1",
@@ -52,7 +52,7 @@
         "y": 8
       },
       "id": 15,
-      "title": "Salud del feed · en vivo",
+      "title": "Feed health · live",
       "type": "row"
     },
     {
@@ -60,7 +60,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Antigüedad del feed: segundos desde la marca de tiempo de su cabecera (incluye hasta 15 s de la caché). Verde hasta 60 s, ámbar hasta 90 s, rojo después: las buenas prácticas de GTFS Realtime piden datos de menos de 90 s. Posiciones de más de 90 s: vehículos cuyo último reporte quedó atrás de la cabecera más de ese umbral. Predicciones sin vehículo: viajes con horas estimadas pero sin unidad asignada — normal para salidas futuras, sospechoso si crece en hora punta.",
+      "description": "Feed age: seconds since the timestamp in the feed header (includes up to 15 s of caching). Green up to 60 s, amber up to 90 s, red beyond: GTFS Realtime best practices ask for data younger than 90 s. Positions older than 90 s: vehicles whose last report trails the header by more than that. Predictions without a vehicle: trips with estimated times but no vehicle assigned — normal for future departures, suspicious if it grows at rush hour.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -87,7 +87,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Antigüedad del feed"
+              "options": "Feed age"
             },
             "properties": [
               {
@@ -125,7 +125,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Posiciones de más de 90 s"
+              "options": "Positions older than 90 s"
             },
             "properties": [
               {
@@ -167,7 +167,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Predicciones sin vehículo"
+              "options": "Predictions without a vehicle"
             },
             "properties": [
               {
@@ -216,11 +216,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- MATERIALIZED so each feed is read once per query: the proxy refreshes its\n-- copy every 15 s, and a second read landing after a refresh fails DuckDB's\n-- ETag check.\nWITH vp AS MATERIALIZED (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000)),\n     tu AS MATERIALIZED (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/TripUpdates_enhanced.json', maximum_object_size = 50000000)),\n-- Vehicle counts follow all four filters, trip counts modo and ruta (a trip\n-- has no status or occupancy). The feed's age is about the feed, so it reads\n-- the unfiltered header.\nv AS (SELECT header, e FROM vp WHERE CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN ($modo)\n    AND ('__todas__' IN ($ruta) OR e.vehicle.trip.route_id IN ($ruta))\n    AND CASE e.vehicle.current_status\n    WHEN 'IN_TRANSIT_TO' THEN 'En tránsito'\n    WHEN 'STOPPED_AT'    THEN 'Detenido en parada'\n    WHEN 'INCOMING_AT'   THEN 'Llegando a parada'\n    ELSE 'Sin dato'\n  END IN ($estado)\n    AND CASE e.vehicle.occupancy_status\n    WHEN 'EMPTY'                      THEN 'Vacío'\n    WHEN 'MANY_SEATS_AVAILABLE'       THEN 'Muchos asientos'\n    WHEN 'FEW_SEATS_AVAILABLE'        THEN 'Pocos asientos'\n    WHEN 'STANDING_ROOM_ONLY'         THEN 'Solo de pie'\n    WHEN 'CRUSHED_STANDING_ROOM_ONLY' THEN 'Muy lleno'\n    WHEN 'FULL'                       THEN 'Lleno'\n    WHEN 'NOT_ACCEPTING_PASSENGERS'   THEN 'No admite pasajeros'\n    ELSE 'Sin dato'\n  END IN ($ocupacion)),\nt AS (SELECT header, e FROM tu WHERE CASE\n    WHEN e.trip_update.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.trip_update.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.trip_update.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.trip_update.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN ($modo)\n    AND ('__todas__' IN ($ruta) OR e.trip_update.trip.route_id IN ($ruta)))\nSELECT\n  (SELECT (epoch(now()) - max(header.timestamp))::BIGINT FROM vp)                          AS \"Antigüedad del feed\",\n  (SELECT count(*)::BIGINT FROM v)                                                         AS \"Vehículos reportando\",\n  (SELECT round(100.0 * avg((header.timestamp - e.vehicle.timestamp > 90)::INT), 1) FROM v)  AS \"Posiciones de más de 90 s\",\n  (SELECT count(*)::BIGINT FROM t)                                                         AS \"Viajes con predicción\",\n  (SELECT count(*) FILTER (WHERE e.trip_update.trip.schedule_relationship = 'CANCELED')::BIGINT FROM t) AS \"Viajes cancelados\",\n  (SELECT count(*) FILTER (WHERE e.trip_update.trip.schedule_relationship = 'ADDED')::BIGINT FROM t)    AS \"Viajes añadidos\",\n  (SELECT round(100.0 * avg((e.trip_update.vehicle.id IS NULL)::INT), 1) FROM t)           AS \"Predicciones sin vehículo\"\n",
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- MATERIALIZED so each feed is read once per query: the proxy refreshes its\n-- copy every 15 s, and a second read landing after a refresh fails DuckDB's\n-- ETag check.\nWITH vp AS MATERIALIZED (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000)),\n     tu AS MATERIALIZED (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/TripUpdates_enhanced.json', maximum_object_size = 50000000)),\n-- Vehicle counts follow all four filters, trip counts mode and route (a trip\n-- has no status or occupancy). The feed's age is about the feed, so it reads\n-- the unfiltered header.\nv AS (SELECT header, e FROM vp WHERE CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Subway'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Commuter rail'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN ($mode)\n    AND ('__all__' IN ($route) OR e.vehicle.trip.route_id IN ($route))\n    AND CASE e.vehicle.current_status\n    WHEN 'IN_TRANSIT_TO' THEN 'In transit'\n    WHEN 'STOPPED_AT'    THEN 'Stopped at stop'\n    WHEN 'INCOMING_AT'   THEN 'Arriving at stop'\n    ELSE 'No data'\n  END IN ($status)\n    AND CASE e.vehicle.occupancy_status\n    WHEN 'EMPTY'                      THEN 'Empty'\n    WHEN 'MANY_SEATS_AVAILABLE'       THEN 'Many seats'\n    WHEN 'FEW_SEATS_AVAILABLE'        THEN 'Few seats'\n    WHEN 'STANDING_ROOM_ONLY'         THEN 'Standing room only'\n    WHEN 'CRUSHED_STANDING_ROOM_ONLY' THEN 'Crushed'\n    WHEN 'FULL'                       THEN 'Full'\n    WHEN 'NOT_ACCEPTING_PASSENGERS'   THEN 'Not accepting passengers'\n    ELSE 'No data'\n  END IN ($occupancy)),\nt AS (SELECT header, e FROM tu WHERE CASE\n    WHEN e.trip_update.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.trip_update.trip.route_id LIKE 'Green-%' THEN 'Subway'\n    WHEN e.trip_update.trip.route_id LIKE 'CR-%'   THEN 'Commuter rail'\n    WHEN e.trip_update.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN ($mode)\n    AND ('__all__' IN ($route) OR e.trip_update.trip.route_id IN ($route)))\nSELECT\n  (SELECT (epoch(now()) - max(header.timestamp))::BIGINT FROM vp)                          AS \"Feed age\",\n  (SELECT count(*)::BIGINT FROM v)                                                         AS \"Vehicles reporting\",\n  (SELECT round(100.0 * avg((header.timestamp - e.vehicle.timestamp > 90)::INT), 1) FROM v)  AS \"Positions older than 90 s\",\n  (SELECT count(*)::BIGINT FROM t)                                                         AS \"Trips with predictions\",\n  (SELECT count(*) FILTER (WHERE e.trip_update.trip.schedule_relationship = 'CANCELED')::BIGINT FROM t) AS \"Canceled trips\",\n  (SELECT count(*) FILTER (WHERE e.trip_update.trip.schedule_relationship = 'ADDED')::BIGINT FROM t)    AS \"Added trips\",\n  (SELECT round(100.0 * avg((e.trip_update.vehicle.id IS NULL)::INT), 1) FROM t)           AS \"Predictions without a vehicle\"\n",
           "refId": "A"
         }
       ],
-      "title": "¿Llegan los datos y a tiempo?",
+      "title": "Is the data arriving, and on time?",
       "type": "stat"
     },
     {
@@ -232,7 +232,7 @@
         "y": 13
       },
       "id": 16,
-      "title": "Operación en calle · en vivo",
+      "title": "Street operations · live",
       "type": "row"
     },
     {
@@ -240,7 +240,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Cada punto es un vehículo del último feed de posiciones. Verde: reportó hace 30 s o menos; ámbar: hasta 90 s; rojo: más, es decir, una unidad que el sistema cree en servicio pero que dejó de reportar. Haz clic en un vehículo para ver sus próximas paradas en la tabla de la derecha. Al elegir una fila de buses apelotonados, el mapa se acerca al par y lo marca con dos anillos que siguen a esos buses en cada refresco.",
+      "description": "Each point is a vehicle from the latest vehicle positions feed. Green: reported 30 s ago or less; amber: up to 90 s; red: longer — a vehicle the system believes is in service but that stopped reporting. Click a vehicle to see its next stops in the table on the right. Picking a row in the bunched buses table zooms the map to that pair and marks it with two rings that follow those buses on every refresh.",
       "gridPos": {
         "h": 18,
         "w": 15,
@@ -369,7 +369,7 @@
                   "enabled": true,
                   "id": "lnj1fkzrm",
                   "name": [
-                    "estado"
+                    "status"
                   ],
                   "plotType": {
                     "type": "histogram"
@@ -377,7 +377,7 @@
                   "speed": 1,
                   "type": "multiSelect",
                   "value": [
-                    "Detenido en parada"
+                    "Stopped at stop"
                   ],
                   "view": "side"
                 }
@@ -401,30 +401,30 @@
                   "fieldsToShow": {
                     "grafana-A": [
                       {
-                        "name": "unidad"
+                        "name": "unit"
                       },
                       {
-                        "name": "ruta"
+                        "name": "route"
                       },
                       {
-                        "name": "modo"
+                        "name": "mode"
                       },
                       {
-                        "name": "estado"
+                        "name": "status"
                       },
                       {
-                        "name": "ocupacion"
+                        "name": "occupancy"
                       },
                       {
-                        "name": "edad_s"
+                        "name": "age_s"
                       }
                     ],
                     "grafana-B": [
                       {
-                        "name": "unidad"
+                        "name": "unit"
                       },
                       {
-                        "name": "ruta"
+                        "name": "route"
                       }
                     ]
                   }
@@ -442,7 +442,7 @@
                   "type": "point",
                   "config": {
                     "dataId": "grafana-B",
-                    "label": "Par apelotonado seleccionado",
+                    "label": "Selected bunched pair",
                     "columns": {
                       "lat": "latitude",
                       "lng": "longitude"
@@ -493,7 +493,7 @@
                       255
                     ],
                     "isVisible": true,
-                    "label": "Vehículos · frescura de la posición",
+                    "label": "Vehicles · position freshness",
                     "textLabel": [
                       {
                         "alignment": "center",
@@ -549,7 +549,7 @@
                           "#d29922",
                           "#f85149"
                         ],
-                        "name": "Frescura",
+                        "name": "Freshness",
                         "type": "custom"
                       },
                       "filled": true,
@@ -583,7 +583,7 @@
                   "type": "point",
                   "visualChannels": {
                     "colorField": {
-                      "name": "frescura",
+                      "name": "freshness",
                       "type": "string"
                     },
                     "colorScale": "customOrdinal",
@@ -612,7 +612,7 @@
                       255
                     ],
                     "isVisible": true,
-                    "label": "(heatmap) of Vehículos · frescura de la posición",
+                    "label": "Heatmap · position age",
                     "textLabel": [
                       {
                         "alignment": "center",
@@ -670,7 +670,7 @@
                   "type": "heatmap",
                   "visualChannels": {
                     "weightField": {
-                      "name": "edad_s",
+                      "name": "age_s",
                       "type": "integer"
                     },
                     "weightScale": "linear"
@@ -693,25 +693,25 @@
         "tripLayerMode": "table",
         "variableMappings": [
           {
-            "field": "modo",
-            "variable": "modo"
+            "field": "mode",
+            "variable": "mode"
           },
           {
-            "field": "ruta",
-            "variable": "ruta"
+            "field": "route",
+            "variable": "route"
           },
           {
-            "field": "estado",
-            "variable": "estado"
+            "field": "status",
+            "variable": "status"
           },
           {
-            "field": "ocupacion",
-            "variable": "ocupacion"
+            "field": "occupancy",
+            "variable": "occupancy"
           },
           {
-            "field": "vehiculo",
+            "field": "vehicle",
             "source": "click",
-            "variable": "vehiculo"
+            "variable": "vehicle"
           },
           {
             "field": "",
@@ -732,7 +732,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- `vehiculo`, not `vehicle_id`: the panel reads vehicle_id as a trajectory id\n-- and would try to draw trips. No time column either, so this stays a snapshot.\n-- Deliberately unfiltered: the map narrows itself through kepler filters bound\n-- to the modo/ruta/estado/ocupacion variables, so a selection redraws at once\n-- and widening it again needs no new query.\nWITH vp AS (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000))\nSELECT\n  e.vehicle.vehicle.id                AS vehiculo,\n  e.vehicle.vehicle.label             AS unidad,\n  e.vehicle.trip.route_id             AS ruta,\n  CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END                              AS modo,\n  e.vehicle.position.latitude         AS latitude,\n  e.vehicle.position.longitude        AS longitude,\n  CASE e.vehicle.current_status\n    WHEN 'IN_TRANSIT_TO' THEN 'En tránsito'\n    WHEN 'STOPPED_AT'    THEN 'Detenido en parada'\n    WHEN 'INCOMING_AT'   THEN 'Llegando a parada'\n    ELSE 'Sin dato'\n  END                            AS estado,\n  CASE e.vehicle.occupancy_status\n    WHEN 'EMPTY'                      THEN 'Vacío'\n    WHEN 'MANY_SEATS_AVAILABLE'       THEN 'Muchos asientos'\n    WHEN 'FEW_SEATS_AVAILABLE'        THEN 'Pocos asientos'\n    WHEN 'STANDING_ROOM_ONLY'         THEN 'Solo de pie'\n    WHEN 'CRUSHED_STANDING_ROOM_ONLY' THEN 'Muy lleno'\n    WHEN 'FULL'                       THEN 'Lleno'\n    WHEN 'NOT_ACCEPTING_PASSENGERS'   THEN 'No admite pasajeros'\n    ELSE 'Sin dato'\n  END                         AS ocupacion,\n  (header.timestamp - e.vehicle.timestamp)::BIGINT AS edad_s,\n  CASE\n    WHEN header.timestamp - e.vehicle.timestamp <= 30 THEN '≤ 30 s'\n    WHEN header.timestamp - e.vehicle.timestamp <= 90 THEN '30–90 s'\n    ELSE '> 90 s'\n  END AS frescura\nFROM vp\n",
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- `vehicle`, not `vehicle_id`: the panel reads vehicle_id as a trajectory id\n-- and would try to draw trips. No time column either, so this stays a snapshot.\n-- Deliberately unfiltered: the map narrows itself through kepler filters bound\n-- to the mode/route/status/occupancy variables, so a selection redraws at once\n-- and widening it again needs no new query.\nWITH vp AS (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000))\nSELECT\n  e.vehicle.vehicle.id                AS vehicle,\n  e.vehicle.vehicle.label             AS unit,\n  e.vehicle.trip.route_id             AS route,\n  CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Subway'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Commuter rail'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END                              AS mode,\n  e.vehicle.position.latitude         AS latitude,\n  e.vehicle.position.longitude        AS longitude,\n  CASE e.vehicle.current_status\n    WHEN 'IN_TRANSIT_TO' THEN 'In transit'\n    WHEN 'STOPPED_AT'    THEN 'Stopped at stop'\n    WHEN 'INCOMING_AT'   THEN 'Arriving at stop'\n    ELSE 'No data'\n  END                            AS status,\n  CASE e.vehicle.occupancy_status\n    WHEN 'EMPTY'                      THEN 'Empty'\n    WHEN 'MANY_SEATS_AVAILABLE'       THEN 'Many seats'\n    WHEN 'FEW_SEATS_AVAILABLE'        THEN 'Few seats'\n    WHEN 'STANDING_ROOM_ONLY'         THEN 'Standing room only'\n    WHEN 'CRUSHED_STANDING_ROOM_ONLY' THEN 'Crushed'\n    WHEN 'FULL'                       THEN 'Full'\n    WHEN 'NOT_ACCEPTING_PASSENGERS'   THEN 'Not accepting passengers'\n    ELSE 'No data'\n  END                         AS occupancy,\n  (header.timestamp - e.vehicle.timestamp)::BIGINT AS age_s,\n  CASE\n    WHEN header.timestamp - e.vehicle.timestamp <= 30 THEN '≤ 30 s'\n    WHEN header.timestamp - e.vehicle.timestamp <= 90 THEN '30–90 s'\n    ELSE '> 90 s'\n  END AS freshness\nFROM vp\n",
           "refId": "A"
         },
         {
@@ -743,11 +743,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- The pair picked in the bunching table (variables parA and parB), read live\n-- so the rings follow both buses on every refresh. Empty until a row is\n-- clicked, which matches nothing.\nWITH vp AS (SELECT unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000))\nSELECT e.vehicle.vehicle.label       AS unidad,\n       e.vehicle.trip.route_id       AS ruta,\n       e.vehicle.position.latitude   AS latitude,\n       e.vehicle.position.longitude  AS longitude\nFROM vp\nWHERE e.vehicle.vehicle.id IN ($parA, $parB)\n",
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- The pair picked in the bunching table (variables parA and parB), read live\n-- so the rings follow both buses on every refresh. Empty until a row is\n-- clicked, which matches nothing.\nWITH vp AS (SELECT unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000))\nSELECT e.vehicle.vehicle.label       AS unit,\n       e.vehicle.trip.route_id       AS route,\n       e.vehicle.position.latitude   AS latitude,\n       e.vehicle.position.longitude  AS longitude\nFROM vp\nWHERE e.vehicle.vehicle.id IN ($parA, $parB)\n",
           "refId": "B"
         }
       ],
-      "title": "Flota ahora — color por frescura de la posición",
+      "title": "Fleet now — colored by position freshness",
       "type": "ubica-keplergl-panel"
     },
     {
@@ -755,7 +755,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Pares de buses de la misma ruta y sentido a menos de 250 m. Un bus pegado a otro significa que detrás de ambos hay un hueco: la espera de la parada siguiente se alarga aunque la flota sea la programada. Se excluyen posiciones de más de 90 s y las dos primeras paradas del recorrido, donde los buses esperan en terminal. Separación: rojo por debajo de 50 m, naranja hasta 150 m, amarillo hasta 250 m. Haz clic en una fila para acercar el mapa al par.",
+      "description": "Pairs of buses on the same route and direction less than 250 m apart. A bus right behind another means a gap behind both: the wait at the next stop grows even with the scheduled fleet on the road. Positions older than 90 s and the first two stops of the route, where buses lay over at the terminal, are left out. Distance: red below 50 m, orange up to 150 m, yellow up to 250 m. Click a row to zoom the map to the pair.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -770,8 +770,8 @@
           },
           "links": [
             {
-              "title": "Acercar el mapa a este par",
-              "url": "/d/gtfs-rt-mbta${__url.params:exclude:var-lat,var-lng,var-parA,var-parB}&var-lat=${__data.fields.lat_centro}&var-lng=${__data.fields.lng_centro}&var-parA=${__data.fields.id_a}&var-parB=${__data.fields.id_b}"
+              "title": "Zoom the map to this pair",
+              "url": "/d/gtfs-rt-mbta${__url.params:exclude:var-lat,var-lng,var-parA,var-parB}&var-lat=${__data.fields.center_lat}&var-lng=${__data.fields.center_lng}&var-parA=${__data.fields.id_a}&var-parB=${__data.fields.id_b}"
             }
           ],
           "thresholds": {
@@ -792,7 +792,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Separación"
+              "options": "Distance"
             },
             "properties": [
               {
@@ -841,7 +841,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Ruta"
+              "options": "Route"
             },
             "properties": [
               {
@@ -853,7 +853,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "lat_centro"
+              "options": "center_lat"
             },
             "properties": [
               {
@@ -865,7 +865,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "lng_centro"
+              "options": "center_lng"
             },
             "properties": [
               {
@@ -921,11 +921,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- Two buses of the same route and direction closer than 250 m. Stale\n-- positions and the first two stops (terminal layovers) are left out. The\n-- pair's midpoint and vehicle ids ride along hidden: the row's data link\n-- writes them to lat/lng (the map centres) and parA/parB (the map rings them).\nWITH vp AS (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000)),\nparadas AS (\n  -- The archive keeps every version of a stop; the newest name wins. Seven\n  -- days back picks the year so the first week of January still finds a file.\n  SELECT stop_id, arg_max(stop_name, gtfs_active_date) AS nombre\n  FROM read_parquet('http://sources-data/mbta/lamp/gtfs_archive/' || strftime(current_date - 7, '%Y') || '/stops.parquet')\n  GROUP BY 1\n),\nbus AS (\n  SELECT e.vehicle.vehicle.id          AS id,\n         e.vehicle.vehicle.label       AS unidad,\n         e.vehicle.trip.route_id       AS ruta,\n         e.vehicle.trip.direction_id   AS sentido,\n         e.vehicle.position.latitude   AS lat,\n         e.vehicle.position.longitude  AS lon,\n         e.vehicle.stop_id             AS parada\n  FROM vp\n  WHERE header.timestamp - e.vehicle.timestamp <= 90\n    AND e.vehicle.current_stop_sequence > 2\n    AND CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END = 'Bus'\n    -- Modo and ruta only: status and occupancy do not make two buses bunched.\n    AND CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN ($modo)\n    AND ('__todas__' IN ($ruta) OR e.vehicle.trip.route_id IN ($ruta))\n),\npares AS (\n  SELECT a.ruta, a.unidad AS a, b.unidad AS b, a.id AS id_a, b.id AS id_b, a.parada,\n         (a.lat + b.lat) / 2 AS lat_centro,\n         (a.lon + b.lon) / 2 AS lng_centro,\n         2 * 6371000 * asin(sqrt(pow(sin(radians(b.lat - a.lat) / 2), 2)\n           + cos(radians(a.lat)) * cos(radians(b.lat)) * pow(sin(radians(b.lon - a.lon) / 2), 2))) AS metros\n  FROM bus a JOIN bus b ON a.ruta = b.ruta AND a.sentido = b.sentido AND a.unidad < b.unidad\n)\nSELECT p.ruta                        AS \"Ruta\",\n       p.a || ' + ' || p.b           AS \"Buses\",\n       coalesce(s.nombre, p.parada)  AS \"Cerca de\",\n       round(p.metros)::BIGINT       AS \"Separación\",\n       -- Text, not numbers: a data link interpolates the cell's *formatted*\n       -- value, and the table's automatic decimals print 42.344533 as 42.3.\n       printf('%.6f', p.lat_centro)  AS lat_centro,\n       printf('%.6f', p.lng_centro)  AS lng_centro,\n       p.id_a,\n       p.id_b\nFROM pares p LEFT JOIN paradas s ON s.stop_id = p.parada\nWHERE p.metros < 250\nORDER BY p.metros\n",
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- Two buses of the same route and direction closer than 250 m. Stale\n-- positions and the first two stops (terminal layovers) are left out. The\n-- pair's midpoint and vehicle ids ride along hidden: the row's data link\n-- writes them to lat/lng (the map centres) and parA/parB (the map rings them).\nWITH vp AS (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000)),\nstops AS (\n  -- The archive keeps every version of a stop; the newest name wins. Seven\n  -- days back picks the year so the first week of January still finds a file.\n  SELECT stop_id, arg_max(stop_name, gtfs_active_date) AS name\n  FROM read_parquet('http://sources-data/mbta/lamp/gtfs_archive/' || strftime(current_date - 7, '%Y') || '/stops.parquet')\n  GROUP BY 1\n),\nbus AS (\n  SELECT e.vehicle.vehicle.id          AS id,\n         e.vehicle.vehicle.label       AS unit,\n         e.vehicle.trip.route_id       AS route,\n         e.vehicle.trip.direction_id   AS dir_id,\n         e.vehicle.position.latitude   AS lat,\n         e.vehicle.position.longitude  AS lon,\n         e.vehicle.stop_id             AS stop\n  FROM vp\n  WHERE header.timestamp - e.vehicle.timestamp <= 90\n    AND e.vehicle.current_stop_sequence > 2\n    AND CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Subway'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Commuter rail'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END = 'Bus'\n    -- Mode and route only: status and occupancy do not make two buses bunched.\n    AND CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Subway'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Commuter rail'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN ($mode)\n    AND ('__all__' IN ($route) OR e.vehicle.trip.route_id IN ($route))\n),\npairs AS (\n  SELECT a.route, a.unit AS a, b.unit AS b, a.id AS id_a, b.id AS id_b, a.stop,\n         (a.lat + b.lat) / 2 AS center_lat,\n         (a.lon + b.lon) / 2 AS center_lng,\n         2 * 6371000 * asin(sqrt(pow(sin(radians(b.lat - a.lat) / 2), 2)\n           + cos(radians(a.lat)) * cos(radians(b.lat)) * pow(sin(radians(b.lon - a.lon) / 2), 2))) AS meters\n  FROM bus a JOIN bus b ON a.route = b.route AND a.dir_id = b.dir_id AND a.unit < b.unit\n)\nSELECT p.route                        AS \"Route\",\n       p.a || ' + ' || p.b           AS \"Buses\",\n       coalesce(s.name, p.stop)  AS \"Near\",\n       round(p.meters)::BIGINT       AS \"Distance\",\n       -- Text, not numbers: a data link interpolates the cell's *formatted*\n       -- value, and the table's automatic decimals print 42.344533 as 42.3.\n       printf('%.6f', p.center_lat)  AS center_lat,\n       printf('%.6f', p.center_lng)  AS center_lng,\n       p.id_a,\n       p.id_b\nFROM pairs p LEFT JOIN stops s ON s.stop_id = p.stop\nWHERE p.meters < 250\nORDER BY p.meters\n",
           "refId": "A"
         }
       ],
-      "title": "Buses apelotonados ahora",
+      "title": "Bunched buses now",
       "type": "table"
     },
     {
@@ -933,7 +933,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Predicciones del feed TripUpdates para la unidad elegida en el mapa. Vacía hasta el primer clic.",
+      "description": "TripUpdates predictions for the vehicle picked on the map. Empty until the first click.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -946,7 +946,7 @@
             },
             "inspect": false
           },
-          "noValue": "Haz clic en un vehículo del mapa",
+          "noValue": "Click a vehicle on the map",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -965,7 +965,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Faltan"
+              "options": "Due in"
             },
             "properties": [
               {
@@ -981,7 +981,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Llegada estimada"
+              "options": "Estimated arrival"
             },
             "properties": [
               {
@@ -997,7 +997,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Ruta"
+              "options": "Route"
             },
             "properties": [
               {
@@ -1029,11 +1029,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- $vehiculo is written by a click on the map; empty until then, which\n-- matches nothing.\nWITH tu AS (SELECT unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/TripUpdates_enhanced.json', maximum_object_size = 50000000)),\nparadas AS (\n  -- The archive keeps every version of a stop; the newest name wins. Seven\n  -- days back picks the year so the first week of January still finds a file.\n  SELECT stop_id, arg_max(stop_name, gtfs_active_date) AS nombre\n  FROM read_parquet('http://sources-data/mbta/lamp/gtfs_archive/' || strftime(current_date - 7, '%Y') || '/stops.parquet')\n  GROUP BY 1\n),\nprox AS (\n  SELECT e.trip_update.trip.route_id AS ruta,\n         st.stop_sequence            AS orden,\n         st.stop_id                  AS parada,\n         coalesce(st.arrival.time, st.departure.time) AS t\n  FROM (SELECT e, unnest(e.trip_update.stop_time_update) AS st FROM tu)\n  WHERE e.trip_update.vehicle.id = $vehiculo\n)\nSELECT p.ruta                                         AS \"Ruta\",\n       coalesce(n.nombre, p.parada)                   AS \"Parada\",\n       to_timestamp(p.t)                              AS \"Llegada estimada\",\n       round((p.t - epoch(now())) / 60.0)::BIGINT     AS \"Faltan\"\nFROM prox p LEFT JOIN paradas n ON n.stop_id = p.parada\nWHERE p.t >= epoch(now()) - 60\nORDER BY p.orden\nLIMIT 15\n",
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- $vehicle is written by a click on the map; empty until then, which\n-- matches nothing.\nWITH tu AS (SELECT unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/TripUpdates_enhanced.json', maximum_object_size = 50000000)),\nstops AS (\n  -- The archive keeps every version of a stop; the newest name wins. Seven\n  -- days back picks the year so the first week of January still finds a file.\n  SELECT stop_id, arg_max(stop_name, gtfs_active_date) AS name\n  FROM read_parquet('http://sources-data/mbta/lamp/gtfs_archive/' || strftime(current_date - 7, '%Y') || '/stops.parquet')\n  GROUP BY 1\n),\nupcoming AS (\n  SELECT e.trip_update.trip.route_id AS route,\n         st.stop_sequence            AS seq,\n         st.stop_id                  AS stop,\n         coalesce(st.arrival.time, st.departure.time) AS t\n  FROM (SELECT e, unnest(e.trip_update.stop_time_update) AS st FROM tu)\n  WHERE e.trip_update.vehicle.id = $vehicle\n)\nSELECT p.route                                         AS \"Route\",\n       coalesce(n.name, p.stop)                   AS \"Stop\",\n       to_timestamp(p.t)                              AS \"Estimated arrival\",\n       round((p.t - epoch(now())) / 60.0)::BIGINT     AS \"Due in\"\nFROM upcoming p LEFT JOIN stops n ON n.stop_id = p.stop\nWHERE p.t >= epoch(now()) - 60\nORDER BY p.seq\nLIMIT 15\n",
           "refId": "A"
         }
       ],
-      "title": "Próximas paradas del vehículo seleccionado",
+      "title": "Next stops of the selected vehicle",
       "type": "table"
     },
     {
@@ -1041,7 +1041,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Dónde se concentran las posiciones viejas. En la MBTA suele ser el metro: los trenes detenidos en cocheras siguen publicados.",
+      "description": "Where the stale positions concentrate. At the MBTA it is usually the subway: trains parked in yards stay published.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -1072,7 +1072,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Posición más vieja"
+              "options": "Oldest position"
             },
             "properties": [
               {
@@ -1084,7 +1084,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Posición de más de 90 s"
+              "options": "Positions older than 90 s"
             },
             "properties": [
               {
@@ -1144,11 +1144,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\nWITH vp AS (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000)),\nv AS (SELECT CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END AS modo, header.timestamp - e.vehicle.timestamp AS edad FROM vp WHERE CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN ($modo)\n    AND ('__todas__' IN ($ruta) OR e.vehicle.trip.route_id IN ($ruta))\n    AND CASE e.vehicle.current_status\n    WHEN 'IN_TRANSIT_TO' THEN 'En tránsito'\n    WHEN 'STOPPED_AT'    THEN 'Detenido en parada'\n    WHEN 'INCOMING_AT'   THEN 'Llegando a parada'\n    ELSE 'Sin dato'\n  END IN ($estado)\n    AND CASE e.vehicle.occupancy_status\n    WHEN 'EMPTY'                      THEN 'Vacío'\n    WHEN 'MANY_SEATS_AVAILABLE'       THEN 'Muchos asientos'\n    WHEN 'FEW_SEATS_AVAILABLE'        THEN 'Pocos asientos'\n    WHEN 'STANDING_ROOM_ONLY'         THEN 'Solo de pie'\n    WHEN 'CRUSHED_STANDING_ROOM_ONLY' THEN 'Muy lleno'\n    WHEN 'FULL'                       THEN 'Lleno'\n    WHEN 'NOT_ACCEPTING_PASSENGERS'   THEN 'No admite pasajeros'\n    ELSE 'Sin dato'\n  END IN ($ocupacion))\nSELECT modo                                     AS \"Modo\",\n       count(*)::BIGINT                         AS \"Vehículos\",\n       count(*) FILTER (WHERE edad > 90)::BIGINT AS \"Posición de más de 90 s\",\n       max(edad)::BIGINT                        AS \"Posición más vieja\"\nFROM v GROUP BY 1 ORDER BY 2 DESC\n",
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\nWITH vp AS (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000)),\nv AS (SELECT CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Subway'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Commuter rail'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END AS mode, header.timestamp - e.vehicle.timestamp AS age FROM vp WHERE CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Subway'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Commuter rail'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN ($mode)\n    AND ('__all__' IN ($route) OR e.vehicle.trip.route_id IN ($route))\n    AND CASE e.vehicle.current_status\n    WHEN 'IN_TRANSIT_TO' THEN 'In transit'\n    WHEN 'STOPPED_AT'    THEN 'Stopped at stop'\n    WHEN 'INCOMING_AT'   THEN 'Arriving at stop'\n    ELSE 'No data'\n  END IN ($status)\n    AND CASE e.vehicle.occupancy_status\n    WHEN 'EMPTY'                      THEN 'Empty'\n    WHEN 'MANY_SEATS_AVAILABLE'       THEN 'Many seats'\n    WHEN 'FEW_SEATS_AVAILABLE'        THEN 'Few seats'\n    WHEN 'STANDING_ROOM_ONLY'         THEN 'Standing room only'\n    WHEN 'CRUSHED_STANDING_ROOM_ONLY' THEN 'Crushed'\n    WHEN 'FULL'                       THEN 'Full'\n    WHEN 'NOT_ACCEPTING_PASSENGERS'   THEN 'Not accepting passengers'\n    ELSE 'No data'\n  END IN ($occupancy))\nSELECT mode                                     AS \"Mode\",\n       count(*)::BIGINT                         AS \"Vehicles\",\n       count(*) FILTER (WHERE age > 90)::BIGINT AS \"Positions older than 90 s\",\n       max(age)::BIGINT                        AS \"Oldest position\"\nFROM v GROUP BY 1 ORDER BY 2 DESC\n",
           "refId": "A"
         }
       ],
-      "title": "Frescura por modo",
+      "title": "Freshness by mode",
       "type": "table"
     },
     {
@@ -1156,7 +1156,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Feed Alerts: avisos vigentes ahora mismo, agrupados por el efecto que declara la agencia.",
+      "description": "Alerts feed: notices in effect right now, grouped by the effect the agency declares.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1204,7 +1204,7 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "/^Alertas$/",
+          "fields": "/^Alerts$/",
           "values": true
         },
         "showUnfilled": true,
@@ -1221,11 +1221,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\nWITH al AS (SELECT unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/Alerts_enhanced.json', maximum_object_size = 50000000))\nSELECT\n  CASE e.alert.effect\n    WHEN 'NO_SERVICE'          THEN 'Sin servicio'\n    WHEN 'REDUCED_SERVICE'     THEN 'Servicio reducido'\n    WHEN 'SIGNIFICANT_DELAYS'  THEN 'Retrasos importantes'\n    WHEN 'DETOUR'              THEN 'Desvío'\n    WHEN 'ADDITIONAL_SERVICE'  THEN 'Servicio adicional'\n    WHEN 'MODIFIED_SERVICE'    THEN 'Servicio modificado'\n    WHEN 'STOP_MOVED'          THEN 'Parada reubicada'\n    WHEN 'ACCESSIBILITY_ISSUE' THEN 'Accesibilidad'\n    WHEN 'OTHER_EFFECT'        THEN 'Otro'\n    ELSE 'Sin especificar'\n  END AS \"Efecto\",\n  count(*)::BIGINT AS \"Alertas\"\nFROM al\n-- Active now: some period has started and has not ended (no end = open).\nWHERE len(list_filter(e.alert.active_period,\n          p -> p.start <= epoch(now()) AND coalesce(p.\"end\", 9999999999) >= epoch(now()))) > 0\n  -- And it names at least one route inside the modo and ruta selection.\n  AND len(list_filter(e.alert.informed_entity,\n          x -> x.route_id IS NOT NULL\n               AND CASE\n    WHEN x.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR x.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN x.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN x.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN ($modo)\n               AND ('__todas__' IN ($ruta) OR x.route_id IN ($ruta)))) > 0\nGROUP BY 1 ORDER BY 2 DESC\n",
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\nWITH al AS (SELECT unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/Alerts_enhanced.json', maximum_object_size = 50000000))\nSELECT\n  CASE e.alert.effect\n    WHEN 'NO_SERVICE'          THEN 'No service'\n    WHEN 'REDUCED_SERVICE'     THEN 'Reduced service'\n    WHEN 'SIGNIFICANT_DELAYS'  THEN 'Significant delays'\n    WHEN 'DETOUR'              THEN 'Detour'\n    WHEN 'ADDITIONAL_SERVICE'  THEN 'Additional service'\n    WHEN 'MODIFIED_SERVICE'    THEN 'Modified service'\n    WHEN 'STOP_MOVED'          THEN 'Stop moved'\n    WHEN 'ACCESSIBILITY_ISSUE' THEN 'Accessibility'\n    WHEN 'OTHER_EFFECT'        THEN 'Other'\n    ELSE 'Unknown'\n  END AS \"Effect\",\n  count(*)::BIGINT AS \"Alerts\"\nFROM al\n-- Active now: some period has started and has not ended (no end = open).\nWHERE len(list_filter(e.alert.active_period,\n          p -> p.start <= epoch(now()) AND coalesce(p.\"end\", 9999999999) >= epoch(now()))) > 0\n  -- And it names at least one route inside the mode and route selection.\n  AND len(list_filter(e.alert.informed_entity,\n          x -> x.route_id IS NOT NULL\n               AND CASE\n    WHEN x.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR x.route_id LIKE 'Green-%' THEN 'Subway'\n    WHEN x.route_id LIKE 'CR-%'   THEN 'Commuter rail'\n    WHEN x.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN ($mode)\n               AND ('__all__' IN ($route) OR x.route_id IN ($route)))) > 0\nGROUP BY 1 ORDER BY 2 DESC\n",
           "refId": "A"
         }
       ],
-      "title": "Alertas de servicio activas",
+      "title": "Active service alerts",
       "type": "bargauge"
     },
     {
@@ -1237,7 +1237,7 @@
         "y": 39
       },
       "id": 17,
-      "title": "Confiabilidad del metro · historia (sigue el rango de tiempo hasta ayer, y los filtros de modo y ruta)",
+      "title": "Subway reliability · history (follows the time range up to yesterday, and the mode and route filters)",
       "type": "row"
     },
     {
@@ -1245,7 +1245,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Del archivo LAMP de la MBTA: cada paso de un tren por una estación con su intervalo real y el programado. Espera excesiva = espera esperada real − programada, con espera esperada = Σh² / 2Σh (la métrica de MBTA, TfL y MTA). Huecos: intervalos de más de 1,5 veces lo programado. Apelotonados: menos de un cuarto. Minutos.",
+      "description": "From the MBTA's LAMP archive: every time a train passes a station, with its actual and scheduled headway. Excess wait = expected wait, actual minus scheduled, where expected wait = Σh² / 2Σh (the metric used by the MBTA, TfL and the MTA). Gaps: headways over 1.5 times the schedule. Bunched: under a quarter of it. Minutes.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -1276,7 +1276,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Línea"
+              "options": "Line"
             },
             "properties": [
               {
@@ -1288,7 +1288,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Pasos"
+              "options": "Samples"
             },
             "properties": [
               {
@@ -1300,7 +1300,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Real"
+              "options": "Actual"
             },
             "properties": [
               {
@@ -1316,7 +1316,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Programado"
+              "options": "Scheduled"
             },
             "properties": [
               {
@@ -1332,7 +1332,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Espera excesiva"
+              "options": "Excess wait"
             },
             "properties": [
               {
@@ -1384,7 +1384,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Huecos"
+              "options": "Gaps"
             },
             "properties": [
               {
@@ -1432,7 +1432,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Apelotonados"
+              "options": "Bunched"
             },
             "properties": [
               {
@@ -1468,11 +1468,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\n\n-- One LAMP file per service day in the dashboard range. Capped at 31 days and\n-- at yesterday in Boston: today's file may not exist yet, and a missing file\n-- fails the whole read. A range inside today still reads yesterday.\nWITH d AS (\n  -- Branch headways where the station is on a branch (Green-B/C/D/E), trunk\n  -- headways otherwise; comparing a branch stop against the trunk schedule\n  -- invents gaps. Intervals of an hour or more are the overnight break.\n  SELECT trunk_route_id AS linea,\n         route_id,\n         parent_station,\n         direction_destination,\n         to_timestamp(stop_timestamp) AS t,\n         coalesce(headway_branch_seconds, headway_trunk_seconds)     AS h,\n         coalesce(scheduled_headway_branch, scheduled_headway_trunk) AS hs\n  FROM read_parquet([\n  'http://sources-data/mbta/lamp/subway-on-time-performance-v1/' || strftime(d, '%Y-%m-%d') || '-subway-on-time-performance-v1.parquet'\n  FOR d IN generate_series(\n    least(greatest(CAST($__timeFrom() AS TIMESTAMPTZ)::DATE, CAST($__timeTo() AS TIMESTAMPTZ)::DATE - 30), (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    least(CAST($__timeTo() AS TIMESTAMPTZ)::DATE, (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    INTERVAL 1 DAY)\n])\n),\n-- Some rows carry headways but no stop timestamp; a null in the time column\n-- makes Grafana's time series report all of its data as out of range.\n-- The dashboard's modo and ruta filters reach the history too. LAMP's route_id\n-- uses the live feed's ids (Green-B…E, Red, Orange, Blue, Mattapan), so the same\n-- selection applies unchanged; a selection without Metro leaves it empty.\nok AS (\n  SELECT * FROM d\n  WHERE t IS NOT NULL AND h > 0 AND hs > 0 AND h < 3600 AND hs < 3600\n    AND 'Metro' IN ($modo)\n    AND ('__todas__' IN ($ruta) OR route_id IN ($ruta))\n)\nSELECT linea                                              AS \"Línea\",\n       count(*)::BIGINT                                   AS \"Pasos\",\n       round(median(h) / 60.0, 1)                         AS \"Real\",\n       round(median(hs) / 60.0, 1)                        AS \"Programado\",\n       -- Excess wait time: a rider's expected wait, Σh²/2Σh, real minus scheduled.\n       round((sum(h ^ 2) / (2 * sum(h)) - sum(hs ^ 2) / (2 * sum(hs))) / 60.0, 2)                                    AS \"Espera excesiva\",\n       round(100.0 * avg((h < 0.25 * hs)::INT), 1)        AS \"Apelotonados\",\n       round(100.0 * avg((h > 1.5 * hs)::INT), 1)         AS \"Huecos\"\nFROM ok GROUP BY 1 ORDER BY 1\n",
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n\n-- One LAMP file per service day in the dashboard range. Capped at 31 days and\n-- at yesterday in Boston: today's file may not exist yet, and a missing file\n-- fails the whole read. A range inside today still reads yesterday.\nWITH d AS (\n  -- Branch headways where the station is on a branch (Green-B/C/D/E), trunk\n  -- headways otherwise; comparing a branch stop against the trunk schedule\n  -- invents gaps. Intervals of an hour or more are the overnight break.\n  SELECT trunk_route_id AS line,\n         route_id,\n         parent_station,\n         direction_destination,\n         to_timestamp(stop_timestamp) AS t,\n         coalesce(headway_branch_seconds, headway_trunk_seconds)     AS h,\n         coalesce(scheduled_headway_branch, scheduled_headway_trunk) AS hs\n  FROM read_parquet([\n  'http://sources-data/mbta/lamp/subway-on-time-performance-v1/' || strftime(d, '%Y-%m-%d') || '-subway-on-time-performance-v1.parquet'\n  FOR d IN generate_series(\n    least(greatest(CAST($__timeFrom() AS TIMESTAMPTZ)::DATE, CAST($__timeTo() AS TIMESTAMPTZ)::DATE - 30), (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    least(CAST($__timeTo() AS TIMESTAMPTZ)::DATE, (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    INTERVAL 1 DAY)\n])\n),\n-- Some rows carry headways but no stop timestamp; a null in the time column\n-- makes Grafana's time series report all of its data as out of range.\n-- The dashboard's mode and route filters reach the history too. LAMP's route_id\n-- uses the live feed's ids (Green-B…E, Red, Orange, Blue, Mattapan), so the same\n-- selection applies unchanged; a selection without Subway leaves it empty.\nok AS (\n  SELECT * FROM d\n  WHERE t IS NOT NULL AND h > 0 AND hs > 0 AND h < 3600 AND hs < 3600\n    AND 'Subway' IN ($mode)\n    AND ('__all__' IN ($route) OR route_id IN ($route))\n)\nSELECT line                                              AS \"Line\",\n       count(*)::BIGINT                                   AS \"Samples\",\n       round(median(h) / 60.0, 1)                         AS \"Actual\",\n       round(median(hs) / 60.0, 1)                        AS \"Scheduled\",\n       -- Excess wait time: a rider's expected wait, Σh²/2Σh, real minus scheduled.\n       round((sum(h ^ 2) / (2 * sum(h)) - sum(hs ^ 2) / (2 * sum(hs))) / 60.0, 2)                                    AS \"Excess wait\",\n       round(100.0 * avg((h < 0.25 * hs)::INT), 1)        AS \"Bunched\",\n       round(100.0 * avg((h > 1.5 * hs)::INT), 1)         AS \"Gaps\"\nFROM ok GROUP BY 1 ORDER BY 1\n",
           "refId": "A"
         }
       ],
-      "title": "Intervalos por línea",
+      "title": "Headways by line",
       "type": "table"
     },
     {
@@ -1628,11 +1628,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\n\n-- One LAMP file per service day in the dashboard range. Capped at 31 days and\n-- at yesterday in Boston: today's file may not exist yet, and a missing file\n-- fails the whole read. A range inside today still reads yesterday.\nWITH d AS (\n  -- Branch headways where the station is on a branch (Green-B/C/D/E), trunk\n  -- headways otherwise; comparing a branch stop against the trunk schedule\n  -- invents gaps. Intervals of an hour or more are the overnight break.\n  SELECT trunk_route_id AS linea,\n         route_id,\n         parent_station,\n         direction_destination,\n         to_timestamp(stop_timestamp) AS t,\n         coalesce(headway_branch_seconds, headway_trunk_seconds)     AS h,\n         coalesce(scheduled_headway_branch, scheduled_headway_trunk) AS hs\n  FROM read_parquet([\n  'http://sources-data/mbta/lamp/subway-on-time-performance-v1/' || strftime(d, '%Y-%m-%d') || '-subway-on-time-performance-v1.parquet'\n  FOR d IN generate_series(\n    least(greatest(CAST($__timeFrom() AS TIMESTAMPTZ)::DATE, CAST($__timeTo() AS TIMESTAMPTZ)::DATE - 30), (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    least(CAST($__timeTo() AS TIMESTAMPTZ)::DATE, (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    INTERVAL 1 DAY)\n])\n),\n-- Some rows carry headways but no stop timestamp; a null in the time column\n-- makes Grafana's time series report all of its data as out of range.\n-- The dashboard's modo and ruta filters reach the history too. LAMP's route_id\n-- uses the live feed's ids (Green-B…E, Red, Orange, Blue, Mattapan), so the same\n-- selection applies unchanged; a selection without Metro leaves it empty.\nok AS (\n  SELECT * FROM d\n  WHERE t IS NOT NULL AND h > 0 AND hs > 0 AND h < 3600 AND hs < 3600\n    AND 'Metro' IN ($modo)\n    AND ('__todas__' IN ($ruta) OR route_id IN ($ruta))\n)\nSELECT time_bucket(INTERVAL 1 HOUR, t) AS time,\n       CASE WHEN count(*) FILTER (WHERE linea = 'Red') >= 20\n         THEN round(100.0 * avg((h > 1.5 * hs)::INT) FILTER (WHERE linea = 'Red'), 1) END AS \"Red\",\n       CASE WHEN count(*) FILTER (WHERE linea = 'Orange') >= 20\n         THEN round(100.0 * avg((h > 1.5 * hs)::INT) FILTER (WHERE linea = 'Orange'), 1) END AS \"Orange\",\n       CASE WHEN count(*) FILTER (WHERE linea = 'Blue') >= 20\n         THEN round(100.0 * avg((h > 1.5 * hs)::INT) FILTER (WHERE linea = 'Blue'), 1) END AS \"Blue\",\n       CASE WHEN count(*) FILTER (WHERE linea = 'Green') >= 20\n         THEN round(100.0 * avg((h > 1.5 * hs)::INT) FILTER (WHERE linea = 'Green'), 1) END AS \"Green\"\nFROM ok GROUP BY 1 ORDER BY 1\n",
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n\n-- One LAMP file per service day in the dashboard range. Capped at 31 days and\n-- at yesterday in Boston: today's file may not exist yet, and a missing file\n-- fails the whole read. A range inside today still reads yesterday.\nWITH d AS (\n  -- Branch headways where the station is on a branch (Green-B/C/D/E), trunk\n  -- headways otherwise; comparing a branch stop against the trunk schedule\n  -- invents gaps. Intervals of an hour or more are the overnight break.\n  SELECT trunk_route_id AS line,\n         route_id,\n         parent_station,\n         direction_destination,\n         to_timestamp(stop_timestamp) AS t,\n         coalesce(headway_branch_seconds, headway_trunk_seconds)     AS h,\n         coalesce(scheduled_headway_branch, scheduled_headway_trunk) AS hs\n  FROM read_parquet([\n  'http://sources-data/mbta/lamp/subway-on-time-performance-v1/' || strftime(d, '%Y-%m-%d') || '-subway-on-time-performance-v1.parquet'\n  FOR d IN generate_series(\n    least(greatest(CAST($__timeFrom() AS TIMESTAMPTZ)::DATE, CAST($__timeTo() AS TIMESTAMPTZ)::DATE - 30), (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    least(CAST($__timeTo() AS TIMESTAMPTZ)::DATE, (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    INTERVAL 1 DAY)\n])\n),\n-- Some rows carry headways but no stop timestamp; a null in the time column\n-- makes Grafana's time series report all of its data as out of range.\n-- The dashboard's mode and route filters reach the history too. LAMP's route_id\n-- uses the live feed's ids (Green-B…E, Red, Orange, Blue, Mattapan), so the same\n-- selection applies unchanged; a selection without Subway leaves it empty.\nok AS (\n  SELECT * FROM d\n  WHERE t IS NOT NULL AND h > 0 AND hs > 0 AND h < 3600 AND hs < 3600\n    AND 'Subway' IN ($mode)\n    AND ('__all__' IN ($route) OR route_id IN ($route))\n)\nSELECT time_bucket(INTERVAL 1 HOUR, t) AS time,\n       CASE WHEN count(*) FILTER (WHERE line = 'Red') >= 20\n         THEN round(100.0 * avg((h > 1.5 * hs)::INT) FILTER (WHERE line = 'Red'), 1) END AS \"Red\",\n       CASE WHEN count(*) FILTER (WHERE line = 'Orange') >= 20\n         THEN round(100.0 * avg((h > 1.5 * hs)::INT) FILTER (WHERE line = 'Orange'), 1) END AS \"Orange\",\n       CASE WHEN count(*) FILTER (WHERE line = 'Blue') >= 20\n         THEN round(100.0 * avg((h > 1.5 * hs)::INT) FILTER (WHERE line = 'Blue'), 1) END AS \"Blue\",\n       CASE WHEN count(*) FILTER (WHERE line = 'Green') >= 20\n         THEN round(100.0 * avg((h > 1.5 * hs)::INT) FILTER (WHERE line = 'Green'), 1) END AS \"Green\"\nFROM ok GROUP BY 1 ORDER BY 1\n",
           "refId": "A"
         }
       ],
-      "title": "Huecos por hora — % de intervalos por encima de 1,5 × lo programado",
+      "title": "Gaps by hour — % of headways above 1.5 × the schedule",
       "type": "timeseries"
     },
     {
@@ -1640,7 +1640,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Por estación y sentido, con al menos 100 pasos medidos en el rango. Es la tabla que un jefe de operaciones abre primero: dice dónde se rompe la regularidad, no solo cuánto.",
+      "description": "By station and direction, with at least 100 measured samples in the range. It is the table an operations manager opens first: it says where regularity breaks down, not just how much.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -1671,7 +1671,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Línea"
+              "options": "Line"
             },
             "properties": [
               {
@@ -1683,19 +1683,19 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Pasos"
+              "options": "Samples"
             },
             "properties": [
               {
                 "id": "custom.width",
-                "value": 60
+                "value": 80
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "Espera excesiva"
+              "options": "Excess wait"
             },
             "properties": [
               {
@@ -1747,7 +1747,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Huecos"
+              "options": "Gaps"
             },
             "properties": [
               {
@@ -1815,11 +1815,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\n\n-- One LAMP file per service day in the dashboard range. Capped at 31 days and\n-- at yesterday in Boston: today's file may not exist yet, and a missing file\n-- fails the whole read. A range inside today still reads yesterday.\nWITH d AS (\n  -- Branch headways where the station is on a branch (Green-B/C/D/E), trunk\n  -- headways otherwise; comparing a branch stop against the trunk schedule\n  -- invents gaps. Intervals of an hour or more are the overnight break.\n  SELECT trunk_route_id AS linea,\n         route_id,\n         parent_station,\n         direction_destination,\n         to_timestamp(stop_timestamp) AS t,\n         coalesce(headway_branch_seconds, headway_trunk_seconds)     AS h,\n         coalesce(scheduled_headway_branch, scheduled_headway_trunk) AS hs\n  FROM read_parquet([\n  'http://sources-data/mbta/lamp/subway-on-time-performance-v1/' || strftime(d, '%Y-%m-%d') || '-subway-on-time-performance-v1.parquet'\n  FOR d IN generate_series(\n    least(greatest(CAST($__timeFrom() AS TIMESTAMPTZ)::DATE, CAST($__timeTo() AS TIMESTAMPTZ)::DATE - 30), (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    least(CAST($__timeTo() AS TIMESTAMPTZ)::DATE, (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    INTERVAL 1 DAY)\n])\n),\n-- Some rows carry headways but no stop timestamp; a null in the time column\n-- makes Grafana's time series report all of its data as out of range.\n-- The dashboard's modo and ruta filters reach the history too. LAMP's route_id\n-- uses the live feed's ids (Green-B…E, Red, Orange, Blue, Mattapan), so the same\n-- selection applies unchanged; a selection without Metro leaves it empty.\nok AS (\n  SELECT * FROM d\n  WHERE t IS NOT NULL AND h > 0 AND hs > 0 AND h < 3600 AND hs < 3600\n    AND 'Metro' IN ($modo)\n    AND ('__todas__' IN ($ruta) OR route_id IN ($ruta))\n),\nparadas AS (\n  -- The archive keeps every version of a stop; the newest name wins. Seven\n  -- days back picks the year so the first week of January still finds a file.\n  SELECT stop_id, arg_max(stop_name, gtfs_active_date) AS nombre\n  FROM read_parquet('http://sources-data/mbta/lamp/gtfs_archive/' || strftime(current_date - 7, '%Y') || '/stops.parquet')\n  GROUP BY 1\n)\nSELECT o.linea                                  AS \"Línea\",\n       coalesce(p.nombre, o.parent_station)     AS \"Estación\",\n       o.direction_destination                  AS \"Hacia\",\n       count(*)::BIGINT                         AS \"Pasos\",\n       round((sum(h ^ 2) / (2 * sum(h)) - sum(hs ^ 2) / (2 * sum(hs))) / 60.0, 1)                          AS \"Espera excesiva\",\n       round(100.0 * avg((h > 1.5 * hs)::INT), 1) AS \"Huecos\"\nFROM ok o LEFT JOIN paradas p ON p.stop_id = o.parent_station\nGROUP BY ALL\nHAVING count(*) >= 100\nORDER BY \"Espera excesiva\" DESC\nLIMIT 10\n",
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n\n-- One LAMP file per service day in the dashboard range. Capped at 31 days and\n-- at yesterday in Boston: today's file may not exist yet, and a missing file\n-- fails the whole read. A range inside today still reads yesterday.\nWITH d AS (\n  -- Branch headways where the station is on a branch (Green-B/C/D/E), trunk\n  -- headways otherwise; comparing a branch stop against the trunk schedule\n  -- invents gaps. Intervals of an hour or more are the overnight break.\n  SELECT trunk_route_id AS line,\n         route_id,\n         parent_station,\n         direction_destination,\n         to_timestamp(stop_timestamp) AS t,\n         coalesce(headway_branch_seconds, headway_trunk_seconds)     AS h,\n         coalesce(scheduled_headway_branch, scheduled_headway_trunk) AS hs\n  FROM read_parquet([\n  'http://sources-data/mbta/lamp/subway-on-time-performance-v1/' || strftime(d, '%Y-%m-%d') || '-subway-on-time-performance-v1.parquet'\n  FOR d IN generate_series(\n    least(greatest(CAST($__timeFrom() AS TIMESTAMPTZ)::DATE, CAST($__timeTo() AS TIMESTAMPTZ)::DATE - 30), (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    least(CAST($__timeTo() AS TIMESTAMPTZ)::DATE, (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    INTERVAL 1 DAY)\n])\n),\n-- Some rows carry headways but no stop timestamp; a null in the time column\n-- makes Grafana's time series report all of its data as out of range.\n-- The dashboard's mode and route filters reach the history too. LAMP's route_id\n-- uses the live feed's ids (Green-B…E, Red, Orange, Blue, Mattapan), so the same\n-- selection applies unchanged; a selection without Subway leaves it empty.\nok AS (\n  SELECT * FROM d\n  WHERE t IS NOT NULL AND h > 0 AND hs > 0 AND h < 3600 AND hs < 3600\n    AND 'Subway' IN ($mode)\n    AND ('__all__' IN ($route) OR route_id IN ($route))\n),\nstops AS (\n  -- The archive keeps every version of a stop; the newest name wins. Seven\n  -- days back picks the year so the first week of January still finds a file.\n  SELECT stop_id, arg_max(stop_name, gtfs_active_date) AS name\n  FROM read_parquet('http://sources-data/mbta/lamp/gtfs_archive/' || strftime(current_date - 7, '%Y') || '/stops.parquet')\n  GROUP BY 1\n)\nSELECT o.line                                  AS \"Line\",\n       coalesce(p.name, o.parent_station)     AS \"Station\",\n       o.direction_destination                  AS \"Toward\",\n       count(*)::BIGINT                         AS \"Samples\",\n       round((sum(h ^ 2) / (2 * sum(h)) - sum(hs ^ 2) / (2 * sum(hs))) / 60.0, 1)                          AS \"Excess wait\",\n       round(100.0 * avg((h > 1.5 * hs)::INT), 1) AS \"Gaps\"\nFROM ok o LEFT JOIN stops p ON p.stop_id = o.parent_station\nGROUP BY ALL\nHAVING count(*) >= 100\nORDER BY \"Excess wait\" DESC\nLIMIT 10\n",
           "refId": "A"
         }
       ],
-      "title": "Las diez estaciones con más espera excesiva",
+      "title": "The ten stations with the most excess wait",
       "type": "table"
     },
     {
@@ -1827,7 +1827,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Cada estación de metro con al menos 100 pasos medidos en algún sentido, con su peor sentido del rango. Color con los mismos cortes que la tabla (verde menos de 1 min de espera excesiva, naranja hasta 2, rojo más); el tamaño crece con la espera. Las estaciones que rinden mejor que lo programado quedan del tamaño mínimo.",
+      "description": "Every subway station with at least 100 measured samples in some direction, carrying its worst direction in the range. Color and size grow with the excess wait.",
       "gridPos": {
         "h": 12,
         "w": 12,
@@ -1966,22 +1966,22 @@
                   "fieldsToShow": {
                     "grafana-A": [
                       {
-                        "name": "estacion"
+                        "name": "station"
                       },
                       {
-                        "name": "lineas"
+                        "name": "lines"
                       },
                       {
-                        "name": "peor_sentido"
+                        "name": "worst_direction"
                       },
                       {
-                        "name": "espera_excesiva"
+                        "name": "excess_wait"
                       },
                       {
-                        "name": "huecos"
+                        "name": "gaps"
                       },
                       {
-                        "name": "pasos"
+                        "name": "samples"
                       }
                     ]
                   }
@@ -2014,7 +2014,7 @@
                       255
                     ],
                     "isVisible": true,
-                    "label": "Copy of Estaciones · peor espera excesiva",
+                    "label": "Stations · worst excess wait (3D)",
                     "textLabel": [],
                     "visConfig": {
                       "colorAggregation": "average",
@@ -2058,12 +2058,12 @@
                   "type": "hexagon",
                   "visualChannels": {
                     "colorField": {
-                      "name": "espera_excesiva",
+                      "name": "excess_wait",
                       "type": "real"
                     },
                     "colorScale": "quantile",
                     "sizeField": {
-                      "name": "espera_excesiva",
+                      "name": "excess_wait",
                       "type": "real"
                     },
                     "sizeScale": "sqrt"
@@ -2090,7 +2090,7 @@
                       255
                     ],
                     "isVisible": true,
-                    "label": "Estaciones · peor espera excesiva",
+                    "label": "Stations · worst excess wait",
                     "textLabel": [
                       {
                         "alignment": "center",
@@ -2165,12 +2165,12 @@
                   "type": "hexagon",
                   "visualChannels": {
                     "colorField": {
-                      "name": "espera_excesiva",
+                      "name": "excess_wait",
                       "type": "real"
                     },
                     "colorScale": "quantile",
                     "sizeField": {
-                      "name": "peso",
+                      "name": "size_weight",
                       "type": "real"
                     },
                     "sizeScale": "sqrt"
@@ -2202,11 +2202,11 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\n\n-- One LAMP file per service day in the dashboard range. Capped at 31 days and\n-- at yesterday in Boston: today's file may not exist yet, and a missing file\n-- fails the whole read. A range inside today still reads yesterday.\nWITH d AS (\n  -- Branch headways where the station is on a branch (Green-B/C/D/E), trunk\n  -- headways otherwise; comparing a branch stop against the trunk schedule\n  -- invents gaps. Intervals of an hour or more are the overnight break.\n  SELECT trunk_route_id AS linea,\n         route_id,\n         parent_station,\n         direction_destination,\n         to_timestamp(stop_timestamp) AS t,\n         coalesce(headway_branch_seconds, headway_trunk_seconds)     AS h,\n         coalesce(scheduled_headway_branch, scheduled_headway_trunk) AS hs\n  FROM read_parquet([\n  'http://sources-data/mbta/lamp/subway-on-time-performance-v1/' || strftime(d, '%Y-%m-%d') || '-subway-on-time-performance-v1.parquet'\n  FOR d IN generate_series(\n    least(greatest(CAST($__timeFrom() AS TIMESTAMPTZ)::DATE, CAST($__timeTo() AS TIMESTAMPTZ)::DATE - 30), (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    least(CAST($__timeTo() AS TIMESTAMPTZ)::DATE, (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    INTERVAL 1 DAY)\n])\n),\n-- Some rows carry headways but no stop timestamp; a null in the time column\n-- makes Grafana's time series report all of its data as out of range.\n-- The dashboard's modo and ruta filters reach the history too. LAMP's route_id\n-- uses the live feed's ids (Green-B…E, Red, Orange, Blue, Mattapan), so the same\n-- selection applies unchanged; a selection without Metro leaves it empty.\nok AS (\n  SELECT * FROM d\n  WHERE t IS NOT NULL AND h > 0 AND hs > 0 AND h < 3600 AND hs < 3600\n    AND 'Metro' IN ($modo)\n    AND ('__todas__' IN ($ruta) OR route_id IN ($ruta))\n),\nparadas AS (\n  SELECT stop_id,\n         arg_max(stop_name, gtfs_active_date) AS nombre,\n         arg_max(stop_lat, gtfs_active_date)  AS lat,\n         arg_max(stop_lon, gtfs_active_date)  AS lon\n  FROM read_parquet('http://sources-data/mbta/lamp/gtfs_archive/' || strftime(current_date - 7, '%Y') || '/stops.parquet')\n  GROUP BY 1\n),\n-- Excess wait per station, line and direction first, as in the table. Pooling\n-- the headways of two lines into one Σh² would describe a wait no rider has.\ntramo AS (\n  SELECT parent_station, linea, direction_destination AS hacia,\n         count(*) AS pasos,\n         (sum(h ^ 2) / (2 * sum(h)) - sum(hs ^ 2) / (2 * sum(hs))) / 60.0 AS ewt,\n         100.0 * avg((h > 1.5 * hs)::INT) AS huecos\n  FROM ok GROUP BY ALL HAVING count(*) >= 100\n),\n-- One point per station, carrying its worst direction.\nestacion AS (\n  SELECT parent_station,\n         string_agg(DISTINCT linea, ' / ' ORDER BY linea) AS lineas,\n         sum(pasos)::BIGINT                              AS pasos,\n         max(ewt)                                        AS ewt,\n         arg_max(linea || ' hacia ' || hacia, ewt)       AS peor_sentido,\n         arg_max(huecos, ewt)                            AS huecos\n  FROM tramo GROUP BY 1\n)\n-- No column called count or direction: the panel reads both as field roles.\nSELECT p.nombre                      AS estacion,\n       e.lineas,\n       e.peor_sentido,\n       p.lat                         AS latitude,\n       p.lon                         AS longitude,\n       e.pasos,\n       round(e.ewt, 2)               AS espera_excesiva,\n       round(e.huecos, 1)            AS huecos,\n       -- Size channel: better-than-scheduled stations come out negative.\n       round(greatest(e.ewt, 0), 2)  AS peso,\n       CASE WHEN e.ewt < 1 THEN '< 1 min' WHEN e.ewt < 2 THEN '1–2 min' ELSE '> 2 min' END AS banda\nFROM estacion e JOIN paradas p ON p.stop_id = e.parent_station\n",
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n\n-- One LAMP file per service day in the dashboard range. Capped at 31 days and\n-- at yesterday in Boston: today's file may not exist yet, and a missing file\n-- fails the whole read. A range inside today still reads yesterday.\nWITH d AS (\n  -- Branch headways where the station is on a branch (Green-B/C/D/E), trunk\n  -- headways otherwise; comparing a branch stop against the trunk schedule\n  -- invents gaps. Intervals of an hour or more are the overnight break.\n  SELECT trunk_route_id AS line,\n         route_id,\n         parent_station,\n         direction_destination,\n         to_timestamp(stop_timestamp) AS t,\n         coalesce(headway_branch_seconds, headway_trunk_seconds)     AS h,\n         coalesce(scheduled_headway_branch, scheduled_headway_trunk) AS hs\n  FROM read_parquet([\n  'http://sources-data/mbta/lamp/subway-on-time-performance-v1/' || strftime(d, '%Y-%m-%d') || '-subway-on-time-performance-v1.parquet'\n  FOR d IN generate_series(\n    least(greatest(CAST($__timeFrom() AS TIMESTAMPTZ)::DATE, CAST($__timeTo() AS TIMESTAMPTZ)::DATE - 30), (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    least(CAST($__timeTo() AS TIMESTAMPTZ)::DATE, (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    INTERVAL 1 DAY)\n])\n),\n-- Some rows carry headways but no stop timestamp; a null in the time column\n-- makes Grafana's time series report all of its data as out of range.\n-- The dashboard's mode and route filters reach the history too. LAMP's route_id\n-- uses the live feed's ids (Green-B…E, Red, Orange, Blue, Mattapan), so the same\n-- selection applies unchanged; a selection without Subway leaves it empty.\nok AS (\n  SELECT * FROM d\n  WHERE t IS NOT NULL AND h > 0 AND hs > 0 AND h < 3600 AND hs < 3600\n    AND 'Subway' IN ($mode)\n    AND ('__all__' IN ($route) OR route_id IN ($route))\n),\nstops AS (\n  SELECT stop_id,\n         arg_max(stop_name, gtfs_active_date) AS name,\n         arg_max(stop_lat, gtfs_active_date)  AS lat,\n         arg_max(stop_lon, gtfs_active_date)  AS lon\n  FROM read_parquet('http://sources-data/mbta/lamp/gtfs_archive/' || strftime(current_date - 7, '%Y') || '/stops.parquet')\n  GROUP BY 1\n),\n-- Excess wait per station, line and direction first, as in the table. Pooling\n-- the headways of two lines into one Σh² would describe a wait no rider has.\nsegment AS (\n  SELECT parent_station, line, direction_destination AS toward,\n         count(*) AS samples,\n         (sum(h ^ 2) / (2 * sum(h)) - sum(hs ^ 2) / (2 * sum(hs))) / 60.0 AS ewt,\n         100.0 * avg((h > 1.5 * hs)::INT) AS gaps\n  FROM ok GROUP BY ALL HAVING count(*) >= 100\n),\n-- One point per station, carrying its worst direction.\nstation AS (\n  SELECT parent_station,\n         string_agg(DISTINCT line, ' / ' ORDER BY line) AS lines,\n         sum(samples)::BIGINT                              AS samples,\n         max(ewt)                                        AS ewt,\n         arg_max(line || ' to ' || toward, ewt)       AS worst_direction,\n         arg_max(gaps, ewt)                            AS gaps\n  FROM segment GROUP BY 1\n)\n-- No column called count or direction: the panel reads both as field roles.\nSELECT p.name                      AS station,\n       e.lines,\n       e.worst_direction,\n       p.lat                         AS latitude,\n       p.lon                         AS longitude,\n       e.samples,\n       round(e.ewt, 2)               AS excess_wait,\n       round(e.gaps, 1)            AS gaps,\n       -- Size channel: better-than-scheduled stations come out negative.\n       round(greatest(e.ewt, 0), 2)  AS size_weight,\n       CASE WHEN e.ewt < 1 THEN '< 1 min' WHEN e.ewt < 2 THEN '1–2 min' ELSE '> 2 min' END AS band\nFROM station e JOIN stops p ON p.stop_id = e.parent_station\n",
           "refId": "A"
         }
       ],
-      "title": "Dónde se rompe la regularidad",
+      "title": "Where regularity breaks down",
       "type": "ubica-keplergl-panel"
     }
   ],
@@ -2217,7 +2217,7 @@
     "kepler",
     "sources",
     "gtfs-rt",
-    "transporte"
+    "transit"
   ],
   "templating": {
     "list": [
@@ -2233,17 +2233,17 @@
         },
         "hide": 0,
         "includeAll": true,
-        "label": "Modo",
+        "label": "Mode",
         "multi": true,
-        "name": "modo",
+        "name": "mode",
         "options": [],
-        "query": "Bus,Metro,Tren de cercanías,Ferry",
+        "query": "Bus,Subway,Commuter rail,Ferry",
         "skipUrlSync": false,
         "type": "custom",
         "valuesFormat": "csv"
       },
       {
-        "allValue": "'__todas__'",
+        "allValue": "'__all__'",
         "allowCustomValue": true,
         "current": {
           "text": [
@@ -2257,14 +2257,14 @@
           "type": "motherduck-duckdb-datasource",
           "uid": "duckdb"
         },
-        "definition": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- Variable query: Grafana does not quote variables here as it does in panel\n-- queries, so modo is spelled out with the sqlstring format.\nSELECT ruta FROM (\n  SELECT DISTINCT e.vehicle.trip.route_id AS ruta, CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END AS modo\n  FROM (SELECT unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000))\n  WHERE e.vehicle.trip.route_id IS NOT NULL\n    AND CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN (${modo:sqlstring})\n)\nORDER BY CASE modo WHEN 'Metro' THEN 0 WHEN 'Tren de cercanías' THEN 1 WHEN 'Ferry' THEN 2 ELSE 3 END,\n         try_cast(ruta AS INTEGER) NULLS LAST, ruta\n",
+        "definition": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- Variable query: Grafana does not quote variables here as it does in panel\n-- queries, so mode is spelled out with the sqlstring format.\nSELECT route FROM (\n  SELECT DISTINCT e.vehicle.trip.route_id AS route, CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Subway'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Commuter rail'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END AS mode\n  FROM (SELECT unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000))\n  WHERE e.vehicle.trip.route_id IS NOT NULL\n    AND CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Subway'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Commuter rail'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN (${mode:sqlstring})\n)\nORDER BY CASE mode WHEN 'Subway' THEN 0 WHEN 'Commuter rail' THEN 1 WHEN 'Ferry' THEN 2 ELSE 3 END,\n         try_cast(route AS INTEGER) NULLS LAST, route\n",
         "hide": 0,
         "includeAll": true,
-        "label": "Ruta",
+        "label": "Route",
         "multi": true,
-        "name": "ruta",
+        "name": "route",
         "options": [],
-        "query": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- Variable query: Grafana does not quote variables here as it does in panel\n-- queries, so modo is spelled out with the sqlstring format.\nSELECT ruta FROM (\n  SELECT DISTINCT e.vehicle.trip.route_id AS ruta, CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END AS modo\n  FROM (SELECT unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000))\n  WHERE e.vehicle.trip.route_id IS NOT NULL\n    AND CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN (${modo:sqlstring})\n)\nORDER BY CASE modo WHEN 'Metro' THEN 0 WHEN 'Tren de cercanías' THEN 1 WHEN 'Ferry' THEN 2 ELSE 3 END,\n         try_cast(ruta AS INTEGER) NULLS LAST, ruta\n",
+        "query": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- Variable query: Grafana does not quote variables here as it does in panel\n-- queries, so mode is spelled out with the sqlstring format.\nSELECT route FROM (\n  SELECT DISTINCT e.vehicle.trip.route_id AS route, CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Subway'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Commuter rail'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END AS mode\n  FROM (SELECT unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000))\n  WHERE e.vehicle.trip.route_id IS NOT NULL\n    AND CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Subway'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Commuter rail'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN (${mode:sqlstring})\n)\nORDER BY CASE mode WHEN 'Subway' THEN 0 WHEN 'Commuter rail' THEN 1 WHEN 'Ferry' THEN 2 ELSE 3 END,\n         try_cast(route AS INTEGER) NULLS LAST, route\n",
         "refresh": 1,
         "regex": "",
         "regexApplyTo": "value",
@@ -2284,11 +2284,11 @@
         },
         "hide": 0,
         "includeAll": true,
-        "label": "Estado",
+        "label": "Status",
         "multi": true,
-        "name": "estado",
+        "name": "status",
         "options": [],
-        "query": "En tránsito,Detenido en parada,Llegando a parada,Sin dato",
+        "query": "In transit,Stopped at stop,Arriving at stop,No data",
         "skipUrlSync": false,
         "type": "custom",
         "valuesFormat": "csv"
@@ -2305,11 +2305,11 @@
         },
         "hide": 0,
         "includeAll": true,
-        "label": "Ocupación",
+        "label": "Occupancy",
         "multi": true,
-        "name": "ocupacion",
+        "name": "occupancy",
         "options": [],
-        "query": "Muchos asientos,Pocos asientos,Solo de pie,Muy lleno,Lleno,No admite pasajeros,Vacío,Sin dato",
+        "query": "Many seats,Few seats,Standing room only,Crushed,Full,Not accepting passengers,Empty,No data",
         "skipUrlSync": false,
         "type": "custom",
         "valuesFormat": "csv"
@@ -2320,8 +2320,8 @@
           "value": ""
         },
         "hide": 2,
-        "label": "Vehículo (clic en el mapa)",
-        "name": "vehiculo",
+        "label": "Vehicle (map click)",
+        "name": "vehicle",
         "query": "",
         "skipUrlSync": false,
         "type": "textbox"
@@ -2332,7 +2332,7 @@
           "value": ""
         },
         "hide": 2,
-        "label": "Latitud del par (fila de apelotonados)",
+        "label": "Pair latitude (bunching row)",
         "name": "lat",
         "query": "",
         "skipUrlSync": false,
@@ -2344,7 +2344,7 @@
           "value": ""
         },
         "hide": 2,
-        "label": "Longitud del par (fila de apelotonados)",
+        "label": "Pair longitude (bunching row)",
         "name": "lng",
         "query": "",
         "skipUrlSync": false,
@@ -2356,7 +2356,7 @@
           "value": ""
         },
         "hide": 2,
-        "label": "Primer bus del par",
+        "label": "First bus of the pair",
         "name": "parA",
         "query": "",
         "skipUrlSync": false,
@@ -2368,7 +2368,7 @@
           "value": ""
         },
         "hide": 2,
-        "label": "Segundo bus del par",
+        "label": "Second bus of the pair",
         "name": "parB",
         "query": "",
         "skipUrlSync": false,
@@ -2389,6 +2389,6 @@
     ]
   },
   "timezone": "America/New_York",
-  "title": "Transporte público en tiempo real — MBTA (GTFS-RT)",
+  "title": "Real-time public transit — MBTA (GTFS-RT)",
   "uid": "gtfs-rt-mbta"
 }
