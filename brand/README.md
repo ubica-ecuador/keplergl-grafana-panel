@@ -8,10 +8,16 @@ ours to ship as the identity of a third-party plugin.
 
 | File | Use |
 |---|---|
-| `logo-large.svg` | Full mark, 512×512, with the isometric base grid. Catalog page, README, headers. |
-| `logo-small.svg` | No base grid, tight crop. Icons from 16 to 48 px. |
-| `logo-mono-white.svg` | White on transparent. Dark slides, dark print. |
-| `logo-mono-black.svg` | Black on transparent. Light backgrounds, printed docs. |
+| `logo-large.svg` | Full mark on a transparent background. Catalog page, README, headers. |
+| `logo-small.svg` | Identical to `logo-large.svg`. Icons and favicon. |
+| `logo-mono-white.svg` | White on transparent. Dark slides, dark print. **Still the previous hex-prism mark.** |
+| `logo-mono-black.svg` | Black on transparent. Light backgrounds, printed docs. **Still the previous hex-prism mark.** |
+
+The two colour files are byte-identical: one vector drawing, tightly cropped
+(`viewBox="19.7 19.9 140.6 140.6"`), that scales to any size. Both names are
+kept because `plugin.json` asks for a small and a large logo. The file carries a
+C2PA provenance manifest in its `<metadata>` whose hash covers the bytes, so
+copy it as is — editing any attribute, even `width`, breaks the signature.
 
 This directory is the source of truth. It is not built or published; the two
 variants that ship are copied to where each consumer needs them:
@@ -28,31 +34,30 @@ yet; they exist so a dark deck or a printed page has something to use.
 
 ## Palette
 
-Grafana's own orange ramp:
+Grafana's orange ramp, no background:
 
-- `#F46800` — primary orange (tall column)
-- `#FF9830` — mid orange (middle column)
-- `#FFB357` — light orange (short column, base grid)
-
-Derived shades for the side faces: `#C25400` / `#9B4300`, `#D97A22` / `#B3611A`,
-`#D98A3C` / `#B36F2C`.
+- `#F46800` — base layer (solid)
+- `#FF9830` — middle layer (60% fill, solid outline)
+- `#FBCA0A` — top layer (55% fill, solid outline), track and pin
+- `#111217` — the halo around the track, the pin's outline and hole, and the
+  pin's shadow at 45%
 
 ## Concept
 
-Three hexagonal cells extruded to different heights over an isometric grid: the
-3D hexbin layer that identifies kepler.gl, read at the same time as a bar chart
-— Grafana's native language. Height encodes aggregation; the grid anchors the
-mark to the geographic plane.
+Three isometric map layers stacked on top of each other, with a track rising
+through them up to a location pin: kepler.gl's layered map, crossed by a
+trajectory in time.
 
-## Clear space
+## Backgrounds
 
-Leave a margin of at least half a hex cell's width — 33 units of the 512 viewBox,
-about 6.5% of the side — around the mark.
+The mark is transparent and made for Grafana's dark theme. The `#111217` halo
+cuts the track out of the layers it crosses. On a dark background it disappears;
+on a white one it shows as a dark outline, which still reads fine.
 
 ## Reducing
 
-Below 24 px always use `logo-small.svg`: the base grid turns into noise at that
-size. If a channel needs PNG rather than SVG:
+It is a single vector drawing, so it works at any size. If a channel needs PNG
+rather than SVG:
 
 ```bash
 rsvg-convert -w 48 -h 48 logo-small.svg -o logo-48.png
