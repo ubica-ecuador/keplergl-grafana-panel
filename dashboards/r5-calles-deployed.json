@@ -1,5 +1,24 @@
 {
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
   "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "liveNow": false,
   "panels": [
     {
       "datasource": {
@@ -21,38 +40,108 @@
         "mapConfig": {
           "config": {
             "mapState": {
-              "bearing": 0,
-              "dragRotate": false,
+              "bearing": 2.265510340226818,
+              "dragRotate": true,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [
+                    40,
+                    63,
+                    93
+                  ],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [
+                    4,
+                    9,
+                    17
+                  ],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [
+                    114.75,
+                    114.75,
+                    114.75
+                  ],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [
+                    9,
+                    16,
+                    29
+                  ],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [
+                    17,
+                    35,
+                    48
+                  ]
+                },
+                "enabled": false
+              },
               "isSplit": false,
-              "latitude": -2.919,
-              "longitude": -79.002,
-              "mapViewMode": "MODE_2D",
-              "pitch": 0,
-              "zoom": 13.3
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": -2.9000854994901366,
+              "longitude": -79.00735762905205,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_3D",
+              "maxPitch": 85,
+              "pitch": 38.52713178294574,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 13.679836309981589
             },
             "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
+              ],
+              "mapStyles": {},
               "styleType": "dark-matter",
-              "topLayerGroups": {},
+              "threeDBuildingColor": [
+                15.035172933000911,
+                15.035172933000911,
+                15.035172933000911
+              ],
+              "topLayerGroups": {
+                "label": true
+              },
               "visibleLayerGroups": {
                 "3d building": false,
                 "border": false,
-                "building": false,
-                "label": false,
+                "building": true,
+                "label": true,
                 "land": true,
-                "road": false,
+                "road": true,
                 "water": true
               }
             },
             "uiState": {
+              "locale": "en",
               "mapControls": {
                 "mapLegend": {
                   "active": false
                 }
-              }
+              },
+              "theme": "dark"
             },
             "visState": {
               "animationConfig": {
                 "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
               },
               "effects": [],
               "filters": [
@@ -74,8 +163,8 @@
                   "speed": 1,
                   "type": "timeRange",
                   "value": [
-                    1788332460000,
-                    1788334200000
+                    1788332520000,
+                    1788333300000
                   ],
                   "view": "minified"
                 }
@@ -89,7 +178,8 @@
                   "enabled": true
                 },
                 "geocoder": {
-                  "enabled": false
+                  "enabled": false,
+                  "limitSearch": false
                 },
                 "tooltip": {
                   "compareMode": false,
@@ -98,14 +188,13 @@
                   "fieldsToShow": {
                     "grafana-A": [
                       {
-                        "format": null,
                         "name": "minutos"
                       },
                       {
-                        "format": null,
                         "name": "class"
                       }
-                    ]
+                    ],
+                    "grafana-B": []
                   }
                 }
               },
@@ -123,6 +212,7 @@
                       255,
                       255
                     ],
+                    "columnMode": "points",
                     "columns": {
                       "lat": "latitude",
                       "lng": "longitude"
@@ -137,8 +227,40 @@
                     ],
                     "isVisible": true,
                     "label": "Origin",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
                     "visConfig": {
                       "allowHover": false,
+                      "billboard": false,
                       "colorRange": {
                         "category": "Custom",
                         "colors": [
@@ -165,16 +287,30 @@
                         0,
                         50
                       ],
+                      "showHighlightColor": true,
+                      "showNeighborOnHover": false,
+                      "strokeColorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#4C0035",
+                          "#880030",
+                          "#B72F15",
+                          "#D6610A",
+                          "#EF9100",
+                          "#FFC300"
+                        ],
+                        "name": "Global Warming",
+                        "type": "sequential"
+                      },
                       "thickness": 2
                     }
                   },
                   "id": "origen",
                   "type": "point",
                   "visualChannels": {
-                    "colorField": null,
                     "colorScale": "quantile",
-                    "sizeField": null,
-                    "sizeScale": "linear"
+                    "sizeScale": "linear",
+                    "strokeColorScale": "quantile"
                   }
                 },
                 {
@@ -198,6 +334,37 @@
                     ],
                     "isVisible": true,
                     "label": "Streets",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
                     "visConfig": {
                       "allowHover": true,
                       "colorRange": {
@@ -220,6 +387,7 @@
                       "elevationScale": 5,
                       "enable3d": false,
                       "filled": false,
+                      "fixedHeight": false,
                       "heightRange": [
                         0,
                         500
@@ -265,13 +433,9 @@
                   "id": "core",
                   "type": "geojson",
                   "visualChannels": {
-                    "colorField": null,
                     "colorScale": "quantile",
-                    "heightField": null,
                     "heightScale": "linear",
-                    "radiusField": null,
                     "radiusScale": "linear",
-                    "sizeField": null,
                     "sizeScale": "linear",
                     "strokeColorField": {
                       "name": "minutos",
@@ -301,6 +465,37 @@
                     ],
                     "isVisible": true,
                     "label": "Glow",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
                     "visConfig": {
                       "allowHover": false,
                       "colorRange": {
@@ -323,6 +518,7 @@
                       "elevationScale": 5,
                       "enable3d": false,
                       "filled": false,
+                      "fixedHeight": false,
                       "heightRange": [
                         0,
                         500
@@ -368,13 +564,9 @@
                   "id": "glow",
                   "type": "geojson",
                   "visualChannels": {
-                    "colorField": null,
                     "colorScale": "quantile",
-                    "heightField": null,
                     "heightScale": "linear",
-                    "radiusField": null,
                     "radiusScale": "linear",
-                    "sizeField": null,
                     "sizeScale": "linear",
                     "strokeColorField": {
                       "name": "minutos",
@@ -384,11 +576,17 @@
                   }
                 }
               ],
+              "overlayBlending": "normal",
               "splitMaps": []
             }
           },
           "version": "v1"
         },
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "rasterColormap": "",
+        "rasterPainted": false,
+        "saveRequest": 1,
         "showSidePanel": false,
         "timeSync": "off",
         "tripLayerMode": "table",
@@ -401,6 +599,7 @@
           }
         ]
       },
+      "pluginVersion": "1.0.0",
       "targets": [
         {
           "datasource": {
@@ -425,7 +624,9 @@
       "type": "ubica-keplergl-panel"
     }
   ],
-  "schemaVersion": 39,
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 42,
   "tags": [
     "r5",
     "overture",
@@ -483,7 +684,8 @@
         "options": [],
         "query": "Walk : apie,Bike : bici",
         "skipUrlSync": false,
-        "type": "custom"
+        "type": "custom",
+        "valuesFormat": "csv"
       },
       {
         "allowCustomValue": true,
@@ -505,7 +707,8 @@
         "options": [],
         "query": "Bus : BUS,Tram : TRAM,None : none",
         "skipUrlSync": false,
-        "type": "custom"
+        "type": "custom",
+        "valuesFormat": "csv"
       },
       {
         "allowCustomValue": true,
@@ -521,7 +724,8 @@
         "options": [],
         "query": "10,20,30",
         "skipUrlSync": false,
-        "type": "custom"
+        "type": "custom",
+        "valuesFormat": "csv"
       },
       {
         "allowCustomValue": true,
@@ -537,7 +741,8 @@
         "options": [],
         "query": "1,2,4",
         "skipUrlSync": false,
-        "type": "custom"
+        "type": "custom",
+        "valuesFormat": "csv"
       },
       {
         "allowCustomValue": true,
@@ -553,9 +758,15 @@
         "options": [],
         "query": "15,30,45,60",
         "skipUrlSync": false,
-        "type": "custom"
+        "type": "custom",
+        "valuesFormat": "csv"
       },
       {
+        "allowCustomValue": true,
+        "current": {
+          "text": "",
+          "value": ""
+        },
         "datasource": {
           "type": "motherduck-duckdb-datasource",
           "uid": "duckdb"
@@ -568,11 +779,18 @@
         "options": [],
         "query": "SELECT latest FROM read_json_auto('https://stac.overturemaps.org/catalog.json')",
         "refresh": 1,
+        "regex": "",
+        "regexApplyTo": "value",
         "skipUrlSync": true,
         "sort": 0,
         "type": "query"
       },
       {
+        "allowCustomValue": true,
+        "current": {
+          "text": "",
+          "value": ""
+        },
         "datasource": {
           "type": "motherduck-duckdb-datasource",
           "uid": "duckdb"
@@ -585,11 +803,18 @@
         "options": [],
         "query": "SELECT replace(assets.aws.alternate.s3.href, 's3://overturemaps-us-west-2/',\n               'https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/') AS href\nFROM 'https://stac.overturemaps.org/${ov_release}/collections.parquet'\nWHERE collection = 'segment' AND bbox.xmin <= -78.87 AND bbox.xmax >= -79.11 AND bbox.ymin <= -2.76 AND bbox.ymax >= -3.02",
         "refresh": 1,
+        "regex": "",
+        "regexApplyTo": "value",
         "skipUrlSync": true,
         "sort": 0,
         "type": "query"
       },
       {
+        "allowCustomValue": true,
+        "current": {
+          "text": "",
+          "value": ""
+        },
         "datasource": {
           "type": "motherduck-duckdb-datasource",
           "uid": "duckdb"
@@ -602,6 +827,8 @@
         "options": [],
         "query": "CREATE TABLE IF NOT EXISTS \"calles_ov_${ov_release}\" AS\nWITH s AS (\n  SELECT id, class, geometry AS g,\n         greatest(1, ceil(ST_Length(geometry) * 111320 / 50))::INT AS n\n  FROM read_parquet('${ov_url}')\n  WHERE subtype = 'road' AND bbox.xmin <= -78.87 AND bbox.xmax >= -79.11 AND bbox.ymin <= -2.76 AND bbox.ymax >= -3.02\n)\nSELECT id, class, ST_LineSubstring(g, i / n, (i + 1) / n) AS g FROM s, range(n) r(i)",
         "refresh": 1,
+        "regex": "",
+        "regexApplyTo": "value",
         "skipUrlSync": true,
         "sort": 0,
         "type": "query"
@@ -612,6 +839,21 @@
     "from": "now-6h",
     "to": "now"
   },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "browser",
   "title": "Cuenca in 30 minutes — streets by travel time",
   "uid": "r5-calles"
 }
