@@ -1,0 +1,2394 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Observabilidad de un sistema de transporte público a partir de GTFS Realtime: salud del feed, operación en calle y confiabilidad del servicio, sobre los feeds públicos de la MBTA leídos en vivo por DuckDB.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "liveNow": false,
+  "panels": [
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "### Observabilidad de un sistema de transporte con GTFS Realtime\n\nDemostración sobre el feed público de la **MBTA** (Boston), en tres niveles: **salud del feed** — ¿llegan los datos y a tiempo? —, **operación en calle** — ¿dónde están los vehículos y cuáles circulan pegados? — y **confiabilidad del servicio** — ¿se cumple el intervalo programado?\n\nLos filtros de arriba — **modo, ruta, estado y ocupación** — cruzan todo el tablero: el mapa se filtra al instante y las tablas, estadísticas e historia del metro se recalculan (estado y ocupación solo aplican a vehículos; la antigüedad del feed no se filtra).\n\nTodo se consulta en vivo con DuckDB, sin base de datos intermedia: los feeds GTFS-RT en JSON pasan por una caché de 15 s (la MBTA pide no más de una petición cada 10 s) y la historia sale de los Parquet diarios de **LAMP**, el archivo de desempeño de la MBTA. Los umbrales de frescura siguen las buenas prácticas de GTFS Realtime (datos de menos de 90 s).\n\n<small>Datos: Massachusetts Bay Transportation Authority, bajo la MassDOT Developers License Agreement. Tablero independiente, sin afiliación con la MBTA.</small>",
+        "mode": "markdown"
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [],
+      "title": "",
+      "type": "text"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 15,
+      "title": "Salud del feed · en vivo",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Antigüedad del feed: segundos desde la marca de tiempo de su cabecera (incluye hasta 15 s de la caché). Verde hasta 60 s, ámbar hasta 90 s, rojo después: las buenas prácticas de GTFS Realtime piden datos de menos de 90 s. Posiciones de más de 90 s: vehículos cuyo último reporte quedó atrás de la cabecera más de ese umbral. Predicciones sin vehículo: viajes con horas estimadas pero sin unidad asignada — normal para salidas futuras, sospechoso si crece en hora punta.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "text",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Antigüedad del feed"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 60
+                    },
+                    {
+                      "color": "red",
+                      "value": 90
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Posiciones de más de 90 s"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 5
+                    },
+                    {
+                      "color": "red",
+                      "value": 15
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Predicciones sin vehículo"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- MATERIALIZED so each feed is read once per query: the proxy refreshes its\n-- copy every 15 s, and a second read landing after a refresh fails DuckDB's\n-- ETag check.\nWITH vp AS MATERIALIZED (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000)),\n     tu AS MATERIALIZED (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/TripUpdates_enhanced.json', maximum_object_size = 50000000)),\n-- Vehicle counts follow all four filters, trip counts modo and ruta (a trip\n-- has no status or occupancy). The feed's age is about the feed, so it reads\n-- the unfiltered header.\nv AS (SELECT header, e FROM vp WHERE CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN ($modo)\n    AND ('__todas__' IN ($ruta) OR e.vehicle.trip.route_id IN ($ruta))\n    AND CASE e.vehicle.current_status\n    WHEN 'IN_TRANSIT_TO' THEN 'En tránsito'\n    WHEN 'STOPPED_AT'    THEN 'Detenido en parada'\n    WHEN 'INCOMING_AT'   THEN 'Llegando a parada'\n    ELSE 'Sin dato'\n  END IN ($estado)\n    AND CASE e.vehicle.occupancy_status\n    WHEN 'EMPTY'                      THEN 'Vacío'\n    WHEN 'MANY_SEATS_AVAILABLE'       THEN 'Muchos asientos'\n    WHEN 'FEW_SEATS_AVAILABLE'        THEN 'Pocos asientos'\n    WHEN 'STANDING_ROOM_ONLY'         THEN 'Solo de pie'\n    WHEN 'CRUSHED_STANDING_ROOM_ONLY' THEN 'Muy lleno'\n    WHEN 'FULL'                       THEN 'Lleno'\n    WHEN 'NOT_ACCEPTING_PASSENGERS'   THEN 'No admite pasajeros'\n    ELSE 'Sin dato'\n  END IN ($ocupacion)),\nt AS (SELECT header, e FROM tu WHERE CASE\n    WHEN e.trip_update.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.trip_update.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.trip_update.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.trip_update.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN ($modo)\n    AND ('__todas__' IN ($ruta) OR e.trip_update.trip.route_id IN ($ruta)))\nSELECT\n  (SELECT (epoch(now()) - max(header.timestamp))::BIGINT FROM vp)                          AS \"Antigüedad del feed\",\n  (SELECT count(*)::BIGINT FROM v)                                                         AS \"Vehículos reportando\",\n  (SELECT round(100.0 * avg((header.timestamp - e.vehicle.timestamp > 90)::INT), 1) FROM v)  AS \"Posiciones de más de 90 s\",\n  (SELECT count(*)::BIGINT FROM t)                                                         AS \"Viajes con predicción\",\n  (SELECT count(*) FILTER (WHERE e.trip_update.trip.schedule_relationship = 'CANCELED')::BIGINT FROM t) AS \"Viajes cancelados\",\n  (SELECT count(*) FILTER (WHERE e.trip_update.trip.schedule_relationship = 'ADDED')::BIGINT FROM t)    AS \"Viajes añadidos\",\n  (SELECT round(100.0 * avg((e.trip_update.vehicle.id IS NULL)::INT), 1) FROM t)           AS \"Predicciones sin vehículo\"\n",
+          "refId": "A"
+        }
+      ],
+      "title": "¿Llegan los datos y a tiempo?",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "id": 16,
+      "title": "Operación en calle · en vivo",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Cada punto es un vehículo del último feed de posiciones. Verde: reportó hace 30 s o menos; ámbar: hasta 90 s; rojo: más, es decir, una unidad que el sistema cree en servicio pero que dejó de reportar. Haz clic en un vehículo para ver sus próximas paradas en la tabla de la derecha. Al elegir una fila de buses apelotonados, el mapa se acerca al par y lo marca con dos anillos que siguen a esos buses en cada refresco.",
+      "gridPos": {
+        "h": 18,
+        "w": 15,
+        "x": 0,
+        "y": 14
+      },
+      "id": 5,
+      "options": {
+        "basemap": "dark-matter",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": false,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [
+                    40,
+                    63,
+                    93
+                  ],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [
+                    4,
+                    9,
+                    17
+                  ],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [
+                    114.75,
+                    114.75,
+                    114.75
+                  ],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [
+                    9,
+                    16,
+                    29
+                  ],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [
+                    17,
+                    35,
+                    48
+                  ]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": 42.318003671810864,
+              "longitude": -71.13285440030215,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_2D",
+              "maxPitch": 85,
+              "pitch": 0,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 10.4
+            },
+            "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
+              ],
+              "mapStyles": {},
+              "styleType": "dark-matter",
+              "threeDBuildingColor": [
+                15.035172933000911,
+                15.035172933000911,
+                15.035172933000911
+              ],
+              "topLayerGroups": {
+                "label": true,
+                "road": false
+              },
+              "visibleLayerGroups": {
+                "3d building": false,
+                "border": false,
+                "building": true,
+                "label": true,
+                "land": true,
+                "road": true,
+                "water": true
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [
+                {
+                  "animationWindow": "free",
+                  "dataId": [
+                    "grafana-A"
+                  ],
+                  "enabled": true,
+                  "id": "lnj1fkzrm",
+                  "name": [
+                    "estado"
+                  ],
+                  "plotType": {
+                    "type": "histogram"
+                  },
+                  "speed": 1,
+                  "type": "multiSelect",
+                  "value": [
+                    "Detenido en parada"
+                  ],
+                  "view": "side"
+                }
+              ],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "unidad"
+                      },
+                      {
+                        "name": "ruta"
+                      },
+                      {
+                        "name": "modo"
+                      },
+                      {
+                        "name": "estado"
+                      },
+                      {
+                        "name": "ocupacion"
+                      },
+                      {
+                        "name": "edad_s"
+                      }
+                    ],
+                    "grafana-B": [
+                      {
+                        "name": "unidad"
+                      },
+                      {
+                        "name": "ruta"
+                      }
+                    ]
+                  }
+                }
+              },
+              "layerBlending": "additive",
+              "layerOrder": [
+                "par",
+                "u7fz9xk",
+                "znsv9u7c"
+              ],
+              "layers": [
+                {
+                  "id": "par",
+                  "type": "point",
+                  "config": {
+                    "dataId": "grafana-B",
+                    "label": "Par apelotonado seleccionado",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "isVisible": true,
+                    "color": [
+                      0,
+                      229,
+                      255
+                    ],
+                    "visConfig": {
+                      "radius": 70,
+                      "opacity": 1,
+                      "filled": false,
+                      "outline": true,
+                      "thickness": 3,
+                      "strokeColor": [
+                        0,
+                        229,
+                        255
+                      ]
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": null,
+                    "sizeField": null,
+                    "strokeColorField": null
+                  }
+                },
+                {
+                  "config": {
+                    "color": [
+                      23,
+                      184,
+                      190
+                    ],
+                    "columnMode": "points",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Vehículos · frescura de la posición",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "allowHover": true,
+                      "billboard": false,
+                      "colorRange": {
+                        "category": "Custom",
+                        "colorMap": [
+                          [
+                            "≤ 30 s",
+                            "#3fb950"
+                          ],
+                          [
+                            "30–90 s",
+                            "#d29922"
+                          ],
+                          [
+                            "> 90 s",
+                            "#f85149"
+                          ]
+                        ],
+                        "colors": [
+                          "#3fb950",
+                          "#d29922",
+                          "#f85149"
+                        ],
+                        "name": "Frescura",
+                        "type": "custom"
+                      },
+                      "filled": true,
+                      "fixedRadius": false,
+                      "opacity": 1,
+                      "outline": false,
+                      "radius": 18.5,
+                      "radiusRange": [
+                        0,
+                        50
+                      ],
+                      "showHighlightColor": true,
+                      "showNeighborOnHover": false,
+                      "strokeColorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#4C0035",
+                          "#880030",
+                          "#B72F15",
+                          "#D6610A",
+                          "#EF9100",
+                          "#FFC300"
+                        ],
+                        "name": "Global Warming",
+                        "type": "sequential"
+                      },
+                      "thickness": 2
+                    }
+                  },
+                  "id": "u7fz9xk",
+                  "type": "point",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "frescura",
+                      "type": "string"
+                    },
+                    "colorScale": "customOrdinal",
+                    "sizeScale": "linear",
+                    "strokeColorScale": "quantile"
+                  }
+                },
+                {
+                  "config": {
+                    "color": [
+                      23,
+                      184,
+                      190
+                    ],
+                    "columnMode": "points",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "(heatmap) of Vehículos · frescura de la posición",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "aggregation": "MEAN",
+                      "colorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#00939C",
+                          "#46A4AA",
+                          "#6BB5B9",
+                          "#8BC6C9",
+                          "#AAD7D9",
+                          "#C8E9E9",
+                          "#E6FAFA"
+                        ],
+                        "name": "Uber Viz Sequential",
+                        "type": "sequential"
+                      },
+                      "intensity": 15.103,
+                      "opacity": 0.1,
+                      "radius": 54.2,
+                      "threshold": 0.186
+                    }
+                  },
+                  "id": "znsv9u7c",
+                  "type": "heatmap",
+                  "visualChannels": {
+                    "weightField": {
+                      "name": "edad_s",
+                      "type": "integer"
+                    },
+                    "weightScale": "linear"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "rasterColormap": "",
+        "rasterPainted": false,
+        "saveRequest": 5,
+        "showSidePanel": false,
+        "timeSync": "off",
+        "tripLayerMode": "table",
+        "variableMappings": [
+          {
+            "field": "modo",
+            "variable": "modo"
+          },
+          {
+            "field": "ruta",
+            "variable": "ruta"
+          },
+          {
+            "field": "estado",
+            "variable": "estado"
+          },
+          {
+            "field": "ocupacion",
+            "variable": "ocupacion"
+          },
+          {
+            "field": "vehiculo",
+            "source": "click",
+            "variable": "vehiculo"
+          },
+          {
+            "field": "",
+            "source": "center",
+            "variable": "lat",
+            "variableTo": "lng",
+            "zoom": 16
+          }
+        ]
+      },
+      "pluginVersion": "1.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- `vehiculo`, not `vehicle_id`: the panel reads vehicle_id as a trajectory id\n-- and would try to draw trips. No time column either, so this stays a snapshot.\n-- Deliberately unfiltered: the map narrows itself through kepler filters bound\n-- to the modo/ruta/estado/ocupacion variables, so a selection redraws at once\n-- and widening it again needs no new query.\nWITH vp AS (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000))\nSELECT\n  e.vehicle.vehicle.id                AS vehiculo,\n  e.vehicle.vehicle.label             AS unidad,\n  e.vehicle.trip.route_id             AS ruta,\n  CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END                              AS modo,\n  e.vehicle.position.latitude         AS latitude,\n  e.vehicle.position.longitude        AS longitude,\n  CASE e.vehicle.current_status\n    WHEN 'IN_TRANSIT_TO' THEN 'En tránsito'\n    WHEN 'STOPPED_AT'    THEN 'Detenido en parada'\n    WHEN 'INCOMING_AT'   THEN 'Llegando a parada'\n    ELSE 'Sin dato'\n  END                            AS estado,\n  CASE e.vehicle.occupancy_status\n    WHEN 'EMPTY'                      THEN 'Vacío'\n    WHEN 'MANY_SEATS_AVAILABLE'       THEN 'Muchos asientos'\n    WHEN 'FEW_SEATS_AVAILABLE'        THEN 'Pocos asientos'\n    WHEN 'STANDING_ROOM_ONLY'         THEN 'Solo de pie'\n    WHEN 'CRUSHED_STANDING_ROOM_ONLY' THEN 'Muy lleno'\n    WHEN 'FULL'                       THEN 'Lleno'\n    WHEN 'NOT_ACCEPTING_PASSENGERS'   THEN 'No admite pasajeros'\n    ELSE 'Sin dato'\n  END                         AS ocupacion,\n  (header.timestamp - e.vehicle.timestamp)::BIGINT AS edad_s,\n  CASE\n    WHEN header.timestamp - e.vehicle.timestamp <= 30 THEN '≤ 30 s'\n    WHEN header.timestamp - e.vehicle.timestamp <= 90 THEN '30–90 s'\n    ELSE '> 90 s'\n  END AS frescura\nFROM vp\n",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- The pair picked in the bunching table (variables parA and parB), read live\n-- so the rings follow both buses on every refresh. Empty until a row is\n-- clicked, which matches nothing.\nWITH vp AS (SELECT unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000))\nSELECT e.vehicle.vehicle.label       AS unidad,\n       e.vehicle.trip.route_id       AS ruta,\n       e.vehicle.position.latitude   AS latitude,\n       e.vehicle.position.longitude  AS longitude\nFROM vp\nWHERE e.vehicle.vehicle.id IN ($parA, $parB)\n",
+          "refId": "B"
+        }
+      ],
+      "title": "Flota ahora — color por frescura de la posición",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Pares de buses de la misma ruta y sentido a menos de 250 m. Un bus pegado a otro significa que detrás de ambos hay un hueco: la espera de la parada siguiente se alarga aunque la flota sea la programada. Se excluyen posiciones de más de 90 s y las dos primeras paradas del recorrido, donde los buses esperan en terminal. Separación: rojo por debajo de 50 m, naranja hasta 150 m, amarillo hasta 250 m. Haz clic en una fila para acercar el mapa al par.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "links": [
+            {
+              "title": "Acercar el mapa a este par",
+              "url": "/d/gtfs-rt-mbta${__url.params:exclude:var-lat,var-lng,var-parA,var-parB}&var-lat=${__data.fields.lat_centro}&var-lng=${__data.fields.lng_centro}&var-parA=${__data.fields.id_a}&var-parB=${__data.fields.id_b}"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Separación"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "lengthm"
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 50
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 150
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ruta"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 60
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "lat_centro"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "lng_centro"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "id_a"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "id_b"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 9,
+        "x": 15,
+        "y": 14
+      },
+      "id": 6,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- Two buses of the same route and direction closer than 250 m. Stale\n-- positions and the first two stops (terminal layovers) are left out. The\n-- pair's midpoint and vehicle ids ride along hidden: the row's data link\n-- writes them to lat/lng (the map centres) and parA/parB (the map rings them).\nWITH vp AS (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000)),\nparadas AS (\n  -- The archive keeps every version of a stop; the newest name wins. Seven\n  -- days back picks the year so the first week of January still finds a file.\n  SELECT stop_id, arg_max(stop_name, gtfs_active_date) AS nombre\n  FROM read_parquet('http://sources-data/mbta/lamp/gtfs_archive/' || strftime(current_date - 7, '%Y') || '/stops.parquet')\n  GROUP BY 1\n),\nbus AS (\n  SELECT e.vehicle.vehicle.id          AS id,\n         e.vehicle.vehicle.label       AS unidad,\n         e.vehicle.trip.route_id       AS ruta,\n         e.vehicle.trip.direction_id   AS sentido,\n         e.vehicle.position.latitude   AS lat,\n         e.vehicle.position.longitude  AS lon,\n         e.vehicle.stop_id             AS parada\n  FROM vp\n  WHERE header.timestamp - e.vehicle.timestamp <= 90\n    AND e.vehicle.current_stop_sequence > 2\n    AND CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END = 'Bus'\n    -- Modo and ruta only: status and occupancy do not make two buses bunched.\n    AND CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN ($modo)\n    AND ('__todas__' IN ($ruta) OR e.vehicle.trip.route_id IN ($ruta))\n),\npares AS (\n  SELECT a.ruta, a.unidad AS a, b.unidad AS b, a.id AS id_a, b.id AS id_b, a.parada,\n         (a.lat + b.lat) / 2 AS lat_centro,\n         (a.lon + b.lon) / 2 AS lng_centro,\n         2 * 6371000 * asin(sqrt(pow(sin(radians(b.lat - a.lat) / 2), 2)\n           + cos(radians(a.lat)) * cos(radians(b.lat)) * pow(sin(radians(b.lon - a.lon) / 2), 2))) AS metros\n  FROM bus a JOIN bus b ON a.ruta = b.ruta AND a.sentido = b.sentido AND a.unidad < b.unidad\n)\nSELECT p.ruta                        AS \"Ruta\",\n       p.a || ' + ' || p.b           AS \"Buses\",\n       coalesce(s.nombre, p.parada)  AS \"Cerca de\",\n       round(p.metros)::BIGINT       AS \"Separación\",\n       -- Text, not numbers: a data link interpolates the cell's *formatted*\n       -- value, and the table's automatic decimals print 42.344533 as 42.3.\n       printf('%.6f', p.lat_centro)  AS lat_centro,\n       printf('%.6f', p.lng_centro)  AS lng_centro,\n       p.id_a,\n       p.id_b\nFROM pares p LEFT JOIN paradas s ON s.stop_id = p.parada\nWHERE p.metros < 250\nORDER BY p.metros\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Buses apelotonados ahora",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Predicciones del feed TripUpdates para la unidad elegida en el mapa. Vacía hasta el primer clic.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "noValue": "Haz clic en un vehículo del mapa",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Faltan"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "m"
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Llegada estimada"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time:HH:mm"
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ruta"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 60
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 9,
+        "x": 15,
+        "y": 23
+      },
+      "id": 7,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- $vehiculo is written by a click on the map; empty until then, which\n-- matches nothing.\nWITH tu AS (SELECT unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/TripUpdates_enhanced.json', maximum_object_size = 50000000)),\nparadas AS (\n  -- The archive keeps every version of a stop; the newest name wins. Seven\n  -- days back picks the year so the first week of January still finds a file.\n  SELECT stop_id, arg_max(stop_name, gtfs_active_date) AS nombre\n  FROM read_parquet('http://sources-data/mbta/lamp/gtfs_archive/' || strftime(current_date - 7, '%Y') || '/stops.parquet')\n  GROUP BY 1\n),\nprox AS (\n  SELECT e.trip_update.trip.route_id AS ruta,\n         st.stop_sequence            AS orden,\n         st.stop_id                  AS parada,\n         coalesce(st.arrival.time, st.departure.time) AS t\n  FROM (SELECT e, unnest(e.trip_update.stop_time_update) AS st FROM tu)\n  WHERE e.trip_update.vehicle.id = $vehiculo\n)\nSELECT p.ruta                                         AS \"Ruta\",\n       coalesce(n.nombre, p.parada)                   AS \"Parada\",\n       to_timestamp(p.t)                              AS \"Llegada estimada\",\n       round((p.t - epoch(now())) / 60.0)::BIGINT     AS \"Faltan\"\nFROM prox p LEFT JOIN paradas n ON n.stop_id = p.parada\nWHERE p.t >= epoch(now()) - 60\nORDER BY p.orden\nLIMIT 15\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Próximas paradas del vehículo seleccionado",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Dónde se concentran las posiciones viejas. En la MBTA suele ser el metro: los trenes detenidos en cocheras siguen publicados.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Posición más vieja"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Posición de más de 90 s"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 10
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "id": 8,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\nWITH vp AS (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000)),\nv AS (SELECT CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END AS modo, header.timestamp - e.vehicle.timestamp AS edad FROM vp WHERE CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN ($modo)\n    AND ('__todas__' IN ($ruta) OR e.vehicle.trip.route_id IN ($ruta))\n    AND CASE e.vehicle.current_status\n    WHEN 'IN_TRANSIT_TO' THEN 'En tránsito'\n    WHEN 'STOPPED_AT'    THEN 'Detenido en parada'\n    WHEN 'INCOMING_AT'   THEN 'Llegando a parada'\n    ELSE 'Sin dato'\n  END IN ($estado)\n    AND CASE e.vehicle.occupancy_status\n    WHEN 'EMPTY'                      THEN 'Vacío'\n    WHEN 'MANY_SEATS_AVAILABLE'       THEN 'Muchos asientos'\n    WHEN 'FEW_SEATS_AVAILABLE'        THEN 'Pocos asientos'\n    WHEN 'STANDING_ROOM_ONLY'         THEN 'Solo de pie'\n    WHEN 'CRUSHED_STANDING_ROOM_ONLY' THEN 'Muy lleno'\n    WHEN 'FULL'                       THEN 'Lleno'\n    WHEN 'NOT_ACCEPTING_PASSENGERS'   THEN 'No admite pasajeros'\n    ELSE 'Sin dato'\n  END IN ($ocupacion))\nSELECT modo                                     AS \"Modo\",\n       count(*)::BIGINT                         AS \"Vehículos\",\n       count(*) FILTER (WHERE edad > 90)::BIGINT AS \"Posición de más de 90 s\",\n       max(edad)::BIGINT                        AS \"Posición más vieja\"\nFROM v GROUP BY 1 ORDER BY 2 DESC\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Frescura por modo",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Feed Alerts: avisos vigentes ahora mismo, agrupados por el efecto que declara la agencia.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#d29922",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
+      "id": 9,
+      "options": {
+        "displayMode": "basic",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 10,
+        "minVizWidth": 8,
+        "namePlacement": "left",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^Alertas$/",
+          "values": true
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\nWITH al AS (SELECT unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/Alerts_enhanced.json', maximum_object_size = 50000000))\nSELECT\n  CASE e.alert.effect\n    WHEN 'NO_SERVICE'          THEN 'Sin servicio'\n    WHEN 'REDUCED_SERVICE'     THEN 'Servicio reducido'\n    WHEN 'SIGNIFICANT_DELAYS'  THEN 'Retrasos importantes'\n    WHEN 'DETOUR'              THEN 'Desvío'\n    WHEN 'ADDITIONAL_SERVICE'  THEN 'Servicio adicional'\n    WHEN 'MODIFIED_SERVICE'    THEN 'Servicio modificado'\n    WHEN 'STOP_MOVED'          THEN 'Parada reubicada'\n    WHEN 'ACCESSIBILITY_ISSUE' THEN 'Accesibilidad'\n    WHEN 'OTHER_EFFECT'        THEN 'Otro'\n    ELSE 'Sin especificar'\n  END AS \"Efecto\",\n  count(*)::BIGINT AS \"Alertas\"\nFROM al\n-- Active now: some period has started and has not ended (no end = open).\nWHERE len(list_filter(e.alert.active_period,\n          p -> p.start <= epoch(now()) AND coalesce(p.\"end\", 9999999999) >= epoch(now()))) > 0\n  -- And it names at least one route inside the modo and ruta selection.\n  AND len(list_filter(e.alert.informed_entity,\n          x -> x.route_id IS NOT NULL\n               AND CASE\n    WHEN x.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR x.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN x.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN x.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN ($modo)\n               AND ('__todas__' IN ($ruta) OR x.route_id IN ($ruta)))) > 0\nGROUP BY 1 ORDER BY 2 DESC\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Alertas de servicio activas",
+      "type": "bargauge"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 39
+      },
+      "id": 17,
+      "title": "Confiabilidad del metro · historia (sigue el rango de tiempo hasta ayer, y los filtros de modo y ruta)",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Del archivo LAMP de la MBTA: cada paso de un tren por una estación con su intervalo real y el programado. Espera excesiva = espera esperada real − programada, con espera esperada = Σh² / 2Σh (la métrica de MBTA, TfL y MTA). Huecos: intervalos de más de 1,5 veces lo programado. Apelotonados: menos de un cuarto. Minutos.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Línea"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 75
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pasos"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 75
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Real"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "m"
+              },
+              {
+                "id": "custom.width",
+                "value": 75
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Programado"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "m"
+              },
+              {
+                "id": "custom.width",
+                "value": 95
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Espera excesiva"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "m"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.width",
+                "value": 115
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 2
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Huecos"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 10
+                    },
+                    {
+                      "color": "red",
+                      "value": 20
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Apelotonados"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.width",
+                "value": 105
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "id": 11,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n\n-- One LAMP file per service day in the dashboard range. Capped at 31 days and\n-- at yesterday in Boston: today's file may not exist yet, and a missing file\n-- fails the whole read. A range inside today still reads yesterday.\nWITH d AS (\n  -- Branch headways where the station is on a branch (Green-B/C/D/E), trunk\n  -- headways otherwise; comparing a branch stop against the trunk schedule\n  -- invents gaps. Intervals of an hour or more are the overnight break.\n  SELECT trunk_route_id AS linea,\n         route_id,\n         parent_station,\n         direction_destination,\n         to_timestamp(stop_timestamp) AS t,\n         coalesce(headway_branch_seconds, headway_trunk_seconds)     AS h,\n         coalesce(scheduled_headway_branch, scheduled_headway_trunk) AS hs\n  FROM read_parquet([\n  'http://sources-data/mbta/lamp/subway-on-time-performance-v1/' || strftime(d, '%Y-%m-%d') || '-subway-on-time-performance-v1.parquet'\n  FOR d IN generate_series(\n    least(greatest(CAST($__timeFrom() AS TIMESTAMPTZ)::DATE, CAST($__timeTo() AS TIMESTAMPTZ)::DATE - 30), (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    least(CAST($__timeTo() AS TIMESTAMPTZ)::DATE, (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    INTERVAL 1 DAY)\n])\n),\n-- Some rows carry headways but no stop timestamp; a null in the time column\n-- makes Grafana's time series report all of its data as out of range.\n-- The dashboard's modo and ruta filters reach the history too. LAMP's route_id\n-- uses the live feed's ids (Green-B…E, Red, Orange, Blue, Mattapan), so the same\n-- selection applies unchanged; a selection without Metro leaves it empty.\nok AS (\n  SELECT * FROM d\n  WHERE t IS NOT NULL AND h > 0 AND hs > 0 AND h < 3600 AND hs < 3600\n    AND 'Metro' IN ($modo)\n    AND ('__todas__' IN ($ruta) OR route_id IN ($ruta))\n)\nSELECT linea                                              AS \"Línea\",\n       count(*)::BIGINT                                   AS \"Pasos\",\n       round(median(h) / 60.0, 1)                         AS \"Real\",\n       round(median(hs) / 60.0, 1)                        AS \"Programado\",\n       -- Excess wait time: a rider's expected wait, Σh²/2Σh, real minus scheduled.\n       round((sum(h ^ 2) / (2 * sum(h)) - sum(hs ^ 2) / (2 * sum(hs))) / 60.0, 2)                                    AS \"Espera excesiva\",\n       round(100.0 * avg((h < 0.25 * hs)::INT), 1)        AS \"Apelotonados\",\n       round(100.0 * avg((h > 1.5 * hs)::INT), 1)         AS \"Huecos\"\nFROM ok GROUP BY 1 ORDER BY 1\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Intervalos por línea",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Red"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#e5484d",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Orange"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#f76b15",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Blue"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#3e8ed0",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Green"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#30a46c",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n\n-- One LAMP file per service day in the dashboard range. Capped at 31 days and\n-- at yesterday in Boston: today's file may not exist yet, and a missing file\n-- fails the whole read. A range inside today still reads yesterday.\nWITH d AS (\n  -- Branch headways where the station is on a branch (Green-B/C/D/E), trunk\n  -- headways otherwise; comparing a branch stop against the trunk schedule\n  -- invents gaps. Intervals of an hour or more are the overnight break.\n  SELECT trunk_route_id AS linea,\n         route_id,\n         parent_station,\n         direction_destination,\n         to_timestamp(stop_timestamp) AS t,\n         coalesce(headway_branch_seconds, headway_trunk_seconds)     AS h,\n         coalesce(scheduled_headway_branch, scheduled_headway_trunk) AS hs\n  FROM read_parquet([\n  'http://sources-data/mbta/lamp/subway-on-time-performance-v1/' || strftime(d, '%Y-%m-%d') || '-subway-on-time-performance-v1.parquet'\n  FOR d IN generate_series(\n    least(greatest(CAST($__timeFrom() AS TIMESTAMPTZ)::DATE, CAST($__timeTo() AS TIMESTAMPTZ)::DATE - 30), (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    least(CAST($__timeTo() AS TIMESTAMPTZ)::DATE, (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    INTERVAL 1 DAY)\n])\n),\n-- Some rows carry headways but no stop timestamp; a null in the time column\n-- makes Grafana's time series report all of its data as out of range.\n-- The dashboard's modo and ruta filters reach the history too. LAMP's route_id\n-- uses the live feed's ids (Green-B…E, Red, Orange, Blue, Mattapan), so the same\n-- selection applies unchanged; a selection without Metro leaves it empty.\nok AS (\n  SELECT * FROM d\n  WHERE t IS NOT NULL AND h > 0 AND hs > 0 AND h < 3600 AND hs < 3600\n    AND 'Metro' IN ($modo)\n    AND ('__todas__' IN ($ruta) OR route_id IN ($ruta))\n)\nSELECT time_bucket(INTERVAL 1 HOUR, t) AS time,\n       CASE WHEN count(*) FILTER (WHERE linea = 'Red') >= 20\n         THEN round(100.0 * avg((h > 1.5 * hs)::INT) FILTER (WHERE linea = 'Red'), 1) END AS \"Red\",\n       CASE WHEN count(*) FILTER (WHERE linea = 'Orange') >= 20\n         THEN round(100.0 * avg((h > 1.5 * hs)::INT) FILTER (WHERE linea = 'Orange'), 1) END AS \"Orange\",\n       CASE WHEN count(*) FILTER (WHERE linea = 'Blue') >= 20\n         THEN round(100.0 * avg((h > 1.5 * hs)::INT) FILTER (WHERE linea = 'Blue'), 1) END AS \"Blue\",\n       CASE WHEN count(*) FILTER (WHERE linea = 'Green') >= 20\n         THEN round(100.0 * avg((h > 1.5 * hs)::INT) FILTER (WHERE linea = 'Green'), 1) END AS \"Green\"\nFROM ok GROUP BY 1 ORDER BY 1\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Huecos por hora — % de intervalos por encima de 1,5 × lo programado",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Por estación y sentido, con al menos 100 pasos medidos en el rango. Es la tabla que un jefe de operaciones abre primero: dice dónde se rompe la regularidad, no solo cuánto.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Línea"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 65
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pasos"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 60
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Espera excesiva"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "m"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.width",
+                "value": 115
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 2
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Huecos"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.width",
+                "value": 75
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 10
+                    },
+                    {
+                      "color": "red",
+                      "value": 20
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 48
+      },
+      "id": 13,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n\n-- One LAMP file per service day in the dashboard range. Capped at 31 days and\n-- at yesterday in Boston: today's file may not exist yet, and a missing file\n-- fails the whole read. A range inside today still reads yesterday.\nWITH d AS (\n  -- Branch headways where the station is on a branch (Green-B/C/D/E), trunk\n  -- headways otherwise; comparing a branch stop against the trunk schedule\n  -- invents gaps. Intervals of an hour or more are the overnight break.\n  SELECT trunk_route_id AS linea,\n         route_id,\n         parent_station,\n         direction_destination,\n         to_timestamp(stop_timestamp) AS t,\n         coalesce(headway_branch_seconds, headway_trunk_seconds)     AS h,\n         coalesce(scheduled_headway_branch, scheduled_headway_trunk) AS hs\n  FROM read_parquet([\n  'http://sources-data/mbta/lamp/subway-on-time-performance-v1/' || strftime(d, '%Y-%m-%d') || '-subway-on-time-performance-v1.parquet'\n  FOR d IN generate_series(\n    least(greatest(CAST($__timeFrom() AS TIMESTAMPTZ)::DATE, CAST($__timeTo() AS TIMESTAMPTZ)::DATE - 30), (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    least(CAST($__timeTo() AS TIMESTAMPTZ)::DATE, (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    INTERVAL 1 DAY)\n])\n),\n-- Some rows carry headways but no stop timestamp; a null in the time column\n-- makes Grafana's time series report all of its data as out of range.\n-- The dashboard's modo and ruta filters reach the history too. LAMP's route_id\n-- uses the live feed's ids (Green-B…E, Red, Orange, Blue, Mattapan), so the same\n-- selection applies unchanged; a selection without Metro leaves it empty.\nok AS (\n  SELECT * FROM d\n  WHERE t IS NOT NULL AND h > 0 AND hs > 0 AND h < 3600 AND hs < 3600\n    AND 'Metro' IN ($modo)\n    AND ('__todas__' IN ($ruta) OR route_id IN ($ruta))\n),\nparadas AS (\n  -- The archive keeps every version of a stop; the newest name wins. Seven\n  -- days back picks the year so the first week of January still finds a file.\n  SELECT stop_id, arg_max(stop_name, gtfs_active_date) AS nombre\n  FROM read_parquet('http://sources-data/mbta/lamp/gtfs_archive/' || strftime(current_date - 7, '%Y') || '/stops.parquet')\n  GROUP BY 1\n)\nSELECT o.linea                                  AS \"Línea\",\n       coalesce(p.nombre, o.parent_station)     AS \"Estación\",\n       o.direction_destination                  AS \"Hacia\",\n       count(*)::BIGINT                         AS \"Pasos\",\n       round((sum(h ^ 2) / (2 * sum(h)) - sum(hs ^ 2) / (2 * sum(hs))) / 60.0, 1)                          AS \"Espera excesiva\",\n       round(100.0 * avg((h > 1.5 * hs)::INT), 1) AS \"Huecos\"\nFROM ok o LEFT JOIN paradas p ON p.stop_id = o.parent_station\nGROUP BY ALL\nHAVING count(*) >= 100\nORDER BY \"Espera excesiva\" DESC\nLIMIT 10\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Las diez estaciones con más espera excesiva",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Cada estación de metro con al menos 100 pasos medidos en algún sentido, con su peor sentido del rango. Color con los mismos cortes que la tabla (verde menos de 1 min de espera excesiva, naranja hasta 2, rojo más); el tamaño crece con la espera. Las estaciones que rinden mejor que lo programado quedan del tamaño mínimo.",
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 48
+      },
+      "id": 14,
+      "options": {
+        "basemap": "dark-matter",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": false,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 24,
+              "dragRotate": true,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [
+                    40,
+                    63,
+                    93
+                  ],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [
+                    4,
+                    9,
+                    17
+                  ],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [
+                    114.75,
+                    114.75,
+                    114.75
+                  ],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [
+                    9,
+                    16,
+                    29
+                  ],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [
+                    17,
+                    35,
+                    48
+                  ]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": 42.369118647188486,
+              "longitude": -71.13433147130873,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_3D",
+              "maxPitch": 85,
+              "pitch": 50,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 10.6
+            },
+            "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
+              ],
+              "mapStyles": {},
+              "styleType": "dark-matter",
+              "threeDBuildingColor": [
+                15.035172933000911,
+                15.035172933000911,
+                15.035172933000911
+              ],
+              "topLayerGroups": {
+                "label": true
+              },
+              "visibleLayerGroups": {
+                "3d building": false,
+                "border": false,
+                "building": true,
+                "label": true,
+                "land": true,
+                "road": true,
+                "water": true
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "estacion"
+                      },
+                      {
+                        "name": "lineas"
+                      },
+                      {
+                        "name": "peor_sentido"
+                      },
+                      {
+                        "name": "espera_excesiva"
+                      },
+                      {
+                        "name": "huecos"
+                      },
+                      {
+                        "name": "pasos"
+                      }
+                    ]
+                  }
+                }
+              },
+              "layerBlending": "subtractive",
+              "layerOrder": [
+                "ae2z0eq",
+                "pgjvcl"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "color": [
+                      30,
+                      150,
+                      190
+                    ],
+                    "columnMode": "points",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Copy of Estaciones · peor espera excesiva",
+                    "textLabel": [],
+                    "visConfig": {
+                      "colorAggregation": "average",
+                      "colorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#184E77",
+                          "#146E96",
+                          "#0090AF",
+                          "#36B5A5",
+                          "#90D392",
+                          "#D9ED92"
+                        ],
+                        "name": "SummerSky",
+                        "type": "sequential"
+                      },
+                      "coverage": 1,
+                      "elevationPercentile": [
+                        0,
+                        100
+                      ],
+                      "elevationScale": 6.8,
+                      "enable3d": true,
+                      "enableElevationZoomFactor": true,
+                      "fixedHeight": false,
+                      "opacity": 0.85,
+                      "percentile": [
+                        0,
+                        100
+                      ],
+                      "resolution": 8,
+                      "sizeAggregation": "average",
+                      "sizeRange": [
+                        0,
+                        500
+                      ],
+                      "worldUnitSize": 0.2
+                    }
+                  },
+                  "id": "ae2z0eq",
+                  "type": "hexagon",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "espera_excesiva",
+                      "type": "real"
+                    },
+                    "colorScale": "quantile",
+                    "sizeField": {
+                      "name": "espera_excesiva",
+                      "type": "real"
+                    },
+                    "sizeScale": "sqrt"
+                  }
+                },
+                {
+                  "config": {
+                    "color": [
+                      30,
+                      150,
+                      190
+                    ],
+                    "columnMode": "points",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Estaciones · peor espera excesiva",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "colorAggregation": "average",
+                      "colorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#72EFDD",
+                          "#52CCE2",
+                          "#4CA7DE",
+                          "#3D82DC",
+                          "#6055CC",
+                          "#7400B8"
+                        ],
+                        "name": "ViovetOcean",
+                        "reversed": true,
+                        "type": "sequential"
+                      },
+                      "coverage": 1,
+                      "elevationPercentile": [
+                        0,
+                        100
+                      ],
+                      "elevationScale": 5,
+                      "enable3d": false,
+                      "enableElevationZoomFactor": true,
+                      "fixedHeight": false,
+                      "opacity": 0.32,
+                      "percentile": [
+                        0,
+                        100
+                      ],
+                      "resolution": 8,
+                      "sizeAggregation": "average",
+                      "sizeRange": [
+                        0,
+                        500
+                      ],
+                      "worldUnitSize": 1
+                    }
+                  },
+                  "id": "pgjvcl",
+                  "type": "hexagon",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "espera_excesiva",
+                      "type": "real"
+                    },
+                    "colorScale": "quantile",
+                    "sizeField": {
+                      "name": "peso",
+                      "type": "real"
+                    },
+                    "sizeScale": "sqrt"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "rasterColormap": "",
+        "rasterPainted": false,
+        "saveRequest": 1,
+        "showSidePanel": false,
+        "timeSync": "off",
+        "tripLayerMode": "table"
+      },
+      "pluginVersion": "1.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\n\n-- One LAMP file per service day in the dashboard range. Capped at 31 days and\n-- at yesterday in Boston: today's file may not exist yet, and a missing file\n-- fails the whole read. A range inside today still reads yesterday.\nWITH d AS (\n  -- Branch headways where the station is on a branch (Green-B/C/D/E), trunk\n  -- headways otherwise; comparing a branch stop against the trunk schedule\n  -- invents gaps. Intervals of an hour or more are the overnight break.\n  SELECT trunk_route_id AS linea,\n         route_id,\n         parent_station,\n         direction_destination,\n         to_timestamp(stop_timestamp) AS t,\n         coalesce(headway_branch_seconds, headway_trunk_seconds)     AS h,\n         coalesce(scheduled_headway_branch, scheduled_headway_trunk) AS hs\n  FROM read_parquet([\n  'http://sources-data/mbta/lamp/subway-on-time-performance-v1/' || strftime(d, '%Y-%m-%d') || '-subway-on-time-performance-v1.parquet'\n  FOR d IN generate_series(\n    least(greatest(CAST($__timeFrom() AS TIMESTAMPTZ)::DATE, CAST($__timeTo() AS TIMESTAMPTZ)::DATE - 30), (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    least(CAST($__timeTo() AS TIMESTAMPTZ)::DATE, (now() AT TIME ZONE 'America/New_York')::DATE - 1),\n    INTERVAL 1 DAY)\n])\n),\n-- Some rows carry headways but no stop timestamp; a null in the time column\n-- makes Grafana's time series report all of its data as out of range.\n-- The dashboard's modo and ruta filters reach the history too. LAMP's route_id\n-- uses the live feed's ids (Green-B…E, Red, Orange, Blue, Mattapan), so the same\n-- selection applies unchanged; a selection without Metro leaves it empty.\nok AS (\n  SELECT * FROM d\n  WHERE t IS NOT NULL AND h > 0 AND hs > 0 AND h < 3600 AND hs < 3600\n    AND 'Metro' IN ($modo)\n    AND ('__todas__' IN ($ruta) OR route_id IN ($ruta))\n),\nparadas AS (\n  SELECT stop_id,\n         arg_max(stop_name, gtfs_active_date) AS nombre,\n         arg_max(stop_lat, gtfs_active_date)  AS lat,\n         arg_max(stop_lon, gtfs_active_date)  AS lon\n  FROM read_parquet('http://sources-data/mbta/lamp/gtfs_archive/' || strftime(current_date - 7, '%Y') || '/stops.parquet')\n  GROUP BY 1\n),\n-- Excess wait per station, line and direction first, as in the table. Pooling\n-- the headways of two lines into one Σh² would describe a wait no rider has.\ntramo AS (\n  SELECT parent_station, linea, direction_destination AS hacia,\n         count(*) AS pasos,\n         (sum(h ^ 2) / (2 * sum(h)) - sum(hs ^ 2) / (2 * sum(hs))) / 60.0 AS ewt,\n         100.0 * avg((h > 1.5 * hs)::INT) AS huecos\n  FROM ok GROUP BY ALL HAVING count(*) >= 100\n),\n-- One point per station, carrying its worst direction.\nestacion AS (\n  SELECT parent_station,\n         string_agg(DISTINCT linea, ' / ' ORDER BY linea) AS lineas,\n         sum(pasos)::BIGINT                              AS pasos,\n         max(ewt)                                        AS ewt,\n         arg_max(linea || ' hacia ' || hacia, ewt)       AS peor_sentido,\n         arg_max(huecos, ewt)                            AS huecos\n  FROM tramo GROUP BY 1\n)\n-- No column called count or direction: the panel reads both as field roles.\nSELECT p.nombre                      AS estacion,\n       e.lineas,\n       e.peor_sentido,\n       p.lat                         AS latitude,\n       p.lon                         AS longitude,\n       e.pasos,\n       round(e.ewt, 2)               AS espera_excesiva,\n       round(e.huecos, 1)            AS huecos,\n       -- Size channel: better-than-scheduled stations come out negative.\n       round(greatest(e.ewt, 0), 2)  AS peso,\n       CASE WHEN e.ewt < 1 THEN '< 1 min' WHEN e.ewt < 2 THEN '1–2 min' ELSE '> 2 min' END AS banda\nFROM estacion e JOIN paradas p ON p.stop_id = e.parent_station\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Dónde se rompe la regularidad",
+      "type": "ubica-keplergl-panel"
+    }
+  ],
+  "preload": false,
+  "refresh": "30s",
+  "schemaVersion": 42,
+  "tags": [
+    "kepler",
+    "sources",
+    "gtfs-rt",
+    "transporte"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allowCustomValue": true,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "hide": 0,
+        "includeAll": true,
+        "label": "Modo",
+        "multi": true,
+        "name": "modo",
+        "options": [],
+        "query": "Bus,Metro,Tren de cercanías,Ferry",
+        "skipUrlSync": false,
+        "type": "custom",
+        "valuesFormat": "csv"
+      },
+      {
+        "allValue": "'__todas__'",
+        "allowCustomValue": true,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "definition": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- Variable query: Grafana does not quote variables here as it does in panel\n-- queries, so modo is spelled out with the sqlstring format.\nSELECT ruta FROM (\n  SELECT DISTINCT e.vehicle.trip.route_id AS ruta, CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END AS modo\n  FROM (SELECT unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000))\n  WHERE e.vehicle.trip.route_id IS NOT NULL\n    AND CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN (${modo:sqlstring})\n)\nORDER BY CASE modo WHEN 'Metro' THEN 0 WHEN 'Tren de cercanías' THEN 1 WHEN 'Ferry' THEN 2 ELSE 3 END,\n         try_cast(ruta AS INTEGER) NULLS LAST, ruta\n",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Ruta",
+        "multi": true,
+        "name": "ruta",
+        "options": [],
+        "query": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- Variable query: Grafana does not quote variables here as it does in panel\n-- queries, so modo is spelled out with the sqlstring format.\nSELECT ruta FROM (\n  SELECT DISTINCT e.vehicle.trip.route_id AS ruta, CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END AS modo\n  FROM (SELECT unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000))\n  WHERE e.vehicle.trip.route_id IS NOT NULL\n    AND CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Metro'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Tren de cercanías'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END IN (${modo:sqlstring})\n)\nORDER BY CASE modo WHEN 'Metro' THEN 0 WHEN 'Tren de cercanías' THEN 1 WHEN 'Ferry' THEN 2 ELSE 3 END,\n         try_cast(ruta AS INTEGER) NULLS LAST, ruta\n",
+        "refresh": 1,
+        "regex": "",
+        "regexApplyTo": "value",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "allowCustomValue": true,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "hide": 0,
+        "includeAll": true,
+        "label": "Estado",
+        "multi": true,
+        "name": "estado",
+        "options": [],
+        "query": "En tránsito,Detenido en parada,Llegando a parada,Sin dato",
+        "skipUrlSync": false,
+        "type": "custom",
+        "valuesFormat": "csv"
+      },
+      {
+        "allowCustomValue": true,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "hide": 0,
+        "includeAll": true,
+        "label": "Ocupación",
+        "multi": true,
+        "name": "ocupacion",
+        "options": [],
+        "query": "Muchos asientos,Pocos asientos,Solo de pie,Muy lleno,Lleno,No admite pasajeros,Vacío,Sin dato",
+        "skipUrlSync": false,
+        "type": "custom",
+        "valuesFormat": "csv"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "label": "Vehículo (clic en el mapa)",
+        "name": "vehiculo",
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "label": "Latitud del par (fila de apelotonados)",
+        "name": "lat",
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "label": "Longitud del par (fila de apelotonados)",
+        "name": "lng",
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "label": "Primer bus del par",
+        "name": "parA",
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "label": "Segundo bus del par",
+        "name": "parB",
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "30s",
+      "1m",
+      "5m",
+      "15m"
+    ]
+  },
+  "timezone": "America/New_York",
+  "title": "Transporte público en tiempo real — MBTA (GTFS-RT)",
+  "uid": "gtfs-rt-mbta"
+}

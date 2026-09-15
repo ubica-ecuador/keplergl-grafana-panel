@@ -29,7 +29,16 @@ datasources:
       # INSTALL reaches out to DuckDB's extension repository the first time, so
       # the first query after a fresh volume needs outbound internet. LOAD alone
       # is enough afterwards.
-      initSql: 'INSTALL spatial; LOAD spatial; INSTALL http_client FROM community; LOAD http_client;'
+      #
+      # The external file cache is off. It keeps remote files in memory keyed by
+      # URL, and when a file changes while several queries read it — the MBTA
+      # feeds behind gtfs-rt-mbta.json are replaced every 15 s — it hands a query
+      # a mix of both versions: "Malformed JSON" in about 1 query in 800 under
+      # load, none in 4877 with it off. It had also grown to 1.4 GB, bounded only
+      # by memory_limit (80 % of the host). Re-reading LAMP through the local
+      # proxy measured the same with it on or off. The setting is instance-wide,
+      # which is why it lives here and not in one dashboard's queries.
+      initSql: 'INSTALL spatial; LOAD spatial; INSTALL http_client FROM community; LOAD http_client; SET enable_external_file_cache = false;'
 
   # Fetches the GeoJSON and CSV fixtures over HTTP from the `sources-data`
   # container. No authentication: it is a static file server on the compose
