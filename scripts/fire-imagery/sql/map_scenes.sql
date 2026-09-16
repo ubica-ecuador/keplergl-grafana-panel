@@ -17,6 +17,6 @@ SELECT scene_id,
        -- La huella viaja con la escena: una consulta alimenta a la vez la capa
        -- ráster y la de geometría, y así la pestaña no gasta una búsqueda más.
        CAST(ST_AsGeoJSON(footprint) AS VARCHAR) AS geojson
-FROM hit_after
+FROM fi_hit_after
 -- Sin escena elegida se pinta la primera fila: la más despejada.
 ORDER BY cloud_cover, acquired DESC

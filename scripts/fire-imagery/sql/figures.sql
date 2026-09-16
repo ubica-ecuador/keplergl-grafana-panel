@@ -15,7 +15,7 @@ SELECT count(h.scene_id)                                   AS "Scenes",
        END                                                  AS "Searched",
        -- Si no hay «antes», decirlo: un lado en blanco sin explicación es el
        -- peor resultado posible de una comparación.
-       coalesce((SELECT strftime(acquired, '%d %b %Y') FROM hit_before), 'none in range') AS "Before",
+       coalesce((SELECT strftime(acquired, '%d %b %Y') FROM fi_hit_before), 'none in range') AS "Before",
        -- El estado y el recuento del catálogo, para que un fallo o un recorte no
        -- se lean como "no hay escenas".
        any_value(s.r->>'status')                           AS "HTTP",
@@ -23,10 +23,10 @@ SELECT count(h.scene_id)                                   AS "Scenes",
        -- (TRY no admite un agregado dentro, así que any_value va por fuera).
        CAST(any_value(TRY(json_extract(s.r->>'body', '$.numberMatched'))) AS INTEGER)  AS "Matched",
        CAST(any_value(TRY(json_extract(s.r->>'body', '$.numberReturned'))) AS INTEGER) AS "Returned"
-FROM box_any b
-LEFT JOIN aoi a ON a.name = b.name
-LEFT JOIN search s ON s.name = a.name
-LEFT JOIN hit_after h ON h.name = a.name
+FROM fi_box_any b
+LEFT JOIN fi_aoi a ON a.name = b.name
+LEFT JOIN fi_search s ON s.name = a.name
+LEFT JOIN fi_hit_after h ON h.name = a.name
 -- Sin recuadro no hay grupos y el panel dice "No data". Sin GROUP BY, el
 -- agregado devolvería una fila de ceros que se leería como una medición.
 GROUP BY b.name

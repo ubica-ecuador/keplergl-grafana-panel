@@ -67,6 +67,17 @@ def panel_queries():
             yield key, spec['refId'], spec['query']['spec']['rawSql']
 
 
+def band_values():
+    """Los juegos de bandas que ofrece la pestaña, leídos del constructor.
+
+    De su propia variable `bands` y no de una lista repetida aquí: una copia
+    se queda atrás el día que se añade un juego, y entonces el test dice que
+    cubre todas las ramas cuando ya no.
+    """
+    bands = next(v for v in build.variables() if v['spec']['name'] == 'bands')
+    return bands['spec']['query'].split(',')
+
+
 def fixture():
     return json.loads((HERE / 'fixtures' / 'fire-tabs-min.json').read_text())
 
@@ -620,6 +631,59 @@ class EveryPanelQueryRunsTest(unittest.TestCase):
                         self.fail(f'{key}/{ref_id} ({state}): {error}')
                 checked += 1
         self.assertGreaterEqual(checked, 18, 'los cuatro paneles, en los tres estados')
+
+    def test_every_panel_query_executes_for_every_band_value(self):
+        # `$bands` parte en dos contact_sheet.sql (el /stac/bbox del falso
+        # color contra el /cog/bbox de la imagen compuesta): con un solo valor,
+        # la otra rama se analiza pero no se ejecuta nunca, y lo que construye
+        # son las URLs de las miniaturas -si se rompen, se rompen en silencio y
+        # a la vista. Los valores salen del propio constructor (la variable
+        # `bands`), no de una segunda lista escrita a mano que se desincronice.
+        # En el estado con recuadro, que es el único con filas donde la rama
+        # llega a evaluarse.
+        values = band_values()
+        self.assertEqual(len(values), 5, f'la variable bands ofrece {values!r}')
+        checked = 0
+        for band in values:
+            case = dict(self.BASE_CASE, bands=band)
+            for key, ref_id, sql in panel_queries():
+                with self.subTest(band=band, panel=key, refId=ref_id):
+                    try:
+                        self._rows(sql, case)
+                    except duckdb.Error as error:
+                        self.fail(f'{key}/{ref_id} (bands={band}): {error}')
+                checked += 1
+        self.assertGreaterEqual(checked, 30, 'los cuatro paneles, en los cinco juegos de bandas')
+
+    def test_each_band_value_builds_the_thumbnail_it_promises(self):
+        # Ejecutar no basta: la rama equivocada devolvería una URL perfectamente
+        # formada que pinta otra cosa. El falso color necesita las bandas
+        # sueltas del item STAC (/stac/bbox con &assets=), el resto la imagen
+        # compuesta ya empaquetada (/cog/bbox sobre visual_href).
+        sheet = next(s for k, _, s in panel_queries() if k == 'panel-23')
+        for band in band_values():
+            with self.subTest(band=band):
+                rows = self._rows(sheet, dict(self.BASE_CASE, bands=band))
+                self.assertTrue(rows)
+                for row in rows:
+                    if band in ('forestBurn', 'infrared'):
+                        self.assertIn('/stac/bbox/', row['View'])
+                        self.assertIn('&assets=', row['View'])
+                    else:
+                        self.assertIn('/cog/bbox/', row['View'])
+                        self.assertNotIn('&assets=', row['View'])
+
+    def test_the_temp_tables_do_not_squat_on_plain_names(self):
+        # El estado de la conexión sobrevive a la petición y el pool del
+        # datasource le presta esa misma conexión a otros tableros contra el
+        # mismo DuckDB; DuckDB además resuelve el esquema temporal antes que el
+        # principal. Una temporal nuestra llamada `search`, `hit` o `aoi`
+        # taparía en silencio una tabla real de otro con ese nombre. El prefijo
+        # es lo único que lo evita, así que se fija aquí.
+        created = re.findall(r'CREATE OR REPLACE TEMP TABLE (\w+)', build.read_sql('search'))
+        self.assertTrue(created)
+        for name in created:
+            self.assertTrue(name.startswith('fi_'), f'{name} necesita el prefijo fi_')
 
     def test_a_drawn_box_gives_every_panel_its_rows(self):
         # Ejecutar sin error no basta: una consulta que devuelve cero filas

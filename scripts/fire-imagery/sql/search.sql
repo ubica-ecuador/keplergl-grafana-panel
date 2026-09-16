@@ -6,16 +6,26 @@
 -- Cada etapa es su propia tabla temporal, no una CTE, y por dos razones a la
 -- vez: la resolución de picked_after/picked_before de más abajo necesita leer
 -- lo ya calculado (una CTE no sobrevive a su propia sentencia), y figures.sql
--- -que empieza por SELECT y no puede traer su propio WITH- lee box_any, aoi y
--- search por su nombre. Enterrarlas dentro de otra sentencia las deja fuera
--- de alcance y el panel de cifras muere con un Catalog Error. Sigue siendo un
--- único http_get por consulta de panel: vive en `search`, se materializa una
--- vez, y los demás fragmentos leen la tabla.
+-- -que empieza por SELECT y no puede traer su propio WITH- lee fi_box_any,
+-- fi_aoi y fi_search por su nombre. Enterrarlas dentro de otra sentencia las
+-- deja fuera de alcance y el panel de cifras muere con un Catalog Error. Sigue
+-- siendo un único http_get por consulta de panel: vive en `fi_search`, se
+-- materializa una vez, y los demás fragmentos leen la tabla.
+--
+-- Todas llevan el prefijo fi_ (fire imagery) y no es cosmético. El datasource
+-- mantiene un pool de conexiones y el estado de la conexión SOBREVIVE a la
+-- petición: nuestras temporales siguen ahí cuando el pool le presta esa misma
+-- conexión a OTRO tablero contra el mismo DuckDB. Y DuckDB resuelve el esquema
+-- temporal antes que el principal, así que una temporal nuestra llamada
+-- `search`, `hit` o `aoi` taparía en silencio una tabla real con ese nombre en
+-- la consulta de otro. No es una carrera entre paneles -eso se midió y no
+-- existe: cada consulta tiene su conexión en exclusiva-, es un nombre que se
+-- queda puesto. Un prefijo propio es lo único que lo evita.
 
 -- El recuadro sin filtrar por tamaño: las cifras lo necesitan aunque la
 -- guarda haya cortado la búsqueda, porque es el único sitio donde se puede
 -- decir por qué no hay nada.
-CREATE OR REPLACE TEMP TABLE box_any AS (
+CREATE OR REPLACE TEMP TABLE fi_box_any AS (
   SELECT 'box' AS name, ST_GeomFromText(getvariable('drawn')) AS geom
   WHERE getvariable('drawn') IS NOT NULL
 );
@@ -23,13 +33,13 @@ CREATE OR REPLACE TEMP TABLE box_any AS (
 -- La guarda de tamaño (el techo vive en box_limit_m2(), en prelude.sql).
 -- Como el polígono se comparte con el resto del tablero, aquí puede llegar
 -- un encuadre de medio país que nadie dibujó para esto.
-CREATE OR REPLACE TEMP TABLE aoi AS (
-  SELECT * FROM box_any WHERE m2(geom) <= box_limit_m2()
+CREATE OR REPLACE TEMP TABLE fi_aoi AS (
+  SELECT * FROM fi_box_any WHERE m2(geom) <= box_limit_m2()
 );
 
 -- El único http_get de la consulta. Materializado: figures.sql lee de aquí el
 -- estado y los recuentos del catálogo sin volver a preguntar.
-CREATE OR REPLACE TEMP TABLE search AS (
+CREATE OR REPLACE TEMP TABLE fi_search AS (
   SELECT name, geom,
          http_get('https://earth-search.aws.element84.com/v1/search'
            || '?collections=sentinel-2-l2a'
@@ -38,15 +48,15 @@ CREATE OR REPLACE TEMP TABLE search AS (
            || '&datetime=' || strftime(getvariable('back_from'), '%Y-%m-%dT%H:%M:%SZ')
            || '/' || strftime(getvariable('win_to'), '%Y-%m-%dT%H:%M:%SZ')
            || '&limit=200') AS r
-  FROM aoi
+  FROM fi_aoi
 );
 
-CREATE OR REPLACE TEMP TABLE hit AS (
+CREATE OR REPLACE TEMP TABLE fi_hit AS (
   WITH features AS (
     -- Un cuerpo que no es JSON (página de error, o el vacío del tope de 10 s)
     -- no debe romper el panel: TRY lo vuelve NULL y unnest(NULL) da cero filas.
     SELECT name, geom, unnest(TRY(json_extract(r->>'body', '$.features[*]'))) AS f
-    FROM search
+    FROM fi_search
   ),
   scenes AS (
     SELECT name, geom,
@@ -69,7 +79,7 @@ CREATE OR REPLACE TEMP TABLE hit AS (
     AND m2(ST_Intersection(geom, footprint)) / m2(geom) * 100 >= CAST($s2cover AS DOUBLE)
 );
 
-CREATE OR REPLACE TEMP TABLE hit_after AS (SELECT * FROM hit WHERE side = 'After');
+CREATE OR REPLACE TEMP TABLE fi_hit_after AS (SELECT * FROM fi_hit WHERE side = 'After');
 
 -- Una escena elegida a mano que ya no está entre las candidatas de después
 -- -de un recuadro anterior, por ejemplo- se trata como si no se hubiera
@@ -81,17 +91,17 @@ CREATE OR REPLACE TEMP TABLE hit_after AS (SELECT * FROM hit WHERE side = 'After
 -- como si nada se hubiera elegido. El CASE de map_scenes.sql no cambia:
 -- lee picked_after ya resuelto.
 SET VARIABLE picked_after = (
-  SELECT visual_href FROM hit_after WHERE visual_href = getvariable('picked_after') LIMIT 1
+  SELECT visual_href FROM fi_hit_after WHERE visual_href = getvariable('picked_after') LIMIT 1
 );
 
 -- Lo mismo del lado de antes, y por el mismo motivo: un pinchado rancio tiene
 -- que dejar de existir como valor, no solo perder el desempate de hit_before.
--- Quien lo lee además de hit_before es contact_sheet.sql (columna set_before),
+-- Quien lo lee además de fi_hit_before es contact_sheet.sql (columna set_before),
 -- que lo arrastra a cada enlace de fila: sin resolverlo aquí, un pinchado de
 -- un recuadro anterior se perpetúa para siempre en los enlaces mientras el
 -- mapa ya dibuja otra escena. Resuelto, se vacía igual que set_after.
 SET VARIABLE picked_before = (
-  SELECT visual_href FROM hit
+  SELECT visual_href FROM fi_hit
   WHERE side = 'Before' AND visual_href = getvariable('picked_before') LIMIT 1
 );
 
@@ -101,10 +111,10 @@ SET VARIABLE picked_before = (
 -- reciente que pase los cortes. Elegir primero y filtrar después -como hacía
 -- esto con un LIMIT 1 ciego al pinchado- deja en blanco cinco de las seis
 -- candidatas que la hoja ofrece a mano: map_scenes_before.sql dibuja sin
--- condición la fila que YA es hit_before (no vuelve a comparar contra el
--- pinchado), así que hit_before tiene que ser la fila correcta desde aquí.
-CREATE OR REPLACE TEMP TABLE hit_before AS (
-  SELECT * FROM hit
+-- condición la fila que YA es fi_hit_before (no vuelve a comparar contra el
+-- pinchado), así que fi_hit_before tiene que ser la fila correcta desde aquí.
+CREATE OR REPLACE TEMP TABLE fi_hit_before AS (
+  SELECT * FROM fi_hit
   WHERE side = 'Before'
   QUALIFY row_number() OVER (
     ORDER BY CASE WHEN visual_href = coalesce(getvariable('picked_before'), '') THEN 0 ELSE 1 END,

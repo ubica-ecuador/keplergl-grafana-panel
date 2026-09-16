@@ -40,7 +40,7 @@ SELECT CASE WHEN $bands IN ('forestBurn', 'infrared') THEN
        -- $sceneBefore y $sceneAfter.
        CASE WHEN side = 'Before' THEN visual_href ELSE coalesce(getvariable('picked_before'), '') END AS set_before,
        CASE WHEN side = 'After'  THEN visual_href ELSE coalesce(getvariable('picked_after'),  '') END AS set_after
-FROM hit
+FROM fi_hit
 -- Cupo por lado, no global: del lado de antes solo se PINTA una escena (la
 -- referencia), así que un puñado de candidatas recientes basta para poder
 -- cambiarla a mano; el de después es el catálogo que de verdad se recorre y

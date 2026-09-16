@@ -3,7 +3,7 @@ SELECT scene_id,
        -- selector de escena, su reloj, y cuando discrepa oculta la capa.
        strftime(acquired, '%d %b %Y  %H:%M') AS acquired_at,
        ROUND(cloud_cover, 1) AS cloud_cover,
-       -- Sin CASE aquí: hit_before (search.sql) ya eligió la única fila que
+       -- Sin CASE aquí: fi_hit_before (search.sql) ya eligió la única fila que
        -- hay que dibujar -la pinchada si sigue siendo candidata, si no la
        -- más reciente-, así que esta fila SIEMPRE se dibuja. Volver a
        -- comparar visual_href contra el pinchado aquí (como hacía antes)
@@ -19,6 +19,6 @@ SELECT scene_id,
        -- La huella viaja con la escena: una consulta alimenta a la vez la capa
        -- ráster y la de geometría, y así la pestaña no gasta una búsqueda más.
        CAST(ST_AsGeoJSON(footprint) AS VARCHAR) AS geojson
-FROM hit_before
--- hit_before ya trae una sola fila (search.sql): la pinchada en la hoja si
+FROM fi_hit_before
+-- fi_hit_before ya trae una sola fila (search.sql): la pinchada en la hoja si
 -- sigue siendo candidata, si no la más reciente que pasa los cortes.
