@@ -13,6 +13,10 @@ export type KeplerRow = Record<string, unknown>;
  * columns. It is consumed to trace streamlines, and what kepler receives is
  * their geometry, so renaming `u`/`v` would be renaming something nobody looks at.
  *
+ * `rotation` and `magnitude` are absent for the same reason: the symbol layer
+ * keeps them as-is and reads them by their original column names, which is what
+ * gives it control over the direction convention.
+ *
  * `rasterUrl` is absent for the same reason: it becomes a dataset of its own,
  * whose substance is a metadata url rather than any row. So are `wmsUrl` and
  * `wmsLayer`, which name a service rather than describe a row, and the three
@@ -27,6 +31,8 @@ type RenamedRole = Exclude<
   | 'v'
   | 'speed'
   | 'direction'
+  | 'rotation'
+  | 'magnitude'
   | 'rasterUrl'
   | 'wmsUrl'
   | 'wmsLayer'

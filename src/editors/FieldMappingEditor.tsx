@@ -28,6 +28,8 @@ const ROLES: Array<{ key: keyof FieldRoles; label: string; help: string }> = [
   { key: 'destLat', label: 'Destination lat', help: 'Flow layer' },
   { key: 'destLng', label: 'Destination lng', help: 'Flow layer' },
   { key: 'count', label: 'Count', help: 'Flow magnitude' },
+  { key: 'rotation', label: 'Rotation', help: 'Bearing in degrees, for the symbol layer' },
+  { key: 'magnitude', label: 'Magnitude', help: 'Sizes the symbols' },
 ];
 
 /**

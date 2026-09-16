@@ -229,3 +229,37 @@ describe('detectFields — zarr', () => {
     expect(detectFields(frame).zarrVariable).toBeUndefined();
   });
 });
+
+describe('detectFields: rotation and magnitude', () => {
+  it('finds a vehicle\'s heading and its speed', () => {
+    const frame = toDataFrame({
+      fields: [
+        { name: 'lat', type: FieldType.number, values: [] },
+        { name: 'lon', type: FieldType.number, values: [] },
+        { name: 'heading', type: FieldType.number, values: [] },
+        { name: 'speed', type: FieldType.number, values: [] },
+      ],
+    });
+
+    const roles = detectFields(frame);
+
+    expect(roles.rotation).toBe('heading');
+    expect(roles.speed).toBe('speed');
+  });
+
+  it('finds a generic magnitude', () => {
+    const frame = toDataFrame({
+      fields: [
+        { name: 'lat', type: FieldType.number, values: [] },
+        { name: 'lon', type: FieldType.number, values: [] },
+        { name: 'bearing', type: FieldType.number, values: [] },
+        { name: 'magnitude', type: FieldType.number, values: [] },
+      ],
+    });
+
+    const roles = detectFields(frame);
+
+    expect(roles.rotation).toBe('bearing');
+    expect(roles.magnitude).toBe('magnitude');
+  });
+});

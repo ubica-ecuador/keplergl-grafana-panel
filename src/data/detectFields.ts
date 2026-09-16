@@ -33,6 +33,16 @@ export interface FieldRoles {
   speed?: string;
   direction?: string;
   /**
+   * A bearing to turn a symbol by, and a number to size it.
+   *
+   * Separate from {@link direction} and {@link speed}, which name a *wind* and
+   * carry the meteorological convention with them. These two name any table
+   * with something that points and something that measures: a vehicle, a vessel,
+   * an aircraft.
+   */
+  rotation?: string;
+  magnitude?: string;
+  /**
    * A link to a cloud-optimised GeoTIFF, which is drawn as raster tiles rather
    * than as rows. One url per query — the first row wins.
    */
@@ -169,6 +179,11 @@ const NAME_CANDIDATES: Record<string, string[]> = {
   v: ['v', 'v10', 'v_wind', 'wind_v', 'vgrd', 'v_component'],
   speed: ['wind_speed', 'windspeed', 'wind_speed_10m', 'speed', 'ws'],
   direction: ['wind_direction', 'winddirection', 'wind_direction_10m', 'direction', 'wind_dir', 'wd'],
+  // Anything that points. `direction` is deliberately absent: it belongs to the
+  // wind roles, and a column called that is read with the meteorological
+  // convention rather than this one.
+  rotation: ['bearing', 'heading', 'course', 'cog', 'track', 'azimuth', 'orientation'],
+  magnitude: ['magnitude', 'intensity', 'amplitude'],
   originLat: ['origin_lat', 'origin_latitude', 'from_lat', 'start_lat', 'source_lat', 'pickup_lat', 'lat0'],
   originLng: [
     'origin_lon',

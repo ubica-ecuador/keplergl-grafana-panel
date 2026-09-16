@@ -3,6 +3,7 @@ import { FieldType, toDataFrame } from '@grafana/data';
 import {
   buildGradientField,
   buildWindField,
+  describesLattice,
   sampleWindField,
   smoothWindField,
   speedDirToUV,
@@ -415,5 +416,21 @@ describe('speedDirToUV', () => {
 
     expect(u).toBeCloseTo(-10, 6);
     expect(v).toBeCloseTo(0, 6);
+  });
+});
+
+describe('describesLattice', () => {
+  it('accepts a regular grid, holes included', () => {
+    // 3 x 3 at 0.25°, with one cell missing: the step survives a gap.
+    expect(describesLattice([-2, -2, -1.75, -1.75, -1.5], [-79, -78.75, -79, -78.75, -79])).toBe(true);
+  });
+
+  it('refuses a scattering of weather stations', () => {
+    // Real stations: gaps of no particular size.
+    expect(describesLattice([-2.9, -0.19, -2.17, -1.05], [-79.0, -78.48, -79.92, -80.45])).toBe(false);
+  });
+
+  it('refuses a single row or a single column, which imply no spacing at all', () => {
+    expect(describesLattice([-2, -2, -2], [-79, -78.75, -78.5])).toBe(false);
   });
 });
