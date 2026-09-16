@@ -222,6 +222,22 @@ lo traduce— y sustituir el `GridLayout` que devuelve por un `TabsLayout`.
 
 Necesita el toggle `dashboardNewLayouts`, que trae 13.2.1 y no 12.0.10.
 
+### La pestaña Imagery se injerta, no se exporta (2026-09-15)
+
+La quinta pestaña, *Imagery* (pausar el reloj de incendios, dibujar un recuadro y ver las escenas
+Sentinel-2 de los días siguientes), no está guardada en ningún fichero de tablero. La construye
+`scripts/fire-imagery/build.py` a partir del objeto v2beta1 que devuelve el apiserver:
+
+    python3 scripts/fire-imagery/build.py local prod.json provisioning-sources/dashboards/fire-emissions-tabs-local.json
+    python3 scripts/fire-imagery/build.py prod  prod.json grafted.json
+
+`local` produce una copia con uid `fire-emissions-tabs-local` para el banco. Esa copia **no se commitea**:
+todo lo que hay en `provisioning-sources/` llega a producción con `git pull`, y aparecería como tablero
+duplicado. Va en `.git/info/exclude`. `prod` produce el objeto entero, con su `resourceVersion`, para un
+`PUT` al apiserver, que exige token de cuenta de servicio. El script se niega a injertar dos veces y a
+pisar claves de elemento, ids de panel o nombres de variable. Los tests están en
+`scripts/fire-imagery/test_build.py`, y el SQL de los paneles en `scripts/fire-imagery/sql/`.
+
 There is a second, older dashboard under the uid `fire-emissions`: classic, no tabs, and no smoke
 layer. It is not the same dashboard, and shipping it as though it were is the mistake to avoid.
 
