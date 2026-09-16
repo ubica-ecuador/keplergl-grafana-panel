@@ -41,7 +41,13 @@ SELECT CASE WHEN $bands IN ('forestBurn', 'infrared') THEN
        CASE WHEN side = 'Before' THEN visual_href ELSE coalesce(getvariable('picked_before'), '') END AS set_before,
        CASE WHEN side = 'After'  THEN visual_href ELSE coalesce(getvariable('picked_after'),  '') END AS set_after
 FROM hit
+-- Cupo por lado, no global: del lado de antes solo se PINTA una escena (la
+-- referencia), así que un puñado de candidatas recientes basta para poder
+-- cambiarla a mano; el de después es el catálogo que de verdad se recorre y
+-- necesita más sitio. Con un LIMIT global, 90 días de "antes" se comían las
+-- filas de "después" antes de llegar a ellas.
+QUALIFY row_number() OVER (PARTITION BY side ORDER BY acquired DESC)
+        <= CASE WHEN side = 'Before' THEN 6 ELSE 24 END
 -- En orden de fecha: lo que interesa de un incendio es cómo cambia, el antes
 -- primero.
 ORDER BY acquired
-LIMIT 30

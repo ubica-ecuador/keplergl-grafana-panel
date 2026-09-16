@@ -3,12 +3,15 @@
 Lo que protegen es lo que costó el tablero una vez: que nada de lo que ya
 había cambie, y que un segundo injerto no duplique la pestaña.
 """
+import base64
 import copy
 import json
 import pathlib
 import re
 import sys
 import unittest
+import urllib.error
+import urllib.request
 
 import duckdb
 
@@ -253,6 +256,67 @@ class BeforeAfterSqlTest(unittest.TestCase):
         self.assertIn('sceneBefore', sheet)
         self.assertIn('sceneAfter', sheet)
 
+    def test_the_sheet_reserves_room_per_side(self):
+        # Un LIMIT global deja que 90 días de "antes" se coman las filas de
+        # "después" antes de llegar a ellas (reproducido en vivo con los
+        # valores por defecto, no un caso raro). El cupo tiene que ir por
+        # lado. Un grep de 'QUALIFY' a secas pasaría con una cláusula que no
+        # reparte nada, así que también se comprueba la partición y que no
+        # quede un LIMIT global a la vez.
+        sheet = build.read_sql('contact_sheet')
+        self.assertIn('QUALIFY', sheet, 'the per-row cap must use QUALIFY, not a global LIMIT')
+        self.assertIn('PARTITION BY side', sheet, 'the cap must be windowed per side')
+        self.assertNotIn('LIMIT 30', sheet, 'a global LIMIT would starve one side again')
+
+
+class ContactSheetSidesLiveTest(unittest.TestCase):
+    """Contra el banco de :3002: la única forma de probar que el cupo por
+    lado de verdad reparte filas, no solo que la cláusula está presente. Se
+    salta (no falla) si el banco no está arriba, para no acoplar el resto de
+    la suite -offline y determinista- a que algo esté escuchando en :3002.
+    """
+
+    GRAFANA_URL = 'http://localhost:3002/api/ds/query'
+    # El caso real que se rompía: recuadro de incendio en California, ventana
+    # ensanchada 90 días hacia atrás, los mismos s2cloud/s2cover por defecto
+    # de build.py (no un caso permisivo a propósito).
+    CASE = dict(area='POLYGON ((-123.1 39.1, -122.8 39.1, -122.8 39.4, -123.1 39.4, -123.1 39.1))',
+               sceneBefore='', sceneAfter='',
+               scanFrom='2026-09-12T00:00:00.000Z', scanTo='2026-09-12T23:59:59.000Z',
+               days='3', lookback='90', s2cloud='40', s2cover='50', bands='forestBurn')
+
+    def _interpolate(self, sql):
+        return re.sub(r'\$\{?([A-Za-z]\w*)\}?',
+                      lambda m: "'" + str(self.CASE[m.group(1)]).replace("'", "''") + "'", sql)
+
+    def _sheet_rows(self):
+        sql = self._interpolate(build.panel_sql('contact_sheet'))
+        body = json.dumps({'queries': [{'refId': 'A', 'datasource': {'uid': 'duckdb'}, 'format': 1, 'rawSql': sql}],
+                           'from': 'now-7d', 'to': 'now-1d'}).encode()
+        auth = base64.b64encode(b'admin:admin').decode()
+        request = urllib.request.Request(
+            self.GRAFANA_URL, data=body,
+            headers={'Content-Type': 'application/json', 'Authorization': 'Basic ' + auth})
+        try:
+            result = json.load(urllib.request.urlopen(request, timeout=10))
+        except (urllib.error.URLError, OSError, TimeoutError) as error:
+            raise unittest.SkipTest(f'grafana bench not reachable at {self.GRAFANA_URL}: {error}')
+        answer = result['results']['A']
+        if 'error' in answer:
+            self.fail(f'contact_sheet query failed against the live bench: {answer["error"]}')
+        frame = answer['frames'][0]
+        names = [field['name'] for field in frame['schema']['fields']]
+        values = frame['data']['values']
+        return [dict(zip(names, row)) for row in zip(*values)]
+
+    def test_both_sides_appear_for_the_california_box(self):
+        rows = self._sheet_rows()
+        sides = [row['Side'] for row in rows]
+        self.assertIn('Before', sides, 'the before side must not be crowded out by a 90-day lookback')
+        self.assertIn('After', sides, 'the after side -the one people actually browse- must not disappear')
+        self.assertLessEqual(sides.count('Before'), 6, 'before is capped at 6 candidates')
+        self.assertLessEqual(sides.count('After'), 24, 'after is capped at 24 candidates')
+
 
 class ImageryPanelsTest(unittest.TestCase):
     def setUp(self):
@@ -448,7 +512,7 @@ class RegraftTest(unittest.TestCase):
         self.assertIn('raster_url', sql)
         # The footprint travels with the scene, so the map layer and the
         # geometry layer come from the same search.
-        self.assertIn('ST_AsGeoJSON', sql)
+        self.assertIn('ST_AsGeoJSON', sql, 'the footprint must travel with the scene (map_scenes.geojson)')
 
     def test_regraft_removes_a_legacy_burnarea_variable(self):
         # A dashboard whose Imagery tab was grafted before the shared-area
