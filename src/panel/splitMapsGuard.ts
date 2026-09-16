@@ -37,6 +37,7 @@
  */
 
 import type { SavedMapConfig } from '../data/mapConfig';
+import { foldSurplusPanes } from './splitMapsNormalise';
 
 /** One pane of the authored split: which layers it draws, by layer id. */
 export interface SavedSplitPane {
@@ -84,6 +85,11 @@ export interface SplitMapsDecision {
  *
  * Null for a config with no split, or one whose split has a single pane: there
  * is nothing to keep a layer on the right side of.
+ *
+ * Only the panes kepler can draw are read. A config saved while the pane list
+ * was doubling carries more than two, and reading them all would leave the
+ * guard waiting for panes that the fold in `splitMapsNormalise.ts` has just
+ * removed — waiting, that is, for ever.
  */
 export function savedSplitAssignment(config: SavedMapConfig | null | undefined): SavedSplitAssignment | null {
   const visState = (config?.config as { visState?: Record<string, unknown> } | undefined)?.visState;
@@ -92,7 +98,7 @@ export function savedSplitAssignment(config: SavedMapConfig | null | undefined):
     return null;
   }
 
-  const panes = splitMaps.map((pane) => {
+  const panes = foldSurplusPanes(splitMaps).map((pane) => {
     const layers = pane?.layers ?? {};
     return Object.fromEntries(
       Object.entries(layers)

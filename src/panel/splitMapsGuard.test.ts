@@ -37,6 +37,33 @@ describe('savedSplitAssignment', () => {
     ).toBeNull();
   });
 
+  it('reads only the two panes kepler can draw, from a config saved while they doubled', () => {
+    const pane = (before: boolean) => ({ layers: { boxoutline: true, s2scene: !before, 's2scene-before': before } });
+    const desired = savedSplitAssignment({
+      version: 'v1',
+      config: {
+        visState: {
+          // What "Save current map configuration" wrote before the fold existed.
+          splitMaps: [pane(true), pane(false), pane(true), pane(false), pane(true), pane(false)],
+          layers: [{ id: 's2scene', config: { dataId: 'grafana-B-raster' } }],
+        },
+      },
+    }) as SavedSplitAssignment;
+    expect(desired.panes).toHaveLength(2);
+    // And it can still settle against a store that holds exactly two.
+    expect(
+      decideSplitMapRepairs({
+        desired,
+        splitMaps: [pane(true), pane(false)],
+        layers: [
+          { id: 'boxoutline', dataId: 'grafana-A' },
+          { id: 's2scene', dataId: 'grafana-B-raster' },
+          { id: 's2scene-before', dataId: 'grafana-D-raster' },
+        ],
+      }).done
+    ).toBe(true);
+  });
+
   it('asks for nothing when both panes agree — kepler produces that by itself', () => {
     expect(
       savedSplitAssignment({
