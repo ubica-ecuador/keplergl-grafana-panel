@@ -511,12 +511,21 @@ class AfterPickHermeticTest(unittest.TestCase):
         self.assertEqual(len(rows), 3, 'all three after candidates must always come back')
         return rows
 
+    # Before the drawn-scene rule moved into search.sql (fi_drawn_after), these
+    # two tests asserted that EVERY row kept raster_url with no pick. That was
+    # the frame shape, not the guarantee: the panel only ever drew the first
+    # linked row. The guarantee -the after side never goes blank, and with no
+    # pick it draws the automatic choice- is what they pin now. All three
+    # candidates share cloud 5, so the automatic choice is the most recent.
+
     def test_a_stale_after_pick_draws_the_catalogue_instead_of_going_blank(self):
         # A scene from a box drawn earlier: not among today's candidates.
         rows = self._run('https://example.test/from-a-previous-box.tif')
-        self.assertTrue(all(r['raster_url'] is not None for r in rows),
-                        'a stale pick must not blank every row')
-        self.assertTrue(all(r['raster_item_url'] is not None for r in rows))
+        self.assertEqual(the_plugin_draws(rows), 'https://example.test/2.tif',
+                         'a stale pick must fall back to the automatic choice, not blank the side')
+        drawn = [r for r in rows if r['raster_url'] is not None]
+        self.assertEqual(len(drawn), 1)
+        self.assertIsNotNone(drawn[0]['raster_item_url'])
 
     def test_picking_a_specific_after_candidate_selects_only_it(self):
         rows = self._run('https://example.test/1.tif')
@@ -525,10 +534,10 @@ class AfterPickHermeticTest(unittest.TestCase):
         self.assertEqual(drawn[0]['scene_id'], 'SYN_1')
         self.assertEqual(drawn[0]['raster_url'], 'https://example.test/1.tif')
 
-    def test_no_pick_still_draws_every_row(self):
+    def test_no_pick_still_draws_the_automatic_choice(self):
         # The untouched default path: no one has clicked a row yet.
         rows = self._run('')
-        self.assertTrue(all(r['raster_url'] is not None for r in rows))
+        self.assertEqual(the_plugin_draws(rows), 'https://example.test/2.tif')
 
 
 class EveryPanelQueryRunsTest(unittest.TestCase):
@@ -778,6 +787,172 @@ class EveryPanelQueryRunsTest(unittest.TestCase):
         self.assertIsNotNone(rows[0]['raster_url'])
 
 
+def the_plugin_draws(rows):
+    """La escena que el panel de kepler pinta a partir de las filas de una consulta.
+
+    Copia deliberada, y pequeña, de la regla de src/data/rasterDataset.ts:
+    `readScenes` salta las filas sin `raster_url`, y como `acquired_at` es
+    texto (no un campo de tipo time) las escenas quedan sin fecha y `pickScene`
+    devuelve la primera en el orden de la consulta. Comprobado en el banco
+    leyendo el scene id de las teselas que el mapa pide de verdad.
+    """
+    return next((row['raster_url'] for row in rows if row['raster_url']), None)
+
+
+class DrawnMarkHermeticTest(unittest.TestCase):
+    """Sin banco, sin red: la marca de la hoja dice la escena que el mapa PINTA.
+
+    Lo que se protege es que la marca no pueda separarse de lo dibujado. Por
+    eso cada test compara la fila marcada en contact_sheet.sql contra lo que
+    el panel pintaría con las filas de map_scenes.sql / map_scenes_before.sql
+    (the_plugin_draws), y no contra una regla escrita aquí aparte, que podría
+    equivocarse igual que la hoja.
+
+    El catálogo trae a propósito un empate en el lado de después -dos escenas
+    con la misma nube y la misma hora, la de id mayor primero en el JSON-,
+    que es el caso real del recuadro de California: ahí el ORDER BY de antes
+    no decidía y el mapa pintaba la que DuckDB dejara primero.
+    """
+
+    BOX = 'POLYGON ((-122.0 39.0, -121.9 39.0, -121.9 39.1, -122.0 39.1, -122.0 39.0))'
+    GEOMETRY = {'type': 'Polygon', 'coordinates': [[[-122.0, 39.0], [-121.9, 39.0], [-121.9, 39.1],
+                                                    [-122.0, 39.1], [-122.0, 39.0]]]}
+    # (id, fecha, nube). El día pausado es 2026-06-15.
+    BEFORE = [('SYN_B0', '2026-05-01T19:00:00Z', 5.0), ('SYN_B1', '2026-06-10T19:00:00Z', 5.0)]
+    # SYN_A5 es la más reciente y la más nublada: así "la más despejada" y "la
+    # más reciente" son escenas distintas, y una marca que siguiera la fecha
+    # (la regla de la hoja, no la del mapa) se delata sin pinchar nada.
+    AFTER = [('SYN_A0', '2026-06-16T19:00:00Z', 20.0),
+             ('SYN_A9', '2026-06-17T19:00:00Z', 3.0),
+             ('SYN_A1', '2026-06-17T19:00:00Z', 3.0),
+             ('SYN_A5', '2026-06-18T19:00:00Z', 30.0)]
+    CASE = dict(area=BOX, sceneBefore='', sceneAfter='', scanFrom='2026-06-15T00:00:00.000Z',
+                scanTo='2026-06-15T23:59:59.000Z', days='3', lookback='90',
+                s2cloud='100', s2cover='0', bands='trueColor')
+
+    @staticmethod
+    def href(scene_id):
+        return f'https://example.test/{scene_id}.tif'
+
+    @staticmethod
+    def _sql_quote(value):
+        return "'" + str(value).replace("'", "''") + "'"
+
+    def _body(self, scenes):
+        features = [{'id': sid, 'properties': {'datetime': when, 'eo:cloud_cover': cloud},
+                     'assets': {'visual': {'href': self.href(sid)}}, 'geometry': self.GEOMETRY}
+                    for sid, when, cloud in scenes]
+        return json.dumps({'type': 'FeatureCollection', 'features': features,
+                           'numberMatched': len(features), 'numberReturned': len(features)})
+
+    def _rows(self, fragment, scenes, **case):
+        sql = build.panel_sql(fragment)
+        canned = "{'status': 200, 'body': " + self._sql_quote(self._body(scenes)) + "} AS r"
+        sql, count = re.subn(r'http_get\(.*?\) AS r', canned, sql, count=1, flags=re.DOTALL)
+        self.assertEqual(count, 1)
+        sql = re.sub(r'\$(__\w+)\(([^()]*)\)', expand_macro, sql)
+        values = dict(self.CASE, **case)
+        sql = re.sub(r'\$\{?([A-Za-z]\w*)\}?', lambda m: self._sql_quote(values[m.group(1)]), sql)
+        try:
+            con = duckdb.connect()
+            con.execute('INSTALL spatial; LOAD spatial;')
+        except duckdb.Error as error:
+            self.skipTest(f'the spatial extension is not loadable in this duckdb: {error}')
+        result = con.execute(sql)
+        columns = [d[0] for d in result.description]
+        return [dict(zip(columns, row)) for row in result.fetchall()]
+
+    def _state(self, scenes=None, **case):
+        """Las marcas de la hoja y lo que el mapa pinta, en el mismo estado."""
+        scenes = self.BEFORE + self.AFTER if scenes is None else scenes
+        sheet = self._rows('contact_sheet', scenes, **case)
+        marks = {'Before': [], 'After': []}
+        for row in sheet:
+            if row['Map'] is not None:
+                marks[row['Side']].append(row['scene_url'])
+        drawn = {'After': the_plugin_draws(self._rows('map_scenes', scenes, **case)),
+                 'Before': the_plugin_draws(self._rows('map_scenes_before', scenes, **case))}
+        return marks, drawn
+
+    def assertMarksAreWhatIsDrawn(self, marks, drawn):
+        for side in ('Before', 'After'):
+            expected = [drawn[side]] if drawn[side] else []
+            self.assertEqual(marks[side], expected, f'{side}: la marca no es lo que el mapa pinta')
+
+    def test_exactly_one_mark_per_side_when_both_sides_have_scenes(self):
+        marks, drawn = self._state()
+        self.assertEqual(len(marks['Before']), 1)
+        self.assertEqual(len(marks['After']), 1)
+        self.assertMarksAreWhatIsDrawn(marks, drawn)
+
+    def test_the_marks_say_which_half_of_the_curtain(self):
+        sheet = self._rows('contact_sheet', self.BEFORE + self.AFTER)
+        glyphs = {row['Side']: row['Map'] for row in sheet if row['Map'] is not None}
+        self.assertEqual(glyphs, {'Before': '◀', 'After': '▶'})
+        # La columna va la primera: es una marca al margen, no un dato más.
+        self.assertEqual(next(iter(sheet[0])), 'Map')
+
+    def test_no_pick_marks_the_after_scene_the_map_draws(self):
+        marks, drawn = self._state()
+        self.assertMarksAreWhatIsDrawn(marks, drawn)
+        # La más despejada; entre SYN_A9 y SYN_A1, empatadas en nube y hora,
+        # la que el catálogo lista primero. Es lo que el mapa ya hacía de
+        # hecho, así que hacer la regla explícita no cambia lo que se pinta.
+        self.assertEqual(drawn['After'], self.href('SYN_A9'))
+        self.assertEqual(drawn['Before'], self.href('SYN_B1'))
+
+    def test_a_hand_picked_after_scene_is_the_one_marked(self):
+        picked = self.href('SYN_A0')  # la más nublada: nunca sería la automática
+        marks, drawn = self._state(sceneAfter=picked)
+        self.assertEqual(drawn['After'], picked)
+        self.assertMarksAreWhatIsDrawn(marks, drawn)
+
+    def test_a_hand_picked_before_scene_is_the_one_marked(self):
+        picked = self.href('SYN_B0')  # la más antigua: nunca sería la automática
+        marks, drawn = self._state(sceneBefore=picked)
+        self.assertEqual(drawn['Before'], picked)
+        self.assertMarksAreWhatIsDrawn(marks, drawn)
+
+    def test_stale_picks_mark_the_fallback_not_nothing(self):
+        marks, drawn = self._state(sceneBefore=self.href('from-a-previous-box-before'),
+                                   sceneAfter=self.href('from-a-previous-box-after'))
+        self.assertEqual(drawn['Before'], self.href('SYN_B1'))
+        self.assertEqual(drawn['After'], self.href('SYN_A9'))
+        self.assertMarksAreWhatIsDrawn(marks, drawn)
+
+    def test_no_before_scene_means_no_before_mark(self):
+        marks, drawn = self._state(scenes=self.AFTER)
+        self.assertIsNone(drawn['Before'])
+        self.assertEqual(marks['Before'], [])
+        self.assertEqual(len(marks['After']), 1)
+        self.assertMarksAreWhatIsDrawn(marks, drawn)
+
+    def test_the_after_side_links_one_scene_and_the_tie_follows_the_catalogue(self):
+        # La regla vive en search.sql: map_scenes.sql deja el enlace solo en la
+        # escena elegida, así que el panel ya no depende de su costumbre de
+        # tomar la primera fila. Y el empate lo rompe el orden del catálogo,
+        # no cómo ordene DuckDB: con el JSON al revés gana la otra, y la hoja
+        # la marca igual.
+        for scenes, expected in ((self.BEFORE + self.AFTER, 'SYN_A9'),
+                                 (self.BEFORE + list(reversed(self.AFTER)), 'SYN_A1')):
+            with self.subTest(expected=expected):
+                rows = self._rows('map_scenes', scenes)
+                self.assertEqual([row['scene_id'] for row in rows if row['raster_url']], [expected])
+                marks, drawn = self._state(scenes=scenes)
+                self.assertMarksAreWhatIsDrawn(marks, drawn)
+
+    def test_the_drawn_scene_is_on_the_sheet_even_past_the_cap(self):
+        # Del lado de antes la hoja enseña 6. Pinchar la más vieja de ocho la
+        # deja fuera del cupo por fecha; una marca que no aparece no dice nada.
+        before = [(f'SYN_B{i}', f'2026-0{3 + i // 3}-{10 + i:02d}T19:00:00Z', 5.0) for i in range(8)]
+        oldest = self.href(before[0][0])
+        marks, drawn = self._state(scenes=before + self.AFTER, sceneBefore=oldest)
+        self.assertEqual(drawn['Before'], oldest)
+        self.assertMarksAreWhatIsDrawn(marks, drawn)
+        sheet = self._rows('contact_sheet', before + self.AFTER, sceneBefore=oldest)
+        self.assertEqual(sum(1 for row in sheet if row['Side'] == 'Before'), 6, 'el cupo sigue siendo 6')
+
+
 class ContactSheetSidesLiveTest(unittest.TestCase):
     """Contra el banco de :3002: la única forma de probar que el cupo por
     lado de verdad reparte filas, no solo que la cláusula está presente. Se
@@ -876,6 +1051,26 @@ class ImageryPanelsTest(unittest.TestCase):
         for layer_id in ('boxoutline', 'footprints'):
             self.assertFalse(layers[layer_id]['config']['visConfig']['filled'])
         self.assertEqual(vis['editor']['features'], [])
+
+    def test_the_sheet_colours_only_the_marked_cells(self):
+        # La columna Map: fondo de color solo donde hay marca (◀/▶ desde las
+        # value mappings), transparente en las demás, estrecha. Los dos glifos
+        # de las mappings tienen que ser los que la SQL emite, o la marca sale
+        # como texto sin color.
+        overrides = self.elements['panel-23']['spec']['vizConfig']['spec']['fieldConfig']['overrides']
+        mark = next(o for o in overrides if o['matcher']['options'] == 'Map')
+        props = {p['id']: p['value'] for p in mark['properties']}
+        self.assertEqual(props['custom.cellOptions']['type'], 'color-background')
+        self.assertLessEqual(props['custom.width'], 60)
+        self.assertEqual(props['thresholds']['steps'], [{'color': 'transparent', 'value': None}])
+        options = props['mappings'][0]['options']
+        self.assertEqual(set(options), {'◀', '▶'})
+        sheet = build.read_sql('contact_sheet')
+        for glyph, mapping in options.items():
+            self.assertIn(f"THEN '{glyph}'", sheet)
+            self.assertNotEqual(mapping['color'], 'transparent')
+        self.assertIn('Map column marks the two scenes the map is drawing',
+                      self.elements['panel-23']['spec']['description'])
 
     def test_contact_sheet_link_keeps_the_tab_and_sets_the_scene_first(self):
         defaults = self.elements['panel-23']['spec']['vizConfig']['spec']['fieldConfig']['defaults']

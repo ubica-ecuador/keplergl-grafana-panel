@@ -32,6 +32,9 @@ LOCAL_UID = 'fire-emissions-tabs-local'
 KEPLER_GROUP = 'ubica-keplergl-panel'
 DUCKDB_GROUP = 'motherduck-duckdb-datasource'
 TILER = 'https://titiler.ubica.ec'
+# El color de la marca de la hoja de contactos. Un tono apagado de la paleta de
+# Grafana, que se lee en tema claro y oscuro sin competir con las miniaturas.
+MARK_COLOUR = 'semi-dark-blue'
 
 # (elemento, x, y, ancho, alto) en la rejilla de 24 columnas de la pestaña.
 LAYOUT = [
@@ -275,6 +278,20 @@ def contact_sheet_element():
         'defaults': {'custom': {'align': 'auto', 'cellOptions': {'type': 'auto'}, 'inspect': False},
                      'links': [{'title': 'Show this scene on the map', 'url': SCENE_LINK}], 'mappings': []},
         'overrides': [
+            # La marca de lo que el mapa pinta en cada mitad (contact_sheet.sql,
+            # columna "Map"). La celda, no la fila: fondo de color solo donde
+            # hay marca; las demás llegan como NULL y caen en el umbral base,
+            # transparente. Una marca al margen, no una franja.
+            by_name('Map',
+                    ('custom.cellOptions', {'type': 'color-background', 'mode': 'basic'}),
+                    ('custom.width', 44),
+                    ('custom.align', 'center'),
+                    ('color', {'mode': 'thresholds'}),
+                    ('thresholds', {'mode': 'absolute', 'steps': [{'color': 'transparent', 'value': None}]}),
+                    ('mappings', [{'type': 'value', 'options': {
+                        '◀': {'text': '◀', 'color': MARK_COLOUR, 'index': 0},
+                        '▶': {'text': '▶', 'color': MARK_COLOUR, 'index': 1},
+                    }}])),
             by_name('View', ('custom.cellOptions', {'type': 'image'}), ('custom.width', 67)),
             by_name('Date', ('custom.width', 164)),
             by_name('Cloud %', ('unit', 'percent'), ('custom.width', 83)),
@@ -291,8 +308,9 @@ def contact_sheet_element():
         23, 'Scenes of your box, as pictures',
         'Every Sentinel-2 scene that passes the cloud and coverage cuts, oldest first — Before rows are the '
         'last-clear-image search, After rows are the catalogue you actually browse. Each thumbnail is your box '
-        'cut out of that scene by the tile server. Click a row to show that scene on its side of the split map, '
-        'keeping the other side as it was.',
+        'cut out of that scene by the tile server. The Map column marks the two scenes the map is drawing '
+        'right now, whether you picked them or not: ◀ on the left of the curtain, ▶ on the right. Click a row '
+        'to show that scene on its side of the split map, keeping the other side as it was.',
         [duck_query('A', panel_sql('contact_sheet'))], 'table', '13.2.0', options, field_config)
 
 

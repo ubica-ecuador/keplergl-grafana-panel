@@ -2,7 +2,15 @@
 -- por el servidor de teselas, unos kilobytes, no una descarga.
 -- La miniatura sigue al desplegable: la hoja existe para ELEGIR escena, y un
 -- índice en 128 px no ayuda a elegir.
-SELECT CASE WHEN $bands IN ('forestBurn', 'infrared') THEN
+-- La marca: qué escena está pintando el mapa en cada mitad de la cortina,
+-- elegida a mano o no. Sale de fi_drawn_before/fi_drawn_after (search.sql), los
+-- mismos valores con los que el mapa decide qué pintar -nada se recalcula aquí-,
+-- así que la marca no puede decir otra cosa que el mapa. Un lado sin escena
+-- ("none in range") no marca nada: es la verdad, no un hueco.
+SELECT CASE WHEN side = 'Before' AND visual_href = getvariable('fi_drawn_before') THEN '◀'
+            WHEN side = 'After'  AND visual_href = getvariable('fi_drawn_after')  THEN '▶'
+       END                                                             AS "Map",
+       CASE WHEN $bands IN ('forestBurn', 'infrared') THEN
               'https://titiler.ubica.ec/stac/bbox/'
                 || ST_XMin(ST_Intersection(geom, footprint)) || ','
                 || ST_YMin(ST_Intersection(geom, footprint)) || ','
@@ -46,7 +54,16 @@ FROM fi_hit
 -- cambiarla a mano; el de después es el catálogo que de verdad se recorre y
 -- necesita más sitio. Con un LIMIT global, 90 días de "antes" se comían las
 -- filas de "después" antes de llegar a ellas.
-QUALIFY row_number() OVER (PARTITION BY side ORDER BY acquired DESC)
+--
+-- La escena pintada entra siempre, aunque el cupo la dejara fuera (la más
+-- despejada de después puede ser más vieja que las 24 recientes, y una de antes
+-- pinchada a mano, más vieja que las 6): una hoja que no enseña lo que el mapa
+-- está pintando no puede marcarlo.
+QUALIFY row_number() OVER (
+          PARTITION BY side
+          ORDER BY coalesce(visual_href = CASE WHEN side = 'Before' THEN getvariable('fi_drawn_before')
+                                               ELSE getvariable('fi_drawn_after') END, false) DESC,
+                   acquired DESC)
         <= CASE WHEN side = 'Before' THEN 6 ELSE 24 END
 -- En orden de fecha: lo que interesa de un incendio es cómo cambia, el antes
 -- primero.

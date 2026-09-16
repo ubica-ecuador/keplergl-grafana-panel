@@ -52,14 +52,26 @@ CREATE OR REPLACE TEMP TABLE fi_search AS (
 );
 
 CREATE OR REPLACE TEMP TABLE fi_hit AS (
-  WITH features AS (
+  WITH bodies AS (
     -- Un cuerpo que no es JSON (página de error, o el vacío del tope de 10 s)
     -- no debe romper el panel: TRY lo vuelve NULL y unnest(NULL) da cero filas.
-    SELECT name, geom, unnest(TRY(json_extract(r->>'body', '$.features[*]'))) AS f
+    SELECT name, geom, TRY(json_extract(r->>'body', '$.features[*]')) AS fs
     FROM fi_search
   ),
+  features AS (
+    -- catalogue_order: la posición de la escena en la respuesta del catálogo.
+    -- Es el desempate de las reglas de "qué se pinta" de más abajo: dos
+    -- escenas con la misma nube y la misma hora (las dos teselas de una misma
+    -- pasada, lo normal en un recuadro que cae en el borde) no las distingue
+    -- nada más, y sin un desempate que no dependa de cómo ordene DuckDB, cada
+    -- consulta de panel -la del mapa y la de la hoja se ejecutan por separado-
+    -- podría quedarse con una distinta. Es además lo que el mapa ya hacía de
+    -- hecho: en un empate pintaba la que el catálogo listaba primero.
+    SELECT name, geom, unnest(fs) AS f, generate_subscripts(fs, 1) AS catalogue_order
+    FROM bodies
+  ),
   scenes AS (
-    SELECT name, geom,
+    SELECT name, geom, catalogue_order,
            f->>'id'                                     AS scene_id,
            (f->'properties'->>'datetime')::TIMESTAMP    AS acquired,
            (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,
@@ -118,6 +130,29 @@ CREATE OR REPLACE TEMP TABLE fi_hit_before AS (
   WHERE side = 'Before'
   QUALIFY row_number() OVER (
     ORDER BY CASE WHEN visual_href = coalesce(getvariable('fi_picked_before'), '') THEN 0 ELSE 1 END,
-             acquired DESC
+             acquired DESC, catalogue_order
   ) = 1
+);
+
+-- Lo que el mapa PINTA de cada lado, decidido aquí y en ningún otro sitio. Lo
+-- leen map_scenes.sql (para pintarlo) y contact_sheet.sql (para marcarlo en la
+-- hoja), así que la marca no puede separarse de lo dibujado: es el mismo valor.
+--
+-- Antes: la que queda en fi_hit_before, sin más.
+SET VARIABLE fi_drawn_before = (SELECT visual_href FROM fi_hit_before);
+-- Después: la pinchada si sigue siendo candidata; si no, la más despejada, la
+-- más reciente entre las igual de despejadas, y la primera del catálogo en un
+-- empate. Esta regla vivía antes a medias en el ORDER BY de map_scenes.sql y a
+-- medias en la costumbre del panel de pintar la primera fila con raster_url
+-- (src/data/rasterDataset.ts: las escenas sin fecha -acquired_at es texto- se
+-- quedan en el orden de la consulta y gana la primera). Medido en el banco con
+-- el recuadro de California, leyendo el scene id de las teselas: la misma
+-- escena que da esta regla. Las filas sin visual_href el panel las salta, así
+-- que aquí tampoco cuentan.
+SET VARIABLE fi_drawn_after = coalesce(
+  getvariable('fi_picked_after'),
+  (SELECT visual_href FROM fi_hit_after
+   WHERE visual_href IS NOT NULL
+   ORDER BY cloud_cover, acquired DESC, catalogue_order
+   LIMIT 1)
 );
