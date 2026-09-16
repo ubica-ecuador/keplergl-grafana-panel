@@ -51,12 +51,15 @@ def custom_variable(name, label, values, default, description):
 
 
 def centroid_variable(name, label, axis_fn):
-    # En una query de variable el datasource NO entrecomilla: comillas a mano.
+    # En una query de variable el datasource NO entrecomilla ni escapa solo:
+    # comillas a mano dejaban que un var-burnArea manipulado se saliera del
+    # literal e inyectara SQL. ${burnArea:sqlstring} deja que Grafana
+    # entrecomille y escape (medido en el banco); por eso sin comillas aquí.
     # Sin recuadro no hay filas y el mapa Sentinel se queda donde está.
     sql = (
         "SELECT CAST(round(" + axis_fn + "(ST_Centroid(ST_GeomFromText(w))), 5) AS VARCHAR) AS __text,\n"
         "       CAST(round(" + axis_fn + "(ST_Centroid(ST_GeomFromText(w))), 5) AS VARCHAR) AS __value\n"
-        "FROM (SELECT nullif('${burnArea}', '') AS w)\n"
+        "FROM (SELECT nullif(${burnArea:sqlstring}, '') AS w)\n"
         "WHERE w IS NOT NULL"
     )
     return {'kind': 'QueryVariable', 'spec': {
@@ -110,7 +113,7 @@ def grid_item(name, x, y, w, h):
 
 
 def read_sql(name):
-    return (HERE / 'sql' / f'{name}.sql').read_text()
+    return (HERE / 'sql' / f'{name}.sql').read_text(encoding='utf-8')
 
 
 def panel_sql(select_name, with_search=True):
@@ -134,7 +137,7 @@ def sentinel_map_config(stac=None):
     earth-search por el mismo TiTiler: el visConfig del ráster está probado.
     """
     if stac is None:
-        stac = json.loads((REPO / 'provisioning-sources' / 'dashboards' / 'stac-join.json').read_text())
+        stac = json.loads((REPO / 'provisioning-sources' / 'dashboards' / 'stac-join.json').read_text(encoding='utf-8'))
     kepler_panels = [p for p in stac['panels'] if p['type'] == KEPLER_GROUP]
     if len(kepler_panels) != 1:
         raise GraftError(f'stac-join.json: expected exactly one {KEPLER_GROUP} panel, '
@@ -278,6 +281,9 @@ def fire_map_element(panel8):
         'peerTimeSync': False,
         'areaVariable': 'burnArea',
         'showSidePanel': False,
+        # panel-8 publica minval/maxval; la pestaña Imagery tiene su propio
+        # burnArea y no debe pisar las variables que lee la pestaña Global.
+        'variableMappings': [],
     })
     return panel(
         21, 'Fires — pause on a day, then draw a box',
@@ -342,11 +348,11 @@ def local_copy(dashboard):
 def main(argv):
     if len(argv) != 4 or argv[1] not in ('local', 'prod'):
         raise SystemExit('usage: build.py local|prod IN.json OUT.json')
-    dashboard = json.loads(pathlib.Path(argv[2]).read_text())
+    dashboard = json.loads(pathlib.Path(argv[2]).read_text(encoding='utf-8'))
     out = graft(dashboard, imagery_elements(dashboard))
     if argv[1] == 'local':
         out = local_copy(out)
-    pathlib.Path(argv[3]).write_text(json.dumps(out, indent=2, ensure_ascii=False) + '\n')
+    pathlib.Path(argv[3]).write_text(json.dumps(out, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
 
 
 if __name__ == '__main__':

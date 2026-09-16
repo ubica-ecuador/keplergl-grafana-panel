@@ -93,6 +93,17 @@ class GraftTest(unittest.TestCase):
         for name in NEW_VARIABLES:
             self.assertNotIn(name, sql)
 
+    def test_fire_map_does_not_publish_the_global_tabs_variables(self):
+        # panel-8's variableMappings drive minval/maxval, which the Global tab's
+        # panels read; the Imagery tab must not write to them.
+        elements = self.grafted()['spec']['elements']
+        options = elements['panel-21']['spec']['vizConfig']['spec']['options']
+        self.assertEqual(options['variableMappings'], [])
+        for key in ('panel-21', 'panel-22', 'panel-23', 'panel-24'):
+            blob = json.dumps(elements[key]['spec']['vizConfig']['spec']['options'])
+            self.assertNotIn('minval', blob)
+            self.assertNotIn('maxval', blob)
+
     def test_local_copy_has_its_own_uid_and_no_server_metadata(self):
         out = build.local_copy(self.grafted())
         self.assertEqual(out['metadata'], {'name': 'fire-emissions-tabs-local'})
@@ -231,6 +242,32 @@ class SentinelMapConfigValidationTest(unittest.TestCase):
         stac['panels'] = [p for p in stac['panels'] if p['type'] != build.KEPLER_GROUP]
         with self.assertRaisesRegex(build.GraftError, 'stac-join'):
             build.sentinel_map_config(stac)
+
+
+class CentroidVariableTest(unittest.TestCase):
+    def test_burnarea_is_interpolated_with_sqlstring_and_not_manually_quoted(self):
+        # Measured on the bench: ${burnArea:sqlstring} lets Grafana quote and
+        # escape the value; hand-written quotes around ${burnArea} do not
+        # escape it and let a crafted var-burnArea break out of the literal.
+        for name in ('aLat', 'aLng'):
+            variable = next(v for v in build.variables() if v['spec']['name'] == name)
+            sql = variable['spec']['query']['spec']['__legacyStringValue']
+            self.assertIn('${burnArea:sqlstring}', sql)
+            self.assertNotIn("'${burnArea}'", sql)
+
+
+class EncodingTest(unittest.TestCase):
+    def test_read_text_and_write_text_always_pass_utf8(self):
+        # A mangled encoding in a read/write of build.py's own I/O would be
+        # locale-dependent and silent; every call must pin encoding='utf-8'.
+        source = (HERE / 'build.py').read_text(encoding='utf-8')
+        checked = 0
+        for number, line in enumerate(source.splitlines(), 1):
+            for call in ('read_text(', 'write_text('):
+                if call in line:
+                    checked += 1
+                    self.assertIn("encoding='utf-8'", line, f'build.py:{number}: {line.strip()}')
+        self.assertGreaterEqual(checked, 4)
 
 
 if __name__ == '__main__':
