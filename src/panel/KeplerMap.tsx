@@ -183,6 +183,7 @@ export function KeplerMap({
   const hasLoaded = useRef(false);
   const appliedConfig = useRef<SavedMapConfig | null | undefined>(undefined);
   const appliedDatasets = useRef<PanelDataset[] | undefined>(undefined);
+  const appliedRasters = useRef<RasterDataset[] | undefined>(undefined);
   const handledSaveRequest = useRef(saveRequest);
 
   // Registering the plugin's own styles: satellite imagery that needs no Mapbox
@@ -221,6 +222,8 @@ export function KeplerMap({
       currentConfig: mapConfig,
       appliedDatasets: appliedDatasets.current,
       currentDatasets: datasets,
+      appliedRasters: appliedRasters.current,
+      currentRasters: rasters,
     });
 
     // 'none' when neither the data nor the config really changed — an options
@@ -232,6 +235,19 @@ export function KeplerMap({
     }
 
     appliedDatasets.current = datasets;
+    appliedRasters.current = rasters;
+
+    // Only the scenes moved, which is what a change of band combination is: the
+    // dropdown rebuilds the raster list while the rows stay the objects they
+    // were, because the map's queries deliberately do not name that variable.
+    // Nothing else is touched — replacing the row datasets for it would blink
+    // layers that did not change — and `refreshRasters` compares scenes by url,
+    // so a combination that resolved to the same request dispatches nothing.
+    if (action === 'rasters') {
+      refreshRasters(store, store.dispatch, rasters);
+      return;
+    }
+
     if (action === 'rebuild') {
       hasLoaded.current = true;
       appliedConfig.current = mapConfig;

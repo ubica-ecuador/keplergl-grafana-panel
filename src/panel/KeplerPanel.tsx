@@ -14,6 +14,7 @@ import { SavedMapConfig } from '../data/mapConfig';
 import { CUSTOM_BASEMAP_ID, DEFAULT_RASTER_SERVER_URL } from './constants';
 import { resolveCustomBasemapUrl } from './customBasemapUrl';
 import { LazyKeplerMap } from './LazyKeplerMap';
+import { useInterpolatedOption } from './useInterpolatedOption';
 import { useStableValue } from './useStableValue';
 import type { VariableMapping } from './variableSync';
 
@@ -72,10 +73,13 @@ export function KeplerPanel({
 
   // Interpolated like the custom basemap url, and for the same reason: a
   // dashboard variable is how a dropdown reaches a panel option.
-  const bands = useMemo(
-    () => resolveBandCombination(replaceVariables(options.rasterBands ?? '')),
-    [options.rasterBands, replaceVariables]
-  );
+  //
+  // Through the hook and not through a `useMemo` on `replaceVariables`: neither
+  // of that memo's dependencies ever moves — the option holds the literal
+  // `'$bands'` and `replaceVariables` is one stable object — so the combination
+  // was decided at mount and the dropdown was inert for anyone who did not
+  // reload the page. The hook says how the change is caught instead.
+  const bands = resolveBandCombination(useInterpolatedOption(options.rasterBands ?? '', replaceVariables));
 
   // Rasters travel separately from the row datasets all the way to the adapter:
   // a scene has no rows, and `processRowObject([])` returns null, so anything

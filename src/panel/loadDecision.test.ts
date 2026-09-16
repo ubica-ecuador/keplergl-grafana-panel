@@ -92,6 +92,82 @@ describe('decideLoadAction', () => {
       decideLoadAction({ hasLoaded: true, appliedConfig: { version: 'v1', config: {} }, currentConfig: null })
     ).toBe('rebuild');
   });
+
+  // The gate a band combination has to pass. A `$bands` change rebuilds the
+  // raster list and nothing else: the map's own queries deliberately do not
+  // name that variable — naming it would re-run the catalogue search every time
+  // someone picked a band — so the rows arrive as the same objects they were.
+  // Judged on the rows alone the answer was 'none', and the new combination
+  // never reached kepler at all.
+  it('reconciles the rasters when they move and the rows do not', () => {
+    const datasets = [{ id: 'grafana-B' }];
+
+    expect(
+      decideLoadAction({
+        hasLoaded: true,
+        appliedConfig: undefined,
+        currentConfig: undefined,
+        appliedDatasets: datasets,
+        currentDatasets: datasets,
+        appliedRasters: [{ id: 'grafana-B-raster' }],
+        currentRasters: [{ id: 'grafana-B-raster' }],
+      })
+    ).toBe('rasters');
+  });
+
+  // And it stays a no-op otherwise, which is the property this whole function
+  // exists for: the rasters memo does not re-run for an options clone, so a
+  // list that did not move arrives as the same object.
+  it('does nothing when neither the rows nor the rasters moved', () => {
+    const datasets = [{ id: 'grafana-B' }];
+    const rasters = [{ id: 'grafana-B-raster' }];
+
+    expect(
+      decideLoadAction({
+        hasLoaded: true,
+        appliedConfig: undefined,
+        currentConfig: undefined,
+        appliedDatasets: datasets,
+        currentDatasets: datasets,
+        appliedRasters: rasters,
+        currentRasters: rasters,
+      })
+    ).toBe('none');
+  });
+
+  // A query re-run moves both, and that is the full refresh it always was: the
+  // rows have to be replaced, and the rasters ride along on the same path.
+  it('refreshes when the rows move, whatever the rasters did', () => {
+    const rasters = [{ id: 'grafana-B-raster' }];
+
+    expect(
+      decideLoadAction({
+        hasLoaded: true,
+        appliedConfig: undefined,
+        currentConfig: undefined,
+        appliedDatasets: [{ id: 'grafana-B' }],
+        currentDatasets: [{ id: 'grafana-B' }],
+        appliedRasters: rasters,
+        currentRasters: rasters,
+      })
+    ).toBe('refresh');
+  });
+
+  // A panel with no raster query at all: both sides are undefined, and that
+  // must not read as a change.
+  it('does nothing for a panel that has no rasters', () => {
+    const datasets = [{ id: 'grafana-A' }];
+
+    expect(
+      decideLoadAction({
+        hasLoaded: true,
+        appliedConfig: undefined,
+        currentConfig: undefined,
+        appliedDatasets: datasets,
+        currentDatasets: datasets,
+      })
+    ).toBe('none');
+  });
 });
 
 /**

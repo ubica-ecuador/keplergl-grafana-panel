@@ -39,6 +39,24 @@ describe('cogPaintedDeckProps', () => {
     expect(cogPaintedDeckProps({ id: 'layer-1', metadata: { ...META, serverUrl: '' } })).toBeNull();
   });
 
+  it('draws nothing over another kind of raster dataset, rather than taking the map down', () => {
+    // Measured, not imagined: turning the Bands dropdown from a composite to
+    // true colour replaces this dataset with a `raster-tile` one, and kepler
+    // re-renders the layer it rescued before `reconcileRasterLayerType` can
+    // retype it. That metadata names a STAC document and no server, so reading
+    // `serverUrl.trim()` threw from inside `renderLayer` — and a throw there
+    // unmounts the whole panel, not one layer.
+    const rasterTile = { metadataUrl: 'https://titiler.test/cog/stac?url=…' } as unknown as CogPaintedMetadata;
+
+    expect(cogPaintedDeckProps({ id: 'layer-1', metadata: rasterTile })).toBeNull();
+  });
+
+  it('draws nothing when the metadata names no image', () => {
+    const serverOnly = { serverUrl: 'http://localhost:8088' } as unknown as CogPaintedMetadata;
+
+    expect(cogPaintedDeckProps({ id: 'layer-1', metadata: serverOnly })).toBeNull();
+  });
+
   it('carries the opacity kepler settled on', () => {
     expect(cogPaintedDeckProps({ id: 'layer-1', metadata: META, opacity: 0.4 })?.opacity).toBe(0.4);
   });

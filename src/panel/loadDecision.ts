@@ -4,7 +4,7 @@ import { isPanelRasterId } from '../data/rasterDataset';
 import { isPanelWmsId } from '../data/wmsDataset';
 import { isPanelZarrId } from '../data/zarrDataset';
 
-export type LoadAction = 'rebuild' | 'refresh' | 'none';
+export type LoadAction = 'rebuild' | 'refresh' | 'rasters' | 'none';
 
 interface LoadState {
   /** Whether kepler has already been handed a full map. */
@@ -17,10 +17,15 @@ interface LoadState {
   appliedDatasets?: unknown;
   /** The datasets object this render carries. */
   currentDatasets?: unknown;
+  /** The raster list last handed to kepler — an identity token again. */
+  appliedRasters?: unknown;
+  /** The raster list this render carries. */
+  currentRasters?: unknown;
 }
 
 /**
- * Chooses between rebuilding the map, refreshing its data, and doing nothing.
+ * Chooses between rebuilding the map, refreshing its data, reconciling the
+ * rasters alone, and doing nothing.
  *
  * `rebuild` is `addDataToMap`: it constructs layers and frames the viewport
  * around the data. `refresh` is `replaceDataInMap`: it swaps the rows while
@@ -32,6 +37,16 @@ interface LoadState {
  * no datasets. Grafana deep-clones the panel options on every options change,
  * which made every click in the panel editor exactly that gratuitous refresh.
  *
+ * `rasters` is the fourth, and it exists because rows and scenes do not always
+ * move together. A band combination is a dashboard variable the map's own
+ * queries deliberately do not name — naming it would re-run the catalogue
+ * search on every pick — so a change of combination rebuilds the raster list
+ * with the rows untouched. Judged on the rows alone that read as `none`, and
+ * the dropdown reached kepler only for someone who reloaded the page. Judged as
+ * a full `refresh` it would replace the row datasets too, which costs a
+ * `replaceDataInMap` per query and blinks layers that did not change; so the
+ * narrow action says what actually happened.
+ *
  * Tracked as an explicit `hasLoaded` flag rather than inferred from the config
  * alone, because "no config yet" and "no config saved" are both `undefined` and
  * comparing them would make the first load look like a refresh.
@@ -42,6 +57,8 @@ export function decideLoadAction({
   currentConfig,
   appliedDatasets,
   currentDatasets,
+  appliedRasters,
+  currentRasters,
 }: LoadState): LoadAction {
   if (!hasLoaded) {
     return 'rebuild';
@@ -54,7 +71,14 @@ export function decideLoadAction({
   // Datasets are compared by identity, not value: the memo that builds them
   // only re-runs when a query actually re-ran, so a fresh object means fresh
   // rows, and value-comparing row arrays on every render would not be free.
-  return currentDatasets === appliedDatasets ? 'none' : 'refresh';
+  if (currentDatasets !== appliedDatasets) {
+    return 'refresh';
+  }
+  // The rasters likewise, and the identity holds for the same reason: their
+  // memo does not re-run for an options clone, only for a query re-run or a
+  // change of band combination. `refreshRasters` compares scenes by url
+  // afterwards, so even a list rebuilt for nothing dispatches nothing.
+  return currentRasters === appliedRasters ? 'none' : 'rasters';
 }
 
 /**

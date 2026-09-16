@@ -88,14 +88,25 @@ export function cogPaintedDeckProps(args: {
   opacity?: number;
 }): Record<string, unknown> | null {
   const { id, metadata, scene, opacity } = args;
-  if (!metadata) {
+  const source = scene || metadata?.sourceUrl;
+  // Checked at runtime although the type promises both, because the metadata is
+  // whatever kepler is holding on that dataset right now and this layer can
+  // outlive the dataset it was built for: changing the band combination of an
+  // open dashboard replaces a composite's `cogPainted` dataset with a
+  // `raster-tile` one, and kepler re-renders the layers it rescued before
+  // anything has had the chance to retype them. That other metadata names no
+  // server at all, and reading it threw from inside `renderLayer` — which does
+  // not lose one layer, it takes the whole map down with it, panel and all.
+  // Drawing nothing for the tick `reconcileRasterLayerType` needs is the right
+  // answer, and it is the one this function already gives for a raster it
+  // cannot address.
+  if (typeof metadata?.serverUrl !== 'string' || typeof source !== 'string') {
     return null;
   }
 
   // Two routers of the same server: a file is drawn by `/cog`, a choice of
   // bands across an item's several files by `/stac`. The metadata says which
   // this is by whether it names assets.
-  const source = scene || metadata.sourceUrl;
   const template = metadata.assets?.length
     ? stacTileTemplate({
         serverUrl: metadata.serverUrl,
