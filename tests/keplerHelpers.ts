@@ -360,6 +360,8 @@ export async function readVectorField(map: Locator): Promise<VectorFieldSummary 
 
 /** What the saved-layer spec asserts about the layer drawing a raster query. */
 export interface RasterLayerSummary {
+  /** The layer's own id: a change of scene is a swap in place, so it must survive one. */
+  id: string;
   /** kepler's layer type: `rasterTile`, or the panel's own `cogPainted`. */
   type: string;
   /** kepler's dataset type for the raster: `raster-tile` or `cogPainted`. */
@@ -367,6 +369,12 @@ export interface RasterLayerSummary {
   /** The band preset the layer draws with, when its type has one. */
   preset: string | null;
   colormapId: string | null;
+  /**
+   * The scene the dataset points at right now — the asset href, which is where
+   * a COG's scene lives: `metadataUrl` keeps naming the document the dataset
+   * was created from whichever scene it ended up on.
+   */
+  scene: string | null;
 }
 
 /**
@@ -395,11 +403,17 @@ export async function readRasterLayer(map: Locator, dataId: string): Promise<Ras
     if (!layer) {
       return null;
     }
+    const metadata = visState?.datasets?.[wanted]?.metadata;
+    const asset = Object.values(metadata?.assets ?? {}).find((one: any) => typeof one?.href === 'string') as
+      | { href?: string }
+      | undefined;
     return {
+      id: layer.id ?? '',
       type: layer.type ?? '',
       datasetType: visState?.datasets?.[wanted]?.type ?? '',
       preset: layer.config?.visConfig?.preset ?? null,
       colormapId: layer.config?.visConfig?.colormapId ?? null,
+      scene: asset?.href ?? metadata?.metadataUrl ?? null,
     };
   }, dataId);
 }

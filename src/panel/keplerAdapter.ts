@@ -446,6 +446,10 @@ export function swapRasterScene(store: Store, dispatch: Dispatch, raster: Raster
  *
  * Only ever acts on a dataset kepler holds as one of the two raster types, and
  * only when the layer's type differs, so the ordinary case dispatches nothing.
+ * Before kepler has built the layer there is nothing to retype: this waits and
+ * reports false, the way the rest of this module's layer helpers do, because
+ * kepler creates layers asynchronously and the caller is already asking again
+ * on every store change.
  */
 export function reconcileRasterLayerType(store: Store, dispatch: Dispatch, dataId: string): boolean {
   const visState = getVisState(store);
