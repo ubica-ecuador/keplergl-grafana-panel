@@ -7,11 +7,10 @@ WITH box_any AS (
   WHERE getvariable('drawn') IS NOT NULL
 ),
 aoi AS (
-  -- La guarda de tamaño. Medido el 2026-09-16: un recuadro de ~30 km responde
-  -- en medio segundo; uno de ~1100 km tarda 25 s en las cifras y tumba la hoja
-  -- a los 74 s. Como el polígono se comparte con el resto del tablero, aquí
-  -- puede llegar un encuadre de medio país que nadie dibujó para esto.
-  SELECT * FROM box_any WHERE m2(geom) <= 20000 * 1e6
+  -- La guarda de tamaño (el techo vive en box_limit_m2(), en prelude.sql).
+  -- Como el polígono se comparte con el resto del tablero, aquí puede llegar
+  -- un encuadre de medio país que nadie dibujó para esto.
+  SELECT * FROM box_any WHERE m2(geom) <= box_limit_m2()
 ),
 -- Una sola búsqueda, con el bbox del recuadro y la ventana ya ensanchada
 -- hacia atrás en la URL: el catálogo filtra y devuelve decenas de escenas,

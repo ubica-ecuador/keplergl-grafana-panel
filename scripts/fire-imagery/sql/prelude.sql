@@ -1,5 +1,11 @@
 CREATE OR REPLACE TEMP MACRO m2(g) AS
   ST_Area(ST_Transform(g, 'EPSG:4326', 'EPSG:6933', always_xy := true));
+-- El techo de tamaño del recuadro, en un solo sitio: search.sql lo usa para
+-- cortar la búsqueda y figures.sql para explicar por qué no hay nada, y
+-- ninguno de los dos debe repetir el número. Medido el 2026-09-16: un
+-- recuadro de ~30 km responde en medio segundo; uno de ~1100 km tarda 25 s
+-- en las cifras y tumba la hoja a los 74 s.
+CREATE OR REPLACE TEMP MACRO box_limit_m2() AS 20000 * 1e6;
 
 -- El recuadro dibujado en el mapa, compartido por todo el tablero (variable
 -- `area`). Sin recuadro no hay búsqueda.

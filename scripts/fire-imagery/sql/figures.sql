@@ -5,7 +5,8 @@ SELECT count(h.scene_id)                                   AS "Scenes",
                       / m2(any_value(b.geom)) * 100, 0), 1) AS "Box covered",
        -- El recuadro se mide aunque la guarda haya cortado la búsqueda: las
        -- cifras son el único sitio donde se puede decir por qué no hay nada.
-       CASE WHEN m2(any_value(b.geom)) > 20000 * 1e6
+       -- El techo es box_limit_m2() (prelude.sql), el mismo que usa la guarda.
+       CASE WHEN m2(any_value(b.geom)) > box_limit_m2()
             THEN 'Box too large — draw a smaller one'
             ELSE strftime(getvariable('win_from'), '%d %b') || ' → '
               || strftime(getvariable('win_to'), '%d %b %Y')

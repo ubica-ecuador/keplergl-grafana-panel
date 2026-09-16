@@ -244,10 +244,17 @@ class BeforeAfterSqlTest(unittest.TestCase):
         self.assertIn('win_from', search)
 
     def test_the_size_guard_lives_in_one_place_and_is_commented(self):
-        search = build.read_sql('search')
-        self.assertEqual(search.count('20000'), 1, 'el umbral va en un solo sitio')
-        line = next(l for l in search.splitlines() if '20000' in l)
-        self.assertTrue(any('--' in l for l in search.splitlines()[:search.splitlines().index(line)]))
+        # El número vive en el macro box_limit_m2() (prelude.sql); search.sql
+        # (la guarda) y figures.sql (el aviso al usuario) deben leerlo de ahí,
+        # no repetirlo, o un cambio a uno deja al otro mintiendo.
+        prelude = build.read_sql('prelude')
+        self.assertEqual(prelude.count('20000'), 1, 'el umbral va en un solo sitio')
+        line = next(l for l in prelude.splitlines() if '20000' in l)
+        self.assertTrue(any('--' in l for l in prelude.splitlines()[:prelude.splitlines().index(line)]))
+        for name in ('search', 'figures'):
+            sql = build.read_sql(name)
+            self.assertNotIn('20000', sql, f'{name}.sql must not repeat the threshold')
+            self.assertIn('box_limit_m2()', sql, f'{name}.sql must read the shared macro')
 
     def test_picking_one_side_keeps_the_other(self):
         sheet = build.read_sql('contact_sheet')
@@ -267,6 +274,91 @@ class BeforeAfterSqlTest(unittest.TestCase):
         self.assertIn('QUALIFY', sheet, 'the per-row cap must use QUALIFY, not a global LIMIT')
         self.assertIn('PARTITION BY side', sheet, 'the cap must be windowed per side')
         self.assertNotIn('LIMIT 30', sheet, 'a global LIMIT would starve one side again')
+
+
+class ContactSheetSidesHermeticTest(unittest.TestCase):
+    """La guarantía de verdad: sin banco, sin red. Sustituye el único
+    http_get( ... ) AS r de search.sql por un cuerpo JSON escrito a mano -ocho
+    escenas "antes" del día pausado, tres "después"- y ejecuta la consulta
+    real de contact_sheet.sql contra ella con el duckdb del sistema. Si esto
+    se salta o pasa con una cláusula degenerada, nada más en la suite lo nota:
+    ContactSheetSidesLiveTest (más abajo) es un bonus útil, no la garantía -
+    se salta sin red, y no corre en CI.
+    """
+
+    # Un recuadro pequeño y las mismas geometrías que el recuadro: así
+    # ST_Intersects y el corte de cobertura (puesto a 0 de todos modos) no
+    # dependen de acertar un solape exacto.
+    BOX = 'POLYGON ((-122.0 39.0, -121.9 39.0, -121.9 39.1, -122.0 39.1, -122.0 39.0))'
+    GEOMETRY = {'type': 'Polygon', 'coordinates': [[[-122.0, 39.0], [-121.9, 39.0], [-121.9, 39.1],
+                                                    [-122.0, 39.1], [-122.0, 39.0]]]}
+    # El día pausado es 2026-06-15. Ocho fechas "antes" (todas antes de
+    # win_from) para que el cupo de 6 tenga algo que recortar de verdad, y
+    # tres "después" (entre win_from y win_to) para comprobar que ese lado
+    # no se toca.
+    BEFORE_DATES = ['2026-03-20T19:00:00Z', '2026-03-25T19:00:00Z', '2026-04-01T19:00:00Z',
+                    '2026-04-10T19:00:00Z', '2026-04-20T19:00:00Z', '2026-05-01T19:00:00Z',
+                    '2026-05-15T19:00:00Z', '2026-06-10T19:00:00Z']
+    AFTER_DATES = ['2026-06-15T12:00:00Z', '2026-06-16T19:00:00Z', '2026-06-17T19:00:00Z']
+    CASE = dict(area=BOX, sceneBefore='', sceneAfter='', scanFrom='2026-06-15T00:00:00.000Z',
+               scanTo='2026-06-15T23:59:59.000Z', days='3', lookback='90',
+               # Sin filtro de nube ni de cobertura: lo único bajo prueba es
+               # el reparto por lado, no los otros cortes.
+               s2cloud='100', s2cover='0', bands='trueColor')
+
+    @staticmethod
+    def _sql_quote(value):
+        return "'" + str(value).replace("'", "''") + "'"
+
+    def _canned_body(self):
+        def feature(index, when):
+            return {'id': f'SYN_{index}', 'properties': {'datetime': when, 'eo:cloud_cover': 5.0},
+                   'assets': {'visual': {'href': f'https://example.test/{index}.tif'}},
+                   'geometry': self.GEOMETRY}
+        dates = self.BEFORE_DATES + self.AFTER_DATES
+        features = [feature(i, when) for i, when in enumerate(dates)]
+        return json.dumps({'type': 'FeatureCollection', 'features': features,
+                           'numberMatched': len(features), 'numberReturned': len(features)})
+
+    def _canned_sql(self):
+        # Cambia el único http_get(...) AS r de search.sql por un valor fijo
+        # con la misma forma (un STRUCT con 'status' y 'body'): todo lo demás
+        # -aoi, features, scenes, hit, hit_after/before, y el QUALIFY de
+        # contact_sheet.sql- corre sin tocar.
+        sql = build.panel_sql('contact_sheet')
+        canned = "{'status': 200, 'body': " + self._sql_quote(self._canned_body()) + "} AS r"
+        sql, count = re.subn(r'http_get\(.*?\) AS r', canned, sql, count=1, flags=re.DOTALL)
+        self.assertEqual(count, 1, 'expected exactly one http_get(...) AS r to replace')
+        sql = re.sub(r'\$(__\w+)\(([^()]*)\)', expand_macro, sql)
+        return re.sub(r'\$\{?([A-Za-z]\w*)\}?', lambda m: self._sql_quote(self.CASE[m.group(1)]), sql)
+
+    def _run(self, sql):
+        try:
+            con = duckdb.connect()
+            con.execute('INSTALL spatial; LOAD spatial;')
+        except duckdb.Error as error:
+            self.skipTest(f'the spatial extension is not loadable in this duckdb: {error}')
+        result = con.execute(sql)
+        columns = [d[0] for d in result.description]
+        return [dict(zip(columns, row)) for row in result.fetchall()]
+
+    def test_before_side_is_capped_and_after_side_is_not(self):
+        rows = self._run(self._canned_sql())
+        sides = [row['Side'] for row in rows]
+        # 8 candidatas "antes" recortadas a 6 (el cupo corta de verdad, no
+        # deja pasar todo); 3 candidatas "después" intactas (24 de cupo no
+        # llega a rozarlas). Un LIMIT global de 30 dejaría pasar las 11 sin
+        # recortar nada -el número de abajo es lo que lo distingue de eso-,
+        # y un QUALIFY sin PARTITION BY (o con el CASE al revés) tampoco daría
+        # este 6/3 exacto.
+        self.assertEqual(sides.count('Before'), 6, f'before must be capped to 6, got {sides!r}')
+        self.assertEqual(sides.count('After'), 3, f'after must stay at all 3, got {sides!r}')
+        self.assertEqual(len(rows), 9)
+        # Las 6 que sobreviven son las más recientes de las 8: el cupo
+        # descarta por antigüedad, no al azar.
+        dates = sorted(row['Date'] for row in rows if row['Side'] == 'Before')
+        self.assertNotIn('20 Mar 2026  19:00', dates)
+        self.assertNotIn('25 Mar 2026  19:00', dates)
 
 
 class ContactSheetSidesLiveTest(unittest.TestCase):
