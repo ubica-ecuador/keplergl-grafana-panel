@@ -16,7 +16,7 @@ sys.path.insert(0, str(HERE))
 import build  # noqa: E402
 
 NEW_VARIABLES = ['scanFrom', 'scanTo', 'burnArea', 'scene', 'sLat', 'sLng',
-                 'days', 's2cloud', 's2cover', 'aLat', 'aLng']
+                 'days', 's2cloud', 's2cover', 'bands', 'aLat', 'aLng']
 
 
 def fixture():
@@ -49,7 +49,7 @@ class GraftTest(unittest.TestCase):
         self.assertEqual(out['spec']['layout']['spec']['tabs'][:2], before['spec']['layout']['spec']['tabs'])
         self.assertEqual(out['metadata'], before['metadata'])
 
-    def test_adds_the_eleven_variables_in_order(self):
+    def test_adds_the_twelve_variables_in_order(self):
         names = [v['spec']['name'] for v in self.grafted()['spec']['variables']]
         self.assertEqual(names[2:], NEW_VARIABLES)
 
@@ -254,6 +254,47 @@ class CentroidVariableTest(unittest.TestCase):
             sql = variable['spec']['query']['spec']['__legacyStringValue']
             self.assertIn('${burnArea:sqlstring}', sql)
             self.assertNotIn("'${burnArea}'", sql)
+
+
+class RegraftTest(unittest.TestCase):
+    def setUp(self):
+        self.dash = fixture()
+
+    def test_regraft_on_a_clean_dashboard_equals_graft(self):
+        once = build.graft(self.dash, build.imagery_elements(self.dash))
+        again = build.regraft(self.dash, build.imagery_elements(self.dash))
+        self.assertEqual(again, once)
+
+    def test_regraft_replaces_the_tab_instead_of_refusing(self):
+        once = build.graft(self.dash, build.imagery_elements(self.dash))
+        twice = build.regraft(once, build.imagery_elements(once))
+        self.assertEqual(twice['spec']['elements'].keys(), once['spec']['elements'].keys())
+        titles = [t['spec']['title'] for t in twice['spec']['layout']['spec']['tabs']]
+        self.assertEqual(titles.count('Imagery'), 1)
+        self.assertEqual(twice['spec'], once['spec'], 'regrafting the same build must be a no-op')
+
+    def test_regraft_leaves_the_other_tabs_and_variables_alone(self):
+        once = build.graft(self.dash, build.imagery_elements(self.dash))
+        twice = build.regraft(once, build.imagery_elements(once))
+        for key, element in self.dash['spec']['elements'].items():
+            self.assertEqual(twice['spec']['elements'][key], element)
+        self.assertEqual(twice['spec']['variables'][:len(self.dash['spec']['variables'])], self.dash['spec']['variables'])
+
+    def test_bands_variable_defaults_to_forest_burn(self):
+        variables = {v['spec']['name']: v['spec'] for v in build.variables()}
+        self.assertEqual(variables['bands']['current']['value'], 'forestBurn')
+        self.assertIn('forestBurn', variables['bands']['query'])
+        self.assertIn('ndmi', variables['bands']['query'])
+
+    def test_sentinel_map_reads_the_bands_variable(self):
+        out = build.graft(self.dash, build.imagery_elements(self.dash))
+        options = out['spec']['elements']['panel-22']['spec']['vizConfig']['spec']['options']
+        self.assertEqual(options['rasterBands'], '$bands')
+
+    def test_scene_query_offers_the_item_beside_the_composed_image(self):
+        sql = build.panel_sql('map_scenes')
+        self.assertIn('raster_item_url', sql)
+        self.assertIn('raster_url', sql)
 
 
 class EncodingTest(unittest.TestCase):

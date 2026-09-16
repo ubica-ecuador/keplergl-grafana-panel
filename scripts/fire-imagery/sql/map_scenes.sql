@@ -7,6 +7,12 @@ SELECT scene_id,
        -- y el catálogo se queda en esa sola.
        CASE WHEN getvariable('picked') IS NULL OR visual_href = getvariable('picked')
             THEN visual_href END AS raster_url,
+       -- El item del catálogo, para el falso color: las bandas viven en COGs
+       -- separados a los que este item apunta. La imagen compuesta de arriba
+       -- sigue siendo el camino rápido del color real.
+       CASE WHEN getvariable('picked') IS NULL OR visual_href = getvariable('picked')
+            THEN 'https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a/items/' || scene_id
+            END AS raster_item_url,
        ROUND(m2(ST_Intersection(geom, footprint)) / m2(geom) * 100, 1) AS covers_pct
 FROM hit
 -- Sin escena elegida se pinta la primera fila: la más despejada.

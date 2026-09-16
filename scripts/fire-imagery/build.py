@@ -8,6 +8,16 @@ objeto con la pestaña añadida, sin tocar nada de lo que ya había.
 
     python3 scripts/fire-imagery/build.py local prod.json provisioning-sources/dashboards/fire-emissions-tabs-local.json
     python3 scripts/fire-imagery/build.py prod  prod.json grafted.json
+
+`local`/`prod` graft onto a dashboard that does not have the tab yet, and
+refuse (GraftError) if it already does — the safe default, so a second run
+never duplicates anything by accident. `relocal`/`reprod` instead regraft:
+they strip a previous Imagery tab (and only what it added) before grafting
+again, which is how an already-deployed tab gets updated. On a dashboard
+without the tab, `relocal`/`reprod` behave exactly like `local`/`prod`.
+
+    python3 scripts/fire-imagery/build.py relocal prod.json provisioning-sources/dashboards/fire-emissions-tabs-local.json
+    python3 scripts/fire-imagery/build.py reprod  prod.json grafted.json
 """
 import copy
 import json
@@ -85,6 +95,9 @@ def variables():
                         "The most cloud a scene may carry: the catalogue's eo:cloud_cover, over the whole granule."),
         custom_variable('s2cover', 'Box covered ≥ %', '0,10,25,50,75,100', '50',
                         'How much of the drawn box a scene must cover to be listed.'),
+        custom_variable('bands', 'Bands', 'trueColor,forestBurn,infrared,nbr,ndmi', 'forestBurn',
+                        'Which bands of each scene to draw. Forest burn shows the scar and the active '
+                        'front through smoke; the indices measure rather than illustrate.'),
         centroid_variable('aLat', 'Imagery box centre lat', 'ST_Y'),
         centroid_variable('aLng', 'Imagery box centre lng', 'ST_X'),
     ]
@@ -188,7 +201,7 @@ def sentinel_map_element(version):
     options = {
         'basemap': 'auto', 'followGrafanaTheme': True, 'showSidePanel': False, 'peerTimeSync': False,
         'publishWhilePlaying': False, 'timeSync': 'off', 'rasterServerUrl': TILER, 'rasterPainted': False,
-        'rasterColormap': '', 'tripLayerMode': 'table', 'flowRenderMode': 'straight',
+        'rasterColormap': '', 'rasterBands': '$bands', 'tripLayerMode': 'table', 'flowRenderMode': 'straight',
         'variableMappings': [
             # Al dibujar un recuadro, el mapa vuela a él...
             {'field': '', 'source': 'center', 'variable': 'aLat', 'variableTo': 'aLng', 'zoom': 10},
@@ -337,6 +350,24 @@ def graft(dashboard, elements):
     return out
 
 
+def regraft(dashboard, elements):
+    """Injerta sobre un tablero que quizá ya tenga la pestaña.
+
+    `graft` se niega a injertar dos veces, que es lo correcto para no duplicar
+    nada por accidente. Actualizar lo ya desplegado necesita lo otro: quitar la
+    pestaña anterior con lo suyo —y solo lo suyo— y volver a injertar.
+    """
+    stripped = copy.deepcopy(dashboard)
+    spec = stripped['spec']
+    tabs = spec['layout']['spec']['tabs']
+    spec['layout']['spec']['tabs'] = [tab for tab in tabs if tab['spec']['title'] != TAB_TITLE]
+    ours = {cell[0] for cell in LAYOUT}
+    spec['elements'] = {key: value for key, value in spec['elements'].items() if key not in ours}
+    mine = {variable['spec']['name'] for variable in variables()}
+    spec['variables'] = [v for v in spec['variables'] if v['spec']['name'] not in mine]
+    return graft(stripped, elements)
+
+
 def local_copy(dashboard):
     """La copia para el banco: otro uid, y sin los metadatos del servidor."""
     spec = copy.deepcopy(dashboard['spec'])
@@ -345,12 +376,16 @@ def local_copy(dashboard):
             'metadata': {'name': LOCAL_UID}, 'spec': spec}
 
 
+MODES = {'local': graft, 'prod': graft, 'relocal': regraft, 'reprod': regraft}
+
+
 def main(argv):
-    if len(argv) != 4 or argv[1] not in ('local', 'prod'):
-        raise SystemExit('usage: build.py local|prod IN.json OUT.json')
+    if len(argv) != 4 or argv[1] not in MODES:
+        raise SystemExit('usage: build.py local|prod|relocal|reprod IN.json OUT.json')
     dashboard = json.loads(pathlib.Path(argv[2]).read_text(encoding='utf-8'))
-    out = graft(dashboard, imagery_elements(dashboard))
-    if argv[1] == 'local':
+    grafter = MODES[argv[1]]
+    out = grafter(dashboard, imagery_elements(dashboard))
+    if argv[1] in ('local', 'relocal'):
         out = local_copy(out)
     pathlib.Path(argv[3]).write_text(json.dumps(out, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
 
