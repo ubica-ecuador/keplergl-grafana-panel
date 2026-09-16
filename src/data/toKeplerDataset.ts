@@ -13,13 +13,13 @@ export type KeplerRow = Record<string, unknown>;
  * columns. It is consumed to trace streamlines, and what kepler receives is
  * their geometry, so renaming `u`/`v` would be renaming something nobody looks at.
  *
- * `rasterUrl` is absent for the same reason: it becomes a dataset of its own,
- * whose substance is a metadata url rather than any row. So are `wmsUrl` and
- * `wmsLayer`, which name a service rather than describe a row, and the three
- * `zarr*` roles, which name a store, one array inside it, and the label that
- * array answers to — a tile request, not a column anyone reads. The `esri*`
- * roles are absent for the same reason again: they name a service and the rules
- * it should draw by.
+ * `rasterUrl` and `rasterItemUrl` are absent for the same reason: they become a
+ * dataset of their own, whose substance is a metadata url rather than any row.
+ * So are `wmsUrl` and `wmsLayer`, which name a service rather than describe a
+ * row, and the three `zarr*` roles, which name a store, one array inside it,
+ * and the label that array answers to — a tile request, not a column anyone
+ * reads. The `esri*` roles are absent for the same reason again: they name a
+ * service and the rules it should draw by.
  */
 type RenamedRole = Exclude<
   keyof FieldRoles,
@@ -28,6 +28,7 @@ type RenamedRole = Exclude<
   | 'speed'
   | 'direction'
   | 'rasterUrl'
+  | 'rasterItemUrl'
   | 'wmsUrl'
   | 'wmsLayer'
   | 'zarrUrl'

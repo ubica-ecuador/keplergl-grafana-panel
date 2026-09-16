@@ -99,6 +99,13 @@ export interface KeplerPanelOptions {
   rasterPainted?: boolean;
 
   /**
+   * Band combination for rasters a query produces, as one of the ids in
+   * `BAND_COMBINATIONS` — a dashboard variable is interpolated, so a dropdown
+   * can drive it. Empty, or anything unrecognised, means true colour.
+   */
+  rasterBands?: string;
+
+  /**
    * Value range a Zarr variable is stretched over, as `min,max`.
    *
    * Needed where a raster's is not, because a COG the panel draws was written

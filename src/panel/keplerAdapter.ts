@@ -5,6 +5,7 @@ import {
   fitBounds,
   interactionConfigChange,
   layerConfigChange,
+  layerTypeChange,
   layerVisConfigChange,
   mapStyleChange,
   removeDataset,
@@ -33,6 +34,7 @@ import type { PanelDataset } from '../data/framesToDatasets';
 import type { KeplerColumn } from '../data/toKeplerDataset';
 import type { LayerOrderEntry } from './layerOrderGuard';
 import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
+import { stacTileTemplate } from '../data/stacTileUrl';
 import { isPanelWmsId, wmsCalendarDatasetId, type WmsDataset } from '../data/wmsDataset';
 import { type EsriDataset } from '../data/esriDataset';
 import { zarrCalendarDatasetId, type ZarrDataset } from '../data/zarrDataset';
@@ -172,6 +174,9 @@ const VECTOR_TILE_FILTER_TYPES = [ALL_FIELD_TYPES.real, ALL_FIELD_TYPES.integer,
 /** kepler's `DatasetType.RASTER_TILE`: a dataset that is a scene, not rows. */
 const RASTER_TILE_TYPE = 'raster-tile';
 
+/** kepler's `RasterTileLayer.type` — the layer that draws a `raster-tile`. */
+const RASTER_TILE_LAYER_TYPE = 'rasterTile';
+
 /**
  * A raster scene in the shape kepler's own Add Data → Tileset produces.
  *
@@ -221,7 +226,11 @@ function rasterMetadata(raster: RasterDataset) {
   // tile request from these two values and nothing fetches a STAC document, so
   // none of the `rasterServer*` settings below apply to it.
   if (raster.kind === 'painted') {
-    return { serverUrl: raster.tileServerUrls[0] ?? '', sourceUrl: raster.sourceUrl };
+    return {
+      serverUrl: raster.tileServerUrls[0] ?? '',
+      sourceUrl: raster.sourceUrl,
+      ...(raster.assets?.length ? { assets: raster.assets, rescale: raster.rescale } : {}),
+    };
   }
 
   if (raster.kind === 'pmtiles') {
@@ -313,15 +322,56 @@ function readRasterDatasets(store: Store): Array<{ id: string; metadataUrl?: str
   return Object.entries(getVisState(store)?.datasets ?? {})
     .filter(([, dataset]) => dataset.type === RASTER_TILE_TYPE || dataset.type === COG_PAINTED_TYPE)
     .map(([id, dataset]) => ({
-      // A painted COG keeps no `metadataUrl` — there is no document to fetch —
-      // so its image url stands as the identity, which is what
-      // `metadataUrlForScene` already hands back for it.
       id,
       metadataUrl:
         dataset.type === COG_PAINTED_TYPE
-          ? (dataset.metadata as { sourceUrl?: string } | undefined)?.sourceUrl
+          ? paintedIdentity(dataset.metadata as PaintedMetadata | undefined)
           : dataset.metadata?.metadataUrl,
     }));
+}
+
+/** What `rasterMetadata` stores for a COG the tile server paints. */
+interface PaintedMetadata {
+  serverUrl?: string;
+  sourceUrl?: string;
+  assets?: string[];
+  rescale?: string[];
+}
+
+/**
+ * The identity of a painted dataset, rebuilt from what kepler holds.
+ *
+ * A painted COG keeps no `metadataUrl`: there is no STAC document to fetch, so
+ * nothing in the stored metadata is the identity as it stands and it has to be
+ * re-derived. This is `sceneIdentity`'s painted branch (`rasterDataset.ts`)
+ * read backwards, and the two must agree: what `framesToRasters` puts in a
+ * raster's `metadataUrl` is what `splitRasterRefresh` compares this against.
+ *
+ * For a composite that identity is the whole tile template — assets, stretch
+ * and item together — because a change of band combination changes exactly
+ * those and nothing else: the item url is the same scene under `forestBurn` as
+ * under `infrared`. Answering the bare item url made template ≠ item on every
+ * single comparison, so the composite landed in `replace` on every refresh: a
+ * `replaceDataInMap` and a full tile refetch, the "visible blink"
+ * `splitRasterRefresh` exists to avoid, on the combination the Imagery tab
+ * opens on.
+ *
+ * Without assets there is no item in the picture at all — the classified-COG
+ * path — and the image url is the identity, as before.
+ */
+function paintedIdentity(metadata: PaintedMetadata | undefined): string | undefined {
+  const sourceUrl = metadata?.sourceUrl;
+  if (!sourceUrl || !metadata?.assets?.length) {
+    return sourceUrl;
+  }
+  return (
+    stacTileTemplate({
+      serverUrl: metadata.serverUrl ?? '',
+      itemUrl: sourceUrl,
+      assets: metadata.assets,
+      rescale: metadata.rescale,
+    }) ?? sourceUrl
+  );
 }
 
 /**
@@ -359,7 +409,12 @@ export function swapRasterScene(store: Store, dispatch: Dispatch, raster: Raster
   // lists `_stacQuery` among its triggers, which is the whole reason the swap
   // below works there. So an archive takes the rebuild instead, which costs a
   // new tile source and buys a scene that actually changes.
-  if (raster.kind === 'pmtiles') {
+  // A `stac` raster cannot be swapped in place either, and for a different
+  // reason than an archive: the swap re-points one asset href, and an item's
+  // scenes differ in every asset it has, as well as in bbox when the next pass
+  // falls on another MGRS tile. Rebuilding costs a layer and buys a scene that
+  // is actually the one asked for.
+  if (raster.kind === 'pmtiles' || raster.kind === 'stac') {
     return false;
   }
 
@@ -406,6 +461,64 @@ export function swapRasterScene(store: Store, dispatch: Dispatch, raster: Raster
   return true;
 }
 
+
+/**
+ * Puts the layer drawing a raster dataset back in step with that dataset's
+ * type, and says whether it had to.
+ *
+ * A raster's kind decides which kepler dataset type the panel mints — a painted
+ * composite is a `cogPainted` dataset drawn by this plugin's own layer, every
+ * other raster is a `raster-tile` drawn by kepler's — and a band combination
+ * changes that kind from outside, on a map whose layers may predate the change.
+ * kepler will not notice: `validateLayerWithData` (@kepler.gl/reducers,
+ * `vis-state-merger`) checks that a saved layer's type is registered and that
+ * its columns exist, and never that the layer can draw the dataset it is being
+ * bound to. So a dashboard that saved a `rasterTile` layer over a true-colour
+ * scene keeps that layer when the same query starts producing a painted
+ * composite, and it draws nothing at all: the metadata a painted dataset
+ * carries names no STAC document, so kepler's raster layer has nothing to
+ * fetch and asks for no tiles — a blank map, no error, nothing in the console.
+ *
+ * `layerTypeChange` rather than remove-and-add: it keeps the layer's place in
+ * the order, its label and whatever of its `visConfig` the new type also has,
+ * and updates `splitMaps` and `layerOrder` itself. It does mint a **new id** —
+ * deck matches layers by id and reusing one across a type change breaks it —
+ * which is also why callers keyed on the layer id (the timeline's `dressed`
+ * set) re-apply their work by themselves afterwards.
+ *
+ * Only ever acts on a dataset kepler holds as one of the two raster types, and
+ * only when the layer's type differs, so the ordinary case dispatches nothing.
+ * Before kepler has built the layer there is nothing to retype: this waits and
+ * reports false, the way the rest of this module's layer helpers do, because
+ * kepler creates layers asynchronously and the caller is already asking again
+ * on every store change.
+ */
+export function reconcileRasterLayerType(store: Store, dispatch: Dispatch, dataId: string): boolean {
+  const visState = getVisState(store);
+  const dataset = visState?.datasets[dataId];
+  const layer = visState?.layers.find((candidate) => candidate.config?.dataId === dataId);
+  if (!dataset || !layer) {
+    return false;
+  }
+
+  const wanted = rasterLayerTypeFor(dataset.type);
+  if (!wanted || layer.type === wanted) {
+    return false;
+  }
+
+  dispatch(
+    wrapTo(KEPLER_INSTANCE_ID, layerTypeChange(layer as unknown as Parameters<typeof layerTypeChange>[0], wanted))
+  );
+  return true;
+}
+
+/** Which layer draws a raster dataset of this kepler type, if the panel knows. */
+function rasterLayerTypeFor(datasetType?: string): string | null {
+  if (datasetType === COG_PAINTED_TYPE) {
+    return COG_PAINTED_TYPE;
+  }
+  return datasetType === RASTER_TILE_TYPE ? RASTER_TILE_LAYER_TYPE : null;
+}
 
 /**
  * Shows or hides a raster layer without touching its dataset.

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { Store } from 'redux';
 
-import { rasterForWindow, type RasterDataset } from '../data/rasterDataset';
+import { rasterForWindow, rasterStyleKey, type RasterDataset } from '../data/rasterDataset';
 import {
   applyRasterStyle,
   ensureTimeFilter,
@@ -10,6 +10,7 @@ import {
   readSyncSlices,
   readTimeDomain,
   readTimeRange,
+  reconcileRasterLayerType,
   refreshRasters,
   setRasterLayerVisible,
   swapRasterScene,
@@ -33,7 +34,14 @@ interface Params {
 }
 
 /**
- * Makes the map's time filter choose which scene of a raster series is drawn.
+ * Keeps the layer drawing a raster query in step with the query, and makes the
+ * map's time filter choose which of its scenes is drawn.
+ *
+ * Two jobs, and only the second one is about time. The first — the layer's type
+ * and its styling — runs for every raster, dated or not: which of them a query
+ * needs is decided by its band combination, which a dashboard variable can
+ * change at any moment on a panel whose scene query carries no time column at
+ * all.
  *
  * A query that returns one row per pass of the satellite is a small catalogue,
  * and the time widget is the natural way to move through it: drag the window
@@ -70,9 +78,8 @@ export function useRasterTimeline({ store, isReady, rasters, timeVariables }: Pa
   }, [timeVariables]);
 
   /**
-   * Layers already given their colour ramp, so the user can then change it
-   * freely. Keyed by layer id rather than by dataset: should a layer ever be
-   * rebuilt, the ramp is owed to the new one too.
+   * Layers already given their style, so the user can then change it freely.
+   * Keyed by layer id *and* style — see the loop below for why.
    */
   const dressed = useRef(new Set<string>());
 
@@ -86,8 +93,41 @@ export function useRasterTimeline({ store, isReady, rasters, timeVariables }: Pa
 
   const reconcile = useRef(() => {
     const series = rastersRef.current;
-    // Only a dated series has anything to follow. A single-scene query keeps
-    // its old behaviour and never reaches kepler through this path.
+
+    // The layer drawing each raster, put back in step with the raster itself:
+    // first its type, then its style. Neither has anything to do with the
+    // clock, so both run before the dated check below — a query that returns
+    // one undated scene still has a band combination, and gating its styling
+    // on a time column is what made every index draw true colour.
+    for (const raster of series) {
+      // A change of band combination can change which kepler layer type the
+      // dataset needs; nothing in kepler notices. `reconcileRasterLayerType`
+      // says why, and mints a new layer id when it acts — which is exactly
+      // what makes the dressing below run again for the replacement.
+      reconcileRasterLayerType(store, store.dispatch, raster.id);
+
+      // The configured ramp and preset, applied once per layer *and style* —
+      // kepler creates the layer asynchronously, so this is retried on each
+      // store change until it lands. After that the style is the user's to
+      // change from the layer panel, and re-imposing it on every store change
+      // would undo them — except a band combination changes the style from
+      // outside, and the layer must be dressed again when that happens. See
+      // `rasterDressKey` below for the rule that tells the two apart.
+      const layerId = readRasterLayerId(store, raster.id);
+      const key = rasterDressKey(raster, layerId);
+      if (key && !dressed.current.has(key)) {
+        const style = {
+          ...(raster.colormap ? { colormapId: raster.colormap } : {}),
+          ...(raster.preset ? { preset: raster.preset } : {}),
+        };
+        if (applyRasterStyle(store, store.dispatch, raster.id, style)) {
+          dressed.current.add(key);
+        }
+      }
+    }
+
+    // Only a dated series has a clock to follow. A single-scene query keeps
+    // its old behaviour and never reaches kepler through the path below.
     if (!series.some((raster) => raster.scenes.some((scene) => scene.time !== null))) {
       return;
     }
@@ -100,27 +140,6 @@ export function useRasterTimeline({ store, isReady, rasters, timeVariables }: Pa
       if (domain) {
         pushTimeRange(store, store.dispatch, domain);
         opened.current = true;
-      }
-    }
-
-    // The configured ramp, applied once per layer — kepler creates the layer
-    // asynchronously, so this is retried on each store change until it lands.
-    // Once only: after that the ramp is the user's to change from the layer
-    // panel, and re-imposing it on every store change would undo them.
-    for (const raster of series) {
-      // Nothing to dress on an archive: its tiles are images already drawn, so
-      // kepler offers opacity and nothing else for them. The ramp was chosen
-      // when the file was built.
-      // Neither an archive nor a painted COG is coloured in the browser: both
-      // arrive as finished pictures, so kepler's colormap has nothing to act on.
-      if (!raster.colormap || raster.kind === 'pmtiles' || raster.kind === 'painted') {
-        continue;
-      }
-      const layerId = readRasterLayerId(store, raster.id);
-      if (layerId && !dressed.current.has(layerId)) {
-        if (applyRasterStyle(store, store.dispatch, raster.id, { colormapId: raster.colormap })) {
-          dressed.current.add(layerId);
-        }
       }
     }
 
@@ -208,6 +227,33 @@ export function useRasterTimeline({ store, isReady, rasters, timeVariables }: Pa
   }, [isReady, store, rasters]);
 }
 
+/**
+ * Whether a raster's style still needs to be (re-)applied, and the key to
+ * remember it by if so — null when there is nothing to dress, or nowhere yet
+ * to dress it.
+ *
+ * Pure and exported so the "once per layer *and* style" rule can be pinned
+ * without a kepler store: feed it the layer id the reconcile found and the
+ * raster of the moment, and compare the key it returns against what is
+ * already in `dressed`. Keyed by style, not by layer alone, on purpose —
+ * dressing once per layer is what keeps the user's own changes from the layer
+ * panel, and a band combination changes the style from *outside*, so the same
+ * layer must be dressed again when that happens rather than being skipped as
+ * already done.
+ *
+ * Null for an archive or a painted COG regardless of `colormap`/`preset`:
+ * both arrive as a finished picture, so kepler's colormap and band presets
+ * have nothing in the browser to act on. Null too before the layer exists —
+ * kepler builds it asynchronously — and before the raster carries any style
+ * of its own, which is the ordinary true-colour case.
+ */
+export function rasterDressKey(raster: RasterDataset, layerId: string | null): string | null {
+  if ((!raster.colormap && !raster.preset) || raster.kind === 'pmtiles' || raster.kind === 'painted') {
+    return null;
+  }
+  return layerId ? `${layerId}|${rasterStyleKey(raster)}` : null;
+}
+
 /** The id of the layer drawing a raster dataset, or null before it exists. */
 function readRasterLayerId(store: Store, dataId: string): string | null {
   const state = store.getState() as {
@@ -220,10 +266,25 @@ function readRasterLayerId(store: Store, dataId: string): string | null {
 /**
  * The scene a raster dataset is currently drawing, or null if it holds none.
  *
- * Read from wherever that dataset's scene actually lives, which is not the
- * same field for both formats. For a COG it is the asset's href: `metadataUrl`
- * keeps naming the STAC document the dataset was created from, whichever scene
- * it ended up pointing at. For an archive `metadataUrl` *is* the scene.
+ * Read from wherever that dataset's scene actually lives, which is a different
+ * place for each of the three formats.
+ *
+ * - An archive: `metadataUrl` *is* the scene.
+ * - A painted COG: the layer's `cogScene`, falling back to the dataset's
+ *   `sourceUrl` — the exact pair `cogPaintedDeckProps` builds its request from,
+ *   and that is the point: what is being asked is "what is on screen", so the
+ *   answer has to come from the same two values the picture does. The dataset's
+ *   `sourceUrl` alone would be wrong after the first swap, since the swap moves
+ *   `cogScene` and leaves the metadata on the scene the dataset opened with.
+ * - Anything else: the asset's href. `metadataUrl` there keeps naming the STAC
+ *   document the dataset was created from, whichever scene it ended up on.
+ *
+ * The painted branch used to fall into the last one and always answer null —
+ * `metadata.assets` is this plugin's `string[]`, not kepler's
+ * `Record<string, {href}>` — so the "already showing" short-circuit never fired
+ * for a painted raster and every reconcile re-dispatched the same scene. Silent
+ * rather than harmful, since a `visConfig` change is not one of the slices the
+ * reconcile watches, so it could not feed itself.
  */
 function readRasterScene(store: Store, raster: RasterDataset): string | null {
   const state = store.getState() as {
@@ -231,15 +292,24 @@ function readRasterScene(store: Store, raster: RasterDataset): string | null {
       string,
       {
         visState?: {
-          datasets?: Record<string, { metadata?: { metadataUrl?: string; assets?: Record<string, { href?: string }> } }>;
+          datasets?: Record<
+            string,
+            { metadata?: { metadataUrl?: string; sourceUrl?: string; assets?: Record<string, { href?: string }> } }
+          >;
+          layers?: Array<{ config?: { dataId?: string; visConfig?: { cogScene?: unknown } } }>;
         };
       }
     >;
   };
-  const datasets = Object.values(state.keplerGl ?? {})[0]?.visState?.datasets ?? {};
-  const metadata = datasets[raster.id]?.metadata;
+  const visState = Object.values(state.keplerGl ?? {})[0]?.visState;
+  const metadata = (visState?.datasets ?? {})[raster.id]?.metadata;
   if (raster.kind === 'pmtiles') {
     return metadata?.metadataUrl ?? null;
+  }
+  if (raster.kind === 'painted') {
+    const layer = (visState?.layers ?? []).find((candidate) => candidate.config?.dataId === raster.id);
+    const scene = layer?.config?.visConfig?.cogScene;
+    return (typeof scene === 'string' && scene) || metadata?.sourceUrl || null;
   }
   const asset = Object.values(metadata?.assets ?? {}).find((candidate) => typeof candidate?.href === 'string');
   return asset?.href ?? null;

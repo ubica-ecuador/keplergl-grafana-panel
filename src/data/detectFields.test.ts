@@ -202,6 +202,18 @@ describe('detectFields — raster', () => {
   });
 });
 
+describe('rasterItemUrl role', () => {
+  it.each(['raster_item_url', 'stac_item_url', 'item_url'])('recognises %s', (name) => {
+    const frame = { fields: [{ name, type: 'string', values: ['x'] }], length: 1 } as any;
+    expect(detectFields(frame).rasterItemUrl).toBe(name);
+  });
+
+  it('does not claim a raster_url column as the item', () => {
+    const frame = { fields: [{ name: 'raster_url', type: 'string', values: ['x'] }], length: 1 } as any;
+    expect(detectFields(frame).rasterItemUrl).toBeUndefined();
+  });
+});
+
 describe('detectFields — zarr', () => {
   it('recognises a store, a variable and an index label', () => {
     const frame = toDataFrame({

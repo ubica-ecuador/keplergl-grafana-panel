@@ -6,6 +6,7 @@ import { KeplerPanelOptions } from '../types';
 import { framesToDatasets } from '../data/framesToDatasets';
 import { framesToEsri } from '../data/esriDataset';
 import { framesToRasters } from '../data/rasterDataset';
+import { resolveBandCombination } from '../data/bandCombination';
 import { framesToWms } from '../data/wmsDataset';
 import { framesToZarr } from '../data/zarrDataset';
 import { toKeplerTheme } from '../data/keplerTheme';
@@ -13,6 +14,7 @@ import { SavedMapConfig } from '../data/mapConfig';
 import { CUSTOM_BASEMAP_ID, DEFAULT_RASTER_SERVER_URL } from './constants';
 import { resolveCustomBasemapUrl } from './customBasemapUrl';
 import { LazyKeplerMap } from './LazyKeplerMap';
+import { useInterpolatedOption } from './useInterpolatedOption';
 import { useStableValue } from './useStableValue';
 import type { VariableMapping } from './variableSync';
 
@@ -69,6 +71,16 @@ export function KeplerPanel({
     [data.series, fieldMappings, options.flowRenderMode, options.tripLayerMode]
   );
 
+  // Interpolated like the custom basemap url, and for the same reason: a
+  // dashboard variable is how a dropdown reaches a panel option.
+  //
+  // Through the hook and not through a `useMemo` on `replaceVariables`: neither
+  // of that memo's dependencies ever moves — the option holds the literal
+  // `'$bands'` and `replaceVariables` is one stable object — so the combination
+  // was decided at mount and the dropdown was inert for anyone who did not
+  // reload the page. The hook says how the change is caught instead.
+  const bands = resolveBandCombination(useInterpolatedOption(options.rasterBands ?? '', replaceVariables));
+
   // Rasters travel separately from the row datasets all the way to the adapter:
   // a scene has no rows, and `processRowObject([])` returns null, so anything
   // riding in the row list is dropped on the way into kepler.
@@ -78,8 +90,9 @@ export function KeplerPanel({
         tileServerUrls: [(options.rasterServerUrl || DEFAULT_RASTER_SERVER_URL).trim()],
         colormap: options.rasterColormap || undefined,
         painted: options.rasterPainted,
+        bands,
       }),
-    [data.series, fieldMappings, options.rasterServerUrl, options.rasterColormap, options.rasterPainted]
+    [data.series, fieldMappings, options.rasterServerUrl, options.rasterColormap, options.rasterPainted, bands]
   );
 
   // A WMS travels the same separate road, and for the same reason: what the

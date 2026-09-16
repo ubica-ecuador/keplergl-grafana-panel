@@ -1,0 +1,63 @@
+{
+  "uid": "rastertimeline",
+  "title": "Kepler.gl — a dated raster catalogue",
+  "description": "Three passes of an invented satellite, drawn by kepler's own raster layer with a configured colour ramp. Points at a host that does not resolve; the spec stubs the tile server.",
+  "tags": [
+    "raster"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": {
+    "from": "2026-08-20T00:00:00.000Z",
+    "to": "2026-08-30T00:00:00.000Z"
+  },
+  "panels": [
+    {
+      "type": "ubica-keplergl-panel",
+      "id": 1,
+      "title": "Dated raster series",
+      "gridPos": {
+        "h": 18,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\": {\"fields\": [{\"name\": \"time\", \"type\": \"time\"}, {\"name\": \"raster_url\", \"type\": \"string\"}]}, \"data\": {\"values\": [[1787270400000, 1787529600000, 1787788800000], [\"https://example.test/scene-2026-08-21.tif\", \"https://example.test/scene-2026-08-24.tif\", \"https://example.test/scene-2026-08-27.tif\"]]}}]"
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "timeSync": "toMap",
+        "rasterServerUrl": "http://titiler.test",
+        "rasterPainted": false,
+        "rasterColormap": "greens",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": 0,
+              "longitude": 0,
+              "zoom": 3,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        }
+      }
+    }
+  ]
+}

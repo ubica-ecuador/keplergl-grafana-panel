@@ -39,12 +39,68 @@ describe('cogPaintedDeckProps', () => {
     expect(cogPaintedDeckProps({ id: 'layer-1', metadata: { ...META, serverUrl: '' } })).toBeNull();
   });
 
+  it('draws nothing over another kind of raster dataset, rather than taking the map down', () => {
+    // Measured, not imagined: turning the Bands dropdown from a composite to
+    // true colour replaces this dataset with a `raster-tile` one, and kepler
+    // re-renders the layer it rescued before `reconcileRasterLayerType` can
+    // retype it. That metadata names a STAC document and no server, so reading
+    // `serverUrl.trim()` threw from inside `renderLayer` — and a throw there
+    // unmounts the whole panel, not one layer.
+    const rasterTile = { metadataUrl: 'https://titiler.test/cog/stac?url=…' } as unknown as CogPaintedMetadata;
+
+    expect(cogPaintedDeckProps({ id: 'layer-1', metadata: rasterTile })).toBeNull();
+  });
+
+  it('draws nothing when the metadata names no image', () => {
+    const serverOnly = { serverUrl: 'http://localhost:8088' } as unknown as CogPaintedMetadata;
+
+    expect(cogPaintedDeckProps({ id: 'layer-1', metadata: serverOnly })).toBeNull();
+  });
+
   it('carries the opacity kepler settled on', () => {
     expect(cogPaintedDeckProps({ id: 'layer-1', metadata: META, opacity: 0.4 })?.opacity).toBe(0.4);
   });
 
   it('names the deck layer after the kepler layer it belongs to', () => {
     expect(cogPaintedDeckProps({ id: 'layer-1', metadata: META })?.id).toContain('layer-1');
+  });
+});
+
+describe('cogPaintedDeckProps with STAC assets', () => {
+  const ITEM = 'https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a/items/S2C_10SEJ_20260913_0_L2A';
+
+  it('asks the /stac router when the dataset names assets', () => {
+    const props = cogPaintedDeckProps({
+      id: 'grafana-A-raster',
+      metadata: {
+        serverUrl: 'https://titiler.ubica.ec',
+        sourceUrl: ITEM,
+        assets: ['swir22', 'nir', 'blue'],
+        rescale: ['0,4000', '0,4000', '0,4000'],
+      },
+    })!;
+    expect(props.data).toContain('/stac/tiles/WebMercatorQuad/{z}/{x}/{y}.png?');
+    expect((props.data as string).match(/[?&]assets=/g)).toHaveLength(3);
+    // deck caches against the triggers it was told to watch: the url must be one.
+    expect((props.updateTriggers as any).getTileData).toBe(props.data);
+  });
+
+  it('keeps asking the /cog router when it does not', () => {
+    const props = cogPaintedDeckProps({
+      id: 'grafana-A-raster',
+      metadata: { serverUrl: 'https://titiler.ubica.ec', sourceUrl: 'https://x/land-cover.tif' },
+    })!;
+    expect(props.data).toContain('/cog/tiles/');
+    expect(props.data).not.toContain('/stac/');
+  });
+
+  it('draws the scene the timeline chose, not the one the dataset opened on', () => {
+    const props = cogPaintedDeckProps({
+      id: 'grafana-A-raster',
+      metadata: { serverUrl: 'https://t', sourceUrl: ITEM, assets: ['nir'] },
+      scene: `${ITEM}-later`,
+    })!;
+    expect(props.data).toContain(encodeURIComponent(`${ITEM}-later`));
   });
 });
 

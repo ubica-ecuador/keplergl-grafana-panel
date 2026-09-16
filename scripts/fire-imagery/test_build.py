@@ -10,13 +10,58 @@ import re
 import sys
 import unittest
 
+import duckdb
+
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import build  # noqa: E402
 
 NEW_VARIABLES = ['scanFrom', 'scanTo', 'burnArea', 'scene', 'sLat', 'sLng',
-                 'days', 's2cloud', 's2cover', 'aLat', 'aLng']
+                 'days', 's2cloud', 's2cover', 'bands', 'aLat', 'aLng']
+
+# Lo que el datasource pone en lugar de los macros de Grafana antes de mandar la
+# consulta a DuckDB: una marca de tiempo entrecomillada. Medido en el banco.
+TIME_FROM = "'2026-09-08T21:03:41Z'"
+TIME_TO = "'2026-09-15T21:03:41Z'"
+
+
+def expand_macro(match):
+    name, argument = match.group(1), match.group(2).strip()
+    if name == '__timeFrom':
+        return TIME_FROM
+    if name == '__timeTo':
+        return TIME_TO
+    # Un predicado, no un valor: el datasource lo cambia por una comparación
+    # sobre la columna que le pasan.
+    if name == '__timeFilter':
+        return f'{argument} BETWEEN {TIME_FROM} AND {TIME_TO}'
+    # Deliberadamente ruidoso: un macro nuevo que nadie sustituya volvería a
+    # dejar pasar SQL que no parsea, que es justo lo que este módulo evita.
+    raise AssertionError(f'macro de Grafana sin expandir: ${name}()')
+
+
+def as_the_datasource_sends_it(sql):
+    """La SQL tal como sale hacia DuckDB: macros y variables ya sustituidas.
+
+    El navegador entrecomilla el valor de cada variable y el datasource expande
+    los macros; ninguno de los dos mira si el resultado es SQL válida. Aquí solo
+    importa la forma, así que el valor es lo de menos: un literal vacío sirve
+    para cualquiera y no puede introducir un error de sintaxis propio.
+    """
+    sql = re.sub(r'\$(__\w+)\(([^()]*)\)', expand_macro, sql)
+    return re.sub(r'\$\{?[A-Za-z]\w*\}?', "''", sql)
+
+
+def panel_queries():
+    """Cada `(elemento, refId, SQL)` que la pestaña manda al datasource."""
+    dash = fixture()
+    for key, element in sorted(build.imagery_elements(dash).items()):
+        for query in element['spec']['data']['spec']['queries']:
+            spec = query['spec']
+            if spec['query']['group'] != build.DUCKDB_GROUP:
+                continue
+            yield key, spec['refId'], spec['query']['spec']['rawSql']
 
 
 def fixture():
@@ -49,7 +94,7 @@ class GraftTest(unittest.TestCase):
         self.assertEqual(out['spec']['layout']['spec']['tabs'][:2], before['spec']['layout']['spec']['tabs'])
         self.assertEqual(out['metadata'], before['metadata'])
 
-    def test_adds_the_eleven_variables_in_order(self):
+    def test_adds_the_twelve_variables_in_order(self):
         names = [v['spec']['name'] for v in self.grafted()['spec']['variables']]
         self.assertEqual(names[2:], NEW_VARIABLES)
 
@@ -134,6 +179,28 @@ class SqlTest(unittest.TestCase):
         self.assertIn(build.read_sql('search'), full)
         self.assertTrue(full.endswith(build.read_sql('map_scenes')))
         self.assertNotIn('http_get', build.panel_sql('map_box', with_search=False))
+
+    def test_every_panel_query_parses(self):
+        # Lo que ningún otro test miraba: que la SQL sea SQL. A una pieza se le
+        # cayó el SELECT al editarla y la consulta quedó en un `WITH` seguido de
+        # un `CASE`: el panel salía al servidor con un error del parser en lugar
+        # de con una tabla, y ni el injerto ni los tests se enteraban. Se parsea
+        # lo que de verdad se manda —lo que lleva cada panel de la pestaña— y no
+        # una lista de nombres escrita a mano, que se queda corta el día que se
+        # añade un panel.
+        checked = 0
+        for key, ref_id, sql in panel_queries():
+            with self.subTest(panel=key, refId=ref_id):
+                try:
+                    statements = duckdb.extract_statements(as_the_datasource_sends_it(sql))
+                except duckdb.Error as error:
+                    self.fail(f'{key}/{ref_id}: {error}')
+                # Y que lo último sea lo que llena el panel: una SELECT. Un
+                # panel alimentado por un SET o un CREATE parsea y devuelve
+                # cero filas, que es la otra forma de llegar rota al servidor.
+                self.assertEqual(statements[-1].type, duckdb.StatementType.SELECT, f'{key}/{ref_id}')
+            checked += 1
+        self.assertGreaterEqual(checked, 5)
 
     def test_catalogue_body_is_parsed_defensively(self):
         # Un cuerpo que no es JSON (una página de error, o el vacío del tope de
@@ -254,6 +321,78 @@ class CentroidVariableTest(unittest.TestCase):
             sql = variable['spec']['query']['spec']['__legacyStringValue']
             self.assertIn('${burnArea:sqlstring}', sql)
             self.assertNotIn("'${burnArea}'", sql)
+
+
+class RegraftTest(unittest.TestCase):
+    def setUp(self):
+        self.dash = fixture()
+
+    def test_regraft_on_a_clean_dashboard_equals_graft(self):
+        once = build.graft(self.dash, build.imagery_elements(self.dash))
+        again = build.regraft(self.dash, build.imagery_elements(self.dash))
+        self.assertEqual(again, once)
+
+    def test_regraft_replaces_the_tab_instead_of_refusing(self):
+        once = build.graft(self.dash, build.imagery_elements(self.dash))
+        twice = build.regraft(once, build.imagery_elements(once))
+        self.assertEqual(twice['spec']['elements'].keys(), once['spec']['elements'].keys())
+        titles = [t['spec']['title'] for t in twice['spec']['layout']['spec']['tabs']]
+        self.assertEqual(titles.count('Imagery'), 1)
+        self.assertEqual(twice['spec'], once['spec'], 'regrafting the same build must be a no-op')
+
+    def test_regraft_leaves_the_other_tabs_and_variables_alone(self):
+        once = build.graft(self.dash, build.imagery_elements(self.dash))
+        twice = build.regraft(once, build.imagery_elements(once))
+        for key, element in self.dash['spec']['elements'].items():
+            self.assertEqual(twice['spec']['elements'][key], element)
+        self.assertEqual(twice['spec']['variables'][:len(self.dash['spec']['variables'])], self.dash['spec']['variables'])
+
+    def test_regraft_does_not_delete_a_panel_the_tab_never_added(self):
+        # El caso que puede costar el trabajo de otro: alguien añade un panel
+        # por la interfaz y Grafana le da una de las claves que esta pestaña
+        # usa. Quitar por nombre lo borraría sin decir nada, y un PUT a
+        # producción lo haría de verdad. Se quita solo lo que la pestaña que
+        # hay puesta referencia; si lo demás choca, `graft` se niega y no se
+        # escribe nada.
+        once = build.graft(self.dash, build.imagery_elements(self.dash))
+        foreign = copy.deepcopy(once['spec']['elements']['panel-23'])
+        foreign['spec']['title'] = 'Someone else’s panel'
+        foreign['spec']['id'] = 230
+        del once['spec']['elements']['panel-23']
+        once['spec']['layout']['spec']['tabs'][-1]['spec']['layout']['spec']['items'] = [
+            item for item in once['spec']['layout']['spec']['tabs'][-1]['spec']['layout']['spec']['items']
+            if item['spec']['element']['name'] != 'panel-23']
+        once['spec']['elements']['panel-23'] = foreign
+
+        with self.assertRaisesRegex(build.GraftError, 'panel-23'):
+            build.regraft(once, build.imagery_elements(once))
+        self.assertEqual(once['spec']['elements']['panel-23'], foreign, 'regraft must not mutate its input')
+
+    def test_regraft_strips_only_what_the_tab_laid_out(self):
+        once = build.graft(self.dash, build.imagery_elements(self.dash))
+        # Una pestaña puesta con menos paneles de los que el injerto trae hoy:
+        # al reinjertar, el que no estaba no puede haberse quitado por nombre.
+        items = once['spec']['layout']['spec']['tabs'][-1]['spec']['layout']['spec']['items']
+        once['spec']['layout']['spec']['tabs'][-1]['spec']['layout']['spec']['items'] = [
+            item for item in items if item['spec']['element']['name'] != 'panel-24']
+        with self.assertRaisesRegex(build.GraftError, 'panel-24'):
+            build.regraft(once, build.imagery_elements(once))
+
+    def test_bands_variable_defaults_to_forest_burn(self):
+        variables = {v['spec']['name']: v['spec'] for v in build.variables()}
+        self.assertEqual(variables['bands']['current']['value'], 'forestBurn')
+        self.assertIn('forestBurn', variables['bands']['query'])
+        self.assertIn('ndmi', variables['bands']['query'])
+
+    def test_sentinel_map_reads_the_bands_variable(self):
+        out = build.graft(self.dash, build.imagery_elements(self.dash))
+        options = out['spec']['elements']['panel-22']['spec']['vizConfig']['spec']['options']
+        self.assertEqual(options['rasterBands'], '$bands')
+
+    def test_scene_query_offers_the_item_beside_the_composed_image(self):
+        sql = build.panel_sql('map_scenes')
+        self.assertIn('raster_item_url', sql)
+        self.assertIn('raster_url', sql)
 
 
 class EncodingTest(unittest.TestCase):

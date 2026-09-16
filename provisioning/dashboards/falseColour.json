@@ -1,0 +1,40 @@
+{
+  "uid": "falsecolour",
+  "title": "Kepler.gl — false colour bands",
+  "schemaVersion": 39,
+  "time": { "from": "now-30d", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "bands",
+        "type": "custom",
+        "label": "Bands",
+        "query": "trueColor,forestBurn,infrared,nbr,ndmi",
+        "current": { "text": "forestBurn", "value": "forestBurn" },
+        "options": []
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 2,
+      "type": "ubica-keplergl-panel",
+      "title": "False colour",
+      "gridPos": { "h": 16, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "grafana-testdata-datasource", "uid": "trlxrdZVk" },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-testdata-datasource", "uid": "trlxrdZVk" },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\": {\"fields\": [{\"name\": \"time\", \"type\": \"time\"}, {\"name\": \"raster_url\", \"type\": \"string\"}, {\"name\": \"raster_item_url\", \"type\": \"string\"}]}, \"data\": {\"values\": [[1787443200000], [\"https://example.test/scene-visual.tif\"], [\"https://example.test/items/scene-1\"]]}}]"
+        }
+      ],
+      "options": {
+        "rasterServerUrl": "http://titiler.test",
+        "rasterBands": "$bands",
+        "showSidePanel": false
+      }
+    }
+  ]
+}

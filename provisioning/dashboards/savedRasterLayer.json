@@ -1,0 +1,84 @@
+{
+  "uid": "savedrasterlayer",
+  "title": "Kepler.gl — bands over a saved raster layer",
+  "schemaVersion": 39,
+  "time": { "from": "now-30d", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "bands",
+        "type": "custom",
+        "label": "Bands",
+        "query": "trueColor,forestBurn,infrared,nbr,ndmi",
+        "current": { "text": "forestBurn", "value": "forestBurn" },
+        "options": []
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 },
+      "options": {
+        "mode": "markdown",
+        "content": "> **Test fixture.** It points at `titiler.test`, a host that does not resolve; the end-to-end suite intercepts its requests.\n\n# A band combination over a map someone already saved\n\nThe panel that matters here is one a user configured **before** the band dropdown existed: its saved map carries a `rasterTile` layer, on the true-colour preset, and its scene query returns a single row with no time column. Both are what the live dashboard has, and both used to break the dropdown — a composite drew nothing at all, and an index drew true colour."
+      }
+    },
+    {
+      "id": 2,
+      "type": "ubica-keplergl-panel",
+      "title": "Saved raster layer",
+      "gridPos": { "h": 16, "w": 24, "x": 0, "y": 4 },
+      "datasource": { "type": "grafana-testdata-datasource", "uid": "trlxrdZVk" },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-testdata-datasource", "uid": "trlxrdZVk" },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\": {\"fields\": [{\"name\": \"acquired_at\", \"type\": \"string\"}, {\"name\": \"raster_url\", \"type\": \"string\"}, {\"name\": \"raster_item_url\", \"type\": \"string\"}]}, \"data\": {\"values\": [[\"2026-09-13\"], [\"https://example.test/scene-visual.tif\"], [\"https://example.test/items/scene-1\"]]}}]"
+        }
+      ],
+      "options": {
+        "showSidePanel": false,
+        "rasterServerUrl": "http://titiler.test",
+        "rasterBands": "$bands",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": 0,
+              "longitude": 0,
+              "zoom": 4,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "visState": {
+              "layerOrder": ["s2scene"],
+              "layers": [
+                {
+                  "id": "s2scene",
+                  "type": "rasterTile",
+                  "config": {
+                    "dataId": "grafana-A-raster",
+                    "label": "Saved scene",
+                    "isVisible": true,
+                    "columns": {},
+                    "visConfig": {
+                      "colormapId": "cfastie",
+                      "opacity": 1,
+                      "preset": "trueColor",
+                      "useSTACSearching": false
+                    }
+                  },
+                  "visualChannels": {}
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}
