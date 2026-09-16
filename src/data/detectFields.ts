@@ -181,7 +181,9 @@ const NAME_CANDIDATES: Record<string, string[]> = {
   direction: ['wind_direction', 'winddirection', 'wind_direction_10m', 'direction', 'wind_dir', 'wd'],
   // Anything that points. `direction` is deliberately absent: it belongs to the
   // wind roles, and a column called that is read with the meteorological
-  // convention rather than this one.
+  // convention rather than this one. `cog` (course over ground) appears here and
+  // also in rasterUrl; the overlap is harmless today because the raster reader
+  // drops non-string values, and would need revisiting only if that changes.
   rotation: ['bearing', 'heading', 'course', 'cog', 'track', 'azimuth', 'orientation'],
   magnitude: ['magnitude', 'intensity', 'amplitude'],
   originLat: ['origin_lat', 'origin_latitude', 'from_lat', 'start_lat', 'source_lat', 'pickup_lat', 'lat0'],
@@ -222,7 +224,11 @@ const NAME_CANDIDATES: Record<string, string[]> = {
   ],
   originH3: ['origin_h3', 'source_h3', 'from_h3', 'h3_0'],
   destH3: ['dest_h3', 'target_h3', 'to_h3', 'h3_1'],
-  count: ['count', 'trips', 'magnitude', 'weight', 'flow', 'total', 'volume'],
+  // `magnitude` is deliberately absent: it is now a rotation/magnitude role, and a
+  // column literally named `magnitude` must land in one role only. If a query's
+  // weight column happens to be named that, the user can map it by hand in the
+  // field mapping editor rather than silently breaking the size channel bind.
+  count: ['count', 'trips', 'weight', 'flow', 'total', 'volume'],
   // Raster. `asset_href` and `href` are what a STAC asset is called in the
   // catalogue's own JSON, so a query that lifts the asset straight out of a
   // search response needs no aliasing.

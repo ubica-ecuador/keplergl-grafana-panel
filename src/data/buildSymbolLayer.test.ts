@@ -1,4 +1,8 @@
+import { FieldType, toDataFrame } from '@grafana/data';
+
 import { buildSymbolLayer } from './buildSymbolLayer';
+import { detectFields } from './detectFields';
+import { toKeplerColumns } from './toKeplerDataset';
 
 describe('buildSymbolLayer', () => {
   it('binds the rotation column as a visual channel, by name', () => {
@@ -53,5 +57,52 @@ describe('buildSymbolLayer', () => {
     const layer = buildSymbolLayer({ latitude: 'lat', longitude: 'lon', altitude: 'elev' }, 'grafana-A');
 
     expect(layer!.config.columns).toEqual({ lat: 'latitude', lng: 'longitude', altitude: 'altitude' });
+  });
+
+  it('prefers rotation over direction when both are mapped', () => {
+    const layer = buildSymbolLayer(
+      { latitude: 'lat', longitude: 'lon', rotation: 'heading', direction: 'wind_dir' },
+      'grafana-A'
+    );
+
+    expect(layer!.visualChannels.angleField).toMatchObject({ name: 'heading' });
+    expect(layer!.config.visConfig.directionConvention).toBe('towards');
+  });
+});
+
+describe('buildSymbolLayer — integration: detectFields → toKeplerRows → buildSymbolLayer', () => {
+  it('binds a magnitude channel to a column that exists in kepler\'s rows', () => {
+    // The chain that was missing: magnitude must not land in count's renamed
+    // column pool. This test catches the collision by verifying that the bound
+    // channel name exists in the actual rows.
+    const frame = toDataFrame({
+      fields: [
+        { name: 'lat', type: FieldType.number, values: [-2.9, -2.8] },
+        { name: 'lon', type: FieldType.number, values: [-79.0, -78.9] },
+        { name: 'bearing', type: FieldType.number, values: [0, 90] },
+        { name: 'magnitude', type: FieldType.number, values: [10, 20] },
+      ],
+    });
+
+    const roles = detectFields(frame);
+    expect(roles.rotation).toBe('bearing');
+    expect(roles.magnitude).toBe('magnitude');
+
+    const layer = buildSymbolLayer(roles, 'test-data');
+    expect(layer).not.toBeNull();
+
+    // The channel name must exist in kepler's rows.
+    const keplerColumns = toKeplerColumns(frame, roles);
+    const columnNames = new Set(keplerColumns.map((c) => c.name));
+
+    const angleFieldName = (layer!.visualChannels.angleField as { name: string } | null)?.name;
+    const sizeFieldName = (layer!.visualChannels.sizeField as { name: string } | null)?.name;
+
+    if (angleFieldName) {
+      expect(columnNames.has(angleFieldName)).toBe(true);
+    }
+    if (sizeFieldName) {
+      expect(columnNames.has(sizeFieldName)).toBe(true);
+    }
   });
 });

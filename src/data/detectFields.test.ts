@@ -262,4 +262,21 @@ describe('detectFields: rotation and magnitude', () => {
     expect(roles.rotation).toBe('bearing');
     expect(roles.magnitude).toBe('magnitude');
   });
+
+  it('does not confuse a magnitude column with the count role, even though both are numeric', () => {
+    // magnitude was removed from count's candidates to avoid collision.
+    // A column literally named "magnitude" should land in the magnitude role only.
+    const frame = toDataFrame({
+      fields: [
+        { name: 'lat', type: FieldType.number, values: [] },
+        { name: 'lon', type: FieldType.number, values: [] },
+        { name: 'magnitude', type: FieldType.number, values: [] },
+      ],
+    });
+
+    const roles = detectFields(frame);
+
+    expect(roles.magnitude).toBe('magnitude');
+    expect(roles.count).toBeUndefined();
+  });
 });

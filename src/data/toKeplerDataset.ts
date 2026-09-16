@@ -13,17 +13,17 @@ export type KeplerRow = Record<string, unknown>;
  * columns. It is consumed to trace streamlines, and what kepler receives is
  * their geometry, so renaming `u`/`v` would be renaming something nobody looks at.
  *
- * `rotation` and `magnitude` are absent for the same reason: the symbol layer
- * keeps them as-is and reads them by their original column names, which is what
- * gives it control over the direction convention.
+ * `rotation` and `magnitude` are absent because they reach kepler as ordinary,
+ * unrenamed columns. Keeping them unrenamed is what lets the symbol layer apply
+ * proper semantics — e.g., reading a bearing with the meteorological or vehicle
+ * convention, whichever role matched.
  *
- * `rasterUrl` is absent for the same reason: it becomes a dataset of its own,
- * whose substance is a metadata url rather than any row. So are `wmsUrl` and
- * `wmsLayer`, which name a service rather than describe a row, and the three
- * `zarr*` roles, which name a store, one array inside it, and the label that
- * array answers to — a tile request, not a column anyone reads. The `esri*`
- * roles are absent for the same reason again: they name a service and the rules
- * it should draw by.
+ * `rasterUrl` is absent because it becomes a dataset of its own, whose substance
+ * is a metadata url rather than any row. So are `wmsUrl` and `wmsLayer`, which
+ * name a service rather than describe a row, and the three `zarr*` roles, which
+ * name a store, one array inside it, and the label that array answers to — a tile
+ * request, not a column anyone reads. The `esri*` roles are absent for the same
+ * reason again: they name a service and the rules it should draw by.
  */
 type RenamedRole = Exclude<
   keyof FieldRoles,
