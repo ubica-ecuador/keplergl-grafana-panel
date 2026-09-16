@@ -13,6 +13,7 @@ import {
   removeLayer,
   reorderLayer,
   toggleLayerAnimation,
+  toggleLayerForMap,
   replaceDataInMap,
   setLayerAnimationTime,
   toggleSidePanel,
@@ -33,6 +34,7 @@ import { FieldType } from '@grafana/data';
 import type { PanelDataset } from '../data/framesToDatasets';
 import type { KeplerColumn } from '../data/toKeplerDataset';
 import type { LayerOrderEntry } from './layerOrderGuard';
+import type { LiveLayer, SavedSplitPane } from './splitMapsGuard';
 import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
 import { stacTileTemplate } from '../data/stacTileUrl';
 import { isPanelWmsId, wmsCalendarDatasetId, type WmsDataset } from '../data/wmsDataset';
@@ -1131,6 +1133,31 @@ export function readLayerOrder(store: Store): { layerOrder: LayerOrderEntry[]; p
 /** Puts the layers back in `order`, topmost first. */
 export function restoreLayerOrder(dispatch: Dispatch, order: string[]): void {
   dispatch(wrapTo(KEPLER_INSTANCE_ID, reorderLayer(order)));
+}
+
+/**
+ * The split's per-side layer assignment and the layers it can name. Null before
+ * the instance has registered.
+ */
+export function readSplitMaps(store: Store): { splitMaps: SavedSplitPane[]; layers: LiveLayer[] } | null {
+  const visState = getVisState(store) as (VisStateLike & { splitMaps?: SavedSplitPane[] }) | null;
+  if (!visState) {
+    return null;
+  }
+  return {
+    splitMaps: visState.splitMaps ?? [],
+    layers: visState.layers.map((layer) => ({ id: layer.id, dataId: layer.config?.dataId })),
+  };
+}
+
+/**
+ * Flips one layer's membership of one half of a split map.
+ *
+ * kepler offers no way to *set* it — `toggleLayerForMap` is the only action
+ * that reaches `splitMaps` — so the caller compares before asking.
+ */
+export function toggleLayerInSplitMap(dispatch: Dispatch, mapIndex: number, layerId: string): void {
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, toggleLayerForMap(mapIndex, layerId)));
 }
 
 /** Minimal view of the kepler vis-state these helpers read. */

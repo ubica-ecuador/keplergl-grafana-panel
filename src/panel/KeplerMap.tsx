@@ -52,6 +52,7 @@ import { useEsriTimeline } from './useEsriTimeline';
 import { useZarrTimeline } from './useZarrTimeline';
 import { useViewportGuard } from './useViewportGuard';
 import { useLayerOrderGuard } from './useLayerOrderGuard';
+import { useSplitMapsGuard } from './useSplitMapsGuard';
 import { savedViewportOf } from './viewportGuard';
 import { useViewportSync } from './useViewportSync';
 import type { ViewportVariables } from './viewportSync';
@@ -200,6 +201,11 @@ export function KeplerMap({
 
   const captureLayerOrder = useLayerOrderGuard(store);
 
+  // A saved split says which half draws which layer, and a refresh throws that
+  // away whenever any layer is still waiting for its dataset — see
+  // `splitMapsGuard.ts`. Armed on every load and refresh below.
+  const guardSplitMaps = useSplitMapsGuard({ store, mapConfig });
+
   useEffect(() => {
     // A saved tileset is content in its own right: a panel whose map is one
     // vector tile layer over a base map has no query rows at all, and waiting
@@ -244,9 +250,14 @@ export function KeplerMap({
     // layers that did not change — and `refreshRasters` compares scenes by url,
     // so a combination that resolved to the same request dispatches nothing.
     if (action === 'rasters') {
+      guardSplitMaps();
       refreshRasters(store, store.dispatch, rasters);
       return;
     }
+
+    // Both remaining branches park layers kepler will merge later, which is
+    // what costs a split its per-side assignment.
+    guardSplitMaps();
 
     if (action === 'rebuild') {
       hasLoaded.current = true;
@@ -282,7 +293,7 @@ export function KeplerMap({
       // endpoint or renderer; changing the year moves a `visConfig` instead.
       refreshEsri(store, store.dispatch, esriLayers);
     }
-  }, [isReady, datasets, rasters, wms, zarrLayers, esriLayers, mapConfig, store, captureLayerOrder]);
+  }, [isReady, datasets, rasters, wms, zarrLayers, esriLayers, mapConfig, store, captureLayerOrder, guardSplitMaps]);
 
   useViewportGuard({ store, isReady, mapConfig, arm: guardArm });
 
