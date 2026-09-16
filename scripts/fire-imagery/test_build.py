@@ -520,10 +520,15 @@ class CurtainTest(unittest.TestCase):
         self.assertEqual(sorted(refs), ['A', 'B', 'D'])
 
     def test_the_row_link_sets_one_side_and_keeps_the_other(self):
+        # Overridden by the coordinator (round 1 review): the plan's verbatim
+        # test dropped :percentencode, which is a regression, not a decision
+        # — set_before/set_after carry raw https URLs, same as scene_url did
+        # before this task, and must be encoded before they ride a query
+        # string.
         link = self.out['spec']['elements']['panel-23']['spec']['vizConfig']['spec'] \
             ['fieldConfig']['defaults']['links'][0]['url']
-        self.assertIn('var-sceneBefore=${__data.fields.set_before}', link)
-        self.assertIn('var-sceneAfter=${__data.fields.set_after}', link)
+        self.assertIn('var-sceneBefore=${__data.fields.set_before:percentencode}', link)
+        self.assertIn('var-sceneAfter=${__data.fields.set_after:percentencode}', link)
         for fixed in ('var-sceneBefore=', 'var-sceneAfter='):
             self.assertLess(link.index(fixed), link.index('${__all_variables}'))
 
@@ -534,6 +539,34 @@ class CurtainTest(unittest.TestCase):
         self.assertIn('sceneBefore', names)
         self.assertIn('sceneAfter', names)
         self.assertIn('lookback', names)
+
+
+class FootprintsTooltipTest(unittest.TestCase):
+    """Ties the footprints layer's tooltip to the SQL that actually feeds it.
+
+    The trap this guards against: renaming a fieldsToShow entry (e.g. back
+    to the old `acquired_on`, or any other name that isn't a column of the
+    query the layer's dataId points at) breaks nothing else in the suite —
+    kepler just renders an empty tooltip, silently. Checked against the
+    generated dashboard and the SQL fragment themselves, not a list of
+    names copied by hand a second time: a hand-written list would just be
+    the same mistake, written twice, always agreeing with itself.
+    """
+
+    def test_footprints_tooltip_fields_all_exist_in_map_scenes_sql(self):
+        dash = fixture()
+        out = build.graft(dash, build.imagery_elements(dash))
+        vis = out['spec']['elements']['panel-22']['spec']['vizConfig']['spec'] \
+            ['options']['mapConfig']['config']['visState']
+        layers = {layer['id']: layer for layer in vis['layers']}
+        data_id = layers['footprints']['config']['dataId']
+        fields = vis['interactionConfig']['tooltip']['fieldsToShow'][data_id]
+        self.assertTrue(fields, 'the footprints layer must show at least one tooltip field')
+        sql = build.read_sql('map_scenes')
+        for entry in fields:
+            name = entry['name']
+            with self.subTest(field=name):
+                self.assertIn(name, sql, f'{name!r} is not a column of map_scenes.sql (stale tooltip field?)')
 
 
 class SentinelMapConfigValidationTest(unittest.TestCase):

@@ -251,10 +251,11 @@ def sentinel_map_element(version):
     return panel(
         22, 'Sentinel-2 — the scene over your box',
         'The map opens split by a swipe curtain — drag it to compare. The left side is the last clear '
-        'scene found looking back before the fire (widen "Look back (days)" if it says none in range; '
-        'the days right before a fire are often smoky). The right side is the clearest scene from the '
-        'paused window to the days after it; pick another in the table below. Orange is your box; white '
-        'lines are the after-side scene footprints.',
+        'scene found looking back before the fire; the days right before a fire are often smoky, so '
+        'widen "Look back (days)" if the Before figure in "Your box in the catalogue" below says none '
+        'in range. The right side is the clearest scene from the paused window to the days after it; '
+        'pick another in the table below. Orange is your box; white lines are the after-side scene '
+        'footprints.',
         queries, KEPLER_GROUP, version, options)
 
 
@@ -263,8 +264,8 @@ SCENE_LINK = ('/d/${__dashboard.uid}?dtab=' + TAB_TITLE
               # repetido, Grafana se queda con el primero. set_before/
               # set_after ya traen -por fila, en contact_sheet.sql- el lado
               # que se pincha y lo que ya hubiera elegido el otro lado.
-              + '&var-sceneBefore=${__data.fields.set_before}'
-              + '&var-sceneAfter=${__data.fields.set_after}'
+              + '&var-sceneBefore=${__data.fields.set_before:percentencode}'
+              + '&var-sceneAfter=${__data.fields.set_after:percentencode}'
               + '&var-sLat=${__data.fields.centre_lat}&var-sLng=${__data.fields.centre_lng}'
               + '&${__url_time_range}&${__all_variables}')
 
@@ -347,8 +348,9 @@ def fire_map_element(panel8):
         21, 'Fires — pause on a day, then draw a box',
         'Play the days, pause on the one you care about, and draw a rectangle with the map draw tool. '
         'Draw it by pressing, dragging and releasing; a click, move, click does not close it on this map. '
-        'The map on the right searches Sentinel-2 for that box, from the paused window to the days after it. '
-        'The rectangle hides the cells outside it; delete it to see them again.',
+        'The map on the right splits by a swipe curtain and searches Sentinel-2 for that box on both '
+        'sides: the days after the paused window, and the last clear scene it can find looking back '
+        'before it. The rectangle hides the cells outside it; delete it to see them again.',
         query_a, KEPLER_GROUP, source['vizConfig']['version'], options)
 
 
