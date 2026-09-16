@@ -1,4 +1,5 @@
-import { ownGlyphs, SYMBOL_FALLBACK } from './symbolGlyphs';
+import { meshGlyphs, ownGlyphs, SYMBOL_FALLBACK } from './symbolGlyphs';
+import keplerIcons from '../icons/svg-icons.json';
 
 describe('ownGlyphs', () => {
   it('offers the basic shapes, each named once', () => {
@@ -25,5 +26,43 @@ describe('ownGlyphs', () => {
 
   it('falls back to a name that exists', () => {
     expect(ownGlyphs().map((g) => g.key)).toContain(SYMBOL_FALLBACK);
+  });
+});
+
+describe('meshGlyphs', () => {
+  it('turns a triangulated mesh into polygons of the glyph cell', () => {
+    // A single triangle spanning the whole normalised box.
+    const glyphs = meshGlyphs([
+      { id: 'tri', mesh: { positions: [[-1, -1, 0], [1, -1, 0], [0, 1, 0]], cells: [[0, 1, 2]] } },
+    ]);
+
+    expect(glyphs).toHaveLength(1);
+    expect(glyphs[0].key).toBe('tri');
+    expect(glyphs[0].shapes).toHaveLength(1);
+    // x: -1 -> left edge, 1 -> right edge. y is flipped, because a mesh's y
+    // grows upwards and a canvas's grows downwards.
+    expect(glyphs[0].shapes[0]).toEqual({
+      kind: 'polygon',
+      points: [[0, 96], [96, 96], [48, 0]],
+    });
+  });
+
+  it('anchors a mesh glyph at the centre of its cell', () => {
+    const glyphs = meshGlyphs([
+      { id: 'tri', mesh: { positions: [[-1, -1, 0], [1, -1, 0], [0, 1, 0]], cells: [[0, 1, 2]] } },
+    ]);
+
+    expect(glyphs[0].anchor).toEqual([48, 48]);
+  });
+
+  it('reads the library this plugin ships', () => {
+    const glyphs = meshGlyphs(keplerIcons.svgIcons as never);
+
+    expect(glyphs.length).toBe(162);
+    // The map-ish ones this layer exists to offer.
+    expect(glyphs.map((g) => g.key)).toEqual(expect.arrayContaining(['pin', 'place', 'location', 'directions']));
+    for (const glyph of glyphs) {
+      expect(glyph.shapes.length).toBeGreaterThan(0);
+    }
   });
 });

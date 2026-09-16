@@ -12,8 +12,43 @@ import { arrowGlyph, CELL, Glyph } from './vectorFieldGlyphs';
 
 const MID = CELL / 2;
 
+/** One icon of kepler's own library: a flat, triangulated outline. */
+export interface KeplerIcon {
+  id: string;
+  mesh: { positions: number[][]; cells: number[][] };
+}
+
 /** The glyph drawn when a saved config names one this build does not have. */
 export const SYMBOL_FALLBACK = 'arrow';
+
+/**
+ * kepler's icons as glyphs of this atlas.
+ *
+ * They arrive as 2-D meshes — positions normalised to [-1, 1] with z always
+ * zero, and triangles indexing them — so each triangle becomes a filled polygon
+ * of the cell. Filling the triangles of a triangulation paints the same solid
+ * shape the outline would, and needs nothing our painter does not already do.
+ *
+ * The y axis is flipped: a mesh grows upwards, a canvas downwards.
+ */
+export function meshGlyphs(icons: KeplerIcon[]): Glyph[] {
+  return icons.map((icon) => ({
+    key: icon.id,
+    anchor: [MID, MID] as [number, number],
+    shapes: icon.mesh.cells.map((cell) => ({
+      kind: 'polygon' as const,
+      points: cell.map((index) => {
+        const [x, y] = icon.mesh.positions[index];
+        return [round(MID + x * MID), round(MID - y * MID)] as [number, number];
+      }),
+    })),
+  }));
+}
+
+/** Atlas pixels, to a hundredth: enough to draw, short enough to compare in a test. */
+function round(value: number): number {
+  return Math.round(value * 100) / 100;
+}
 
 export function ownGlyphs(): Glyph[] {
   return [
