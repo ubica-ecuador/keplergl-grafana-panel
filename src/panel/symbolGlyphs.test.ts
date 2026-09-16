@@ -1,5 +1,6 @@
-import { meshGlyphs, ownGlyphs, SYMBOL_FALLBACK } from './symbolGlyphs';
+import { isPathGlyph, makiGlyphs, meshGlyphs, ownGlyphs, SYMBOL_FALLBACK } from './symbolGlyphs';
 import keplerIcons from '../icons/svg-icons.json';
+import maki from '../icons/maki-paths.json';
 
 describe('ownGlyphs', () => {
   it('offers the basic shapes, each named once', () => {
@@ -63,6 +64,30 @@ describe('meshGlyphs', () => {
     expect(glyphs.map((g) => g.key)).toEqual(expect.arrayContaining(['pin', 'place', 'location', 'directions']));
     for (const glyph of glyphs) {
       expect(glyph.shapes.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('makiGlyphs', () => {
+  it('carries the path as a string, because curves do not fit the shape model', () => {
+    const glyphs = makiGlyphs({ airport: 'M15,6.8L8.5,7.5z' });
+
+    expect(glyphs).toHaveLength(1);
+    expect(isPathGlyph(glyphs[0])).toBe(true);
+    expect(glyphs[0].path).toBe('M15,6.8L8.5,7.5z');
+    // Maki draws in a 15x15 box; the atlas cell is 96.
+    expect(glyphs[0].box).toBe(15);
+    expect(glyphs[0].anchor).toEqual([48, 48]);
+  });
+
+  it('reads the vendored library, transport included', () => {
+    const glyphs = makiGlyphs(maki.paths);
+    const names = glyphs.map((g) => g.key);
+
+    expect(glyphs.length).toBe(215);
+    expect(names).toEqual(expect.arrayContaining(['airport', 'heliport', 'bus', 'rail', 'ferry', 'harbor', 'bicycle']));
+    for (const glyph of glyphs) {
+      expect(glyph.path.length).toBeGreaterThan(0);
     }
   });
 });

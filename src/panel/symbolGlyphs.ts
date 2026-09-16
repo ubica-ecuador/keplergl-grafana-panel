@@ -12,6 +12,27 @@ import { arrowGlyph, CELL, Glyph } from './vectorFieldGlyphs';
 
 const MID = CELL / 2;
 
+/**
+ * A glyph whose outline is an SVG path.
+ *
+ * Maki's icons have curves, which `Shape` cannot express, so the path travels
+ * as the string it came as and is painted with `Path2D`. `box` is the side of
+ * the coordinate system that path is drawn in, so the painter can scale it into
+ * the atlas cell.
+ */
+export interface PathGlyph {
+  key: string;
+  anchor: [number, number];
+  path: string;
+  box: number;
+}
+
+export type AnyGlyph = Glyph | PathGlyph;
+
+export function isPathGlyph(glyph: AnyGlyph): glyph is PathGlyph {
+  return typeof (glyph as PathGlyph).path === 'string';
+}
+
 /** One icon of kepler's own library: a flat, triangulated outline. */
 export interface KeplerIcon {
   id: string;
@@ -87,4 +108,14 @@ export function ownGlyphs(): Glyph[] {
       ],
     },
   ];
+}
+
+/** Maki's icons as glyphs, drawn in the 15-unit box Maki designs in. */
+export function makiGlyphs(paths: Record<string, string>): PathGlyph[] {
+  return Object.entries(paths).map(([key, path]) => ({
+    key,
+    anchor: [MID, MID] as [number, number],
+    path,
+    box: 15,
+  }));
 }
