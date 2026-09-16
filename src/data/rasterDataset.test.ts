@@ -2,6 +2,22 @@ import { FieldType, toDataFrame } from '@grafana/data';
 
 import { framesToRasters, isPanelRasterId, pickScene, rasterForWindow } from './rasterDataset';
 
+const VISUAL = 'https://sentinel-cogs.s3.us-west-2.amazonaws.com/…/TCI.tif';
+const ITEM = 'https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a/items/S2C_10SEJ_20260913_0_L2A';
+
+function sceneFrame(withItem = true) {
+  const fields: any[] = [{ name: 'raster_url', type: 'string', values: [VISUAL] }];
+  if (withItem) {
+    fields.push({ name: 'raster_item_url', type: 'string', values: [ITEM] });
+  }
+  return { refId: 'A', name: 'Query A', fields, length: 1 } as any;
+}
+
+// Named apart from the file's existing `SERVER` (a bare url string): band
+// combinations are read from `opts`, and every test below spreads this as its
+// base.
+const BAND_OPTS = { tileServerUrls: ['https://titiler.ubica.ec'] };
+
 const SERVER = 'http://titiler.test';
 const COG = 'https://bucket.example/scenes/2026/TCI.tif';
 
@@ -93,7 +109,9 @@ describe('framesToRasters', () => {
       ],
     });
 
-    expect(framesToRasters([frame], { A: { rasterUrl: 'preview' } }, { tileServerUrls: [SERVER] })[0].sourceUrl).toBe(COG);
+    expect(framesToRasters([frame], { A: { rasterUrl: 'preview' } }, { tileServerUrls: [SERVER] })[0].sourceUrl).toBe(
+      COG
+    );
   });
 
   it('produces nothing for a query whose raster role is switched off', () => {
@@ -135,9 +153,9 @@ describe('framesToRasters', () => {
 
 describe('pickScene', () => {
   const scenes = [
-    { time: Date.UTC(2026, 6, 1), sourceUrl: 'https://b/jul01.tif' },
-    { time: Date.UTC(2026, 6, 11), sourceUrl: 'https://b/jul11.tif' },
-    { time: Date.UTC(2026, 6, 21), sourceUrl: 'https://b/jul21.tif' },
+    { time: Date.UTC(2026, 6, 1), sourceUrl: 'https://b/jul01.tif', itemUrl: null },
+    { time: Date.UTC(2026, 6, 11), sourceUrl: 'https://b/jul11.tif', itemUrl: null },
+    { time: Date.UTC(2026, 6, 21), sourceUrl: 'https://b/jul21.tif', itemUrl: null },
   ];
 
   it('takes the last scene inside the window', () => {
@@ -168,8 +186,8 @@ describe('pickScene', () => {
     // A query that returns one scene and no time column is the ordinary case,
     // and it must keep behaving as it did before the timeline existed.
     const undated = [
-      { time: null, sourceUrl: 'https://b/first.tif' },
-      { time: null, sourceUrl: 'https://b/second.tif' },
+      { time: null, sourceUrl: 'https://b/first.tif', itemUrl: null },
+      { time: null, sourceUrl: 'https://b/second.tif', itemUrl: null },
     ];
 
     expect(pickScene(undated, { from: 0, to: 1 })?.sourceUrl).toBe('https://b/first.tif');
@@ -189,8 +207,8 @@ describe('framesToRasters — a series of scenes', () => {
     const [raster] = framesToRasters([frame], {}, { tileServerUrls: [SERVER] });
 
     expect(raster.scenes).toEqual([
-      { time: Date.UTC(2026, 6, 1), sourceUrl: 'https://b/jul01.tif' },
-      { time: Date.UTC(2026, 6, 21), sourceUrl: 'https://b/jul21.tif' },
+      { time: Date.UTC(2026, 6, 1), sourceUrl: 'https://b/jul01.tif', itemUrl: null },
+      { time: Date.UTC(2026, 6, 21), sourceUrl: 'https://b/jul21.tif', itemUrl: null },
     ]);
   });
 
@@ -339,5 +357,75 @@ describe('framesToRasters — PMTiles', () => {
     const picked = rasterForWindow(raster, { from: 0, to: 1500 });
 
     expect(picked).toMatchObject({ sourceUrl: PMTILES, metadataUrl: PMTILES });
+  });
+});
+
+describe('framesToRasters with band combinations', () => {
+  it('draws true colour exactly as before: the composed image, through kepler', () => {
+    const [raster] = framesToRasters([sceneFrame()], {}, { ...BAND_OPTS, bands: 'trueColor' });
+    expect(raster.kind).toBe('cog');
+    expect(raster.sourceUrl).toBe(VISUAL);
+    expect(raster.metadataUrl).toContain('/cog/stac?url=');
+    expect(raster.assets).toBeUndefined();
+  });
+
+  it('is unchanged when no combination is asked for', () => {
+    const [withOption] = framesToRasters([sceneFrame()], {}, { ...BAND_OPTS, bands: 'trueColor' });
+    const [without] = framesToRasters([sceneFrame()], {}, BAND_OPTS);
+    expect(without).toEqual(withOption);
+  });
+
+  it('paints a composite from the item, carrying its assets and stretches', () => {
+    const [raster] = framesToRasters([sceneFrame()], {}, { ...BAND_OPTS, bands: 'forestBurn' });
+    expect(raster.kind).toBe('painted');
+    expect(raster.sourceUrl).toBe(ITEM);
+    expect(raster.assets).toEqual(['swir22', 'nir', 'blue']);
+    expect(raster.rescale).toHaveLength(3);
+    // The identity a refresh compares on is the tile request itself.
+    expect(raster.metadataUrl).toContain('/stac/tiles/WebMercatorQuad/{z}/{x}/{y}.png?');
+    expect(raster.metadataUrl).toContain('assets=swir22');
+  });
+
+  it('gives two composites different identities, so switching repaints', () => {
+    const [burn] = framesToRasters([sceneFrame()], {}, { ...BAND_OPTS, bands: 'forestBurn' });
+    const [infrared] = framesToRasters([sceneFrame()], {}, { ...BAND_OPTS, bands: 'infrared' });
+    expect(burn.metadataUrl).not.toBe(infrared.metadataUrl);
+  });
+
+  it('hands an index to kepler as the item itself, with its preset and ramp', () => {
+    const [raster] = framesToRasters([sceneFrame()], {}, { ...BAND_OPTS, bands: 'nbr' });
+    expect(raster.kind).toBe('stac');
+    expect(raster.sourceUrl).toBe(ITEM);
+    expect(raster.metadataUrl).toBe(ITEM);
+    expect(raster.preset).toBe('nbr');
+    expect(raster.colormap).toBe('rdylgn');
+  });
+
+  it('gives the two indices the same identity on purpose: only the style differs', () => {
+    const [nbr] = framesToRasters([sceneFrame()], {}, { ...BAND_OPTS, bands: 'nbr' });
+    const [ndmi] = framesToRasters([sceneFrame()], {}, { ...BAND_OPTS, bands: 'ndmi' });
+    expect(ndmi.metadataUrl).toBe(nbr.metadataUrl);
+    expect(ndmi.preset).toBe('ndmi');
+    expect(ndmi.colormap).toBe('rdylbu');
+  });
+
+  it('falls back to true colour when the query carries no item', () => {
+    const [raster] = framesToRasters([sceneFrame(false)], {}, { ...BAND_OPTS, bands: 'forestBurn' });
+    expect(raster.kind).toBe('cog');
+    expect(raster.sourceUrl).toBe(VISUAL);
+    expect(raster.assets).toBeUndefined();
+  });
+
+  it('keeps every scene of the series, each with its own item', () => {
+    const frame = {
+      refId: 'A',
+      fields: [
+        { name: 'raster_url', type: 'string', values: [VISUAL, `${VISUAL}2`] },
+        { name: 'raster_item_url', type: 'string', values: [ITEM, `${ITEM}2`] },
+      ],
+      length: 2,
+    } as any;
+    const [raster] = framesToRasters([frame], {}, { ...BAND_OPTS, bands: 'forestBurn' });
+    expect(raster.scenes.map((scene) => scene.itemUrl)).toEqual([ITEM, `${ITEM}2`]);
   });
 });

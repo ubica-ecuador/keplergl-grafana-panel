@@ -38,6 +38,15 @@ export interface FieldRoles {
    */
   rasterUrl?: string;
   /**
+   * A link to the STAC item the imagery belongs to, when the query knows it.
+   *
+   * Beside `rasterUrl` rather than instead of it: the item is what a false
+   * colour composite needs — the bands live in separate COGs it points at —
+   * while the composed image `rasterUrl` names stays the fast path for true
+   * colour. A query that offers only the first keeps today's behaviour.
+   */
+  rasterItemUrl?: string;
+  /**
    * A WMS service and the one layer of it to draw.
    *
    * Both are needed: a service publishes many layers and nothing in the query
@@ -212,6 +221,7 @@ const NAME_CANDIDATES: Record<string, string[]> = {
   // catalogue's own JSON, so a query that lifts the asset straight out of a
   // search response needs no aliasing.
   rasterUrl: ['raster_url', 'cog_url', 'cog', 'asset_href', 'href'],
+  rasterItemUrl: ['raster_item_url', 'stac_item_url', 'item_url'],
   // WMS. `wms` alone is worth accepting because a query that fixes the service
   // by hand reads better as `SELECT '…' AS wms`, and `service_url` is what the
   // OGC calls the endpoint.

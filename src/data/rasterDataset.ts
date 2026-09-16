@@ -1,6 +1,8 @@
 import { DataFrame } from '@grafana/data';
 
+import { BAND_COMBINATIONS, type BandCombination } from './bandCombination';
 import { detectFields, FieldRoleOverrides, resolveRoles } from './detectFields';
+import { stacTileTemplate } from './stacTileUrl';
 import { pickLatestWithin, type TimeWindow } from './timeWindow';
 
 /**
@@ -42,6 +44,12 @@ export interface RasterDataset {
    * the map reads as confetti rather than as weather.
    */
   colormap?: string;
+  /** Assets to composite, in RGB order — a painted STAC composite only. */
+  assets?: string[];
+  /** One `min,max` per asset, in the same order. */
+  rescale?: string[];
+  /** kepler's band preset for an index — a `stac` raster only. */
+  preset?: string;
   /**
    * Every scene the query returned, oldest first.
    *
@@ -79,14 +87,22 @@ export interface RasterDataset {
  * reads it: the format is a property of the file, not a setting to keep in step
  * with it. `painted` is the exception, because it is not a property of the file
  * but a decision about how to draw it, so it comes from a panel option.
+ *
+ * `stac` is a whole STAC item rather than one file: the bands of a scene live
+ * in separate COGs it points at, and kepler's raster layer fetches the ones its
+ * preset names and combines them in a shader. That is what an index needs —
+ * this deployment's tile server refuses `expression`, so NBR cannot arrive as a
+ * finished picture — and the cost is one request per band instead of one.
  */
-export type RasterKind = 'cog' | 'pmtiles' | 'painted';
+export type RasterKind = 'cog' | 'pmtiles' | 'painted' | 'stac';
 
 /** One dated image in a raster query's result. */
 export interface RasterScene {
   /** Capture time in epoch ms, or null when the query carries no time column. */
   time: number | null;
   sourceUrl: string;
+  /** The STAC item this scene belongs to, when the query names one. */
+  itemUrl: string | null;
 }
 
 /**
@@ -133,14 +149,11 @@ export function rasterForWindow(raster: RasterDataset, window: SceneWindow | nul
   if (!scene) {
     return null;
   }
-  if (scene.sourceUrl === raster.sourceUrl) {
+  const identity = sceneIdentity(raster, scene);
+  if (identity.sourceUrl === raster.sourceUrl && identity.metadataUrl === raster.metadataUrl) {
     return raster;
   }
-  return {
-    ...raster,
-    sourceUrl: scene.sourceUrl,
-    metadataUrl: metadataUrlForScene(raster.kind, raster.tileServerUrls[0], scene.sourceUrl),
-  };
+  return { ...raster, ...identity };
 }
 
 /**
@@ -185,7 +198,7 @@ export function isPanelRasterId(id: string): boolean {
 export function framesToRasters(
   frames: DataFrame[],
   overrides: Record<string, FieldRoleOverrides> = {},
-  opts: { tileServerUrls: string[]; colormap?: string; painted?: boolean }
+  opts: { tileServerUrls: string[]; colormap?: string; painted?: boolean; bands?: BandCombination }
 ): RasterDataset[] {
   const rasters: RasterDataset[] = [];
 
@@ -196,7 +209,7 @@ export function framesToRasters(
       return;
     }
 
-    const scenes = readScenes(frame, roles.rasterUrl, roles.time);
+    const scenes = readScenes(frame, roles.rasterUrl, roles.time, roles.rasterItemUrl);
     // No window yet: the freshest scene is the sensible thing to open on, and
     // the time filter moves it the moment there is one.
     const opening = pickScene(scenes, null);
@@ -204,24 +217,45 @@ export function framesToRasters(
       return;
     }
 
+    // What the combination asks for, and what this row can actually give: a
+    // query that names no item cannot be drawn in false colour, so it keeps
+    // the composed image and today's behaviour rather than drawing nothing.
+    const recipe = BAND_COMBINATIONS[opts.bands ?? 'trueColor'];
+    const wantsItem = recipe.source === 'item' && Boolean(opening.itemUrl);
+    // Assets/rescale only ever describe a painted composite, and only once an
+    // item is actually available to composite from.
+    const paintedAssets = wantsItem ? recipe.assets : undefined;
+    const paintedRescale = wantsItem ? recipe.rescale : undefined;
+
     // A COG with nowhere to be served is dropped here, on its own. Left in,
     // kepler's `getTitilerUrl` throws 'No raster tile servers' from inside the
     // layer's tile fetch, where it surfaces as a layer that draws nothing
     // rather than as anything anyone can act on. An archive beside it is
     // unaffected: it never wanted a server.
-    const kind = rasterKind(opening.sourceUrl, opts.painted);
+    const kind: RasterKind = !wantsItem
+      ? rasterKind(opening.sourceUrl, opts.painted)
+      : recipe.renderer === 'painted'
+        ? 'painted'
+        : 'stac';
     if (kind !== 'pmtiles' && opts.tileServerUrls.length === 0) {
       return;
     }
+
+    const { sourceUrl, metadataUrl } = sceneIdentity(
+      { kind, tileServerUrls: opts.tileServerUrls, assets: paintedAssets, rescale: paintedRescale },
+      opening
+    );
 
     rasters.push({
       id: rasterDatasetId(refId),
       label: frame.name ?? `Query ${refId}`,
       kind,
-      sourceUrl: opening.sourceUrl,
-      metadataUrl: metadataUrlForScene(kind, opts.tileServerUrls[0], opening.sourceUrl),
+      sourceUrl,
+      metadataUrl,
       tileServerUrls: kind === 'pmtiles' ? [] : opts.tileServerUrls,
-      ...(opts.colormap ? { colormap: opts.colormap } : {}),
+      ...(paintedAssets ? { assets: paintedAssets, rescale: paintedRescale } : {}),
+      ...(kind === 'stac' && recipe.preset ? { preset: recipe.preset } : {}),
+      ...(recipe.colormap ? { colormap: recipe.colormap } : opts.colormap ? { colormap: opts.colormap } : {}),
       scenes,
     });
   });
@@ -255,6 +289,49 @@ function metadataUrlForScene(kind: RasterKind, tileServerUrl: string | undefined
   return kind === 'pmtiles' || kind === 'painted' ? sourceUrl : metadataUrlFor(tileServerUrl ?? '', sourceUrl);
 }
 
+/** The pieces of a raster dataset that {@link sceneIdentity} needs to place a scene. */
+interface RasterIdentityShape {
+  kind: RasterKind;
+  tileServerUrls: string[];
+  assets?: string[];
+  rescale?: string[];
+}
+
+/**
+ * Where a scene is drawn from, and what kepler asks about it — the one rule
+ * behind all three raster kinds, shared by the dataset's first build and by
+ * every later re-point to another scene so it is written down once.
+ *
+ * - `painted` with assets is a composite: it is built from the scene's own
+ *   item, and the tile request template — assets, rescale, item url — *is*
+ *   the identity, so a different composite changes it and a refresh replaces
+ *   the dataset. `painted` without assets is the plain classified-COG path,
+ *   which never touches an item at all.
+ * - `stac` is an index: it is addressed at the item itself, so two indices
+ *   drawn from the same scene share an identity on purpose — only their
+ *   style differs, and that is applied without rebuilding anything.
+ * - Everything else draws the composed image, exactly as before.
+ */
+function sceneIdentity(raster: RasterIdentityShape, scene: RasterScene): { sourceUrl: string; metadataUrl: string } {
+  const isComposite = raster.kind === 'painted' && Boolean(raster.assets);
+  const usesItem = raster.kind === 'stac' || isComposite;
+  const sourceUrl = usesItem && scene.itemUrl ? scene.itemUrl : scene.sourceUrl;
+
+  if (raster.kind === 'stac') {
+    return { sourceUrl, metadataUrl: sourceUrl };
+  }
+  if (raster.kind === 'painted' && raster.assets) {
+    const template = stacTileTemplate({
+      serverUrl: raster.tileServerUrls[0] ?? '',
+      itemUrl: sourceUrl,
+      assets: raster.assets,
+      rescale: raster.rescale,
+    });
+    return { sourceUrl, metadataUrl: template ?? sourceUrl };
+  }
+  return { sourceUrl, metadataUrl: metadataUrlForScene(raster.kind, raster.tileServerUrls[0], sourceUrl) };
+}
+
 /**
  * Where a TiTiler-based server describes a COG as a STAC Item.
  *
@@ -280,12 +357,13 @@ export function metadataUrlFor(tileServerUrl: string, sourceUrl: string): string
  * the query's ORDER BY means the window logic can assume an ordering it did not
  * have to ask for.
  */
-function readScenes(frame: DataFrame, urlColumn: string, timeColumn?: string): RasterScene[] {
+function readScenes(frame: DataFrame, urlColumn: string, timeColumn?: string, itemColumn?: string): RasterScene[] {
   const urls = frame.fields.find((f) => f.name === urlColumn);
   if (!urls) {
     return [];
   }
   const times = timeColumn ? frame.fields.find((f) => f.name === timeColumn) : undefined;
+  const items = itemColumn ? frame.fields.find((f) => f.name === itemColumn) : undefined;
 
   const scenes: RasterScene[] = [];
   for (let i = 0; i < frame.length; i++) {
@@ -294,7 +372,12 @@ function readScenes(frame: DataFrame, urlColumn: string, timeColumn?: string): R
       continue;
     }
     const raw = times ? Number(times.values[i]) : NaN;
-    scenes.push({ time: Number.isFinite(raw) ? raw : null, sourceUrl: url.trim() });
+    const item = items ? items.values[i] : undefined;
+    scenes.push({
+      time: Number.isFinite(raw) ? raw : null,
+      sourceUrl: url.trim(),
+      itemUrl: typeof item === 'string' && item.trim() ? item.trim() : null,
+    });
   }
 
   return scenes.sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
