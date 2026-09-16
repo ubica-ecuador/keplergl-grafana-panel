@@ -20,8 +20,8 @@ sys.path.insert(0, str(HERE))
 
 import build  # noqa: E402
 
-NEW_VARIABLES = ['scanFrom', 'scanTo', 'scene', 'sLat', 'sLng',
-                 'days', 's2cloud', 's2cover', 'bands', 'aLat', 'aLng']
+NEW_VARIABLES = ['scanFrom', 'scanTo', 'sceneBefore', 'sceneAfter', 'sLat', 'sLng',
+                 'days', 's2cloud', 's2cover', 'bands', 'lookback', 'aLat', 'aLng']
 
 # Lo que el datasource pone en lugar de los macros de Grafana antes de mandar la
 # consulta a DuckDB: una marca de tiempo entrecomillada. Medido en el banco.
@@ -97,7 +97,7 @@ class GraftTest(unittest.TestCase):
         self.assertEqual(out['spec']['layout']['spec']['tabs'][:2], before['spec']['layout']['spec']['tabs'])
         self.assertEqual(out['metadata'], before['metadata'])
 
-    def test_adds_the_eleven_variables_in_order(self):
+    def test_adds_the_thirteen_variables_in_order(self):
         names = [v['spec']['name'] for v in self.grafted()['spec']['variables']]
         self.assertEqual(names[2:], NEW_VARIABLES)
 
@@ -159,7 +159,7 @@ class GraftTest(unittest.TestCase):
         self.assertEqual(out['apiVersion'], 'dashboard.grafana.app/v2beta1')
 
 
-SQL_NAMES = ['prelude', 'search', 'map_box', 'map_scenes', 'map_scenes_before', 'map_footprints',
+SQL_NAMES = ['prelude', 'search', 'map_box', 'map_scenes', 'map_scenes_before',
             'contact_sheet', 'figures']
 
 
@@ -175,11 +175,7 @@ class SqlTest(unittest.TestCase):
         # `area` is not one of this tab's own variables: it is the
         # dashboard-wide drawn-shape variable, already present before this
         # tab is grafted in (Global, Country and Region all publish to it).
-        # `lookback`, `sceneBefore` and `sceneAfter` are new in this task;
-        # build.py wires them into variables() in the next task, so they are
-        # added here by hand rather than dropped from `known`.
-        known = ({variable['spec']['name'] for variable in build.variables()}
-                | {'area', 'lookback', 'sceneBefore', 'sceneAfter'})
+        known = {variable['spec']['name'] for variable in build.variables()} | {'area'}
         for name in SQL_NAMES:
             referenced = set(re.findall(r'\$\{?([A-Za-z]\w*)', build.read_sql(name)))
             self.assertLessEqual(referenced, known, name)
@@ -440,19 +436,22 @@ class ImageryPanelsTest(unittest.TestCase):
 
     def test_sentinel_map_queries(self):
         sql = self.raw_sql('panel-22')
-        self.assertEqual(sorted(sql), ['A', 'B', 'C'])
+        self.assertEqual(sorted(sql), ['A', 'B', 'D'])
         self.assertNotIn('http_get', sql['A'])
         self.assertIn('raster_url', sql['B'])
-        self.assertIn('ST_AsGeoJSON(footprint)', sql['C'])
+        self.assertIn('ST_AsGeoJSON(footprint)', sql['B'])
+        self.assertIn('raster_url', sql['D'])
 
     def test_sentinel_map_config(self):
         vis = self.options('panel-22')['mapConfig']['config']['visState']
-        self.assertEqual(vis['layerOrder'], ['boxoutline', 'footprints', 's2scene'])
+        self.assertEqual(vis['layerOrder'], ['boxoutline', 'footprints', 's2scene-before', 's2scene'])
         layers = {layer['id']: layer for layer in vis['layers']}
         self.assertEqual(layers['s2scene']['config']['dataId'], 'grafana-B-raster')
         self.assertEqual(layers['s2scene']['config']['visConfig']['preset'], 'trueColor')
+        self.assertEqual(layers['s2scene-before']['config']['dataId'], 'grafana-D-raster')
+        self.assertEqual(layers['s2scene-before']['config']['visConfig']['preset'], 'trueColor')
         self.assertEqual(layers['boxoutline']['config']['dataId'], 'grafana-A')
-        self.assertEqual(layers['footprints']['config']['dataId'], 'grafana-C')
+        self.assertEqual(layers['footprints']['config']['dataId'], 'grafana-B')
         for layer_id in ('boxoutline', 'footprints'):
             self.assertFalse(layers[layer_id]['config']['visConfig']['filled'])
         self.assertEqual(vis['editor']['features'], [])
@@ -461,7 +460,7 @@ class ImageryPanelsTest(unittest.TestCase):
         defaults = self.elements['panel-23']['spec']['vizConfig']['spec']['fieldConfig']['defaults']
         link = defaults['links'][0]['url']
         self.assertIn('dtab=Imagery', link)
-        for fixed in ('var-scene=', 'var-sLat=', 'var-sLng='):
+        for fixed in ('var-sceneBefore=', 'var-sceneAfter=', 'var-sLat=', 'var-sLng='):
             self.assertLess(link.index(fixed), link.index('${__all_variables}'))
 
     def test_sheet_and_figures_run_their_own_sql(self):
@@ -492,6 +491,49 @@ class ImageryPanelsTest(unittest.TestCase):
             self.assertIn('$area', sql, key)
         for key, element in self.elements.items():
             self.assertNotIn('burnArea', json.dumps(element), key)
+
+
+class CurtainTest(unittest.TestCase):
+    def setUp(self):
+        dash = fixture()
+        self.out = build.graft(dash, build.imagery_elements(dash))
+        self.map = self.out['spec']['elements']['panel-22']['spec']
+
+    def test_the_map_opens_split_with_a_curtain(self):
+        state = self.map['vizConfig']['spec']['options']['mapConfig']['config']['mapState']
+        self.assertTrue(state['isSplit'])
+        self.assertEqual(state['mapSplitMode'], 'SWIPE_COMPARE')
+
+    def test_each_side_carries_its_own_scene_and_both_share_the_box(self):
+        vis = self.map['vizConfig']['spec']['options']['mapConfig']['config']['visState']
+        left, right = vis['splitMaps']
+        self.assertTrue(left['layers']['s2scene-before'])
+        self.assertFalse(left['layers']['s2scene'])
+        self.assertTrue(right['layers']['s2scene'])
+        self.assertFalse(right['layers']['s2scene-before'])
+        for side in (left, right):
+            self.assertTrue(side['layers']['boxoutline'])
+            self.assertTrue(side['layers']['footprints'])
+
+    def test_the_map_asks_for_both_sides_and_no_separate_footprints(self):
+        refs = [q['spec']['refId'] for q in self.map['data']['spec']['queries']]
+        self.assertEqual(sorted(refs), ['A', 'B', 'D'])
+
+    def test_the_row_link_sets_one_side_and_keeps_the_other(self):
+        link = self.out['spec']['elements']['panel-23']['spec']['vizConfig']['spec'] \
+            ['fieldConfig']['defaults']['links'][0]['url']
+        self.assertIn('var-sceneBefore=${__data.fields.set_before}', link)
+        self.assertIn('var-sceneAfter=${__data.fields.set_after}', link)
+        for fixed in ('var-sceneBefore=', 'var-sceneAfter='):
+            self.assertLess(link.index(fixed), link.index('${__all_variables}'))
+
+    def test_the_old_scene_variable_is_treated_as_legacy(self):
+        self.assertIn('scene', build.LEGACY_VARIABLES)
+        names = {v['spec']['name'] for v in build.variables()}
+        self.assertNotIn('scene', names)
+        self.assertIn('sceneBefore', names)
+        self.assertIn('sceneAfter', names)
+        self.assertIn('lookback', names)
 
 
 class SentinelMapConfigValidationTest(unittest.TestCase):

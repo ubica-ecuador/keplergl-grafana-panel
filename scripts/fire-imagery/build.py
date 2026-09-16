@@ -43,10 +43,10 @@ LAYOUT = [
 
 # Variable names a previously deployed Imagery tab may still carry that this
 # version no longer adds (e.g. `burnArea`, replaced by the dashboard-wide
-# `area`). regraft must strip these too, or a redeploy leaves them orphaned
-# in the production dashboard forever. Drop an entry once no deployed
-# dashboard carries it any more.
-LEGACY_VARIABLES = {'burnArea'}
+# `area`; `scene`, split into `sceneBefore`/`sceneAfter`). regraft must strip
+# these too, or a redeploy leaves them orphaned in the production dashboard
+# forever. Drop an entry once no deployed dashboard carries it any more.
+LEGACY_VARIABLES = {'burnArea', 'scene'}
 
 
 class GraftError(Exception):
@@ -92,7 +92,8 @@ def variables():
     return [
         text_variable('scanFrom', 'Imagery window from (map)'),
         text_variable('scanTo', 'Imagery window to (map)'),
-        text_variable('scene', 'Imagery scene picked'),
+        text_variable('sceneBefore', 'Imagery scene picked (before)'),
+        text_variable('sceneAfter', 'Imagery scene picked (after)'),
         text_variable('sLat', 'Imagery scene lat'),
         text_variable('sLng', 'Imagery scene lng'),
         custom_variable('days', 'Days after', '3,5,10,15,30', '10',
@@ -104,6 +105,10 @@ def variables():
         custom_variable('bands', 'Bands', 'trueColor,forestBurn,infrared,nbr,ndmi', 'forestBurn',
                         'Which bands of each scene to draw. Forest burn shows the scar and the active '
                         'front through smoke; the indices measure rather than illustrate.'),
+        custom_variable('lookback', 'Look back (days)', '30,60,90,180', '90',
+                        'How far back to look for the last clear image before the fire. The days right '
+                        'before a fire are often smoky or cloudy, so this is deliberately wide; the date '
+                        'found is always shown.'),
         centroid_variable('aLat', 'Imagery box centre lat', 'ST_Y'),
         centroid_variable('aLng', 'Imagery box centre lng', 'ST_X'),
     ]
@@ -164,7 +169,10 @@ def sentinel_map_config(stac=None):
     source = kepler_panels[0]
     config = copy.deepcopy(source['options']['mapConfig'])
     root = config['config']
-    root['mapState'].update({'latitude': 6, 'longitude': -25, 'zoom': 1.9})
+    root['mapState'].update({
+        'latitude': 6, 'longitude': -25, 'zoom': 1.9,
+        'isSplit': True, 'mapSplitMode': 'SWIPE_COMPARE', 'swipeComparePercentage': 50,
+    })
     vis = root['visState']
     vis['editor'] = {'features': [], 'visible': True}
     for layer_type in ('rasterTile', 'geojson'):
@@ -175,10 +183,17 @@ def sentinel_map_config(stac=None):
 
     scene = by_type['rasterTile']
     scene['id'] = 's2scene'
-    scene['config']['label'] = 'Sentinel-2 scene'
+    scene['config']['label'] = 'Sentinel-2 — after'
     scene['config']['dataId'] = 'grafana-B-raster'
     # kepler guarda "TrueColor" y no sabe releerlo: siempre en minúscula.
     scene['config']['visConfig']['preset'] = 'trueColor'
+
+    # Misma capa, duplicada para el otro lado de la cortina: el único cambio
+    # de verdad es de qué consulta lee (D en vez de B) y su etiqueta.
+    scene_before = copy.deepcopy(scene)
+    scene_before['id'] = 's2scene-before'
+    scene_before['config']['label'] = 'Sentinel-2 — before'
+    scene_before['config']['dataId'] = 'grafana-D-raster'
 
     box = copy.deepcopy(by_type['geojson'])
     box['id'] = 'boxoutline'
@@ -186,20 +201,32 @@ def sentinel_map_config(stac=None):
     box['config']['visConfig'].update({'strokeColor': [255, 120, 0], 'thickness': 2.5, 'strokeOpacity': 1,
                                        'filled': False, 'stroked': True})
 
+    # Las huellas ahora salen del mismo frame que la escena "after" (consulta
+    # B, que ya trae acquired_at/covers_pct y el geojson del footprint): no
+    # hace falta una consulta aparte solo para dibujar el contorno.
     footprints = copy.deepcopy(by_type['geojson'])
     footprints['id'] = 'footprints'
-    footprints['config'].update({'dataId': 'grafana-C', 'label': 'Scene footprints', 'color': [255, 255, 255]})
+    footprints['config'].update({'dataId': 'grafana-B', 'label': 'Scene footprints', 'color': [255, 255, 255]})
     footprints['config']['visConfig'].update({'strokeColor': [255, 255, 255], 'thickness': 1, 'strokeOpacity': 0.6,
                                               'filled': False, 'stroked': True})
 
-    vis['layers'] = [box, footprints, scene]
-    vis['layerOrder'] = ['boxoutline', 'footprints', 's2scene']
+    vis['layers'] = [box, footprints, scene_before, scene]
+    vis['layerOrder'] = ['boxoutline', 'footprints', 's2scene-before', 's2scene']
     vis['interactionConfig']['tooltip']['fieldsToShow'] = {
         'grafana-A': [],
+        # Ya no hay un dataId grafana-C: las huellas (capa footprints) leen
+        # de aquí también, y estos son justo los campos que trae B.
         'grafana-B': [{'name': n} for n in ('scene_id', 'acquired_at', 'cloud_cover', 'covers_pct')],
         'grafana-B-raster': [],
-        'grafana-C': [{'name': n} for n in ('scene_id', 'acquired_on')],
+        'grafana-D-raster': [],
     }
+    # Cada lado nombra las cuatro capas (la forma que usa lulc.json), no solo
+    # las suyas: kepler necesita el booleano explícito de ambas para no
+    # heredar visibilidad del otro lado.
+    vis['splitMaps'] = [
+        {'layers': {'boxoutline': True, 'footprints': True, 's2scene-before': True, 's2scene': False}},
+        {'layers': {'boxoutline': True, 'footprints': True, 's2scene-before': False, 's2scene': True}},
+    ]
     return config
 
 
@@ -219,19 +246,25 @@ def sentinel_map_element(version):
     queries = [
         duck_query('A', panel_sql('map_box', with_search=False)),
         duck_query('B', panel_sql('map_scenes')),
-        duck_query('C', panel_sql('map_footprints')),
+        duck_query('D', panel_sql('map_scenes_before')),
     ]
     return panel(
         22, 'Sentinel-2 — the scene over your box',
-        'The clearest Sentinel-2 scene of the box you drew, from the paused window to the days after it. '
-        'Pick another in the table below. Orange is your box; white lines are the scene footprints.',
+        'The map opens split by a swipe curtain — drag it to compare. The left side is the last clear '
+        'scene found looking back before the fire (widen "Look back (days)" if it says none in range; '
+        'the days right before a fire are often smoky). The right side is the clearest scene from the '
+        'paused window to the days after it; pick another in the table below. Orange is your box; white '
+        'lines are the after-side scene footprints.',
         queries, KEPLER_GROUP, version, options)
 
 
 SCENE_LINK = ('/d/${__dashboard.uid}?dtab=' + TAB_TITLE
               # Lo que se fija va ANTES de ${__all_variables}: con un var-x
-              # repetido, Grafana se queda con el primero.
-              + '&var-scene=${__data.fields.scene_url:percentencode}'
+              # repetido, Grafana se queda con el primero. set_before/
+              # set_after ya traen -por fila, en contact_sheet.sql- el lado
+              # que se pincha y lo que ya hubiera elegido el otro lado.
+              + '&var-sceneBefore=${__data.fields.set_before}'
+              + '&var-sceneAfter=${__data.fields.set_after}'
               + '&var-sLat=${__data.fields.centre_lat}&var-sLng=${__data.fields.centre_lng}'
               + '&${__url_time_range}&${__all_variables}')
 
@@ -248,13 +281,17 @@ def contact_sheet_element():
             by_name('centre_lat', ('custom.hidden', True)),
             by_name('centre_lng', ('custom.hidden', True)),
             by_name('scene_url', ('custom.hidden', True)),
+            by_name('set_before', ('custom.hidden', True)),
+            by_name('set_after', ('custom.hidden', True)),
         ]}
     options = {'cellHeight': 'lg', 'showHeader': True,
                'footer': {'show': False, 'countRows': False, 'fields': '', 'reducer': ['sum']}}
     return panel(
         23, 'Scenes of your box, as pictures',
-        'Every Sentinel-2 scene that passes the cloud and coverage cuts, oldest first. Each thumbnail is your box '
-        'cut out of that scene by the tile server. Click a row to show that scene on the map.',
+        'Every Sentinel-2 scene that passes the cloud and coverage cuts, oldest first — Before rows are the '
+        'last-clear-image search, After rows are the catalogue you actually browse. Each thumbnail is your box '
+        'cut out of that scene by the tile server. Click a row to show that scene on its side of the split map, '
+        'keeping the other side as it was.',
         [duck_query('A', panel_sql('contact_sheet'))], 'table', '13.2.0', options, field_config)
 
 
@@ -277,8 +314,10 @@ def figures_element():
                'showPercentChange': False, 'textMode': 'value_and_name', 'wideLayout': False}
     return panel(
         24, 'Your box in the catalogue',
-        'Box covered is what all the listed scenes see together. Matched is what the catalogue found; if Returned '
-        'is lower, the list was cut. HTTP other than 200 means the search failed, not that there are no scenes.',
+        'Box covered is what all the listed scenes see together. Before is the date of the last clear scene '
+        'found looking back — widen "Look back (days)" if it says none in range. Matched is what the catalogue '
+        'found; if Returned is lower, the list was cut. HTTP other than 200 means the search failed, not that '
+        'there are no scenes.',
         [duck_query('A', panel_sql('figures'))], 'stat', '13.2.0', options, field_config)
 
 
