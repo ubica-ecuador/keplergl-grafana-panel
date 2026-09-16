@@ -1,4 +1,4 @@
-import { deckAngle, makeSymbolLayer, SYMBOL_TYPE, SYMBOL_VIS_CONFIGS } from './symbolLayer';
+import { deckAngle, makeSymbolLayer, metresPerPixelAt, SYMBOL_TYPE, SYMBOL_VIS_CONFIGS } from './symbolLayer';
 
 /** A stand-in for kepler's base Layer, with only what the subclass touches. */
 class FakeBaseLayer {
@@ -107,6 +107,16 @@ describe('deckAngle', () => {
     // -90 and 270 are the same bearing; 720 is none at all.
     expect(deckAngle(-90, 'towards')).toBe(deckAngle(270, 'towards'));
     expect(deckAngle(720, 'towards')).toBe(0);
+  });
+});
+
+describe('metresPerPixelAt', () => {
+  it('halves with every zoom level', () => {
+    expect(metresPerPixelAt(0, 1)).toBeCloseTo(metresPerPixelAt(0, 0) / 2, 6);
+  });
+
+  it('shrinks away from the equator', () => {
+    expect(metresPerPixelAt(60, 10)).toBeCloseTo(metresPerPixelAt(0, 10) / 2, 2);
   });
 });
 

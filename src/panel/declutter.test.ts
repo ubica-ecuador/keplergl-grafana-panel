@@ -28,4 +28,15 @@ describe('thinBySpacing', () => {
 
     expect(kept).toEqual([at(10, 10, 1)]);
   });
+
+  it('respects a fractional spacing instead of flooring it to a whole unit', () => {
+    // The symbol layer calls this with a spacing in degrees, often well under
+    // 1. A floor written for pixel spacings would round 0.25 up to 1 and merge
+    // cells that should have stayed apart.
+    const rows = [at(0, 0, 1), at(0.3, 0, 2), at(0.6, 0, 3)];
+
+    const kept = thinBySpacing(rows, project, 0.25, weightOf);
+
+    expect(kept).toHaveLength(3);
+  });
 });

@@ -95,4 +95,44 @@ describe('symbol layer panel', () => {
     expect(screen.getByText('Use the column’s degrees')).toBeInTheDocument();
     expect(screen.getByText('Use the column’s number')).toBeInTheDocument();
   });
+
+  it('offers the declutter switch and its spacing slider once declutter is on', () => {
+    // Regression coverage for task 9: `declutter` and `declutterSpacingPx` were
+    // registered on the layer and had messages, but — like `fixedSize` before
+    // it — nothing in the size group rendered a control for them.
+    const layer = {
+      id: 'layer-1',
+      type: SYMBOL_TYPE,
+      config: {
+        visConfig: { symbol: 'arrow', directionConvention: 'towards', declutter: true, declutterSpacingPx: 40 },
+        colorField: null,
+        colorUI: {},
+      },
+      visConfigSettings: {
+        declutter: SYMBOL_VIS_CONFIGS.declutter,
+        declutterSpacingPx: SYMBOL_VIS_CONFIGS.declutterSpacingPx,
+      },
+      visualChannels: {
+        angle: { key: 'angle', property: 'angle' },
+        size: { key: 'size', property: 'size' },
+        color: { key: 'color', property: 'color' },
+      },
+    };
+
+    render(
+      <IntlProvider locale="en" messages={{ ...messages.en, ...SYMBOL_MESSAGES }}>
+        <ThemeProvider theme={theme}>
+          <SymbolLayerConfig
+            layer={layer}
+            visConfiguratorProps={{ layer, onChange: () => undefined }}
+            layerConfiguratorProps={{ layer, onChange: () => undefined }}
+            layerChannelConfigProps={{ layer, fields: [], onChange: () => undefined }}
+          />
+        </ThemeProvider>
+      </IntlProvider>
+    );
+
+    expect(screen.getByText('Thin overlapping symbols')).toBeInTheDocument();
+    expect(screen.getByText('Minimum spacing (px)')).toBeInTheDocument();
+  });
 });

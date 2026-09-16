@@ -65,6 +65,7 @@ import { splitEsriRefresh, splitRasterRefresh, splitRefresh, splitWmsRefresh, sp
 import { KEPLER_INSTANCE_ID } from './constants';
 import { holdTilesetFraming } from './tile3dFraming';
 import { VECTOR_FIELD_TYPE } from './vectorFieldLayer';
+import { SYMBOL_TYPE } from './symbolLayer';
 
 /**
  * The ONLY module that talks to the kepler.gl API.
@@ -515,8 +516,8 @@ export function applyLayerVisConfigById(
 export const FLOW_FIELD_TYPE = 'flowfield';
 
 /**
- * The flow field and vector field layers on the map, with the height of the
- * level each draws.
+ * The flow field, vector field and symbol layers on the map, with the height
+ * of the level each draws.
  *
  * The height is read here, from the rows kepler holds, rather than carried from
  * the query: the user can point the layer's altitude column somewhere else, and
@@ -534,8 +535,12 @@ export function readFlowFieldLayers(store: Store): FlowFieldLayerState[] {
 
   return visState.layers
     // The vector field needs the same context: the camera for its screen grid,
-    // and a place in the stack of levels.
-    .filter((layer) => [FLOW_FIELD_TYPE, VECTOR_FIELD_TYPE].includes((layer as { type?: string }).type ?? ''))
+    // and a place in the stack of levels. The symbol layer needs only the
+    // camera, to convert its own spacing knob from pixels to ground degrees —
+    // it cannot read the map's zoom and latitude any other way.
+    .filter((layer) =>
+      [FLOW_FIELD_TYPE, VECTOR_FIELD_TYPE, SYMBOL_TYPE].includes((layer as { type?: string }).type ?? '')
+    )
     .map((layer) => {
       const config = layer.config as {
         dataId?: string;

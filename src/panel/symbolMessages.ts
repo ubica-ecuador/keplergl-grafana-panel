@@ -26,7 +26,7 @@ export const SYMBOL_MESSAGES: Record<string, string> = {
   'symbol.fixedAngle': 'Use the column’s degrees',
   'symbol.fixedSize': 'Use the column’s number',
   'symbol.declutter': 'Thin overlapping symbols',
-  'symbol.declutterSpacingPx': 'Minimum spacing (px)'
+  'symbol.declutterSpacingPx': 'Minimum spacing (px)',
 };
 
 /** Adds them to every locale kepler ships, never overwriting an existing entry. */
