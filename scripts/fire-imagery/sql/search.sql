@@ -4,7 +4,7 @@
 -- numberReturned para que se vea.
 --
 -- Cada etapa es su propia tabla temporal, no una CTE, y por dos razones a la
--- vez: la resolución de picked_after/picked_before de más abajo necesita leer
+-- vez: la resolución de fi_picked_after/fi_picked_before de más abajo necesita leer
 -- lo ya calculado (una CTE no sobrevive a su propia sentencia), y figures.sql
 -- -que empieza por SELECT y no puede traer su propio WITH- lee fi_box_any,
 -- fi_aoi y fi_search por su nombre. Enterrarlas dentro de otra sentencia las
@@ -26,15 +26,15 @@
 -- guarda haya cortado la búsqueda, porque es el único sitio donde se puede
 -- decir por qué no hay nada.
 CREATE OR REPLACE TEMP TABLE fi_box_any AS (
-  SELECT 'box' AS name, ST_GeomFromText(getvariable('drawn')) AS geom
-  WHERE getvariable('drawn') IS NOT NULL
+  SELECT 'box' AS name, ST_GeomFromText(getvariable('fi_drawn')) AS geom
+  WHERE getvariable('fi_drawn') IS NOT NULL
 );
 
--- La guarda de tamaño (el techo vive en box_limit_m2(), en prelude.sql).
+-- La guarda de tamaño (el techo vive en fi_box_limit_m2(), en prelude.sql).
 -- Como el polígono se comparte con el resto del tablero, aquí puede llegar
 -- un encuadre de medio país que nadie dibujó para esto.
 CREATE OR REPLACE TEMP TABLE fi_aoi AS (
-  SELECT * FROM fi_box_any WHERE m2(geom) <= box_limit_m2()
+  SELECT * FROM fi_box_any WHERE fi_m2(geom) <= fi_box_limit_m2()
 );
 
 -- El único http_get de la consulta. Materializado: figures.sql lee de aquí el
@@ -45,8 +45,8 @@ CREATE OR REPLACE TEMP TABLE fi_search AS (
            || '?collections=sentinel-2-l2a'
            || '&bbox=' || ST_XMin(geom) || ',' || ST_YMin(geom) || ','
                        || ST_XMax(geom) || ',' || ST_YMax(geom)
-           || '&datetime=' || strftime(getvariable('back_from'), '%Y-%m-%dT%H:%M:%SZ')
-           || '/' || strftime(getvariable('win_to'), '%Y-%m-%dT%H:%M:%SZ')
+           || '&datetime=' || strftime(getvariable('fi_back_from'), '%Y-%m-%dT%H:%M:%SZ')
+           || '/' || strftime(getvariable('fi_win_to'), '%Y-%m-%dT%H:%M:%SZ')
            || '&limit=200') AS r
   FROM fi_aoi
 );
@@ -67,7 +67,7 @@ CREATE OR REPLACE TEMP TABLE fi_hit AS (
            ST_GeomFromGeoJSON(f->>'geometry')           AS footprint,
            -- El lado se decide contra el día en que se pausó el reloj, no
            -- contra el final de la ventana ensanchada.
-           CASE WHEN (f->'properties'->>'datetime')::TIMESTAMP < getvariable('win_from')
+           CASE WHEN (f->'properties'->>'datetime')::TIMESTAMP < getvariable('fi_win_from')
                 THEN 'Before' ELSE 'After' END              AS side
     FROM features
     WHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE <= CAST($s2cloud AS DOUBLE)
@@ -76,7 +76,7 @@ CREATE OR REPLACE TEMP TABLE fi_hit AS (
   -- que solo rozan una esquina del recuadro.
   SELECT * FROM scenes
   WHERE ST_Intersects(geom, footprint)
-    AND m2(ST_Intersection(geom, footprint)) / m2(geom) * 100 >= CAST($s2cover AS DOUBLE)
+    AND fi_m2(ST_Intersection(geom, footprint)) / fi_m2(geom) * 100 >= CAST($s2cover AS DOUBLE)
 );
 
 CREATE OR REPLACE TEMP TABLE fi_hit_after AS (SELECT * FROM fi_hit WHERE side = 'After');
@@ -89,9 +89,9 @@ CREATE OR REPLACE TEMP TABLE fi_hit_after AS (SELECT * FROM fi_hit WHERE side = 
 -- el lado de antes, pero aquí no hay una sola fila que sustituir: hay que
 -- deshacer el pinchado para que el catálogo entero vuelva a dibujarse,
 -- como si nada se hubiera elegido. El CASE de map_scenes.sql no cambia:
--- lee picked_after ya resuelto.
-SET VARIABLE picked_after = (
-  SELECT visual_href FROM fi_hit_after WHERE visual_href = getvariable('picked_after') LIMIT 1
+-- lee fi_picked_after ya resuelto.
+SET VARIABLE fi_picked_after = (
+  SELECT visual_href FROM fi_hit_after WHERE visual_href = getvariable('fi_picked_after') LIMIT 1
 );
 
 -- Lo mismo del lado de antes, y por el mismo motivo: un pinchado rancio tiene
@@ -100,9 +100,9 @@ SET VARIABLE picked_after = (
 -- que lo arrastra a cada enlace de fila: sin resolverlo aquí, un pinchado de
 -- un recuadro anterior se perpetúa para siempre en los enlaces mientras el
 -- mapa ya dibuja otra escena. Resuelto, se vacía igual que set_after.
-SET VARIABLE picked_before = (
+SET VARIABLE fi_picked_before = (
   SELECT visual_href FROM fi_hit
-  WHERE side = 'Before' AND visual_href = getvariable('picked_before') LIMIT 1
+  WHERE side = 'Before' AND visual_href = getvariable('fi_picked_before') LIMIT 1
 );
 
 -- Del lado de antes solo se dibuja una: la que se pinchó en la hoja de
@@ -117,7 +117,7 @@ CREATE OR REPLACE TEMP TABLE fi_hit_before AS (
   SELECT * FROM fi_hit
   WHERE side = 'Before'
   QUALIFY row_number() OVER (
-    ORDER BY CASE WHEN visual_href = coalesce(getvariable('picked_before'), '') THEN 0 ELSE 1 END,
+    ORDER BY CASE WHEN visual_href = coalesce(getvariable('fi_picked_before'), '') THEN 0 ELSE 1 END,
              acquired DESC
   ) = 1
 );

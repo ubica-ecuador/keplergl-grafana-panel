@@ -1,16 +1,16 @@
 SELECT count(h.scene_id)                                   AS "Scenes",
        ROUND(min(h.cloud_cover), 1)                        AS "Min cloud",
        -- Lo que se ve mosaicando todas las escenas que pasan los filtros.
-       ROUND(COALESCE(m2(ST_Intersection(any_value(b.geom), ST_Union_Agg(h.footprint)))
-                      / m2(any_value(b.geom)) * 100, 0), 1) AS "Box covered",
+       ROUND(COALESCE(fi_m2(ST_Intersection(any_value(b.geom), ST_Union_Agg(h.footprint)))
+                      / fi_m2(any_value(b.geom)) * 100, 0), 1) AS "Box covered",
        -- El recuadro se mide aunque la guarda haya cortado la búsqueda: las
        -- cifras son el único sitio donde se puede decir por qué no hay nada.
-       -- El techo es box_limit_m2() (prelude.sql), el mismo que usa la guarda.
-       CASE WHEN m2(any_value(b.geom)) > box_limit_m2()
+       -- El techo es fi_box_limit_m2() (prelude.sql), el mismo que usa la guarda.
+       CASE WHEN fi_m2(any_value(b.geom)) > fi_box_limit_m2()
             THEN 'Box too large — draw a smaller one'
-            ELSE strftime(getvariable('win_from'), '%d %b') || ' → '
-              || strftime(getvariable('win_to'), '%d %b %Y')
-              || CASE WHEN getvariable('win_to') >= CAST(now() AS TIMESTAMP) - INTERVAL 1 MINUTE
+            ELSE strftime(getvariable('fi_win_from'), '%d %b') || ' → '
+              || strftime(getvariable('fi_win_to'), '%d %b %Y')
+              || CASE WHEN getvariable('fi_win_to') >= CAST(now() AS TIMESTAMP) - INTERVAL 1 MINUTE
                       THEN ' (until today)' ELSE '' END
        END                                                  AS "Searched",
        -- Si no hay «antes», decirlo: un lado en blanco sin explicación es el

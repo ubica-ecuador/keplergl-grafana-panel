@@ -673,17 +673,36 @@ class EveryPanelQueryRunsTest(unittest.TestCase):
                         self.assertIn('/cog/bbox/', row['View'])
                         self.assertNotIn('&assets=', row['View'])
 
-    def test_the_temp_tables_do_not_squat_on_plain_names(self):
+    def test_nothing_left_in_the_session_squats_on_plain_names(self):
         # El estado de la conexión sobrevive a la petición y el pool del
         # datasource le presta esa misma conexión a otros tableros contra el
-        # mismo DuckDB; DuckDB además resuelve el esquema temporal antes que el
-        # principal. Una temporal nuestra llamada `search`, `hit` o `aoi`
-        # taparía en silencio una tabla real de otro con ese nombre. El prefijo
-        # es lo único que lo evita, así que se fija aquí.
-        created = re.findall(r'CREATE OR REPLACE TEMP TABLE (\w+)', build.read_sql('search'))
-        self.assertTrue(created)
-        for name in created:
-            self.assertTrue(name.startswith('fi_'), f'{name} necesita el prefijo fi_')
+        # mismo DuckDB. Una temporal nuestra llamada `search`, `hit` o `aoi`
+        # tapa en silencio una tabla real de otro con ese nombre (DuckDB
+        # resuelve el esquema temporal antes que el principal), y una variable
+        # de sesión llamada `drawn` se le aparece a quien lea getvariable sin
+        # haber escrito -medido en el banco, quince peticiones ajenas
+        # después-. Los macros dejan el mismo rastro.
+        #
+        # El guardián mira LOS TRES tipos en TODOS los fragmentos, y no solo
+        # en search.sql: acotarlo a un fichero es justo lo que deja pasar
+        # media renombrada.
+        kinds = {
+            'tabla temporal': r'CREATE OR REPLACE TEMP TABLE (\w+)',
+            'variable de sesión': r'SET VARIABLE (\w+)',
+            'macro': r'CREATE OR REPLACE TEMP MACRO (\w+)',
+        }
+        found = 0
+        for name in SQL_NAMES:
+            sql = build.read_sql(name)
+            for kind, pattern in kinds.items():
+                for created in re.findall(pattern, sql):
+                    found += 1
+                    self.assertTrue(created.startswith('fi_'),
+                                    f'{name}.sql: {kind} `{created}` necesita el prefijo fi_')
+        # Seis tablas, seis variables (dos reescritas otra vez en search.sql) y
+        # dos macros. Si este número baja, alguien dejó de crear algo y el
+        # bucle de arriba se quedaría sin nada que comprobar, en verde.
+        self.assertGreaterEqual(found, 16, f'solo se encontraron {found} objetos de sesión')
 
     def test_a_drawn_box_gives_every_panel_its_rows(self):
         # Ejecutar sin error no basta: una consulta que devuelve cero filas

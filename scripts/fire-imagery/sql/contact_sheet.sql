@@ -28,7 +28,7 @@ SELECT CASE WHEN $bands IN ('forestBurn', 'infrared') THEN
        -- Texto: Grafana pasaría un TIMESTAMP al huso del navegador.
        strftime(acquired, '%d %b %Y  %H:%M')                          AS "Date",
        ROUND(cloud_cover, 1)                                          AS "Cloud %",
-       ROUND(m2(ST_Intersection(geom, footprint)) / m2(geom) * 100, 1) AS "Covers %",
+       ROUND(fi_m2(ST_Intersection(geom, footprint)) / fi_m2(geom) * 100, 1) AS "Covers %",
        -- Ocultas: alimentan el enlace de la fila. El centro de lo que enseña la
        -- miniatura, no el del recuadro.
        ST_Y(ST_Centroid(ST_Intersection(geom, footprint)))             AS centre_lat,
@@ -36,10 +36,10 @@ SELECT CASE WHEN $bands IN ('forestBurn', 'infrared') THEN
        visual_href                                                     AS scene_url,
        -- Ocultas también: eligiendo una fila (que es de un solo lado) se
        -- conserva el enlace del otro lado, elegido a mano o no. Los valores
-       -- vienen de picked_before/picked_after, derivados en el preludio de
+       -- vienen de fi_picked_before/fi_picked_after, derivados en el preludio de
        -- $sceneBefore y $sceneAfter.
-       CASE WHEN side = 'Before' THEN visual_href ELSE coalesce(getvariable('picked_before'), '') END AS set_before,
-       CASE WHEN side = 'After'  THEN visual_href ELSE coalesce(getvariable('picked_after'),  '') END AS set_after
+       CASE WHEN side = 'Before' THEN visual_href ELSE coalesce(getvariable('fi_picked_before'), '') END AS set_before,
+       CASE WHEN side = 'After'  THEN visual_href ELSE coalesce(getvariable('fi_picked_after'),  '') END AS set_after
 FROM fi_hit
 -- Cupo por lado, no global: del lado de antes solo se PINTA una escena (la
 -- referencia), así que un puñado de candidatas recientes basta para poder

@@ -15,7 +15,7 @@ SELECT scene_id,
        -- sigue siendo el camino rápido del color real.
        'https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a/items/' || scene_id
             AS raster_item_url,
-       ROUND(m2(ST_Intersection(geom, footprint)) / m2(geom) * 100, 1) AS covers_pct,
+       ROUND(fi_m2(ST_Intersection(geom, footprint)) / fi_m2(geom) * 100, 1) AS covers_pct,
        -- La huella viaja con la escena: una consulta alimenta a la vez la capa
        -- ráster y la de geometría, y así la pestaña no gasta una búsqueda más.
        CAST(ST_AsGeoJSON(footprint) AS VARCHAR) AS geojson
