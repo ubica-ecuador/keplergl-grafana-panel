@@ -356,12 +356,22 @@ def regraft(dashboard, elements):
     `graft` se niega a injertar dos veces, que es lo correcto para no duplicar
     nada por accidente. Actualizar lo ya desplegado necesita lo otro: quitar la
     pestaña anterior con lo suyo —y solo lo suyo— y volver a injertar.
+
+    "Lo suyo" son los elementos que la pestaña puesta coloca en su rejilla, no
+    los nombres de LAYOUT. La diferencia no es teórica: los paneles que alguien
+    añade por la interfaz también se llaman `panel-<n>`, así que uno creado a
+    mano puede caer en `panel-23`. Quitarlo por nombre se salta la guardia de
+    colisiones de `graft` y lo borra en silencio —y `reprod` escribe en
+    producción—. Yendo por la rejilla, un panel ajeno sobrevive: si su clave
+    choca con la nuestra, `graft` se niega y no se escribe nada.
     """
     stripped = copy.deepcopy(dashboard)
     spec = stripped['spec']
     tabs = spec['layout']['spec']['tabs']
+    ours = {item['spec']['element']['name']
+            for tab in tabs if tab['spec']['title'] == TAB_TITLE
+            for item in tab['spec'].get('layout', {}).get('spec', {}).get('items', [])}
     spec['layout']['spec']['tabs'] = [tab for tab in tabs if tab['spec']['title'] != TAB_TITLE]
-    ours = {cell[0] for cell in LAYOUT}
     spec['elements'] = {key: value for key, value in spec['elements'].items() if key not in ours}
     mine = {variable['spec']['name'] for variable in variables()}
     spec['variables'] = [v for v in spec['variables'] if v['spec']['name'] not in mine]

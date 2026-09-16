@@ -347,6 +347,37 @@ class RegraftTest(unittest.TestCase):
             self.assertEqual(twice['spec']['elements'][key], element)
         self.assertEqual(twice['spec']['variables'][:len(self.dash['spec']['variables'])], self.dash['spec']['variables'])
 
+    def test_regraft_does_not_delete_a_panel_the_tab_never_added(self):
+        # El caso que puede costar el trabajo de otro: alguien añade un panel
+        # por la interfaz y Grafana le da una de las claves que esta pestaña
+        # usa. Quitar por nombre lo borraría sin decir nada, y un PUT a
+        # producción lo haría de verdad. Se quita solo lo que la pestaña que
+        # hay puesta referencia; si lo demás choca, `graft` se niega y no se
+        # escribe nada.
+        once = build.graft(self.dash, build.imagery_elements(self.dash))
+        foreign = copy.deepcopy(once['spec']['elements']['panel-23'])
+        foreign['spec']['title'] = 'Someone else’s panel'
+        foreign['spec']['id'] = 230
+        del once['spec']['elements']['panel-23']
+        once['spec']['layout']['spec']['tabs'][-1]['spec']['layout']['spec']['items'] = [
+            item for item in once['spec']['layout']['spec']['tabs'][-1]['spec']['layout']['spec']['items']
+            if item['spec']['element']['name'] != 'panel-23']
+        once['spec']['elements']['panel-23'] = foreign
+
+        with self.assertRaisesRegex(build.GraftError, 'panel-23'):
+            build.regraft(once, build.imagery_elements(once))
+        self.assertEqual(once['spec']['elements']['panel-23'], foreign, 'regraft must not mutate its input')
+
+    def test_regraft_strips_only_what_the_tab_laid_out(self):
+        once = build.graft(self.dash, build.imagery_elements(self.dash))
+        # Una pestaña puesta con menos paneles de los que el injerto trae hoy:
+        # al reinjertar, el que no estaba no puede haberse quitado por nombre.
+        items = once['spec']['layout']['spec']['tabs'][-1]['spec']['layout']['spec']['items']
+        once['spec']['layout']['spec']['tabs'][-1]['spec']['layout']['spec']['items'] = [
+            item for item in items if item['spec']['element']['name'] != 'panel-24']
+        with self.assertRaisesRegex(build.GraftError, 'panel-24'):
+            build.regraft(once, build.imagery_elements(once))
+
     def test_bands_variable_defaults_to_forest_burn(self):
         variables = {v['spec']['name']: v['spec'] for v in build.variables()}
         self.assertEqual(variables['bands']['current']['value'], 'forestBurn')
