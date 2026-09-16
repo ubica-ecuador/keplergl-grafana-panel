@@ -196,3 +196,42 @@ describe('symbol layer', () => {
     expect(symbolLayer().formatLayerData({})).toEqual({});
   });
 });
+
+describe('import-time cost', () => {
+  /**
+   * `keplerStore.ts` imports this module on every panel render, whether or
+   * not a symbol layer is ever added. A regression here — the glyph catalogue
+   * built as a side effect of importing rather than of actually reading the
+   * panel's option list — once cost this branch two fix rounds for the
+   * vector field layer's own version of the same mistake (commit 273a116).
+   *
+   * `../icons/svg-icons.json` is what `symbolGlyphs.ts`'s catalogue reads to
+   * triangulate kepler's 162 meshes; mocking it with a getter turns "was the
+   * catalogue built" into an observable without needing to reach into
+   * `symbolGlyphs.ts`'s own module-private cache.
+   */
+  it('does not build the glyph catalogue merely by importing the layer, only by reading the panel options', () => {
+    let readSvgIcons = false;
+
+    jest.isolateModules(() => {
+      jest.doMock('../icons/svg-icons.json', () => {
+        const actual = jest.requireActual('../icons/svg-icons.json');
+        return {
+          get svgIcons() {
+            readSvgIcons = true;
+            return actual.svgIcons;
+          },
+        };
+      });
+
+      // A plain `require`, not the file's top-level `import`: this needs to
+      // run after the mock above is registered, inside the isolated registry.
+      require('./symbolLayer');
+      expect(readSvgIcons).toBe(false);
+
+      const { SYMBOL_VIS_CONFIGS: freshConfigs } = require('./symbolLayer');
+      expect((freshConfigs.symbol.options as string[]).length).toBeGreaterThan(0);
+      expect(readSvgIcons).toBe(true);
+    });
+  });
+});

@@ -16,7 +16,7 @@ export const SYMBOL_MESSAGES: Record<string, string> = {
   'symbol.group.rotation': 'Rotation',
   'symbol.group.size': 'Size',
 
-  'symbol.symbol': 'Symbol',
+  'symbol.symbol': 'Shape',
   'symbol.directionConvention': 'Direction is',
   'symbol.directionConvention.from': 'Where it comes from',
   'symbol.directionConvention.towards': 'Where it goes',

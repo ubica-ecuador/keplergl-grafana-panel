@@ -170,8 +170,23 @@ export function symbolCatalogue(): Map<string, AnyGlyph> {
   return catalogue;
 }
 
-/** The names the panel offers, in catalogue order. */
-export const SYMBOL_NAMES: string[] = [...symbolCatalogue().keys()];
+let names: string[] | null = null;
+
+/**
+ * The names the panel offers, in catalogue order.
+ *
+ * A function, not a constant: a top-level `const` here ran at import time,
+ * which meant every panel render built the whole catalogue — including
+ * triangulating kepler's 162 meshes into polygons — whether or not a symbol
+ * layer was ever added. `symbolCatalogue()` is already memoized, so caching
+ * here only avoids re-spreading its keys into a fresh array on every call.
+ */
+export function symbolNames(): string[] {
+  if (!names) {
+    names = [...symbolCatalogue().keys()];
+  }
+  return names;
+}
 
 /**
  * The glyphs behind a list of names: deduplicated, ordered, and never empty.

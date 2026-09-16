@@ -6,8 +6,8 @@ import {
   ownGlyphs,
   paintGlyphs,
   symbolCatalogue,
+  symbolNames,
   SYMBOL_FALLBACK,
-  SYMBOL_NAMES,
 } from './symbolGlyphs';
 import keplerIcons from '../icons/svg-icons.json';
 import maki from '../icons/maki-paths.json';
@@ -130,7 +130,7 @@ describe('symbolCatalogue', () => {
     expect(catalogue.get('chevron')).toBeDefined(); // ours
     expect(catalogue.get('directions')).toBeDefined(); // kepler
     expect(catalogue.get('airport')).toBeDefined(); // maki
-    expect(SYMBOL_NAMES.length).toBe(catalogue.size);
+    expect(symbolNames().length).toBe(catalogue.size);
   });
 
   it('lets our own shapes win a name collision, so the basic shapes stay predictable', () => {
@@ -138,6 +138,14 @@ describe('symbolCatalogue', () => {
     // centre [48, 48]; ours drives it into the ground at [48, 92]. This assertion
     // fails if the spread order changes to let kepler win.
     expect(symbolCatalogue().get('pin')!.anchor).toEqual([48, 92]);
+  });
+});
+
+describe('symbolNames', () => {
+  it('caches the list rather than re-spreading the catalogue on every call', () => {
+    // Same array instance back, not just equal contents: this is what makes
+    // a getter built on top of it cheap after the first read.
+    expect(symbolNames()).toBe(symbolNames());
   });
 });
 

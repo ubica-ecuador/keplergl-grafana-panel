@@ -61,7 +61,14 @@ export function SymbolLayerConfig({
 
       <LayerConfigGroup label={'symbol.group.size'} collapsible>
         <ChannelByValueSelector channel={layer.visualChannels.size} {...layerChannelConfigProps} />
-        {layer.config.sizeField ? slider('sizeRange') : slider('symbolSize')}
+        {layer.config.sizeField ? (
+          <>
+            <VisConfigSwitch {...settings.fixedSize} {...visConfiguratorProps} />
+            {slider('sizeRange')}
+          </>
+        ) : (
+          slider('symbolSize')
+        )}
       </LayerConfigGroup>
 
       <LayerConfigGroup label={'layer.color'} collapsible>

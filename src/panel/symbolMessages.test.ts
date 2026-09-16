@@ -10,8 +10,8 @@ describe('registerSymbolMessages', () => {
 
     registerSymbolMessages(catalogues);
 
-    expect(catalogues.en['symbol.symbol']).toBe('Symbol');
-    expect(catalogues.es['symbol.symbol']).toBe('Symbol');
+    expect(catalogues.en['symbol.symbol']).toBe('Shape');
+    expect(catalogues.es['symbol.symbol']).toBe('Shape');
     expect(catalogues.es['layer.type.point']).toBe('Punto');
   });
 

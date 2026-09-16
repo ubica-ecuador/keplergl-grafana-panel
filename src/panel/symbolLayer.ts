@@ -1,7 +1,7 @@
 import { CHANNEL_SCALES } from '@kepler.gl/constants';
 
 import { shownInPane } from './paneVisibility';
-import { SYMBOL_FALLBACK, SYMBOL_NAMES } from './symbolGlyphs';
+import { SYMBOL_FALLBACK, symbolNames } from './symbolGlyphs';
 
 /**
  * A symbol per row, turned by one column and sized by another.
@@ -25,7 +25,15 @@ export const SYMBOL_VIS_CONFIGS = {
   symbol: {
     type: 'select',
     defaultValue: SYMBOL_FALLBACK,
-    options: SYMBOL_NAMES,
+    // A getter, not a plain array: `symbolNames()` builds the whole glyph
+    // catalogue (kepler's 162 meshes triangulated into polygons among them),
+    // and this object is built the moment this module is imported — by every
+    // panel, whether or not a symbol layer is ever added. A getter defers that
+    // cost to the one place it is actually needed: the panel reading the list
+    // to draw the selector.
+    get options() {
+      return symbolNames();
+    },
     label: 'symbol.symbol',
     group: 'display',
     property: 'symbol',
