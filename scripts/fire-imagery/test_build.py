@@ -357,6 +357,88 @@ class ContactSheetSidesHermeticTest(unittest.TestCase):
         self.assertNotIn('25 Mar 2026  19:00', dates)
 
 
+class BeforePickHermeticTest(unittest.TestCase):
+    """Sin banco, sin red: pins the round-2 review fix directly against
+    map_scenes_before.sql (not just the contact sheet's column list).
+
+    Before this fix, `hit_before` (search.sql) always picked the most
+    recent Before candidate regardless of `$sceneBefore`, and
+    map_scenes_before.sql's own CASE then hid raster_url/raster_item_url
+    whenever the picked scene did not match that one row — which is every
+    row in the contact sheet's six Before candidates except the top one,
+    and is guaranteed whenever the pick is stale (a scene from an earlier
+    box). Both cases must now draw something, never a blank side.
+    """
+
+    BOX = 'POLYGON ((-122.0 39.0, -121.9 39.0, -121.9 39.1, -122.0 39.1, -122.0 39.0))'
+    GEOMETRY = {'type': 'Polygon', 'coordinates': [[[-122.0, 39.0], [-121.9, 39.0], [-121.9, 39.1],
+                                                    [-122.0, 39.1], [-122.0, 39.0]]]}
+    # Todas antes del día pausado (2026-06-15): la más reciente es la última
+    # (índice 2, 10 Jun) y NO es la que se pincha en los dos primeros tests.
+    BEFORE_DATES = ['2026-05-01T19:00:00Z', '2026-05-15T19:00:00Z', '2026-06-10T19:00:00Z']
+    BASE_CASE = dict(area=BOX, sceneAfter='', scanFrom='2026-06-15T00:00:00.000Z',
+                     scanTo='2026-06-15T23:59:59.000Z', days='3', lookback='90',
+                     s2cloud='100', s2cover='0', bands='trueColor')
+
+    @staticmethod
+    def _sql_quote(value):
+        return "'" + str(value).replace("'", "''") + "'"
+
+    def _canned_body(self):
+        def feature(index, when):
+            return {'id': f'SYN_{index}', 'properties': {'datetime': when, 'eo:cloud_cover': 5.0},
+                   'assets': {'visual': {'href': f'https://example.test/{index}.tif'}},
+                   'geometry': self.GEOMETRY}
+        features = [feature(i, when) for i, when in enumerate(self.BEFORE_DATES)]
+        return json.dumps({'type': 'FeatureCollection', 'features': features,
+                           'numberMatched': len(features), 'numberReturned': len(features)})
+
+    def _canned_sql(self, scene_before):
+        sql = build.panel_sql('map_scenes_before')
+        canned = "{'status': 200, 'body': " + self._sql_quote(self._canned_body()) + "} AS r"
+        sql, count = re.subn(r'http_get\(.*?\) AS r', canned, sql, count=1, flags=re.DOTALL)
+        self.assertEqual(count, 1, 'expected exactly one http_get(...) AS r to replace')
+        sql = re.sub(r'\$(__\w+)\(([^()]*)\)', expand_macro, sql)
+        case = dict(self.BASE_CASE, sceneBefore=scene_before)
+        return re.sub(r'\$\{?([A-Za-z]\w*)\}?', lambda m: self._sql_quote(case[m.group(1)]), sql)
+
+    def _run(self, scene_before):
+        try:
+            con = duckdb.connect()
+            con.execute('INSTALL spatial; LOAD spatial;')
+        except duckdb.Error as error:
+            self.skipTest(f'the spatial extension is not loadable in this duckdb: {error}')
+        result = con.execute(self._canned_sql(scene_before))
+        columns = [d[0] for d in result.description]
+        rows = [dict(zip(columns, row)) for row in result.fetchall()]
+        self.assertEqual(len(rows), 1, 'map_scenes_before.sql must always draw exactly one row')
+        return rows[0]
+
+    def test_picking_a_non_latest_before_candidate_draws_it(self):
+        # Index 0 (01 May) is a real candidate but not the most recent one
+        # (index 2, 10 Jun) — picking it must win, not the deterministic
+        # "most recent" default.
+        row = self._run('https://example.test/0.tif')
+        self.assertEqual(row['scene_id'], 'SYN_0')
+        self.assertEqual(row['raster_url'], 'https://example.test/0.tif')
+        self.assertIsNotNone(row['raster_item_url'])
+
+    def test_a_stale_pick_falls_back_to_the_most_recent_instead_of_going_blank(self):
+        # A scene from a box drawn earlier: not among today's candidates at
+        # all. Blank is the one outcome the design forbids.
+        row = self._run('https://example.test/from-a-previous-box.tif')
+        self.assertEqual(row['scene_id'], 'SYN_2', 'must fall back to the most recent candidate')
+        self.assertEqual(row['raster_url'], 'https://example.test/2.tif')
+        self.assertIsNotNone(row['raster_url'], 'the before side must never go blank')
+        self.assertIsNotNone(row['raster_item_url'], 'the before side must never go blank')
+
+    def test_no_pick_still_shows_the_most_recent(self):
+        # The untouched default path: no one has clicked a row yet.
+        row = self._run('')
+        self.assertEqual(row['scene_id'], 'SYN_2')
+        self.assertEqual(row['raster_url'], 'https://example.test/2.tif')
+
+
 class ContactSheetSidesLiveTest(unittest.TestCase):
     """Contra el banco de :3002: la única forma de probar que el cupo por
     lado de verdad reparte filas, no solo que la cláusula está presente. Se

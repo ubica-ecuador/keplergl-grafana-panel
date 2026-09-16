@@ -55,6 +55,19 @@ hit AS (
     AND m2(ST_Intersection(geom, footprint)) / m2(geom) * 100 >= CAST($s2cover AS DOUBLE)
 )
 , hit_after AS (SELECT * FROM hit WHERE side = 'After'),
--- Del lado de antes solo interesa la más reciente que pase los cortes: es la
--- referencia, no un catálogo.
-hit_before AS (SELECT * FROM hit WHERE side = 'Before' ORDER BY acquired DESC LIMIT 1)
+-- Del lado de antes solo se dibuja una: la que se pinchó en la hoja de
+-- contactos, si sigue siendo candidata; si no (nada pinchado, o un
+-- pinchado rancio de un recuadro anterior que ya no aparece aquí), la más
+-- reciente que pase los cortes. Elegir primero y filtrar después -como
+-- hacía esto con un LIMIT 1 ciego al pinchado- deja en blanco cinco de las
+-- seis candidatas que la hoja ofrece a mano: el CASE de más abajo
+-- (map_scenes_before.sql) solo dibuja la fila que YA es hit_before, así
+-- que hit_before tiene que ser la fila correcta desde aquí.
+hit_before AS (
+  SELECT * FROM hit
+  WHERE side = 'Before'
+  QUALIFY row_number() OVER (
+    ORDER BY CASE WHEN visual_href = coalesce(getvariable('picked_before'), '') THEN 0 ELSE 1 END,
+             acquired DESC
+  ) = 1
+)
