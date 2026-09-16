@@ -5,6 +5,7 @@ import {
   meshGlyphs,
   ownGlyphs,
   paintGlyphs,
+  resolveSymbol,
   symbolCatalogue,
   symbolNames,
   SYMBOL_FALLBACK,
@@ -161,6 +162,19 @@ describe('glyphsFor', () => {
 
   it('never resolves to nothing, because an empty atlas is a blank map', () => {
     expect(glyphsFor([]).map((g) => g.key)).toEqual([SYMBOL_FALLBACK]);
+  });
+});
+
+describe('resolveSymbol', () => {
+  it('keeps a name this build can draw', () => {
+    expect(resolveSymbol('airport')).toBe('airport');
+  });
+
+  it('answers the same fallback the atlas paints, for a name it cannot', () => {
+    // The two must agree: deck looks the icon up by this name in that atlas.
+    expect(resolveSymbol('no-such-glyph')).toBe(SYMBOL_FALLBACK);
+    expect(glyphsFor([resolveSymbol('no-such-glyph')]).map((g) => g.key)).toEqual([resolveSymbol('no-such-glyph')]);
+    expect(resolveSymbol(undefined)).toBe(SYMBOL_FALLBACK);
   });
 });
 

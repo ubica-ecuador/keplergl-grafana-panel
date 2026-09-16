@@ -60,6 +60,15 @@ class FakeBaseLayer {
     return { getAngle: () => 90, getSize: () => 20, getColor: () => [1, 2, 3] };
   }
 
+  /**
+   * kepler derives these from `visualChannels` too. Empty here: what they hold
+   * is kepler's business, and `symbolLayer.kepler.test.ts` checks them on the
+   * real class — this stand-in is not the place to pin kepler's behaviour.
+   */
+  getVisualChannelUpdateTriggers(): Record<string, Record<string, unknown>> {
+    return {};
+  }
+
   getDefaultDeckLayerProps(): Record<string, unknown> {
     return { id: this.id, pickable: true };
   }

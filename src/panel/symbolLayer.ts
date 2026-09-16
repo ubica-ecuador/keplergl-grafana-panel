@@ -3,7 +3,7 @@ import { CHANNEL_SCALES } from '@kepler.gl/constants';
 import { thinBySpacing } from './declutter';
 import { shownInPane } from './paneVisibility';
 import { setting } from './velocityField';
-import { SYMBOL_FALLBACK, symbolNames } from './symbolGlyphs';
+import { resolveSymbol, SYMBOL_FALLBACK, symbolNames } from './symbolGlyphs';
 
 /**
  * A symbol per row, turned by one column and sized by another.
@@ -83,6 +83,13 @@ export const SYMBOL_VIS_CONFIGS = {
    * reader: with `fixed` on, the channel's scale is the identity, so the
    * column's own number is used. For a bearing that is the only correct
    * reading — 270 degrees are 270 degrees — which is why it starts on.
+   *
+   * `fixedAngle` is registered but deliberately offered nowhere in the panel.
+   * The angle channel's `fixed` key names it, so kepler reads it, and it must
+   * stay on: turned off, kepler rescales the bearing onto an `angleRange` this
+   * layer does not register, and d3 throws on the missing range. Nothing is
+   * lost by that — a bearing rescaled onto some other span of degrees is a
+   * wrong bearing, not a styling choice. See `symbolConfigurator.tsx`.
    */
   fixedAngle: {
     type: 'boolean',
@@ -137,6 +144,31 @@ export function metresPerPixelAt(latitude: number, zoom: number): number {
   return (156_543.03392 * Math.cos((latitude * Math.PI) / 180)) / 2 ** zoom;
 }
 
+/**
+ * A channel's accessor as a function of the row, whatever kepler handed over.
+ *
+ * With a column bound, kepler's `getAttributeAccessors` builds a function; with
+ * none, it hands over the channel's constant — a size, a colour — as the value
+ * itself. deck accepts either, but this layer calls them per row on its own
+ * account: to turn a bearing into deck's angle, and to weigh symbols against
+ * each other when thinning them. Called on a constant, that was a TypeError —
+ * swallowed by deck for the angle, which then drew nothing, and thrown straight
+ * out of `renderLayer` for the size, into Grafana's error boundary.
+ */
+export function asRowAccessor<T>(value: unknown, fallback: T): (row: unknown) => T {
+  if (typeof value === 'function') {
+    return value as (row: unknown) => T;
+  }
+  const constant = value === null || value === undefined ? fallback : (value as T);
+  return () => constant;
+}
+
+/** What a kepler dataset carries for the filters that run on the GPU. */
+interface GpuFilter {
+  filterValueAccessor(dataContainer: unknown): () => (row: unknown) => unknown;
+  filterValueUpdateTriggers: unknown;
+}
+
 type Constructor<T> = new (...args: any[]) => T;
 
 /** One column of a kepler layer, as kepler stores it once the config is parsed. */
@@ -164,6 +196,7 @@ interface SymbolLayerLike {
   registerVisConfig(configs: Record<string, unknown>): void;
   updateData(datasets: unknown, oldLayerData?: unknown): { data: Array<{ index: number }> };
   getAttributeAccessors(args: { dataContainer: unknown }): Record<string, unknown>;
+  getVisualChannelUpdateTriggers(): Record<string, Record<string, unknown>>;
   getDefaultDeckLayerProps(opts: unknown): Record<string, unknown>;
   getPointsBounds(dataContainer: unknown, getPosition?: unknown): [number, number, number, number];
   updateMeta(meta: Record<string, unknown>): unknown;
@@ -271,6 +304,14 @@ export function makeSymbolLayer<C extends Constructor<object>>(
           accessor: 'getAngle',
           channelScaleType: CHANNEL_SCALES.angle,
           nullValue: 0,
+          // With no column bound, kepler hands over `defaultValue` itself — and
+          // an angle of 0 is falsy, which kepler reports as "Failed to provide
+          // accessor function" on every data update. A function never is.
+          getAttributeValue: (config: { visConfig: Record<string, unknown> }) => {
+            const degrees = config.visConfig.angleDegrees ?? 0;
+            return () => degrees;
+          },
+          // Still read by kepler: it is part of the channel's update trigger.
           defaultValue: (config: { visConfig: Record<string, unknown> }) => config.visConfig.angleDegrees ?? 0,
         },
         size: {
@@ -283,6 +324,12 @@ export function makeSymbolLayer<C extends Constructor<object>>(
           key: 'size',
           accessor: 'getSize',
           channelScaleType: CHANNEL_SCALES.size,
+          // A row with no size draws at the fixed size. Without a null value of
+          // its own the channel falls back to kepler's no-value *colour*,
+          // [0, 0, 0, 0], which deck reads as no size at all, and the symbol
+          // vanishes. The same value covers `NaN`: d3's scales answer it with
+          // `undefined`, which kepler replaces with this too.
+          nullValue: (config: { visConfig: Record<string, unknown> }) => config.visConfig.symbolSize ?? 30,
           defaultValue: (config: { visConfig: Record<string, unknown> }) => config.visConfig.symbolSize ?? 30,
         },
         color: {
@@ -299,7 +346,10 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       };
     }
 
-    formatLayerData(datasets: Record<string, { dataContainer?: unknown }>, oldLayerData?: unknown): Record<string, unknown> {
+    formatLayerData(
+      datasets: Record<string, { dataContainer?: unknown; gpuFilter?: GpuFilter }>,
+      oldLayerData?: unknown
+    ): Record<string, unknown> {
       const dataId = this.config.dataId;
       const dataset = dataId ? datasets?.[dataId] : undefined;
       if (!dataset) {
@@ -309,11 +359,28 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       const { data } = this.updateData(datasets, oldLayerData);
       // Every accessor kepler builds from the channels above, ready for deck.
       const accessors = this.getAttributeAccessors({ dataContainer: dataset.dataContainer });
+      // kepler's time and range filters do not narrow the rows: they run on the
+      // GPU, through the filter extension `getDefaultDeckLayerProps` attaches,
+      // and that extension needs each row's value — the accessor kepler's own
+      // icon and point layers hand it. Without it every row reads as the
+      // domain's start, so the dashboard clock stacks every timestep or hides
+      // them all. A kepler dataset always carries `gpuFilter`; the guard is for
+      // a dataset built by hand.
+      const getFilterValue = dataset.gpuFilter?.filterValueAccessor(dataset.dataContainer)();
 
-      return { data, getPosition: (row: { position: unknown }) => row.position, ...accessors };
+      return {
+        data,
+        getPosition: (row: { position: unknown }) => row.position,
+        ...(getFilterValue ? { getFilterValue } : {}),
+        ...accessors,
+      };
     }
 
-    renderLayer(opts?: { data?: Record<string, unknown>; visible?: boolean }): unknown[] {
+    renderLayer(opts?: {
+      data?: Record<string, unknown>;
+      visible?: boolean;
+      gpuFilter?: Pick<GpuFilter, 'filterValueUpdateTriggers'>;
+    }): unknown[] {
       const layerData = opts?.data;
       const rows = (layerData?.data ?? []) as unknown[];
       if (rows.length === 0) {
@@ -321,9 +388,14 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       }
 
       const visConfig = this.config.visConfig ?? {};
-      const symbol = typeof visConfig.symbol === 'string' ? visConfig.symbol : SYMBOL_FALLBACK;
+      // Resolved once and used twice, for the atlas and for deck's icon lookup.
+      // A saved name this build lacks paints the arrow into the atlas, and deck
+      // still asking for the old name finds nothing there: its empty icon.
+      const symbol = resolveSymbol(visConfig.symbol);
       const convention = visConfig.directionConvention === 'from' ? 'from' : 'towards';
-      const angleOf = layerData?.getAngle as ((row: unknown) => number) | undefined;
+      const angleOf = asRowAccessor<number>(layerData?.getAngle, setting(visConfig.angleDegrees, 0));
+      const sizeOf = asRowAccessor<number>(layerData?.getSize, setting(visConfig.symbolSize, 30));
+      const colorOf = asRowAccessor<unknown>(layerData?.getColor, this.config.color);
 
       const camera = (visConfig.flowContext as { camera?: { zoom: number; latitude: number } } | undefined)?.camera;
       const metresPerPixel = camera ? metresPerPixelAt(camera.latitude, camera.zoom) : 0;
@@ -340,9 +412,16 @@ export function makeSymbolLayer<C extends Constructor<object>>(
                 row.position[1],
               ],
               spacingDegrees,
-              (row) => Number((layerData?.getSize as ((r: unknown) => number) | undefined)?.(row) ?? 0)
+              (row) => Number(sizeOf(row))
             )
           : rows;
+
+      // deck treats any two accessor functions as equal, and kepler hands back
+      // the same row array, so a channel change reaches the GPU only through a
+      // trigger: kepler's own per channel — its column, scale, domain, range
+      // and constant — with this layer's reading of the angle added on top.
+      const channelTriggers = this.getVisualChannelUpdateTriggers();
+      const getFilterValue = layerData?.getFilterValue;
 
       const deckLayer = buildDeckLayer({
         ...this.getDefaultDeckLayerProps(opts ?? {}),
@@ -353,12 +432,17 @@ export function makeSymbolLayer<C extends Constructor<object>>(
         visible: this.config.isVisible !== false && shownInPane(opts),
         getPosition: layerData?.getPosition,
         getIcon: () => symbol,
-        getAngle: (row: unknown) => deckAngle(Number(angleOf?.(row) ?? 0), convention),
-        getSize: layerData?.getSize,
-        getColor: layerData?.getColor,
+        getAngle: (row: unknown) => deckAngle(Number(angleOf(row) ?? 0), convention),
+        getSize: sizeOf,
+        getColor: colorOf,
+        // Left out rather than passed as undefined when there is none, so the
+        // filter extension keeps its own default instead of an empty prop.
+        ...(getFilterValue ? { getFilterValue } : {}),
         updateTriggers: {
+          ...channelTriggers,
           getIcon: [symbol],
-          getAngle: [convention, visConfig.angleDegrees],
+          getAngle: { ...channelTriggers.getAngle, directionConvention: convention },
+          getFilterValue: opts?.gpuFilter?.filterValueUpdateTriggers,
         },
       });
 

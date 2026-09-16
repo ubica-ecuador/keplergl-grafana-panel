@@ -189,6 +189,19 @@ export function symbolNames(): string[] {
 }
 
 /**
+ * The name to draw for the one asked for: itself when this build has that
+ * glyph, the arrow when it does not.
+ *
+ * The atlas falls back on its own (see `glyphsFor`), but deck looks an icon up
+ * by the name the layer gives it, so the layer has to fall back too, to the
+ * same name. Asking deck for a name the atlas does not carry draws deck's empty
+ * icon: nothing, and no error.
+ */
+export function resolveSymbol(name: unknown): string {
+  return typeof name === 'string' && symbolCatalogue().has(name) ? name : SYMBOL_FALLBACK;
+}
+
+/**
  * The glyphs behind a list of names: deduplicated, ordered, and never empty.
  *
  * A name this build does not have draws the arrow rather than nothing at all —

@@ -1,0 +1,245 @@
+import { Layer } from '@kepler.gl/layers';
+import { processRowObject } from '@kepler.gl/processors';
+import KeplerTable from '@kepler.gl/table';
+import { applyFilterFieldName, getDefaultFilter } from '@kepler.gl/utils';
+
+import { deckAngle, makeSymbolLayer } from './symbolLayer';
+
+/**
+ * The symbol layer on kepler's real base `Layer`, over a real `KeplerTable`.
+ *
+ * `symbolLayer.test.ts` runs the layer on a hand-written stand-in, and that
+ * stand-in is kinder than kepler in every way that matters: its accessors are
+ * always functions, it has no GPU filter, and it never throws. Every defect this
+ * file pins survived there and appeared the moment the layer met the real class
+ * — a constant where a function was assumed, a clock that filtered nothing, a
+ * missing size that became a colour. So these tests build the dataset the way
+ * kepler does, bind channels through kepler's own `updateLayerVisualChannel`,
+ * and read what would reach deck.
+ */
+
+const built: Array<Record<string, any>> = [];
+const SymbolLayer = makeSymbolLayer(Layer as never, (props) => {
+  built.push(props);
+  return { props };
+}) as unknown as new (props: Record<string, unknown>) => any;
+
+/** Two timesteps a minute apart, as the dashboard clock would see them. */
+const T0 = Date.UTC(2026, 8, 15, 12, 0);
+const T1 = T0 + 60_000;
+
+/**
+ * Three stations, each reporting at both timesteps. The third never reports a
+ * speed, and the second's later speed is `NaN` — which, unlike a null, reaches
+ * kepler's data container as it is.
+ *
+ * Epoch milliseconds, because that is what `toKeplerRows` hands kepler for a
+ * Grafana time column — and what kepler's analyser recognises as a timestamp.
+ */
+const rows = [
+  { time: T0, latitude: -2.9, longitude: -79.0, heading: 90, speed: 4, name: 'Cuenca' },
+  { time: T0, latitude: -0.19, longitude: -78.48, heading: 180, speed: 9, name: 'Quito' },
+  { time: T0, latitude: -2.17, longitude: -79.92, heading: 270, speed: null, name: 'Guayaquil' },
+  { time: T1, latitude: -2.9, longitude: -79.0, heading: 95, speed: 5, name: 'Cuenca' },
+  { time: T1, latitude: -0.19, longitude: -78.48, heading: 185, speed: NaN, name: 'Quito' },
+  { time: T1, latitude: -2.17, longitude: -79.92, heading: 275, speed: null, name: 'Guayaquil' },
+];
+
+function stationsTable(): InstanceType<typeof KeplerTable> {
+  const table = new KeplerTable({ info: { id: 'stations', label: 'Stations' }, color: [0, 92, 255] });
+  table.updateSchema(processRowObject(rows) as never);
+  return table;
+}
+
+function fieldOf(table: InstanceType<typeof KeplerTable>, name: string): any {
+  return table.fields.find((field) => field.name === name);
+}
+
+/** A symbol layer on the table, with the channels named bound the way kepler's merger binds them. */
+function symbolLayer(table: InstanceType<typeof KeplerTable>, channels: { angle?: string; size?: string } = {}) {
+  const column = (name: string) => ({ value: name, fieldIdx: table.getColumnFieldIdx(name) });
+  const layer = new SymbolLayer({
+    id: 'symbols',
+    dataId: table.id,
+    columns: { lat: column('latitude'), lng: column('longitude') },
+  });
+
+  if (channels.angle) {
+    layer.updateLayerConfig({ angleField: fieldOf(table, channels.angle), angleScale: 'linear' });
+    layer.updateLayerVisualChannel(table, 'angle');
+  }
+  if (channels.size) {
+    layer.updateLayerConfig({ sizeField: fieldOf(table, channels.size), sizeScale: 'sqrt' });
+    layer.updateLayerVisualChannel(table, 'size');
+  }
+  return layer;
+}
+
+/** What kepler's `renderDeckGlLayer` hands a layer, minus the parts no test here reads. */
+function render(layer: any, table: InstanceType<typeof KeplerTable>) {
+  const data = layer.formatLayerData({ [table.id]: table });
+  built.length = 0;
+  layer.renderLayer({
+    data,
+    gpuFilter: table.gpuFilter,
+    mapState: { zoom: 6, latitude: -2, longitude: -79 },
+    idx: 0,
+    visible: true,
+  });
+  return built[0];
+}
+
+beforeEach(() => {
+  built.length = 0;
+});
+
+describe('symbol layer on kepler’s real Layer', () => {
+  it('turns every symbol to the fixed angle when no rotation column is bound', () => {
+    // kepler hands over the channel's *constant* here, not a function: calling
+    // it per row was a TypeError deck swallowed, and the layer drew nothing.
+    const table = stationsTable();
+    const layer = symbolLayer(table);
+    layer.updateLayerVisConfig({ angleDegrees: 45 });
+
+    const props = render(layer, table);
+
+    expect(props.data.length).toBeGreaterThan(0);
+    for (const row of props.data) {
+      expect(props.getAngle(row)).toBe(deckAngle(45, 'towards'));
+    }
+  });
+
+  it('does not make kepler warn that it has no accessor for the angle', () => {
+    // An angle of 0 is falsy, and kepler logs "Failed to provide accessor
+    // function" for any falsy channel value — on every data update.
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      const table = stationsTable();
+      render(symbolLayer(table), table);
+
+      const messages = warn.mock.calls.map((call) => String(call[0]));
+      expect(messages.filter((message) => message.includes('Failed to provide accessor'))).toEqual([]);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('reads a bound rotation column straight through, in degrees', () => {
+    const table = stationsTable();
+    const layer = symbolLayer(table, { angle: 'heading' });
+
+    const props = render(layer, table);
+    const first = props.data.find((row: { index: number }) => row.index === 0);
+
+    expect(props.getAngle(first)).toBe(deckAngle(90, 'towards'));
+  });
+
+  it('thins symbols without throwing when declutter is on and no size column is bound', () => {
+    // The size channel's constant reached `thinBySpacing` as if it were a
+    // function, and the throw escaped kepler into Grafana's error boundary.
+    const table = stationsTable();
+    const layer = symbolLayer(table);
+    layer.updateLayerVisConfig({
+      declutter: true,
+      declutterSpacingPx: 40,
+      flowContext: { camera: { zoom: 6, latitude: -2 } },
+    });
+
+    expect(() => render(layer, table)).not.toThrow();
+    expect(built).toHaveLength(1);
+    for (const row of built[0].data) {
+      expect(built[0].getSize(row)).toBe(layer.config.visConfig.symbolSize);
+    }
+  });
+
+  it('draws a symbol whose size is missing at the fixed size, rather than not at all', () => {
+    // Without a null value of its own the channel fell back to kepler's
+    // no-value *colour*, [0, 0, 0, 0], which deck read as a size of nothing.
+    const table = stationsTable();
+    const layer = symbolLayer(table, { size: 'speed' });
+    layer.updateLayerVisConfig({ symbolSize: 22 });
+
+    const props = render(layer, table);
+    const row = (index: number) => props.data.find((candidate: { index: number }) => candidate.index === index);
+
+    // Guayaquil's null, and Quito's later NaN.
+    expect(props.getSize(row(2))).toBe(22);
+    expect(props.getSize(row(4))).toBe(22);
+    // A real speed still goes through the channel's scale.
+    expect(props.getSize(row(0))).toBeGreaterThanOrEqual(12);
+    expect(props.getSize(row(1))).toBeGreaterThan(props.getSize(row(0)));
+  });
+
+  it('hands deck a filter value per row, so the dashboard clock separates timesteps', () => {
+    const table = stationsTable();
+    const layer = symbolLayer(table);
+
+    // A time filter the way kepler builds one, windowed on the first timestep.
+    const { filter } = applyFilterFieldName(
+      getDefaultFilter({ dataId: table.id, id: 'clock' }) as never,
+      { [table.id]: table } as never,
+      table.id,
+      'time'
+    );
+    const clock = { ...(filter as any), gpuChannel: [0], value: [T0, T0 + 30_000] };
+    table.filterTable([clock] as never, [layer], {});
+
+    const props = render(layer, table);
+    const [low, high] = props.filterRange[0];
+    const shown = props.data.filter((row: unknown) => {
+      const value = props.getFilterValue(row)[0];
+      return value >= low && value <= high;
+    });
+
+    expect(clock.gpu).toBe(true);
+    // Three stations, not six: the second timestep is outside the window.
+    expect(shown.map((row: { index: number }) => row.index).sort()).toEqual([0, 1, 2]);
+    expect(props.updateTriggers.getFilterValue).toBe(table.gpuFilter.filterValueUpdateTriggers);
+  });
+
+  it('gives deck an update trigger for every channel, so changing a column redraws', () => {
+    const table = stationsTable();
+    const layer = symbolLayer(table, { angle: 'heading' });
+
+    const before = render(layer, table).updateTriggers;
+    layer.updateLayerConfig({ sizeField: fieldOf(table, 'speed'), sizeScale: 'sqrt' });
+    layer.updateLayerVisualChannel(table, 'size');
+    const after = render(layer, table).updateTriggers;
+
+    expect(before.getSize).toBeDefined();
+    expect(before.getColor).toBeDefined();
+    expect(after.getSize).not.toEqual(before.getSize);
+    // The angle keeps the layer's own reading on top of the channel's.
+    expect(after.getAngle).toMatchObject({ angleField: expect.objectContaining({ name: 'heading' }) });
+    expect(after.getIcon).toEqual(before.getIcon);
+  });
+
+  it('changes the angle trigger with the fixed angle, the rotation column and the convention', () => {
+    const table = stationsTable();
+    const layer = symbolLayer(table);
+
+    const unbound = render(layer, table).updateTriggers.getAngle;
+    layer.updateLayerVisConfig({ angleDegrees: 30 });
+    const fixed = render(layer, table).updateTriggers.getAngle;
+    layer.updateLayerConfig({ angleField: fieldOf(table, 'heading'), angleScale: 'linear' });
+    layer.updateLayerVisualChannel(table, 'angle');
+    const bound = render(layer, table).updateTriggers.getAngle;
+    layer.updateLayerVisConfig({ directionConvention: 'from' });
+    const turned = render(layer, table).updateTriggers.getAngle;
+
+    expect(fixed).not.toEqual(unbound);
+    expect(bound).not.toEqual(fixed);
+    expect(turned).not.toEqual(bound);
+  });
+
+  it('draws the fallback glyph, and asks deck for it by name, when the saved shape is unknown', () => {
+    const table = stationsTable();
+    const layer = symbolLayer(table);
+    layer.updateLayerVisConfig({ symbol: 'a-glyph-no-build-has' });
+
+    const props = render(layer, table);
+
+    expect(props.symbols).toEqual(['arrow']);
+    expect(props.getIcon(props.data[0])).toBe('arrow');
+  });
+});
