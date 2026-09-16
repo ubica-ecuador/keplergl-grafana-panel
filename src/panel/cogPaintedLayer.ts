@@ -1,4 +1,5 @@
 import { cogTileTemplate } from '../data/cogTileUrl';
+import { stacTileTemplate } from '../data/stacTileUrl';
 import { shownInPane } from './paneVisibility';
 
 /**
@@ -27,6 +28,10 @@ export interface CogPaintedMetadata {
   serverUrl: string;
   /** The COG the dataset opened on, signature and all. */
   sourceUrl: string;
+  /** Assets to composite, in RGB order, when the source is a STAC item. */
+  assets?: string[];
+  /** One `min,max` per asset, in the same order. */
+  rescale?: string[];
 }
 
 
@@ -87,10 +92,18 @@ export function cogPaintedDeckProps(args: {
     return null;
   }
 
-  const template = cogTileTemplate({
-    serverUrl: metadata.serverUrl,
-    sourceUrl: scene || metadata.sourceUrl,
-  });
+  // Two routers of the same server: a file is drawn by `/cog`, a choice of
+  // bands across an item's several files by `/stac`. The metadata says which
+  // this is by whether it names assets.
+  const source = scene || metadata.sourceUrl;
+  const template = metadata.assets?.length
+    ? stacTileTemplate({
+        serverUrl: metadata.serverUrl,
+        itemUrl: source,
+        assets: metadata.assets,
+        rescale: metadata.rescale,
+      })
+    : cogTileTemplate({ serverUrl: metadata.serverUrl, sourceUrl: source });
   if (!template) {
     return null;
   }

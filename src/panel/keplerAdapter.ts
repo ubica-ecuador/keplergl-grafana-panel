@@ -221,7 +221,11 @@ function rasterMetadata(raster: RasterDataset) {
   // tile request from these two values and nothing fetches a STAC document, so
   // none of the `rasterServer*` settings below apply to it.
   if (raster.kind === 'painted') {
-    return { serverUrl: raster.tileServerUrls[0] ?? '', sourceUrl: raster.sourceUrl };
+    return {
+      serverUrl: raster.tileServerUrls[0] ?? '',
+      sourceUrl: raster.sourceUrl,
+      ...(raster.assets?.length ? { assets: raster.assets, rescale: raster.rescale } : {}),
+    };
   }
 
   if (raster.kind === 'pmtiles') {
@@ -359,7 +363,12 @@ export function swapRasterScene(store: Store, dispatch: Dispatch, raster: Raster
   // lists `_stacQuery` among its triggers, which is the whole reason the swap
   // below works there. So an archive takes the rebuild instead, which costs a
   // new tile source and buys a scene that actually changes.
-  if (raster.kind === 'pmtiles') {
+  // A `stac` raster cannot be swapped in place either, and for a different
+  // reason than an archive: the swap re-points one asset href, and an item's
+  // scenes differ in every asset it has, as well as in bbox when the next pass
+  // falls on another MGRS tile. Rebuilding costs a layer and buys a scene that
+  // is actually the one asked for.
+  if (raster.kind === 'pmtiles' || raster.kind === 'stac') {
     return false;
   }
 

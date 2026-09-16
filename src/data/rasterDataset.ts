@@ -134,6 +134,17 @@ export function pickScene(scenes: RasterScene[], window: SceneWindow | null): Ra
 }
 
 /**
+ * What a raster's styling amounts to, as one comparable value.
+ *
+ * The timeline dresses a layer once and then leaves it alone, so the user's own
+ * changes survive. A band combination changes the styling from outside, and
+ * this is how the timeline tells "already dressed" from "dressed differently".
+ */
+export function rasterStyleKey(raster: RasterDataset): string {
+  return `${raster.preset ?? ''}|${raster.colormap ?? ''}`;
+}
+
+/**
  * The same raster dataset, re-pointed at whichever scene a window selects.
  *
  * Returns null when the window contains no scene at all, which is a real state

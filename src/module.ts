@@ -149,6 +149,24 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       defaultValue: false,
     })
     .addSelect({
+      path: 'rasterBands',
+      name: 'Raster bands',
+      description:
+        'Which bands of a scene to draw, for a query that also returns a raster_item_url column pointing at its STAC item. True colour draws the composed image the query already names. The composites are built by the tile server in one request; the indices are computed in the browser from two bands and coloured with a ramp. A dashboard variable is interpolated here, so a dropdown can drive it.',
+      category: ['Map'],
+      defaultValue: '',
+      settings: {
+        allowCustomValue: true,
+        options: [
+          { value: '', label: 'True colour (the composed image)' },
+          { value: 'forestBurn', label: 'Forest burn — SWIR2 · NIR · blue' },
+          { value: 'infrared', label: 'Infrared — NIR · red · green' },
+          { value: 'nbr', label: 'NBR — burn severity' },
+          { value: 'ndmi', label: 'NDMI — moisture' },
+        ],
+      },
+    })
+    .addSelect({
       path: 'rasterColormap',
       name: 'Raster colour ramp',
       description:

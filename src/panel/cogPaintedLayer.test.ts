@@ -48,6 +48,44 @@ describe('cogPaintedDeckProps', () => {
   });
 });
 
+describe('cogPaintedDeckProps with STAC assets', () => {
+  const ITEM = 'https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a/items/S2C_10SEJ_20260913_0_L2A';
+
+  it('asks the /stac router when the dataset names assets', () => {
+    const props = cogPaintedDeckProps({
+      id: 'grafana-A-raster',
+      metadata: {
+        serverUrl: 'https://titiler.ubica.ec',
+        sourceUrl: ITEM,
+        assets: ['swir22', 'nir', 'blue'],
+        rescale: ['0,4000', '0,4000', '0,4000'],
+      },
+    })!;
+    expect(props.data).toContain('/stac/tiles/WebMercatorQuad/{z}/{x}/{y}.png?');
+    expect((props.data as string).match(/[?&]assets=/g)).toHaveLength(3);
+    // deck caches against the triggers it was told to watch: the url must be one.
+    expect((props.updateTriggers as any).getTileData).toBe(props.data);
+  });
+
+  it('keeps asking the /cog router when it does not', () => {
+    const props = cogPaintedDeckProps({
+      id: 'grafana-A-raster',
+      metadata: { serverUrl: 'https://titiler.ubica.ec', sourceUrl: 'https://x/land-cover.tif' },
+    })!;
+    expect(props.data).toContain('/cog/tiles/');
+    expect(props.data).not.toContain('/stac/');
+  });
+
+  it('draws the scene the timeline chose, not the one the dataset opened on', () => {
+    const props = cogPaintedDeckProps({
+      id: 'grafana-A-raster',
+      metadata: { serverUrl: 'https://t', sourceUrl: ITEM, assets: ['nir'] },
+      scene: `${ITEM}-later`,
+    })!;
+    expect(props.data).toContain(encodeURIComponent(`${ITEM}-later`));
+  });
+});
+
 /** A stand-in for kepler's base Layer, with only what the subclass touches. */
 class FakeBaseLayer {
   config: { visConfig: Record<string, unknown>; isVisible?: boolean; dataId?: string } = {

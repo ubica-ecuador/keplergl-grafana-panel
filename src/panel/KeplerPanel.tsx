@@ -6,6 +6,7 @@ import { KeplerPanelOptions } from '../types';
 import { framesToDatasets } from '../data/framesToDatasets';
 import { framesToEsri } from '../data/esriDataset';
 import { framesToRasters } from '../data/rasterDataset';
+import { resolveBandCombination } from '../data/bandCombination';
 import { framesToWms } from '../data/wmsDataset';
 import { framesToZarr } from '../data/zarrDataset';
 import { toKeplerTheme } from '../data/keplerTheme';
@@ -69,6 +70,13 @@ export function KeplerPanel({
     [data.series, fieldMappings, options.flowRenderMode, options.tripLayerMode]
   );
 
+  // Interpolated like the custom basemap url, and for the same reason: a
+  // dashboard variable is how a dropdown reaches a panel option.
+  const bands = useMemo(
+    () => resolveBandCombination(replaceVariables(options.rasterBands ?? '')),
+    [options.rasterBands, replaceVariables]
+  );
+
   // Rasters travel separately from the row datasets all the way to the adapter:
   // a scene has no rows, and `processRowObject([])` returns null, so anything
   // riding in the row list is dropped on the way into kepler.
@@ -78,8 +86,9 @@ export function KeplerPanel({
         tileServerUrls: [(options.rasterServerUrl || DEFAULT_RASTER_SERVER_URL).trim()],
         colormap: options.rasterColormap || undefined,
         painted: options.rasterPainted,
+        bands,
       }),
-    [data.series, fieldMappings, options.rasterServerUrl, options.rasterColormap, options.rasterPainted]
+    [data.series, fieldMappings, options.rasterServerUrl, options.rasterColormap, options.rasterPainted, bands]
   );
 
   // A WMS travels the same separate road, and for the same reason: what the

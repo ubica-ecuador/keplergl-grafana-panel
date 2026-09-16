@@ -1,6 +1,6 @@
 import { FieldType, toDataFrame } from '@grafana/data';
 
-import { framesToRasters, isPanelRasterId, pickScene, rasterForWindow } from './rasterDataset';
+import { framesToRasters, isPanelRasterId, pickScene, rasterForWindow, rasterStyleKey } from './rasterDataset';
 
 const VISUAL = 'https://sentinel-cogs.s3.us-west-2.amazonaws.com/…/TCI.tif';
 const ITEM = 'https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a/items/S2C_10SEJ_20260913_0_L2A';
@@ -519,5 +519,22 @@ describe('framesToRasters — band combinations do not overreach', () => {
     expect(raster.sourceUrl).toBe(archive);
     expect(raster.tileServerUrls).toEqual([]);
     expect(raster.assets).toBeUndefined();
+  });
+});
+
+describe('rasterStyleKey', () => {
+  it('changes when the preset or the ramp changes, so the style is re-applied', () => {
+    const base = { id: 'a', label: 'a', kind: 'stac', sourceUrl: 'u', metadataUrl: 'u', tileServerUrls: [], scenes: [] } as any;
+    expect(rasterStyleKey({ ...base, preset: 'nbr', colormap: 'rdylgn' })).not.toBe(
+      rasterStyleKey({ ...base, preset: 'ndmi', colormap: 'rdylbu' })
+    );
+    expect(rasterStyleKey({ ...base, preset: 'nbr', colormap: 'rdylgn' })).toBe(
+      rasterStyleKey({ ...base, preset: 'nbr', colormap: 'rdylgn' })
+    );
+  });
+
+  it('is stable for a raster with no style of its own', () => {
+    const bare = { id: 'a', label: 'a', kind: 'cog', sourceUrl: 'u', metadataUrl: 'u', tileServerUrls: [], scenes: [] } as any;
+    expect(rasterStyleKey(bare)).toBe(rasterStyleKey(bare));
   });
 });

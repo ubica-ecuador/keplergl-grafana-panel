@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { Store } from 'redux';
 
-import { rasterForWindow, type RasterDataset } from '../data/rasterDataset';
+import { rasterForWindow, rasterStyleKey, type RasterDataset } from '../data/rasterDataset';
 import {
   applyRasterStyle,
   ensureTimeFilter,
@@ -70,9 +70,8 @@ export function useRasterTimeline({ store, isReady, rasters, timeVariables }: Pa
   }, [timeVariables]);
 
   /**
-   * Layers already given their colour ramp, so the user can then change it
-   * freely. Keyed by layer id rather than by dataset: should a layer ever be
-   * rebuilt, the ramp is owed to the new one too.
+   * Layers already given their style, so the user can then change it freely.
+   * Keyed by layer id *and* style — see the loop below for why.
    */
   const dressed = useRef(new Set<string>());
 
@@ -103,23 +102,34 @@ export function useRasterTimeline({ store, isReady, rasters, timeVariables }: Pa
       }
     }
 
-    // The configured ramp, applied once per layer — kepler creates the layer
-    // asynchronously, so this is retried on each store change until it lands.
-    // Once only: after that the ramp is the user's to change from the layer
-    // panel, and re-imposing it on every store change would undo them.
+    // The configured ramp and preset, applied once per layer *and style* —
+    // kepler creates the layer asynchronously, so this is retried on each
+    // store change until it lands. After that the style is the user's to
+    // change from the layer panel, and re-imposing it on every store change
+    // would undo them — except a band combination changes the style from
+    // outside, and the layer must be dressed again when that happens, which is
+    // why the key below includes the style and not only the layer.
     for (const raster of series) {
       // Nothing to dress on an archive: its tiles are images already drawn, so
       // kepler offers opacity and nothing else for them. The ramp was chosen
       // when the file was built.
       // Neither an archive nor a painted COG is coloured in the browser: both
       // arrive as finished pictures, so kepler's colormap has nothing to act on.
-      if (!raster.colormap || raster.kind === 'pmtiles' || raster.kind === 'painted') {
+      if ((!raster.colormap && !raster.preset) || raster.kind === 'pmtiles' || raster.kind === 'painted') {
         continue;
       }
       const layerId = readRasterLayerId(store, raster.id);
-      if (layerId && !dressed.current.has(layerId)) {
-        if (applyRasterStyle(store, store.dispatch, raster.id, { colormapId: raster.colormap })) {
-          dressed.current.add(layerId);
+      // Keyed by style, not by layer: dressing once per layer is what keeps the
+      // user's own changes, and a band combination changes the style from
+      // outside — so the same layer must be dressed again when it changes.
+      const key = layerId ? `${layerId}|${rasterStyleKey(raster)}` : null;
+      if (key && !dressed.current.has(key)) {
+        const style = {
+          ...(raster.colormap ? { colormapId: raster.colormap } : {}),
+          ...(raster.preset ? { preset: raster.preset } : {}),
+        };
+        if (applyRasterStyle(store, store.dispatch, raster.id, style)) {
+          dressed.current.add(key);
         }
       }
     }
