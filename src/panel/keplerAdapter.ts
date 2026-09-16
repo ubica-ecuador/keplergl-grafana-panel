@@ -551,6 +551,10 @@ export function readFlowFieldLayers(store: Store): FlowFieldLayerState[] {
       const altitude = config.columns?.altitude;
       return {
         id: layer.id,
+        // Carried through so `outdatedFlowContexts` can tell a level (flow
+        // field, vector field) from a layer that merely receives the camera
+        // (symbol) — see `isStackedLevel` in `flowFieldContext.ts`.
+        type: (layer as { type?: string }).type,
         altitudeMeters: levelHeight(
           altitude?.value,
           constantAt(dataset, altitude?.fieldIdx),
