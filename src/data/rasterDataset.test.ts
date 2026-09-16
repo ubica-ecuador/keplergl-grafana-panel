@@ -392,6 +392,16 @@ describe('framesToRasters with band combinations', () => {
     expect(burn.metadataUrl).not.toBe(infrared.metadataUrl);
   });
 
+  it('leaves a composite without a ramp, however the panel option is set', () => {
+    // The picture arrives already coloured: the server composited the bands and
+    // stretched them, so a ramp has nothing left in the browser to act on and
+    // `rasterDressKey` never applies one. Carried anyway it was a dead field on
+    // the dataset, which reads as a style someone forgot to wire up.
+    const [raster] = framesToRasters([sceneFrame()], {}, { ...BAND_OPTS, bands: 'forestBurn', colormap: 'blues' });
+    expect(raster.kind).toBe('painted');
+    expect(raster.colormap).toBeUndefined();
+  });
+
   it('hands an index to kepler as the item itself, with its preset and ramp', () => {
     const [raster] = framesToRasters([sceneFrame()], {}, { ...BAND_OPTS, bands: 'nbr' });
     expect(raster.kind).toBe('stac');

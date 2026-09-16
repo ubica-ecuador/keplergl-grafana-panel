@@ -292,7 +292,20 @@ export function framesToRasters(
       tileServerUrls: kind === 'pmtiles' ? [] : opts.tileServerUrls,
       ...(paintedAssets ? { assets: paintedAssets, rescale: paintedRescale } : {}),
       ...(kind === 'stac' && recipe.preset ? { preset: recipe.preset } : {}),
-      ...(recipe.colormap ? { colormap: recipe.colormap } : opts.colormap ? { colormap: opts.colormap } : {}),
+      // Never on a painted raster, whichever of the two it is. The image
+      // arrives already coloured — the server read the file's own palette, or
+      // composited the bands and stretched them — so there is nothing left in
+      // the browser for a ramp to act on: `rasterDressKey` skips the painted
+      // kinds outright, and the layer builds its request from the metadata,
+      // which carries no colormap. Carried anyway it was a field nothing read,
+      // which is the kind of thing the next reader spends an hour on.
+      ...(kind === 'painted'
+        ? {}
+        : recipe.colormap
+          ? { colormap: recipe.colormap }
+          : opts.colormap
+            ? { colormap: opts.colormap }
+            : {}),
       scenes,
     });
   });

@@ -266,10 +266,25 @@ function readRasterLayerId(store: Store, dataId: string): string | null {
 /**
  * The scene a raster dataset is currently drawing, or null if it holds none.
  *
- * Read from wherever that dataset's scene actually lives, which is not the
- * same field for both formats. For a COG it is the asset's href: `metadataUrl`
- * keeps naming the STAC document the dataset was created from, whichever scene
- * it ended up pointing at. For an archive `metadataUrl` *is* the scene.
+ * Read from wherever that dataset's scene actually lives, which is a different
+ * place for each of the three formats.
+ *
+ * - An archive: `metadataUrl` *is* the scene.
+ * - A painted COG: the layer's `cogScene`, falling back to the dataset's
+ *   `sourceUrl` — the exact pair `cogPaintedDeckProps` builds its request from,
+ *   and that is the point: what is being asked is "what is on screen", so the
+ *   answer has to come from the same two values the picture does. The dataset's
+ *   `sourceUrl` alone would be wrong after the first swap, since the swap moves
+ *   `cogScene` and leaves the metadata on the scene the dataset opened with.
+ * - Anything else: the asset's href. `metadataUrl` there keeps naming the STAC
+ *   document the dataset was created from, whichever scene it ended up on.
+ *
+ * The painted branch used to fall into the last one and always answer null —
+ * `metadata.assets` is this plugin's `string[]`, not kepler's
+ * `Record<string, {href}>` — so the "already showing" short-circuit never fired
+ * for a painted raster and every reconcile re-dispatched the same scene. Silent
+ * rather than harmful, since a `visConfig` change is not one of the slices the
+ * reconcile watches, so it could not feed itself.
  */
 function readRasterScene(store: Store, raster: RasterDataset): string | null {
   const state = store.getState() as {
@@ -277,15 +292,24 @@ function readRasterScene(store: Store, raster: RasterDataset): string | null {
       string,
       {
         visState?: {
-          datasets?: Record<string, { metadata?: { metadataUrl?: string; assets?: Record<string, { href?: string }> } }>;
+          datasets?: Record<
+            string,
+            { metadata?: { metadataUrl?: string; sourceUrl?: string; assets?: Record<string, { href?: string }> } }
+          >;
+          layers?: Array<{ config?: { dataId?: string; visConfig?: { cogScene?: unknown } } }>;
         };
       }
     >;
   };
-  const datasets = Object.values(state.keplerGl ?? {})[0]?.visState?.datasets ?? {};
-  const metadata = datasets[raster.id]?.metadata;
+  const visState = Object.values(state.keplerGl ?? {})[0]?.visState;
+  const metadata = (visState?.datasets ?? {})[raster.id]?.metadata;
   if (raster.kind === 'pmtiles') {
     return metadata?.metadataUrl ?? null;
+  }
+  if (raster.kind === 'painted') {
+    const layer = (visState?.layers ?? []).find((candidate) => candidate.config?.dataId === raster.id);
+    const scene = layer?.config?.visConfig?.cogScene;
+    return (typeof scene === 'string' && scene) || metadata?.sourceUrl || null;
   }
   const asset = Object.values(metadata?.assets ?? {}).find((candidate) => typeof candidate?.href === 'string');
   return asset?.href ?? null;
