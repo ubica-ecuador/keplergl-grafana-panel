@@ -1,7 +1,6 @@
 import { IconLayer } from '@deck.gl/layers';
 
-import { glyphCatalogue, IconFrame, paintAtlas, Painter } from './vectorFieldGlyphs';
-import { createAtlasCanvas } from './symbolGlyphs';
+import { createAtlasCanvas, glyphCatalogue, IconFrame, paintAtlas, Painter } from './vectorFieldGlyphs';
 
 /**
  * The deck.gl layer that draws a vector field's symbols.

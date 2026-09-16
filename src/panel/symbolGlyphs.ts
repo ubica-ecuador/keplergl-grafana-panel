@@ -1,4 +1,13 @@
-import { arrowGlyph, ATLAS_COLUMNS, atlasSize, CELL, drawGlyph, Glyph, IconFrame, paintAtlas, Painter } from './vectorFieldGlyphs';
+import {
+  arrowGlyph,
+  ATLAS_COLUMNS,
+  CELL,
+  drawGlyph,
+  Glyph,
+  IconFrame,
+  paintAtlas,
+  Painter,
+} from './vectorFieldGlyphs';
 import keplerIcons from '../icons/svg-icons.json';
 import maki from '../icons/maki-paths.json';
 
@@ -208,25 +217,4 @@ export function paintGlyphs(
       drawGlyph(anyGlyph, symbolCtx, x, y);
     }
   });
-}
-
-/**
- * Creates a canvas sized and ready for painting an atlas, or null if a 2D
- * context is not available.
- *
- * Both symbol and vector field layers use this to create their atlases. Returns
- * null rather than throwing when there is no 2D context to paint into — a
- * browser out of canvas contexts, say. Nothing is cached on that path, so the
- * next call tries again rather than remembering the failure.
- */
-export function createAtlasCanvas(count: number): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
-  const { width, height } = atlasSize(count);
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    return null;
-  }
-  return { canvas, ctx };
 }

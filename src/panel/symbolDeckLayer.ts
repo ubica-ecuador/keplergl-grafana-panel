@@ -1,7 +1,7 @@
 import { IconLayer } from '@deck.gl/layers';
 
-import { IconFrame } from './vectorFieldGlyphs';
-import { createAtlasCanvas, glyphsFor, paintGlyphs, SymbolPainter } from './symbolGlyphs';
+import { createAtlasCanvas, IconFrame } from './vectorFieldGlyphs';
+import { glyphsFor, paintGlyphs, SymbolPainter } from './symbolGlyphs';
 
 /**
  * The deck.gl layer that draws a symbol per row.

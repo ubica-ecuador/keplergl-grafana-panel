@@ -155,7 +155,12 @@ export function paintAtlas<T extends Glyph>(
   glyphs: T[],
   ctx: Painter,
   columns = ATLAS_COLUMNS,
-  draw: (glyph: T, ctx: Painter, x: number, y: number) => void = drawGlyph as (glyph: T, ctx: Painter, x: number, y: number) => void
+  draw: (glyph: T, ctx: Painter, x: number, y: number) => void = drawGlyph as (
+    glyph: T,
+    ctx: Painter,
+    x: number,
+    y: number
+  ) => void
 ): Record<string, IconFrame> {
   const mapping: Record<string, IconFrame> = {};
   ctx.strokeStyle = '#ffffff';
@@ -172,4 +177,25 @@ export function paintAtlas<T extends Glyph>(
   });
 
   return mapping;
+}
+
+/**
+ * Creates a canvas sized and ready for painting an atlas, or null if a 2D
+ * context is not available.
+ *
+ * Both symbol and vector field layers use this to create their atlases. Returns
+ * null rather than throwing when there is no 2D context to paint into — a
+ * browser out of canvas contexts, say. Nothing is cached on that path, so the
+ * next call tries again rather than remembering the failure.
+ */
+export function createAtlasCanvas(count: number): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
+  const { width, height } = atlasSize(count);
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return null;
+  }
+  return { canvas, ctx };
 }
