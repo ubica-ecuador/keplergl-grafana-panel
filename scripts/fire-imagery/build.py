@@ -109,9 +109,10 @@ def variables():
                         'Which bands of each scene to draw. Forest burn shows the scar and the active '
                         'front through smoke; the indices measure rather than illustrate.'),
         custom_variable('lookback', 'Look back (days)', '30,60,90,180', '90',
-                        'How far back to look for the last clear image before the fire. The days right '
-                        'before a fire are often smoky or cloudy, so this is deliberately wide; the date '
-                        'found is always shown.'),
+                        'How far back to look for scenes before the fire. The days right before a fire '
+                        'are often smoky or cloudy, so this is deliberately wide. The before side then '
+                        'draws the clearest of the six most recent scenes found, so it never reaches back '
+                        'into another season; the date drawn is always shown.'),
         centroid_variable('aLat', 'Imagery box centre lat', 'ST_Y'),
         centroid_variable('aLng', 'Imagery box centre lng', 'ST_X'),
     ]
@@ -253,9 +254,10 @@ def sentinel_map_element(version):
     ]
     return panel(
         22, 'Sentinel-2 — the scene over your box',
-        'The map opens split by a swipe curtain — drag it to compare. The left side is the last clear '
-        'scene found looking back before the fire; the right side is the clearest scene from the '
-        'paused window to the days after it. Pick another scene for either side in the table below — '
+        'The map opens split by a swipe curtain — drag it to compare. The left side is the clearest of '
+        'the six most recent scenes before the fire (the six the table below lists); the right side is '
+        'the clearest scene from the paused window to the days after it. Pick another scene for either '
+        'side in the table below — '
         'the days right before a fire are often smoky, so widen "Look back (days)" if the Before '
         'figure in "Your box in the catalogue" says none in range. Orange is your box; white lines '
         'are the after-side scene footprints.',
@@ -306,9 +308,10 @@ def contact_sheet_element():
                'footer': {'show': False, 'countRows': False, 'fields': '', 'reducer': ['sum']}}
     return panel(
         23, 'Scenes of your box, as pictures',
-        'Every Sentinel-2 scene that passes the cloud and coverage cuts, oldest first — Before rows are the '
-        'last-clear-image search, After rows are the catalogue you actually browse. Each thumbnail is your box '
-        'cut out of that scene by the tile server. The Map column marks the two scenes the map is drawing '
+        'Sentinel-2 scenes that pass the cloud and coverage cuts, oldest first. Before rows are the six most '
+        'recent scenes before the fire — the ones the left side picks its clearest from; After rows are the '
+        'catalogue you actually browse, up to 24. Each thumbnail is your box cut out of that scene by the tile '
+        'server. The Map column marks the two scenes the map is drawing '
         'right now, whether you picked them or not: ◀ on the left of the curtain, ▶ on the right. Click a row '
         'to show that scene on its side of the split map, keeping the other side as it was.',
         [duck_query('A', panel_sql('contact_sheet'))], 'table', '13.2.0', options, field_config)
@@ -333,8 +336,9 @@ def figures_element():
                'showPercentChange': False, 'textMode': 'value_and_name', 'wideLayout': False}
     return panel(
         24, 'Your box in the catalogue',
-        'Box covered is what all the listed scenes see together. Before is the date of the last clear scene '
-        'found looking back — widen "Look back (days)" if it says none in range. Matched is what the catalogue '
+        'Box covered is what all the listed scenes see together. Before is the date of the scene the map draws '
+        'on the left: the clearest of the six most recent before the fire — widen "Look back (days)" if it '
+        'says none in range. Matched is what the catalogue '
         'found; if Returned is lower, the list was cut. HTTP other than 200 means the search failed, not that '
         'there are no scenes.',
         [duck_query('A', panel_sql('figures'))], 'stat', '13.2.0', options, field_config)
@@ -367,8 +371,8 @@ def fire_map_element(panel8):
         'Play the days, pause on the one you care about, and draw a rectangle with the map draw tool. '
         'Draw it by pressing, dragging and releasing; a click, move, click does not close it on this map. '
         'The map on the right splits by a swipe curtain and searches Sentinel-2 for that box on both '
-        'sides: the days after the paused window, and the last clear scene it can find looking back '
-        'before it. The rectangle hides the cells outside it; delete it to see them again.',
+        'sides: the days after the paused window, and the clearest of the six most recent scenes before '
+        'it. The rectangle hides the cells outside it; delete it to see them again.',
         query_a, KEPLER_GROUP, source['vizConfig']['version'], options)
 
 

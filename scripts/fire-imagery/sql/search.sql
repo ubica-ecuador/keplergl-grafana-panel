@@ -59,19 +59,11 @@ CREATE OR REPLACE TEMP TABLE fi_hit AS (
     FROM fi_search
   ),
   features AS (
-    -- catalogue_order: la posición de la escena en la respuesta del catálogo.
-    -- Es el desempate de las reglas de "qué se pinta" de más abajo: dos
-    -- escenas con la misma nube y la misma hora (las dos teselas de una misma
-    -- pasada, lo normal en un recuadro que cae en el borde) no las distingue
-    -- nada más, y sin un desempate que no dependa de cómo ordene DuckDB, cada
-    -- consulta de panel -la del mapa y la de la hoja se ejecutan por separado-
-    -- podría quedarse con una distinta. Es además lo que el mapa ya hacía de
-    -- hecho: en un empate pintaba la que el catálogo listaba primero.
-    SELECT name, geom, unnest(fs) AS f, generate_subscripts(fs, 1) AS catalogue_order
+    SELECT name, geom, unnest(fs) AS f
     FROM bodies
   ),
   scenes AS (
-    SELECT name, geom, catalogue_order,
+    SELECT name, geom,
            f->>'id'                                     AS scene_id,
            (f->'properties'->>'datetime')::TIMESTAMP    AS acquired,
            (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,
@@ -83,12 +75,33 @@ CREATE OR REPLACE TEMP TABLE fi_hit AS (
                 THEN 'Before' ELSE 'After' END              AS side
     FROM features
     WHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE <= CAST($s2cloud AS DOUBLE)
+  ),
+  -- El bbox acota; ST_Intersects afina.
+  touching AS (
+    SELECT *, fi_m2(ST_Intersection(geom, footprint)) / fi_m2(geom) * 100 AS box_cover
+    FROM scenes
+    WHERE ST_Intersects(geom, footprint)
   )
-  -- El bbox acota; ST_Intersects afina. El corte de cobertura quita las escenas
-  -- que solo rozan una esquina del recuadro.
-  SELECT * FROM scenes
-  WHERE ST_Intersects(geom, footprint)
-    AND fi_m2(ST_Intersection(geom, footprint)) / fi_m2(geom) * 100 >= CAST($s2cover AS DOUBLE)
+  -- El corte de cobertura quita las escenas que solo rozan una esquina.
+  --
+  -- recency_rank: la posición de la escena por antigüedad dentro de su lado,
+  -- 1 la más reciente. De aquí salen a la vez las candidatas automáticas de
+  -- antes (fi_before_shown(), en prelude.sql) y las filas que la hoja enseña,
+  -- así que "las seis que la hoja ya enseña" es literalmente el mismo conjunto.
+  --
+  -- Todos los órdenes de esta pestaña terminan en box_cover DESC, scene_id, y
+  -- nunca en el orden de la respuesta. Los empates son lo normal, no la
+  -- excepción: dos teselas MGRS de una misma pasada tienen la misma hora y a
+  -- menudo la misma nube en cuanto el recuadro cae en el borde (California).
+  -- Y el mapa y la hoja se ejecutan por separado, cada uno con su propia
+  -- petición al catálogo: un empate resuelto por el orden de la respuesta
+  -- podría pintar una escena y marcar otra. La cobertura primero porque es de
+  -- verdad mejor -cada tesela cubre otro trozo del recuadro-; el scene_id al
+  -- final porque es único y no depende de nada.
+  SELECT *,
+         row_number() OVER (PARTITION BY side ORDER BY acquired DESC, box_cover DESC, scene_id) AS recency_rank
+  FROM touching
+  WHERE box_cover >= CAST($s2cover AS DOUBLE)
 );
 
 CREATE OR REPLACE TEMP TABLE fi_hit_after AS (SELECT * FROM fi_hit WHERE side = 'After');
@@ -117,20 +130,32 @@ SET VARIABLE fi_picked_before = (
   WHERE side = 'Before' AND visual_href = getvariable('fi_picked_before') LIMIT 1
 );
 
--- Del lado de antes solo se dibuja una: la que se pinchó en la hoja de
--- contactos, si sigue siendo candidata; si no (nada pinchado, o un pinchado
--- rancio de un recuadro anterior, que a estas alturas ya es NULL), la más
--- reciente que pase los cortes. Elegir primero y filtrar después -como hacía
--- esto con un LIMIT 1 ciego al pinchado- deja en blanco cinco de las seis
--- candidatas que la hoja ofrece a mano: map_scenes_before.sql dibuja sin
--- condición la fila que YA es fi_hit_before (no vuelve a comparar contra el
--- pinchado), así que fi_hit_before tiene que ser la fila correcta desde aquí.
+-- Del lado de antes solo se dibuja una. La que se pinchó en la hoja de
+-- contactos, si sigue siendo candidata. Si no (nada pinchado, o un pinchado
+-- rancio de un recuadro anterior, que a estas alturas ya es NULL): la más
+-- despejada de las fi_before_shown() más recientes -las mismas que enseña la
+-- hoja-, la más reciente entre las igual de despejadas, y luego cobertura e id.
+--
+-- Por qué no la más reciente sin más: los días justo antes de un incendio
+-- suelen venir con nube o humo, y la más reciente puede ser un 37 % de nube
+-- con un 3 % tres días antes (medido en California). Por qué no la más
+-- despejada de toda la ventana: a 90 días puede ser de otra estación, y una
+-- vegetación distinta se leería como daño del fuego. Las seis recientes son
+-- el término medio acotado.
+--
+-- Elegir primero y filtrar después -como hacía esto con un LIMIT 1 ciego al
+-- pinchado- deja en blanco las candidatas que la hoja ofrece a mano:
+-- map_scenes_before.sql dibuja sin condición la fila que YA es fi_hit_before
+-- (no vuelve a comparar contra el pinchado), así que fi_hit_before tiene que
+-- ser la fila correcta desde aquí.
 CREATE OR REPLACE TEMP TABLE fi_hit_before AS (
   SELECT * FROM fi_hit
   WHERE side = 'Before'
   QUALIFY row_number() OVER (
-    ORDER BY CASE WHEN visual_href = coalesce(getvariable('fi_picked_before'), '') THEN 0 ELSE 1 END,
-             acquired DESC, catalogue_order
+    ORDER BY CASE WHEN visual_href = coalesce(getvariable('fi_picked_before'), '') THEN 0
+                  WHEN recency_rank <= fi_before_shown() THEN 1
+                  ELSE 2 END,
+             cloud_cover, acquired DESC, box_cover DESC, scene_id
   ) = 1
 );
 
@@ -138,21 +163,23 @@ CREATE OR REPLACE TEMP TABLE fi_hit_before AS (
 -- leen map_scenes.sql (para pintarlo) y contact_sheet.sql (para marcarlo en la
 -- hoja), así que la marca no puede separarse de lo dibujado: es el mismo valor.
 --
--- Antes: la que queda en fi_hit_before, sin más.
+-- Antes: la que queda en fi_hit_before (la regla está allí), sin más.
 SET VARIABLE fi_drawn_before = (SELECT visual_href FROM fi_hit_before);
--- Después: la pinchada si sigue siendo candidata; si no, la más despejada, la
--- más reciente entre las igual de despejadas, y la primera del catálogo en un
--- empate. Esta regla vivía antes a medias en el ORDER BY de map_scenes.sql y a
--- medias en la costumbre del panel de pintar la primera fila con raster_url
+-- Después: la pinchada si sigue siendo candidata; si no, la más despejada de
+-- todas, la más reciente entre las igual de despejadas, y luego cobertura e id
+-- (ver recency_rank en fi_hit). A diferencia del antes no se acota a las
+-- recientes: todo el lado de después cae en la ventana pausada y los días que
+-- siguen, y no hay otra estación en la que caer.
+--
+-- Esta regla vivía antes a medias en el ORDER BY de map_scenes.sql y a medias
+-- en la costumbre del panel de pintar la primera fila con raster_url
 -- (src/data/rasterDataset.ts: las escenas sin fecha -acquired_at es texto- se
--- quedan en el orden de la consulta y gana la primera). Medido en el banco con
--- el recuadro de California, leyendo el scene id de las teselas: la misma
--- escena que da esta regla. Las filas sin visual_href el panel las salta, así
--- que aquí tampoco cuentan.
+-- quedan en el orden de la consulta y gana la primera). Las filas sin
+-- visual_href el panel las salta, así que aquí tampoco cuentan.
 SET VARIABLE fi_drawn_after = coalesce(
   getvariable('fi_picked_after'),
   (SELECT visual_href FROM fi_hit_after
    WHERE visual_href IS NOT NULL
-   ORDER BY cloud_cover, acquired DESC, catalogue_order
+   ORDER BY cloud_cover, acquired DESC, box_cover DESC, scene_id
    LIMIT 1)
 );

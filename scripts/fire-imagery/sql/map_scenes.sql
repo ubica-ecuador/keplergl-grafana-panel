@@ -21,4 +21,4 @@ SELECT scene_id,
 FROM fi_hit_after
 -- Solo orden de lectura para las huellas: qué escena se pinta ya no depende
 -- de él (lo decide fi_drawn_after).
-ORDER BY cloud_cover, acquired DESC, catalogue_order
+ORDER BY cloud_cover, acquired DESC, box_cover DESC, scene_id

@@ -50,21 +50,25 @@ SELECT CASE WHEN side = 'Before' AND visual_href = getvariable('fi_drawn_before'
        CASE WHEN side = 'After'  THEN visual_href ELSE coalesce(getvariable('fi_picked_after'),  '') END AS set_after
 FROM fi_hit
 -- Cupo por lado, no global: del lado de antes solo se PINTA una escena (la
--- referencia), así que un puñado de candidatas recientes basta para poder
--- cambiarla a mano; el de después es el catálogo que de verdad se recorre y
--- necesita más sitio. Con un LIMIT global, 90 días de "antes" se comían las
--- filas de "después" antes de llegar a ellas.
+-- referencia), y la automática sale de estas mismas fi_before_shown() más
+-- recientes (search.sql), así que la hoja enseña exactamente entre cuáles se
+-- eligió; el de después es el catálogo que de verdad se recorre y necesita más
+-- sitio. Con un LIMIT global, 90 días de "antes" se comían las filas de
+-- "después" antes de llegar a ellas. El orden por antigüedad es recency_rank
+-- (fi_hit), el mismo que usa la regla: con dos escenas empatadas en la sexta
+-- plaza, la hoja y la regla cortan por la misma.
 --
 -- La escena pintada entra siempre, aunque el cupo la dejara fuera (la más
 -- despejada de después puede ser más vieja que las 24 recientes, y una de antes
--- pinchada a mano, más vieja que las 6): una hoja que no enseña lo que el mapa
+-- pinchada a mano, más vieja que las seis): una hoja que no enseña lo que el mapa
 -- está pintando no puede marcarlo.
 QUALIFY row_number() OVER (
           PARTITION BY side
           ORDER BY coalesce(visual_href = CASE WHEN side = 'Before' THEN getvariable('fi_drawn_before')
                                                ELSE getvariable('fi_drawn_after') END, false) DESC,
-                   acquired DESC)
-        <= CASE WHEN side = 'Before' THEN 6 ELSE 24 END
+                   recency_rank)
+        <= CASE WHEN side = 'Before' THEN fi_before_shown() ELSE 24 END
 -- En orden de fecha: lo que interesa de un incendio es cómo cambia, el antes
--- primero.
-ORDER BY acquired
+-- primero. Cobertura e id detrás, para que dos teselas de una misma pasada no
+-- cambien de sitio entre una carga y otra.
+ORDER BY acquired, box_cover DESC, scene_id

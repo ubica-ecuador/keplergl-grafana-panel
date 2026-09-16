@@ -5,7 +5,8 @@ SELECT scene_id,
        ROUND(cloud_cover, 1) AS cloud_cover,
        -- Sin CASE aquí: fi_hit_before (search.sql) ya eligió la única fila que
        -- hay que dibujar -la pinchada si sigue siendo candidata, si no la
-       -- más reciente-, así que esta fila SIEMPRE se dibuja. Volver a
+       -- más despejada de las seis más recientes-, así que esta fila SIEMPRE
+       -- se dibuja. Volver a
        -- comparar visual_href contra el pinchado aquí (como hacía antes)
        -- re-ocultaría justo la fila de repuesto cuando el pinchado es
        -- rancio: exactamente el lado en blanco que esto corrige.
@@ -21,4 +22,5 @@ SELECT scene_id,
        CAST(ST_AsGeoJSON(footprint) AS VARCHAR) AS geojson
 FROM fi_hit_before
 -- fi_hit_before ya trae una sola fila (search.sql): la pinchada en la hoja si
--- sigue siendo candidata, si no la más reciente que pasa los cortes.
+-- sigue siendo candidata, si no la más despejada de las seis más recientes que
+-- pasan los cortes (las seis que enseña la hoja).

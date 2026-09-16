@@ -384,8 +384,10 @@ class BeforePickHermeticTest(unittest.TestCase):
     BOX = 'POLYGON ((-122.0 39.0, -121.9 39.0, -121.9 39.1, -122.0 39.1, -122.0 39.0))'
     GEOMETRY = {'type': 'Polygon', 'coordinates': [[[-122.0, 39.0], [-121.9, 39.0], [-121.9, 39.1],
                                                     [-122.0, 39.1], [-122.0, 39.0]]]}
-    # Todas antes del día pausado (2026-06-15): la más reciente es la última
-    # (índice 2, 10 Jun) y NO es la que se pincha en los dos primeros tests.
+    # Todas antes del día pausado (2026-06-15) y todas con la misma nube (5):
+    # la automática -la más despejada de las seis más recientes- es entonces la
+    # más reciente de las tres, el índice 2 (10 Jun), y NO es la que se pincha
+    # en el primer test. La regla automática en sí la cubre DrawnMarkHermeticTest.
     BEFORE_DATES = ['2026-05-01T19:00:00Z', '2026-05-15T19:00:00Z', '2026-06-10T19:00:00Z']
     BASE_CASE = dict(area=BOX, sceneAfter='', scanFrom='2026-06-15T00:00:00.000Z',
                      scanTo='2026-06-15T23:59:59.000Z', days='3', lookback='90',
@@ -425,25 +427,24 @@ class BeforePickHermeticTest(unittest.TestCase):
         self.assertEqual(len(rows), 1, 'map_scenes_before.sql must always draw exactly one row')
         return rows[0]
 
-    def test_picking_a_non_latest_before_candidate_draws_it(self):
-        # Index 0 (01 May) is a real candidate but not the most recent one
-        # (index 2, 10 Jun) — picking it must win, not the deterministic
-        # "most recent" default.
+    def test_picking_a_non_default_before_candidate_draws_it(self):
+        # Index 0 (01 May) is a real candidate but not the automatic choice
+        # (index 2, 10 Jun) — picking it must win over the automatic rule.
         row = self._run('https://example.test/0.tif')
         self.assertEqual(row['scene_id'], 'SYN_0')
         self.assertEqual(row['raster_url'], 'https://example.test/0.tif')
         self.assertIsNotNone(row['raster_item_url'])
 
-    def test_a_stale_pick_falls_back_to_the_most_recent_instead_of_going_blank(self):
+    def test_a_stale_pick_falls_back_to_the_automatic_choice_instead_of_going_blank(self):
         # A scene from a box drawn earlier: not among today's candidates at
         # all. Blank is the one outcome the design forbids.
         row = self._run('https://example.test/from-a-previous-box.tif')
-        self.assertEqual(row['scene_id'], 'SYN_2', 'must fall back to the most recent candidate')
+        self.assertEqual(row['scene_id'], 'SYN_2', 'must fall back to the automatic choice')
         self.assertEqual(row['raster_url'], 'https://example.test/2.tif')
         self.assertIsNotNone(row['raster_url'], 'the before side must never go blank')
         self.assertIsNotNone(row['raster_item_url'], 'the before side must never go blank')
 
-    def test_no_pick_still_shows_the_most_recent(self):
+    def test_no_pick_still_shows_the_automatic_choice(self):
         # The untouched default path: no one has clicked a row yet.
         row = self._run('')
         self.assertEqual(row['scene_id'], 'SYN_2')
@@ -778,7 +779,8 @@ class EveryPanelQueryRunsTest(unittest.TestCase):
 
     def test_a_stale_before_pick_still_draws_exactly_one_before_row(self):
         # Resolver el pinchado no debe dejar el lado de antes en blanco:
-        # hit_before sigue cayendo en la más reciente.
+        # fi_hit_before cae en la automática (aquí, con la misma nube, la más
+        # reciente de las dos).
         before = next(s for k, r, s in panel_queries() if k == 'panel-22' and r == 'D')
         stale = dict(self.BASE_CASE, sceneBefore='https://example.test/from-a-previous-box.tif')
         rows = self._rows(before, stale)
@@ -808,24 +810,51 @@ class DrawnMarkHermeticTest(unittest.TestCase):
     (the_plugin_draws), y no contra una regla escrita aquí aparte, que podría
     equivocarse igual que la hoja.
 
-    El catálogo trae a propósito un empate en el lado de después -dos escenas
-    con la misma nube y la misma hora, la de id mayor primero en el JSON-,
-    que es el caso real del recuadro de California: ahí el ORDER BY de antes
-    no decidía y el mapa pintaba la que DuckDB dejara primero.
+    El mapa y la hoja se ejecutan por separado y cada uno pide el catálogo por
+    su cuenta, así que un empate que se resolviera por el orden de la
+    respuesta podría caer en una escena en el mapa y en otra en la hoja. Los
+    empates son de lo más normal -dos teselas MGRS de una misma pasada, con la
+    misma nube y la misma hora, en cuanto el recuadro cae en el borde, que es
+    lo que pasa en California-, y por eso el catálogo de aquí los trae a
+    propósito en los dos lados: uno que decide la cobertura del recuadro y uno
+    total que solo decide el scene_id.
     """
 
     BOX = 'POLYGON ((-122.0 39.0, -121.9 39.0, -121.9 39.1, -122.0 39.1, -122.0 39.0))'
-    GEOMETRY = {'type': 'Polygon', 'coordinates': [[[-122.0, 39.0], [-121.9, 39.0], [-121.9, 39.1],
-                                                    [-122.0, 39.1], [-122.0, 39.0]]]}
-    # (id, fecha, nube). El día pausado es 2026-06-15.
-    BEFORE = [('SYN_B0', '2026-05-01T19:00:00Z', 5.0), ('SYN_B1', '2026-06-10T19:00:00Z', 5.0)]
-    # SYN_A5 es la más reciente y la más nublada: así "la más despejada" y "la
-    # más reciente" son escenas distintas, y una marca que siguiera la fecha
-    # (la regla de la hoja, no la del mapa) se delata sin pinchar nada.
-    AFTER = [('SYN_A0', '2026-06-16T19:00:00Z', 20.0),
-             ('SYN_A9', '2026-06-17T19:00:00Z', 3.0),
-             ('SYN_A1', '2026-06-17T19:00:00Z', 3.0),
-             ('SYN_A5', '2026-06-18T19:00:00Z', 30.0)]
+    GEOMETRIES = {
+        'full': {'type': 'Polygon', 'coordinates': [[[-122.0, 39.0], [-121.9, 39.0], [-121.9, 39.1],
+                                                     [-122.0, 39.1], [-122.0, 39.0]]]},
+        # La mitad oeste del recuadro: cubre el 50 %.
+        'half': {'type': 'Polygon', 'coordinates': [[[-122.0, 39.0], [-121.95, 39.0], [-121.95, 39.1],
+                                                     [-122.0, 39.1], [-122.0, 39.0]]]},
+    }
+    # (id, fecha, nube, huella). El día pausado es 2026-06-15.
+    #
+    # Antes, de la más reciente a la más vieja. Las seis primeras son las que
+    # la hoja enseña; de ellas se elige la más despejada:
+    #   - SYN_BZ y SYN_BA empatan en nube (1) y hora; SYN_BZ cubre el recuadro
+    #     entero y SYN_BA la mitad. Gana SYN_BZ aunque su id sea mayor: la
+    #     cobertura decide antes que el id.
+    #   - SYN_BM tiene la misma nube pero es más vieja: pierde.
+    #   - SYN_BS es la más despejada de todas (0,5) pero es la SÉPTIMA: fuera.
+    BEFORE = [('SYN_BH', '2026-06-10T19:00:00Z', 30.0, 'full'),
+              ('SYN_BZ', '2026-06-01T19:00:00Z', 1.0, 'full'),
+              ('SYN_BA', '2026-06-01T19:00:00Z', 1.0, 'half'),
+              ('SYN_BM', '2026-05-20T19:00:00Z', 1.0, 'full'),
+              ('SYN_BN', '2026-05-10T19:00:00Z', 9.0, 'full'),
+              ('SYN_BO', '2026-05-01T19:00:00Z', 9.0, 'full'),
+              ('SYN_BS', '2026-04-01T19:00:00Z', 0.5, 'full')]
+    # Después, la más despejada de todas:
+    #   - SYN_A9, SYN_A1 y SYN_A00 empatan en nube (3) y hora. SYN_A00 cubre la
+    #     mitad: pierde aunque su id sea el menor. Entre SYN_A9 y SYN_A1, que
+    #     empatan en todo, decide el id: SYN_A1.
+    #   - SYN_A5 es la más reciente y la más nublada, para que "la más
+    #     despejada" y "la más reciente" sean escenas distintas.
+    AFTER = [('SYN_A0', '2026-06-16T19:00:00Z', 20.0, 'full'),
+             ('SYN_A9', '2026-06-17T19:00:00Z', 3.0, 'full'),
+             ('SYN_A1', '2026-06-17T19:00:00Z', 3.0, 'full'),
+             ('SYN_A00', '2026-06-17T19:00:00Z', 3.0, 'half'),
+             ('SYN_A5', '2026-06-18T19:00:00Z', 30.0, 'full')]
     CASE = dict(area=BOX, sceneBefore='', sceneAfter='', scanFrom='2026-06-15T00:00:00.000Z',
                 scanTo='2026-06-15T23:59:59.000Z', days='3', lookback='90',
                 s2cloud='100', s2cover='0', bands='trueColor')
@@ -840,8 +869,8 @@ class DrawnMarkHermeticTest(unittest.TestCase):
 
     def _body(self, scenes):
         features = [{'id': sid, 'properties': {'datetime': when, 'eo:cloud_cover': cloud},
-                     'assets': {'visual': {'href': self.href(sid)}}, 'geometry': self.GEOMETRY}
-                    for sid, when, cloud in scenes]
+                     'assets': {'visual': {'href': self.href(sid)}}, 'geometry': self.GEOMETRIES[shape]}
+                    for sid, when, cloud, shape in scenes]
         return json.dumps({'type': 'FeatureCollection', 'features': features,
                            'numberMatched': len(features), 'numberReturned': len(features)})
 
@@ -892,32 +921,88 @@ class DrawnMarkHermeticTest(unittest.TestCase):
         # La columna va la primera: es una marca al margen, no un dato más.
         self.assertEqual(next(iter(sheet[0])), 'Map')
 
-    def test_no_pick_marks_the_after_scene_the_map_draws(self):
+    def test_no_pick_marks_the_scenes_the_map_draws(self):
         marks, drawn = self._state()
         self.assertMarksAreWhatIsDrawn(marks, drawn)
-        # La más despejada; entre SYN_A9 y SYN_A1, empatadas en nube y hora,
-        # la que el catálogo lista primero. Es lo que el mapa ya hacía de
-        # hecho, así que hacer la regla explícita no cambia lo que se pinta.
-        self.assertEqual(drawn['After'], self.href('SYN_A9'))
-        self.assertEqual(drawn['Before'], self.href('SYN_B1'))
+        self.assertEqual(drawn['After'], self.href('SYN_A1'))
+        self.assertEqual(drawn['Before'], self.href('SYN_BZ'))
+
+    def test_the_drawn_scenes_do_not_depend_on_the_order_of_the_response(self):
+        # LA propiedad: el mismo catálogo en otro orden -como el que puede
+        # devolver la segunda de las dos peticiones que hacen el mapa y la
+        # hoja- pinta y marca exactamente lo mismo. Varias permutaciones, no
+        # solo la inversa: una inversa pasa con un desempate "el último".
+        catalogue = self.BEFORE + self.AFTER
+        orders = {
+            'as listed': catalogue,
+            'reversed': list(reversed(catalogue)),
+            'interleaved': catalogue[::2] + catalogue[1::2],
+            'rotated': catalogue[5:] + catalogue[:5],
+        }
+        outcomes = {}
+        for label, scenes in orders.items():
+            with self.subTest(order=label):
+                marks, drawn = self._state(scenes=scenes)
+                self.assertMarksAreWhatIsDrawn(marks, drawn)
+                outcomes[label] = (drawn['Before'], drawn['After'], tuple(marks['Before']), tuple(marks['After']))
+        self.assertEqual(len(set(outcomes.values())), 1, f'el orden de la respuesta cambió el resultado: {outcomes}')
+        self.assertEqual(outcomes['as listed'][:2], (self.href('SYN_BZ'), self.href('SYN_A1')))
+
+    def test_before_takes_the_clearest_of_the_six_most_recent_not_the_seventh(self):
+        # SYN_BS (0,5 % de nube) es la más despejada de todas, pero es la
+        # séptima más reciente: otra estación, otra vegetación, que se leería
+        # como daño del fuego. No se elige.
+        marks, drawn = self._state()
+        self.assertNotEqual(drawn['Before'], self.href('SYN_BS'))
+        self.assertEqual(drawn['Before'], self.href('SYN_BZ'))
+
+    def test_before_prefers_the_clearest_over_the_most_recent(self):
+        # SYN_BH es la más reciente (30 % de nube); pierde contra la más despejada.
+        marks, drawn = self._state()
+        self.assertNotEqual(drawn['Before'], self.href('SYN_BH'))
+
+    def test_before_with_equal_cloud_prefers_the_more_recent(self):
+        # Dos de 1 % de nube y la misma cobertura, en fechas distintas: gana la
+        # más reciente (SYN_BM, 20 May) y no la más vieja (SYN_BOLD, 5 May).
+        # Sin SYN_BZ/SYN_BA, que empatarían con ellas, y sin SYN_BS, que al
+        # quitar esas dos entraría entre las seis y ganaría por ser la más
+        # despejada -correcto, pero no es lo que se prueba aquí-.
+        scenes = [s for s in self.BEFORE if s[0] not in ('SYN_BZ', 'SYN_BA', 'SYN_BS')]
+        scenes.append(('SYN_BOLD', '2026-05-05T19:00:00Z', 1.0, 'full'))
+        marks, drawn = self._state(scenes=scenes + self.AFTER)
+        self.assertEqual(drawn['Before'], self.href('SYN_BM'))
+        self.assertMarksAreWhatIsDrawn(marks, drawn)
+
+    def test_a_tie_is_broken_by_box_coverage_then_scene_id(self):
+        # Después: SYN_A00 tiene el id menor pero cubre la mitad; entre SYN_A9
+        # y SYN_A1, iguales en todo, decide el id. Antes: SYN_BA tiene el id
+        # menor pero cubre la mitad, y gana SYN_BZ.
+        marks, drawn = self._state()
+        self.assertEqual(drawn['After'], self.href('SYN_A1'))
+        self.assertEqual(drawn['Before'], self.href('SYN_BZ'))
+        self.assertMarksAreWhatIsDrawn(marks, drawn)
 
     def test_a_hand_picked_after_scene_is_the_one_marked(self):
-        picked = self.href('SYN_A0')  # la más nublada: nunca sería la automática
+        picked = self.href('SYN_A0')  # nublada y vieja: nunca sería la automática
         marks, drawn = self._state(sceneAfter=picked)
         self.assertEqual(drawn['After'], picked)
         self.assertMarksAreWhatIsDrawn(marks, drawn)
 
-    def test_a_hand_picked_before_scene_is_the_one_marked(self):
-        picked = self.href('SYN_B0')  # la más antigua: nunca sería la automática
+    def test_a_hand_picked_before_scene_wins_even_outside_the_six(self):
+        # La mano manda: la séptima no la elige la regla automática, pero si
+        # alguien la pincha, se pinta y se marca.
+        picked = self.href('SYN_BS')
         marks, drawn = self._state(sceneBefore=picked)
         self.assertEqual(drawn['Before'], picked)
         self.assertMarksAreWhatIsDrawn(marks, drawn)
 
-    def test_stale_picks_mark_the_fallback_not_nothing(self):
+    def test_stale_picks_fall_back_to_the_automatic_rule(self):
+        # Un pinchado rancio cae en la regla automática -la más despejada de
+        # las seis-, no en "la más reciente".
         marks, drawn = self._state(sceneBefore=self.href('from-a-previous-box-before'),
                                    sceneAfter=self.href('from-a-previous-box-after'))
-        self.assertEqual(drawn['Before'], self.href('SYN_B1'))
-        self.assertEqual(drawn['After'], self.href('SYN_A9'))
+        self.assertEqual(drawn['Before'], self.href('SYN_BZ'))
+        self.assertEqual(drawn['After'], self.href('SYN_A1'))
         self.assertMarksAreWhatIsDrawn(marks, drawn)
 
     def test_no_before_scene_means_no_before_mark(self):
@@ -927,29 +1012,48 @@ class DrawnMarkHermeticTest(unittest.TestCase):
         self.assertEqual(len(marks['After']), 1)
         self.assertMarksAreWhatIsDrawn(marks, drawn)
 
-    def test_the_after_side_links_one_scene_and_the_tie_follows_the_catalogue(self):
+    def test_every_ranking_in_search_sql_ends_in_a_scene_property(self):
+        # El test de permutaciones no basta solo, y se midió: quitar el
+        # desempate de fi_drawn_after lo deja en verde, porque fi_hit sale
+        # físicamente ordenada por la ventana de recency_rank (acquired DESC,
+        # box_cover DESC, scene_id) y el ORDER BY ... LIMIT 1 hereda ese orden
+        # en los empates. Es un orden físico que nada garantiza -otra versión de
+        # DuckDB, más hilos, otro plan-, así que se exige por escrito: todo
+        # ORDER BY de las reglas de search.sql termina en box_cover DESC,
+        # scene_id, propiedades de la escena y no de la respuesta.
+        sql = build.read_sql('search')
+        code = '\n'.join(line.split('--', 1)[0] for line in sql.splitlines())
+        # Hasta el paréntesis que cierra la ventana (en su línea, `) AS`, o en
+        # la siguiente) o hasta LIMIT: no hasta el primer `)`, que puede ser el
+        # de un getvariable( dentro de un CASE.
+        clauses = re.findall(r'ORDER BY\s+(.*?)(?=\)\s*AS\b|\n\s*\)|\bLIMIT\b)', code, flags=re.DOTALL)
+        self.assertGreaterEqual(len(clauses), 3, clauses)
+        for clause in clauses:
+            with self.subTest(order_by=' '.join(clause.split())):
+                self.assertTrue(' '.join(clause.split()).endswith('box_cover DESC, scene_id'))
+
+    def test_the_after_side_links_exactly_one_scene(self):
         # La regla vive en search.sql: map_scenes.sql deja el enlace solo en la
         # escena elegida, así que el panel ya no depende de su costumbre de
-        # tomar la primera fila. Y el empate lo rompe el orden del catálogo,
-        # no cómo ordene DuckDB: con el JSON al revés gana la otra, y la hoja
-        # la marca igual.
-        for scenes, expected in ((self.BEFORE + self.AFTER, 'SYN_A9'),
-                                 (self.BEFORE + list(reversed(self.AFTER)), 'SYN_A1')):
-            with self.subTest(expected=expected):
-                rows = self._rows('map_scenes', scenes)
-                self.assertEqual([row['scene_id'] for row in rows if row['raster_url']], [expected])
-                marks, drawn = self._state(scenes=scenes)
-                self.assertMarksAreWhatIsDrawn(marks, drawn)
+        # tomar la primera fila.
+        rows = self._rows('map_scenes', self.BEFORE + self.AFTER)
+        self.assertEqual([row['scene_id'] for row in rows if row['raster_url']], ['SYN_A1'])
+
+    def test_the_sheet_lists_the_six_the_rule_chooses_from(self):
+        # "Las seis que la hoja ya enseña" es literal: sin pinchar nada, las
+        # filas de antes de la hoja son las seis candidatas de la regla.
+        sheet = self._rows('contact_sheet', self.BEFORE + self.AFTER)
+        listed = {row['scene_url'] for row in sheet if row['Side'] == 'Before'}
+        self.assertEqual(listed, {self.href(s[0]) for s in self.BEFORE[:6]})
 
     def test_the_drawn_scene_is_on_the_sheet_even_past_the_cap(self):
-        # Del lado de antes la hoja enseña 6. Pinchar la más vieja de ocho la
-        # deja fuera del cupo por fecha; una marca que no aparece no dice nada.
-        before = [(f'SYN_B{i}', f'2026-0{3 + i // 3}-{10 + i:02d}T19:00:00Z', 5.0) for i in range(8)]
-        oldest = self.href(before[0][0])
-        marks, drawn = self._state(scenes=before + self.AFTER, sceneBefore=oldest)
+        # Pinchar la séptima la deja fuera del cupo por fecha; una marca que no
+        # aparece no dice nada. La hoja sigue enseñando seis.
+        oldest = self.href('SYN_BS')
+        marks, drawn = self._state(sceneBefore=oldest)
         self.assertEqual(drawn['Before'], oldest)
         self.assertMarksAreWhatIsDrawn(marks, drawn)
-        sheet = self._rows('contact_sheet', before + self.AFTER, sceneBefore=oldest)
+        sheet = self._rows('contact_sheet', self.BEFORE + self.AFTER, sceneBefore=oldest)
         self.assertEqual(sum(1 for row in sheet if row['Side'] == 'Before'), 6, 'el cupo sigue siendo 6')
 
 
@@ -1051,6 +1155,22 @@ class ImageryPanelsTest(unittest.TestCase):
         for layer_id in ('boxoutline', 'footprints'):
             self.assertFalse(layers[layer_id]['config']['visConfig']['filled'])
         self.assertEqual(vis['editor']['features'], [])
+
+    def test_no_text_calls_the_before_scene_the_last_or_most_recent_clear_one(self):
+        # La regla del antes es "la más despejada de las seis más recientes".
+        # Toda descripción que la nombre tiene que decir eso: una que dijera
+        # "the last clear scene" miente en justo el caso que la regla cambió
+        # (California: 10 Sep al 37 % frente a 05 Sep al 3 %).
+        texts = [element['spec']['description'] for element in self.elements.values()
+                 if element['spec']['id'] in (21, 22, 23, 24)]
+        texts += [v['spec'].get('description', '') for v in build.variables()]
+        for text in texts:
+            for stale in ('last clear', 'last-clear', 'most recent clear', 'latest clear'):
+                self.assertNotIn(stale, text.lower())
+        for key in ('panel-21', 'panel-22', 'panel-23', 'panel-24'):
+            self.assertIn('six most recent', self.elements[key]['spec']['description'], key)
+        lookback = next(v for v in build.variables() if v['spec']['name'] == 'lookback')
+        self.assertIn('six most recent', lookback['spec']['description'])
 
     def test_the_sheet_colours_only_the_marked_cells(self):
         # La columna Map: fondo de color solo donde hay marca (◀/▶ desde las

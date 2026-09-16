@@ -15,6 +15,10 @@ CREATE OR REPLACE TEMP MACRO fi_m2(g) AS
 -- recuadro de ~30 km responde en medio segundo; uno de ~1100 km tarda 25 s
 -- en las cifras y tumba la hoja a los 74 s.
 CREATE OR REPLACE TEMP MACRO fi_box_limit_m2() AS 20000 * 1e6;
+-- Cuántas escenas de antes, las más recientes, enseña la hoja de contactos y
+-- entre cuántas elige la automática la más despejada. Un solo número para las
+-- dos cosas: la escena automática es siempre una de las que se ven.
+CREATE OR REPLACE TEMP MACRO fi_before_shown() AS 6;
 
 -- El recuadro dibujado en el mapa, compartido por todo el tablero (variable
 -- `area`). Sin recuadro no hay búsqueda.
@@ -28,10 +32,11 @@ SET VARIABLE fi_win_to = least(
   coalesce(TRY_CAST(nullif($scanTo, '') AS TIMESTAMP), CAST($__timeTo() AS TIMESTAMP))
     + to_days(CAST($days AS INTEGER)),
   CAST(now() AS TIMESTAMP));
--- Hasta dónde mirar hacia atrás buscando la última imagen despejada. Los días
--- justo anteriores a un incendio suelen estar nublados o con humo, así que la
--- ventana es ancha a propósito; la fecha de lo que se encuentre se enseña
--- siempre, porque a 90 días la vegetación cambia por estación y no por fuego.
+-- Hasta dónde mirar hacia atrás buscando escenas de antes. Los días justo
+-- anteriores a un incendio suelen estar nublados o con humo, así que la ventana
+-- es ancha a propósito. Lo que se ELIGE sale solo de las fi_before_shown() más
+-- recientes (search.sql), para no saltar a otra estación; la fecha de lo que se
+-- encuentre se enseña siempre.
 SET VARIABLE fi_back_from = getvariable('fi_win_from') - to_days(CAST($lookback AS INTEGER));
 -- Las dos escenas elegidas a mano en la hoja, una por lado.
 SET VARIABLE fi_picked_before = nullif($sceneBefore, '');
