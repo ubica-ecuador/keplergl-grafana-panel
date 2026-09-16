@@ -89,7 +89,7 @@ export interface SplitMapsDecision {
  * Only the panes kepler can draw are read. A config saved while the pane list
  * was doubling carries more than two, and reading them all would leave the
  * guard waiting for panes that the fold in `splitMapsNormalise.ts` has just
- * removed — waiting, that is, for ever.
+ * removed — until its 60 s window ran out, having repaired nothing.
  */
 export function savedSplitAssignment(config: SavedMapConfig | null | undefined): SavedSplitAssignment | null {
   const visState = (config?.config as { visState?: Record<string, unknown> } | undefined)?.visState;

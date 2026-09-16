@@ -49,6 +49,17 @@ export function foldSurplusPanes<T>(splitMaps: T[]): T[] {
   return splitMaps.length > RENDERED_PANES ? splitMaps.slice(0, RENDERED_PANES) : splitMaps;
 }
 
+/**
+ * Whether `kept` already says everything `dropped` says: each layer the dropped
+ * pane names, the kept pane names with the same value. An empty pane says
+ * nothing and is subsumed by any.
+ */
+function subsumes(kept: unknown, dropped: unknown): boolean {
+  const keptLayers = (kept as { layers?: Record<string, unknown> } | null)?.layers ?? {};
+  const droppedLayers = (dropped as { layers?: Record<string, unknown> } | null)?.layers ?? {};
+  return Object.entries(droppedLayers).every(([id, value]) => keptLayers[id] === value);
+}
+
 /** The shape this reaches into: kepler's registered instances under `keplerGl`. */
 interface KeplerRootState {
   keplerGl?: Record<string, { visState?: { splitMaps?: unknown[] } }>;
@@ -77,9 +88,24 @@ export function withFoldedSplitMaps<S>(state: S): S {
       continue;
     }
     changed = true;
+    // Never on the identity path, and not on every trim either: measured on the
+    // bench, a normal curtain load trims once and every dropped pane is a copy
+    // of a kept one — the merge defect above, losing nothing. Only a pane whose
+    // assignment no kept pane carries is a real loss, and that is the case to
+    // make discoverable: a hand-written config meaning three panes on purpose,
+    // which Save would then keep without them.
+    const kept = foldSurplusPanes(splitMaps);
+    const lost = splitMaps.slice(RENDERED_PANES).filter((pane) => !kept.some((k) => subsumes(k, pane)));
+    if (lost.length > 0) {
+      console.warn(
+        `[kepler panel] split map had ${splitMaps.length} panes; kepler draws ${RENDERED_PANES}, ` +
+          `so ${splitMaps.length - RENDERED_PANES} were dropped, ${lost.length} of them with a layer ` +
+          `assignment the remaining panes do not have.`
+      );
+    }
     folded[id] = {
       ...instance,
-      visState: { ...instance.visState, splitMaps: foldSurplusPanes(splitMaps) },
+      visState: { ...instance.visState, splitMaps: kept },
     };
   }
 

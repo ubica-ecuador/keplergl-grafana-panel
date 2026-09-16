@@ -32,9 +32,36 @@ function store(splitMaps: unknown[]) {
 }
 
 describe('withFoldedSplitMaps', () => {
-  it('returns the very same state object when nothing has grown', () => {
+  let warn: jest.SpyInstance;
+  beforeEach(() => {
+    warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => warn.mockRestore());
+
+  it('returns the very same state object when nothing has grown, and says nothing', () => {
     const state = store([pane('a'), pane('b')]);
     expect(withFoldedSplitMaps(state)).toBe(state);
+    expect(withFoldedSplitMaps(store([]))).toBeDefined();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  // What the bench showed on every normal curtain load: the appended panes are
+  // copies of the kept ones. Folding them loses nothing, so it says nothing.
+  it('stays silent when the dropped panes only repeat the kept ones', () => {
+    const copy = { layers: { boxoutline: true } };
+    withFoldedSplitMaps(store([copy, copy, copy, copy]));
+    withFoldedSplitMaps(store([pane('a'), pane('b'), { layers: {} }, pane('a')]));
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('warns once when a dropped pane held an assignment no kept pane has, naming the count', () => {
+    const next = withFoldedSplitMaps(
+      store([{ layers: { a: true, b: false } }, { layers: { a: false, b: true } }, { layers: { a: true, b: true } }])
+    );
+    expect(next.keplerGl.grafana.visState.splitMaps).toHaveLength(2);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain('had 3 panes');
+    expect(warn.mock.calls[0][0]).toContain('1 were dropped, 1 of them');
   });
 
   it('is a no-op before kepler has registered, and for a state that is not kepler', () => {
@@ -52,8 +79,10 @@ describe('withFoldedSplitMaps', () => {
     expect(next.keplerGl.grafana.mapState).toBe(state.keplerGl.grafana.mapState);
   });
 
-  it('is idempotent: folding what it just folded changes nothing', () => {
+  it('is idempotent: folding what it just folded changes nothing, and warns no more', () => {
     const once = withFoldedSplitMaps(store([pane('a'), pane('b'), pane('c'), pane('d')]));
+    warn.mockClear();
     expect(withFoldedSplitMaps(once)).toBe(once);
+    expect(warn).not.toHaveBeenCalled();
   });
 });

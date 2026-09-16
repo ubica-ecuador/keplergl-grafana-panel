@@ -142,6 +142,45 @@ it('leaves a hand toggle alone even while a raster is still missing', async () =
   ]);
 });
 
+// The failure this whole guard exists for, one refresh later: the first load is
+// repaired, then the next variable change loses the assignment again. What was
+// placed during the first arming must not excuse anything in the second.
+it('repairs again after a second load re-arms it', async () => {
+  const store = makeStore(visState([{ layers: { ...ALL_TRUE } }, { layers: { ...ALL_TRUE } }], LAYERS_WITH_RASTERS));
+  const { result } = renderHook(() => useSplitMapsGuard({ store: store as unknown as Store, mapConfig: CONFIG }));
+
+  // First load: both rasters on both halves, repaired.
+  result.current();
+  await flush();
+  expect(toggles(store)).toEqual([
+    { mapIndex: 0, layerId: 's2scene' },
+    { mapIndex: 1, layerId: 's2scene-before' },
+  ]);
+
+  // kepler applies the repair; the guard sees everything placed and stops.
+  store.set(
+    visState(
+      [
+        { layers: { boxoutline: true, 's2scene-before': true, s2scene: false } },
+        { layers: { boxoutline: true, 's2scene-before': false, s2scene: true } },
+      ],
+      LAYERS_WITH_RASTERS
+    )
+  );
+  await flush();
+  store.dispatch.mockClear();
+
+  // Second load: the refresh re-arms the guard, then kepler throws the
+  // assignment away again exactly as it did the first time.
+  result.current();
+  store.set(visState([{ layers: { ...ALL_TRUE } }, { layers: { ...ALL_TRUE } }], LAYERS_WITH_RASTERS));
+  await flush();
+  expect(toggles(store)).toEqual([
+    { mapIndex: 0, layerId: 's2scene' },
+    { mapIndex: 1, layerId: 's2scene-before' },
+  ]);
+});
+
 it('dispatches nothing at all for a config with no split', async () => {
   const store = makeStore(visState([], LAYERS_WITH_RASTERS));
   const { result } = renderHook(() => useSplitMapsGuard({ store: store as unknown as Store, mapConfig: null }));
