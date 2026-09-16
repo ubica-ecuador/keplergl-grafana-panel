@@ -14,6 +14,7 @@ import { makeVectorFieldLayer } from './vectorFieldLayer';
 import { buildTimedWmsLayer } from './wmsDeckLayer';
 import { withWmsTime } from './wmsTimeLayer';
 import { buildZarrDeckLayer } from './zarrDeckLayer';
+import { withFoldedSplitMaps } from './splitMapsNormalise';
 import { makeZarrLayer } from './zarrTileLayer';
 
 /**
@@ -125,5 +126,13 @@ export function createKeplerStore(): Store {
     }),
   });
 
-  return legacy_createStore(reducer, {}, applyMiddleware(...enhanceReduxMiddleware([])));
+  // kepler's split-map merge appends panes instead of folding them in, and does
+  // it again on every refresh that finds the panes empty — 2, 4, 8, … 512 panes
+  // in one session, measured. No kepler action can trim the list, so it is
+  // folded back here, at the one seam this plugin owns: reading what the reducer
+  // returned is not a dispatch, so it cannot loop, and a state already within
+  // bounds comes back by identity. See `splitMapsNormalise.ts`.
+  const withinBounds = (state: never, action: never) => withFoldedSplitMaps(reducer(state, action));
+
+  return legacy_createStore(withinBounds as never, {}, applyMiddleware(...enhanceReduxMiddleware([])));
 }

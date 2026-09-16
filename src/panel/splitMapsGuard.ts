@@ -63,8 +63,21 @@ export interface SplitMapToggle {
   layerId: string;
 }
 
-export type SplitMapsAction =
-  { kind: 'wait' } | { kind: 'done' } | { kind: 'toggle'; toggles: SplitMapToggle[]; settled: boolean };
+/** What the guard should do with the state it just read. */
+export interface SplitMapsDecision {
+  /** Toggles to dispatch now, in pane order. */
+  toggles: SplitMapToggle[];
+  /**
+   * Authored layer ids that sit exactly where the config asks, right now.
+   *
+   * The caller accumulates these for as long as it is armed and hands them back
+   * as `placed`: a layer this guard has already put in its place is never moved
+   * again, so a user who drags it to the other half afterwards keeps it there.
+   */
+  placed: string[];
+  /** Every authored layer is present and placed: nothing left to watch for. */
+  done: boolean;
+}
 
 /**
  * The per-side assignment a saved config asks for, or null if it asks for none.
@@ -110,48 +123,69 @@ export function savedSplitAssignment(config: SavedMapConfig | null | undefined):
 /**
  * Which panes to toggle which layer on, to get back to the authored assignment.
  *
- * `settled` says every authored layer was found: until then the caller keeps
- * watching, because the ones still missing are exactly the asynchronous layers
- * this guard exists for.
+ * Each authored layer is repaired **once** per arming: the ids in `placed` —
+ * everything the caller has already seen sitting right — are read but never
+ * moved. That is the whole of the difference between defending the assignment
+ * against kepler, which loses it in one go, and fighting the user, who moves
+ * one layer at a time and means it.
+ *
+ * `done` says every authored layer was found and placed; until then the caller
+ * keeps watching, because the ones still missing are exactly the asynchronous
+ * layers this guard exists for.
+ *
+ * Panes beyond the authored ones are never read and never touched: folding away
+ * the surplus kepler's merge leaves behind is `splitMapsNormalise.ts`' job.
  */
 export function decideSplitMapRepairs({
   desired,
   splitMaps,
   layers,
+  placed = [],
 }: {
   desired: SavedSplitAssignment;
   /** kepler's current `visState.splitMaps`. */
   splitMaps: SavedSplitPane[];
   /** kepler's current `visState.layers`. */
   layers: LiveLayer[];
-}): SplitMapsAction {
+  /** Authored ids already put in their place during this arming. */
+  placed?: string[];
+}): SplitMapsDecision {
   // Not split (yet, or any more). Nothing to assign, and forcing a split open
   // is not this guard's business.
   if (splitMaps.length < desired.panes.length) {
-    return { kind: 'wait' };
+    return { toggles: [], placed: [], done: false };
   }
 
+  const alreadyPlaced = new Set(placed);
   const toggles: SplitMapToggle[] = [];
-  let settled = true;
+  const correct = new Set<string>();
+  const wrong = new Set<string>();
+  let allFound = true;
 
   desired.panes.forEach((pane, mapIndex) => {
     const live = splitMaps[mapIndex]?.layers ?? {};
     for (const [savedId, want] of Object.entries(pane)) {
       const layerId = resolveLayerId(savedId, desired, layers);
       if (!layerId) {
-        settled = false;
+        allFound = false;
         continue;
       }
-      if (Boolean(live[layerId]) !== want) {
+      if (Boolean(live[layerId]) === want) {
+        correct.add(savedId);
+        continue;
+      }
+      wrong.add(savedId);
+      // Already put right once during this arming: this is the user moving it,
+      // not kepler losing it.
+      if (!alreadyPlaced.has(savedId)) {
         toggles.push({ mapIndex, layerId });
       }
     }
   });
 
-  if (toggles.length === 0) {
-    return settled ? { kind: 'done' } : { kind: 'wait' };
-  }
-  return { kind: 'toggle', toggles, settled };
+  // A layer counts as placed only when every authored pane agrees about it.
+  const nowPlaced = [...correct].filter((savedId) => !wrong.has(savedId));
+  return { toggles, placed: nowPlaced, done: allFound && wrong.size === 0 };
 }
 
 /**

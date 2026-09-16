@@ -49,7 +49,11 @@ describe('savedSplitAssignment', () => {
 
 describe('decideSplitMapRepairs', () => {
   it('waits while the map is not split yet', () => {
-    expect(decideSplitMapRepairs({ desired: FIRE_DESIRED, splitMaps: [], layers: [] })).toEqual({ kind: 'wait' });
+    expect(decideSplitMapRepairs({ desired: FIRE_DESIRED, splitMaps: [], layers: [] })).toEqual({
+      toggles: [],
+      placed: [],
+      done: false,
+    });
   });
 
   it('waits, without touching anything, while the raster layers are still parked', () => {
@@ -65,7 +69,7 @@ describe('decideSplitMapRepairs', () => {
           { id: 'footprints', dataId: 'grafana-B' },
         ],
       })
-    ).toEqual({ kind: 'wait' });
+    ).toEqual({ toggles: [], placed: ['boxoutline', 'footprints'], done: false });
   });
 
   // The measured failure: both rasters added to both halves as visible.
@@ -82,12 +86,12 @@ describe('decideSplitMapRepairs', () => {
       ],
     });
     expect(action).toEqual({
-      kind: 'toggle',
-      settled: true,
       toggles: [
         { mapIndex: 0, layerId: 's2scene' },
         { mapIndex: 1, layerId: 's2scene-before' },
       ],
+      placed: ['boxoutline', 'footprints'],
+      done: false,
     });
   });
 
@@ -108,7 +112,13 @@ describe('decideSplitMapRepairs', () => {
         { id: 's2scene', dataId: 'grafana-B-raster' },
       ],
     });
-    expect(action).toMatchObject({ kind: 'toggle', settled: true });
+    // Exactly the two toggles the first two panes need, and not one naming
+    // pane 2 or 3: the surplus panes are `splitMapsNormalise`'s to fold away.
+    expect(action.toggles).toEqual([
+      { mapIndex: 0, layerId: 's2scene' },
+      { mapIndex: 1, layerId: 's2scene-before' },
+    ]);
+    expect(action.toggles.every(({ mapIndex }) => mapIndex < 2)).toBe(true);
   });
 
   it('is done when the authored assignment already holds', () => {
@@ -126,7 +136,11 @@ describe('decideSplitMapRepairs', () => {
           { id: 's2scene', dataId: 'grafana-B-raster' },
         ],
       })
-    ).toEqual({ kind: 'done' });
+    ).toEqual({
+      toggles: [],
+      placed: ['boxoutline', 'footprints', 's2scene-before', 's2scene'],
+      done: true,
+    });
   });
 
   // A change of band combination retypes the raster layers, and kepler mints a
@@ -143,14 +157,47 @@ describe('decideSplitMapRepairs', () => {
         { id: 'jnqjkv9', dataId: 'grafana-B-raster' },
       ],
     });
-    expect(action).toEqual({
-      kind: 'toggle',
-      settled: true,
-      toggles: [
-        { mapIndex: 0, layerId: 'jnqjkv9' },
-        { mapIndex: 1, layerId: '77poy2u' },
+    expect(action.toggles).toEqual([
+      { mapIndex: 0, layerId: 'jnqjkv9' },
+      { mapIndex: 1, layerId: '77poy2u' },
+    ]);
+  });
+
+  // The hand-toggle case: a layer already put in its place is read, never moved.
+  it('leaves a layer alone once it has been placed, even while others are missing', () => {
+    const action = decideSplitMapRepairs({
+      desired: FIRE_DESIRED,
+      // The user has just dragged `footprints` off the left half.
+      splitMaps: [
+        { layers: { boxoutline: true, footprints: false } },
+        { layers: { boxoutline: true, footprints: true } },
       ],
+      layers: [
+        { id: 'boxoutline', dataId: 'grafana-A' },
+        { id: 'footprints', dataId: 'grafana-B' },
+      ],
+      placed: ['boxoutline', 'footprints'],
     });
+    expect(action.toggles).toEqual([]);
+    expect(action.done).toBe(false);
+  });
+
+  it('still repairs a layer it has not placed yet', () => {
+    const action = decideSplitMapRepairs({
+      desired: FIRE_DESIRED,
+      splitMaps: [
+        { layers: { boxoutline: true, footprints: true, 's2scene-before': true, s2scene: true } },
+        { layers: { boxoutline: true, footprints: true, 's2scene-before': false, s2scene: true } },
+      ],
+      layers: [
+        { id: 'boxoutline', dataId: 'grafana-A' },
+        { id: 'footprints', dataId: 'grafana-B' },
+        { id: 's2scene-before', dataId: 'grafana-D-raster' },
+        { id: 's2scene', dataId: 'grafana-B-raster' },
+      ],
+      placed: ['boxoutline', 'footprints'],
+    });
+    expect(action.toggles).toEqual([{ mapIndex: 0, layerId: 's2scene' }]);
   });
 
   it('leaves an ambiguous dataset alone rather than guessing', () => {
@@ -175,6 +222,7 @@ describe('decideSplitMapRepairs', () => {
         { id: 'bbb', dataId: 'grafana-A' },
       ],
     });
-    expect(action).toEqual({ kind: 'wait' });
+    expect(action.toggles).toEqual([]);
+    expect(action.done).toBe(false);
   });
 });

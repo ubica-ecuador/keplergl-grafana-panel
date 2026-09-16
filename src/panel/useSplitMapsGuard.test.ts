@@ -111,6 +111,37 @@ it('stops watching once the assignment holds, so a later hand toggle stays', asy
   expect(toggles(store)).toEqual([]);
 });
 
+it('leaves a hand toggle alone even while a raster is still missing', async () => {
+  const store = makeStore(
+    visState([{ layers: { boxoutline: true } }, { layers: { boxoutline: true } }], LAYERS_WITHOUT_RASTERS)
+  );
+  const { result } = renderHook(() => useSplitMapsGuard({ store: store as unknown as Store, mapConfig: CONFIG }));
+
+  // Armed, and waiting for the rasters: `boxoutline` is seen in its place.
+  result.current();
+  await flush();
+  expect(toggles(store)).toEqual([]);
+
+  // The user drags `boxoutline` off the left half while the wait is still on.
+  store.set(visState([{ layers: { boxoutline: false } }, { layers: { boxoutline: true } }], LAYERS_WITHOUT_RASTERS));
+  await flush();
+  expect(toggles(store)).toEqual([]);
+
+  // And the rasters, when they do arrive, are still put right.
+  store.set(
+    visState(
+      [{ layers: { ...ALL_TRUE, boxoutline: false } }, { layers: { ...ALL_TRUE, boxoutline: true } }],
+      LAYERS_WITH_RASTERS
+    )
+  );
+  await flush();
+  // The rasters are put right; the hand-moved `boxoutline` is still not touched.
+  expect(toggles(store)).toEqual([
+    { mapIndex: 0, layerId: 's2scene' },
+    { mapIndex: 1, layerId: 's2scene-before' },
+  ]);
+});
+
 it('dispatches nothing at all for a config with no split', async () => {
   const store = makeStore(visState([], LAYERS_WITH_RASTERS));
   const { result } = renderHook(() => useSplitMapsGuard({ store: store as unknown as Store, mapConfig: null }));

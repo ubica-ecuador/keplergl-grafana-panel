@@ -23,8 +23,12 @@ const GIVE_UP_MS = 60_000;
  * config put them on, until every layer that config names has been placed — see
  * `splitMapsGuard.ts` for what overwrites the assignment and when.
  *
- * Armed rather than always on, so that between refreshes the user can move a
- * layer from one half to the other in the side panel and have it stay moved.
+ * Armed rather than always on, and within an arming each layer is put back at
+ * most once: a layer the guard has already placed is left alone even while it
+ * goes on waiting for the others, so moving one half's layer by hand sticks
+ * immediately — including in the state this guard exists for, where a raster is
+ * still missing and the window has 50-odd seconds left to run.
+ *
  * Like every store-driven hook here, the reconcile runs on a microtask so a
  * toggle is never dispatched from inside the dispatch that triggered it.
  */
@@ -37,6 +41,8 @@ export function useSplitMapsGuard({
 }): () => void {
   const desired = useMemo(() => savedSplitAssignment(mapConfig), [mapConfig]);
   const until = useRef(0);
+  /** Authored ids already put in their place during this arming. */
+  const placed = useRef<string[]>([]);
   const unsubscribe = useRef<(() => void) | null>(null);
   const scheduled = useRef(false);
 
@@ -55,18 +61,17 @@ export function useSplitMapsGuard({
     if (!live) {
       return;
     }
-    const action = decideSplitMapRepairs({ desired, splitMaps: live.splitMaps, layers: live.layers });
-    if (action.kind === 'done') {
-      stop();
-      return;
-    }
-    if (action.kind === 'wait') {
-      return;
-    }
-    for (const { mapIndex, layerId } of action.toggles) {
+    const decision = decideSplitMapRepairs({
+      desired,
+      splitMaps: live.splitMaps,
+      layers: live.layers,
+      placed: placed.current,
+    });
+    placed.current = [...new Set([...placed.current, ...decision.placed])];
+    for (const { mapIndex, layerId } of decision.toggles) {
       toggleLayerInSplitMap(store.dispatch, mapIndex, layerId);
     }
-    if (action.settled) {
+    if (decision.done) {
       stop();
     }
   }, [desired, store, stop]);
@@ -89,6 +94,9 @@ export function useSplitMapsGuard({
       return;
     }
     until.current = Date.now() + GIVE_UP_MS;
+    // A refresh is exactly the event that loses the assignment, so nothing
+    // placed before it counts any more.
+    placed.current = [];
     if (!unsubscribe.current) {
       unsubscribe.current = store.subscribe(schedule);
     }
