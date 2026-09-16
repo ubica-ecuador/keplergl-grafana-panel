@@ -211,6 +211,16 @@ export function framesToRasters(
 
     const allScenes = readScenes(frame, roles.rasterUrl, roles.time, roles.rasterItemUrl);
 
+    // Whether this query is an archive is decided from the series itself,
+    // before anything about items is considered — not from `opening`, which is
+    // only chosen after the item-driven filtering below runs. An archive never
+    // wanted an item, no matter what an incidental raster_item_url column
+    // carries or how much of the series it happens to cover, so this must be
+    // settled first and the filtering must never see it as item-driven at all:
+    // read on a still-mixed series, filtering by item presence would drop the
+    // rows the join missed, silently losing frames from the archive's timeline.
+    const isArchive = allScenes.length > 0 && rasterKind(allScenes[0].sourceUrl) === 'pmtiles';
+
     // What the combination asks for, and what this series can actually give: a
     // combination that needs an item can only be drawn from the scenes that
     // carry one. A scene without one is not part of that catalogue — filtering
@@ -218,8 +228,10 @@ export function framesToRasters(
     // and drawing nothing. If not one scene of the series has an item, that
     // catalogue is empty, and the whole raster degrades to true colour and the
     // composed image, exactly as a query with no item column at all does today.
+    // An archive skips all of this outright: no filtering, no degrade
+    // bookkeeping, `kind` decided the way it always has been.
     const requestedRecipe = BAND_COMBINATIONS[opts.bands ?? 'trueColor'];
-    const needsItem = requestedRecipe.source === 'item';
+    const needsItem = requestedRecipe.source === 'item' && !isArchive;
     const itemScenes = needsItem ? allScenes.filter((scene) => scene.itemUrl !== null) : allScenes;
     const degraded = needsItem && itemScenes.length === 0;
     const recipe = degraded ? BAND_COMBINATIONS.trueColor : requestedRecipe;
@@ -232,13 +244,10 @@ export function framesToRasters(
       return;
     }
 
-    // A PMTiles archive never wanted an item: it is already drawn tiles, and an
-    // incidental raster_item_url column must not divert it into the item-driven
-    // path below, where it would come out painted and pointed at the item —
-    // silently dropping the archive. `opts.painted` is deliberately left out of
-    // this check: it decides how a *COG* is drawn, and has no say in whether
-    // something is an archive.
-    const wantsItem = recipe.source === 'item' && rasterKind(opening.sourceUrl) !== 'pmtiles';
+    // Reuses the same archive decision made above, rather than re-deriving it
+    // from `opening`: an archive is already drawn tiles, so nothing here
+    // composites or paints it, whichever scene the window happens to open on.
+    const wantsItem = recipe.source === 'item' && !isArchive;
     // Assets/rescale only ever describe a painted composite, and only once an
     // item is actually available to composite from.
     const paintedAssets = wantsItem ? recipe.assets : undefined;

@@ -497,4 +497,27 @@ describe('framesToRasters — band combinations do not overreach', () => {
     expect(raster.sourceUrl).toBe(VISUAL);
     expect(raster.assets).toBeUndefined();
   });
+
+  it('keeps every scene of an archive even when only some rows carry an incidental item', () => {
+    // The item column can arrive from a join that does not cover every date —
+    // an archive must not lose frames from its timeline over that, even though
+    // `kind` already resolves to 'pmtiles' correctly on its own.
+    const archive = 'https://bucket.example/scenes/2026/rain.pmtiles';
+    const frame = {
+      refId: 'A',
+      fields: [
+        { name: 'raster_url', type: 'string', values: [archive, `${archive}2`] },
+        { name: 'raster_item_url', type: 'string', values: ['', ITEM] },
+      ],
+      length: 2,
+    } as any;
+
+    const [raster] = framesToRasters([frame], {}, { ...BAND_OPTS, bands: 'forestBurn' });
+
+    expect(raster.kind).toBe('pmtiles');
+    expect(raster.scenes).toHaveLength(2);
+    expect(raster.sourceUrl).toBe(archive);
+    expect(raster.tileServerUrls).toEqual([]);
+    expect(raster.assets).toBeUndefined();
+  });
 });
