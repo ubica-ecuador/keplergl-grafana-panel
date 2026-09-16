@@ -3,37 +3,46 @@
 -- no miles. Corta en 200 sin avisar; las cifras comparan numberMatched con
 -- numberReturned para que se vea.
 --
--- Materializada (CREATE TABLE, no CTE): la resolución de picked_after de
--- más abajo necesita leer hit_after ya calculada, y una CTE no sobrevive a
--- su propia sentencia. Sigue siendo un único http_get por consulta de
--- panel -vive aquí, no se repite en cada fragmento.
+-- Cada etapa es su propia tabla temporal, no una CTE, y por dos razones a la
+-- vez: la resolución de picked_after/picked_before de más abajo necesita leer
+-- lo ya calculado (una CTE no sobrevive a su propia sentencia), y figures.sql
+-- -que empieza por SELECT y no puede traer su propio WITH- lee box_any, aoi y
+-- search por su nombre. Enterrarlas dentro de otra sentencia las deja fuera
+-- de alcance y el panel de cifras muere con un Catalog Error. Sigue siendo un
+-- único http_get por consulta de panel: vive en `search`, se materializa una
+-- vez, y los demás fragmentos leen la tabla.
+
+-- El recuadro sin filtrar por tamaño: las cifras lo necesitan aunque la
+-- guarda haya cortado la búsqueda, porque es el único sitio donde se puede
+-- decir por qué no hay nada.
+CREATE OR REPLACE TEMP TABLE box_any AS (
+  SELECT 'box' AS name, ST_GeomFromText(getvariable('drawn')) AS geom
+  WHERE getvariable('drawn') IS NOT NULL
+);
+
+-- La guarda de tamaño (el techo vive en box_limit_m2(), en prelude.sql).
+-- Como el polígono se comparte con el resto del tablero, aquí puede llegar
+-- un encuadre de medio país que nadie dibujó para esto.
+CREATE OR REPLACE TEMP TABLE aoi AS (
+  SELECT * FROM box_any WHERE m2(geom) <= box_limit_m2()
+);
+
+-- El único http_get de la consulta. Materializado: figures.sql lee de aquí el
+-- estado y los recuentos del catálogo sin volver a preguntar.
+CREATE OR REPLACE TEMP TABLE search AS (
+  SELECT name, geom,
+         http_get('https://earth-search.aws.element84.com/v1/search'
+           || '?collections=sentinel-2-l2a'
+           || '&bbox=' || ST_XMin(geom) || ',' || ST_YMin(geom) || ','
+                       || ST_XMax(geom) || ',' || ST_YMax(geom)
+           || '&datetime=' || strftime(getvariable('back_from'), '%Y-%m-%dT%H:%M:%SZ')
+           || '/' || strftime(getvariable('win_to'), '%Y-%m-%dT%H:%M:%SZ')
+           || '&limit=200') AS r
+  FROM aoi
+);
+
 CREATE OR REPLACE TEMP TABLE hit AS (
-  WITH box_any AS (
-    -- El recuadro sin filtrar por tamaño: las cifras lo necesitan aunque la
-    -- guarda haya cortado la búsqueda, porque es el único sitio donde se puede
-    -- decir por qué no hay nada. Su fragmento (figures.sql) empieza con SELECT
-    -- y no puede añadir su propio CTE, así que vive aquí.
-    SELECT 'box' AS name, ST_GeomFromText(getvariable('drawn')) AS geom
-    WHERE getvariable('drawn') IS NOT NULL
-  ),
-  aoi AS (
-    -- La guarda de tamaño (el techo vive en box_limit_m2(), en prelude.sql).
-    -- Como el polígono se comparte con el resto del tablero, aquí puede llegar
-    -- un encuadre de medio país que nadie dibujó para esto.
-    SELECT * FROM box_any WHERE m2(geom) <= box_limit_m2()
-  ),
-  search AS (
-    SELECT name, geom,
-           http_get('https://earth-search.aws.element84.com/v1/search'
-             || '?collections=sentinel-2-l2a'
-             || '&bbox=' || ST_XMin(geom) || ',' || ST_YMin(geom) || ','
-                         || ST_XMax(geom) || ',' || ST_YMax(geom)
-             || '&datetime=' || strftime(getvariable('back_from'), '%Y-%m-%dT%H:%M:%SZ')
-             || '/' || strftime(getvariable('win_to'), '%Y-%m-%dT%H:%M:%SZ')
-             || '&limit=200') AS r
-    FROM aoi
-  ),
-  features AS (
+  WITH features AS (
     -- Un cuerpo que no es JSON (página de error, o el vacío del tope de 10 s)
     -- no debe romper el panel: TRY lo vuelve NULL y unnest(NULL) da cero filas.
     SELECT name, geom, unnest(TRY(json_extract(r->>'body', '$.features[*]'))) AS f
@@ -75,15 +84,25 @@ SET VARIABLE picked_after = (
   SELECT visual_href FROM hit_after WHERE visual_href = getvariable('picked_after') LIMIT 1
 );
 
+-- Lo mismo del lado de antes, y por el mismo motivo: un pinchado rancio tiene
+-- que dejar de existir como valor, no solo perder el desempate de hit_before.
+-- Quien lo lee además de hit_before es contact_sheet.sql (columna set_before),
+-- que lo arrastra a cada enlace de fila: sin resolverlo aquí, un pinchado de
+-- un recuadro anterior se perpetúa para siempre en los enlaces mientras el
+-- mapa ya dibuja otra escena. Resuelto, se vacía igual que set_after.
+SET VARIABLE picked_before = (
+  SELECT visual_href FROM hit
+  WHERE side = 'Before' AND visual_href = getvariable('picked_before') LIMIT 1
+);
+
 -- Del lado de antes solo se dibuja una: la que se pinchó en la hoja de
--- contactos, si sigue siendo candidata; si no (nada pinchado, o un
--- pinchado rancio de un recuadro anterior que ya no aparece aquí), la más
--- reciente que pase los cortes. Elegir primero y filtrar después -como
--- hacía esto con un LIMIT 1 ciego al pinchado- deja en blanco cinco de las
--- seis candidatas que la hoja ofrece a mano: map_scenes_before.sql dibuja
--- sin condición la fila que YA es hit_before (no vuelve a comparar contra
--- el pinchado), así que hit_before tiene que ser la fila correcta desde
--- aquí.
+-- contactos, si sigue siendo candidata; si no (nada pinchado, o un pinchado
+-- rancio de un recuadro anterior, que a estas alturas ya es NULL), la más
+-- reciente que pase los cortes. Elegir primero y filtrar después -como hacía
+-- esto con un LIMIT 1 ciego al pinchado- deja en blanco cinco de las seis
+-- candidatas que la hoja ofrece a mano: map_scenes_before.sql dibuja sin
+-- condición la fila que YA es hit_before (no vuelve a comparar contra el
+-- pinchado), así que hit_before tiene que ser la fila correcta desde aquí.
 CREATE OR REPLACE TEMP TABLE hit_before AS (
   SELECT * FROM hit
   WHERE side = 'Before'

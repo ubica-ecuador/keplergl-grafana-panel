@@ -520,6 +520,181 @@ class AfterPickHermeticTest(unittest.TestCase):
         self.assertTrue(all(r['raster_url'] is not None for r in rows))
 
 
+class EveryPanelQueryRunsTest(unittest.TestCase):
+    """Sin banco, sin red: EJECUTA todas las consultas de la pestaña.
+
+    El agujero que esto tapa: test_every_panel_query_parses usa
+    duckdb.extract_statements, que analiza la sintaxis pero NO resuelve
+    nombres, así que una consulta que lee una tabla inexistente pasa.
+    Justo eso llegó al banco: al pasar search.sql de CTEs de primer nivel
+    a CREATE TEMP TABLE, box_any/aoi/search quedaron enterradas dentro de
+    otra sentencia y figures.sql -el único sitio donde se enseñan «Box too
+    large — draw a smaller one» y «none in range»- murió con un Catalog
+    Error en los cuatro estados, sin que nada en la suite se enterara.
+
+    Aquí se ejecuta de verdad cada consulta que el constructor emite (las
+    de los cuatro paneles, no una lista escrita a mano), contra un cuerpo
+    del catálogo enlatado que sustituye al único http_get, en el duckdb
+    del sistema. Cualquier nombre que no exista sale como error, no como
+    un test verde. Y se ejecuta en los estados que de verdad se dan en el
+    tablero -recuadro dibujado, sin recuadro, recuadro enorme-, porque el
+    de arriba fallaba en los tres por igual.
+    """
+
+    BOX = 'POLYGON ((-122.0 39.0, -121.9 39.0, -121.9 39.1, -122.0 39.1, -122.0 39.0))'
+    # Un recuadro de tamaño estatal: pasa de box_limit_m2() y la guarda corta
+    # la búsqueda. El camino por el que figures.sql tiene que seguir dando una
+    # fila (la del aviso) aunque no haya ni aoi ni escenas.
+    HUGE_BOX = 'POLYGON ((-124.4 32.5, -114.1 32.5, -114.1 42.0, -124.4 42.0, -124.4 32.5))'
+    GEOMETRY = {'type': 'Polygon', 'coordinates': [[[-122.0, 39.0], [-121.9, 39.0], [-121.9, 39.1],
+                                                    [-122.0, 39.1], [-122.0, 39.0]]]}
+    # El día pausado es 2026-06-15: dos escenas antes y dos después.
+    DATES = ['2026-04-20T19:00:00Z', '2026-06-10T19:00:00Z',
+             '2026-06-16T19:00:00Z', '2026-06-17T19:00:00Z']
+    BASE_CASE = dict(area=BOX, sceneBefore='', sceneAfter='',
+                     scanFrom='2026-06-15T00:00:00.000Z', scanTo='2026-06-15T23:59:59.000Z',
+                     days='3', lookback='90', s2cloud='100', s2cover='0', bands='forestBurn')
+    # panel-21 no compone su SQL: la copia del mapa de incendios de la
+    # pestaña Timeline, que lee la tabla del tablero anfitrión. Para poder
+    # ejecutarla igual que las demás se le pone delante una tabla con esa
+    # forma; lo que se comprueba de ella es que la consulta corre, no los
+    # datos del incendio.
+    HOST_SEED = ("CREATE OR REPLACE TEMP TABLE px AS "
+                 "SELECT CAST(now() AS TIMESTAMP) AS dt, 39.0 AS lat, -122.0 AS lon, 1.0 AS value;")
+
+    @staticmethod
+    def _sql_quote(value):
+        return "'" + str(value).replace("'", "''") + "'"
+
+    def _canned_body(self, clouds=None):
+        clouds = clouds or [5.0] * len(self.DATES)
+
+        def feature(index, when, cloud):
+            return {'id': f'SYN_{index}', 'properties': {'datetime': when, 'eo:cloud_cover': cloud},
+                    'assets': {'visual': {'href': f'https://example.test/{index}.tif'}},
+                    'geometry': self.GEOMETRY}
+        features = [feature(i, when, cloud)
+                    for i, (when, cloud) in enumerate(zip(self.DATES, clouds))]
+        return json.dumps({'type': 'FeatureCollection', 'features': features,
+                           'numberMatched': len(features), 'numberReturned': len(features)})
+
+    def _runnable(self, sql, case, clouds=None):
+        canned = "{'status': 200, 'body': " + self._sql_quote(self._canned_body(clouds)) + "} AS r"
+        sql, count = re.subn(r'http_get\(.*?\) AS r', canned, sql, count=1, flags=re.DOTALL)
+        # map_box.sql no busca nada: cero http_get es correcto ahí, dos no lo
+        # sería en ninguna (test_one_search_per_panel_query lo fija).
+        self.assertLessEqual(count, 1)
+        sql = re.sub(r'\$(__\w+)\(([^()]*)\)', expand_macro, sql)
+        return re.sub(r'\$\{?([A-Za-z]\w*)\}?', lambda m: self._sql_quote(case[m.group(1)]), sql)
+
+    def _connect(self):
+        try:
+            con = duckdb.connect()
+            con.execute('INSTALL spatial; LOAD spatial;')
+        except duckdb.Error as error:
+            self.skipTest(f'the spatial extension is not loadable in this duckdb: {error}')
+        con.execute(self.HOST_SEED)
+        return con
+
+    def _rows(self, sql, case, clouds=None):
+        con = self._connect()
+        result = con.execute(self._runnable(sql, case, clouds))
+        columns = [d[0] for d in result.description]
+        return [dict(zip(columns, row)) for row in result.fetchall()]
+
+    def _cases(self):
+        return {
+            'box drawn': dict(self.BASE_CASE),
+            'no box drawn': dict(self.BASE_CASE, area=''),
+            'box too large': dict(self.BASE_CASE, area=self.HUGE_BOX),
+        }
+
+    def test_every_panel_query_executes_in_every_state(self):
+        checked = 0
+        for state, case in self._cases().items():
+            for key, ref_id, sql in panel_queries():
+                with self.subTest(state=state, panel=key, refId=ref_id):
+                    try:
+                        self._rows(sql, case)
+                    except duckdb.Error as error:
+                        self.fail(f'{key}/{ref_id} ({state}): {error}')
+                checked += 1
+        self.assertGreaterEqual(checked, 18, 'los cuatro paneles, en los tres estados')
+
+    def test_a_drawn_box_gives_every_panel_its_rows(self):
+        # Ejecutar sin error no basta: una consulta que devuelve cero filas
+        # deja el panel en "No data", que es la otra forma de llegar roto.
+        case = dict(self.BASE_CASE)
+        for key, ref_id, sql in panel_queries():
+            if key == 'panel-21':
+                continue  # la copia del mapa de incendios lee datos del anfitrión
+            with self.subTest(panel=key, refId=ref_id):
+                self.assertTrue(self._rows(sql, case), f'{key}/{ref_id} devolvió cero filas')
+
+    def test_the_figures_panel_says_why_a_large_box_found_nothing(self):
+        # El aviso de tamaño solo sale aquí: si esta fila desaparece, el
+        # usuario dibuja medio país y no ve nada ni sabe por qué.
+        figures = next(s for k, _, s in panel_queries() if k == 'panel-24')
+        rows = self._rows(figures, dict(self.BASE_CASE, area=self.HUGE_BOX))
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['Searched'], 'Box too large — draw a smaller one')
+        self.assertEqual(rows[0]['Scenes'], 0)
+
+    def test_the_figures_panel_says_none_in_range_without_a_before_scene(self):
+        # El otro mensaje que solo vive aquí, y al que apunta la descripción
+        # del mapa ("widen Look back (days) if it says none in range").
+        figures = next(s for k, _, s in panel_queries() if k == 'panel-24')
+        # El caso de verdad: hay escenas antes del incendio, pero todas
+        # nubladas por encima del corte, así que ninguna llega a hit_before.
+        rows = self._rows(figures, dict(self.BASE_CASE, s2cloud='40'),
+                          clouds=[95.0, 95.0, 5.0, 5.0])
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['Before'], 'none in range')
+        # Y el lado de después sigue contando: "none in range" habla solo
+        # del antes, no de que la búsqueda entera se haya quedado vacía.
+        self.assertEqual(rows[0]['Scenes'], 2)
+
+    def test_the_figures_panel_reports_the_catalogue_for_a_drawn_box(self):
+        figures = next(s for k, _, s in panel_queries() if k == 'panel-24')
+        rows = self._rows(figures, dict(self.BASE_CASE))
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row['HTTP'], '200')
+        self.assertEqual(row['Matched'], len(self.DATES))
+        self.assertEqual(row['Returned'], len(self.DATES))
+        # Solo cuenta el lado de después (hit_after): dos de las cuatro.
+        self.assertEqual(row['Scenes'], 2)
+        self.assertEqual(row['Before'], '10 Jun 2026')
+        self.assertNotEqual(row['Searched'], 'Box too large — draw a smaller one')
+
+    def test_a_stale_before_pick_stops_riding_the_row_links(self):
+        # Simétrico con set_after: picked_before se resuelve contra las
+        # candidatas (search.sql), así que un pinchado de un recuadro
+        # anterior se vacía en vez de perpetuarse en cada enlace de fila.
+        sheet = next(s for k, _, s in panel_queries() if k == 'panel-23')
+        stale = dict(self.BASE_CASE, sceneBefore='https://example.test/from-a-previous-box.tif')
+        rows = self._rows(sheet, stale)
+        carried = {row['set_before'] for row in rows if row['Side'] == 'After'}
+        self.assertEqual(carried, {''}, 'un pinchado rancio no debe viajar en los enlaces')
+
+    def test_a_live_before_pick_still_rides_the_row_links(self):
+        sheet = next(s for k, _, s in panel_queries() if k == 'panel-23')
+        live = dict(self.BASE_CASE, sceneBefore='https://example.test/0.tif')
+        rows = self._rows(sheet, live)
+        carried = {row['set_before'] for row in rows if row['Side'] == 'After'}
+        self.assertEqual(carried, {'https://example.test/0.tif'})
+
+    def test_a_stale_before_pick_still_draws_exactly_one_before_row(self):
+        # Resolver el pinchado no debe dejar el lado de antes en blanco:
+        # hit_before sigue cayendo en la más reciente.
+        before = next(s for k, r, s in panel_queries() if k == 'panel-22' and r == 'D')
+        stale = dict(self.BASE_CASE, sceneBefore='https://example.test/from-a-previous-box.tif')
+        rows = self._rows(before, stale)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['scene_id'], 'SYN_1')
+        self.assertIsNotNone(rows[0]['raster_url'])
+
+
 class ContactSheetSidesLiveTest(unittest.TestCase):
     """Contra el banco de :3002: la única forma de probar que el cupo por
     lado de verdad reparte filas, no solo que la cláusula está presente. Se
