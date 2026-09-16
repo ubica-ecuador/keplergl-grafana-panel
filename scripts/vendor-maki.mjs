@@ -3,8 +3,8 @@
  *
  * Maki is CC0-1.0, so the file needs no attribution to be legal — the note is
  * there so the next reader knows where the shapes came from without digging
- * through git. The package itself is a dev dependency: nothing of it reaches
- * the bundle, only the JSON this writes.
+ * through git. The icons directory is supplied by the caller (as a CLI argument);
+ * nothing of the original package reaches the bundle, only the JSON this writes.
  */
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -38,10 +38,14 @@ for (const file of files) {
   const svg = await readFile(join(iconsDir, file), 'utf8');
   // Every Maki icon is a single <path d="…"> in a 15x15 box. Anything else is
   // a shape this reader would drop silently, so it fails loudly instead.
-  const d = svg.match(/<path[^>]*\sd="([^"]+)"/)?.[1];
-  if (!d) {
-    throw new Error(`No path found in ${file}`);
+  const pathMatches = svg.match(/<path[^>]*\sd="([^"]+)"/g);
+  if (!pathMatches || pathMatches.length !== 1) {
+    throw new Error(`Expected exactly one <path> in ${file}, found ${pathMatches?.length || 0}`);
   }
+  let d = pathMatches[0].match(/<path[^>]*\sd="([^"]+)"/)[1];
+  // Decode XML numeric character references (both hex &#x...; and decimal &#...;)
+  d = d.replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+  d = d.replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(parseInt(dec, 10)));
   paths[file.replace(/\.svg$/, '')] = d.replace(/\s+/g, ' ').trim();
 }
 

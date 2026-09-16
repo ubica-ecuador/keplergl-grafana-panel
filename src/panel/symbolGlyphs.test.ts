@@ -90,4 +90,25 @@ describe('makiGlyphs', () => {
       expect(glyph.path.length).toBeGreaterThan(0);
     }
   });
+
+  it('encodes all vendored paths as valid SVG — no XML entities, starts with M or m', () => {
+    const glyphs = makiGlyphs(maki.paths);
+    const invalidPaths = [];
+
+    for (const glyph of glyphs) {
+      const path = glyph.path;
+      // Every SVG path must start with a moveto command (M or m)
+      if (!path.match(/^[Mm]/)) {
+        invalidPaths.push(`${glyph.key}: does not start with M or m`);
+      }
+      // No unescaped XML entity markers should remain (& < >)
+      if (path.includes('&') || path.includes('<') || path.includes('>')) {
+        invalidPaths.push(`${glyph.key}: contains XML entity markers`);
+      }
+    }
+
+    if (invalidPaths.length > 0) {
+      throw new Error(`Path encoding errors:\n${invalidPaths.join('\n')}`);
+    }
+  });
 });
