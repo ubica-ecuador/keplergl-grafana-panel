@@ -1217,6 +1217,20 @@ class ImageryPanelsTest(unittest.TestCase):
         self.assertIn('drag', description.lower())
         self.assertIn('hides the cells outside it', description)
 
+    def test_only_the_fire_map_sets_the_box_from_a_click(self):
+        # Clicking a fire sets a fixed 6 km square as the search box. On
+        # panel-21 only: not on the Sentinel map, and not on any other tab's map.
+        options = self.options('panel-21')
+        self.assertIs(options['clickArea'], True)
+        self.assertEqual(options['clickAreaSizeMetres'], 6000)
+        self.assertIn('click a fire', self.elements['panel-21']['spec']['description'].lower())
+        for key, element in self.out['spec']['elements'].items():
+            if key == 'panel-21':
+                continue
+            spec = element['spec'].get('vizConfig', {}).get('spec', {})
+            self.assertNotIn('clickArea', spec.get('options', {}), key)
+            self.assertNotIn('clickAreaSizeMetres', spec.get('options', {}), key)
+
     def test_every_imagery_element_uses_the_shared_area_variable(self):
         # The polygon is now shared with the rest of the dashboard: every
         # Imagery element must read/publish `area`, and `burnArea` (its old,

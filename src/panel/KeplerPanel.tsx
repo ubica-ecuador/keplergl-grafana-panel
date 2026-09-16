@@ -13,6 +13,7 @@ import { toKeplerTheme } from '../data/keplerTheme';
 import { SavedMapConfig } from '../data/mapConfig';
 import { CUSTOM_BASEMAP_ID, DEFAULT_RASTER_SERVER_URL } from './constants';
 import { resolveCustomBasemapUrl } from './customBasemapUrl';
+import { DEFAULT_CLICK_AREA_METRES } from './clickArea';
 import { LazyKeplerMap } from './LazyKeplerMap';
 import { useInterpolatedOption } from './useInterpolatedOption';
 import { useStableValue } from './useStableValue';
@@ -178,6 +179,8 @@ export function KeplerPanel({
         onChangeGrafanaRange={onChangeTimeRange}
         variableMappings={variableMappings}
         areaVariable={options.areaVariable ?? ''}
+        clickArea={Boolean(options.clickArea)}
+        clickAreaSizeMetres={options.clickAreaSizeMetres ?? DEFAULT_CLICK_AREA_METRES}
         viewportVariables={viewportVariables}
         timeVariables={options.timeVariables}
         publishWhilePlaying={options.publishWhilePlaying ?? false}

@@ -361,6 +361,11 @@ def fire_map_element(panel8):
         'publishWhilePlaying': False,
         'peerTimeSync': False,
         'areaVariable': 'area',
+        # Clicking a fire sets the box too: a fixed 6 km square around the
+        # clicked cell, drawn on the map as if by hand. Constant in metres, not
+        # in degrees, so it covers the same ground at any latitude.
+        'clickArea': True,
+        'clickAreaSizeMetres': 6000,
         'showSidePanel': False,
         # panel-8 publishes minval/maxval, which the Global tab's panels
         # read; Imagery doesn't need them and must not publish them here.
@@ -370,6 +375,7 @@ def fire_map_element(panel8):
         21, 'Fires — pause on a day, then draw a box',
         'Play the days, pause on the one you care about, and draw a rectangle with the map draw tool. '
         'Draw it by pressing, dragging and releasing; a click, move, click does not close it on this map. '
+        'Or click a fire: that sets a 6 km square around it as the box, which you can delete like a drawing. '
         'The map on the right splits by a swipe curtain and searches Sentinel-2 for that box on both '
         'sides: the days after the paused window, and the clearest of the six most recent scenes before '
         'it. The rectangle hides the cells outside it; delete it to see them again.',

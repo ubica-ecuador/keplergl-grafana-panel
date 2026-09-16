@@ -2,6 +2,7 @@ import {
   addDataToMap,
   addLayer,
   createOrUpdateFilter,
+  deleteFeature,
   fitBounds,
   interactionConfigChange,
   layerConfigChange,
@@ -12,6 +13,7 @@ import {
   removeFilter,
   removeLayer,
   reorderLayer,
+  setFeatures,
   toggleLayerAnimation,
   toggleLayerForMap,
   replaceDataInMap,
@@ -35,6 +37,7 @@ import type { PanelDataset } from '../data/framesToDatasets';
 import type { KeplerColumn } from '../data/toKeplerDataset';
 import type { LayerOrderEntry } from './layerOrderGuard';
 import type { LiveLayer, SavedSplitPane } from './splitMapsGuard';
+import type { ClickedPosition, Figure, PolygonGeometry } from './clickArea';
 import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
 import { stacTileTemplate } from '../data/stacTileUrl';
 import { isPanelWmsId, wmsCalendarDatasetId, type WmsDataset } from '../data/wmsDataset';
@@ -1424,6 +1427,179 @@ function firstFeatureRow(object: unknown): unknown {
   const feature = object as { properties?: { values?: unknown[] } } | null | undefined;
   const values = feature?.properties?.values;
   return Array.isArray(values) ? values[0] : undefined;
+}
+
+/**
+ * Where on the map the entity last clicked sits, for the click-to-box feature.
+ *
+ * The same click state and the same draw guard as `readClickedEntity`, but
+ * answering "where", not "which values": a click while the draw toolbar is
+ * engaged, or no click state at all, is `none`; kepler's deliberate empty-map
+ * click is `empty`. A click on something that is not one of kepler's data
+ * layers — the drawn figures themselves, which a user clicks to select and
+ * delete — has no layer index and is `none` too, so selecting the box does not
+ * read as a failed attempt to place one.
+ *
+ * The position comes from the clicked row, not from where the pointer was: a
+ * layer drawn from latitude/longitude columns (a point layer, which is what a
+ * gridded fire source is drawn as — one row per cell, at the cell's centre)
+ * answers with those columns, so every click on the same cell gives the same
+ * box. A layer drawn from a geometry answers with the centre of the picked
+ * feature's bounding box. Anything else is `unresolved`, with the layer and the
+ * reason, so a click that failed is never mistaken for a click on bare map.
+ */
+export function readClickedPosition(store: Store): ClickedPosition {
+  const visState = getVisState(store);
+  if (!visState || isDrawActive(store)) {
+    return { kind: 'none' };
+  }
+  const clicked = visState.clicked;
+  if (clicked === undefined) {
+    return { kind: 'none' };
+  }
+  if (clicked === null) {
+    return { kind: 'empty' };
+  }
+
+  const layerIdx = clicked.layer?.props?.idx;
+  const layer = typeof layerIdx === 'number' ? (visState.layers ?? [])[layerIdx] : undefined;
+  if (!layer) {
+    return { kind: 'none' };
+  }
+  const where = { layerId: layer.id, layerType: layer.type };
+
+  const columns = (layer.config as { columns?: Record<string, { value?: string | null; fieldIdx?: number }> })
+    ?.columns;
+  if (columns?.lat && columns?.lng) {
+    const dataId = layer.config?.dataId;
+    const dataset = dataId ? visState.datasets[dataId] : undefined;
+    if (!dataset || !layer.getHoverData) {
+      return { kind: 'unresolved', ...where, reason: 'the layer has no dataset to read the clicked row from' };
+    }
+    const row = layer.getHoverData(
+      clicked.object ?? clicked.index,
+      dataset.dataContainer,
+      dataset.fields,
+      visState.animationConfig,
+      clicked
+    );
+    const lat = coordinateValue(rowFieldValue(row, columnFieldIdx(columns.lat, dataset.fields)));
+    const lng = coordinateValue(rowFieldValue(row, columnFieldIdx(columns.lng, dataset.fields)));
+    if (lat !== null && lng !== null) {
+      return { kind: 'position', position: { lng, lat }, ...where };
+    }
+    return {
+      kind: 'unresolved',
+      ...where,
+      reason: `the clicked row has no numeric ${columns.lat.value ?? 'lat'}/${columns.lng.value ?? 'lng'}`,
+    };
+  }
+
+  const centre = geometryCentre((clicked.object as { geometry?: { coordinates?: unknown } } | null)?.geometry);
+  if (centre) {
+    return { kind: 'position', position: centre, ...where };
+  }
+  return { kind: 'unresolved', ...where, reason: 'the layer has no lat/lng columns and the clicked object no geometry' };
+}
+
+/**
+ * A coordinate cell as a number, or null if it is not one.
+ *
+ * Not `Number(value)`: that turns a null cell into 0, and a fire with no
+ * position would get a box on Null Island instead of a warning — the silent
+ * wrong answer this feature is built to avoid.
+ */
+function coordinateValue(value: unknown): number | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+/** A column's field index, from kepler's own `fieldIdx` or, failing that, by name. */
+function columnFieldIdx(column: { value?: string | null; fieldIdx?: number }, fields: Array<{ name: string }>): number {
+  if (typeof column.fieldIdx === 'number' && column.fieldIdx >= 0) {
+    return column.fieldIdx;
+  }
+  return fields.findIndex((field) => field.name === column.value);
+}
+
+/** The centre of a GeoJSON geometry's bounding box, or null if it has no coordinates. */
+function geometryCentre(geometry: { coordinates?: unknown } | undefined): { lng: number; lat: number } | null {
+  let west = Infinity;
+  let east = -Infinity;
+  let south = Infinity;
+  let north = -Infinity;
+  const visit = (node: unknown) => {
+    if (!Array.isArray(node)) {
+      return;
+    }
+    if (node.length >= 2 && typeof node[0] === 'number' && typeof node[1] === 'number') {
+      west = Math.min(west, node[0]);
+      east = Math.max(east, node[0]);
+      south = Math.min(south, node[1]);
+      north = Math.max(north, node[1]);
+      return;
+    }
+    node.forEach(visit);
+  };
+  visit(geometry?.coordinates);
+  return Number.isFinite(west) ? { lng: (west + east) / 2, lat: (south + north) / 2 } : null;
+}
+
+/**
+ * Every figure on the map with where it lives: a polygon filter (rectangles
+ * become one the moment they are finished) or the editor. Same order and same
+ * dedupe as `readDrawnAreas`, which is what publishes them.
+ */
+export function readFigures(store: Store): Figure[] {
+  const visState = getVisState(store);
+  if (!visState) {
+    return [];
+  }
+  const polygonFilterIds = new Map<string, string>();
+  for (const filter of visState.filters) {
+    const feature = filter.type === 'polygon' ? (filter.value as { id?: string | number } | undefined) : undefined;
+    if (feature?.id !== undefined) {
+      polygonFilterIds.set(String(feature.id), filter.id);
+    }
+  }
+  return readDrawnAreas(store).map(({ id }) =>
+    polygonFilterIds.has(id) ? { id, filterId: polygonFilterIds.get(id) } : { id }
+  );
+}
+
+/**
+ * Makes `square` the only figure on the map, as if the user had just drawn it.
+ *
+ * `setFeatures` is the action kepler's own editor dispatches when a drawing is
+ * finished, and it replaces the editor's figures wholesale — so a hand-drawn
+ * polygon still in the editor goes with it. A rectangle is not in the editor
+ * but in a polygon filter; each of those goes through `deleteFeature`, the
+ * action kepler's delete tool dispatches, which removes the filter.
+ *
+ * Returns the id the square was given, so the caller can recognise it later.
+ */
+export function replaceFiguresWithSquare(dispatch: Dispatch, square: PolygonGeometry, replace: Figure[]): string {
+  const id = `click-${Math.random().toString(36).slice(2, 9)}`;
+  const feature = { type: 'Feature', id, properties: { isClosed: true }, geometry: square };
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, setFeatures([feature] as unknown as Parameters<typeof setFeatures>[0])));
+  for (const figure of replace) {
+    if (figure.filterId) {
+      removeFigure(dispatch, figure);
+    }
+  }
+  return id;
+}
+
+/** Removes one figure the way kepler's delete tool does. */
+export function removeFigure(dispatch: Dispatch, figure: Figure): void {
+  const feature = { id: figure.id, properties: figure.filterId ? { filterId: figure.filterId } : {} };
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, deleteFeature(feature as unknown as Parameters<typeof deleteFeature>[0])));
 }
 
 /**

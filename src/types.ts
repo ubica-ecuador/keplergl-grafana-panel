@@ -209,4 +209,17 @@ export interface KeplerPanelOptions {
    * dataset, after which the shape can never be widened again from the map.
    */
   areaVariable?: string;
+
+  /**
+   * Clicking an entity on the map sets the drawn area to a square around it,
+   * instead of having to draw one. Needs `areaVariable`: the square is handed
+   * to kepler as a drawn figure and published by the same path as a drawing.
+   */
+  clickArea?: boolean;
+
+  /**
+   * Side of that square, in metres — constant in area at every latitude, not
+   * constant in degrees. 6000 by default.
+   */
+  clickAreaSizeMetres?: number;
 }

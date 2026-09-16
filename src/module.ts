@@ -8,6 +8,7 @@ import { FieldMappingEditor } from './editors/FieldMappingEditor';
 import { VariableSyncEditor } from './editors/VariableSyncEditor';
 import { TimeVariableEditor } from './editors/TimeVariableEditor';
 import { AreaVariableEditor } from './editors/AreaVariableEditor';
+import { DEFAULT_CLICK_AREA_METRES } from './panel/clickArea';
 import { ViewportVariablesEditor } from './editors/ViewportVariablesEditor';
 import { DEFAULT_RASTER_SERVER_URL } from './panel/constants';
 
@@ -212,11 +213,29 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       category: ['Cross-filtering'],
       editor: AreaVariableEditor,
     })
+    .addBooleanSwitch({
+      path: 'clickArea',
+      name: 'Click to set the area',
+      description:
+        'Clicking an entity on the map sets the drawn area to a square around it, as if drawn by hand. It shows on the map and deletes like a drawing.',
+      category: ['Cross-filtering'],
+      defaultValue: false,
+      showIf: (config) => Boolean(config.areaVariable),
+    })
+    .addNumberInput({
+      path: 'clickAreaSizeMetres',
+      name: 'Square side (m)',
+      description: 'Side of the square in metres; the same area at every latitude.',
+      category: ['Cross-filtering'],
+      defaultValue: DEFAULT_CLICK_AREA_METRES,
+      settings: { min: 1, integer: true },
+      showIf: (config) => Boolean(config.areaVariable) && Boolean(config.clickArea),
+    })
     .addCustomEditor({
       id: 'viewportVariables',
       path: 'viewportVariables',
       name: 'Publish viewport (for other panels)',
-      description: "Write the bounding box of what the map is showing to four dashboard variables.",
+      description: 'Write the bounding box of what the map is showing to four dashboard variables.',
       category: ['Cross-filtering'],
       editor: ViewportVariablesEditor,
     })

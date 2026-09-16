@@ -57,6 +57,7 @@ import { savedViewportOf } from './viewportGuard';
 import { useViewportSync } from './useViewportSync';
 import type { ViewportVariables } from './viewportSync';
 import { useAreaSync } from './useAreaSync';
+import { useClickArea } from './useClickArea';
 import { useTimeVariableSync } from './useTimeVariableSync';
 import type { TimeRangeMs, TimeSyncMode } from './timeSync';
 import type { TimeVariableMapping } from './timeVariableSync';
@@ -124,6 +125,10 @@ export interface KeplerMapProps {
   variableMappings: VariableMapping[];
   /** Variable the drawn polygon/rectangle is published to as WKT; empty for none. */
   areaVariable: string;
+  /** Clicking an entity sets the area to a square around it; needs `areaVariable`. */
+  clickArea: boolean;
+  /** Side of that square, in metres. */
+  clickAreaSizeMetres: number;
   viewportVariables?: ViewportVariables;
   /** The two variables the time slider's window is published to, if configured. */
   timeVariables?: TimeVariableMapping;
@@ -169,6 +174,8 @@ export function KeplerMap({
   onChangeGrafanaRange,
   variableMappings,
   areaVariable,
+  clickArea,
+  clickAreaSizeMetres,
   viewportVariables,
   timeVariables,
   publishWhilePlaying,
@@ -403,6 +410,11 @@ export function KeplerMap({
   // One-way and silent on its first pass — it adopts whatever figures a saved
   // config restored without publishing — so it contends with nothing on load.
   useAreaSync({ store, isReady, variable: areaVariable });
+
+  // The other way to set that area: click an entity. Writes no variable of its
+  // own — the square becomes a drawn figure and the sync above publishes it.
+  // Off without an area variable, since nothing would ever read the square.
+  useClickArea({ store, isReady, enabled: clickArea && Boolean(areaVariable), sideMetres: clickAreaSizeMetres });
 
   // One-way: publishes the bbox of what the map shows once it comes to rest,
   // and once on load so a consuming panel never opens without one.
