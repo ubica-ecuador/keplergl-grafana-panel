@@ -2,9 +2,10 @@ import { DataFrame } from '@grafana/data';
 
 import { buildFlowField, FlowFieldLayerConfig } from './buildFlowField';
 import { buildFlows, FlowLayerConfig, FlowRenderMode } from './buildFlows';
+import { buildSymbolLayer, SymbolLayerConfig } from './buildSymbolLayer';
 import { buildTripLayer, TripLayerConfig, TripLayerMode } from './buildTripLayer';
 import { buildTrips } from './buildTrips';
-import { earliestTimestepRows } from './buildWindField';
+import { describesLattice, earliestTimestepRows } from './buildWindField';
 import { detectFields, FieldRoleOverrides, FieldRoles, resolveRoles } from './detectFields';
 import { KeplerColumn, KeplerRow, toKeplerColumns, toKeplerRows } from './toKeplerDataset';
 
@@ -39,6 +40,15 @@ export interface PanelDataset {
    * does for flows and trips.
    */
   flowFieldLayer?: FlowFieldLayerConfig;
+  /**
+   * A symbol layer to add, when the query is a scattering of points that carry
+   * a bearing — weather stations, vessels, aircraft.
+   *
+   * The counterpart of `flowFieldLayer`, and the reason the wind test now asks
+   * whether the rows form a lattice: without that question a station query
+   * built a flow field that drew nothing and explained nothing.
+   */
+  symbolLayer?: SymbolLayerConfig;
 }
 
 /**
@@ -71,7 +81,7 @@ export function framesToDatasets(
     // A velocity grid stays a velocity grid: the rows travel to kepler as they
     // came, and the flow field layer traces the paths through them. What it does
     // not keep is the rest of the forecast — see `oneTimestep`.
-    if (isWindFrame(roles)) {
+    if (isWindFrame(roles) && isLatticeFrame(frame, roles)) {
       return {
         id,
         label,
@@ -100,6 +110,7 @@ export function framesToDatasets(
       columns: rows.length === 0 ? toKeplerColumns(frame, roles) : undefined,
       tripLayer: buildTripLayer(roles, id) ?? undefined,
       flowLayer: buildFlows(roles, id, { renderingMode: opts.flowRenderMode }) ?? undefined,
+      symbolLayer: pointsSymbols(roles) ? (buildSymbolLayer(roles, id) ?? undefined) : undefined,
     };
   });
 }
@@ -125,6 +136,32 @@ function isWindFrame(roles: FieldRoles): boolean {
   const hasComponents = Boolean(roles.u && roles.v);
   const hasPolar = Boolean(roles.speed && roles.direction);
   return Boolean(roles.latitude && roles.longitude && (hasComponents || hasPolar) && !roles.tripId);
+}
+
+/**
+ * Whether the rows of a velocity query sit on a regular lattice.
+ *
+ * A grid is a field and is drawn as one; a scattering of stations is not, and
+ * pretending otherwise draws nothing at all.
+ */
+function isLatticeFrame(frame: DataFrame, roles: FieldRoles): boolean {
+  const indices = earliestTimestepRows(frame, roles.time);
+  const values = (name?: string) => {
+    const field = name ? frame.fields.find((f) => f.name === name) : undefined;
+    return field ? indices.map((i) => Number(field.values[i])) : [];
+  };
+  return describesLattice(values(roles.latitude), values(roles.longitude));
+}
+
+/**
+ * Whether a tabular query describes symbols: points with something that points.
+ *
+ * A trip id disqualifies it for the same reason it disqualifies a velocity
+ * field — a trajectory is a path, not a scattering of marks.
+ */
+function pointsSymbols(roles: FieldRoles): boolean {
+  const bearing = Boolean(roles.rotation || roles.direction);
+  return Boolean(roles.latitude && roles.longitude && bearing && !roles.tripId);
 }
 
 /**

@@ -335,3 +335,69 @@ describe('framesToDatasets — velocity grid columns', () => {
     expect(dataset.rows[0].altitude).toBe(850);
   });
 });
+
+describe('framesToDatasets: stations versus grids', () => {
+  const grid = toDataFrame({
+    refId: 'A',
+    fields: [
+      { name: 'latitude', type: FieldType.number, values: [-2, -2, -1.75, -1.75] },
+      { name: 'longitude', type: FieldType.number, values: [-79, -78.75, -79, -78.75] },
+      { name: 'u', type: FieldType.number, values: [1, 2, 3, 4] },
+      { name: 'v', type: FieldType.number, values: [1, 2, 3, 4] },
+    ],
+  });
+
+  const stations = toDataFrame({
+    refId: 'A',
+    fields: [
+      { name: 'latitude', type: FieldType.number, values: [-2.9, -0.19, -2.17] },
+      { name: 'longitude', type: FieldType.number, values: [-79.0, -78.48, -79.92] },
+      { name: 'wind_speed', type: FieldType.number, values: [3, 5, 7] },
+      { name: 'wind_direction', type: FieldType.number, values: [90, 180, 270] },
+    ],
+  });
+
+  it('still draws a lattice as a flow field', () => {
+    const [dataset] = framesToDatasets([grid]);
+
+    expect(dataset.flowFieldLayer).toBeDefined();
+    expect(dataset.symbolLayer).toBeUndefined();
+  });
+
+  it('draws scattered stations as symbols instead of an empty flow field', () => {
+    const [dataset] = framesToDatasets([stations]);
+
+    expect(dataset.flowFieldLayer).toBeUndefined();
+    expect(dataset.symbolLayer).toBeDefined();
+    expect(dataset.symbolLayer!.config.visConfig.directionConvention).toBe('from');
+    // One row per station, none dropped.
+    expect(dataset.rows).toHaveLength(3);
+  });
+
+  it('keeps the time column for stations, because the dashboard clock filters them', () => {
+    // Three stations, not two: with only two points any pair of distinct
+    // coordinates trivially satisfies `describesLattice` — a single gap is
+    // always "regular" — which would send this frame down the grid path
+    // regardless of geometry (and is exactly the shape the pre-existing
+    // `polarFrame` wind test relies on to stay a grid). Three irregularly
+    // spaced stations, the same layout `stations` above uses, is the
+    // smallest fixture that actually exercises the non-lattice branch.
+    const withTime = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'time', type: FieldType.time, values: [1, 1, 1, 2, 2, 2] },
+        { name: 'latitude', type: FieldType.number, values: [-2.9, -0.19, -2.17, -2.9, -0.19, -2.17] },
+        { name: 'longitude', type: FieldType.number, values: [-79.0, -78.48, -79.92, -79.0, -78.48, -79.92] },
+        { name: 'wind_speed', type: FieldType.number, values: [3, 5, 7, 4, 6, 8] },
+        { name: 'wind_direction', type: FieldType.number, values: [90, 180, 270, 95, 185, 275] },
+      ],
+    });
+
+    const [dataset] = framesToDatasets([withTime]);
+
+    // The grid path would have kept one timestep and dropped the column; this
+    // one keeps every row, and kepler's filter separates them.
+    expect(dataset.rows).toHaveLength(6);
+    expect(Object.keys(dataset.rows[0])).toContain('time');
+  });
+});
