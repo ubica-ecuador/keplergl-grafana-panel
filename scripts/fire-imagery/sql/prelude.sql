@@ -1,8 +1,9 @@
 CREATE OR REPLACE TEMP MACRO m2(g) AS
   ST_Area(ST_Transform(g, 'EPSG:4326', 'EPSG:6933', always_xy := true));
 
--- El recuadro dibujado en el mapa de incendios. Sin recuadro no hay búsqueda.
-SET VARIABLE drawn = nullif($burnArea, '');
+-- El recuadro dibujado en el mapa, compartido por todo el tablero (variable
+-- `area`). Sin recuadro no hay búsqueda.
+SET VARIABLE drawn = nullif($area, '');
 -- La escena elegida en la hoja de contactos, si hay alguna.
 SET VARIABLE picked = nullif($scene, '');
 -- La ventana: desde el día en que empieza la ventana pausada del reloj hasta

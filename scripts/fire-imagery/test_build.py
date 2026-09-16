@@ -17,7 +17,7 @@ sys.path.insert(0, str(HERE))
 
 import build  # noqa: E402
 
-NEW_VARIABLES = ['scanFrom', 'scanTo', 'burnArea', 'scene', 'sLat', 'sLng',
+NEW_VARIABLES = ['scanFrom', 'scanTo', 'scene', 'sLat', 'sLng',
                  'days', 's2cloud', 's2cover', 'bands', 'aLat', 'aLng']
 
 # Lo que el datasource pone en lugar de los macros de Grafana antes de mandar la
@@ -94,7 +94,7 @@ class GraftTest(unittest.TestCase):
         self.assertEqual(out['spec']['layout']['spec']['tabs'][:2], before['spec']['layout']['spec']['tabs'])
         self.assertEqual(out['metadata'], before['metadata'])
 
-    def test_adds_the_twelve_variables_in_order(self):
+    def test_adds_the_eleven_variables_in_order(self):
         names = [v['spec']['name'] for v in self.grafted()['spec']['variables']]
         self.assertEqual(names[2:], NEW_VARIABLES)
 
@@ -125,7 +125,7 @@ class GraftTest(unittest.TestCase):
         self.assertEqual(options['timeVariables'], {'from': 'scanFrom', 'to': 'scanTo'})
         self.assertFalse(options['publishWhilePlaying'])
         self.assertFalse(options['peerTimeSync'])
-        self.assertEqual(options['areaVariable'], 'burnArea')
+        self.assertEqual(options['areaVariable'], 'area')
         for gone in ('rasterColormap', 'zarrRescale', 'windDensity'):
             self.assertNotIn(gone, options)
         vis = options['mapConfig']['config']['visState']
@@ -168,7 +168,10 @@ class SqlTest(unittest.TestCase):
                 self.assertNotIn('$__', comment, f'{name}.sql:{number}')
 
     def test_only_known_variables_are_referenced(self):
-        known = {variable['spec']['name'] for variable in build.variables()}
+        # `area` is not one of this tab's own variables: it is the
+        # dashboard-wide drawn-shape variable, already present before this
+        # tab is grafted in (Global, Country and Region all publish to it).
+        known = {variable['spec']['name'] for variable in build.variables()} | {'area'}
         for name in SQL_NAMES:
             referenced = set(re.findall(r'\$\{?([A-Za-z]\w*)', build.read_sql(name)))
             self.assertLessEqual(referenced, known, name)
@@ -284,6 +287,17 @@ class ImageryPanelsTest(unittest.TestCase):
         self.assertIn('drag', description.lower())
         self.assertIn('hides the cells outside it', description)
 
+    def test_every_imagery_element_uses_the_shared_area_variable(self):
+        # The polygon is now shared with the rest of the dashboard: every
+        # Imagery element must read/publish `area`, and `burnArea` (its old,
+        # tab-private variable) must not appear anywhere in the tab.
+        self.assertEqual(self.options('panel-21')['areaVariable'], 'area')
+        for key in ('panel-22', 'panel-23', 'panel-24'):
+            sql = json.dumps(self.raw_sql(key))
+            self.assertIn('$area', sql, key)
+        for key, element in self.elements.items():
+            self.assertNotIn('burnArea', json.dumps(element), key)
+
 
 class SentinelMapConfigValidationTest(unittest.TestCase):
     def kepler_panel(self, stac):
@@ -312,15 +326,15 @@ class SentinelMapConfigValidationTest(unittest.TestCase):
 
 
 class CentroidVariableTest(unittest.TestCase):
-    def test_burnarea_is_interpolated_with_sqlstring_and_not_manually_quoted(self):
-        # Measured on the bench: ${burnArea:sqlstring} lets Grafana quote and
-        # escape the value; hand-written quotes around ${burnArea} do not
-        # escape it and let a crafted var-burnArea break out of the literal.
+    def test_area_is_interpolated_with_sqlstring_and_not_manually_quoted(self):
+        # Measured on the bench: ${area:sqlstring} lets Grafana quote and
+        # escape the value; hand-written quotes around ${area} do not
+        # escape it and let a crafted var-area break out of the literal.
         for name in ('aLat', 'aLng'):
             variable = next(v for v in build.variables() if v['spec']['name'] == name)
             sql = variable['spec']['query']['spec']['__legacyStringValue']
-            self.assertIn('${burnArea:sqlstring}', sql)
-            self.assertNotIn("'${burnArea}'", sql)
+            self.assertIn('${area:sqlstring}', sql)
+            self.assertNotIn("'${area}'", sql)
 
 
 class RegraftTest(unittest.TestCase):
@@ -393,6 +407,16 @@ class RegraftTest(unittest.TestCase):
         sql = build.panel_sql('map_scenes')
         self.assertIn('raster_item_url', sql)
         self.assertIn('raster_url', sql)
+
+    def test_regraft_removes_a_legacy_burnarea_variable(self):
+        # A dashboard whose Imagery tab was grafted before the shared-area
+        # change still carries the old, tab-private `burnArea` variable.
+        # regraft must clear it too, or a redeploy leaves it orphaned.
+        once = build.graft(self.dash, build.imagery_elements(self.dash))
+        once['spec']['variables'].append(build.text_variable('burnArea', 'Imagery box (map)'))
+        twice = build.regraft(once, build.imagery_elements(once))
+        names = [v['spec']['name'] for v in twice['spec']['variables']]
+        self.assertNotIn('burnArea', names)
 
 
 class EncodingTest(unittest.TestCase):

@@ -41,6 +41,13 @@ LAYOUT = [
     ('panel-24', 16, 16, 8, 12),
 ]
 
+# Variable names a previously deployed Imagery tab may still carry that this
+# version no longer adds (e.g. `burnArea`, replaced by the dashboard-wide
+# `area`). regraft must strip these too, or a redeploy leaves them orphaned
+# in the production dashboard forever. Drop an entry once no deployed
+# dashboard carries it any more.
+LEGACY_VARIABLES = {'burnArea'}
+
 
 class GraftError(Exception):
     """El tablero no admite el injerto tal cual; nada se ha escrito."""
@@ -61,15 +68,15 @@ def custom_variable(name, label, values, default, description):
 
 
 def centroid_variable(name, label, axis_fn):
-    # En una query de variable el datasource NO entrecomilla ni escapa solo:
-    # comillas a mano dejaban que un var-burnArea manipulado se saliera del
-    # literal e inyectara SQL. ${burnArea:sqlstring} deja que Grafana
-    # entrecomille y escape (medido en el banco); por eso sin comillas aquí.
-    # Sin recuadro no hay filas y el mapa Sentinel se queda donde está.
+    # In a variable query the datasource does NOT quote or escape on its own:
+    # hand-written quotes let a crafted var-area value break out of the
+    # literal. ${area:sqlstring} lets Grafana quote and escape it (measured
+    # on the bench); that's why there are no quotes here. No box, no rows,
+    # and the Sentinel map stays put.
     sql = (
         "SELECT CAST(round(" + axis_fn + "(ST_Centroid(ST_GeomFromText(w))), 5) AS VARCHAR) AS __text,\n"
         "       CAST(round(" + axis_fn + "(ST_Centroid(ST_GeomFromText(w))), 5) AS VARCHAR) AS __value\n"
-        "FROM (SELECT nullif(${burnArea:sqlstring}, '') AS w)\n"
+        "FROM (SELECT nullif(${area:sqlstring}, '') AS w)\n"
         "WHERE w IS NOT NULL"
     )
     return {'kind': 'QueryVariable', 'spec': {
@@ -85,7 +92,6 @@ def variables():
     return [
         text_variable('scanFrom', 'Imagery window from (map)'),
         text_variable('scanTo', 'Imagery window to (map)'),
-        text_variable('burnArea', 'Imagery box (map)'),
         text_variable('scene', 'Imagery scene picked'),
         text_variable('sLat', 'Imagery scene lat'),
         text_variable('sLng', 'Imagery scene lng'),
@@ -292,10 +298,10 @@ def fire_map_element(panel8):
         'timeVariables': {'from': 'scanFrom', 'to': 'scanTo'},
         'publishWhilePlaying': False,
         'peerTimeSync': False,
-        'areaVariable': 'burnArea',
+        'areaVariable': 'area',
         'showSidePanel': False,
-        # panel-8 publica minval/maxval; la pestaña Imagery tiene su propio
-        # burnArea y no debe pisar las variables que lee la pestaña Global.
+        # panel-8 publishes minval/maxval, which the Global tab's panels
+        # read; Imagery doesn't need them and must not publish them here.
         'variableMappings': [],
     })
     return panel(
@@ -373,7 +379,7 @@ def regraft(dashboard, elements):
             for item in tab['spec'].get('layout', {}).get('spec', {}).get('items', [])}
     spec['layout']['spec']['tabs'] = [tab for tab in tabs if tab['spec']['title'] != TAB_TITLE]
     spec['elements'] = {key: value for key, value in spec['elements'].items() if key not in ours}
-    mine = {variable['spec']['name'] for variable in variables()}
+    mine = {variable['spec']['name'] for variable in variables()} | LEGACY_VARIABLES
     spec['variables'] = [v for v in spec['variables'] if v['spec']['name'] not in mine]
     return graft(stripped, elements)
 
