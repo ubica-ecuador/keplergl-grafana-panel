@@ -357,3 +357,60 @@ export async function readVectorField(map: Locator): Promise<VectorFieldSummary 
     };
   });
 }
+
+/** What the symbol layer spec asserts about the layer. */
+export interface SymbolLayerSummary {
+  symbols: number;
+  symbol: string;
+  angles: number[];
+  channels: Record<string, string | null>;
+}
+
+/** Reads what the symbol layer is about to draw, from kepler's own store. */
+export async function readSymbolLayer(map: Locator): Promise<SymbolLayerSummary | null> {
+  return map.evaluate((node) => {
+    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
+    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
+    let store = null;
+    while (fiber) {
+      const candidate = fiber.memoizedProps && fiber.memoizedProps.store;
+      if (candidate && typeof candidate.getState === 'function') {
+        store = candidate;
+        break;
+      }
+      fiber = fiber.return;
+    }
+    if (!store) {
+      throw new Error('kepler store not found from map node');
+    }
+    const visState = (Object.values(store.getState().keplerGl ?? {})[0] as any)?.visState;
+    const index = (visState?.layers ?? []).findIndex((l: { type?: string }) => l.type === 'symbol');
+    if (index < 0) {
+      return null;
+    }
+    const layer = visState.layers[index];
+    const layerData = visState.layerData?.[index];
+    const rows = (layerData?.data ?? []) as unknown[];
+    const built = rows.length > 0 ? layer.renderLayer({ data: layerData }) : [];
+    const props = built[0]?.props;
+    const angles: number[] = [];
+    // A guarded loop, like `readVectorField`: an exception in here would make
+    // `expect.poll` time out instead of failing with something readable.
+    for (const row of (props?.data ?? []).slice(0, 50)) {
+      try {
+        angles.push(Number(props?.getAngle?.(row)));
+      } catch {
+        continue;
+      }
+    }
+    return {
+      symbols: rows.length,
+      symbol: String(layer.config.visConfig?.symbol ?? ''),
+      angles,
+      channels: {
+        angleField: layer.config.angleField?.name ?? null,
+        sizeField: layer.config.sizeField?.name ?? null,
+      },
+    };
+  });
+}
