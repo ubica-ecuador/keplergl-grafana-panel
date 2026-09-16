@@ -107,22 +107,11 @@ export function useRasterTimeline({ store, isReady, rasters, timeVariables }: Pa
     // store change until it lands. After that the style is the user's to
     // change from the layer panel, and re-imposing it on every store change
     // would undo them — except a band combination changes the style from
-    // outside, and the layer must be dressed again when that happens, which is
-    // why the key below includes the style and not only the layer.
+    // outside, and the layer must be dressed again when that happens. See
+    // `rasterDressKey` below for the rule that tells the two apart.
     for (const raster of series) {
-      // Nothing to dress on an archive: its tiles are images already drawn, so
-      // kepler offers opacity and nothing else for them. The ramp was chosen
-      // when the file was built.
-      // Neither an archive nor a painted COG is coloured in the browser: both
-      // arrive as finished pictures, so kepler's colormap has nothing to act on.
-      if ((!raster.colormap && !raster.preset) || raster.kind === 'pmtiles' || raster.kind === 'painted') {
-        continue;
-      }
       const layerId = readRasterLayerId(store, raster.id);
-      // Keyed by style, not by layer: dressing once per layer is what keeps the
-      // user's own changes, and a band combination changes the style from
-      // outside — so the same layer must be dressed again when it changes.
-      const key = layerId ? `${layerId}|${rasterStyleKey(raster)}` : null;
+      const key = rasterDressKey(raster, layerId);
       if (key && !dressed.current.has(key)) {
         const style = {
           ...(raster.colormap ? { colormapId: raster.colormap } : {}),
@@ -216,6 +205,33 @@ export function useRasterTimeline({ store, isReady, rasters, timeVariables }: Pa
     const unsubscribe = store.subscribe(onStoreChange.current);
     return unsubscribe;
   }, [isReady, store, rasters]);
+}
+
+/**
+ * Whether a raster's style still needs to be (re-)applied, and the key to
+ * remember it by if so — null when there is nothing to dress, or nowhere yet
+ * to dress it.
+ *
+ * Pure and exported so the "once per layer *and* style" rule can be pinned
+ * without a kepler store: feed it the layer id the reconcile found and the
+ * raster of the moment, and compare the key it returns against what is
+ * already in `dressed`. Keyed by style, not by layer alone, on purpose —
+ * dressing once per layer is what keeps the user's own changes from the layer
+ * panel, and a band combination changes the style from *outside*, so the same
+ * layer must be dressed again when that happens rather than being skipped as
+ * already done.
+ *
+ * Null for an archive or a painted COG regardless of `colormap`/`preset`:
+ * both arrive as a finished picture, so kepler's colormap and band presets
+ * have nothing in the browser to act on. Null too before the layer exists —
+ * kepler builds it asynchronously — and before the raster carries any style
+ * of its own, which is the ordinary true-colour case.
+ */
+export function rasterDressKey(raster: RasterDataset, layerId: string | null): string | null {
+  if ((!raster.colormap && !raster.preset) || raster.kind === 'pmtiles' || raster.kind === 'painted') {
+    return null;
+  }
+  return layerId ? `${layerId}|${rasterStyleKey(raster)}` : null;
 }
 
 /** The id of the layer drawing a raster dataset, or null before it exists. */
