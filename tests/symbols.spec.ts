@@ -1,6 +1,6 @@
 import { test, expect } from '@grafana/plugin-e2e';
 
-import { projectRows, readSymbolLayer, settle } from './keplerHelpers';
+import { projectRows, readKepler, readSymbolLayer, settle } from './keplerHelpers';
 
 /** A full kepler map under swiftshader: see `flowfield.spec.ts` for the budget. */
 test.describe.configure({ timeout: 180_000 });
@@ -15,6 +15,12 @@ test(
     const map = panelEditPage.panel.locator.locator('canvas').first();
     await expect(map).toBeVisible({ timeout: 60_000 });
     await settle(page);
+
+    await expect
+      .poll(async () => (await readKepler(map)).layers.map((l) => l.type), { timeout: 60_000 })
+      // The Point layer kepler guesses from the same coordinates is removed:
+      // without this, the user sees plain dots underneath the symbols.
+      .toEqual(['symbol']);
 
     // One per station, and the layer is born already drawing: before this, a
     // scattered station query built a flow field that drew nothing.

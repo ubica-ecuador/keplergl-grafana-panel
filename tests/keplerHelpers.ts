@@ -391,7 +391,14 @@ export async function readSymbolLayer(map: Locator): Promise<SymbolLayerSummary 
     const layer = visState.layers[index];
     const layerData = visState.layerData?.[index];
     const rows = (layerData?.data ?? []) as unknown[];
-    const built = rows.length > 0 ? layer.renderLayer({ data: layerData }) : [];
+    // `mapState` is required here, unlike in `readVectorField`: this is the one
+    // custom layer whose `renderLayer` spreads `getDefaultDeckLayerProps`, and
+    // kepler's own base class reads `mapState.layerParameters` with no guard —
+    // omitting it throws inside the page, which `expect.poll` cannot see past.
+    // kepler itself always supplies a real `mapState`; an empty object is
+    // enough here since the only other read, `mapState.dragRotate`, tolerates
+    // `undefined`.
+    const built = rows.length > 0 ? layer.renderLayer({ data: layerData, mapState: {} }) : [];
     const props = built[0]?.props;
     const angles: number[] = [];
     // A guarded loop, like `readVectorField`: an exception in here would make
