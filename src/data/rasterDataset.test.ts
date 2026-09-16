@@ -429,3 +429,72 @@ describe('framesToRasters with band combinations', () => {
     expect(raster.scenes.map((scene) => scene.itemUrl)).toEqual([ITEM, `${ITEM}2`]);
   });
 });
+
+describe('framesToRasters — band combinations do not overreach', () => {
+  it('leaves a PMTiles archive alone even when it carries an item column', () => {
+    // An archive is already drawn tiles: an incidental raster_item_url must not
+    // divert it into the item-driven path, where it would be dropped silently
+    // (painted, pointed at an item, with a tile server that cannot serve it).
+    const archive = 'https://bucket.example/scenes/2026/rain.pmtiles';
+    const frame = {
+      refId: 'A',
+      fields: [
+        { name: 'raster_url', type: 'string', values: [archive] },
+        { name: 'raster_item_url', type: 'string', values: [ITEM] },
+      ],
+      length: 1,
+    } as any;
+
+    const [raster] = framesToRasters([frame], {}, { ...BAND_OPTS, bands: 'forestBurn' });
+
+    expect(raster.kind).toBe('pmtiles');
+    expect(raster.sourceUrl).toBe(archive);
+    expect(raster.tileServerUrls).toEqual([]);
+    expect(raster.assets).toBeUndefined();
+  });
+
+  it('drops a scene with no item from an item-driven series, keeping only the ones it can draw', () => {
+    const frame = {
+      refId: 'A',
+      fields: [
+        { name: 'raster_url', type: 'string', values: [VISUAL, `${VISUAL}2`] },
+        { name: 'raster_item_url', type: 'string', values: ['', ITEM] },
+      ],
+      length: 2,
+    } as any;
+
+    const [raster] = framesToRasters([frame], {}, { ...BAND_OPTS, bands: 'forestBurn' });
+
+    expect(raster.kind).toBe('painted');
+    expect(raster.scenes).toHaveLength(1);
+    expect(raster.scenes[0].itemUrl).toBe(ITEM);
+  });
+
+  it('degrades the whole raster to true colour when no scene in the series carries an item', () => {
+    // Same rule as the single-scene case, just over a series: a combination
+    // that needs an item and finds none anywhere keeps today's behaviour
+    // rather than drawing nothing once the timeline scrubs past scene 1.
+    const frame = {
+      refId: 'A',
+      fields: [{ name: 'raster_url', type: 'string', values: [VISUAL, `${VISUAL}2`] }],
+      length: 2,
+    } as any;
+
+    const [raster] = framesToRasters([frame], {}, { ...BAND_OPTS, bands: 'forestBurn' });
+
+    expect(raster.kind).toBe('cog');
+    expect(raster.scenes).toHaveLength(2);
+    expect(raster.assets).toBeUndefined();
+  });
+
+  it('keeps a classified painted raster pointed at the plain COG even when the query also names an item', () => {
+    // The shipped classified-raster feature (opts.painted, no band combination)
+    // must not be redirected to the item just because a query happens to carry
+    // a raster_item_url column.
+    const [raster] = framesToRasters([sceneFrame()], {}, { tileServerUrls: BAND_OPTS.tileServerUrls, painted: true });
+
+    expect(raster.kind).toBe('painted');
+    expect(raster.sourceUrl).toBe(VISUAL);
+    expect(raster.assets).toBeUndefined();
+  });
+});

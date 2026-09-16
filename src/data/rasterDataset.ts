@@ -209,7 +209,22 @@ export function framesToRasters(
       return;
     }
 
-    const scenes = readScenes(frame, roles.rasterUrl, roles.time, roles.rasterItemUrl);
+    const allScenes = readScenes(frame, roles.rasterUrl, roles.time, roles.rasterItemUrl);
+
+    // What the combination asks for, and what this series can actually give: a
+    // combination that needs an item can only be drawn from the scenes that
+    // carry one. A scene without one is not part of that catalogue — filtering
+    // it out here means the timeline can never scrub onto it expecting an item
+    // and drawing nothing. If not one scene of the series has an item, that
+    // catalogue is empty, and the whole raster degrades to true colour and the
+    // composed image, exactly as a query with no item column at all does today.
+    const requestedRecipe = BAND_COMBINATIONS[opts.bands ?? 'trueColor'];
+    const needsItem = requestedRecipe.source === 'item';
+    const itemScenes = needsItem ? allScenes.filter((scene) => scene.itemUrl !== null) : allScenes;
+    const degraded = needsItem && itemScenes.length === 0;
+    const recipe = degraded ? BAND_COMBINATIONS.trueColor : requestedRecipe;
+    const scenes = degraded ? allScenes : itemScenes;
+
     // No window yet: the freshest scene is the sensible thing to open on, and
     // the time filter moves it the moment there is one.
     const opening = pickScene(scenes, null);
@@ -217,11 +232,13 @@ export function framesToRasters(
       return;
     }
 
-    // What the combination asks for, and what this row can actually give: a
-    // query that names no item cannot be drawn in false colour, so it keeps
-    // the composed image and today's behaviour rather than drawing nothing.
-    const recipe = BAND_COMBINATIONS[opts.bands ?? 'trueColor'];
-    const wantsItem = recipe.source === 'item' && Boolean(opening.itemUrl);
+    // A PMTiles archive never wanted an item: it is already drawn tiles, and an
+    // incidental raster_item_url column must not divert it into the item-driven
+    // path below, where it would come out painted and pointed at the item —
+    // silently dropping the archive. `opts.painted` is deliberately left out of
+    // this check: it decides how a *COG* is drawn, and has no say in whether
+    // something is an archive.
+    const wantsItem = recipe.source === 'item' && rasterKind(opening.sourceUrl) !== 'pmtiles';
     // Assets/rescale only ever describe a painted composite, and only once an
     // item is actually available to composite from.
     const paintedAssets = wantsItem ? recipe.assets : undefined;
@@ -311,11 +328,20 @@ interface RasterIdentityShape {
  *   drawn from the same scene share an identity on purpose — only their
  *   style differs, and that is applied without rebuilding anything.
  * - Everything else draws the composed image, exactly as before.
+ *
+ * An item-driven raster only ever carries scenes that have an item —
+ * `framesToRasters` filters the series down to those before this is called,
+ * and degrades the whole raster to true colour rather than build one when
+ * none qualify — so `scene.itemUrl` being null here for an item-driven kind
+ * is that filtering having failed, not a shape of data to survive quietly.
  */
 function sceneIdentity(raster: RasterIdentityShape, scene: RasterScene): { sourceUrl: string; metadataUrl: string } {
   const isComposite = raster.kind === 'painted' && Boolean(raster.assets);
   const usesItem = raster.kind === 'stac' || isComposite;
-  const sourceUrl = usesItem && scene.itemUrl ? scene.itemUrl : scene.sourceUrl;
+  if (usesItem && !scene.itemUrl) {
+    throw new Error(`sceneIdentity: a '${raster.kind}' raster was handed a scene with no item`);
+  }
+  const sourceUrl = usesItem ? (scene.itemUrl as string) : scene.sourceUrl;
 
   if (raster.kind === 'stac') {
     return { sourceUrl, metadataUrl: sourceUrl };
