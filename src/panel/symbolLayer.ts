@@ -1,6 +1,8 @@
 import { CHANNEL_SCALES } from '@kepler.gl/constants';
 
+import { thinBySpacing } from './declutter';
 import { shownInPane } from './paneVisibility';
+import { setting } from './velocityField';
 import { SYMBOL_FALLBACK, symbolNames } from './symbolGlyphs';
 
 /**
@@ -96,6 +98,23 @@ export const SYMBOL_VIS_CONFIGS = {
     group: 'display',
     property: 'fixedSize',
   },
+  declutter: {
+    type: 'boolean',
+    defaultValue: false,
+    label: 'symbol.declutter',
+    group: 'display',
+    property: 'declutter',
+  },
+  declutterSpacingPx: {
+    type: 'number',
+    defaultValue: 40,
+    label: 'symbol.declutterSpacingPx',
+    isRanged: false,
+    range: [10, 200],
+    step: 5,
+    group: 'display',
+    property: 'declutterSpacingPx',
+  },
 } as const;
 
 /**
@@ -111,6 +130,11 @@ export function deckAngle(bearing: number, convention: 'from' | 'towards'): numb
   // `-0` is a legal float but a broken test fixture and a confusing prop value;
   // `|| 0` folds it back to a plain zero without touching any other angle.
   return -oriented || 0;
+}
+
+/** Ground metres per screen pixel at a latitude and zoom, in Web Mercator. */
+export function metresPerPixelAt(latitude: number, zoom: number): number {
+  return (156_543.03392 * Math.cos((latitude * Math.PI) / 180)) / 2 ** zoom;
 }
 
 type Constructor<T> = new (...args: any[]) => T;
@@ -301,10 +325,29 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       const convention = visConfig.directionConvention === 'from' ? 'from' : 'towards';
       const angleOf = layerData?.getAngle as ((row: unknown) => number) | undefined;
 
+      const camera = (visConfig.flowContext as { camera?: { zoom: number; latitude: number } } | undefined)?.camera;
+      const metresPerPixel = camera ? metresPerPixelAt(camera.latitude, camera.zoom) : 0;
+      const spacingDegrees = (setting(visConfig.declutterSpacingPx, 40) * metresPerPixel) / 111_320;
+      const drawn =
+        visConfig.declutter === true && spacingDegrees > 0
+          ? thinBySpacing(
+              rows as Array<{ position: [number, number, number] }>,
+              // Longitude is divided by the cosine of the latitude so a cell is
+              // as wide as it is tall on the ground, instead of stretching
+              // towards the poles.
+              (row) => [
+                row.position[0] * Math.max(0.2, Math.cos((row.position[1] * Math.PI) / 180)),
+                row.position[1],
+              ],
+              spacingDegrees,
+              (row) => Number((layerData?.getSize as ((r: unknown) => number) | undefined)?.(row) ?? 0)
+            )
+          : rows;
+
       const deckLayer = buildDeckLayer({
         ...this.getDefaultDeckLayerProps(opts ?? {}),
         id: `${this.id}-symbol`,
-        data: rows,
+        data: drawn,
         // Only the glyph in use, so the atlas stays one cell wide.
         symbols: [symbol],
         visible: this.config.isVisible !== false && shownInPane(opts),

@@ -69,6 +69,12 @@ export function SymbolLayerConfig({
         ) : (
           slider('symbolSize')
         )}
+        {settings.declutter ? (
+          <>
+            <VisConfigSwitch {...settings.declutter} {...visConfiguratorProps} />
+            {layer.config.visConfig.declutter ? slider('declutterSpacingPx') : null}
+          </>
+        ) : null}
       </LayerConfigGroup>
 
       <LayerConfigGroup label={'layer.color'} collapsible>
