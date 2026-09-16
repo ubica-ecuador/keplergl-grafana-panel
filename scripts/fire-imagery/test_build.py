@@ -439,6 +439,87 @@ class BeforePickHermeticTest(unittest.TestCase):
         self.assertEqual(row['raster_url'], 'https://example.test/2.tif')
 
 
+class AfterPickHermeticTest(unittest.TestCase):
+    """Sin banco, sin red: pins the round-3 review fix directly against
+    map_scenes.sql. Mirrors BeforePickHermeticTest, but the after side
+    keeps every candidate row (unlike hit_before, which is one row), so
+    the failure mode is different: a stale picked_after used to leave
+    EVERY row's raster_url NULL, because map_scenes.sql's own CASE only
+    shows a row when it matches the pick -no match anywhere means no row
+    matches, ever. contact_sheet.sql carries the other side's pick
+    forward on every row link, and drawing a new box does not clear it,
+    so this is reachable in ordinary use: pick a scene, draw a box
+    somewhere else, and the after side went blank with no message.
+
+    The fix resolves picked_after against hit_after before map_scenes.sql
+    runs (search.sql), so a stale pick behaves as no pick at all rather
+    than map_scenes.sql's CASE changing.
+    """
+
+    BOX = 'POLYGON ((-122.0 39.0, -121.9 39.0, -121.9 39.1, -122.0 39.1, -122.0 39.0))'
+    GEOMETRY = {'type': 'Polygon', 'coordinates': [[[-122.0, 39.0], [-121.9, 39.0], [-121.9, 39.1],
+                                                    [-122.0, 39.1], [-122.0, 39.0]]]}
+    # Todas después del día pausado (2026-06-15): el lado de antes queda
+    # vacío a propósito, no es lo que se prueba aquí.
+    AFTER_DATES = ['2026-06-16T19:00:00Z', '2026-06-17T19:00:00Z', '2026-06-18T19:00:00Z']
+    BASE_CASE = dict(area=BOX, sceneBefore='', scanFrom='2026-06-15T00:00:00.000Z',
+                     scanTo='2026-06-15T23:59:59.000Z', days='3', lookback='90',
+                     s2cloud='100', s2cover='0', bands='trueColor')
+
+    @staticmethod
+    def _sql_quote(value):
+        return "'" + str(value).replace("'", "''") + "'"
+
+    def _canned_body(self):
+        def feature(index, when):
+            return {'id': f'SYN_{index}', 'properties': {'datetime': when, 'eo:cloud_cover': 5.0},
+                   'assets': {'visual': {'href': f'https://example.test/{index}.tif'}},
+                   'geometry': self.GEOMETRY}
+        features = [feature(i, when) for i, when in enumerate(self.AFTER_DATES)]
+        return json.dumps({'type': 'FeatureCollection', 'features': features,
+                           'numberMatched': len(features), 'numberReturned': len(features)})
+
+    def _canned_sql(self, scene_after):
+        sql = build.panel_sql('map_scenes')
+        canned = "{'status': 200, 'body': " + self._sql_quote(self._canned_body()) + "} AS r"
+        sql, count = re.subn(r'http_get\(.*?\) AS r', canned, sql, count=1, flags=re.DOTALL)
+        self.assertEqual(count, 1, 'expected exactly one http_get(...) AS r to replace')
+        sql = re.sub(r'\$(__\w+)\(([^()]*)\)', expand_macro, sql)
+        case = dict(self.BASE_CASE, sceneAfter=scene_after)
+        return re.sub(r'\$\{?([A-Za-z]\w*)\}?', lambda m: self._sql_quote(case[m.group(1)]), sql)
+
+    def _run(self, scene_after):
+        try:
+            con = duckdb.connect()
+            con.execute('INSTALL spatial; LOAD spatial;')
+        except duckdb.Error as error:
+            self.skipTest(f'the spatial extension is not loadable in this duckdb: {error}')
+        result = con.execute(self._canned_sql(scene_after))
+        columns = [d[0] for d in result.description]
+        rows = [dict(zip(columns, row)) for row in result.fetchall()]
+        self.assertEqual(len(rows), 3, 'all three after candidates must always come back')
+        return rows
+
+    def test_a_stale_after_pick_draws_the_catalogue_instead_of_going_blank(self):
+        # A scene from a box drawn earlier: not among today's candidates.
+        rows = self._run('https://example.test/from-a-previous-box.tif')
+        self.assertTrue(all(r['raster_url'] is not None for r in rows),
+                        'a stale pick must not blank every row')
+        self.assertTrue(all(r['raster_item_url'] is not None for r in rows))
+
+    def test_picking_a_specific_after_candidate_selects_only_it(self):
+        rows = self._run('https://example.test/1.tif')
+        drawn = [r for r in rows if r['raster_url'] is not None]
+        self.assertEqual(len(drawn), 1, 'picking one candidate must not draw the others')
+        self.assertEqual(drawn[0]['scene_id'], 'SYN_1')
+        self.assertEqual(drawn[0]['raster_url'], 'https://example.test/1.tif')
+
+    def test_no_pick_still_draws_every_row(self):
+        # The untouched default path: no one has clicked a row yet.
+        rows = self._run('')
+        self.assertTrue(all(r['raster_url'] is not None for r in rows))
+
+
 class ContactSheetSidesLiveTest(unittest.TestCase):
     """Contra el banco de :3002: la única forma de probar que el cupo por
     lado de verdad reparte filas, no solo que la cláusula está presente. Se
@@ -627,28 +708,77 @@ class FootprintsTooltipTest(unittest.TestCase):
     """Ties the footprints layer's tooltip to the SQL that actually feeds it.
 
     The trap this guards against: renaming a fieldsToShow entry (e.g. back
-    to the old `acquired_on`, or any other name that isn't a column of the
-    query the layer's dataId points at) breaks nothing else in the suite —
-    kepler just renders an empty tooltip, silently. Checked against the
-    generated dashboard and the SQL fragment themselves, not a list of
-    names copied by hand a second time: a hand-written list would just be
-    the same mistake, written twice, always agreeing with itself.
+    to the old `acquired_on`, or any other name that isn't a real output
+    column of the query the layer's dataId points at) breaks nothing else
+    in the suite — kepler just renders an empty tooltip, silently.
+
+    Two things a first version of this test got wrong (round-3 review):
+    matching field names as a substring of the raw SQL text would let
+    `acquired` pass even though it is only the identifier inside
+    `strftime(acquired, …)`, never an output column on its own; and
+    hard-coding the fragment name (`map_scenes`) assumed the mapping from
+    dataId to query instead of reading it from the generated dashboard.
+    Fixed both: this runs the actual query the layer's dataId points at
+    (canned catalogue body, no network) and checks the real output column
+    names from the cursor's own description — and it finds *which* query
+    to run by resolving the layer's own dataId (`grafana-<refId>`) against
+    panel-22's own query list, not by assuming a filename.
     """
 
-    def test_footprints_tooltip_fields_all_exist_in_map_scenes_sql(self):
+    BOX = 'POLYGON ((-122.0 39.0, -121.9 39.0, -121.9 39.1, -122.0 39.1, -122.0 39.0))'
+    GEOMETRY = {'type': 'Polygon', 'coordinates': [[[-122.0, 39.0], [-121.9, 39.0], [-121.9, 39.1],
+                                                    [-122.0, 39.1], [-122.0, 39.0]]]}
+    CASE = dict(area=BOX, sceneBefore='', sceneAfter='', scanFrom='2026-06-15T00:00:00.000Z',
+               scanTo='2026-06-15T23:59:59.000Z', days='3', lookback='90',
+               s2cloud='100', s2cover='0', bands='trueColor')
+
+    @staticmethod
+    def _sql_quote(value):
+        return "'" + str(value).replace("'", "''") + "'"
+
+    def _canned_body(self):
+        feature = {'id': 'SYN_0', 'properties': {'datetime': '2026-06-16T12:00:00Z', 'eo:cloud_cover': 5.0},
+                   'assets': {'visual': {'href': 'https://example.test/0.tif'}}, 'geometry': self.GEOMETRY}
+        return json.dumps({'type': 'FeatureCollection', 'features': [feature],
+                           'numberMatched': 1, 'numberReturned': 1})
+
+    def test_footprints_tooltip_fields_are_real_output_columns(self):
         dash = fixture()
         out = build.graft(dash, build.imagery_elements(dash))
-        vis = out['spec']['elements']['panel-22']['spec']['vizConfig']['spec'] \
-            ['options']['mapConfig']['config']['visState']
+        map_spec = out['spec']['elements']['panel-22']['spec']
+        vis = map_spec['vizConfig']['spec']['options']['mapConfig']['config']['visState']
         layers = {layer['id']: layer for layer in vis['layers']}
         data_id = layers['footprints']['config']['dataId']
         fields = vis['interactionConfig']['tooltip']['fieldsToShow'][data_id]
         self.assertTrue(fields, 'the footprints layer must show at least one tooltip field')
-        sql = build.read_sql('map_scenes')
+
+        # Which query feeds this layer, read from the layer's own dataId
+        # (grafana-<refId>) against panel-22's actual queries — not assumed.
+        ref_id = data_id.removeprefix('grafana-')
+        queries = {q['spec']['refId']: q['spec']['query']['spec']['rawSql']
+                  for q in map_spec['data']['spec']['queries']}
+        self.assertIn(ref_id, queries, f'no query with refId {ref_id!r} feeds dataId {data_id!r}')
+        sql = queries[ref_id]
+
+        canned = "{'status': 200, 'body': " + self._sql_quote(self._canned_body()) + "} AS r"
+        sql, count = re.subn(r'http_get\(.*?\) AS r', canned, sql, count=1, flags=re.DOTALL)
+        self.assertEqual(count, 1, 'expected exactly one http_get(...) AS r to replace')
+        sql = re.sub(r'\$(__\w+)\(([^()]*)\)', expand_macro, sql)
+        sql = re.sub(r'\$\{?([A-Za-z]\w*)\}?', lambda m: self._sql_quote(self.CASE[m.group(1)]), sql)
+
+        try:
+            con = duckdb.connect()
+            con.execute('INSTALL spatial; LOAD spatial;')
+        except duckdb.Error as error:
+            self.skipTest(f'the spatial extension is not loadable in this duckdb: {error}')
+        result = con.execute(sql)
+        columns = {d[0] for d in result.description}
         for entry in fields:
             name = entry['name']
             with self.subTest(field=name):
-                self.assertIn(name, sql, f'{name!r} is not a column of map_scenes.sql (stale tooltip field?)')
+                self.assertIn(name, columns,
+                              f'{name!r} is not an output column of the query feeding {data_id!r} '
+                              f'(stale tooltip field?)')
 
 
 class SentinelMapConfigValidationTest(unittest.TestCase):

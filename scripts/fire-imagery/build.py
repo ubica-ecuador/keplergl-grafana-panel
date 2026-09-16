@@ -251,11 +251,11 @@ def sentinel_map_element(version):
     return panel(
         22, 'Sentinel-2 — the scene over your box',
         'The map opens split by a swipe curtain — drag it to compare. The left side is the last clear '
-        'scene found looking back before the fire; the days right before a fire are often smoky, so '
-        'widen "Look back (days)" if the Before figure in "Your box in the catalogue" below says none '
-        'in range. The right side is the clearest scene from the paused window to the days after it; '
-        'pick another in the table below. Orange is your box; white lines are the after-side scene '
-        'footprints.',
+        'scene found looking back before the fire; the right side is the clearest scene from the '
+        'paused window to the days after it. Pick another scene for either side in the table below — '
+        'the days right before a fire are often smoky, so widen "Look back (days)" if the Before '
+        'figure in "Your box in the catalogue" says none in range. Orange is your box; white lines '
+        'are the after-side scene footprints.',
         queries, KEPLER_GROUP, version, options)
 
 
