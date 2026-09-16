@@ -83,7 +83,7 @@ export function glyphCatalogue(): Glyph[] {
   return glyphs;
 }
 
-function arrowGlyph(): Glyph {
+export function arrowGlyph(): Glyph {
   return {
     key: 'arrow',
     anchor: [MID, MID],
@@ -131,6 +131,25 @@ export function atlasSize(count: number, columns = ATLAS_COLUMNS): { width: numb
   return { width: columns * CELL, height: Math.ceil(count / columns) * CELL };
 }
 
+/** Paints one glyph into the cell whose top-left corner is (x, y). */
+export function drawGlyph(glyph: Glyph, ctx: Painter, x: number, y: number): void {
+  for (const shape of glyph.shapes) {
+    ctx.beginPath();
+    if (shape.kind === 'circle') {
+      ctx.arc(x + shape.centre[0], y + shape.centre[1], shape.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      continue;
+    }
+    shape.points.forEach(([px, py], i) => (i === 0 ? ctx.moveTo(x + px, y + py) : ctx.lineTo(x + px, y + py)));
+    if (shape.kind === 'polygon') {
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.stroke();
+    }
+  }
+}
+
 /** Paints the glyphs into a context, row by row, and maps each key to its cell. */
 export function paintAtlas(glyphs: Glyph[], ctx: Painter, columns = ATLAS_COLUMNS): Record<string, IconFrame> {
   const mapping: Record<string, IconFrame> = {};
@@ -143,21 +162,7 @@ export function paintAtlas(glyphs: Glyph[], ctx: Painter, columns = ATLAS_COLUMN
   glyphs.forEach((glyph, index) => {
     const x = (index % columns) * CELL;
     const y = Math.floor(index / columns) * CELL;
-    for (const shape of glyph.shapes) {
-      ctx.beginPath();
-      if (shape.kind === 'circle') {
-        ctx.arc(x + shape.centre[0], y + shape.centre[1], shape.radius, 0, Math.PI * 2);
-        ctx.stroke();
-        continue;
-      }
-      shape.points.forEach(([px, py], i) => (i === 0 ? ctx.moveTo(x + px, y + py) : ctx.lineTo(x + px, y + py)));
-      if (shape.kind === 'polygon') {
-        ctx.closePath();
-        ctx.fill();
-      } else {
-        ctx.stroke();
-      }
-    }
+    drawGlyph(glyph, ctx, x, y);
     mapping[glyph.key] = { x, y, width: CELL, height: CELL, anchorX: glyph.anchor[0], anchorY: glyph.anchor[1], mask: true };
   });
 
