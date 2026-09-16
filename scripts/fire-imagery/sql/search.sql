@@ -1,17 +1,29 @@
-WITH aoi AS (
+WITH box_any AS (
+  -- El recuadro sin filtrar por tamaño: las cifras lo necesitan aunque la
+  -- guarda haya cortado la búsqueda, porque es el único sitio donde se puede
+  -- decir por qué no hay nada. Su fragmento (figures.sql) empieza con SELECT
+  -- y no puede añadir su propio CTE, así que vive aquí.
   SELECT 'box' AS name, ST_GeomFromText(getvariable('drawn')) AS geom
   WHERE getvariable('drawn') IS NOT NULL
 ),
--- Una sola búsqueda, con el bbox del recuadro en la URL: el catálogo filtra y
--- devuelve decenas de escenas, no miles. Corta en 200 sin avisar; las cifras
--- comparan numberMatched con numberReturned para que se vea.
+aoi AS (
+  -- La guarda de tamaño. Medido el 2026-09-16: un recuadro de ~30 km responde
+  -- en medio segundo; uno de ~1100 km tarda 25 s en las cifras y tumba la hoja
+  -- a los 74 s. Como el polígono se comparte con el resto del tablero, aquí
+  -- puede llegar un encuadre de medio país que nadie dibujó para esto.
+  SELECT * FROM box_any WHERE m2(geom) <= 20000 * 1e6
+),
+-- Una sola búsqueda, con el bbox del recuadro y la ventana ya ensanchada
+-- hacia atrás en la URL: el catálogo filtra y devuelve decenas de escenas,
+-- no miles. Corta en 200 sin avisar; las cifras comparan numberMatched con
+-- numberReturned para que se vea.
 search AS (
   SELECT name, geom,
          http_get('https://earth-search.aws.element84.com/v1/search'
            || '?collections=sentinel-2-l2a'
            || '&bbox=' || ST_XMin(geom) || ',' || ST_YMin(geom) || ','
                        || ST_XMax(geom) || ',' || ST_YMax(geom)
-           || '&datetime=' || strftime(getvariable('win_from'), '%Y-%m-%dT%H:%M:%SZ')
+           || '&datetime=' || strftime(getvariable('back_from'), '%Y-%m-%dT%H:%M:%SZ')
            || '/' || strftime(getvariable('win_to'), '%Y-%m-%dT%H:%M:%SZ')
            || '&limit=200') AS r
   FROM aoi
@@ -28,7 +40,11 @@ scenes AS (
          (f->'properties'->>'datetime')::TIMESTAMP    AS acquired,
          (f->'properties'->>'eo:cloud_cover')::DOUBLE AS cloud_cover,
          f->'assets'->'visual'->>'href'               AS visual_href,
-         ST_GeomFromGeoJSON(f->>'geometry')           AS footprint
+         ST_GeomFromGeoJSON(f->>'geometry')           AS footprint,
+         -- El lado se decide contra el día en que se pausó el reloj, no
+         -- contra el final de la ventana ensanchada.
+         CASE WHEN (f->'properties'->>'datetime')::TIMESTAMP < getvariable('win_from')
+              THEN 'Before' ELSE 'After' END              AS side
   FROM features
   WHERE (f->'properties'->>'eo:cloud_cover')::DOUBLE <= CAST($s2cloud AS DOUBLE)
 ),
@@ -39,3 +55,7 @@ hit AS (
   WHERE ST_Intersects(geom, footprint)
     AND m2(ST_Intersection(geom, footprint)) / m2(geom) * 100 >= CAST($s2cover AS DOUBLE)
 )
+, hit_after AS (SELECT * FROM hit WHERE side = 'After'),
+-- Del lado de antes solo interesa la más reciente que pase los cortes: es la
+-- referencia, no un catálogo.
+hit_before AS (SELECT * FROM hit WHERE side = 'Before' ORDER BY acquired DESC LIMIT 1)

@@ -24,6 +24,7 @@ SELECT CASE WHEN $bands IN ('forestBurn', 'infrared') THEN
                 || '.png?url=' || url_encode(visual_href)
                 || '&max_size=128'
             END                                                        AS "View",
+       side                                                            AS "Side",
        -- Texto: Grafana pasaría un TIMESTAMP al huso del navegador.
        strftime(acquired, '%d %b %Y  %H:%M')                          AS "Date",
        ROUND(cloud_cover, 1)                                          AS "Cloud %",
@@ -32,8 +33,15 @@ SELECT CASE WHEN $bands IN ('forestBurn', 'infrared') THEN
        -- miniatura, no el del recuadro.
        ST_Y(ST_Centroid(ST_Intersection(geom, footprint)))             AS centre_lat,
        ST_X(ST_Centroid(ST_Intersection(geom, footprint)))             AS centre_lng,
-       visual_href                                                     AS scene_url
+       visual_href                                                     AS scene_url,
+       -- Ocultas también: eligiendo una fila (que es de un solo lado) se
+       -- conserva el enlace del otro lado, elegido a mano o no. Los valores
+       -- vienen de picked_before/picked_after, derivados en el preludio de
+       -- $sceneBefore y $sceneAfter.
+       CASE WHEN side = 'Before' THEN visual_href ELSE coalesce(getvariable('picked_before'), '') END AS set_before,
+       CASE WHEN side = 'After'  THEN visual_href ELSE coalesce(getvariable('picked_after'),  '') END AS set_after
 FROM hit
--- En orden de fecha: lo que interesa de un incendio es cómo cambia.
-ORDER BY acquired, "Cloud %"
-LIMIT 24
+-- En orden de fecha: lo que interesa de un incendio es cómo cambia, el antes
+-- primero.
+ORDER BY acquired
+LIMIT 30

@@ -156,7 +156,8 @@ class GraftTest(unittest.TestCase):
         self.assertEqual(out['apiVersion'], 'dashboard.grafana.app/v2beta1')
 
 
-SQL_NAMES = ['prelude', 'search', 'map_box', 'map_scenes', 'map_footprints', 'contact_sheet', 'figures']
+SQL_NAMES = ['prelude', 'search', 'map_box', 'map_scenes', 'map_scenes_before', 'map_footprints',
+            'contact_sheet', 'figures']
 
 
 class SqlTest(unittest.TestCase):
@@ -171,7 +172,11 @@ class SqlTest(unittest.TestCase):
         # `area` is not one of this tab's own variables: it is the
         # dashboard-wide drawn-shape variable, already present before this
         # tab is grafted in (Global, Country and Region all publish to it).
-        known = {variable['spec']['name'] for variable in build.variables()} | {'area'}
+        # `lookback`, `sceneBefore` and `sceneAfter` are new in this task;
+        # build.py wires them into variables() in the next task, so they are
+        # added here by hand rather than dropped from `known`.
+        known = ({variable['spec']['name'] for variable in build.variables()}
+                | {'area', 'lookback', 'sceneBefore', 'sceneAfter'})
         for name in SQL_NAMES:
             referenced = set(re.findall(r'\$\{?([A-Za-z]\w*)', build.read_sql(name)))
             self.assertLessEqual(referenced, known, name)
@@ -213,6 +218,40 @@ class SqlTest(unittest.TestCase):
             count = sql.count('json_extract(')
             self.assertGreaterEqual(count, 1, name)
             self.assertEqual(sql.count('TRY(json_extract('), count, name)
+
+
+class BeforeAfterSqlTest(unittest.TestCase):
+    def test_one_search_per_panel_query(self):
+        # La ventana ensanchada existe para esto: dos http_get en una consulta
+        # significa que alguien volvió a buscar por separado cada lado.
+        for name in ('map_scenes', 'map_scenes_before', 'contact_sheet', 'figures'):
+            sql = build.panel_sql(name)
+            self.assertEqual(sql.count('http_get('), 1, name)
+
+    def test_the_search_window_reaches_back(self):
+        prelude = build.read_sql('prelude')
+        self.assertIn('back_from', prelude)
+        self.assertIn('lookback', prelude)
+        self.assertIn('back_from', build.read_sql('search'))
+
+    def test_sides_are_split_by_the_paused_day(self):
+        search = build.read_sql('search')
+        self.assertIn("'Before'", search)
+        self.assertIn("'After'", search)
+        self.assertIn('win_from', search)
+
+    def test_the_size_guard_lives_in_one_place_and_is_commented(self):
+        search = build.read_sql('search')
+        self.assertEqual(search.count('20000'), 1, 'el umbral va en un solo sitio')
+        line = next(l for l in search.splitlines() if '20000' in l)
+        self.assertTrue(any('--' in l for l in search.splitlines()[:search.splitlines().index(line)]))
+
+    def test_picking_one_side_keeps_the_other(self):
+        sheet = build.read_sql('contact_sheet')
+        self.assertIn('set_before', sheet)
+        self.assertIn('set_after', sheet)
+        self.assertIn('sceneBefore', sheet)
+        self.assertIn('sceneAfter', sheet)
 
 
 class ImageryPanelsTest(unittest.TestCase):
@@ -407,6 +446,9 @@ class RegraftTest(unittest.TestCase):
         sql = build.panel_sql('map_scenes')
         self.assertIn('raster_item_url', sql)
         self.assertIn('raster_url', sql)
+        # The footprint travels with the scene, so the map layer and the
+        # geometry layer come from the same search.
+        self.assertIn('ST_AsGeoJSON', sql)
 
     def test_regraft_removes_a_legacy_burnarea_variable(self):
         # A dashboard whose Imagery tab was grafted before the shared-area
