@@ -1,4 +1,6 @@
-import { arrowGlyph, CELL, Glyph } from './vectorFieldGlyphs';
+import { arrowGlyph, ATLAS_COLUMNS, CELL, drawGlyph, Glyph, IconFrame, Painter } from './vectorFieldGlyphs';
+import keplerIcons from '../icons/svg-icons.json';
+import maki from '../icons/maki-paths.json';
 
 /**
  * The shapes this plugin draws itself, as geometry.
@@ -31,6 +33,21 @@ export type AnyGlyph = Glyph | PathGlyph;
 
 export function isPathGlyph(glyph: AnyGlyph): glyph is PathGlyph {
   return typeof (glyph as PathGlyph).path === 'string';
+}
+
+/**
+ * What painting a symbol atlas needs, beyond what a shape needs.
+ *
+ * `Path2D` has no place in jsdom, so nothing here is exercised by jest with a
+ * real canvas: the glyph geometry is tested pure and the painting is verified
+ * in the browser, exactly as the wind barbs already are.
+ */
+export interface SymbolPainter extends Painter {
+  save(): void;
+  restore(): void;
+  translate(x: number, y: number): void;
+  scale(x: number, y: number): void;
+  fill(path?: Path2D): void;
 }
 
 /** One icon of kepler's own library: a flat, triangulated outline. */
@@ -118,4 +135,97 @@ export function makiGlyphs(paths: Record<string, string>): PathGlyph[] {
     path,
     box: 15,
   }));
+}
+
+let catalogue: Map<string, AnyGlyph> | null = null;
+
+/**
+ * Every glyph this build can draw, by name.
+ *
+ * Three sources, one namespace: our own shapes, kepler's 162 meshes and Maki's
+ * 215 paths. Ours are inserted last so a name we promise in the panel — the
+ * basic shapes — is the one the panel draws, whatever the libraries also call
+ * `circle`.
+ */
+export function symbolCatalogue(): Map<string, AnyGlyph> {
+  if (!catalogue) {
+    catalogue = new Map<string, AnyGlyph>();
+    for (const glyph of [
+      ...meshGlyphs(keplerIcons.svgIcons as unknown as KeplerIcon[]),
+      ...makiGlyphs(maki.paths),
+      ...ownGlyphs(),
+    ]) {
+      catalogue.set(glyph.key, glyph);
+    }
+  }
+  return catalogue;
+}
+
+/** The names the panel offers, in catalogue order. */
+export const SYMBOL_NAMES: string[] = [...symbolCatalogue().keys()];
+
+/**
+ * The glyphs behind a list of names: deduplicated, ordered, and never empty.
+ *
+ * A name this build does not have draws the arrow rather than nothing at all —
+ * a dashboard saved against a later catalogue still has to draw. Kept apart
+ * from the atlas so the fallback can be tested: painting needs a canvas, and
+ * jest has none.
+ */
+export function glyphsFor(names: string[]): AnyGlyph[] {
+  const catalogue = symbolCatalogue();
+  const wanted = [...new Set(names)].sort();
+  const glyphs = wanted.map((name) => catalogue.get(name) ?? catalogue.get(SYMBOL_FALLBACK)!);
+  const unique = new Map(glyphs.map((glyph) => [glyph.key, glyph]));
+
+  return unique.size > 0 ? [...unique.values()] : [catalogue.get(SYMBOL_FALLBACK)!];
+}
+
+/**
+ * Paints the glyphs given — and only those — returning deck's icon mapping.
+ *
+ * Only those is the whole point: the full catalogue is nearly four hundred
+ * glyphs, which at one 96 px cell each is a texture of some 14 MB. A layer
+ * draws one symbol at a time.
+ */
+export function paintGlyphs(
+  glyphs: AnyGlyph[],
+  ctx: SymbolPainter,
+  columns = ATLAS_COLUMNS
+): Record<string, IconFrame> {
+  const mapping: Record<string, IconFrame> = {};
+  ctx.strokeStyle = '#ffffff';
+  ctx.fillStyle = '#ffffff';
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  glyphs.forEach((glyph, index) => {
+    const x = (index % columns) * CELL;
+    const y = Math.floor(index / columns) * CELL;
+
+    if (isPathGlyph(glyph)) {
+      // Saved and restored around the transform: without it every later glyph
+      // would inherit this one's scale and land in the wrong cell.
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(CELL / glyph.box, CELL / glyph.box);
+      ctx.fill(new Path2D(glyph.path));
+      ctx.restore();
+    } else {
+      drawGlyph(glyph, ctx, x, y);
+    }
+
+    mapping[glyph.key] = {
+      x,
+      y,
+      width: CELL,
+      height: CELL,
+      anchorX: glyph.anchor[0],
+      anchorY: glyph.anchor[1],
+      mask: true,
+    };
+  });
+
+  return mapping;
 }

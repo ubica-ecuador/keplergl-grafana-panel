@@ -1,4 +1,4 @@
-import { isPathGlyph, makiGlyphs, meshGlyphs, ownGlyphs, SYMBOL_FALLBACK } from './symbolGlyphs';
+import { glyphsFor, isPathGlyph, makiGlyphs, meshGlyphs, ownGlyphs, paintGlyphs, symbolCatalogue, SYMBOL_FALLBACK, SYMBOL_NAMES } from './symbolGlyphs';
 import keplerIcons from '../icons/svg-icons.json';
 import maki from '../icons/maki-paths.json';
 
@@ -110,5 +110,91 @@ describe('makiGlyphs', () => {
     if (invalidPaths.length > 0) {
       throw new Error(`Path encoding errors:\n${invalidPaths.join('\n')}`);
     }
+  });
+});
+
+describe('symbolCatalogue', () => {
+  it('merges the three sources under unique names', () => {
+    const catalogue = symbolCatalogue();
+
+    expect(catalogue.get('chevron')).toBeDefined(); // ours
+    expect(catalogue.get('directions')).toBeDefined(); // kepler
+    expect(catalogue.get('airport')).toBeDefined(); // maki
+    expect(SYMBOL_NAMES.length).toBe(catalogue.size);
+  });
+
+  it('lets our own shapes win a name collision, so the basic shapes stay predictable', () => {
+    // Both kepler and Maki ship a `circle`; ours is the one the panel promises.
+    expect(symbolCatalogue().get('circle')).toEqual(expect.objectContaining({ shapes: expect.any(Array) }));
+  });
+});
+
+describe('glyphsFor', () => {
+  it('resolves the names asked for, once each and in a stable order', () => {
+    expect(glyphsFor(['square', 'circle', 'square']).map((g) => g.key)).toEqual(['circle', 'square']);
+  });
+
+  it('falls back to the arrow when a saved config names a glyph this build lacks', () => {
+    // A dashboard saved against a later catalogue must still draw something.
+    expect(glyphsFor(['no-such-glyph']).map((g) => g.key)).toEqual([SYMBOL_FALLBACK]);
+  });
+
+  it('never resolves to nothing, because an empty atlas is a blank map', () => {
+    expect(glyphsFor([]).map((g) => g.key)).toEqual([SYMBOL_FALLBACK]);
+  });
+});
+
+describe('paintGlyphs', () => {
+  beforeAll(() => {
+    (globalThis as { Path2D?: unknown }).Path2D = class {
+      constructor(public d: string) {}
+    };
+  });
+
+  afterAll(() => {
+    delete (globalThis as { Path2D?: unknown }).Path2D;
+  });
+
+  const painter = () => {
+    const calls: string[] = [];
+    return {
+      calls,
+      ctx: {
+        lineWidth: 0,
+        strokeStyle: '',
+        fillStyle: '',
+        lineCap: 'round' as CanvasLineCap,
+        lineJoin: 'round' as CanvasLineJoin,
+        beginPath: () => calls.push('beginPath'),
+        closePath: () => calls.push('closePath'),
+        moveTo: () => calls.push('moveTo'),
+        lineTo: () => calls.push('lineTo'),
+        arc: () => calls.push('arc'),
+        stroke: () => calls.push('stroke'),
+        fill: () => calls.push('fill'),
+        save: () => calls.push('save'),
+        restore: () => calls.push('restore'),
+        translate: () => calls.push('translate'),
+        scale: () => calls.push('scale'),
+      },
+    };
+  };
+
+  it('maps only the glyphs it was given, not the whole catalogue', () => {
+    const { ctx } = painter();
+
+    const mapping = paintGlyphs([symbolCatalogue().get('circle')!, symbolCatalogue().get('square')!], ctx);
+
+    expect(Object.keys(mapping)).toEqual(['circle', 'square']);
+    expect(mapping.circle).toMatchObject({ x: 0, y: 0, width: 96, height: 96, mask: true });
+    expect(mapping.square.x).toBe(96);
+  });
+
+  it('scales a path glyph into the cell inside save/restore, so the next glyph is not skewed', () => {
+    const { calls, ctx } = painter();
+
+    paintGlyphs([symbolCatalogue().get('airport')!], ctx);
+
+    expect(calls).toEqual(expect.arrayContaining(['save', 'translate', 'scale', 'restore']));
   });
 });
