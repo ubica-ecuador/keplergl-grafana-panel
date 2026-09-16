@@ -357,3 +357,49 @@ export async function readVectorField(map: Locator): Promise<VectorFieldSummary 
     };
   });
 }
+
+/** What the saved-layer spec asserts about the layer drawing a raster query. */
+export interface RasterLayerSummary {
+  /** kepler's layer type: `rasterTile`, or the panel's own `cogPainted`. */
+  type: string;
+  /** kepler's dataset type for the raster: `raster-tile` or `cogPainted`. */
+  datasetType: string;
+  /** The band preset the layer draws with, when its type has one. */
+  preset: string | null;
+  colormapId: string | null;
+}
+
+/**
+ * The layer drawing a raster dataset, read from the store rather than from the
+ * picture: a layer of the wrong type, or one left on the saved config's band
+ * preset, draws something plausible and reports nothing at all.
+ */
+export async function readRasterLayer(map: Locator, dataId: string): Promise<RasterLayerSummary | null> {
+  return map.evaluate((node, wanted) => {
+    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
+    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
+    let store = null;
+    while (fiber) {
+      const candidate = fiber.memoizedProps && fiber.memoizedProps.store;
+      if (candidate && typeof candidate.getState === 'function') {
+        store = candidate;
+        break;
+      }
+      fiber = fiber.return;
+    }
+    if (!store) {
+      return null;
+    }
+    const visState = (Object.values(store.getState().keplerGl ?? {})[0] as any)?.visState;
+    const layer = (visState?.layers ?? []).find((l: any) => l.config?.dataId === wanted);
+    if (!layer) {
+      return null;
+    }
+    return {
+      type: layer.type ?? '',
+      datasetType: visState?.datasets?.[wanted]?.type ?? '',
+      preset: layer.config?.visConfig?.preset ?? null,
+      colormapId: layer.config?.visConfig?.colormapId ?? null,
+    };
+  }, dataId);
+}
