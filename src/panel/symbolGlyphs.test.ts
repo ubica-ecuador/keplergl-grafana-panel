@@ -1,4 +1,14 @@
-import { glyphsFor, isPathGlyph, makiGlyphs, meshGlyphs, ownGlyphs, paintGlyphs, symbolCatalogue, SYMBOL_FALLBACK, SYMBOL_NAMES } from './symbolGlyphs';
+import {
+  glyphsFor,
+  isPathGlyph,
+  makiGlyphs,
+  meshGlyphs,
+  ownGlyphs,
+  paintGlyphs,
+  symbolCatalogue,
+  SYMBOL_FALLBACK,
+  SYMBOL_NAMES,
+} from './symbolGlyphs';
 import keplerIcons from '../icons/svg-icons.json';
 import maki from '../icons/maki-paths.json';
 
@@ -124,8 +134,10 @@ describe('symbolCatalogue', () => {
   });
 
   it('lets our own shapes win a name collision, so the basic shapes stay predictable', () => {
-    // Both kepler and Maki ship a `circle`; ours is the one the panel promises.
-    expect(symbolCatalogue().get('circle')).toEqual(expect.objectContaining({ shapes: expect.any(Array) }));
+    // Both kepler and ours ship a `pin`. Kepler's mesh glyphs anchor at the
+    // centre [48, 48]; ours drives it into the ground at [48, 92]. This assertion
+    // fails if the spread order changes to let kepler win.
+    expect(symbolCatalogue().get('pin')!.anchor).toEqual([48, 92]);
   });
 });
 

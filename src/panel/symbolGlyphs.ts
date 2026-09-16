@@ -1,4 +1,4 @@
-import { arrowGlyph, ATLAS_COLUMNS, CELL, drawGlyph, Glyph, IconFrame, Painter } from './vectorFieldGlyphs';
+import { arrowGlyph, ATLAS_COLUMNS, atlasSize, CELL, drawGlyph, Glyph, IconFrame, paintAtlas, Painter } from './vectorFieldGlyphs';
 import keplerIcons from '../icons/svg-icons.json';
 import maki from '../icons/maki-paths.json';
 
@@ -193,39 +193,40 @@ export function paintGlyphs(
   ctx: SymbolPainter,
   columns = ATLAS_COLUMNS
 ): Record<string, IconFrame> {
-  const mapping: Record<string, IconFrame> = {};
-  ctx.strokeStyle = '#ffffff';
-  ctx.fillStyle = '#ffffff';
-  ctx.lineWidth = 5;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-
-  glyphs.forEach((glyph, index) => {
-    const x = (index % columns) * CELL;
-    const y = Math.floor(index / columns) * CELL;
-
-    if (isPathGlyph(glyph)) {
+  return paintAtlas(glyphs as unknown as Glyph[], ctx, columns, (glyph, context, x, y) => {
+    const anyGlyph = glyph as AnyGlyph;
+    const symbolCtx = context as SymbolPainter;
+    if (isPathGlyph(anyGlyph)) {
       // Saved and restored around the transform: without it every later glyph
       // would inherit this one's scale and land in the wrong cell.
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.scale(CELL / glyph.box, CELL / glyph.box);
-      ctx.fill(new Path2D(glyph.path));
-      ctx.restore();
+      symbolCtx.save();
+      symbolCtx.translate(x, y);
+      symbolCtx.scale(CELL / anyGlyph.box, CELL / anyGlyph.box);
+      symbolCtx.fill(new Path2D(anyGlyph.path));
+      symbolCtx.restore();
     } else {
-      drawGlyph(glyph, ctx, x, y);
+      drawGlyph(anyGlyph, symbolCtx, x, y);
     }
-
-    mapping[glyph.key] = {
-      x,
-      y,
-      width: CELL,
-      height: CELL,
-      anchorX: glyph.anchor[0],
-      anchorY: glyph.anchor[1],
-      mask: true,
-    };
   });
+}
 
-  return mapping;
+/**
+ * Creates a canvas sized and ready for painting an atlas, or null if a 2D
+ * context is not available.
+ *
+ * Both symbol and vector field layers use this to create their atlases. Returns
+ * null rather than throwing when there is no 2D context to paint into — a
+ * browser out of canvas contexts, say. Nothing is cached on that path, so the
+ * next call tries again rather than remembering the failure.
+ */
+export function createAtlasCanvas(count: number): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
+  const { width, height } = atlasSize(count);
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return null;
+  }
+  return { canvas, ctx };
 }

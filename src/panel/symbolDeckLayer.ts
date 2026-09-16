@@ -1,7 +1,7 @@
 import { IconLayer } from '@deck.gl/layers';
 
-import { atlasSize, IconFrame } from './vectorFieldGlyphs';
-import { glyphsFor, paintGlyphs, SymbolPainter } from './symbolGlyphs';
+import { IconFrame } from './vectorFieldGlyphs';
+import { createAtlasCanvas, glyphsFor, paintGlyphs, SymbolPainter } from './symbolGlyphs';
 
 /**
  * The deck.gl layer that draws a symbol per row.
@@ -24,18 +24,14 @@ function atlasFor(names: string[]): { canvas: HTMLCanvasElement; mapping: Record
     return atlas;
   }
 
-  const { width, height } = atlasSize(glyphs.length);
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
+  const created = createAtlasCanvas(glyphs.length);
+  if (!created) {
     // Nothing cached on this path: the next call tries again rather than
     // remembering a failure as if it were a built atlas.
     return null;
   }
 
-  atlas = { key, canvas, mapping: paintGlyphs(glyphs, ctx as unknown as SymbolPainter) };
+  atlas = { key, canvas: created.canvas, mapping: paintGlyphs(glyphs, created.ctx as unknown as SymbolPainter) };
   return atlas;
 }
 

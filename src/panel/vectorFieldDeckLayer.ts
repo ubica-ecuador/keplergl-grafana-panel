@@ -1,6 +1,7 @@
 import { IconLayer } from '@deck.gl/layers';
 
-import { atlasSize, glyphCatalogue, IconFrame, paintAtlas, Painter } from './vectorFieldGlyphs';
+import { glyphCatalogue, IconFrame, paintAtlas, Painter } from './vectorFieldGlyphs';
+import { createAtlasCanvas } from './symbolGlyphs';
 
 /**
  * The deck.gl layer that draws a vector field's symbols.
@@ -27,15 +28,11 @@ let atlas: { canvas: HTMLCanvasElement; mapping: Record<string, IconFrame> } | n
 function vectorFieldAtlas(): { canvas: HTMLCanvasElement; mapping: Record<string, IconFrame> } | null {
   if (!atlas) {
     const glyphs = glyphCatalogue();
-    const { width, height } = atlasSize(glyphs.length);
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
+    const created = createAtlasCanvas(glyphs.length);
+    if (!created) {
       return null;
     }
-    atlas = { canvas, mapping: paintAtlas(glyphs, ctx as unknown as Painter) };
+    atlas = { canvas: created.canvas, mapping: paintAtlas(glyphs, created.ctx as unknown as Painter) };
   }
   return atlas;
 }

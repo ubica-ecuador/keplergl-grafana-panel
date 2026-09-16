@@ -151,7 +151,12 @@ export function drawGlyph(glyph: Glyph, ctx: Painter, x: number, y: number): voi
 }
 
 /** Paints the glyphs into a context, row by row, and maps each key to its cell. */
-export function paintAtlas(glyphs: Glyph[], ctx: Painter, columns = ATLAS_COLUMNS): Record<string, IconFrame> {
+export function paintAtlas<T extends Glyph>(
+  glyphs: T[],
+  ctx: Painter,
+  columns = ATLAS_COLUMNS,
+  draw: (glyph: T, ctx: Painter, x: number, y: number) => void = drawGlyph as (glyph: T, ctx: Painter, x: number, y: number) => void
+): Record<string, IconFrame> {
   const mapping: Record<string, IconFrame> = {};
   ctx.strokeStyle = '#ffffff';
   ctx.fillStyle = '#ffffff';
@@ -162,7 +167,7 @@ export function paintAtlas(glyphs: Glyph[], ctx: Painter, columns = ATLAS_COLUMN
   glyphs.forEach((glyph, index) => {
     const x = (index % columns) * CELL;
     const y = Math.floor(index / columns) * CELL;
-    drawGlyph(glyph, ctx, x, y);
+    draw(glyph, ctx, x, y);
     mapping[glyph.key] = { x, y, width: CELL, height: CELL, anchorX: glyph.anchor[0], anchorY: glyph.anchor[1], mask: true };
   });
 
