@@ -5,6 +5,7 @@ import {
   fitBounds,
   interactionConfigChange,
   layerConfigChange,
+  layerTypeChange,
   layerVisConfigChange,
   mapStyleChange,
   removeDataset,
@@ -171,6 +172,9 @@ const VECTOR_TILE_FILTER_TYPES = [ALL_FIELD_TYPES.real, ALL_FIELD_TYPES.integer,
 
 /** kepler's `DatasetType.RASTER_TILE`: a dataset that is a scene, not rows. */
 const RASTER_TILE_TYPE = 'raster-tile';
+
+/** kepler's `RasterTileLayer.type` — the layer that draws a `raster-tile`. */
+const RASTER_TILE_LAYER_TYPE = 'rasterTile';
 
 /**
  * A raster scene in the shape kepler's own Add Data → Tileset produces.
@@ -415,6 +419,60 @@ export function swapRasterScene(store: Store, dispatch: Dispatch, raster: Raster
   return true;
 }
 
+
+/**
+ * Puts the layer drawing a raster dataset back in step with that dataset's
+ * type, and says whether it had to.
+ *
+ * A raster's kind decides which kepler dataset type the panel mints — a painted
+ * composite is a `cogPainted` dataset drawn by this plugin's own layer, every
+ * other raster is a `raster-tile` drawn by kepler's — and a band combination
+ * changes that kind from outside, on a map whose layers may predate the change.
+ * kepler will not notice: `validateLayerWithData` (@kepler.gl/reducers,
+ * `vis-state-merger`) checks that a saved layer's type is registered and that
+ * its columns exist, and never that the layer can draw the dataset it is being
+ * bound to. So a dashboard that saved a `rasterTile` layer over a true-colour
+ * scene keeps that layer when the same query starts producing a painted
+ * composite, and it draws nothing at all: the metadata a painted dataset
+ * carries names no STAC document, so kepler's raster layer has nothing to
+ * fetch and asks for no tiles — a blank map, no error, nothing in the console.
+ *
+ * `layerTypeChange` rather than remove-and-add: it keeps the layer's place in
+ * the order, its label and whatever of its `visConfig` the new type also has,
+ * and updates `splitMaps` and `layerOrder` itself. It does mint a **new id** —
+ * deck matches layers by id and reusing one across a type change breaks it —
+ * which is also why callers keyed on the layer id (the timeline's `dressed`
+ * set) re-apply their work by themselves afterwards.
+ *
+ * Only ever acts on a dataset kepler holds as one of the two raster types, and
+ * only when the layer's type differs, so the ordinary case dispatches nothing.
+ */
+export function reconcileRasterLayerType(store: Store, dispatch: Dispatch, dataId: string): boolean {
+  const visState = getVisState(store);
+  const dataset = visState?.datasets[dataId];
+  const layer = visState?.layers.find((candidate) => candidate.config?.dataId === dataId);
+  if (!dataset || !layer) {
+    return false;
+  }
+
+  const wanted = rasterLayerTypeFor(dataset.type);
+  if (!wanted || layer.type === wanted) {
+    return false;
+  }
+
+  dispatch(
+    wrapTo(KEPLER_INSTANCE_ID, layerTypeChange(layer as unknown as Parameters<typeof layerTypeChange>[0], wanted))
+  );
+  return true;
+}
+
+/** Which layer draws a raster dataset of this kepler type, if the panel knows. */
+function rasterLayerTypeFor(datasetType?: string): string | null {
+  if (datasetType === COG_PAINTED_TYPE) {
+    return COG_PAINTED_TYPE;
+  }
+  return datasetType === RASTER_TILE_TYPE ? RASTER_TILE_LAYER_TYPE : null;
+}
 
 /**
  * Shows or hides a raster layer without touching its dataset.

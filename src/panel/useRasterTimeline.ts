@@ -10,6 +10,7 @@ import {
   readSyncSlices,
   readTimeDomain,
   readTimeRange,
+  reconcileRasterLayerType,
   refreshRasters,
   setRasterLayerVisible,
   swapRasterScene,
@@ -33,7 +34,14 @@ interface Params {
 }
 
 /**
- * Makes the map's time filter choose which scene of a raster series is drawn.
+ * Keeps the layer drawing a raster query in step with the query, and makes the
+ * map's time filter choose which of its scenes is drawn.
+ *
+ * Two jobs, and only the second one is about time. The first — the layer's type
+ * and its styling — runs for every raster, dated or not: which of them a query
+ * needs is decided by its band combination, which a dashboard variable can
+ * change at any moment on a panel whose scene query carries no time column at
+ * all.
  *
  * A query that returns one row per pass of the satellite is a small catalogue,
  * and the time widget is the natural way to move through it: drag the window
@@ -85,8 +93,41 @@ export function useRasterTimeline({ store, isReady, rasters, timeVariables }: Pa
 
   const reconcile = useRef(() => {
     const series = rastersRef.current;
-    // Only a dated series has anything to follow. A single-scene query keeps
-    // its old behaviour and never reaches kepler through this path.
+
+    // The layer drawing each raster, put back in step with the raster itself:
+    // first its type, then its style. Neither has anything to do with the
+    // clock, so both run before the dated check below — a query that returns
+    // one undated scene still has a band combination, and gating its styling
+    // on a time column is what made every index draw true colour.
+    for (const raster of series) {
+      // A change of band combination can change which kepler layer type the
+      // dataset needs; nothing in kepler notices. `reconcileRasterLayerType`
+      // says why, and mints a new layer id when it acts — which is exactly
+      // what makes the dressing below run again for the replacement.
+      reconcileRasterLayerType(store, store.dispatch, raster.id);
+
+      // The configured ramp and preset, applied once per layer *and style* —
+      // kepler creates the layer asynchronously, so this is retried on each
+      // store change until it lands. After that the style is the user's to
+      // change from the layer panel, and re-imposing it on every store change
+      // would undo them — except a band combination changes the style from
+      // outside, and the layer must be dressed again when that happens. See
+      // `rasterDressKey` below for the rule that tells the two apart.
+      const layerId = readRasterLayerId(store, raster.id);
+      const key = rasterDressKey(raster, layerId);
+      if (key && !dressed.current.has(key)) {
+        const style = {
+          ...(raster.colormap ? { colormapId: raster.colormap } : {}),
+          ...(raster.preset ? { preset: raster.preset } : {}),
+        };
+        if (applyRasterStyle(store, store.dispatch, raster.id, style)) {
+          dressed.current.add(key);
+        }
+      }
+    }
+
+    // Only a dated series has a clock to follow. A single-scene query keeps
+    // its old behaviour and never reaches kepler through the path below.
     if (!series.some((raster) => raster.scenes.some((scene) => scene.time !== null))) {
       return;
     }
@@ -99,27 +140,6 @@ export function useRasterTimeline({ store, isReady, rasters, timeVariables }: Pa
       if (domain) {
         pushTimeRange(store, store.dispatch, domain);
         opened.current = true;
-      }
-    }
-
-    // The configured ramp and preset, applied once per layer *and style* —
-    // kepler creates the layer asynchronously, so this is retried on each
-    // store change until it lands. After that the style is the user's to
-    // change from the layer panel, and re-imposing it on every store change
-    // would undo them — except a band combination changes the style from
-    // outside, and the layer must be dressed again when that happens. See
-    // `rasterDressKey` below for the rule that tells the two apart.
-    for (const raster of series) {
-      const layerId = readRasterLayerId(store, raster.id);
-      const key = rasterDressKey(raster, layerId);
-      if (key && !dressed.current.has(key)) {
-        const style = {
-          ...(raster.colormap ? { colormapId: raster.colormap } : {}),
-          ...(raster.preset ? { preset: raster.preset } : {}),
-        };
-        if (applyRasterStyle(store, store.dispatch, raster.id, style)) {
-          dressed.current.add(key);
-        }
       }
     }
 
