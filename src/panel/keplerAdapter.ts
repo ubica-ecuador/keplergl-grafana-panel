@@ -34,6 +34,7 @@ import type { PanelDataset } from '../data/framesToDatasets';
 import type { KeplerColumn } from '../data/toKeplerDataset';
 import type { LayerOrderEntry } from './layerOrderGuard';
 import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
+import { stacTileTemplate } from '../data/stacTileUrl';
 import { isPanelWmsId, wmsCalendarDatasetId, type WmsDataset } from '../data/wmsDataset';
 import { type EsriDataset } from '../data/esriDataset';
 import { zarrCalendarDatasetId, type ZarrDataset } from '../data/zarrDataset';
@@ -321,15 +322,56 @@ function readRasterDatasets(store: Store): Array<{ id: string; metadataUrl?: str
   return Object.entries(getVisState(store)?.datasets ?? {})
     .filter(([, dataset]) => dataset.type === RASTER_TILE_TYPE || dataset.type === COG_PAINTED_TYPE)
     .map(([id, dataset]) => ({
-      // A painted COG keeps no `metadataUrl` — there is no document to fetch —
-      // so its image url stands as the identity, which is what
-      // `metadataUrlForScene` already hands back for it.
       id,
       metadataUrl:
         dataset.type === COG_PAINTED_TYPE
-          ? (dataset.metadata as { sourceUrl?: string } | undefined)?.sourceUrl
+          ? paintedIdentity(dataset.metadata as PaintedMetadata | undefined)
           : dataset.metadata?.metadataUrl,
     }));
+}
+
+/** What `rasterMetadata` stores for a COG the tile server paints. */
+interface PaintedMetadata {
+  serverUrl?: string;
+  sourceUrl?: string;
+  assets?: string[];
+  rescale?: string[];
+}
+
+/**
+ * The identity of a painted dataset, rebuilt from what kepler holds.
+ *
+ * A painted COG keeps no `metadataUrl`: there is no STAC document to fetch, so
+ * nothing in the stored metadata is the identity as it stands and it has to be
+ * re-derived. This is `sceneIdentity`'s painted branch (`rasterDataset.ts`)
+ * read backwards, and the two must agree: what `framesToRasters` puts in a
+ * raster's `metadataUrl` is what `splitRasterRefresh` compares this against.
+ *
+ * For a composite that identity is the whole tile template — assets, stretch
+ * and item together — because a change of band combination changes exactly
+ * those and nothing else: the item url is the same scene under `forestBurn` as
+ * under `infrared`. Answering the bare item url made template ≠ item on every
+ * single comparison, so the composite landed in `replace` on every refresh: a
+ * `replaceDataInMap` and a full tile refetch, the "visible blink"
+ * `splitRasterRefresh` exists to avoid, on the combination the Imagery tab
+ * opens on.
+ *
+ * Without assets there is no item in the picture at all — the classified-COG
+ * path — and the image url is the identity, as before.
+ */
+function paintedIdentity(metadata: PaintedMetadata | undefined): string | undefined {
+  const sourceUrl = metadata?.sourceUrl;
+  if (!sourceUrl || !metadata?.assets?.length) {
+    return sourceUrl;
+  }
+  return (
+    stacTileTemplate({
+      serverUrl: metadata.serverUrl ?? '',
+      itemUrl: sourceUrl,
+      assets: metadata.assets,
+      rescale: metadata.rescale,
+    }) ?? sourceUrl
+  );
 }
 
 /**

@@ -1,6 +1,7 @@
 import type { Store } from 'redux';
 
 import type { RasterDataset } from '../data/rasterDataset';
+import { stacTileTemplate } from '../data/stacTileUrl';
 import { KEPLER_INSTANCE_ID } from './constants';
 import { reconcileRasterLayerType, refreshRasters, swapRasterScene } from './keplerAdapter';
 
@@ -191,4 +192,77 @@ describe('refreshRasters — the no-op the review traced', () => {
 
     expect(dispatch).not.toHaveBeenCalled();
   });
+
+  // The composite mirror of the test above, and the one that was missing. A
+  // painted composite's identity is the whole tile template — assets, stretch
+  // and item together — because that is what a change of band combination
+  // changes. The dataset kepler holds carries those pieces but not the
+  // template, so the comparison only works if `readRasterDatasets` rebuilds it
+  // from them. Comparing the bare `sourceUrl` instead puts the composite in
+  // `replace` on *every* refresh: a `replaceDataInMap` and a full tile refetch
+  // — a visible blink — each time the dashboard's own auto-refresh re-runs the
+  // query, and for the combination the Imagery tab opens on by default.
+  it('dispatches nothing for a painted composite whose scene and bands have not changed', () => {
+    const dispatch = jest.fn();
+    const store = fakeStore({ datasets: { 'grafana-A-raster': compositeDataset(FOREST_BURN) } });
+
+    refreshRasters(store, dispatch, [compositeRaster(FOREST_BURN)]);
+
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  // The other half of it: the identity must still *move* when the bands do, or
+  // the dropdown would change nothing at all.
+  it('replaces a painted composite whose bands changed', () => {
+    const dispatch = jest.fn();
+    const store = fakeStore({ datasets: { 'grafana-A-raster': compositeDataset(FOREST_BURN) } });
+
+    refreshRasters(store, dispatch, [compositeRaster(INFRARED)]);
+
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    // `wrapTo` addresses the action to this panel's instance, so the raster
+    // action it carries is one level down.
+    expect(dispatch.mock.calls[0][0].payload).toMatchObject({
+      type: '@@kepler.gl/REPLACE_DATA_IN_MAP',
+      payload: {
+        datasetToReplaceId: 'grafana-A-raster',
+        datasetToUse: { metadata: { assets: ['nir', 'red', 'green'] } },
+      },
+    });
+  });
+
+  // A classified COG the server paints is addressed by url alone — no item, no
+  // assets — so its identity stays the image, exactly as before.
+  it('dispatches nothing for a painted COG with no assets whose scene has not changed', () => {
+    const dispatch = jest.fn();
+    const scene = 'https://bucket.example/lulc.tif';
+    const store = fakeStore({
+      datasets: {
+        'grafana-A-raster': { type: 'cogPainted', metadata: { serverUrl: 'https://titiler.test', sourceUrl: scene } },
+      },
+    });
+
+    refreshRasters(store, dispatch, [raster({ kind: 'painted', sourceUrl: scene, metadataUrl: scene })]);
+
+    expect(dispatch).not.toHaveBeenCalled();
+  });
 });
+
+/** Two band combinations of `bandCombination.ts`, as the panel resolves them. */
+const FOREST_BURN = { assets: ['swir22', 'nir', 'blue'], rescale: ['0,4000', '0,4000', '0,4000'] };
+const INFRARED = { assets: ['nir', 'red', 'green'], rescale: ['0,3000', '0,3000', '0,3000'] };
+
+/** A composite as kepler holds it: the pieces of the request, not the request. */
+function compositeDataset(bands: { assets: string[]; rescale: string[] }) {
+  return { type: 'cogPainted', metadata: { serverUrl: 'https://titiler.test', sourceUrl: ITEM, ...bands } };
+}
+
+/** The same composite as the panel describes it: identified by the template. */
+function compositeRaster(bands: { assets: string[]; rescale: string[] }): RasterDataset {
+  return raster({
+    kind: 'painted',
+    sourceUrl: ITEM,
+    metadataUrl: stacTileTemplate({ serverUrl: 'https://titiler.test', itemUrl: ITEM, ...bands })!,
+    ...bands,
+  });
+}
