@@ -24,6 +24,7 @@ export const OWN_LAYER_LABELS: Record<string, string> = {
   esriimage: 'ArcGIS Image Service',
   flowfield: 'Flow field',
   vectorfield: 'Vector field',
+  symbol: 'Symbols',
 };
 
 /** kepler's message catalogue: locale → flat id → text. */

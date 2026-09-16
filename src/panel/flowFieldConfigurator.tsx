@@ -14,6 +14,7 @@ import {
 } from '@kepler.gl/components';
 
 import { PaintedTilesetConfig } from './paintedTilesetConfigurator';
+import { SymbolLayerConfig } from './symbolConfigurator';
 import { Tile3dLayerConfig } from './tile3dConfigurator';
 
 /**
@@ -321,6 +322,14 @@ function CustomLayerConfiguratorFactory(...deps: Parameters<typeof LayerConfigur
 
     _renderVectorfieldLayerConfig(args: ConfiguratorArgs) {
       return <VectorFieldLayerConfig {...args} />;
+    }
+
+    _renderSymbolLayerConfig(args: ConfiguratorArgs) {
+      // This file's own `ConfiguratorArgs` (above) is shaped for the flow and
+      // vector field panels and has no `layerChannelConfigProps`; kepler passes
+      // it anyway (see `layer-configurator.tsx`'s own channel-bearing layers),
+      // so the cast only tells TypeScript what is already true at runtime.
+      return <SymbolLayerConfig {...(args as unknown as React.ComponentProps<typeof SymbolLayerConfig>)} />;
     }
 
     // The three layers whose picture arrives already drawn share one panel —
