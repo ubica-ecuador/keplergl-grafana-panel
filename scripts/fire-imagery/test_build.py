@@ -10,6 +10,8 @@ import re
 import sys
 import unittest
 
+import duckdb
+
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
@@ -17,6 +19,49 @@ import build  # noqa: E402
 
 NEW_VARIABLES = ['scanFrom', 'scanTo', 'burnArea', 'scene', 'sLat', 'sLng',
                  'days', 's2cloud', 's2cover', 'bands', 'aLat', 'aLng']
+
+# Lo que el datasource pone en lugar de los macros de Grafana antes de mandar la
+# consulta a DuckDB: una marca de tiempo entrecomillada. Medido en el banco.
+TIME_FROM = "'2026-09-08T21:03:41Z'"
+TIME_TO = "'2026-09-15T21:03:41Z'"
+
+
+def expand_macro(match):
+    name, argument = match.group(1), match.group(2).strip()
+    if name == '__timeFrom':
+        return TIME_FROM
+    if name == '__timeTo':
+        return TIME_TO
+    # Un predicado, no un valor: el datasource lo cambia por una comparación
+    # sobre la columna que le pasan.
+    if name == '__timeFilter':
+        return f'{argument} BETWEEN {TIME_FROM} AND {TIME_TO}'
+    # Deliberadamente ruidoso: un macro nuevo que nadie sustituya volvería a
+    # dejar pasar SQL que no parsea, que es justo lo que este módulo evita.
+    raise AssertionError(f'macro de Grafana sin expandir: ${name}()')
+
+
+def as_the_datasource_sends_it(sql):
+    """La SQL tal como sale hacia DuckDB: macros y variables ya sustituidas.
+
+    El navegador entrecomilla el valor de cada variable y el datasource expande
+    los macros; ninguno de los dos mira si el resultado es SQL válida. Aquí solo
+    importa la forma, así que el valor es lo de menos: un literal vacío sirve
+    para cualquiera y no puede introducir un error de sintaxis propio.
+    """
+    sql = re.sub(r'\$(__\w+)\(([^()]*)\)', expand_macro, sql)
+    return re.sub(r'\$\{?[A-Za-z]\w*\}?', "''", sql)
+
+
+def panel_queries():
+    """Cada `(elemento, refId, SQL)` que la pestaña manda al datasource."""
+    dash = fixture()
+    for key, element in sorted(build.imagery_elements(dash).items()):
+        for query in element['spec']['data']['spec']['queries']:
+            spec = query['spec']
+            if spec['query']['group'] != build.DUCKDB_GROUP:
+                continue
+            yield key, spec['refId'], spec['query']['spec']['rawSql']
 
 
 def fixture():
@@ -134,6 +179,28 @@ class SqlTest(unittest.TestCase):
         self.assertIn(build.read_sql('search'), full)
         self.assertTrue(full.endswith(build.read_sql('map_scenes')))
         self.assertNotIn('http_get', build.panel_sql('map_box', with_search=False))
+
+    def test_every_panel_query_parses(self):
+        # Lo que ningún otro test miraba: que la SQL sea SQL. A una pieza se le
+        # cayó el SELECT al editarla y la consulta quedó en un `WITH` seguido de
+        # un `CASE`: el panel salía al servidor con un error del parser en lugar
+        # de con una tabla, y ni el injerto ni los tests se enteraban. Se parsea
+        # lo que de verdad se manda —lo que lleva cada panel de la pestaña— y no
+        # una lista de nombres escrita a mano, que se queda corta el día que se
+        # añade un panel.
+        checked = 0
+        for key, ref_id, sql in panel_queries():
+            with self.subTest(panel=key, refId=ref_id):
+                try:
+                    statements = duckdb.extract_statements(as_the_datasource_sends_it(sql))
+                except duckdb.Error as error:
+                    self.fail(f'{key}/{ref_id}: {error}')
+                # Y que lo último sea lo que llena el panel: una SELECT. Un
+                # panel alimentado por un SET o un CREATE parsea y devuelve
+                # cero filas, que es la otra forma de llegar rota al servidor.
+                self.assertEqual(statements[-1].type, duckdb.StatementType.SELECT, f'{key}/{ref_id}')
+            checked += 1
+        self.assertGreaterEqual(checked, 5)
 
     def test_catalogue_body_is_parsed_defensively(self):
         # Un cuerpo que no es JSON (una página de error, o el vacío del tope de
