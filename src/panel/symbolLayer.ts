@@ -122,6 +122,23 @@ export const SYMBOL_VIS_CONFIGS = {
     group: 'display',
     property: 'declutterSpacingPx',
   },
+  gradient: {
+    type: 'boolean',
+    defaultValue: false,
+    label: 'symbol.gradient',
+    group: 'color',
+    property: 'gradient',
+  },
+  gradientTail: {
+    type: 'number',
+    defaultValue: 0.7,
+    label: 'symbol.gradientTail',
+    isRanged: false,
+    range: [0, 1],
+    step: 0.05,
+    group: 'color',
+    property: 'gradientTail',
+  },
   upright: {
     type: 'boolean',
     defaultValue: false,
@@ -607,11 +624,16 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       // Null when an atlas could not be painted: dropping a layer loses it for
       // the frame rather than the whole map render.
       // In drawing order: the shadow under the outline, the outline under the
-      // symbols, and the labels over everything.
+      // symbols, and the labels over everything. The gradient is the symbols'
+      // alone: a shadow or an outline is one flat tone.
       const symbolLayers = [
         visConfig.shadow === true ? this.shadowOf(symbolProps, visConfig) : null,
         visConfig.outline === true ? this.outlineOf(symbolProps, visConfig) : null,
-        buildDeckLayer(symbolProps),
+        buildDeckLayer(
+          visConfig.gradient === true
+            ? { ...symbolProps, gradient: setting(visConfig.gradientTail, 0.7) }
+            : symbolProps
+        ),
       ].filter(Boolean);
 
       // kepler's own text labels, the ones its point layer draws, over the rows

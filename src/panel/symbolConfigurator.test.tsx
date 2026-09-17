@@ -200,11 +200,15 @@ describe('symbol layer panel', () => {
           shadow: on,
           shadowOpacity: 0.5,
           shadowDistance: 4,
+          gradient: on,
+          gradientTail: 0.7,
         },
         colorField: null,
         colorUI: {},
       },
       visConfigSettings: {
+        gradient: SYMBOL_VIS_CONFIGS.gradient,
+        gradientTail: SYMBOL_VIS_CONFIGS.gradientTail,
         upright: SYMBOL_VIS_CONFIGS.upright,
         outline: SYMBOL_VIS_CONFIGS.outline,
         outlineColor: SYMBOL_VIS_CONFIGS.outlineColor,
@@ -233,6 +237,8 @@ describe('symbol layer panel', () => {
       </IntlProvider>
     );
 
+    expect(screen.getByText('Lighten towards the tail')).toBeInTheDocument();
+    expect(screen.queryByText('Tail lightness') !== null).toBe(on);
     expect(screen.getByText('Stand upright in 3D')).toBeInTheDocument();
     expect(screen.getByText('Outline')).toBeInTheDocument();
     expect(screen.getByText('Shadow')).toBeInTheDocument();

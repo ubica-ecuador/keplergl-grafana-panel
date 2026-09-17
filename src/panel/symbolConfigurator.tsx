@@ -131,6 +131,12 @@ export function SymbolLayerConfig({
         ) : (
           <LayerColorSelector {...layerConfiguratorProps} />
         )}
+        {settings.gradient ? (
+          <>
+            <VisConfigSwitch {...settings.gradient} {...visConfiguratorProps} />
+            {layer.config.visConfig.gradient ? slider('gradientTail') : null}
+          </>
+        ) : null}
       </LayerConfigGroup>
 
       {TextLabelPanel ? (

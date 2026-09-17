@@ -366,6 +366,29 @@ describe('symbol layer on kepler’s real Layer', () => {
     expect(after.getIcon).not.toEqual(before.getIcon);
   });
 
+  it('asks for the tail-to-tip gradient on the symbols alone, not on their shadow or outline', () => {
+    const table = stationsTable();
+    const layer = symbolLayer(table);
+    layer.updateLayerVisConfig({ gradient: true, gradientTail: 0.6, shadow: true, outline: true });
+
+    render(layer, table);
+    const [shadow, outline, symbols] = built;
+
+    expect(symbols.gradient).toBe(0.6);
+    expect(shadow.gradient).toBeUndefined();
+    expect(outline.gradient).toBeUndefined();
+    // kepler's own extensions — the GPU filter among them — still travel.
+    expect(symbols.extensions.length).toBeGreaterThan(0);
+  });
+
+  it('asks for no gradient unless it is switched on', () => {
+    const table = stationsTable();
+    const layer = symbolLayer(table);
+    layer.updateLayerVisConfig({ gradientTail: 0.6 });
+
+    expect(render(layer, table).gradient).toBeUndefined();
+  });
+
   describe('text labels', () => {
     /** What `renderLayer` returns, which is where kepler's own text layers land. */
     function renderAll(layer: any, table: InstanceType<typeof KeplerTable>) {

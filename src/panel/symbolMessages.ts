@@ -27,6 +27,8 @@ export const SYMBOL_MESSAGES: Record<string, string> = {
   'symbol.fixedSize': 'Use the column’s number',
   'symbol.declutter': 'Thin overlapping symbols',
   'symbol.declutterSpacingPx': 'Minimum spacing (px)',
+  'symbol.gradient': 'Lighten towards the tail',
+  'symbol.gradientTail': 'Tail lightness',
   'symbol.upright': 'Stand upright in 3D',
   'symbol.outline': 'Outline',
   'symbol.outlineColor': 'Outline colour',

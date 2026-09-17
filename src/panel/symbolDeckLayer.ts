@@ -1,3 +1,4 @@
+import { Layer, LayerExtension } from '@deck.gl/core';
 import { IconLayer } from '@deck.gl/layers';
 
 import { ATLAS_COLUMNS, CELL, createAtlasCanvas, IconFrame } from './vectorFieldGlyphs';
@@ -173,11 +174,60 @@ function outlineAtlasFor(names: string[], thickness: number): Atlas | null {
   });
 }
 
+/**
+ * The tail-to-tip gradient: each symbol keeps its own colour at the tip and
+ * lightens towards white at the tail, by the amount `tail` says.
+ *
+ * Along the icon's own vertical axis — `geometry.uv`, the corner of the icon's
+ * quad, -1 at the top of the glyph and +1 at the bottom — so the gradient turns
+ * with the symbol: every glyph points north in its cell, and the top of the cell
+ * is its tip. Applied to the colour the icon already has, so it follows a
+ * colour column, and before deck's picking pass, which runs its own colour
+ * filter last and is untouched.
+ */
+const symbolGradientModule = {
+  name: 'symbolGradient',
+  fs: /* glsl */ `\
+layout(std140) uniform symbolGradientUniforms {
+  float tail;
+} symbolGradient;
+`,
+  uniformTypes: { tail: 'f32' },
+} as const;
+
+export class SymbolGradientExtension extends LayerExtension {
+  static extensionName = 'SymbolGradientExtension';
+
+  getShaders() {
+    return {
+      modules: [symbolGradientModule],
+      inject: {
+        'fs:DECKGL_FILTER_COLOR': /* glsl */ `
+  float symbolGradientAlong = clamp((geometry.uv.y + 1.0) / 2.0, 0.0, 1.0);
+  color.rgb = mix(color.rgb, vec3(1.0), symbolGradient.tail * symbolGradientAlong);
+`,
+      },
+    };
+  }
+
+  // `this` is the layer the extension is attached to, as deck calls it.
+  draw(this: Layer) {
+    const tail = Math.min(1, Math.max(0, Number((this.props as { gradientTail?: number }).gradientTail) || 0));
+    this.setShaderModuleProps({ symbolGradient: { tail } });
+  }
+}
+
+/**
+ * One for the page: deck compares a layer's extensions by identity, and a new
+ * one on every render would rebuild the layer's shaders on every render.
+ */
+const symbolGradient = new SymbolGradientExtension();
+
 /** Builds the icon layer, or null when the atlas could not be painted. */
 export const buildSymbolDeckLayer = (
-  props: { symbols?: string[]; shadow?: boolean; outline?: number } & Record<string, unknown>
+  props: { symbols?: string[]; shadow?: boolean; outline?: number; gradient?: number } & Record<string, unknown>
 ): unknown => {
-  const { symbols, shadow, outline, ...rest } = props;
+  const { symbols, shadow, outline, gradient, ...rest } = props;
   const names = symbols ?? [];
   const built =
     outline !== undefined ? outlineAtlasFor(names, outline) : shadow ? shadowAtlasFor(names) : atlasFor(names);
@@ -199,5 +249,13 @@ export const buildSymbolDeckLayer = (
     // out smaller than the symbol by the padding's ratio. Last, because the
     // padding is this module's business and nobody else's.
     ...(padded ? { sizeScale: PADDED_CELL / CELL } : {}),
+    // After kepler's own extensions, never instead of them: its GPU filter is
+    // one, and without it the dashboard clock hides nothing.
+    ...(gradient !== undefined
+      ? {
+          extensions: [...((rest.extensions as unknown[] | undefined) ?? []), symbolGradient],
+          gradientTail: gradient,
+        }
+      : {}),
   } as never);
 };
