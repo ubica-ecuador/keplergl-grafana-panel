@@ -590,3 +590,46 @@ export async function readMarkers(map: Locator): Promise<{ center: [number, numb
     return { center: [longitude, latitude] as [number, number], markers };
   });
 }
+
+/** What deck itself packed for the symbol layer's pictures. */
+export interface PictureDeckSummary {
+  /** The deck layer's id, `<kepler layer>-p<generation>-symbol`. */
+  id: string;
+  /** Whether every picture deck asked for has settled, loaded or failed. */
+  loaded: boolean;
+  /** Every icon key in deck's mapping: one per different picture asked for. */
+  keys: string[];
+}
+
+/**
+ * Reads the live deck.gl instance, not a layer rebuilt with `renderLayer` as
+ * `readSymbolLayer` does: whether a picture loaded is known only to the
+ * `IconManager` of the layer deck is actually drawing.
+ *
+ * kepler's `MapContainer` keeps the instance as `_deck`; it is an ancestor of
+ * the map's canvases in React's tree.
+ */
+export async function readPictureDeck(map: Locator): Promise<PictureDeckSummary | null> {
+  return map.evaluate((node) => {
+    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
+    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
+    let deck: any = null;
+    while (fiber) {
+      const instance = fiber.stateNode;
+      if (instance && instance._deck && instance._deck.layerManager) {
+        deck = instance._deck;
+        break;
+      }
+      fiber = fiber.return;
+    }
+    if (!deck) {
+      throw new Error('deck.gl instance not found from map node');
+    }
+    const layer = deck.layerManager.getLayers().find((candidate: { id: string }) => /-p\d+-symbol$/.test(candidate.id));
+    const manager = layer?.state?.iconManager;
+    if (!manager) {
+      return null;
+    }
+    return { id: layer.id, loaded: manager.isLoaded === true, keys: Object.keys(manager._mapping ?? {}) };
+  });
+}

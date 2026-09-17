@@ -8,6 +8,8 @@ import { framesToDatasets } from '../data/framesToDatasets';
 import { KEPLER_INSTANCE_ID } from './constants';
 import { loadDatasets } from './keplerAdapter';
 import { createKeplerStore } from './keplerStore';
+import { pictureKey } from './pictureKeys';
+import { readPictureStatus, resetPictureStateForTests } from './pictureState';
 
 /**
  * The provisioned styled and standing panels, restored the way kepler restores
@@ -123,5 +125,28 @@ describe('the provisioned symbol panels, restored from their saved config', () =
     expect(symbols.billboard).toBe(true);
     expect(symbols.getIcon(symbols.data[0])).toBe('marker');
     expect(symbols.getAngle(symbols.data[0])).toBe(0);
+  });
+
+  it('keeps the pictures panel drawing a picture per station, the layer’s where a station has none', async () => {
+    resetPictureStateForTests();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      const { layer, deckLayers } = await restore(5);
+
+      expect(layer.config.visConfig).toMatchObject({ symbolSource: 'picture', pictureAnchor: 'bottom', upright: true });
+      expect(String(layer.config.visConfig.pictureUrl)).toMatch(/^data:image\/png;base64,/);
+      expect(layer.config.columns.picture.value).toBe('picture');
+
+      expect(deckLayers.map((deckLayer) => deckLayer.id)).toEqual(['picture-stations-p0-symbol']);
+      const symbols = deckLayers[0].props;
+      expect(symbols.data).toHaveLength(4);
+      const idOf = (index: number) => symbols.getIcon(symbols.data.find((row: { index: number }) => row.index === index)).id;
+      expect(idOf(0)).toBe(pictureKey('/public/plugins/ubica-keplergl-panel/img/logo-small.svg', 'bottom'));
+      expect(idOf(2)).toBe(pictureKey(layer.config.visConfig.pictureUrl, 'bottom'));
+      expect(symbols.loadOptions.core.fetch).toEqual(expect.any(Function));
+      expect(readPictureStatus('picture-stations')!.loads.size).toBe(4);
+    } finally {
+      warn.mockRestore();
+    }
   });
 });
