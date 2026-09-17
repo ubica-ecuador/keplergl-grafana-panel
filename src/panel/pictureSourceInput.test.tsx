@@ -174,8 +174,8 @@ describe('PictureSourceInput', () => {
     expect(screen.queryByText(/over the 96 limit/)).not.toBeInTheDocument();
   });
 
-  it('says how many pictures went over the cap', async () => {
-    renderInput();
+  it('says the pictures over the cap take the layer picture, when there is one', async () => {
+    renderInput({ value: 'https://example.org/pin.png' });
 
     await act(async () => {
       recordPictureAssignment(layer, assignment(['https://a/1.png'], { overflow: 40 }));
@@ -183,5 +183,17 @@ describe('PictureSourceInput', () => {
     });
 
     expect(screen.getByText('40 pictures over the 96 limit use the layer picture')).toBeInTheDocument();
+  });
+
+  it('says the pictures over the cap are not drawn, when there is no layer picture', async () => {
+    renderInput({ value: '' });
+
+    await act(async () => {
+      recordPictureAssignment(layer, assignment(['https://a/1.png'], { overflow: 40 }));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText('40 pictures over the 96 limit are not drawn')).toBeInTheDocument();
+    expect(screen.queryByText(/use the layer picture/)).not.toBeInTheDocument();
   });
 });

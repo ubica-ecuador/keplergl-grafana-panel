@@ -124,7 +124,8 @@ nothing beyond Grafana's default `img-src * data:`. Two things still stop one:
   browser.
 
 The layer panel names each picture that could not load, and why. A layer draws at most 96 different
-pictures; rows beyond that take the layer's picture.
+pictures. Rows beyond that take the layer's picture, or, when the layer has no picture of its own,
+are not drawn; the panel says which.
 
 ## Choosing between them
 

@@ -173,7 +173,11 @@ export function PictureSourceInput({
 
       {summary.overflow > 0 ? (
         <div role="status" style={noticeStyle}>
-          {intl.formatMessage({ id: 'symbol.picture.overflow' }, { overflow: summary.overflow, max: MAX_PICTURES })}
+          {intl.formatMessage(
+            // A row past the cap falls back to the layer picture; with none, it is left out.
+            { id: value.trim() === '' ? 'symbol.picture.overflowNotDrawn' : 'symbol.picture.overflow' },
+            { overflow: summary.overflow, max: MAX_PICTURES }
+          )}
         </div>
       ) : null}
     </SidePanelSection>

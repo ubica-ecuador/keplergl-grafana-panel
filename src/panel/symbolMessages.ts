@@ -54,6 +54,7 @@ export const SYMBOL_MESSAGES: Record<string, string> = {
   'symbol.picture.notImage': 'Not an image',
   'symbol.picture.failed': '{failed} of {total} pictures could not load',
   'symbol.picture.overflow': '{overflow} pictures over the {max} limit use the layer picture',
+  'symbol.picture.overflowNotDrawn': '{overflow} pictures over the {max} limit are not drawn',
   'symbol.picture.problem.scheme': 'Only https, http and data:image URLs',
   'symbol.picture.problem.mixed-content': 'An http picture cannot load on an https Grafana',
   'symbol.picture.problem.load':
