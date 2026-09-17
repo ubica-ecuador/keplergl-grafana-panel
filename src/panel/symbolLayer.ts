@@ -4,7 +4,7 @@ import { thinBySpacing } from './declutter';
 import { shownInPane } from './paneVisibility';
 import { setting } from './velocityField';
 import { resolveSymbol, SYMBOL_FALLBACK, symbolNames } from './symbolGlyphs';
-import { pictureAnchorOf } from './pictureKeys';
+import { PictureAnchor, pictureAnchorOf } from './pictureKeys';
 import { assignPictures, PictureAssignment } from './pictureRows';
 import { recordPictureAssignment } from './pictureState';
 
@@ -340,15 +340,20 @@ const LABEL_GAP_PX = 4;
  * Mirrors kepler's point layer, which clears a circle's radius; a symbol's
  * half-size is its radius here, and it comes from the row, so a larger symbol
  * pushes its label further out.
+ *
+ * A picture anchored at its bottom stands wholly above its point, so its
+ * labels are set about its middle, half its size higher, rather than about the
+ * point.
  */
-export function labelOffsetBeside(sizeOf: (row: unknown) => number) {
+export function labelOffsetBeside(sizeOf: (row: unknown) => number, anchor: PictureAnchor = 'center') {
   return (label: TextLabel) => {
     const x = label.anchor === 'middle' ? 0 : label.anchor === 'start' ? 1 : -1;
     const y = label.alignment === 'center' ? 0 : label.alignment === 'bottom' ? 1 : -1;
     const clearance = (row: unknown) => Number(sizeOf(row)) / 2 + LABEL_GAP_PX;
+    const lift = (row: unknown) => (anchor === 'bottom' ? Number(sizeOf(row)) / 2 : 0);
     return (row: unknown): [number, number] => [
       x * clearance(row) || 0,
-      y * (clearance(row) + (y === 0 ? 0 : (label.size ?? 0))) || 0,
+      y * (clearance(row) + (y === 0 ? 0 : (label.size ?? 0))) - lift(row) || 0,
     ];
   };
 }
@@ -728,12 +733,15 @@ export function makeSymbolLayer<C extends Constructor<object>>(
 
       // kepler's own text labels, the ones its point layer draws, over the rows
       // actually drawn — so declutter thins the labels with their symbols.
+      const labelAnchor = pictures ? pictureAnchorOf(visConfig.pictureAnchor) : 'center';
       const labels = Array.isArray(layerData?.textLabels)
         ? this.renderTextLabelLayer(
             {
               getPosition: layerData?.getPosition,
-              getPixelOffset: labelOffsetBeside(sizeOf),
-              updateTriggers,
+              getPixelOffset: labelOffsetBeside(sizeOf, labelAnchor),
+              // kepler builds a label's offset trigger from `getRadius`, the
+              // point layer's size: the anchor has to reach it that way.
+              updateTriggers: { ...updateTriggers, getRadius: { labelAnchor } },
               sharedProps: {
                 ...(getFilterValue ? { getFilterValue } : {}),
                 extensions: defaults.extensions,

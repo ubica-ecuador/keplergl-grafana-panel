@@ -1,5 +1,6 @@
 import {
   deckAngle,
+  labelOffsetBeside,
   makeSymbolLayer,
   metresPerPixelAt,
   shownByFilters,
@@ -277,5 +278,24 @@ describe('shownByFilters', () => {
   it('keeps every row when there is no filter to test against', () => {
     expect(shownByFilters(rows, undefined, [[0, 6]])).toBe(rows);
     expect(shownByFilters(rows, getFilterValue, undefined)).toBe(rows);
+  });
+});
+
+describe('labelOffsetBeside', () => {
+  const row = {};
+  const size40 = () => 40;
+
+  it('clears a centred symbol by half its size and the gap', () => {
+    expect(labelOffsetBeside(size40)({ anchor: 'middle', alignment: 'center' })(row)).toEqual([0, 0]);
+    expect(labelOffsetBeside(size40)({ anchor: 'start', alignment: 'bottom', size: 10 })(row)).toEqual([24, 34]);
+  });
+
+  it('sets a label about the middle of a bottom-anchored picture, which stands above its point', () => {
+    const offset = labelOffsetBeside(size40, 'bottom');
+
+    expect(offset({ anchor: 'middle', alignment: 'center' })(row)).toEqual([0, -20]);
+    expect(offset({ anchor: 'start', alignment: 'center' })(row)).toEqual([24, -20]);
+    expect(offset({ anchor: 'middle', alignment: 'bottom', size: 10 })(row)).toEqual([0, 14]);
+    expect(offset({ anchor: 'middle', alignment: 'top', size: 10 })(row)).toEqual([0, -54]);
   });
 });

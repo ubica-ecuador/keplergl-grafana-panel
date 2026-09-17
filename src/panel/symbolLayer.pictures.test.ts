@@ -180,6 +180,34 @@ describe('the symbol layer drawing pictures, on kepler’s real Layer', () => {
     expect(triggers[MAX_PICTURES]).toEqual([`https://example.org/${MAX_PICTURES}.png`, 'center', -1]);
   });
 
+  it('sets labels about the middle of a picture standing on its point, and redraws them when the anchor changes', () => {
+    const table = placesTable();
+    const layer = pictureLayer(table, { pictureAnchor: 'bottom', symbolSize: 40 });
+    const name = table.fields.find((field: { name: string }) => field.name === 'name');
+    layer.updateLayerConfig({
+      textLabel: [{ ...layer.config.textLabel[0], field: name, anchor: 'middle', alignment: 'center' }],
+    });
+    const labelOf = () => {
+      built.length = 0;
+      const layers = layer.renderLayer({
+        data: layer.formatLayerData({ [table.id]: table }),
+        gpuFilter: table.gpuFilter,
+        mapState: {},
+        idx: 0,
+        visible: true,
+      });
+      return layers[layers.length - 1].props;
+    };
+
+    const standing = labelOf();
+    expect(standing.getPixelOffset(standing.data[0])).toEqual([0, -20]);
+
+    layer.updateLayerConfig({ visConfig: { ...layer.config.visConfig, pictureAnchor: 'center' } });
+    const centred = labelOf();
+    expect(centred.getPixelOffset(centred.data[0])).toEqual([0, 0]);
+    expect(centred.updateTriggers.getPixelOffset).not.toEqual(standing.updateTriggers.getPixelOffset);
+  });
+
   it('keeps a colour bound while drawing shapes out of the legend while drawing pictures', () => {
     const condition = new SymbolLayer({ id: 'x' }).visualChannels.color.condition;
 
