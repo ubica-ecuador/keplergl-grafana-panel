@@ -5,6 +5,20 @@
  * there so the next reader knows where the shapes came from without digging
  * through git. The icons directory is supplied by the caller (as a CLI argument);
  * nothing of the original package reaches the bundle, only the JSON this writes.
+ *
+ * `@mapbox/maki` is not a dependency of this repository, so the default path
+ * below does not exist in a normal checkout. Fetch the package somewhere outside
+ * the repository and point the script at its icons, from the repository root:
+ *
+ *   mkdir -p /tmp/maki
+ *   npm pack @mapbox/maki@8.2.0 --pack-destination /tmp/maki
+ *   tar -xzf /tmp/maki/mapbox-maki-8.2.0.tgz -C /tmp/maki
+ *   npm run vendor:maki -- /tmp/maki/package/icons
+ *
+ * An npm tarball unpacks into `package/`, whose `package.json` sits beside
+ * `icons/` — where this script reads the version from. With 8.2.0 these steps
+ * rewrite `src/icons/maki-paths.json` byte for byte. `npm pack` will not create
+ * its destination, hence the `mkdir`.
  */
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
