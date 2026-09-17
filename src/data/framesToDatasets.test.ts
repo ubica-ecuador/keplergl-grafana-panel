@@ -400,4 +400,37 @@ describe('framesToDatasets: stations versus grids', () => {
     expect(dataset.rows).toHaveLength(6);
     expect(Object.keys(dataset.rows[0])).toContain('time');
   });
+
+  it('builds no symbol layer from a bearing name whose column holds text', () => {
+    // `track` here is a label, not degrees. A symbol layer on it would lose its
+    // rotation channel to kepler's type check and still replace the Point layer.
+    const labelled = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'latitude', type: FieldType.number, values: [-2.9, -0.19, -2.17] },
+        { name: 'longitude', type: FieldType.number, values: [-79.0, -78.48, -79.92] },
+        { name: 'track', type: FieldType.string, values: ['north loop', 'south loop', 'airport run'] },
+      ],
+    });
+
+    const [dataset] = framesToDatasets([labelled]);
+
+    expect(dataset.symbolLayer).toBeUndefined();
+    expect(dataset.rows).toHaveLength(3);
+  });
+
+  it('turns stations by a numeric wind direction when a text bearing sits beside it', () => {
+    const [dataset] = framesToDatasets([
+      toDataFrame({
+        refId: 'A',
+        fields: [
+          ...stations.fields,
+          { name: 'course', type: FieldType.string, values: ['https://a', 'https://b', 'https://c'] },
+        ],
+      }),
+    ]);
+
+    expect(dataset.symbolLayer!.visualChannels.angleField).toMatchObject({ name: 'wind_direction' });
+    expect(dataset.symbolLayer!.config.visConfig.directionConvention).toBe('from');
+  });
 });

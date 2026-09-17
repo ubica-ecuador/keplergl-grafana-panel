@@ -1,4 +1,4 @@
-import { DataFrame } from '@grafana/data';
+import { DataFrame, FieldType } from '@grafana/data';
 
 import { buildFlowField, FlowFieldLayerConfig } from './buildFlowField';
 import { buildFlows, FlowLayerConfig, FlowRenderMode } from './buildFlows';
@@ -103,6 +103,7 @@ export function framesToDatasets(
     // but neither trips (its heuristic wants a column named `id`) nor flows, so
     // the panel supplies those two itself.
     const rows = toKeplerRows(frame, roles);
+    const symbolRoles = withNumericBearings(frame, roles);
     return {
       id,
       label,
@@ -110,7 +111,7 @@ export function framesToDatasets(
       columns: rows.length === 0 ? toKeplerColumns(frame, roles) : undefined,
       tripLayer: buildTripLayer(roles, id) ?? undefined,
       flowLayer: buildFlows(roles, id, { renderingMode: opts.flowRenderMode }) ?? undefined,
-      symbolLayer: pointsSymbols(roles) ? (buildSymbolLayer(roles, id) ?? undefined) : undefined,
+      symbolLayer: pointsSymbols(symbolRoles) ? (buildSymbolLayer(symbolRoles, id) ?? undefined) : undefined,
     };
   });
 }
@@ -162,6 +163,27 @@ function isLatticeFrame(frame: DataFrame, roles: FieldRoles): boolean {
 function pointsSymbols(roles: FieldRoles): boolean {
   const bearing = Boolean(roles.rotation || roles.direction);
   return Boolean(roles.latitude && roles.longitude && bearing && !roles.tripId);
+}
+
+/**
+ * The roles with a bearing kept only where its column holds numbers.
+ *
+ * Detection goes by name, and `track`, `course`, `heading` or `direction` are
+ * as likely to name a label or a url as a number of degrees. A symbol layer
+ * built on one of those is worse than none: kepler drops a rotation channel
+ * whose column is not numeric, and the symbol layer has already taken the place
+ * of the Point layer kepler guessed. A text bearing is set aside rather than
+ * disqualifying the query, so a numeric wind direction beside it still turns
+ * the symbols.
+ */
+function withNumericBearings(frame: DataFrame, roles: FieldRoles): FieldRoles {
+  const numeric = (name?: string) =>
+    Boolean(name) && frame.fields.some((field) => field.name === name && field.type === FieldType.number);
+  return {
+    ...roles,
+    rotation: numeric(roles.rotation) ? roles.rotation : undefined,
+    direction: numeric(roles.direction) ? roles.direction : undefined,
+  };
 }
 
 /**

@@ -34,7 +34,12 @@ function channel(column: string | undefined): { name: string } | null {
  * The convention is decided here, and it matters: a meteorological direction
  * says where the wind comes *from*, a vehicle's heading where it *goes*. The
  * two are half a turn apart and both look right on a map, so the reading is
- * taken from which role matched rather than left to the reader.
+ * taken from which roles matched rather than left to the reader.
+ *
+ * A direction alone does not make a wind. The `direction` role also claims a
+ * bare `direction` or `wd`, which a vehicle table uses for where it is going;
+ * read as meteorological, every arrow would point backwards. So `from` needs a
+ * wind speed beside the direction — the pair that makes the reading a wind.
  */
 export function buildSymbolLayer(roles: FieldRoles, dataId: string): SymbolLayerConfig | null {
   if (!roles.latitude || !roles.longitude) {
@@ -49,7 +54,7 @@ export function buildSymbolLayer(roles: FieldRoles, dataId: string): SymbolLayer
     columns.altitude = KEPLER_COLUMN.altitude;
   }
 
-  const meteorological = !roles.rotation && Boolean(roles.direction);
+  const meteorological = !roles.rotation && Boolean(roles.direction) && Boolean(roles.speed);
   const bearing = roles.rotation ?? roles.direction;
   const magnitude = roles.magnitude ?? roles.speed;
 

@@ -42,6 +42,16 @@ describe('buildSymbolLayer', () => {
     expect(layer!.config.visConfig.directionConvention).toBe('towards');
   });
 
+  it('reads a direction with no wind speed beside it as where it goes', () => {
+    // A vehicle table's `direction` column in degrees: the `direction` role
+    // claims it by name, but nothing says it is a wind, and reading it as one
+    // turns every arrow half round.
+    const layer = buildSymbolLayer({ latitude: 'lat', longitude: 'lon', direction: 'direction' }, 'grafana-A');
+
+    expect(layer!.visualChannels.angleField).toMatchObject({ name: 'direction' });
+    expect(layer!.config.visConfig.directionConvention).toBe('towards');
+  });
+
   it('draws unturned symbols when only coordinates are mapped', () => {
     const layer = buildSymbolLayer({ latitude: 'lat', longitude: 'lon' }, 'grafana-A');
 
