@@ -57,19 +57,29 @@ export function SymbolLayerConfig({
           OptionComponent={SymbolOption}
         />
         <SelectKnob layer={layer} visConfiguratorProps={visConfiguratorProps} property="directionConvention" />
-        {settings.shadow ? (
-          <>
-            <VisConfigSwitch {...settings.shadow} {...visConfiguratorProps} />
-            {layer.config.visConfig.shadow ? (
-              <>
-                {slider('shadowOpacity')}
-                {slider('shadowDistance')}
-              </>
-            ) : null}
-          </>
-        ) : null}
         <ConfigGroupCollapsibleContent>{slider('opacity')}</ConfigGroupCollapsibleContent>
       </LayerConfigGroup>
+
+      {/* Outline and shadow are groups switched from their header, the way
+          kepler's point layer offers its outline: off, the controls stay in
+          view but disabled. */}
+      {settings.outline ? (
+        <LayerConfigGroup {...settings.outline} {...visConfiguratorProps} collapsible>
+          <LayerColorSelector
+            {...visConfiguratorProps}
+            selectedColor={layer.config.visConfig.outlineColor}
+            property="outlineColor"
+          />
+          {slider('outlineThickness')}
+        </LayerConfigGroup>
+      ) : null}
+
+      {settings.shadow ? (
+        <LayerConfigGroup {...settings.shadow} {...visConfiguratorProps} collapsible>
+          {slider('shadowOpacity')}
+          {slider('shadowDistance')}
+        </LayerConfigGroup>
+      ) : null}
 
       <LayerConfigGroup label={'symbol.group.rotation'} collapsible>
         <ChannelByValueSelector channel={layer.visualChannels.angle} {...layerChannelConfigProps} />

@@ -138,10 +138,7 @@ describe('symbol layer panel', () => {
     expect(screen.getByText('Minimum spacing (px)')).toBeInTheDocument();
   });
 
-  it.each([
-    [false, []],
-    [true, ['Shadow intensity', 'Shadow distance (px)']],
-  ])('offers the shadow switch, and its two sliders when it is on (%s)', (on, sliders) => {
+  it.each([false, true])('offers outline and shadow as groups switched from their header (on: %s)', (on) => {
     const layer = {
       id: 'layer-1',
       type: SYMBOL_TYPE,
@@ -149,6 +146,9 @@ describe('symbol layer panel', () => {
         visConfig: {
           symbol: 'arrow',
           directionConvention: 'towards',
+          outline: on,
+          outlineColor: [255, 255, 255],
+          outlineThickness: 3,
           shadow: on,
           shadowOpacity: 0.5,
           shadowDistance: 4,
@@ -157,6 +157,9 @@ describe('symbol layer panel', () => {
         colorUI: {},
       },
       visConfigSettings: {
+        outline: SYMBOL_VIS_CONFIGS.outline,
+        outlineColor: SYMBOL_VIS_CONFIGS.outlineColor,
+        outlineThickness: SYMBOL_VIS_CONFIGS.outlineThickness,
         shadow: SYMBOL_VIS_CONFIGS.shadow,
         shadowOpacity: SYMBOL_VIS_CONFIGS.shadowOpacity,
         shadowDistance: SYMBOL_VIS_CONFIGS.shadowDistance,
@@ -181,9 +184,12 @@ describe('symbol layer panel', () => {
       </IntlProvider>
     );
 
+    expect(screen.getByText('Outline')).toBeInTheDocument();
     expect(screen.getByText('Shadow')).toBeInTheDocument();
-    for (const label of ['Shadow intensity', 'Shadow distance (px)']) {
-      expect(screen.queryByText(label) !== null).toBe((sliders as string[]).includes(label));
+    for (const label of ['Outline thickness', 'Shadow intensity', 'Shadow distance (px)']) {
+      const content = screen.getByText(label).closest('.layer-config-group__content');
+      expect(content).not.toBeNull();
+      expect(content!.classList.contains('disabled')).toBe(!on);
     }
   });
 

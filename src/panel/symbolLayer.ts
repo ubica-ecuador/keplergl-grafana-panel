@@ -122,6 +122,30 @@ export const SYMBOL_VIS_CONFIGS = {
     group: 'display',
     property: 'declutterSpacingPx',
   },
+  outline: {
+    type: 'boolean',
+    defaultValue: false,
+    label: 'symbol.outline',
+    group: 'display',
+    property: 'outline',
+  },
+  outlineColor: {
+    type: 'color-select',
+    defaultValue: [255, 255, 255],
+    label: 'symbol.outlineColor',
+    group: 'color',
+    property: 'outlineColor',
+  },
+  outlineThickness: {
+    type: 'number',
+    defaultValue: 3,
+    label: 'symbol.outlineThickness',
+    isRanged: false,
+    range: [1, 10],
+    step: 1,
+    group: 'display',
+    property: 'outlineThickness',
+  },
   shadow: {
     type: 'boolean',
     defaultValue: false,
@@ -504,8 +528,42 @@ export function makeSymbolLayer<C extends Constructor<object>>(
 
       // Null when an atlas could not be painted: dropping a layer loses it for
       // the frame rather than the whole map render.
-      return [visConfig.shadow === true ? this.shadowOf(symbolProps, visConfig) : null, buildDeckLayer(symbolProps)]
-        .filter(Boolean);
+      // In drawing order: the shadow under the outline, the outline under the
+      // symbols.
+      return [
+        visConfig.shadow === true ? this.shadowOf(symbolProps, visConfig) : null,
+        visConfig.outline === true ? this.outlineOf(symbolProps, visConfig) : null,
+        buildDeckLayer(symbolProps),
+      ].filter(Boolean);
+    }
+
+    /**
+     * The symbols' outline: the same rows, angles and sizes, painted from a
+     * grown copy of the glyph in one flat colour — the halo that keeps a symbol
+     * legible over a base map of any colour.
+     *
+     * Its thickness grows with each symbol, being part of the glyph: a larger
+     * symbol has a thicker outline, as a larger letter has a thicker stroke.
+     */
+    outlineOf(symbolProps: Record<string, any>, visConfig: Record<string, unknown>): unknown {
+      const thickness = setting(visConfig.outlineThickness, 3);
+      const rgb = Array.isArray(visConfig.outlineColor) ? visConfig.outlineColor.slice(0, 3) : [255, 255, 255];
+      const color = [...rgb, 255];
+      return buildDeckLayer({
+        ...symbolProps,
+        id: `${this.id}-symbol-outline`,
+        outline: thickness,
+        pickable: false,
+        onFilteredItemsChange: undefined,
+        getColor: () => color,
+        updateTriggers: {
+          ...symbolProps.updateTriggers,
+          // A thickness is a different atlas, and a different atlas has to
+          // reach the icons deck has already looked up.
+          getIcon: [...symbolProps.updateTriggers.getIcon, thickness],
+          getColor: color,
+        },
+      });
     }
 
     /**

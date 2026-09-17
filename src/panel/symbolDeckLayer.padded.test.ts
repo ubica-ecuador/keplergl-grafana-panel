@@ -1,5 +1,5 @@
 import { CELL } from './vectorFieldGlyphs';
-import { buildSymbolDeckLayer, SHADOW_BLUR, SHADOW_CELL, SHADOW_PAD } from './symbolDeckLayer';
+import { buildSymbolDeckLayer, OUTLINE_PX_PER_STEP, SHADOW_BLUR, PADDED_CELL, PAD } from './symbolDeckLayer';
 
 /**
  * The shadow's atlas: a blurred copy of each glyph, in a cell with room for the
@@ -33,7 +33,7 @@ beforeEach(() => {
   canvases.length = 0;
 });
 
-describe('the shadow atlas', () => {
+describe('the padded atlases, for the shadow and the outline', () => {
   it('leaves the symbols’ own atlas as it was', () => {
     const layer = buildSymbolDeckLayer({ symbols: ['square'] }) as any;
 
@@ -46,21 +46,55 @@ describe('the shadow atlas', () => {
     const layer = buildSymbolDeckLayer({ symbols: ['pin'], shadow: true }) as any;
     const [sharp, soft] = canvases;
 
-    expect(SHADOW_CELL).toBe(CELL + 2 * SHADOW_PAD);
+    expect(PADDED_CELL).toBe(CELL + 2 * PAD);
     // The pin is anchored at the bottom of its cell; the padding moves that too.
     expect(layer.props.iconMapping.pin).toEqual({
       x: 0,
       y: 0,
-      width: SHADOW_CELL,
-      height: SHADOW_CELL,
-      anchorX: 48 + SHADOW_PAD,
-      anchorY: 92 + SHADOW_PAD,
+      width: PADDED_CELL,
+      height: PADDED_CELL,
+      anchorX: 48 + PAD,
+      anchorY: 92 + PAD,
       mask: true,
     });
-    expect(soft.canvas.side).toBe(SHADOW_CELL);
+    expect(soft.canvas.side).toBe(PADDED_CELL);
     expect(soft.ctx.filter).toBe(`blur(${SHADOW_BLUR}px)`);
-    expect(soft.ctx.drawImage).toHaveBeenCalledWith(sharp.canvas, 0, 0, CELL, CELL, SHADOW_PAD, SHADOW_PAD, CELL, CELL);
+    expect(soft.ctx.drawImage).toHaveBeenCalledWith(sharp.canvas, 0, 0, CELL, CELL, PAD, PAD, CELL, CELL);
     expect(layer.props.iconAtlas).toBe(soft.canvas);
+  });
+
+  it('grows each glyph for the outline by stamping it round a circle, with no blur', () => {
+    const layer = buildSymbolDeckLayer({ symbols: ['triangle'], outline: 3 }) as any;
+    const [sharp, grown] = canvases;
+    const radius = 3 * OUTLINE_PX_PER_STEP;
+
+    expect(layer.props.iconMapping.triangle).toMatchObject({ width: PADDED_CELL, height: PADDED_CELL });
+    expect(layer.props.sizeScale).toBeCloseTo(PADDED_CELL / CELL);
+    expect(grown.ctx.filter).toBe('none');
+
+    const stamps = grown.ctx.drawImage.mock.calls as number[][];
+    expect(stamps.length).toBeGreaterThan(8);
+    for (const [source, , , , , dx, dy] of stamps) {
+      expect(source).toBe(sharp.canvas);
+      // Every stamp within the outline's reach of the padded glyph's place...
+      expect(Math.hypot(dx - PAD, dy - PAD)).toBeLessThanOrEqual(radius + 1e-9);
+    }
+    // ...and the outermost ring at it, all the way round.
+    const outermost = stamps.filter(([, , , , , dx, dy]) => Math.abs(Math.hypot(dx - PAD, dy - PAD) - radius) < 1e-9);
+    expect(outermost.some(([, , , , , dx]) => dx > PAD)).toBe(true);
+    expect(outermost.some(([, , , , , dx]) => dx < PAD)).toBe(true);
+    expect(outermost.some(([, , , , , , dy]) => dy > PAD)).toBe(true);
+    expect(outermost.some(([, , , , , , dy]) => dy < PAD)).toBe(true);
+    expect('outline' in layer.props).toBe(false);
+  });
+
+  it('never reaches past the padding, however thick the outline asked for', () => {
+    buildSymbolDeckLayer({ symbols: ['chevron'], outline: 1000 });
+    const [, grown] = canvases;
+
+    for (const [, , , , , dx, dy] of grown.ctx.drawImage.mock.calls as number[][]) {
+      expect(Math.hypot(dx - PAD, dy - PAD)).toBeLessThanOrEqual(PAD + 1e-9);
+    }
   });
 
   it('scales the padded cell back up, so the glyph in it is drawn the size of the symbol', () => {
@@ -68,7 +102,7 @@ describe('the shadow atlas', () => {
 
     // deck sizes an icon by its cell; a cell grown by the padding would shrink
     // the glyph inside it by the same ratio.
-    expect(layer.props.sizeScale).toBeCloseTo(SHADOW_CELL / CELL);
+    expect(layer.props.sizeScale).toBeCloseTo(PADDED_CELL / CELL);
     expect('shadow' in layer.props).toBe(false);
   });
 });

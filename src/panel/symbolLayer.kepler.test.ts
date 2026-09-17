@@ -320,6 +320,52 @@ describe('symbol layer on kepler’s real Layer', () => {
     expect(after.getPixelOffset).not.toEqual(before.getPixelOffset);
   });
 
+  it('draws an outline between the shadow and the symbols: the same rows, in the outline colour, not offset', () => {
+    const table = stationsTable();
+    const layer = symbolLayer(table, { angle: 'heading', size: 'speed' });
+    layer.updateLayerVisConfig({
+      shadow: true,
+      outline: true,
+      outlineColor: [20, 30, 40],
+      outlineThickness: 4,
+    });
+
+    render(layer, table);
+    const [shadow, outline, symbols] = built;
+
+    expect(built).toHaveLength(3);
+    expect(shadow.shadow).toBe(true);
+    expect(outline.outline).toBe(4);
+    expect(symbols.outline).toBeUndefined();
+    expect(new Set(built.map((props) => props.id)).size).toBe(3);
+
+    expect(outline.data).toBe(symbols.data);
+    for (const row of outline.data) {
+      expect(outline.getAngle(row)).toBe(symbols.getAngle(row));
+      expect(outline.getSize(row)).toBe(symbols.getSize(row));
+      expect(outline.getColor(row)).toEqual([20, 30, 40, 255]);
+    }
+    expect(outline.getPixelOffset).toBeUndefined();
+    expect(outline.getFilterValue).toBe(symbols.getFilterValue);
+    expect(outline.pickable).toBe(false);
+    expect(outline.onFilteredItemsChange).toBeUndefined();
+  });
+
+  it('redraws the outline when its colour or thickness changes', () => {
+    const table = stationsTable();
+    const layer = symbolLayer(table);
+    layer.updateLayerVisConfig({ outline: true, outlineColor: [255, 255, 255], outlineThickness: 2 });
+
+    render(layer, table);
+    const before = built[0].updateTriggers;
+    layer.updateLayerVisConfig({ outlineColor: [0, 0, 0], outlineThickness: 6 });
+    render(layer, table);
+    const after = built[0].updateTriggers;
+
+    expect(after.getColor).not.toEqual(before.getColor);
+    expect(after.getIcon).not.toEqual(before.getIcon);
+  });
+
   it('draws the fallback glyph, and asks deck for it by name, when the saved shape is unknown', () => {
     const table = stationsTable();
     const layer = symbolLayer(table);

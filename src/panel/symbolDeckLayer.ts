@@ -36,11 +36,18 @@ const MAX_ATLASES = 16;
 /** The shadow's blur, as a canvas filter radius in atlas pixels. */
 export const SHADOW_BLUR = 5;
 
-/** Room on every side of a shadow's glyph for the blur to spread into, not be cut off. */
-export const SHADOW_PAD = 16;
+/**
+ * Room on every side of a glyph drawn behind the symbols — a shadow, an
+ * outline — for the blur or the thickness to spread into, rather than be cut
+ * off at the edge of the cell.
+ */
+export const PAD = 24;
 
-/** The side of a shadow's cell: a glyph's, and the padding round it. */
-export const SHADOW_CELL = CELL + 2 * SHADOW_PAD;
+/** The side of a padded cell: a glyph's, and the padding round it. */
+export const PADDED_CELL = CELL + 2 * PAD;
+
+/** Atlas pixels of outline per step of the panel's thickness slider. */
+export const OUTLINE_PX_PER_STEP = 2;
 
 /** Cached by key, least recently used first out; built by `build` on a miss. */
 function cached(key: string, build: () => Atlas | null): Atlas | null {
@@ -76,60 +83,105 @@ function atlasFor(names: string[]): Atlas | null {
 }
 
 /**
- * The shadow's atlas: each glyph of the symbols' own, blurred, in a cell grown
- * by the padding and anchored at the same point of the glyph.
+ * An atlas of the glyphs of the symbols' own, each copied into a cell grown by
+ * the padding and anchored at the same point of the glyph — a shadow's or an
+ * outline's, depending on `stamp`.
  *
- * Copied from the sharp atlas rather than painted again, so a shadow is always
- * the silhouette of exactly what is drawn above it. A browser whose canvas
- * ignores `filter` draws a sharp shadow, which is still a shadow.
+ * Copied from the sharp atlas rather than painted again, so what sits behind a
+ * symbol is always the silhouette of exactly what is drawn above it.
+ * `stamp` draws one glyph into its padded cell, given where the glyph itself
+ * would sit in it unpadded.
  */
-function shadowAtlasFor(names: string[]): Atlas | null {
+function paddedAtlasFor(
+  names: string[],
+  kind: string,
+  stamp: (ctx: CanvasRenderingContext2D, draw: (dx: number, dy: number) => void) => void
+): Atlas | null {
   const sharp = atlasFor(names);
   if (!sharp) {
     return null;
   }
   const frames = Object.entries(sharp.mapping);
-  return cached(`shadow:${frames.map(([name]) => name).join(',')}`, () => {
-    const created = createAtlasCanvas(frames.length, SHADOW_CELL);
+  return cached(`${kind}:${frames.map(([name]) => name).join(',')}`, () => {
+    const created = createAtlasCanvas(frames.length, PADDED_CELL);
     if (!created) {
       return null;
     }
     const mapping: Record<string, IconFrame> = {};
-    created.ctx.filter = `blur(${SHADOW_BLUR}px)`;
     frames.forEach(([name, frame], index) => {
-      const x = (index % ATLAS_COLUMNS) * SHADOW_CELL;
-      const y = Math.floor(index / ATLAS_COLUMNS) * SHADOW_CELL;
-      created.ctx.drawImage(
-        sharp.canvas,
-        frame.x,
-        frame.y,
-        frame.width,
-        frame.height,
-        x + SHADOW_PAD,
-        y + SHADOW_PAD,
-        frame.width,
-        frame.height
+      const x = (index % ATLAS_COLUMNS) * PADDED_CELL;
+      const y = Math.floor(index / ATLAS_COLUMNS) * PADDED_CELL;
+      stamp(created.ctx, (dx, dy) =>
+        created.ctx.drawImage(
+          sharp.canvas,
+          frame.x,
+          frame.y,
+          frame.width,
+          frame.height,
+          x + PAD + dx,
+          y + PAD + dy,
+          frame.width,
+          frame.height
+        )
       );
       mapping[name] = {
         ...frame,
         x,
         y,
-        width: SHADOW_CELL,
-        height: SHADOW_CELL,
-        anchorX: frame.anchorX + SHADOW_PAD,
-        anchorY: frame.anchorY + SHADOW_PAD,
+        width: PADDED_CELL,
+        height: PADDED_CELL,
+        anchorX: frame.anchorX + PAD,
+        anchorY: frame.anchorY + PAD,
       };
     });
     return { canvas: created.canvas, mapping };
   });
 }
 
+/**
+ * The shadow's atlas: each glyph blurred. A browser whose canvas ignores
+ * `filter` draws a sharp shadow, which is still a shadow.
+ */
+function shadowAtlasFor(names: string[]): Atlas | null {
+  return paddedAtlasFor(names, 'shadow', (ctx, draw) => {
+    ctx.filter = `blur(${SHADOW_BLUR}px)`;
+    draw(0, 0);
+  });
+}
+
+/**
+ * The outline's atlas: each glyph grown by the thickness asked for, by stamping
+ * it round rings out to that radius — a dilation, with nothing a canvas does
+ * not do everywhere. Rings every few pixels and stamps a couple of pixels
+ * apart round each, so neither a thin stroke nor a sharp corner leaves a gap.
+ *
+ * Capped at the padding: a thicker outline would be cut at the cell's edge.
+ */
+function outlineAtlasFor(names: string[], thickness: number): Atlas | null {
+  const radius = Math.min(PAD, Math.max(1, thickness) * OUTLINE_PX_PER_STEP);
+  return paddedAtlasFor(names, `outline-${radius}`, (_ctx, draw) => {
+    draw(0, 0);
+    const rings = Math.ceil(radius / 3);
+    for (let ring = 1; ring <= rings; ring++) {
+      const r = (radius * ring) / rings;
+      const stamps = Math.max(8, Math.ceil((2 * Math.PI * r) / 2));
+      for (let i = 0; i < stamps; i++) {
+        const theta = (2 * Math.PI * i) / stamps;
+        draw(r * Math.cos(theta), r * Math.sin(theta));
+      }
+    }
+  });
+}
+
 /** Builds the icon layer, or null when the atlas could not be painted. */
 export const buildSymbolDeckLayer = (
-  props: { symbols?: string[]; shadow?: boolean } & Record<string, unknown>
+  props: { symbols?: string[]; shadow?: boolean; outline?: number } & Record<string, unknown>
 ): unknown => {
-  const { symbols, shadow, ...rest } = props;
-  const built = shadow ? shadowAtlasFor(symbols ?? []) : atlasFor(symbols ?? []);
+  const { symbols, shadow, outline, ...rest } = props;
+  const names = symbols ?? [];
+  const built =
+    outline !== undefined ? outlineAtlasFor(names, outline) : shadow ? shadowAtlasFor(names) : atlasFor(names);
+  const padded = outline !== undefined || shadow === true;
   if (!built) {
     return null;
   }
@@ -143,9 +195,9 @@ export const buildSymbolDeckLayer = (
     // the map's bearing: its angle is a compass bearing on the ground.
     billboard: false,
     ...rest,
-    // deck sizes an icon by its cell, so the glyph in a padded shadow cell would
-    // come out smaller than the symbol by the padding's ratio. Last, because
-    // the padding is this module's business and nobody else's.
-    ...(shadow ? { sizeScale: SHADOW_CELL / CELL } : {}),
+    // deck sizes an icon by its cell, so the glyph in a padded cell would come
+    // out smaller than the symbol by the padding's ratio. Last, because the
+    // padding is this module's business and nobody else's.
+    ...(padded ? { sizeScale: PADDED_CELL / CELL } : {}),
   } as never);
 };
