@@ -3,6 +3,7 @@ import { Button, Input, LayerConfigGroup, PanelLabel, VisConfigSlider } from '@k
 
 import { MarkerSpec, newMarker, readMarkers } from './markers';
 import { SelectKnob } from './selectKnob';
+import { SymbolOption } from './symbolOption';
 
 /**
  * The layer panel for the markers layer: one row per marker — label, colour
@@ -103,8 +104,8 @@ export function MarkersLayerConfig({ layer, visConfiguratorProps }: MarkersLayer
       </LayerConfigGroup>
 
       <LayerConfigGroup label={'markers.group.display'} collapsible>
-        {/* Glyph names are their own words, and there are several hundred —
-            searched rather than scrolled, as in the symbol layer's panel. */}
+        {/* The symbol layer's picker: several hundred glyphs, searched rather
+            than scrolled, each drawn beside its name. */}
         {settings.symbol ? (
           <SelectKnob
             layer={layer}
@@ -112,6 +113,7 @@ export function MarkersLayerConfig({ layer, visConfiguratorProps }: MarkersLayer
             property="symbol"
             displayOption={(name) => name}
             searchable
+            OptionComponent={SymbolOption}
           />
         ) : null}
         {settings.angleDegrees && layer.config.visConfig.symbol !== 'circle' ? (
