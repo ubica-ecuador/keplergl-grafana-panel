@@ -21,7 +21,7 @@ sys.path.insert(0, str(HERE))
 import build  # noqa: E402
 
 NEW_VARIABLES = ['scanFrom', 'scanTo', 'sceneBefore', 'sceneAfter', 'sLat', 'sLng',
-                 'days', 's2cloud', 's2cover', 'bands', 'lookback', 'aLat', 'aLng']
+                 'days', 's2cloud', 's2cover', 'bands', 'lookback', 'aLat', 'aLng', 'wLat', 'wLng']
 
 # Lo que el datasource pone en lugar de los macros de Grafana antes de mandar la
 # consulta a DuckDB: una marca de tiempo entrecomillada. Medido en el banco.
@@ -108,7 +108,7 @@ class GraftTest(unittest.TestCase):
         self.assertEqual(out['spec']['layout']['spec']['tabs'][:2], before['spec']['layout']['spec']['tabs'])
         self.assertEqual(out['metadata'], before['metadata'])
 
-    def test_adds_the_thirteen_variables_in_order(self):
+    def test_adds_the_fifteen_variables_in_order(self):
         names = [v['spec']['name'] for v in self.grafted()['spec']['variables']]
         self.assertEqual(names[2:], NEW_VARIABLES)
 
@@ -1130,7 +1130,7 @@ class ImageryPanelsTest(unittest.TestCase):
         self.assertNotIn('areaVariable', options)
         centres = [(m['variable'], m['variableTo'], m['zoom'])
                    for m in options['variableMappings'] if m['source'] == 'center']
-        self.assertEqual(centres, [('aLat', 'aLng', 10), ('sLat', 'sLng', 11)])
+        self.assertEqual(centres, [('wLat', 'wLng', 1.9), ('aLat', 'aLng', 10), ('sLat', 'sLng', 11)])
         self.assertEqual(options['timeSync'], 'off')
         self.assertEqual(options['rasterServerUrl'], 'https://titiler.ubica.ec')
 
@@ -1426,6 +1426,36 @@ class SentinelMapConfigValidationTest(unittest.TestCase):
         stac['panels'] = [p for p in stac['panels'] if p['type'] != build.KEPLER_GROUP]
         with self.assertRaisesRegex(build.GraftError, 'stac-join'):
             build.sentinel_map_config(stac)
+
+
+class OpeningViewportTest(unittest.TestCase):
+    """A reload, a shared link or a tab switch must open the Sentinel map on the box.
+
+    With a saved viewport the plugin's centre sync only adopts the box on its
+    first pass, and the map stayed on the Atlantic with the imagery off screen.
+    """
+
+    def setUp(self):
+        dash = fixture()
+        self.out = build.graft(dash, build.imagery_elements(dash))
+        self.options = self.out['spec']['elements']['panel-22']['spec']['vizConfig']['spec']['options']
+
+    def test_sentinel_map_carries_no_saved_viewport(self):
+        state = self.options['mapConfig']['config']['mapState']
+        for key in ('latitude', 'longitude', 'zoom'):
+            self.assertNotIn(key, state)
+
+    def test_no_box_opens_on_the_world_and_a_box_or_scene_wins_the_first_pass(self):
+        centres = [m for m in self.options['variableMappings'] if m['source'] == 'center']
+        # The first pass dispatches in order: the world pair must come first.
+        self.assertEqual((centres[0]['variable'], centres[0]['variableTo']), ('wLat', 'wLng'))
+        by_name = {v['spec']['name']: v['spec'] for v in self.out['spec']['variables']}
+        for name, value in (('wLat', '6'), ('wLng', '-25')):
+            spec = by_name[name]
+            # The panel reads variables from the URL only.
+            self.assertFalse(spec['skipUrlSync'], name)
+            self.assertEqual(spec['current']['value'], value)
+            self.assertEqual(spec['query'], value)
 
 
 class CentroidVariableTest(unittest.TestCase):

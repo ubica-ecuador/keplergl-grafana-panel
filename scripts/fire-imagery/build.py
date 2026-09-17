@@ -51,6 +51,10 @@ LAYOUT = [
 # forever. Drop an entry once no deployed dashboard carries it any more.
 LEGACY_VARIABLES = {'burnArea', 'scene'}
 
+# Where the Sentinel map opens when there is no box yet: the view its saved
+# config used to carry, now delivered through a centre mapping instead.
+WORLD_VIEW = {'lat': 'wLat', 'lng': 'wLng', 'latitude': 6, 'longitude': -25, 'zoom': 1.9}
+
 
 class GraftError(Exception):
     """El tablero no admite el injerto tal cual; nada se ha escrito."""
@@ -68,6 +72,16 @@ def custom_variable(name, label, values, default, description):
         'options': [], 'multi': False, 'includeAll': False, 'label': label,
         'description': description, 'hide': 'dontHide', 'skipUrlSync': False,
         'allowCustomValue': False}}
+
+
+def constant_variable(name, label, value):
+    # A hidden single-value custom variable: it has to reach the URL, which is
+    # the only place the panel reads variables from (a ConstantVariable does not).
+    value = str(value)
+    return {'kind': 'CustomVariable', 'spec': {
+        'name': name, 'query': value, 'current': {'text': value, 'value': value},
+        'options': [], 'multi': False, 'includeAll': False, 'label': label,
+        'hide': 'hideVariable', 'skipUrlSync': False, 'allowCustomValue': False}}
 
 
 def centroid_variable(name, label, axis_fn):
@@ -116,6 +130,8 @@ def variables():
                         'season can be seen.'),
         centroid_variable('aLat', 'Imagery box centre lat', 'ST_Y'),
         centroid_variable('aLng', 'Imagery box centre lng', 'ST_X'),
+        constant_variable(WORLD_VIEW['lat'], 'Imagery world view lat', WORLD_VIEW['latitude']),
+        constant_variable(WORLD_VIEW['lng'], 'Imagery world view lng', WORLD_VIEW['longitude']),
     ]
 
 
@@ -175,9 +191,15 @@ def sentinel_map_config(stac=None):
     config = copy.deepcopy(source['options']['mapConfig'])
     root = config['config']
     root['mapState'].update({
-        'latitude': 6, 'longitude': -25, 'zoom': 1.9,
         'isSplit': True, 'mapSplitMode': 'SWIPE_COMPARE', 'swipeComparePercentage': 50,
     })
+    # No saved viewport on purpose. With one, the plugin's centre sync only
+    # *adopts* the box on the first pass (so as not to race the restore), and
+    # a reload, a shared link or a tab switch opened on the Atlantic with the
+    # imagery off screen. The world view it used to give comes instead from
+    # the WORLD_VIEW centre pair — see sentinel_map_element.
+    for key in ('latitude', 'longitude', 'zoom'):
+        root['mapState'].pop(key, None)
     vis = root['visState']
     vis['editor'] = {'features': [], 'visible': True}
     for layer_type in ('rasterTile', 'geojson'):
@@ -241,6 +263,13 @@ def sentinel_map_element(version):
         'publishWhilePlaying': False, 'timeSync': 'off', 'rasterServerUrl': TILER, 'rasterPainted': False,
         'rasterColormap': '', 'rasterBands': '$bands', 'tripLayerMode': 'table', 'flowRenderMode': 'straight',
         'variableMappings': [
+            # Opening with no box: the whole world. A constant pair, so it only
+            # ever acts on the first pass (its key never changes afterwards),
+            # and it is listed FIRST: that pass dispatches the pairs in order,
+            # so a box or a scene already in the URL lands last and wins.
+            # Without it the map would open on kepler's default, San Francisco.
+            {'field': '', 'source': 'center', 'variable': WORLD_VIEW['lat'], 'variableTo': WORLD_VIEW['lng'],
+             'zoom': WORLD_VIEW['zoom']},
             # Al dibujar un recuadro, el mapa vuela a él...
             {'field': '', 'source': 'center', 'variable': 'aLat', 'variableTo': 'aLng', 'zoom': 10},
             # ...y al elegir una miniatura, a lo que enseña esa miniatura.
