@@ -360,10 +360,26 @@ export async function readVectorField(map: Locator): Promise<VectorFieldSummary 
 
 /** What the symbol layer spec asserts about the layer. */
 export interface SymbolLayerSummary {
+  /** Rows the layer hands deck. The GPU filter does not remove any of them. */
   symbols: number;
+  /**
+   * Of those, the rows deck's filter extension keeps: every filter value within
+   * `filterRange`. A row with no filter value reads as 0 on every channel, which
+   * is what deck assumes when a layer supplies none.
+   */
+  shown: number;
   symbol: string;
   angles: number[];
+  /** The icon names deck is asked for, and every name the atlas carries. */
+  iconKeys: string[];
+  atlasKeys: string[];
   channels: Record<string, string | null>;
+  /**
+   * The column deck's `getAngle` trigger names. deck compares triggers, not
+   * accessor functions, so this is what decides whether a new rotation column
+   * redraws anything at all.
+   */
+  angleTriggerField: string | null;
 }
 
 /** Reads what the symbol layer is about to draw, from kepler's own store. */
@@ -398,26 +414,52 @@ export async function readSymbolLayer(map: Locator): Promise<SymbolLayerSummary 
     // kepler itself always supplies a real `mapState`; an empty object is
     // enough here since the only other read, `mapState.dragRotate`, tolerates
     // `undefined`.
-    const built = rows.length > 0 ? layer.renderLayer({ data: layerData, mapState: {} }) : [];
+    //
+    // `gpuFilter` is the dataset's, as kepler's `renderDeckGlLayer` passes it:
+    // without it the layer builds no `filterRange`, and the clock check below
+    // would have nothing to measure.
+    const gpuFilter = visState.datasets?.[layer.config.dataId]?.gpuFilter;
+    const built = rows.length > 0 ? layer.renderLayer({ data: layerData, mapState: {}, gpuFilter }) : [];
     const props = built[0]?.props;
     const angles: number[] = [];
-    // A guarded loop, like `readVectorField`: an exception in here would make
+    const iconKeys: string[] = [];
+    let shown = 0;
+    // Guarded loops, like `readVectorField`: an exception in here would make
     // `expect.poll` time out instead of failing with something readable.
     for (const row of (props?.data ?? []).slice(0, 50)) {
       try {
         angles.push(Number(props?.getAngle?.(row)));
+        const key = props?.getIcon?.(row);
+        if (typeof key === 'string' && !iconKeys.includes(key)) {
+          iconKeys.push(key);
+        }
+      } catch {
+        continue;
+      }
+    }
+    const range = (props?.filterRange ?? []) as Array<[number, number]>;
+    for (const row of props?.data ?? []) {
+      try {
+        const values = (props?.getFilterValue ? props.getFilterValue(row) : range.map(() => 0)) as number[];
+        if (range.every(([low, high], i) => values[i] >= low && values[i] <= high)) {
+          shown++;
+        }
       } catch {
         continue;
       }
     }
     return {
       symbols: rows.length,
+      shown,
       symbol: String(layer.config.visConfig?.symbol ?? ''),
       angles,
+      iconKeys,
+      atlasKeys: props?.iconMapping ? Object.keys(props.iconMapping) : [],
       channels: {
         angleField: layer.config.angleField?.name ?? null,
         sizeField: layer.config.sizeField?.name ?? null,
       },
+      angleTriggerField: props?.updateTriggers?.getAngle?.angleField?.name ?? null,
     };
   });
 }

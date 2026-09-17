@@ -1,9 +1,38 @@
 import { test, expect } from '@grafana/plugin-e2e';
+import type { Locator, Page } from '@playwright/test';
 
 import { projectRows, readKepler, readSymbolLayer, settle } from './keplerHelpers';
 
 /** A full kepler map under swiftshader: see `flowfield.spec.ts` for the budget. */
 test.describe.configure({ timeout: 180_000 });
+
+/**
+ * Clicks a side-panel control with `locator.click()`, never at coordinates.
+ * `vectorfield.spec.ts` explains why that matters for controls beside the map.
+ */
+async function click(locator: Locator): Promise<void> {
+  await expect(locator).toBeVisible({ timeout: 30_000 });
+  await locator.click({ timeout: 30_000 });
+}
+
+/**
+ * Opens the layer's own panel.
+ *
+ * Dispatched rather than clicked, like `vectorfield.spec.ts`: the header is
+ * mostly the layer's name field, so a real pointer lands in that input and only
+ * focuses it, while kepler's expand handler sits on the container around it.
+ */
+async function openLayerPanel(page: Page): Promise<void> {
+  await page.locator('.layer-panel__header__content').first().dispatchEvent('click');
+}
+
+/** One of the symbol layer's groups — Symbol, Rotation, Size — found by its label. */
+function group(page: Page, label: string): Locator {
+  return page
+    .locator('.layer-config-group')
+    .filter({ has: page.locator('.layer-config-group__label', { hasText: new RegExp(`^${label}$`) }) })
+    .first();
+}
 
 test(
   'draws a symbol per station, turned by the direction column',
@@ -64,4 +93,105 @@ test('shows the station under the pointer', async ({ gotoPanelEditPage, readProv
   await page.mouse.move(target.x, target.y);
   await page.mouse.move(target.x + 2, target.y + 2);
   await expect(page.locator('.map-popover').first()).toBeVisible({ timeout: 30_000 });
+});
+
+test('turns the symbols by whichever column the rotation is bound to', async ({
+  gotoPanelEditPage,
+  readProvisionedDashboard,
+  page,
+}) => {
+  test.slow();
+  const dashboard = await readProvisionedDashboard({ fileName: 'symbols.json' });
+  const panelEditPage = await gotoPanelEditPage({ dashboard, id: '1' });
+
+  const map = panelEditPage.panel.locator.locator('canvas').first();
+  await expect(map).toBeVisible({ timeout: 60_000 });
+  await settle(page);
+  await expect.poll(async () => (await readSymbolLayer(map))?.symbols ?? 0, { timeout: 60_000 }).toBe(8);
+  const before = (await readSymbolLayer(map))!;
+  expect(before.angleTriggerField).toBe('wind_direction');
+
+  // The rotation group's first selector is the channel's column picker.
+  await openLayerPanel(page);
+  await click(group(page, 'Rotation').locator('.item-selector__dropdown').first());
+  await click(page.locator('.list__item', { hasText: 'wind_speed' }).first());
+
+  await expect
+    .poll(async () => (await readSymbolLayer(map))?.channels.angleField, { timeout: 30_000 })
+    .toBe('wind_speed');
+  const after = (await readSymbolLayer(map))!;
+  // deck redraws an attribute when its trigger changes, never because the
+  // accessor is a new function — so the trigger has to name the new column.
+  expect(after.angleTriggerField).toBe('wind_speed');
+  // Cuenca again: 3.1 in the new column, still read as where the wind comes
+  // from, so half a turn on — against -270 from its 90° direction.
+  expect(after.angles[0]).toBeCloseTo(-183.1, 5);
+  expect(after.angles).not.toEqual(before.angles);
+});
+
+test('paints the chosen shape into the atlas and draws with it', async ({
+  gotoPanelEditPage,
+  readProvisionedDashboard,
+  page,
+}) => {
+  test.slow();
+  const dashboard = await readProvisionedDashboard({ fileName: 'symbols.json' });
+  const panelEditPage = await gotoPanelEditPage({ dashboard, id: '1' });
+
+  const map = panelEditPage.panel.locator.locator('canvas').first();
+  await expect(map).toBeVisible({ timeout: 60_000 });
+  await settle(page);
+  await expect.poll(async () => (await readSymbolLayer(map))?.symbols ?? 0, { timeout: 60_000 }).toBe(8);
+  // The atlas carries the glyph in use and nothing else.
+  expect((await readSymbolLayer(map))!.atlasKeys).toEqual(['arrow']);
+
+  // Several hundred names, so the picker is searched rather than scrolled; each
+  // option reads as the glyph's own name. Matched whole, because the search
+  // keeps other names that merely contain the letters.
+  await openLayerPanel(page);
+  await click(
+    page
+      .locator('label.side-panel-panel__label', { hasText: /^Shape$/ })
+      .first()
+      .locator('xpath=following::div[contains(@class,"item-selector__dropdown")][1]')
+  );
+  await page.locator('.typeahead__input').first().fill('airport');
+  await click(page.locator('.list__item', { hasText: /^airport$/ }).first());
+
+  await expect.poll(async () => (await readSymbolLayer(map))?.symbol, { timeout: 30_000 }).toBe('airport');
+  const after = (await readSymbolLayer(map))!;
+  expect(after.atlasKeys).toEqual(['airport']);
+  // And deck asks for it by the same name the atlas holds it under.
+  expect(after.iconKeys).toEqual(['airport']);
+});
+
+test('leaves one symbol per station under the dashboard clock', async ({
+  gotoPanelEditPage,
+  readProvisionedDashboard,
+  page,
+}) => {
+  test.slow();
+  // The second panel: the same eight stations reporting at 07:00 and 08:00,
+  // with the dashboard window on the first hour and the time sync pushing it
+  // onto the map. `symbolLayer.clock.test.ts` runs the same fixture through
+  // kepler's store in jest; this is the browser's word on it.
+  const dashboard = await readProvisionedDashboard({ fileName: 'symbols.json' });
+  const panelEditPage = await gotoPanelEditPage({ dashboard, id: '2' });
+
+  const map = panelEditPage.panel.locator.locator('canvas').first();
+  await expect(map).toBeVisible({ timeout: 60_000 });
+  await settle(page);
+
+  await expect
+    .poll(async () => (await readKepler(map)).layers.map((l) => l.type), { timeout: 60_000 })
+    .toEqual(['symbol']);
+  await expect
+    .poll(async () => (await readKepler(map)).filters.map((f) => f.type), { timeout: 60_000 })
+    .toEqual(['timeRange']);
+
+  // Both hours reach the layer — the rows are kept on purpose, and the clock's
+  // filter runs on the GPU rather than removing any of them...
+  await expect.poll(async () => (await readSymbolLayer(map))?.symbols ?? 0, { timeout: 60_000 }).toBe(16);
+  // ...and it lets one hour through: a symbol per station, not two stacked.
+  await expect.poll(async () => (await readSymbolLayer(map))?.shown, { timeout: 30_000 }).toBe(8);
 });
