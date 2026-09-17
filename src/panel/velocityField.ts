@@ -220,14 +220,81 @@ export const VELOCITY_LEGEND_CHANNEL = {
 /** The kepler dataset a velocity layer reads: rows, and the columns they are in. */
 export interface VelocityDataset {
   dataContainer?: { numRows(): number; valueAt(row: number, column: number): unknown };
-  fields?: Array<{ name: string }>;
+  /** `type` is kepler's own: a time column carries `timestamp`. */
+  fields?: Array<{ name: string; type?: string }>;
+  /**
+   * The rows that survived kepler's filters, when it has applied any.
+   *
+   * Reading this rather than the whole container is what puts the field on the
+   * map's clock: the time filter hides every hour but the window's, and any
+   * other filter — a region, a threshold — finally reaches the field too.
+   */
+  filteredIndex?: number[];
+}
+
+/** kepler's name for a time column. */
+const TIME_FIELD_TYPE = 'timestamp';
+
+/** Which column holds the time, or -1. */
+function timeColumnOf(dataset: VelocityDataset): number {
+  return (dataset.fields ?? []).findIndex((field) => field?.type === TIME_FIELD_TYPE);
+}
+
+/**
+ * The rows the layers should read: the filtered ones, narrowed to the latest
+ * hour among them.
+ *
+ * A forecast repeats every cell once per hour. Reading them all lets whichever
+ * row came last win each cell — for a wind that reverses, the opposite of the
+ * truth. "The latest inside the window" is the same rule `pickLatestWithin`
+ * states for the WMS, reached here without the layer reading a filter at all.
+ */
+export function latestStepRows(dataset: VelocityDataset): number[] {
+  const container = dataset.dataContainer;
+  if (!container) {
+    return [];
+  }
+  const rows = dataset.filteredIndex ?? Array.from({ length: container.numRows() }, (_, i) => i);
+  const column = timeColumnOf(dataset);
+  if (column < 0) {
+    return rows;
+  }
+
+  let latest = -Infinity;
+  for (const row of rows) {
+    const time = Number(container.valueAt(row, column));
+    if (Number.isFinite(time) && time > latest) {
+      latest = time;
+    }
+  }
+  if (!Number.isFinite(latest)) {
+    return rows;
+  }
+  return rows.filter((row) => Number(container.valueAt(row, column)) === latest);
+}
+
+/** The hour on show, in epoch ms, or null when the query carries no time. */
+export function latestStepOf(dataset: VelocityDataset): number | null {
+  const container = dataset.dataContainer;
+  const column = timeColumnOf(dataset);
+  if (!container || column < 0) {
+    return null;
+  }
+  const rows = latestStepRows(dataset);
+  if (rows.length === 0) {
+    return null;
+  }
+  const time = Number(container.valueAt(rows[0], column));
+  return Number.isFinite(time) ? time : null;
 }
 
 /**
  * The rows kepler holds, in the shape `buildWindField` reads.
  *
- * Only the columns the layer was pointed at are materialised. A velocity query
- * is normally narrow, but there is no reason to copy a column nobody reads.
+ * Only the columns the layer was pointed at are materialised, and only the
+ * rows of the latest hour still standing after kepler's filters — see
+ * `latestStepRows`. A velocity query is normally narrow, but there is no
+ * reason to copy a column, or an hour, nobody reads.
  */
 export function gridFrameOf(
   dataset: VelocityDataset,
@@ -238,7 +305,7 @@ export function gridFrameOf(
     return null;
   }
 
-  const length = container.numRows();
+  const rows = latestStepRows(dataset);
   const fields: GridFrame['fields'] = [];
 
   for (const column of Object.values(columns)) {
@@ -247,14 +314,14 @@ export function gridFrameOf(
     if (!name || index === undefined || index < 0) {
       continue;
     }
-    const values = new Float64Array(length);
-    for (let row = 0; row < length; row++) {
-      values[row] = Number(container.valueAt(row, index));
+    const values = new Float64Array(rows.length);
+    for (let i = 0; i < rows.length; i++) {
+      values[i] = Number(container.valueAt(rows[i], index));
     }
     fields.push({ name, values });
   }
 
-  return { length, fields };
+  return { length: rows.length, fields };
 }
 
 /** The grid's extent, as kepler's `[west, south, east, north]`. */

@@ -1,4 +1,13 @@
-import { buildVelocityField, legendDescription, legendPatch, speedColorOf, stackedAltitude } from './velocityField';
+import {
+  buildVelocityField,
+  gridFrameOf,
+  latestStepOf,
+  latestStepRows,
+  legendDescription,
+  legendPatch,
+  speedColorOf,
+  stackedAltitude,
+} from './velocityField';
 
 /** A GridFrame from plain rows, the shape `buildWindField` reads. */
 const frameOf = (rows: Array<Record<string, number>>) => ({
@@ -22,6 +31,22 @@ function lattice(side: number, cell: (i: number, j: number) => Record<string, nu
 }
 
 const COMPONENTS = { lat: 'latitude', lng: 'longitude', u: 'u', v: 'v' };
+
+/** A kepler-shaped dataset: columns by name, rows as arrays of values. */
+function datasetOf(
+  fields: Array<{ name: string; type?: string }>,
+  rows: unknown[][],
+  filteredIndex?: number[]
+) {
+  return {
+    fields,
+    filteredIndex,
+    dataContainer: {
+      numRows: () => rows.length,
+      valueAt: (row: number, column: number) => rows[row][column],
+    },
+  };
+}
 
 describe('buildVelocityField', () => {
   it('reads u and v in the components mode', () => {
@@ -158,5 +183,68 @@ describe('stackedAltitude', () => {
     expect(
       stackedAltitude(frame, {}, { heightMeters: 2500, elevationScale: 2 }, { tallest: 0 }, null)
     ).toBe(5000);
+  });
+});
+
+describe('latestStepRows', () => {
+  const FIELDS = [
+    { name: 'time', type: 'timestamp' },
+    { name: 'lat', type: 'real' },
+    { name: 'lng', type: 'real' },
+  ];
+  // Two cells, two hours.
+  const ROWS = [
+    [1_000, 0, 0],
+    [1_000, 0, 1],
+    [2_000, 0, 0],
+    [2_000, 0, 1],
+  ];
+
+  it('keeps the rows of the latest hour', () => {
+    // Without this every cell is written twice and whichever row came last
+    // wins — which for a wind that reverses is the opposite of the truth.
+    expect(latestStepRows(datasetOf(FIELDS, ROWS))).toEqual([2, 3]);
+  });
+
+  it('is the latest hour the filter left standing, not the latest there is', () => {
+    // This is the whole of the clock: kepler's time filter hides the rows
+    // outside its window, and the layer draws the most recent of what is left.
+    expect(latestStepRows(datasetOf(FIELDS, ROWS, [0, 1]))).toEqual([0, 1]);
+  });
+
+  it('reads every row when the query carries no time', () => {
+    const fields = [{ name: 'lat', type: 'real' }, { name: 'lng', type: 'real' }];
+    expect(latestStepRows(datasetOf(fields, [[0, 0], [0, 1]]))).toEqual([0, 1]);
+  });
+});
+
+describe('latestStepOf', () => {
+  it('names the hour on show, so a cache can be kept by it', () => {
+    const fields = [{ name: 'time', type: 'timestamp' }, { name: 'lat', type: 'real' }];
+    expect(latestStepOf(datasetOf(fields, [[1_000, 0], [2_000, 0]]))).toBe(2_000);
+  });
+
+  it('answers null when there is no time column to name an hour with', () => {
+    expect(latestStepOf(datasetOf([{ name: 'lat', type: 'real' }], [[0]]))).toBeNull();
+  });
+});
+
+describe('gridFrameOf', () => {
+  it('materialises only the rows of the hour on show', () => {
+    const fields = [
+      { name: 'time', type: 'timestamp' },
+      { name: 'lat', type: 'real' },
+      { name: 'lng', type: 'real' },
+    ];
+    const dataset = datasetOf(fields, [
+      [1_000, 0, 0],
+      [2_000, 9, 9],
+    ]);
+    const columns = { lat: { value: 'lat', fieldIdx: 1 }, lng: { value: 'lng', fieldIdx: 2 } };
+
+    const frame = gridFrameOf(dataset, columns)!;
+
+    expect(frame.length).toBe(1);
+    expect(Array.from(frame.fields.find((f) => f.name === 'lat')!.values)).toEqual([9]);
   });
 });
