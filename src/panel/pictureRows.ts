@@ -30,7 +30,10 @@ export interface PictureAssignment<R> {
   keys: string[];
   /** The URLs behind those keys, in the same order. */
   urls: string[];
+  /** URLs that cannot load, at most as many as the pictures drawn. */
   failures: PictureFailure[];
+  /** Different URLs that cannot load beyond those named in `failures`. */
+  moreFailures: number;
   /** Different URLs left over once the cap was reached. */
   overflow: number;
 }
@@ -48,6 +51,9 @@ export function assignPictures<R extends { index: number }>(rows: R[], options: 
   const max = options.max ?? MAX_PICTURES;
   const accepted = new Map<string, PictureIcon>();
   const rejected = new Map<string, PictureProblem>();
+  // Named up to the same cap as the pictures and counted past it: a column of
+  // bad URLs would otherwise keep, warn about and list every one of them.
+  const rejectedUnnamed = new Set<string>();
   const overflowing = new Set<string>();
 
   const admit = (url: string): PictureIcon | null => {
@@ -55,12 +61,16 @@ export function assignPictures<R extends { index: number }>(rows: R[], options: 
     if (known) {
       return known;
     }
-    if (rejected.has(url) || overflowing.has(url)) {
+    if (rejected.has(url) || rejectedUnnamed.has(url) || overflowing.has(url)) {
       return null;
     }
     const problem = checkPictureUrl(url, options.pageHref);
     if (problem) {
-      rejected.set(url, problem);
+      if (rejected.size < max) {
+        rejected.set(url, problem);
+      } else {
+        rejectedUnnamed.add(url);
+      }
       return null;
     }
     if (accepted.size >= max) {
@@ -104,6 +114,7 @@ export function assignPictures<R extends { index: number }>(rows: R[], options: 
     keys: [...used.keys()],
     urls: [...used.values()],
     failures: [...rejected].map(([url, problem]) => ({ url, problem })),
+    moreFailures: rejectedUnnamed.size,
     overflow: overflowing.size,
   };
 }

@@ -16,7 +16,14 @@ const flush = () => Promise.resolve();
 
 /** An assignment as `assignPictures` makes one, for these URLs drawn with a centre anchor. */
 function assignment(urls: string[], extra: Partial<PictureAssignmentStatus> = {}): PictureAssignmentStatus {
-  return { keys: urls.map((url) => pictureKey(url, 'center')), urls, failures: [], overflow: 0, ...extra };
+  return {
+    keys: urls.map((url) => pictureKey(url, 'center')),
+    urls,
+    failures: [],
+    moreFailures: 0,
+    overflow: 0,
+    ...extra,
+  };
 }
 
 const key = (url: string) => pictureKey(url, 'center');
@@ -46,8 +53,23 @@ describe('pictureState', () => {
       total: 3,
       loading: 1,
       failed: [{ url: 'javascript:x', problem: 'scheme' }],
+      moreFailed: 0,
       overflow: 2,
     });
+  });
+
+  it('counts the failures an assignment does not name, and warns only for the named ones', () => {
+    const layer = {};
+    recordPictureAssignment(
+      layer,
+      assignment(['https://a/1.png'], { failures: [{ url: 'javascript:x', problem: 'scheme' }], moreFailures: 7 })
+    );
+
+    const summary = summarisePictures(readPictureAssignment(layer), readPictureOutcomes());
+    expect(summary.failed).toHaveLength(1);
+    expect(summary.moreFailed).toBe(7);
+    expect(summary.total).toBe(9);
+    expect(console.warn).toHaveBeenCalledTimes(1);
   });
 
   it('keeps apart two layer objects that share a kepler id', () => {
@@ -83,6 +105,7 @@ describe('pictureState', () => {
       total: 0,
       loading: 0,
       failed: [],
+      moreFailed: 0,
       overflow: 0,
     });
   });

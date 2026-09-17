@@ -24,6 +24,7 @@ export interface PictureAssignmentStatus {
   keys: string[];
   urls: string[];
   failures: PictureFailure[];
+  moreFailures: number;
   overflow: number;
 }
 
@@ -97,6 +98,7 @@ export function recordPictureAssignment(layer: object, assignment: PictureAssign
     return;
   }
   assignments.set(layer, assignment);
+  // Only the failures the assignment names: the rest are a count.
   for (const { url, problem } of assignment.failures) {
     warnOnce(url, problem);
   }
@@ -132,6 +134,8 @@ export interface PictureSummary {
   total: number;
   loading: number;
   failed: PictureFailure[];
+  /** Failures beyond those in `failed`, counted but not named. */
+  moreFailed: number;
   overflow: number;
 }
 
@@ -144,7 +148,7 @@ export function summarisePictures(
   known: ReadonlyMap<string, PictureLoad>
 ): PictureSummary {
   if (!assignment) {
-    return { total: 0, loading: 0, failed: [], overflow: 0 };
+    return { total: 0, loading: 0, failed: [], moreFailed: 0, overflow: 0 };
   }
   const failed: PictureFailure[] = [];
   let loading = 0;
@@ -158,9 +162,10 @@ export function summarisePictures(
   });
   failed.push(...assignment.failures);
   return {
-    total: assignment.keys.length + assignment.failures.length,
+    total: assignment.keys.length + assignment.failures.length + assignment.moreFailures,
     loading,
     failed,
+    moreFailed: assignment.moreFailures,
     overflow: assignment.overflow,
   };
 }

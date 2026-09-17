@@ -13,6 +13,7 @@ describe('assignPictures', () => {
     expect(result.keys).toEqual([pictureKey('https://a/pin.png', 'center')]);
     expect(result.urls).toEqual(['https://a/pin.png']);
     expect(result.failures).toEqual([]);
+    expect(result.moreFailures).toBe(0);
     expect(result.overflow).toBe(0);
   });
 
@@ -58,6 +59,22 @@ describe('assignPictures', () => {
 
     expect(result.rows.map((row) => row.index)).toEqual([2]);
     expect(result.failures).toEqual([{ url: 'javascript:alert(1)', problem: 'scheme' }]);
+  });
+
+  it('names at most MAX_PICTURES URLs that cannot load, and counts the rest', () => {
+    const n = MAX_PICTURES + 5;
+    // Each bad URL twice: the rest are counted by URL, not by row.
+    const result = assignPictures(rows(2 * n), {
+      urlOf: (row) => `javascript:alert(${row.index % n})`,
+      layerPicture: '',
+      anchor: 'center',
+      pageHref: page,
+    });
+
+    expect(result.rows).toEqual([]);
+    expect(result.failures).toHaveLength(MAX_PICTURES);
+    expect(result.failures[0]).toEqual({ url: 'javascript:alert(0)', problem: 'scheme' });
+    expect(result.moreFailures).toBe(5);
   });
 
   it('reports a layer picture that cannot load, and draws no row with it', () => {

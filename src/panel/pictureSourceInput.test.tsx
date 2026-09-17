@@ -15,7 +15,14 @@ const layer = { id: 'l1' };
 
 /** An assignment as `assignPictures` makes one, for these URLs drawn with a centre anchor. */
 function assignment(urls: string[], extra: Record<string, unknown> = {}) {
-  return { keys: urls.map((url) => pictureKey(url, 'center')), urls, failures: [], overflow: 0, ...extra };
+  return {
+    keys: urls.map((url) => pictureKey(url, 'center')),
+    urls,
+    failures: [],
+    moreFailures: 0,
+    overflow: 0,
+    ...extra,
+  };
 }
 
 function renderInput(props: Partial<React.ComponentProps<typeof PictureSourceInput>> = {}) {
@@ -136,6 +143,20 @@ describe('PictureSourceInput', () => {
     expect(screen.getByText('2 of 3 pictures could not load')).toBeInTheDocument();
     expect(screen.getByText(/https:\/\/a\/2\.png — Could not load/)).toBeInTheDocument();
     expect(screen.getByText(/javascript:x — Only https, http and data:image URLs/)).toBeInTheDocument();
+  });
+
+  it('counts the failures too many to name', async () => {
+    renderInput({ value: 'https://example.org/pin.png' });
+
+    await act(async () => {
+      recordPictureAssignment(
+        layer,
+        assignment(['https://a/1.png'], { failures: [{ url: 'javascript:x', problem: 'scheme' }], moreFailures: 4 })
+      );
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText('5 of 6 pictures could not load')).toBeInTheDocument();
   });
 
   it('reports its own layer’s pictures, not those of another panel’s layer with the same id', async () => {

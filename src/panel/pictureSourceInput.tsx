@@ -61,6 +61,7 @@ export function PictureSourceInput({
   // read from the store itself.
   useSyncExternalStore(subscribePictures, readPictureVersion);
   const summary = summarisePictures(readPictureAssignment(layer), readPictureOutcomes());
+  const failedCount = summary.failed.length + summary.moreFailed;
   const uploaded = value.startsWith('data:');
 
   // What is saved wins over what was being typed when it changes from outside:
@@ -157,13 +158,10 @@ export function PictureSourceInput({
         </div>
       ) : null}
 
-      {summary.failed.length > 0 ? (
+      {failedCount > 0 ? (
         <div role="status" style={noticeStyle}>
           <div>
-            {intl.formatMessage(
-              { id: 'symbol.picture.failed' },
-              { failed: summary.failed.length, total: summary.total }
-            )}
+            {intl.formatMessage({ id: 'symbol.picture.failed' }, { failed: failedCount, total: summary.total })}
           </div>
           {summary.failed.slice(0, SHOWN_FAILURES).map(({ url, problem }) => (
             <div key={url} title={url}>
