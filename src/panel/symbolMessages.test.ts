@@ -35,7 +35,10 @@ describe('registerSymbolMessages', () => {
     }
   });
 
-  it('names the columns the layer asks for', () => {
+  it('names the layer, and the column only it asks for', () => {
     expect(SYMBOL_MESSAGES['layer.type.symbol']).toBe('Symbols');
+    // kepler renders a column's label as the message `columns.<name>`; `lat`,
+    // `lng` and `altitude` it already names.
+    expect(SYMBOL_MESSAGES['columns.picture']).toBe('picture URL');
   });
 });

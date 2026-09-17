@@ -339,6 +339,91 @@
       ],
       "title": "Wind stations, standing in 3D",
       "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 80
+      },
+      "id": 5,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "basemap": "voyager",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "visState": {
+              "layers": [
+                {
+                  "id": "picture-stations",
+                  "type": "symbol",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Picture stations",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude",
+                      "picture": "picture"
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "symbolSource": "picture",
+                      "pictureUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAAU0lEQVR4nGN4FiDCQEtMrML/ODBFFuAylCTLqGU4TkuoaThWS6htOIYltDAcxZLhYwG1DYdbMmrBCLJg6OcDulhA88KOLsU1XSoculSZdKn0qYIBfutlPVyGmw8AAAAASUVORK5CYII=",
+                      "pictureAnchor": "bottom",
+                      "upright": true,
+                      "symbolSize": 40,
+                      "fixedAngle": true,
+                      "angleDegrees": 0
+                    }
+                  },
+                  "visualChannels": {
+                    "angleField": null,
+                    "angleScale": "linear",
+                    "sizeField": null,
+                    "sizeScale": "sqrt",
+                    "colorField": null,
+                    "colorScale": "quantize"
+                  }
+                }
+              ],
+              "filters": [],
+              "interactionConfig": {},
+              "splitMaps": []
+            },
+            "mapState": {
+              "latitude": -2.0,
+              "longitude": -79.3,
+              "zoom": 6.2,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "mapStyle": {
+              "styleType": "voyager"
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\": {\"fields\": [{\"name\": \"name\", \"type\": \"string\"}, {\"name\": \"latitude\", \"type\": \"number\"}, {\"name\": \"longitude\", \"type\": \"number\"}, {\"name\": \"picture\", \"type\": \"string\"}]}, \"data\": {\"values\": [[\"Cuenca\", \"Quito\", \"Guayaquil\", \"Loja\"], [-2.9, -0.19, -2.17, -3.99], [-79.0, -78.48, -79.92, -79.2], [\"/public/plugins/ubica-keplergl-panel/img/logo-small.svg\", \"/public/plugins/ubica-keplergl-panel/img/logo-large.svg\", \"\", \"http://127.0.0.1:3000/public/plugins/ubica-keplergl-panel/img/logo-small.svg\"]]}}]"
+        }
+      ],
+      "title": "Stations with pictures",
+      "type": "ubica-keplergl-panel"
     }
   ],
   "refresh": "",

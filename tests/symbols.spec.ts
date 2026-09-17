@@ -1,7 +1,7 @@
 import { test, expect } from '@grafana/plugin-e2e';
 import type { Locator, Page } from '@playwright/test';
 
-import { projectRows, readKepler, readSymbolLayer, settle } from './keplerHelpers';
+import { projectRows, readKepler, readPictureDeck, readSymbolLayer, settle } from './keplerHelpers';
 
 /** A full kepler map under swiftshader: see `flowfield.spec.ts` for the budget. */
 test.describe.configure({ timeout: 180_000 });
@@ -247,4 +247,48 @@ test('stands the symbols up in the 3D panel', async ({ gotoPanelEditPage, readPr
   expect(drawn.iconKeys).toEqual(['marker']);
   // No bearing column: a standing marker is not turned.
   expect(new Set(drawn.angles)).toEqual(new Set([0]));
+});
+
+test('draws a picture per station, and names the one that cannot load', async ({
+  gotoPanelEditPage,
+  readProvisionedDashboard,
+  page,
+}) => {
+  test.slow();
+  // Installed before Grafana loads, so no violation can happen unheard.
+  await page.addInitScript(() => {
+    const scope = window as unknown as { __cspViolations: string[] };
+    scope.__cspViolations = [];
+    document.addEventListener('securitypolicyviolation', (event) => {
+      scope.__cspViolations.push(`${event.violatedDirective} ${event.blockedURI}`);
+    });
+  });
+
+  const dashboard = await readProvisionedDashboard({ fileName: 'symbols.json' });
+  const panelEditPage = await gotoPanelEditPage({ dashboard, id: '5' });
+
+  const map = panelEditPage.panel.locator.locator('canvas').first();
+  await expect(map).toBeVisible({ timeout: 60_000 });
+  await settle(page);
+
+  // Four different pictures: the layer's own data URI, two of the plugin's
+  // files, and one from an origin that does not allow cross-origin use.
+  await expect.poll(async () => (await readPictureDeck(map))?.keys.length ?? 0, { timeout: 60_000 }).toBe(4);
+  await expect.poll(async () => (await readPictureDeck(map))?.loaded ?? false, { timeout: 60_000 }).toBe(true);
+
+  await openLayerPanel(page);
+  // `.first()`: the notice and the line inside it both contain the text.
+  await expect(page.getByText('1 of 4 pictures could not load').first()).toBeVisible({ timeout: 30_000 });
+  // Named by its URL: `127.0.0.1` is another origin than `localhost`, and
+  // Grafana serves its files with no Access-Control-Allow-Origin.
+  await expect(page.getByText(/127\.0\.0\.1:3000.* — Could not load/).first()).toBeVisible();
+  // And the three that loaded are not named at all.
+  await expect(page.getByText(/^\/public\/plugins.* — /)).toHaveCount(0);
+  await expect(page.getByText(/^data:image.* — /)).toHaveCount(0);
+
+  // Under a strict CSP, the proof that pictures travel by `img-src` alone.
+  const violations = await page.evaluate(() => (window as unknown as { __cspViolations: string[] }).__cspViolations);
+  expect(
+    violations.filter((line) => /data:|blob:|\/public\/plugins\/ubica-keplergl-panel\/img\//.test(line))
+  ).toEqual([]);
 });

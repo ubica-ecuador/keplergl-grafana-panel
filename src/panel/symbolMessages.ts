@@ -36,6 +36,31 @@ export const SYMBOL_MESSAGES: Record<string, string> = {
   'symbol.shadow': 'Shadow',
   'symbol.shadowOpacity': 'Shadow intensity',
   'symbol.shadowDistance': 'Shadow distance (px)',
+
+  'symbol.symbolSource': 'Draw',
+  'symbol.symbolSource.shape': 'A shape',
+  'symbol.symbolSource.picture': 'A picture',
+  'symbol.pictureUrl': 'Picture URL',
+  'symbol.pictureAnchor': 'Anchor',
+  'symbol.pictureAnchor.center': 'Centre',
+  'symbol.pictureAnchor.bottom': 'Bottom',
+  // kepler labels a column with the message `columns.<name>`.
+  'columns.picture': 'picture URL',
+
+  'symbol.picture.upload': 'Upload…',
+  'symbol.picture.uploaded': 'Uploaded picture ({kb} KB)',
+  'symbol.picture.useUrl': 'Use a URL instead',
+  'symbol.picture.tooLarge': 'The file is larger than 75 KB',
+  'symbol.picture.notImage': 'Not an image',
+  'symbol.picture.failed': '{failed} of {total} pictures could not load',
+  'symbol.picture.overflow': '{overflow} pictures over the {max} limit use the layer picture',
+  'symbol.picture.overflowNotDrawn': '{overflow} pictures over the {max} limit are not drawn',
+  'symbol.picture.problem.scheme': 'Only https, http and data:image URLs',
+  'symbol.picture.problem.mixed-content': 'An http picture cannot load on an https Grafana',
+  'symbol.picture.problem.load':
+    'Could not load — the server may not allow cross-origin use (CORS), or the URL is wrong',
+  'symbol.picture.problem.timeout': 'Timed out after 15 s',
+  'symbol.picture.problem.decode': 'The file is not an image deck can read',
 };
 
 /** Adds them to every locale kepler ships, never overwriting an existing entry. */

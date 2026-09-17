@@ -1,6 +1,6 @@
 # Points and aggregation
 
-Six ways to read the same 123 rows. Every image on this page comes from a single query returning
+Seven ways to read the same 123 rows. Every image on this page comes from a single query returning
 `latitude`, `longitude`, a numeric `value` and a categorical `zona` — the difference is entirely in
 which layer you point at it.
 
@@ -12,7 +12,7 @@ SELECT lat AS latitude,
 FROM readings;
 ```
 
-Only the first is built for you. The other five you add in kepler's layer panel: **+ Add Layer**,
+Only the first is built for you. The other six you add in kepler's layer panel: **+ Add Layer**,
 pick the type, pick the dataset.
 
 ## point
@@ -97,6 +97,39 @@ picker in the layer panel lists them.
 Useful for a small number of meaningful things — stations, incidents, depots. At a few hundred rows
 it becomes noise.
 
+## symbol
+
+A symbol per row, turned and sized by columns. Its **Draw** selector picks what each symbol is:
+
+- **A shape**: one of the plugin's own shapes, kepler's icons or the Maki set, coloured by the
+  layer. It can be outlined, shadowed and lightened towards its tail.
+- **A picture**: an image of your own, drawn in its own colours. Paste a URL, or upload a PNG, JPEG,
+  SVG, WebP or GIF of up to 75 KB, which is kept inside the dashboard. To give each row its own
+  picture, bind a column of URLs as the layer's **picture URL** column; a row with an empty value
+  takes the layer's picture. **Anchor** puts the picture's centre or its bottom edge on the point —
+  bottom for pins.
+
+```sql
+SELECT lat AS latitude, lon AS longitude, logo_url AS picture, name
+FROM depots;
+```
+
+The browser loads a picture the way it loads an `<img>`, so a strict Content-Security-Policy needs
+nothing beyond Grafana's default `img-src * data:`. Two things still stop one:
+
+- **CORS.** The map is drawn with WebGL, which refuses an image from another origin unless its
+  server answers with `Access-Control-Allow-Origin`. A picture that opens in a browser tab can still
+  fail on the map. Uploading the file sidesteps the question.
+- **Mixed content.** A picture over `http:` on a Grafana served over `https:` is blocked by the
+  browser.
+
+Pictures load in the browser of whoever views the dashboard, with their Grafana session, so a
+picture column should come from data you trust.
+
+The layer panel names each picture that could not load, and why. A layer draws at most 96 different
+pictures. Rows beyond that take the layer's picture, or, when the layer has no picture of its own,
+are not drawn; the panel says which.
+
 ## Choosing between them
 
 | You want                           | Use             |
@@ -106,6 +139,7 @@ it becomes noise.
 | Counts you can compare and extrude | grid or hexagon |
 | A readable count at every zoom     | cluster         |
 | Categorical symbols                | icon            |
+| Turned shapes, or pictures         | symbol          |
 
 And a rule that outranks all of them: **if the aggregation can happen in SQL, do it there**. A
 million rows binned in the browser is a million rows transported first. `GROUP BY` on an H3 index or

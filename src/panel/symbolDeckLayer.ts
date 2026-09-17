@@ -1,6 +1,7 @@
 import { Layer, LayerExtension } from '@deck.gl/core';
 import { IconLayer } from '@deck.gl/layers';
 
+import { buildPictureDeckLayer } from './pictureDeckLayer';
 import { ATLAS_COLUMNS, CELL, createAtlasCanvas, IconFrame } from './vectorFieldGlyphs';
 import { glyphsFor, paintGlyphs, SymbolPainter } from './symbolGlyphs';
 
@@ -227,6 +228,12 @@ const symbolGradient = new SymbolGradientExtension();
 export const buildSymbolDeckLayer = (
   props: { symbols?: string[]; shadow?: boolean; outline?: number; gradient?: number } & Record<string, unknown>
 ): unknown => {
+  // A picture per row packs its own atlas from loaded images: none of the
+  // glyph atlases below apply, and neither do the shadow, outline or gradient
+  // cut from them.
+  if (props.picture === true) {
+    return buildPictureDeckLayer(props);
+  }
   const { symbols, shadow, outline, gradient, ...rest } = props;
   const names = symbols ?? [];
   const built =
