@@ -1,6 +1,37 @@
 import { FieldType, toDataFrame } from '@grafana/data';
 
-import { detectFields, resolveRoles } from './detectFields';
+import { detectFields, NAME_CANDIDATES, resolveRoles } from './detectFields';
+
+describe('NAME_CANDIDATES', () => {
+  /**
+   * Names two roles may share, each with the roles that share it and why.
+   *
+   * Everything else is one name, one role. A name in two lists is detected as
+   * both, and roles are never exclusive — so when one of them renames its
+   * column, the other loses it without a word. That is how `magnitude` in
+   * `count`'s list once unbound the symbol layer's size channel.
+   */
+  const SHARED: Record<string, string[]> = {
+    // Course over ground, and a GeoTIFF link. The two readings exclude each
+    // other by type: the raster reader keeps only strings, and a symbol layer
+    // is built only from a numeric bearing. Neither role renames its column.
+    cog: ['rasterUrl', 'rotation'],
+  };
+
+  it('gives every candidate name to one role, bar the documented exceptions', () => {
+    const roles = new Map<string, string[]>();
+    for (const [role, candidates] of Object.entries(NAME_CANDIDATES)) {
+      for (const name of candidates) {
+        roles.set(name, [...(roles.get(name) ?? []), role]);
+      }
+    }
+
+    const shared = Object.fromEntries(
+      [...roles].filter(([, claimants]) => claimants.length > 1).map(([name, claimants]) => [name, claimants.sort()])
+    );
+    expect(shared).toEqual(SHARED);
+  });
+});
 
 describe('resolveRoles', () => {
   it('falls back to autodetection for roles the user has not touched', () => {
@@ -239,5 +270,56 @@ describe('detectFields — zarr', () => {
     });
 
     expect(detectFields(frame).zarrVariable).toBeUndefined();
+  });
+});
+
+describe('detectFields: rotation and magnitude', () => {
+  it('finds a vehicle\'s heading and its speed', () => {
+    const frame = toDataFrame({
+      fields: [
+        { name: 'lat', type: FieldType.number, values: [] },
+        { name: 'lon', type: FieldType.number, values: [] },
+        { name: 'heading', type: FieldType.number, values: [] },
+        { name: 'speed', type: FieldType.number, values: [] },
+      ],
+    });
+
+    const roles = detectFields(frame);
+
+    expect(roles.rotation).toBe('heading');
+    expect(roles.speed).toBe('speed');
+  });
+
+  it('finds a generic magnitude', () => {
+    const frame = toDataFrame({
+      fields: [
+        { name: 'lat', type: FieldType.number, values: [] },
+        { name: 'lon', type: FieldType.number, values: [] },
+        { name: 'bearing', type: FieldType.number, values: [] },
+        { name: 'magnitude', type: FieldType.number, values: [] },
+      ],
+    });
+
+    const roles = detectFields(frame);
+
+    expect(roles.rotation).toBe('bearing');
+    expect(roles.magnitude).toBe('magnitude');
+  });
+
+  it('does not confuse a magnitude column with the count role, even though both are numeric', () => {
+    // magnitude was removed from count's candidates to avoid collision.
+    // A column literally named "magnitude" should land in the magnitude role only.
+    const frame = toDataFrame({
+      fields: [
+        { name: 'lat', type: FieldType.number, values: [] },
+        { name: 'lon', type: FieldType.number, values: [] },
+        { name: 'magnitude', type: FieldType.number, values: [] },
+      ],
+    });
+
+    const roles = detectFields(frame);
+
+    expect(roles.magnitude).toBe('magnitude');
+    expect(roles.count).toBeUndefined();
   });
 });

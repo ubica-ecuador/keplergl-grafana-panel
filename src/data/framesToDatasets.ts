@@ -1,10 +1,11 @@
-import { DataFrame } from '@grafana/data';
+import { DataFrame, FieldType } from '@grafana/data';
 
 import { buildFlowField, FlowFieldLayerConfig } from './buildFlowField';
 import { buildFlows, FlowLayerConfig, FlowRenderMode } from './buildFlows';
+import { buildSymbolLayer, SymbolLayerConfig } from './buildSymbolLayer';
 import { buildTripLayer, TripLayerConfig, TripLayerMode } from './buildTripLayer';
 import { buildTrips } from './buildTrips';
-import { earliestTimestepRows } from './buildWindField';
+import { describesLattice, earliestTimestepRows } from './buildWindField';
 import { detectFields, FieldRoleOverrides, FieldRoles, resolveRoles } from './detectFields';
 import { KeplerColumn, KeplerRow, toKeplerColumns, toKeplerRows } from './toKeplerDataset';
 
@@ -39,6 +40,15 @@ export interface PanelDataset {
    * does for flows and trips.
    */
   flowFieldLayer?: FlowFieldLayerConfig;
+  /**
+   * A symbol layer to add, when the query is a scattering of points that carry
+   * a bearing — weather stations, vessels, aircraft.
+   *
+   * The counterpart of `flowFieldLayer`, and the reason the wind test now asks
+   * whether the rows form a lattice: without that question a station query
+   * built a flow field that drew nothing and explained nothing.
+   */
+  symbolLayer?: SymbolLayerConfig;
 }
 
 /**
@@ -71,7 +81,7 @@ export function framesToDatasets(
     // A velocity grid stays a velocity grid: the rows travel to kepler as they
     // came, and the flow field layer traces the paths through them. What it does
     // not keep is the rest of the forecast — see `oneTimestep`.
-    if (isWindFrame(roles)) {
+    if (isWindFrame(roles) && isLatticeFrame(frame, roles)) {
       return {
         id,
         label,
@@ -93,6 +103,7 @@ export function framesToDatasets(
     // but neither trips (its heuristic wants a column named `id`) nor flows, so
     // the panel supplies those two itself.
     const rows = toKeplerRows(frame, roles);
+    const symbolRoles = withNumericBearings(frame, roles);
     return {
       id,
       label,
@@ -100,6 +111,7 @@ export function framesToDatasets(
       columns: rows.length === 0 ? toKeplerColumns(frame, roles) : undefined,
       tripLayer: buildTripLayer(roles, id) ?? undefined,
       flowLayer: buildFlows(roles, id, { renderingMode: opts.flowRenderMode }) ?? undefined,
+      symbolLayer: pointsSymbols(symbolRoles) ? (buildSymbolLayer(symbolRoles, id) ?? undefined) : undefined,
     };
   });
 }
@@ -125,6 +137,53 @@ function isWindFrame(roles: FieldRoles): boolean {
   const hasComponents = Boolean(roles.u && roles.v);
   const hasPolar = Boolean(roles.speed && roles.direction);
   return Boolean(roles.latitude && roles.longitude && (hasComponents || hasPolar) && !roles.tripId);
+}
+
+/**
+ * Whether the rows of a velocity query sit on a regular lattice.
+ *
+ * A grid is a field and is drawn as one; a scattering of stations is not, and
+ * pretending otherwise draws nothing at all.
+ */
+function isLatticeFrame(frame: DataFrame, roles: FieldRoles): boolean {
+  const indices = earliestTimestepRows(frame, roles.time);
+  const values = (name?: string) => {
+    const field = name ? frame.fields.find((f) => f.name === name) : undefined;
+    return field ? indices.map((i) => Number(field.values[i])) : [];
+  };
+  return describesLattice(values(roles.latitude), values(roles.longitude));
+}
+
+/**
+ * Whether a tabular query describes symbols: points with something that points.
+ *
+ * A trip id disqualifies it for the same reason it disqualifies a velocity
+ * field — a trajectory is a path, not a scattering of marks.
+ */
+function pointsSymbols(roles: FieldRoles): boolean {
+  const bearing = Boolean(roles.rotation || roles.direction);
+  return Boolean(roles.latitude && roles.longitude && bearing && !roles.tripId);
+}
+
+/**
+ * The roles with a bearing kept only where its column holds numbers.
+ *
+ * Detection goes by name, and `track`, `course`, `heading` or `direction` are
+ * as likely to name a label or a url as a number of degrees. A symbol layer
+ * built on one of those is worse than none: kepler drops a rotation channel
+ * whose column is not numeric, and the symbol layer has already taken the place
+ * of the Point layer kepler guessed. A text bearing is set aside rather than
+ * disqualifying the query, so a numeric wind direction beside it still turns
+ * the symbols.
+ */
+function withNumericBearings(frame: DataFrame, roles: FieldRoles): FieldRoles {
+  const numeric = (name?: string) =>
+    Boolean(name) && frame.fields.some((field) => field.name === name && field.type === FieldType.number);
+  return {
+    ...roles,
+    rotation: numeric(roles.rotation) ? roles.rotation : undefined,
+    direction: numeric(roles.direction) ? roles.direction : undefined,
+  };
 }
 
 /**

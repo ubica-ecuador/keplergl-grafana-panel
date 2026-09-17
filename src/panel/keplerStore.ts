@@ -8,6 +8,8 @@ import { buildEsriImageDeckLayer } from './esriImageDeckLayer';
 import { makeEsriImageLayer } from './esriImageLayer';
 import { buildFlowFieldDeckLayer, makeScreenCamera } from './flowFieldDeckLayer';
 import { makeFlowFieldLayer } from './flowFieldLayer';
+import { buildSymbolDeckLayer } from './symbolDeckLayer';
+import { makeSymbolLayer } from './symbolLayer';
 import { withTile3dAltitude } from './tile3dAltitudeLayer';
 import { buildVectorFieldDeckLayer } from './vectorFieldDeckLayer';
 import { makeVectorFieldLayer } from './vectorFieldLayer';
@@ -94,6 +96,11 @@ const layerClasses = {
   // the same names, so kepler keeps them when a layer's type is switched between
   // the two.
   vectorfield: makeVectorFieldLayer(Layer as never, buildVectorFieldDeckLayer, makeScreenCamera, ICON_LAYER_ICON),
+  // The vector field's opposite number: where that one marks a grid, this draws
+  // one symbol per row, turned and sized by columns of the table. Built on the
+  // base `Layer` so kepler's row machinery — filters, the clock, tooltips —
+  // applies unchanged.
+  symbol: makeSymbolLayer(Layer as never, buildSymbolDeckLayer, ICON_LAYER_ICON),
 };
 
 /**

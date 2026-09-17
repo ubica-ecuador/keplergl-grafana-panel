@@ -82,3 +82,16 @@ describe('supersededLayerIds — flow fields', () => {
     expect(supersededLayerIds(layers, ours)).toEqual([]);
   });
 });
+
+describe('supersededLayerIds: symbols', () => {
+  it('replaces the point layer kepler guesses from the same coordinates', () => {
+    const layers = [
+      { id: 'guessed', type: 'point', config: { dataId: 'grafana-A' } },
+      { id: 'symbol-grafana-A', type: 'symbol', config: { dataId: 'grafana-A' } },
+    ];
+
+    expect(supersededLayerIds(layers, { id: 'symbol-grafana-A', type: 'symbol', dataId: 'grafana-A' })).toEqual([
+      'guessed',
+    ]);
+  });
+});

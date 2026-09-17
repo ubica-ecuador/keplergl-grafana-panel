@@ -46,6 +46,7 @@ import { zarrCalendarDatasetId, type ZarrDataset } from '../data/zarrDataset';
 import { rowFieldValue, wmsFeatureValues } from './clickSync';
 import type { FlowFieldLayerConfig } from '../data/buildFlowField';
 import type { FlowLayerConfig } from '../data/buildFlows';
+import type { SymbolLayerConfig } from '../data/buildSymbolLayer';
 import type { TripLayerConfig } from '../data/buildTripLayer';
 import {
   keepRemoteDatasets,
@@ -71,6 +72,7 @@ import { splitEsriRefresh, splitRasterRefresh, splitRefresh, splitWmsRefresh, sp
 import { KEPLER_INSTANCE_ID } from './constants';
 import { holdTilesetFraming } from './tile3dFraming';
 import { VECTOR_FIELD_TYPE } from './vectorFieldLayer';
+import { SYMBOL_TYPE } from './symbolLayer';
 
 /**
  * The ONLY module that talks to the kepler.gl API.
@@ -632,8 +634,8 @@ export function applyLayerVisConfigById(
 export const FLOW_FIELD_TYPE = 'flowfield';
 
 /**
- * The flow field and vector field layers on the map, with the height of the
- * level each draws.
+ * The flow field, vector field and symbol layers on the map, with the height
+ * of the level each draws.
  *
  * The height is read here, from the rows kepler holds, rather than carried from
  * the query: the user can point the layer's altitude column somewhere else, and
@@ -651,8 +653,12 @@ export function readFlowFieldLayers(store: Store): FlowFieldLayerState[] {
 
   return visState.layers
     // The vector field needs the same context: the camera for its screen grid,
-    // and a place in the stack of levels.
-    .filter((layer) => [FLOW_FIELD_TYPE, VECTOR_FIELD_TYPE].includes((layer as { type?: string }).type ?? ''))
+    // and a place in the stack of levels. The symbol layer needs only the
+    // camera, to convert its own spacing knob from pixels to ground degrees —
+    // it cannot read the map's zoom and latitude any other way.
+    .filter((layer) =>
+      [FLOW_FIELD_TYPE, VECTOR_FIELD_TYPE, SYMBOL_TYPE].includes((layer as { type?: string }).type ?? '')
+    )
     .map((layer) => {
       const config = layer.config as {
         dataId?: string;
@@ -663,6 +669,10 @@ export function readFlowFieldLayers(store: Store): FlowFieldLayerState[] {
       const altitude = config.columns?.altitude;
       return {
         id: layer.id,
+        // Carried through so `outdatedFlowContexts` can tell a level (flow
+        // field, vector field) from a layer that merely receives the camera
+        // (symbol) — see `isStackedLevel` in `flowFieldContext.ts`.
+        type: (layer as { type?: string }).type,
         altitudeMeters: levelHeight(
           altitude?.value,
           constantAt(dataset, altitude?.fieldIdx),
@@ -1926,9 +1936,11 @@ export function autoLayerStatus(
  *
  * kepler auto-creates default layers for points and geometry, but not for flows
  * (it has no detection for them at all), not for the panel's trips (its
- * detection insists on a column named `id`) and not for a flow field (whose
- * whole subject is absent from the rows). All three configs — from `buildFlows`,
- * `buildTripLayer` and `buildFlowField` — are parsed by kepler because they
+ * detection insists on a column named `id`), not for a flow field (whose
+ * whole subject is absent from the rows) and not for a symbol layer (kepler's
+ * guess from the same coordinates is a plain Point, which says nothing about
+ * the bearing). All four configs — from `buildFlows`, `buildTripLayer`,
+ * `buildFlowField` and `buildSymbolLayer` — are parsed by kepler because they
  * carry `visualChannels`. kepler computes the layer's data bounds while adding
  * it, synchronously, which the caller uses to frame the map on an OD dataset:
  * `addDataToMap` could not, having had no flow layer to measure.
@@ -1936,7 +1948,7 @@ export function autoLayerStatus(
 export function addAutoLayer(
   store: Store,
   dispatch: Dispatch,
-  layer: FlowLayerConfig | TripLayerConfig | FlowFieldLayerConfig,
+  layer: FlowLayerConfig | TripLayerConfig | FlowFieldLayerConfig | SymbolLayerConfig,
   dataId: string
 ): MapBounds | null {
   dispatch(wrapTo(KEPLER_INSTANCE_ID, addLayer(layer, dataId)));

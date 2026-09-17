@@ -127,6 +127,13 @@ and served from the plugin's own asset path so that no install has to call an ex
   matplotlib (Copyright (c) 2012-2024 Matplotlib Development Team, matplotlib licence, a
   BSD-style licence) by way of kepler.gl.
 
+This one is extracted from an npm package and compiled into the bundle rather than served as a file:
+
+- `src/icons/maki-paths.json` — the SVG path of each of the 215 icons of Maki, `@mapbox/maki`
+  8.2.0 (CC0-1.0, Mapbox), which the symbol layer offers as shapes. Written by
+  `scripts/vendor-maki.mjs`; nothing else of the package is shipped. CC0 asks for no attribution —
+  the entry is here so the origin of the shapes is on record.
+
 ## Sample data
 
 Sample datasets under `testdata/` are for the development benches and are not part of the published

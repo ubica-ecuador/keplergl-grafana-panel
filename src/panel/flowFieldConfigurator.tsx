@@ -1,19 +1,17 @@
 import React from 'react';
-import { useIntl } from 'react-intl';
 import {
   ConfigGroupCollapsibleContent,
-  ItemSelector,
   LayerColorRangeSelector,
   LayerColorSelector,
   LayerConfigGroup,
   LayerConfiguratorFactory,
-  PanelLabel,
-  SidePanelSection,
   VisConfigSlider,
   VisConfigSwitch,
 } from '@kepler.gl/components';
 
 import { PaintedTilesetConfig } from './paintedTilesetConfigurator';
+import { SelectKnob } from './selectKnob';
+import { SymbolLayerConfig } from './symbolConfigurator';
 import { Tile3dLayerConfig } from './tile3dConfigurator';
 
 /**
@@ -44,58 +42,6 @@ interface ConfiguratorArgs {
   };
   visConfiguratorProps: Record<string, unknown>;
   layerConfiguratorProps: Record<string, unknown>;
-}
-
-/**
- * A choice among words, for a knob the layer registered as a `select`.
- *
- * kepler's sliders do not fit a choice among words; `ItemSelector` is what it
- * uses for its own. The label is the knob's own message id, and each option is
- * `<label>.<option>` — both through react-intl, because a selector showing
- * `downhill` is the same failure as a label reading "Flowfield.Density".
- *
- * `options` narrows the registered list when a mode makes some of them
- * meaningless, rather than offering a knob that does nothing.
- */
-export function SelectKnob({
-  layer,
-  visConfiguratorProps,
-  property,
-  options,
-}: Omit<ConfiguratorArgs, 'layerConfiguratorProps'> & { property: string; options?: string[] }) {
-  const intl = useIntl();
-  const setting = layer.visConfigSettings[property] as
-    | { options?: string[]; defaultValue?: string; label?: string }
-    | undefined;
-  const choices = options ?? setting?.options;
-
-  if (!setting?.label || !choices) {
-    return null;
-  }
-
-  const onChange = visConfiguratorProps.onChange as (patch: Record<string, unknown>) => void;
-  const chosen = layer.config.visConfig[property] as string | undefined;
-
-  return (
-    <SidePanelSection>
-      <PanelLabel>{intl.formatMessage({ id: setting.label })}</PanelLabel>
-      <ItemSelector
-        selectedItems={chosen && choices.includes(chosen) ? chosen : choices[0]}
-        options={choices}
-        multiSelect={false}
-        searchable={false}
-        getOptionValue={(option: string) => option}
-        displayOption={(option: string) => intl.formatMessage({ id: `${setting.label}.${option}` })}
-        // `ItemSelector` types its handler for the multi-select case too; ours
-        // is single-select over strings, and anything else is not an answer.
-        onChange={(value) => {
-          if (typeof value === 'string') {
-            onChange({ [property]: value });
-          }
-        }}
-      />
-    </SidePanelSection>
-  );
 }
 
 /**
@@ -321,6 +267,14 @@ function CustomLayerConfiguratorFactory(...deps: Parameters<typeof LayerConfigur
 
     _renderVectorfieldLayerConfig(args: ConfiguratorArgs) {
       return <VectorFieldLayerConfig {...args} />;
+    }
+
+    _renderSymbolLayerConfig(args: ConfiguratorArgs) {
+      // This file's own `ConfiguratorArgs` (above) is shaped for the flow and
+      // vector field panels and has no `layerChannelConfigProps`; kepler passes
+      // it anyway (see `layer-configurator.tsx`'s own channel-bearing layers),
+      // so the cast only tells TypeScript what is already true at runtime.
+      return <SymbolLayerConfig {...(args as unknown as React.ComponentProps<typeof SymbolLayerConfig>)} />;
     }
 
     // The three layers whose picture arrives already drawn share one panel —

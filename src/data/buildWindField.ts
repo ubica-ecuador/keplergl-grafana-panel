@@ -483,6 +483,18 @@ export function speedDirToUV(
 }
 
 /**
+ * Whether these coordinates sit on a regular lattice.
+ *
+ * The same question `buildWindField` asks before it builds a field, exported so
+ * the panel can ask it *before* choosing a layer: a grid is drawn as a field,
+ * and a scattering of stations as symbols. Without asking, a station query
+ * built a flow field that drew nothing and said why nowhere.
+ */
+export function describesLattice(latitudes: number[], longitudes: number[]): boolean {
+  return Boolean(axisOf(latitudes) && axisOf(longitudes));
+}
+
+/**
  * The regular lattice one axis sits on, or null if it does not sit on one.
  *
  * The spacing is the *smallest* gap between consecutive values, not the first,

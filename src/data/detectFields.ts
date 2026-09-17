@@ -33,6 +33,16 @@ export interface FieldRoles {
   speed?: string;
   direction?: string;
   /**
+   * A bearing to turn a symbol by, and a number to size it.
+   *
+   * Separate from {@link direction} and {@link speed}, which name a *wind* and
+   * carry the meteorological convention with them. These two name any table
+   * with something that points and something that measures: a vehicle, a vessel,
+   * an aircraft.
+   */
+  rotation?: string;
+  magnitude?: string;
+  /**
    * A link to a cloud-optimised GeoTIFF, which is drawn as raster tiles rather
    * than as rows. One url per query — the first row wins.
    */
@@ -165,7 +175,7 @@ export function resolveRoles(detected: FieldRoles, overrides: FieldRoleOverrides
  * reads as a rendering bug rather than as a mapping choice. Height on a trip
  * path is therefore opt-in through the field mapping editor.
  */
-const NAME_CANDIDATES: Record<string, string[]> = {
+export const NAME_CANDIDATES: Record<string, string[]> = {
   latitude: ['latitude', 'lat', 'y'],
   longitude: ['longitude', 'lon', 'lng', 'long', 'x'],
   tripId: ['trip_id', 'tripid', 'track_id', 'trackid', 'trajectory_id', 'vehicle_id', 'journey_id'],
@@ -178,6 +188,16 @@ const NAME_CANDIDATES: Record<string, string[]> = {
   v: ['v', 'v10', 'v_wind', 'wind_v', 'vgrd', 'v_component'],
   speed: ['wind_speed', 'windspeed', 'wind_speed_10m', 'speed', 'ws'],
   direction: ['wind_direction', 'winddirection', 'wind_direction_10m', 'direction', 'wind_dir', 'wd'],
+  // Anything that points. `direction` is deliberately absent: it belongs to the
+  // wind roles, and a column called that is read with the meteorological
+  // convention when a wind speed sits beside it (see `buildSymbolLayer`).
+  //
+  // `cog` (course over ground) appears here and also in rasterUrl — the one
+  // name two roles share on purpose, allowlisted in `detectFields.test.ts`. The
+  // two readings exclude each other by type: the raster reader drops values that
+  // are not strings, and a symbol layer is built only from a numeric bearing.
+  rotation: ['bearing', 'heading', 'course', 'cog', 'track', 'azimuth', 'orientation'],
+  magnitude: ['magnitude', 'intensity', 'amplitude'],
   originLat: ['origin_lat', 'origin_latitude', 'from_lat', 'start_lat', 'source_lat', 'pickup_lat', 'lat0'],
   originLng: [
     'origin_lon',
@@ -216,7 +236,11 @@ const NAME_CANDIDATES: Record<string, string[]> = {
   ],
   originH3: ['origin_h3', 'source_h3', 'from_h3', 'h3_0'],
   destH3: ['dest_h3', 'target_h3', 'to_h3', 'h3_1'],
-  count: ['count', 'trips', 'magnitude', 'weight', 'flow', 'total', 'volume'],
+  // `magnitude` is deliberately absent: it is now a rotation/magnitude role, and a
+  // column literally named `magnitude` must land in one role only. If a query's
+  // weight column happens to be named that, the user can map it by hand in the
+  // field mapping editor rather than silently breaking the size channel bind.
+  count: ['count', 'trips', 'weight', 'flow', 'total', 'volume'],
   // Raster. `asset_href` and `href` are what a STAC asset is called in the
   // catalogue's own JSON, so a query that lifts the asset straight out of a
   // search response needs no aliasing.

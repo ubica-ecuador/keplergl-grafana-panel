@@ -27,10 +27,15 @@ interface AddedLayer {
  * grid is: a lattice of lat/lon samples. The dots are the grid, honestly drawn
  * and completely beside the point — what the query describes is the flow through
  * them, which is what the flow field layer draws.
+ *
+ * A symbol layer collides with the same guessed Point layer, for the same
+ * reason: the coordinates are real, but a plain dot says nothing about the
+ * bearing the symbol layer turns by.
  */
 const SUPERSEDES: Record<string, string> = {
   trip: 'trip',
   flowfield: 'point',
+  symbol: 'point',
 };
 
 export function supersededLayerIds(layers: LayerLike[], added: AddedLayer): string[] {

@@ -3,6 +3,7 @@ import { initApplicationConfig } from '@kepler.gl/utils';
 
 import { DEFAULT_RASTER_SERVER_URL } from './constants';
 import { registerFlowFieldMessages } from './flowFieldMessages';
+import { registerSymbolMessages } from './symbolMessages';
 import { registerTile3dMessages } from './tile3dMessages';
 
 /**
@@ -53,6 +54,10 @@ export function configureKepler(): void {
   // The flow field is a layer kepler does not ship, so its words are in no
   // catalogue: without this its labels render as their own message ids.
   registerFlowFieldMessages(messages);
+
+  // The symbol layer is also one kepler does not ship, for the same reason as
+  // the flow field above.
+  registerSymbolMessages(messages);
 
   // The 3D tile layer is kepler's, but the two altitude knobs are not, so its
   // panel would show them as their own message ids.

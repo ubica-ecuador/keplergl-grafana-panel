@@ -417,3 +417,109 @@ export async function readRasterLayer(map: Locator, dataId: string): Promise<Ras
     };
   }, dataId);
 }
+
+/** What the symbol layer spec asserts about the layer. */
+export interface SymbolLayerSummary {
+  /** Rows the layer hands deck. The GPU filter does not remove any of them. */
+  symbols: number;
+  /**
+   * Of those, the rows deck's filter extension keeps: every filter value within
+   * `filterRange`. A row with no filter value reads as 0 on every channel, which
+   * is what deck assumes when a layer supplies none.
+   */
+  shown: number;
+  symbol: string;
+  angles: number[];
+  /** The icon names deck is asked for, and every name the atlas carries. */
+  iconKeys: string[];
+  atlasKeys: string[];
+  channels: Record<string, string | null>;
+  /**
+   * The column deck's `getAngle` trigger names. deck compares triggers, not
+   * accessor functions, so this is what decides whether a new rotation column
+   * redraws anything at all.
+   */
+  angleTriggerField: string | null;
+}
+
+/** Reads what the symbol layer is about to draw, from kepler's own store. */
+export async function readSymbolLayer(map: Locator): Promise<SymbolLayerSummary | null> {
+  return map.evaluate((node) => {
+    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
+    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
+    let store = null;
+    while (fiber) {
+      const candidate = fiber.memoizedProps && fiber.memoizedProps.store;
+      if (candidate && typeof candidate.getState === 'function') {
+        store = candidate;
+        break;
+      }
+      fiber = fiber.return;
+    }
+    if (!store) {
+      throw new Error('kepler store not found from map node');
+    }
+    const visState = (Object.values(store.getState().keplerGl ?? {})[0] as any)?.visState;
+    const index = (visState?.layers ?? []).findIndex((l: { type?: string }) => l.type === 'symbol');
+    if (index < 0) {
+      return null;
+    }
+    const layer = visState.layers[index];
+    const layerData = visState.layerData?.[index];
+    const rows = (layerData?.data ?? []) as unknown[];
+    // `mapState` is required here, unlike in `readVectorField`: this is the one
+    // custom layer whose `renderLayer` spreads `getDefaultDeckLayerProps`, and
+    // kepler's own base class reads `mapState.layerParameters` with no guard —
+    // omitting it throws inside the page, which `expect.poll` cannot see past.
+    // kepler itself always supplies a real `mapState`; an empty object is
+    // enough here since the only other read, `mapState.dragRotate`, tolerates
+    // `undefined`.
+    //
+    // `gpuFilter` is the dataset's, as kepler's `renderDeckGlLayer` passes it:
+    // without it the layer builds no `filterRange`, and the clock check below
+    // would have nothing to measure.
+    const gpuFilter = visState.datasets?.[layer.config.dataId]?.gpuFilter;
+    const built = rows.length > 0 ? layer.renderLayer({ data: layerData, mapState: {}, gpuFilter }) : [];
+    const props = built[0]?.props;
+    const angles: number[] = [];
+    const iconKeys: string[] = [];
+    let shown = 0;
+    // Guarded loops, like `readVectorField`: an exception in here would make
+    // `expect.poll` time out instead of failing with something readable.
+    for (const row of (props?.data ?? []).slice(0, 50)) {
+      try {
+        angles.push(Number(props?.getAngle?.(row)));
+        const key = props?.getIcon?.(row);
+        if (typeof key === 'string' && !iconKeys.includes(key)) {
+          iconKeys.push(key);
+        }
+      } catch {
+        continue;
+      }
+    }
+    const range = (props?.filterRange ?? []) as Array<[number, number]>;
+    for (const row of props?.data ?? []) {
+      try {
+        const values = (props?.getFilterValue ? props.getFilterValue(row) : range.map(() => 0)) as number[];
+        if (range.every(([low, high], i) => values[i] >= low && values[i] <= high)) {
+          shown++;
+        }
+      } catch {
+        continue;
+      }
+    }
+    return {
+      symbols: rows.length,
+      shown,
+      symbol: String(layer.config.visConfig?.symbol ?? ''),
+      angles,
+      iconKeys,
+      atlasKeys: props?.iconMapping ? Object.keys(props.iconMapping) : [],
+      channels: {
+        angleField: layer.config.angleField?.name ?? null,
+        sizeField: layer.config.sizeField?.name ?? null,
+      },
+      angleTriggerField: props?.updateTriggers?.getAngle?.angleField?.name ?? null,
+    };
+  });
+}

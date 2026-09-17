@@ -83,7 +83,7 @@ export function glyphCatalogue(): Glyph[] {
   return glyphs;
 }
 
-function arrowGlyph(): Glyph {
+export function arrowGlyph(): Glyph {
   return {
     key: 'arrow',
     anchor: [MID, MID],
@@ -131,8 +131,37 @@ export function atlasSize(count: number, columns = ATLAS_COLUMNS): { width: numb
   return { width: columns * CELL, height: Math.ceil(count / columns) * CELL };
 }
 
+/** Paints one glyph into the cell whose top-left corner is (x, y). */
+export function drawGlyph(glyph: Glyph, ctx: Painter, x: number, y: number): void {
+  for (const shape of glyph.shapes) {
+    ctx.beginPath();
+    if (shape.kind === 'circle') {
+      ctx.arc(x + shape.centre[0], y + shape.centre[1], shape.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      continue;
+    }
+    shape.points.forEach(([px, py], i) => (i === 0 ? ctx.moveTo(x + px, y + py) : ctx.lineTo(x + px, y + py)));
+    if (shape.kind === 'polygon') {
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.stroke();
+    }
+  }
+}
+
 /** Paints the glyphs into a context, row by row, and maps each key to its cell. */
-export function paintAtlas(glyphs: Glyph[], ctx: Painter, columns = ATLAS_COLUMNS): Record<string, IconFrame> {
+export function paintAtlas<T extends Glyph>(
+  glyphs: T[],
+  ctx: Painter,
+  columns = ATLAS_COLUMNS,
+  draw: (glyph: T, ctx: Painter, x: number, y: number) => void = drawGlyph as (
+    glyph: T,
+    ctx: Painter,
+    x: number,
+    y: number
+  ) => void
+): Record<string, IconFrame> {
   const mapping: Record<string, IconFrame> = {};
   ctx.strokeStyle = '#ffffff';
   ctx.fillStyle = '#ffffff';
@@ -143,23 +172,30 @@ export function paintAtlas(glyphs: Glyph[], ctx: Painter, columns = ATLAS_COLUMN
   glyphs.forEach((glyph, index) => {
     const x = (index % columns) * CELL;
     const y = Math.floor(index / columns) * CELL;
-    for (const shape of glyph.shapes) {
-      ctx.beginPath();
-      if (shape.kind === 'circle') {
-        ctx.arc(x + shape.centre[0], y + shape.centre[1], shape.radius, 0, Math.PI * 2);
-        ctx.stroke();
-        continue;
-      }
-      shape.points.forEach(([px, py], i) => (i === 0 ? ctx.moveTo(x + px, y + py) : ctx.lineTo(x + px, y + py)));
-      if (shape.kind === 'polygon') {
-        ctx.closePath();
-        ctx.fill();
-      } else {
-        ctx.stroke();
-      }
-    }
+    draw(glyph, ctx, x, y);
     mapping[glyph.key] = { x, y, width: CELL, height: CELL, anchorX: glyph.anchor[0], anchorY: glyph.anchor[1], mask: true };
   });
 
   return mapping;
+}
+
+/**
+ * Creates a canvas sized and ready for painting an atlas, or null if a 2D
+ * context is not available.
+ *
+ * Both symbol and vector field layers use this to create their atlases. Returns
+ * null rather than throwing when there is no 2D context to paint into — a
+ * browser out of canvas contexts, say. Nothing is cached on that path, so the
+ * next call tries again rather than remembering the failure.
+ */
+export function createAtlasCanvas(count: number): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
+  const { width, height } = atlasSize(count);
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return null;
+  }
+  return { canvas, ctx };
 }
