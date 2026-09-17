@@ -9,7 +9,7 @@ import {
   VisConfigSwitch,
 } from '@kepler.gl/components';
 
-import { SelectKnob } from './flowFieldConfigurator';
+import { SelectKnob } from './selectKnob';
 
 /**
  * The layer panel for the symbol layer.
@@ -38,25 +38,33 @@ export function SymbolLayerConfig({
 }: ConfiguratorArgs) {
   const settings = layer.visConfigSettings;
   const slider = (key: string) => <VisConfigSlider {...settings[key]} {...visConfiguratorProps} />;
-  const select = (property: string) => (
-    <SelectKnob layer={layer as never} visConfiguratorProps={visConfiguratorProps} property={property} />
-  );
 
   return (
     <div>
       <LayerConfigGroup label={'symbol.group.symbol'} collapsible>
-        {select('symbol')}
-        {select('directionConvention')}
+        {/* The shape's options are glyph names — the words a person reads, with
+            no messages behind them — and there are several hundred, so the
+            list is searched rather than scrolled. */}
+        <SelectKnob
+          layer={layer}
+          visConfiguratorProps={visConfiguratorProps}
+          property="symbol"
+          displayOption={(name) => name}
+          searchable
+        />
+        <SelectKnob layer={layer} visConfiguratorProps={visConfiguratorProps} property="directionConvention" />
         <ConfigGroupCollapsibleContent>{slider('opacity')}</ConfigGroupCollapsibleContent>
       </LayerConfigGroup>
 
       <LayerConfigGroup label={'symbol.group.rotation'} collapsible>
         <ChannelByValueSelector channel={layer.visualChannels.angle} {...layerChannelConfigProps} />
-        {layer.config.angleField ? (
-          <VisConfigSwitch {...settings.fixedAngle} {...visConfiguratorProps} />
-        ) : (
-          slider('angleDegrees')
-        )}
+        {/* No switch for `fixedAngle` here, on purpose, though the layer
+            registers it and the size group offers its twin. It must stay on:
+            off, kepler rescales the bearing onto a range this layer does not
+            register and the layer stops drawing — and a bearing rescaled onto
+            any range is a wrong bearing anyway. It is the one registered knob
+            that deliberately has no control; do not add one. */}
+        {layer.config.angleField ? null : slider('angleDegrees')}
       </LayerConfigGroup>
 
       <LayerConfigGroup label={'symbol.group.size'} collapsible>

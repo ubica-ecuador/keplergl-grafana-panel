@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { IntlProvider } from 'react-intl';
 import { ThemeProvider } from 'styled-components';
 import { theme } from '@kepler.gl/styles';
@@ -55,12 +55,14 @@ describe('symbol layer panel', () => {
     expect(screen.getByText('Size')).toBeInTheDocument();
   });
 
-  it('offers the raw-column switch for both rotation and size once a column is bound', () => {
+  it('offers the raw-column switch for size, and deliberately none for rotation, once columns are bound', () => {
     // Regression coverage: `fixedSize` was registered by the layer and had a
     // message, but the size group never rendered its switch — there was no
-    // way to reach it from the panel. `fixedAngle`'s switch is the one this
-    // mirrors, and is asserted here too so a future regression on that side
-    // fails the same way.
+    // way to reach it from the panel.
+    //
+    // `fixedAngle` is the opposite case, and asserted absent so nobody "fixes"
+    // it back in: turned off, kepler rescales the bearing onto a range the
+    // layer does not register, d3 throws, and the layer stops drawing.
     const layer = {
       id: 'layer-1',
       type: SYMBOL_TYPE,
@@ -92,8 +94,8 @@ describe('symbol layer panel', () => {
       </IntlProvider>
     );
 
-    expect(screen.getByText('Use the column’s degrees')).toBeInTheDocument();
     expect(screen.getByText('Use the column’s number')).toBeInTheDocument();
+    expect(screen.queryByText('Use the column’s degrees')).not.toBeInTheDocument();
   });
 
   it('offers the declutter switch and its spacing slider once declutter is on', () => {
@@ -134,5 +136,76 @@ describe('symbol layer panel', () => {
 
     expect(screen.getByText('Thin overlapping symbols')).toBeInTheDocument();
     expect(screen.getByText('Minimum spacing (px)')).toBeInTheDocument();
+  });
+
+  it('names shapes by their glyph names, and lets the long list be searched', () => {
+    // Glyph names have no messages on purpose. Put through react-intl like the
+    // other selectors, each option rendered as `symbol.symbol.airport` and
+    // raised a missing-translation error of its own.
+    const onError = jest.fn();
+    const layer = {
+      id: 'layer-1',
+      type: SYMBOL_TYPE,
+      config: { visConfig: { symbol: 'airport', directionConvention: 'towards' }, colorField: null, colorUI: {} },
+      visConfigSettings: {
+        symbol: SYMBOL_VIS_CONFIGS.symbol as unknown as Record<string, unknown>,
+        directionConvention: SYMBOL_VIS_CONFIGS.directionConvention as unknown as Record<string, unknown>,
+      },
+      visualChannels: {
+        angle: { key: 'angle', property: 'angle' },
+        size: { key: 'size', property: 'size' },
+        color: { key: 'color', property: 'color' },
+      },
+    };
+
+    const { container } = render(
+      <IntlProvider locale="en" messages={{ ...messages.en, ...SYMBOL_MESSAGES }} onError={onError}>
+        <ThemeProvider theme={theme}>
+          <SymbolLayerConfig
+            layer={layer}
+            visConfiguratorProps={{ layer, onChange: () => undefined }}
+            layerConfiguratorProps={{ layer, onChange: () => undefined }}
+            layerChannelConfigProps={{ layer, fields: [], onChange: () => undefined }}
+          />
+        </ThemeProvider>
+      </IntlProvider>
+    );
+
+    expect(screen.getByText('airport')).toBeInTheDocument();
+    // The small enumeration beside it is still translated.
+    expect(screen.getByText('Where it goes')).toBeInTheDocument();
+
+    // kepler's dropdown list pages its options in with an IntersectionObserver,
+    // which jsdom lacks. Without a stand-in the list throws on mount, and
+    // kepler's `Portaled` error boundary re-mounts it forever — a hung test, not
+    // a failed one.
+    const scope = globalThis as { IntersectionObserver?: unknown };
+    const original = scope.IntersectionObserver;
+    scope.IntersectionObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+    try {
+      const [shape] = container.querySelectorAll('.item-selector__dropdown');
+      fireEvent.click(shape);
+
+      const listed = () => [...document.body.querySelectorAll('.list__item')].map((item) => item.textContent);
+      expect(listed().length).toBeGreaterThan(0);
+      expect(listed().some((text) => text?.startsWith('symbol.'))).toBe(false);
+
+      // Maki's bus sits hundreds of names down; typing finds it.
+      const search = document.body.querySelector('.typeahead__input') as HTMLInputElement;
+      expect(search).not.toBeNull();
+      fireEvent.change(search, { target: { value: 'bus' } });
+      expect(listed()).toContain('bus');
+    } finally {
+      scope.IntersectionObserver = original;
+    }
+
+    const missing = onError.mock.calls
+      .map(([error]) => String(error?.message ?? ''))
+      .filter((message) => message.includes('"symbol.symbol.'));
+    expect(missing).toEqual([]);
   });
 });
