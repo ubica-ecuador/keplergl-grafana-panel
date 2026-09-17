@@ -118,4 +118,30 @@ describe('pictureState', () => {
     expect(generationFor('l1', ['k-new'])).toBe(1);
     expect(generationFor('l2', ['k-new'])).toBe(0);
   });
+
+  it('keeps a layer in the map while it keeps rendering unchanged', async () => {
+    const assignment = { urls: ['https://a/1.png'], failures: [], overflow: 0 };
+    recordPictureAssignment('kept', assignment);
+    await flush();
+    const keptAfterFirstWrite = readPictureStatus('kept');
+
+    // Record 64 other layers, and re-record 'kept' with the same assignment after each.
+    for (let i = 0; i < MAX_TRACKED_LAYERS; i++) {
+      recordPictureAssignment(`other${i}`, { urls: ['https://b/1.png'], failures: [], overflow: 0 });
+      recordPictureAssignment('kept', assignment);
+    }
+
+    // 'kept' should still be in the map and be the same object as after its first write.
+    expect(readPictureStatus('kept')).toBe(keptAfterFirstWrite);
+
+    // No-op re-records should not notify listeners.
+    await flush();
+    const listener = jest.fn();
+    subscribePictureStatus(listener);
+
+    recordPictureAssignment('kept', assignment);
+    await flush();
+
+    expect(listener).not.toHaveBeenCalled();
+  });
 });

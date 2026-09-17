@@ -115,6 +115,10 @@ export function recordPictureAssignment(
     previous.loads.size === loads.size &&
     [...loads].every(([url, load]) => previous.loads.get(url) === load);
   if (same) {
+    // Refresh recency so this layer is not evicted while still rendering.
+    // Re-insert keeps the same object identity; useSyncExternalStore sees no change.
+    statuses.delete(layerId);
+    statuses.set(layerId, previous);
     return;
   }
   for (const [url, load] of loads) {
