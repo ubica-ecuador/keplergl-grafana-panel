@@ -106,6 +106,9 @@ describe('symbol layer on kepler’s real Layer', () => {
     expect(props.data.length).toBeGreaterThan(0);
     for (const row of props.data) {
       expect(props.getAngle(row)).toBe(deckAngle(45, 'towards'));
+      // Size and colour arrive as constants too; the layer hands deck functions.
+      expect(props.getSize(row)).toBe(layer.config.visConfig.symbolSize);
+      expect(props.getColor(row)).toEqual(layer.config.color);
     }
   });
 
