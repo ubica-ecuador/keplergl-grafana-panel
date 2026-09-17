@@ -163,6 +163,24 @@ export function asRowAccessor<T>(value: unknown, fallback: T): (row: unknown) =>
   return () => constant;
 }
 
+/**
+ * The rows kepler's GPU filters would let through: every filter value within
+ * its range, the test deck's filter extension applies per vertex.
+ *
+ * All of them when there is nothing to test against — no filter accessor, or
+ * no range because the dataset has no filter.
+ */
+export function shownByFilters<T>(rows: T[], getFilterValue: unknown, filterRange: unknown): T[] {
+  if (typeof getFilterValue !== 'function' || !Array.isArray(filterRange)) {
+    return rows;
+  }
+  const ranges = filterRange as Array<[number, number]>;
+  return rows.filter((row) => {
+    const values = (getFilterValue as (row: T) => ArrayLike<number>)(row);
+    return ranges.every(([low, high], i) => i >= values.length || (values[i] >= low && values[i] <= high));
+  });
+}
+
 /** What a kepler dataset carries for the filters that run on the GPU. */
 interface GpuFilter {
   filterValueAccessor(dataContainer: unknown): () => (row: unknown) => unknown;
@@ -397,13 +415,24 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       const sizeOf = asRowAccessor<number>(layerData?.getSize, setting(visConfig.symbolSize, 30));
       const colorOf = asRowAccessor<unknown>(layerData?.getColor, this.config.color);
 
+      const defaults = this.getDefaultDeckLayerProps(opts ?? {});
+      const getFilterValue = layerData?.getFilterValue;
+
       const camera = (visConfig.flowContext as { camera?: { zoom: number; latitude: number } } | undefined)?.camera;
       const metresPerPixel = camera ? metresPerPixelAt(camera.latitude, camera.zoom) : 0;
       const spacingDegrees = (setting(visConfig.declutterSpacingPx, 40) * metresPerPixel) / 111_320;
       const drawn =
         visConfig.declutter === true && spacingDegrees > 0
           ? thinBySpacing(
-              rows as Array<{ position: [number, number, number] }>,
+              // Only among the rows the filters show. They hide the rest on the
+              // GPU, after this runs, so thinning every row could keep a hidden
+              // one over the shown one beside it — the same station an hour
+              // later, say — and the place would draw nothing at all.
+              shownByFilters(
+                rows as Array<{ position: [number, number, number] }>,
+                getFilterValue,
+                defaults.filterRange
+              ),
               // Longitude is divided by the cosine of the latitude so a cell is
               // as wide as it is tall on the ground, instead of stretching
               // towards the poles.
@@ -421,10 +450,9 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       // trigger: kepler's own per channel — its column, scale, domain, range
       // and constant — with this layer's reading of the angle added on top.
       const channelTriggers = this.getVisualChannelUpdateTriggers();
-      const getFilterValue = layerData?.getFilterValue;
 
       const deckLayer = buildDeckLayer({
-        ...this.getDefaultDeckLayerProps(opts ?? {}),
+        ...defaults,
         id: `${this.id}-symbol`,
         data: drawn,
         // Only the glyph in use, so the atlas stays one cell wide.

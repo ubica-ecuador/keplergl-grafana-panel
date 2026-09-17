@@ -200,6 +200,36 @@ describe('symbol layer on kepler’s real Layer', () => {
     expect(props.updateTriggers.getFilterValue).toBe(table.gpuFilter.filterValueUpdateTriggers);
   });
 
+  it('thins among the rows the clock shows, so a station hidden later does not hide its shown hour', () => {
+    // Cuenca is 4 at the first timestep and 5 at the second, at the same place.
+    // Thinning every row kept the heavier second one, which the clock's window
+    // over the first then hid on the GPU: the station vanished altogether.
+    const table = stationsTable();
+    const layer = symbolLayer(table, { size: 'speed' });
+    layer.updateLayerVisConfig({
+      declutter: true,
+      declutterSpacingPx: 10,
+      flowContext: { camera: { zoom: 6, latitude: -2 } },
+    });
+
+    const { filter } = applyFilterFieldName(
+      getDefaultFilter({ dataId: table.id, id: 'clock' }) as never,
+      { [table.id]: table } as never,
+      table.id,
+      'time'
+    );
+    table.filterTable([{ ...(filter as any), gpuChannel: [0], value: [T0, T0 + 30_000] }] as never, [layer], {});
+
+    const props = render(layer, table);
+    const [low, high] = props.filterRange[0];
+    const shown = props.data.filter((row: unknown) => {
+      const value = props.getFilterValue(row)[0];
+      return value >= low && value <= high;
+    });
+
+    expect(shown.map((row: { index: number }) => row.index).sort()).toEqual([0, 1, 2]);
+  });
+
   it('gives deck an update trigger for every channel, so changing a column redraws', () => {
     const table = stationsTable();
     const layer = symbolLayer(table, { angle: 'heading' });
