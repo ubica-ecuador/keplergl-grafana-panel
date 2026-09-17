@@ -79,13 +79,15 @@ export function framesToDatasets(
     const label = frame.name ?? `Query ${refId}`;
 
     // A velocity grid stays a velocity grid: the rows travel to kepler as they
-    // came, and the flow field layer traces the paths through them. What it does
-    // not keep is the rest of the forecast — see `oneTimestep`.
+    // came, every hour of the forecast among them. kepler's time filter is what
+    // walks them, and the layer draws the latest hour inside its window — see
+    // `latestStepRows`. Keeping only the first hour was the workaround for a
+    // map whose clock was already spent on the animation's phase.
     if (isWindFrame(roles) && isLatticeFrame(frame, roles)) {
       return {
         id,
         label,
-        rows: oneTimestep(frame, roles),
+        rows: toKeplerRows(frame, roles),
         flowFieldLayer: buildFlowField(roles, id) ?? undefined,
       };
     }
@@ -184,26 +186,6 @@ function withNumericBearings(frame: DataFrame, roles: FieldRoles): FieldRoles {
     rotation: numeric(roles.rotation) ? roles.rotation : undefined,
     direction: numeric(roles.direction) ? roles.direction : undefined,
   };
-}
-
-/**
- * The rows of one timestep — the earliest the query returned.
- *
- * A velocity query normally returns every hour of a forecast, so the same cell
- * appears many times. Keeping them all would let whichever row came last
- * overwrite each cell, which for a reversing wind means drawing the opposite of
- * the truth.
- *
- * The time column is dropped along with the other hours, and that is the point
- * of doing this here rather than in the layer. A grid that reached kepler with a
- * timestamp would grow a time filter over rows nobody filters — the layer reads
- * the whole dataset — leaving a widget on the map that moves and changes
- * nothing.
- */
-function oneTimestep(frame: DataFrame, roles: FieldRoles): KeplerRow[] {
-  const indices = earliestTimestepRows(frame, roles.time);
-  const withoutTime = { ...frame, fields: frame.fields.filter((field) => field.name !== roles.time) };
-  return toKeplerRows(withoutTime, { ...roles, time: undefined }, indices);
 }
 
 export function datasetId(refId: string): string {
