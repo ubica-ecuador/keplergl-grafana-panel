@@ -433,4 +433,22 @@ describe('describesLattice', () => {
   it('refuses a single row or a single column, which imply no spacing at all', () => {
     expect(describesLattice([-2, -2, -2], [-79, -78.75, -78.5])).toBe(false);
   });
+
+  it('accepts any two distinct points as a lattice — an accepted limit, pinned', () => {
+    // One gap per axis is always a regular one, so two stations anywhere read
+    // as a 2 × 2 grid with two cells filled and go down the flow field path.
+    // Accepted rather than special-cased: two points say nothing either way,
+    // and this pins the behaviour so a change to it is a decision, not drift.
+    expect(describesLattice([-2.9, -0.19], [-79.0, -78.48])).toBe(true);
+  });
+
+  it('reads repeated values as the same lattice, or the same scattering', () => {
+    // The same cells listed twice — every hour of a forecast, or duplicate
+    // rows — must neither create a grid nor break one.
+    const grid = { lats: [-2, -2, -1.75, -1.75], lngs: [-79, -78.75, -79, -78.75] };
+    expect(describesLattice([...grid.lats, ...grid.lats], [...grid.lngs, ...grid.lngs])).toBe(true);
+
+    const stations = { lats: [-2.9, -0.19, -2.17], lngs: [-79.0, -78.48, -79.92] };
+    expect(describesLattice([...stations.lats, ...stations.lats], [...stations.lngs, ...stations.lngs])).toBe(false);
+  });
 });
