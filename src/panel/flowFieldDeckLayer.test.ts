@@ -1,4 +1,4 @@
-import { makeScreenCamera } from './flowFieldDeckLayer';
+import { AnimatedTripsLayer, buildFlowFieldDeckLayer, makeScreenCamera } from './flowFieldDeckLayer';
 
 /**
  * Exercised against deck's real `WebMercatorViewport`, not a stub, because
@@ -78,5 +78,101 @@ describe('makeScreenCamera', () => {
     const far = makeScreenCamera({ ...CAMERA, zoom: 8 })!;
 
     expect(far.metresPerPixel / near.metresPerPixel).toBeCloseTo(16, 0);
+  });
+});
+
+/**
+ * The animated layer, without deck's lifecycle.
+ *
+ * `draw` itself is four lines of plumbing into deck and is covered in the
+ * browser; what is worth asserting here is the decision it delegates — what the
+ * shader is told, and whether another frame is asked for.
+ */
+function animatedLayer(props: Record<string, unknown>, canvas: Record<string, unknown> = { isVisible: true }) {
+  const written: Array<Record<string, unknown>> = [];
+  const layer = Object.create(AnimatedTripsLayer.prototype) as AnimatedTripsLayer;
+
+  Object.assign(layer, {
+    props: { cycleMs: 1000, trailMs: 40, animate: true, ...props },
+    state: { model: { shaderInputs: { setProps: (p: Record<string, unknown>) => written.push(p) } } },
+    // luma keeps this flag per canvas, with its own IntersectionObserver.
+    context: { device: { canvasContext: canvas } },
+  });
+
+  return { layer, trips: () => written[written.length - 1]?.trips as Record<string, unknown> };
+}
+
+describe('AnimatedTripsLayer', () => {
+  it('runs a fading trail on its own clock', () => {
+    const { layer, trips } = animatedLayer({});
+
+    expect(layer.writeAnimationUniforms()).toBe(true);
+    expect(trips().fadeTrail).toBe(true);
+    expect(trips().trailLength).toBe(40);
+    expect(trips().currentTime as number).toBeGreaterThanOrEqual(0);
+    expect(trips().currentTime as number).toBeLessThan(1000);
+  });
+
+  it('draws the streamlines whole, and asks for no more frames, when it is not animating', () => {
+    // The knob a reader turns for a still picture of the field. The map used to
+    // go blank instead, because a stopped playhead sits where trails are empty.
+    const { layer, trips } = animatedLayer({ animate: false });
+
+    expect(layer.writeAnimationUniforms()).toBe(false);
+    expect(trips().fadeTrail).toBe(false);
+  });
+
+  it('stops while its panel is scrolled out of the dashboard', () => {
+    // A dashboard is a column of panels and Grafana keeps the ones above and
+    // below mounted. Left running, a map two screens up repaints the whole
+    // scene — every layer under this one included — for nobody.
+    const { layer } = animatedLayer({}, { isVisible: false });
+
+    expect(layer.writeAnimationUniforms()).toBe(false);
+  });
+
+  it('stops while the tab is in the background', () => {
+    const hidden = jest.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+    try {
+      expect(animatedLayer({}).layer.writeAnimationUniforms()).toBe(false);
+    } finally {
+      hidden.mockRestore();
+    }
+  });
+
+  it('pays an expensive frame back with an equal pause', () => {
+    // The clock inside the page is real time, so a paced frame loses no phase:
+    // the field moves the same distance, in fewer steps.
+    const { layer } = animatedLayer({});
+
+    // Nothing drawn yet, so nothing to pay back.
+    expect(layer.nextFrameDelay(1_000)).toBe(0);
+    // That frame took 200 ms of somebody's main thread.
+    expect(layer.nextFrameDelay(1_200)).toBe(200);
+    // And the pause it bought is not drawing: 200 ms of pause and a 10 ms frame
+    // is a cheap frame, not a 210 ms one. Without this the pause feeds itself
+    // and the field slows to a stop.
+    expect(layer.nextFrameDelay(1_410)).toBe(0);
+  });
+
+  it('stops when the system asks for less motion', () => {
+    // Not thrift: a person who has told their machine that movement makes them
+    // unwell has told this map too.
+    const asked = { matches: true, media: '(prefers-reduced-motion: reduce)' };
+    (window as unknown as { matchMedia: unknown }).matchMedia = () => asked;
+    try {
+      expect(animatedLayer({}).layer.writeAnimationUniforms()).toBe(false);
+    } finally {
+      delete (window as unknown as { matchMedia?: unknown }).matchMedia;
+    }
+  });
+});
+
+describe('buildFlowFieldDeckLayer', () => {
+  it('builds the self-animating layer, not deck\'s stock trips layer', () => {
+    const layer = buildFlowFieldDeckLayer({ id: 'a', data: [], cycleMs: 60_000, trailMs: 2_400, animate: true });
+
+    expect(layer).toBeInstanceOf(AnimatedTripsLayer);
+    expect((layer as AnimatedTripsLayer).props.cycleMs).toBe(60_000);
   });
 });

@@ -143,7 +143,7 @@ function eastwardGrid(side: number, speed = 12, altitude?: number) {
   return gridDataset(rows);
 }
 
-const CONTEXT: FlowFieldContext = { baseMs: 1_000, tallest: 0 };
+const CONTEXT: FlowFieldContext = { tallest: 0 };
 
 function layerOver(
   dataset: ReturnType<typeof gridDataset>,
@@ -355,13 +355,24 @@ describe('flow field layer — reusing the trace', () => {
 });
 
 describe('flow field layer — the clock', () => {
-  it('runs every streamline over one window starting at the dashboard range', () => {
+  it('leaves the map\'s clock alone', () => {
+    // The trail's speed is not the wind's — the tracer normalises it to a
+    // legible number of pixels per cycle — so this layer has no business on the
+    // one axis a dashboard has. It animates itself; the clock is for the hour
+    // of the forecast that is drawn.
     const dataset = eastwardGrid(6);
     const layer = layerOver(dataset, COMPONENTS, { cycleSeconds: 30 });
 
     layer.formatLayerData({ 'grafana-A': dataset });
 
-    expect(layer.config.animation).toEqual({ enabled: true, domain: [1_000, 31_000] });
+    // kepler's rule, spelled out: a layer is animatable when it has switched
+    // the animation on *and* carries a window. Its base class hands every layer
+    // `{enabled: false}` — the stub base class here hands it nothing — so what
+    // is asserted is that this layer never turns it on, rather than the absence
+    // of a key that only the real kepler supplies.
+    const animation = layer.config.animation;
+    expect(animation?.enabled).not.toBe(true);
+    expect(animation?.domain).toBeUndefined();
   });
 
   it('traces the vertex times from zero, not from the epoch', () => {
@@ -509,13 +520,33 @@ describe('flow field layer — drawing', () => {
     built.length = 0;
   });
 
-  it('gives deck the playhead relative to the window the lines were traced in', () => {
+  it('hands deck the cycle to run itself on', () => {
     const layer = layerOver(dataset, COMPONENTS, { cycleSeconds: 60 });
     const data = layer.formatLayerData({ 'grafana-A': dataset });
 
-    layer.renderLayer({ data, animationConfig: { currentTime: 21_000, domain: [1_000, 61_000] } });
+    layer.renderLayer({ data });
 
-    expect(built[0].currentTime).toBe(20_000);
+    expect(built[0].cycleMs).toBe(60_000);
+    expect(built[0].animate).toBe(true);
+  });
+
+  it('draws without anyone pressing play', () => {
+    // What this replaces: the field was blank until the map's clock ran, since
+    // a playhead parked at the start of the window sits where every trail has
+    // zero length. A dashboard that loads showing nothing reads as broken.
+    const layer = layerOver(dataset, COMPONENTS);
+    const data = layer.formatLayerData({ 'grafana-A': dataset });
+
+    expect(layer.renderLayer({ data })).toHaveLength(1);
+  });
+
+  it('draws a still field when the animation is switched off', () => {
+    const layer = layerOver(dataset, COMPONENTS, { animate: false });
+    const data = layer.formatLayerData({ 'grafana-A': dataset });
+
+    layer.renderLayer({ data });
+
+    expect(built[0].animate).toBe(false);
   });
 
   it('measures the trail against the cycle, not against a bare number', () => {
@@ -526,18 +557,9 @@ describe('flow field layer — drawing', () => {
     const layer = layerOver(dataset, COMPONENTS, { cycleSeconds: 60, trailShare: 5 });
     const data = layer.formatLayerData({ 'grafana-A': dataset });
 
-    layer.renderLayer({ data, animationConfig: { currentTime: 21_000, domain: [1_000, 61_000] } });
+    layer.renderLayer({ data });
 
-    expect(built[0].trailLength).toBe(3_000);
-  });
-
-  it('draws nothing before the clock has a value', () => {
-    // A paused field is a blank map: at the start of the window every trail has
-    // zero length, and with no playhead at all there is no window.
-    const layer = layerOver(dataset, COMPONENTS);
-    const data = layer.formatLayerData({ 'grafana-A': dataset });
-
-    expect(layer.renderLayer({ data, animationConfig: {} })).toEqual([]);
+    expect(built[0].trailMs).toBe(3_000);
   });
 
   it('switches itself off when the layer is hidden', () => {

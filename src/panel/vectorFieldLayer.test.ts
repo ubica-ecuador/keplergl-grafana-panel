@@ -107,7 +107,7 @@ function layerOver(
   layer.config.columns = Object.fromEntries(
     Object.entries(columnKeys).map(([key, name]) => [key, { value: name, fieldIdx: dataset.columnIndex[name] }])
   );
-  layer.config.visConfig = { ...layer.config.visConfig, flowContext: { baseMs: 0, tallest: 0 }, ...visConfig };
+  layer.config.visConfig = { ...layer.config.visConfig, flowContext: { tallest: 0 }, ...visConfig };
   return layer;
 }
 
@@ -132,7 +132,7 @@ describe('vector field layer — placing symbols', () => {
     const layer = layerOver(dataset, COMPONENTS, {
       placement: 'screen',
       spacingPx: 100,
-      flowContext: { baseMs: 0, tallest: 0, camera: cameraShowing({ west: 0, east: 2, south: 0, north: 2 }) },
+      flowContext: { tallest: 0, camera: cameraShowing({ west: 0, east: 2, south: 0, north: 2 }) },
     });
 
     expect(layer.formatLayerData({ 'grafana-A': dataset }).data).toHaveLength(32);
@@ -159,7 +159,7 @@ describe('vector field layer — placing symbols', () => {
 
     layer.config.visConfig = {
       ...layer.config.visConfig,
-      flowContext: { baseMs: 0, tallest: 0, camera: cameraShowing({ west: 0, east: 1, south: 0, north: 1 }) },
+      flowContext: { tallest: 0, camera: cameraShowing({ west: 0, east: 1, south: 0, north: 1 }) },
     };
 
     expect(layer.formatLayerData({ 'grafana-A': dataset }, first)).toBe(first);
@@ -172,7 +172,7 @@ describe('vector field layer — placing symbols', () => {
 
     layer.config.visConfig = {
       ...layer.config.visConfig,
-      flowContext: { baseMs: 0, tallest: 0, camera: cameraShowing({ west: 0, east: 2, south: 0, north: 2 }) },
+      flowContext: { tallest: 0, camera: cameraShowing({ west: 0, east: 2, south: 0, north: 2 }) },
     };
 
     expect(layer.formatLayerData({ 'grafana-A': dataset }, first)).not.toBe(first);
@@ -201,7 +201,7 @@ describe('vector field layer — placing symbols', () => {
 describe('symbolSignature', () => {
   const at = (visConfig: Record<string, unknown>, columns: Record<string, { value: string }> = {}) =>
     symbolSignature({ columns, visConfig });
-  const camera = (west: number) => ({ baseMs: 0, tallest: 0, camera: cameraShowing({ west, east: west + 1, south: 0, north: 1 }) });
+  const camera = (west: number) => ({ tallest: 0, camera: cameraShowing({ west, east: west + 1, south: 0, north: 1 }) });
 
   it('ignores the camera when the symbols sit on the data at ground level', () => {
     expect(at({ placement: 'cells', flowContext: camera(0) })).toBe(at({ placement: 'cells', flowContext: camera(5) }));

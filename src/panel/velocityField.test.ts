@@ -151,12 +151,12 @@ describe('stackedAltitude', () => {
   const frame = frameOf([{ latitude: 0, longitude: 0 }]);
 
   it('rests on the height knob with no altitude column and no camera', () => {
-    expect(stackedAltitude(frame, {}, { heightMeters: 2500 }, { baseMs: 0, tallest: 0 }, null)).toBe(2500);
+    expect(stackedAltitude(frame, {}, { heightMeters: 2500 }, { tallest: 0 }, null)).toBe(2500);
   });
 
   it('is scaled by the elevation knob', () => {
     expect(
-      stackedAltitude(frame, {}, { heightMeters: 2500, elevationScale: 2 }, { baseMs: 0, tallest: 0 }, null)
+      stackedAltitude(frame, {}, { heightMeters: 2500, elevationScale: 2 }, { tallest: 0 }, null)
     ).toBe(5000);
   });
 });

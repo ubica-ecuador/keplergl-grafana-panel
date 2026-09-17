@@ -176,9 +176,14 @@ scalar before the slope is taken from it, where it is doing considerably more th
 
 ## The lines follow the view
 
-::: tip Nothing is drawn until you press play
-At the start of the animation window every trail has zero length. A paused field is a blank map —
-press play on the timeline.
+::: tip The field animates itself
+There is no play button to press. The streamlines run on a clock of their own, because what moves
+along them is a trail rather than the weather: the tracer normalises the speed to a legible number
+of pixels per cycle. The map's own timeline is left for the data.
+
+Switch **Animation → Animate** off for a still field: the streamlines then draw end to end, which is
+the version to print or to read rather than watch. A system set to reduce motion gets that field
+without asking, and a panel scrolled out of the dashboard stops animating until it comes back.
 :::
 
 Density and on-screen length hold steady as you zoom, because the field is **re-traced whenever the
@@ -192,7 +197,7 @@ horizon — measured at a pitch of 50°, two and a half times deeper up-range th
 is tall. A field seeded into the rectangle simply stops halfway up the screen.
 
 Re-tracing reads the grid already in the browser, so panning costs no database work, and it does not
-touch the dataset — the playhead keeps running through it.
+touch the dataset.
 
 ## Density
 
@@ -304,6 +309,7 @@ Every knob is in the layer's own panel, grouped as **Colour**, **Streamlines**, 
 | Width by speed | Streamlines | Replaces the one width with **Width range (px)**: slow lines draw at its low end, fast ones at its high end. Off by default. |
 | Trail length | Streamlines | How much of the cycle the moving trail spans, as a percentage. |
 | Line length | Streamlines | Vertices per streamline — how far a line reaches, not how much of it is lit. |
+| Animate | Animation | Off draws the streamlines whole and still, and asks for no more frames. On by default. |
 | Cycle | Animation | The length of the loop, in seconds. |
 | Line lifetime | Animation | The share of the cycle one line lives for, and so how much of the field is lit at once. |
 | Seamless loop | Animation | Carries a line whose life runs past the end of the cycle round to the start of it. On by default. |

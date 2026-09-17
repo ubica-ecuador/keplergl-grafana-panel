@@ -100,16 +100,15 @@ straight from a GFS file needs no renaming. Both pairs are all-or-nothing: half 
 nothing.
 :::
 
-## 5. Press play
+## 5. Watch it
 
-::: warning The map looks empty until the clock runs
-At the start of the animation window every trail has zero length, so a paused field is a blank map.
+The field is already moving: it animates on a clock of its own, sixty seconds to the loop, and
+nobody has to press anything. The timeline at the bottom of the map is not involved — it belongs to
+the data, and a grid of one hour has no need of it.
 
-Press **play** on the timeline at the bottom. The window is 60 seconds long and loops.
-:::
-
-This catches everyone once, including the person who wrote this page: the panel reported 4,826
-traced lines and drew nothing at all, because the playhead was parked at the start.
+If the map holds still, look for three reasons before anything else: **Animation → Animate** is off,
+the panel is scrolled out of view, or this machine is set to reduce motion. In all three the
+streamlines are still drawn, end to end rather than as moving trails.
 
 ## 6. Tune it, on the layer
 
@@ -136,8 +135,8 @@ Two knobs decide the character of the map, both under **Streamlines**:
 Colour comes from speed by default: each line is coloured by its own mean, through the ramp under
 **Colour**. Turn **Colour by speed** off for a single flat colour.
 
-**Animation → Cycle** is the length of the loop; the clock at the bottom follows it. **Line
-lifetime** next to it is how much of the field is lit at once — raise it for a fuller map.
+**Animation → Cycle** is the length of the loop. **Line lifetime** next to it is how much of the
+field is lit at once — raise it for a fuller map.
 
 Leave **Seamless loop** on. Off, the field visibly empties as the animation reaches the end and
 refills as it starts again; on, a line that runs past the end is carried round to the beginning and
@@ -177,7 +176,7 @@ half-broken grid produces a patchy map rather than a smooth wrong one.
 - **The grid must be regular**, and a coordinate API that snaps to its own model grid will quietly
   destroy that. Round, and space wider than the snapping error.
 - A field with no lines and no error is the signature of a failed grid inference.
-- Streamlines draw nothing until you press play.
+- The streamlines animate on their own clock; the map's timeline is for the data, not for them.
 - Density is a per-screen budget, and it lives on the layer along with everything else.
 
 ## Where to go from here

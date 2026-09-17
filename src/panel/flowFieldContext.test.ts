@@ -4,17 +4,17 @@ const CAMERA = { latitude: 2, longitude: 2, zoom: 8, pitch: 0, bearing: 0, width
 
 describe('outdatedFlowContexts', () => {
   it('tells a layer that has never been told anything', () => {
-    const patches = outdatedFlowContexts([{ id: 'a', altitudeMeters: 0 }], CAMERA, 1_000);
+    const patches = outdatedFlowContexts([{ id: 'a', altitudeMeters: 0 }], CAMERA);
 
-    expect(patches).toEqual([{ id: 'a', context: { camera: CAMERA, baseMs: 1_000, tallest: 0 } }]);
+    expect(patches).toEqual([{ id: 'a', context: { camera: CAMERA, tallest: 0 } }]);
   });
 
   it('says nothing when every layer already carries the same context', () => {
     // This is what keeps the hook out of a dispatch loop: it runs on every store
     // notification, and writing the same context back would notify it again.
-    const context = { camera: CAMERA, baseMs: 1_000, tallest: 0 };
+    const context = { camera: CAMERA, tallest: 0 };
 
-    expect(outdatedFlowContexts([{ id: 'a', altitudeMeters: 0, context }], CAMERA, 1_000)).toEqual([]);
+    expect(outdatedFlowContexts([{ id: 'a', altitudeMeters: 0, context }], CAMERA)).toEqual([]);
   });
 
   it('gives every layer the tallest level on the map, not its own', () => {
@@ -26,44 +26,42 @@ describe('outdatedFlowContexts', () => {
         { id: 'low', altitudeMeters: 110 },
         { id: 'high', altitudeMeters: 3000 },
       ],
-      CAMERA,
-      0
+      CAMERA
     );
 
     expect(patches.map((p) => p.context.tallest)).toEqual([3000, 3000]);
   });
 
   it('re-tells everyone when a level is added above the others', () => {
-    const context = { camera: CAMERA, baseMs: 0, tallest: 110 };
+    const context = { camera: CAMERA, tallest: 110 };
     const patches = outdatedFlowContexts(
       [
         { id: 'low', altitudeMeters: 110, context },
         { id: 'high', altitudeMeters: 3000 },
       ],
-      CAMERA,
-      0
+      CAMERA
     );
 
     expect(patches.map((p) => p.id)).toEqual(['low', 'high']);
   });
 
   it('has nothing to say when the map carries no flow field', () => {
-    expect(outdatedFlowContexts([], CAMERA, 0)).toEqual([]);
+    expect(outdatedFlowContexts([], CAMERA)).toEqual([]);
   });
 
   it('still speaks before the map has a size to report', () => {
     // kepler reports a zero-sized map until its layout settles. The field is
     // then traced over its whole extent, which is what happened on load before
     // any of this existed, and corrected on the first settle.
-    const patches = outdatedFlowContexts([{ id: 'a', altitudeMeters: 0 }], null, 5);
+    const patches = outdatedFlowContexts([{ id: 'a', altitudeMeters: 0 }], null);
 
     expect(patches[0].context.camera).toBeUndefined();
-    expect(patches[0].context.baseMs).toBe(5);
+    expect(patches[0].context.tallest).toBe(0);
   });
 });
 
 describe('sameContext', () => {
-  const context = { camera: CAMERA, baseMs: 1, tallest: 2 };
+  const context = { camera: CAMERA, tallest: 2 };
 
   it('spots a moved map', () => {
     expect(sameContext(context, { ...context, camera: { ...CAMERA, longitude: 5 } })).toBe(false);
@@ -85,11 +83,11 @@ describe('sameContext', () => {
     expect(sameContext(context, { ...context, camera: { ...CAMERA, width: 400 } })).toBe(false);
   });
 
-  it('spots a new dashboard range', () => {
-    expect(sameContext(context, { ...context, baseMs: 2 })).toBe(false);
+  it('spots a level arriving above the tallest one', () => {
+    expect(sameContext(context, { ...context, tallest: 9 })).toBe(false);
   });
 
   it('accepts a context that would trace the same lines', () => {
-    expect(sameContext(context, { camera: { ...CAMERA }, baseMs: 1, tallest: 2 })).toBe(true);
+    expect(sameContext(context, { camera: { ...CAMERA }, tallest: 2 })).toBe(true);
   });
 });

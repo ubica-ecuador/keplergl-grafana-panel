@@ -31,10 +31,11 @@ test.describe.configure({ timeout: 180_000 });
  * rows are that lattice; the streamlines are computed by the layer, from the
  * viewport, and exist nowhere in the data.
  *
- * The map is deliberately not screenshotted. At the start of the animation
- * window every trail has zero length, so a paused field draws nothing at all —
- * a picture would assert where the playhead is rather than what the layer did.
- * What is asserted is the geometry the layer traced.
+ * This first test asserts the geometry the layer traced rather than a picture
+ * of it: what is at stake here is which layers the panel built and how many
+ * lines came out, and a screenshot would answer neither. The test below does
+ * take pictures, because what it asks — does this move on its own? — is a
+ * question about pixels.
  */
 test('draws a velocity grid as a flow field, superseding the point layer', async ({
   gotoPanelEditPage,
@@ -60,31 +61,46 @@ test('draws a velocity grid as a flow field, superseding the point layer', async
   await expect.poll(async () => (await readFlowField(map))?.lines ?? 0, { timeout: 60_000 }).toBeGreaterThan(100);
 });
 
-test('runs the streamlines on a clock kepler agrees with', async ({
-  gotoPanelEditPage,
-  readProvisionedDashboard,
-  page,
-}) => {
-  test.slow();
-  // `layerVisConfigChange` recomputes a layer's data but never republishes the
-  // animation domain, so without the nudge in `useFlowFieldAnimationDomain` the
-  // window the lines were traced in is one the clock knows nothing about — and
-  // on first load the time widget does not appear at all.
-  const dashboard = await readProvisionedDashboard({ fileName: 'flowfield.json' });
-  const panelEditPage = await gotoPanelEditPage({ dashboard, id: '1' });
+// The suite runs with `prefers-reduced-motion: reduce` so the software renderer
+// is not pegged by a field nobody is watching — see `playwright.config.ts`. This
+// test is the exception, because movement is what it asks about.
+test.describe('with motion allowed', () => {
+  test.use({ reducedMotion: 'no-preference' });
 
-  const map = panelEditPage.panel.locator.locator('canvas').first();
-  await expect(map).toBeVisible({ timeout: 60_000 });
-  await settle(page);
+  test('animates itself, and leaves kepler\'s clock alone', async ({
+    gotoPanelEditPage,
+    readProvisionedDashboard,
+    page,
+  }) => {
+    test.slow();
+    // What this replaces: the field used to be stretched over kepler's own clock,
+    // so it drew nothing until someone pressed play — and it spent the map's one
+    // time axis on a phase that says nothing about the weather.
+    const dashboard = await readProvisionedDashboard({ fileName: 'flowfield.json' });
+    const panelEditPage = await gotoPanelEditPage({ dashboard, id: '1' });
 
-  await expect.poll(async () => (await readFlowField(map))?.animationDomain, { timeout: 60_000 }).not.toBeNull();
-  await expect.poll(async () => (await readFlowField(map))?.lines ?? 0, { timeout: 60_000 }).toBeGreaterThan(100);
+    const map = panelEditPage.panel.locator.locator('canvas').first();
+    await expect(map).toBeVisible({ timeout: 60_000 });
+    await settle(page);
+    await expect.poll(async () => (await readFlowField(map))?.lines ?? 0, { timeout: 60_000 }).toBeGreaterThan(100);
 
-  const field = await readFlowField(map);
-  const [start, end] = field!.domain!;
-  // The default cycle, in the window the layer traced.
-  expect(end - start).toBe(60_000);
-  expect(field!.animationDomain).toEqual(field!.domain);
+    const field = await readFlowField(map);
+    // kepler hands every layer `animation: {enabled: false}` (`base-layer.ts`), so
+    // the claim is not that the key is absent but that this layer never switches
+    // it on — and that the map's clock is left with no window at all, which is
+    // what keeps the time widget off a map whose only layer is a field.
+    expect(field!.animation?.enabled).not.toBe(true);
+    expect(field!.animationDomain).toBeNull();
+
+    // Nobody presses play, and the picture has to change anyway. Two shots of the
+    // same canvas a second apart: equal bytes would mean a still map, and a still
+    // map is what this whole change exists to end.
+    const first = await map.screenshot();
+    await page.waitForTimeout(1_500);
+    const second = await map.screenshot();
+
+    expect(Buffer.compare(first, second)).not.toBe(0);
+  });
 });
 
 test('re-traces the field when the layer panel asks for fewer lines', async ({
@@ -187,11 +203,11 @@ test('shows its colour ramp in the legend, and follows a range set by hand', asy
 /**
  * What this layer would hand deck right now, asked of the layer itself.
  *
- * Not measured off the canvas, though that was the first instinct. Under the
- * software renderer the animation advances about a tenth of a second of its own
- * clock per second of real time, so the playhead never leaves the start of the
- * window — where every trail has zero length and the map is legitimately blank.
- * A pixel count there measures the renderer's speed, not the layer's decision.
+ * Not measured off the canvas, though that was the first instinct: a hidden
+ * layer and a layer drawn in a colour close to the basemap's look the same to a
+ * pixel count, and what is at issue here is the decision, not the paint. (The
+ * test above does read pixels, because *movement* is a thing only pixels can
+ * show, and the field's clock runs in real time whatever the renderer manages.)
  */
 async function deckVisibility(map: import('@playwright/test').Locator): Promise<boolean | undefined> {
   return map.evaluate((node) => {

@@ -74,6 +74,11 @@ export type FlowFieldDeckLayerFactory = (props: Record<string, unknown>) => unkn
  * their keep the moment there is a second level: they are what puts 850 hPa and
  * 700 hPa in their real proportion to each other.
  *
+ * `animate` is the switch between a field that moves and a picture of one. Off,
+ * the streamlines are drawn end to end and the layer asks deck for no further
+ * frames — which is also what a machine set to reduce motion gets, and what a
+ * panel scrolled out of the dashboard falls back to.
+ *
  * `cycleSeconds` runs every streamline over one shared window, so the whole
  * field is on screen at all times and what moves is a short trail — the
  * earth.nullschool look. `lifeFraction` is how much of that window one line
@@ -127,6 +132,13 @@ export const FLOW_FIELD_VIS_CONFIGS = {
     step: 1,
     group: 'display',
     property: 'lineLength',
+  },
+  animate: {
+    type: 'boolean',
+    defaultValue: true,
+    label: 'flowfield.animate',
+    group: 'display',
+    property: 'animate',
   },
   cycleSeconds: {
     type: 'number',
@@ -277,7 +289,6 @@ export function traceSignature(config: FlowFieldLayerLike['config']): string {
     visConfig.heightMeters,
     visConfig.elevationScale,
     visConfig.zoomResponse,
-    context.baseMs,
     context.tallest,
     context.camera,
   ]);
@@ -349,28 +360,21 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
     }
 
     /**
-     * Animatable, and with a domain of its own.
+     * Not animatable, deliberately.
      *
-     * The clock at the bottom of the map exists only for layers that say this,
-     * and a velocity field without it is a still picture — which is the same as
-     * a blank map, because at the start of the window every trail has zero
-     * length.
+     * kepler's clock exists to say *when* — which hour of a forecast a map is
+     * showing — and this layer's animation answers nothing of the sort: what
+     * moves along a streamline is a trail whose speed the tracer normalises to
+     * a legible number of pixels per cycle. Claiming the clock for that spent
+     * the only time axis a dashboard has on a phase, merged a sixty-second
+     * window into the days a WMS or a set of trips runs over, and left a paused
+     * map blank. The layer keeps its own clock instead — `flowFieldClock.ts`.
      */
     getDefaultLayerConfig(props?: Record<string, unknown>): Record<string, unknown> {
       return {
         ...super.getDefaultLayerConfig(props),
         columnMode: (props?.columnMode as string) ?? 'components',
-        animation: { enabled: true, domain: null },
       };
-    }
-
-    /** The window every streamline is stretched over, in epoch ms. */
-    updateAnimationDomain(domain: [number, number]): void {
-      const current = this.config.animation?.domain;
-      if (current && current[0] === domain[0] && current[1] === domain[1]) {
-        return;
-      }
-      this.updateLayerConfig({ animation: { ...this.config.animation, domain } });
     }
 
     formatLayerData(
@@ -386,13 +390,7 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       const signature = traceSignature(this.config);
       const visConfig = this.config.visConfig ?? {};
       const context = (visConfig.flowContext ?? {}) as FlowFieldContext;
-      const baseMs = setting(context.baseMs, 0);
       const cycleMs = setting(visConfig.cycleSeconds, 60) * 1000;
-
-      // The domain is put back even on a cache hit: it costs a comparison, and
-      // getting it wrong leaves the map with a clock that runs somewhere the
-      // lines do not.
-      this.updateAnimationDomain([baseMs, baseMs + cycleMs]);
 
       if (
         oldLayerData &&
@@ -454,9 +452,10 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       return { data, speedDomain, signature, container: dataset.dataContainer };
     }
 
+    // No `animationConfig`: kepler passes one, and this layer has nothing to do
+    // with the playhead in it — see `getDefaultLayerConfig` above.
     renderLayer(opts?: {
       data?: FlowFieldLayerData;
-      animationConfig?: { currentTime?: number; domain?: [number, number] | null };
       /** The split map's verdict: shown in this panel, or the other one. */
       visible?: boolean;
     }): unknown[] {
@@ -467,11 +466,6 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
 
       const visConfig = this.config.visConfig ?? {};
       const cycleMs = setting(visConfig.cycleSeconds, 60) * 1000;
-      const domain0 = this.config.animation?.domain?.[0] ?? 0;
-      const currentTime = opts?.animationConfig?.currentTime;
-      if (!Number.isFinite(currentTime)) {
-        return [];
-      }
 
       const colors = ((visConfig.colorRange as { colors?: string[] })?.colors ?? []) as string[];
       const speedDomain = paintDomain(visConfig, opts?.data?.speedDomain ?? [0, 1]);
@@ -493,10 +487,11 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
           id: `${this.id}-flowfield`,
           data: lines,
           visible: this.config.isVisible !== false && shownInPane(opts),
-          // The vertices were traced from zero, so the playhead is offset by the
-          // same base the domain starts at.
-          currentTime: (currentTime as number) - domain0,
-          trailLength: (cycleMs * setting(visConfig.trailShare, 4)) / 100,
+          // The cycle and the trail, not a playhead: the layer runs its own
+          // clock over these — see `flowFieldClock.ts`.
+          cycleMs,
+          trailMs: (cycleMs * setting(visConfig.trailShare, 4)) / 100,
+          animate: visConfig.animate !== false,
           getWidth: widthBySpeed
             ? (line: Streamline) => thinnest + share(line) * (thickest - thinnest)
             : setting(visConfig.thickness, 2),

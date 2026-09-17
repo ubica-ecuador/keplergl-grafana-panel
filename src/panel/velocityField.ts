@@ -49,8 +49,6 @@ export type ScreenCameraFactory = (camera: CameraState) => ScreenCamera | null;
 export interface FlowFieldContext {
   /** Where the map is looking from, so seeding and step length follow the screen. */
   camera?: CameraState;
-  /** Epoch ms the animation starts from — the dashboard range's start. */
-  baseMs: number;
   /**
    * The tallest level on the map, in metres.
    *
