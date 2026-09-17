@@ -366,6 +366,70 @@ describe('symbol layer on kepler’s real Layer', () => {
     expect(after.getIcon).not.toEqual(before.getIcon);
   });
 
+  describe('standing upright', () => {
+    /** Renders with the map turned to a bearing, as a user rotating it would. */
+    function renderAtBearing(layer: any, table: InstanceType<typeof KeplerTable>, bearing: number) {
+      built.length = 0;
+      layer.renderLayer({
+        data: layer.formatLayerData({ [table.id]: table }),
+        gpuFilter: table.gpuFilter,
+        mapState: { zoom: 6, latitude: -2, longitude: -79, bearing, pitch: 50 },
+        idx: 0,
+        visible: true,
+      });
+      return built;
+    }
+
+    it('lies on the map unless asked to stand', () => {
+      const table = stationsTable();
+      const [props] = renderAtBearing(symbolLayer(table, { angle: 'heading' }), table, 30);
+
+      expect(props.billboard).toBe(false);
+      expect(props.getAngle(props.data.find((row: { index: number }) => row.index === 0))).toBe(
+        deckAngle(90, 'towards')
+      );
+    });
+
+    it('faces the camera, with its shadow and outline, when asked to stand', () => {
+      const table = stationsTable();
+      const layer = symbolLayer(table);
+      layer.updateLayerVisConfig({ upright: true, shadow: true, outline: true });
+
+      const drawn = renderAtBearing(layer, table, 0);
+
+      expect(drawn).toHaveLength(3);
+      expect(drawn.map((props) => props.billboard)).toEqual([true, true, true]);
+    });
+
+    it('keeps a bearing from a column pointing its way on the ground as the map turns', () => {
+      // Standing, deck turns a symbol on the screen, not on the ground: the
+      // map's own bearing has to be added back, or turning the map would leave
+      // every arrow pointing where it pointed before.
+      const table = stationsTable();
+      const layer = symbolLayer(table, { angle: 'heading' });
+      layer.updateLayerVisConfig({ upright: true });
+
+      const [props] = renderAtBearing(layer, table, 30);
+      const first = props.data.find((row: { index: number }) => row.index === 0);
+
+      expect(props.getAngle(first)).toBe(deckAngle(90, 'towards') + 30);
+      const turned = renderAtBearing(layer, table, 60)[0];
+      expect(turned.updateTriggers.getAngle).not.toEqual(props.updateTriggers.getAngle);
+    });
+
+    it('keeps a symbol with no bearing column upright on the screen as the map turns', () => {
+      // A bus stop or an airport stands straight: a fixed angle is a tilt on
+      // the screen, not a direction on the ground.
+      const table = stationsTable();
+      const layer = symbolLayer(table);
+      layer.updateLayerVisConfig({ upright: true, angleDegrees: 0 });
+
+      const [props] = renderAtBearing(layer, table, 30);
+
+      expect(props.getAngle(props.data[0])).toBe(0);
+    });
+  });
+
   it('draws the fallback glyph, and asks deck for it by name, when the saved shape is unknown', () => {
     const table = stationsTable();
     const layer = symbolLayer(table);

@@ -57,6 +57,7 @@ export function SymbolLayerConfig({
           OptionComponent={SymbolOption}
         />
         <SelectKnob layer={layer} visConfiguratorProps={visConfiguratorProps} property="directionConvention" />
+        {settings.upright ? <VisConfigSwitch {...settings.upright} {...visConfiguratorProps} /> : null}
         <ConfigGroupCollapsibleContent>{slider('opacity')}</ConfigGroupCollapsibleContent>
       </LayerConfigGroup>
 

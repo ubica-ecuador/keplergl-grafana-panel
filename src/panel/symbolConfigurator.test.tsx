@@ -157,6 +157,7 @@ describe('symbol layer panel', () => {
         colorUI: {},
       },
       visConfigSettings: {
+        upright: SYMBOL_VIS_CONFIGS.upright,
         outline: SYMBOL_VIS_CONFIGS.outline,
         outlineColor: SYMBOL_VIS_CONFIGS.outlineColor,
         outlineThickness: SYMBOL_VIS_CONFIGS.outlineThickness,
@@ -184,6 +185,7 @@ describe('symbol layer panel', () => {
       </IntlProvider>
     );
 
+    expect(screen.getByText('Stand upright in 3D')).toBeInTheDocument();
     expect(screen.getByText('Outline')).toBeInTheDocument();
     expect(screen.getByText('Shadow')).toBeInTheDocument();
     for (const label of ['Outline thickness', 'Shadow intensity', 'Shadow distance (px)']) {

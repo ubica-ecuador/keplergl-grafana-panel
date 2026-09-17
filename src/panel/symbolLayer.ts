@@ -122,6 +122,13 @@ export const SYMBOL_VIS_CONFIGS = {
     group: 'display',
     property: 'declutterSpacingPx',
   },
+  upright: {
+    type: 'boolean',
+    defaultValue: false,
+    label: 'symbol.upright',
+    group: 'display',
+    property: 'upright',
+  },
   outline: {
     type: 'boolean',
     defaultValue: false,
@@ -259,6 +266,7 @@ interface SymbolLayerLike {
     dataId?: string;
     columns?: Record<string, LayerColumn>;
     color?: [number, number, number];
+    angleField?: unknown;
     isVisible?: boolean;
     visConfig?: Record<string, unknown>;
   };
@@ -449,6 +457,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       data?: Record<string, unknown>;
       visible?: boolean;
       gpuFilter?: Pick<GpuFilter, 'filterValueUpdateTriggers'>;
+      mapState?: { bearing?: number };
     }): unknown[] {
       const layerData = opts?.data;
       const rows = (layerData?.data ?? []) as unknown[];
@@ -500,11 +509,20 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       // the same row array, so a channel change reaches the GPU only through a
       // trigger: kepler's own per channel — its column, scale, domain, range
       // and constant — with this layer's reading of the angle added on top.
+      // Standing, deck turns a symbol on the screen rather than on the ground,
+      // so a bearing from a column gets the map's own bearing added back to
+      // keep pointing its way as the map turns. A fixed angle does not: with
+      // no column it is a tilt on the screen — a bus stop stands straight.
+      // Under a pitched camera a direction on the ground foreshortens and the
+      // screen angle is an approximation; lying flat is exact.
+      const upright = visConfig.upright === true;
+      const mapBearing = upright && this.config.angleField ? Number(opts?.mapState?.bearing ?? 0) || 0 : 0;
+
       const channelTriggers = this.getVisualChannelUpdateTriggers();
       const updateTriggers = {
         ...channelTriggers,
         getIcon: [symbol],
-        getAngle: { ...channelTriggers.getAngle, directionConvention: convention },
+        getAngle: { ...channelTriggers.getAngle, directionConvention: convention, mapBearing },
         getFilterValue: opts?.gpuFilter?.filterValueUpdateTriggers,
       };
 
@@ -517,7 +535,8 @@ export function makeSymbolLayer<C extends Constructor<object>>(
         visible: this.config.isVisible !== false && shownInPane(opts),
         getPosition: layerData?.getPosition,
         getIcon: () => symbol,
-        getAngle: (row: unknown) => deckAngle(Number(angleOf(row) ?? 0), convention),
+        getAngle: (row: unknown) => deckAngle(Number(angleOf(row) ?? 0), convention) + mapBearing,
+        billboard: upright,
         getSize: sizeOf,
         getColor: colorOf,
         // Left out rather than passed as undefined when there is none, so the
