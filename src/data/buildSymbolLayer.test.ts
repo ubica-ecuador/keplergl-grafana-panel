@@ -2,6 +2,7 @@ import { FieldType, toDataFrame } from '@grafana/data';
 
 import { buildSymbolLayer } from './buildSymbolLayer';
 import { detectFields } from './detectFields';
+import { framesToDatasets } from './framesToDatasets';
 import { toKeplerColumns } from './toKeplerDataset';
 
 describe('buildSymbolLayer', () => {
@@ -101,18 +102,42 @@ describe('buildSymbolLayer — integration: detectFields → toKeplerRows → bu
     const layer = buildSymbolLayer(roles, 'test-data');
     expect(layer).not.toBeNull();
 
-    // The channel name must exist in kepler's rows.
-    const keplerColumns = toKeplerColumns(frame, roles);
-    const columnNames = new Set(keplerColumns.map((c) => c.name));
+    // The channel name must exist in kepler's rows. Both channels are asserted
+    // bound first: a channel left null would pass a name check vacuously, and
+    // an unbound channel is exactly the defect this test exists for.
+    const columnNames = new Set(toKeplerColumns(frame, roles).map((c) => c.name));
+    const angleField = layer!.visualChannels.angleField as { name: string } | null;
+    const sizeField = layer!.visualChannels.sizeField as { name: string } | null;
 
-    const angleFieldName = (layer!.visualChannels.angleField as { name: string } | null)?.name;
-    const sizeFieldName = (layer!.visualChannels.sizeField as { name: string } | null)?.name;
-
-    if (angleFieldName) {
-      expect(columnNames.has(angleFieldName)).toBe(true);
-    }
-    if (sizeFieldName) {
-      expect(columnNames.has(sizeFieldName)).toBe(true);
-    }
+    expect(angleField).not.toBeNull();
+    expect(sizeField).not.toBeNull();
+    expect(columnNames.has(angleField!.name)).toBe(true);
+    expect(columnNames.has(sizeField!.name)).toBe(true);
   });
+
+  // Every name `count` claims, which renames its column to `count` in the rows.
+  it.each(['count', 'trips', 'weight', 'flow', 'total', 'volume'])(
+    'keeps the size channel bound when Magnitude is mapped by hand to a `%s` column that count also claims',
+    (column) => {
+      // Detection gives the column to `count`; the user maps it to Magnitude as
+      // well. Roles are not exclusive, so the rows carry it renamed, and a
+      // channel naming the query's own column would find nothing.
+      const frame = toDataFrame({
+        refId: 'A',
+        fields: [
+          { name: 'lat', type: FieldType.number, values: [-2.9, -0.19, -2.17] },
+          { name: 'lon', type: FieldType.number, values: [-79.0, -78.48, -79.92] },
+          { name: 'heading', type: FieldType.number, values: [0, 90, 180] },
+          { name: column, type: FieldType.number, values: [10, 20, 30] },
+        ],
+      });
+
+      const [dataset] = framesToDatasets([frame], { A: { magnitude: column } });
+      const sizeField = dataset.symbolLayer?.visualChannels.sizeField as { name: string } | null | undefined;
+
+      expect(sizeField).toBeTruthy();
+      expect(Object.keys(dataset.rows[0])).toContain(sizeField!.name);
+      expect(dataset.rows.map((row) => row[sizeField!.name])).toEqual([10, 20, 30]);
+    }
+  );
 });

@@ -1,5 +1,5 @@
 import { FieldRoles } from './detectFields';
-import { KEPLER_COLUMN } from './toKeplerDataset';
+import { KEPLER_COLUMN, keplerColumnName } from './toKeplerDataset';
 
 /**
  * A symbol layer, in the saved-config-v1 shape kepler parses.
@@ -22,9 +22,16 @@ export interface SymbolLayerConfig {
   visualChannels: Record<string, unknown>;
 }
 
-/** A saved visual channel: kepler's merger matches it to a column by name. */
-function channel(column: string | undefined): { name: string } | null {
-  return column ? { name: column } : null;
+/**
+ * A saved visual channel: kepler's merger matches it to a column by name.
+ *
+ * The name is the one the column reaches kepler under, not the one the query
+ * gave it: another role may have claimed the same column and renamed it — a
+ * column mapped to `magnitude` by hand that detection also took for `count` —
+ * and a channel naming the original would find nothing and unbind in silence.
+ */
+function channel(roles: FieldRoles, column: string | undefined): { name: string } | null {
+  return column ? { name: keplerColumnName(roles, column) } : null;
 }
 
 /**
@@ -73,9 +80,9 @@ export function buildSymbolLayer(roles: FieldRoles, dataId: string): SymbolLayer
       },
     },
     visualChannels: {
-      angleField: channel(bearing),
+      angleField: channel(roles, bearing),
       angleScale: 'linear',
-      sizeField: channel(magnitude),
+      sizeField: channel(roles, magnitude),
       sizeScale: 'sqrt',
     },
   };

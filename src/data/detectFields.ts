@@ -166,7 +166,7 @@ export function resolveRoles(detected: FieldRoles, overrides: FieldRoleOverrides
  * reads as a rendering bug rather than as a mapping choice. Height on a trip
  * path is therefore opt-in through the field mapping editor.
  */
-const NAME_CANDIDATES: Record<string, string[]> = {
+export const NAME_CANDIDATES: Record<string, string[]> = {
   latitude: ['latitude', 'lat', 'y'],
   longitude: ['longitude', 'lon', 'lng', 'long', 'x'],
   tripId: ['trip_id', 'tripid', 'track_id', 'trackid', 'trajectory_id', 'vehicle_id', 'journey_id'],
@@ -181,9 +181,12 @@ const NAME_CANDIDATES: Record<string, string[]> = {
   direction: ['wind_direction', 'winddirection', 'wind_direction_10m', 'direction', 'wind_dir', 'wd'],
   // Anything that points. `direction` is deliberately absent: it belongs to the
   // wind roles, and a column called that is read with the meteorological
-  // convention rather than this one. `cog` (course over ground) appears here and
-  // also in rasterUrl; the overlap is harmless today because the raster reader
-  // drops non-string values, and would need revisiting only if that changes.
+  // convention when a wind speed sits beside it (see `buildSymbolLayer`).
+  //
+  // `cog` (course over ground) appears here and also in rasterUrl — the one
+  // name two roles share on purpose, allowlisted in `detectFields.test.ts`. The
+  // two readings exclude each other by type: the raster reader drops values that
+  // are not strings, and a symbol layer is built only from a numeric bearing.
   rotation: ['bearing', 'heading', 'course', 'cog', 'track', 'azimuth', 'orientation'],
   magnitude: ['magnitude', 'intensity', 'amplitude'],
   originLat: ['origin_lat', 'origin_latitude', 'from_lat', 'start_lat', 'source_lat', 'pickup_lat', 'lat0'],

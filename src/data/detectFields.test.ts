@@ -1,6 +1,37 @@
 import { FieldType, toDataFrame } from '@grafana/data';
 
-import { detectFields, resolveRoles } from './detectFields';
+import { detectFields, NAME_CANDIDATES, resolveRoles } from './detectFields';
+
+describe('NAME_CANDIDATES', () => {
+  /**
+   * Names two roles may share, each with the roles that share it and why.
+   *
+   * Everything else is one name, one role. A name in two lists is detected as
+   * both, and roles are never exclusive — so when one of them renames its
+   * column, the other loses it without a word. That is how `magnitude` in
+   * `count`'s list once unbound the symbol layer's size channel.
+   */
+  const SHARED: Record<string, string[]> = {
+    // Course over ground, and a GeoTIFF link. The two readings exclude each
+    // other by type: the raster reader keeps only strings, and a symbol layer
+    // is built only from a numeric bearing. Neither role renames its column.
+    cog: ['rasterUrl', 'rotation'],
+  };
+
+  it('gives every candidate name to one role, bar the documented exceptions', () => {
+    const roles = new Map<string, string[]>();
+    for (const [role, candidates] of Object.entries(NAME_CANDIDATES)) {
+      for (const name of candidates) {
+        roles.set(name, [...(roles.get(name) ?? []), role]);
+      }
+    }
+
+    const shared = Object.fromEntries(
+      [...roles].filter(([, claimants]) => claimants.length > 1).map(([name, claimants]) => [name, claimants.sort()])
+    );
+    expect(shared).toEqual(SHARED);
+  });
+});
 
 describe('resolveRoles', () => {
   it('falls back to autodetection for roles the user has not touched', () => {

@@ -13,10 +13,11 @@ export type KeplerRow = Record<string, unknown>;
  * columns. It is consumed to trace streamlines, and what kepler receives is
  * their geometry, so renaming `u`/`v` would be renaming something nobody looks at.
  *
- * `rotation` and `magnitude` are absent because they reach kepler as ordinary,
- * unrenamed columns. Keeping them unrenamed is what lets the symbol layer apply
- * proper semantics — e.g., reading a bearing with the meteorological or vehicle
- * convention, whichever role matched.
+ * `rotation` and `magnitude` are absent because they do not rename their column.
+ * Keeping them unrenamed is what lets the symbol layer apply proper semantics —
+ * e.g., reading a bearing with the meteorological or vehicle convention,
+ * whichever role matched. Their column can still be renamed by another role that
+ * claims it too; see `keplerColumnName`.
  *
  * `rasterUrl` is absent because it becomes a dataset of its own, whose substance
  * is a metadata url rather than any row. So are `wmsUrl` and `wmsLayer`, which
@@ -90,6 +91,20 @@ export interface KeplerColumn {
 export function toKeplerColumns(frame: DataFrame, roles: FieldRoles): KeplerColumn[] {
   const renames = keplerRenames(roles);
   return frame.fields.map((field) => ({ name: renames.get(field.name) ?? field.name, type: field.type }));
+}
+
+/**
+ * The name kepler will know a source column by, given every role's claim on it.
+ *
+ * A role that does not rename its column can still find it renamed: roles are
+ * never exclusive, so a column mapped by hand to `magnitude` that detection also
+ * gave to `count` reaches kepler as `count`. Anything that points kepler at a
+ * column by name — a layer's saved visual channel — has to ask here, through
+ * the same map the rows are written with, or it names a column that is not there
+ * and kepler unbinds the channel without a word.
+ */
+export function keplerColumnName(roles: FieldRoles, sourceName: string): string {
+  return keplerRenames(roles).get(sourceName) ?? sourceName;
 }
 
 /** Source column name → the name kepler reads it by, for every role that renames. */
