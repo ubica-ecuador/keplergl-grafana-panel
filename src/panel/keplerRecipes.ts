@@ -1,6 +1,7 @@
 import { replaceAnimationController } from './animationSweepFix';
 import { replaceMapControl } from './effectsMapControl';
 import { replaceLayerConfigurator } from './flowFieldConfigurator';
+import { replaceLayerPanelHeader } from './layerPanelHeader';
 import { replaceRangeBrush } from './rangeBrushFix';
 
 /**
@@ -36,6 +37,7 @@ export function keplerRecipes(): Array<[unknown, unknown]> {
     replaceMapControl(),
     replaceAnimationController(),
     replaceLayerConfigurator(),
+    replaceLayerPanelHeader(),
     replaceRangeBrush(),
   ] as Array<[unknown, unknown]>;
 }

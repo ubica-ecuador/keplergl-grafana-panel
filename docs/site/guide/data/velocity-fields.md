@@ -1,6 +1,6 @@
 # Wind and other velocity fields
 
-A query that returns a **regular grid of velocities** becomes a **Flow field** layer: an animated
+A query that returns a **regular grid of velocities** becomes a **Streamlines** layer: an animated
 field of streamlines, the paths a massless particle would take through the grid. Nothing to
 configure to get one — give the panel coordinates and a velocity and the layer appears — and
 everything to configure once you have it, in the layer's own panel inside the map.
@@ -12,7 +12,7 @@ WHERE level_hpa = 700
 ORDER BY lat, lon;
 ```
 
-<video src="/img/guide-velocity-fields.mp4" poster="/img/guide-velocity-fields.jpg" autoplay loop muted playsinline controls aria-label="A Flow field layer animating: streamlines traced through a grid of river velocities across South America, particles running along them" style="width:100%;height:auto;border-radius:8px"></video>
+<video src="/img/guide-velocity-fields.mp4" poster="/img/guide-velocity-fields.jpg" autoplay loop muted playsinline controls aria-label="A Streamlines layer animating: streamlines traced through a grid of river velocities across South America, particles running along them" style="width:100%;height:auto;border-radius:8px"></video>
 
 ## This one is not a table of places
 

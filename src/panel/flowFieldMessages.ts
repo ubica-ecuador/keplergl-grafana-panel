@@ -2,7 +2,7 @@
  * The English the flow field layer needs kepler to know.
  *
  * kepler renders every label in its side panel through react-intl, by message
- * id: a component is handed `layer.type.flowfield` or `flowfield.density` and
+ * id: a component is handed `layer.type.streamlines` or `flowfield.density` and
  * looks it up. An id with no message renders as the id itself, capitalised word
  * by word by the panel's own CSS — which is why an unregistered layer type reads
  * "Layer.Type.Flowfield" under its name in the layer list.
@@ -12,9 +12,11 @@
  * react-intl logs it as such on every render.
  */
 
+import { STREAMLINES_LABEL } from './localeMessages';
+
 /** Message id -> English, flat, the shape kepler's catalogues take. */
 export const FLOW_FIELD_MESSAGES: Record<string, string> = {
-  'layer.type.flowfield': 'Flow field',
+  'layer.type.streamlines': STREAMLINES_LABEL,
   'layer.type.vectorfield': 'Vector field',
 
   'vectorfield.group.symbols': 'Symbols',
@@ -86,8 +88,13 @@ export const FLOW_FIELD_MESSAGES: Record<string, string> = {
  *
  * The same English in all eight: the rest of this panel's interface is English,
  * and a Spanish user reading "Lines per screen" is better served than one
- * reading `flowfield.density`. Existing entries are never overwritten, so a
- * future kepler that grows its own flow field keeps its own words.
+ * reading `flowfield.density`. Existing entries are never overwritten, so kepler
+ * keeps its own words wherever an id is also one of its own.
+ *
+ * No message goes under `layer.type.flowfield`: since 3.3.0-alpha.12 that id
+ * names kepler's Flow Field too, which lower-cases to it just as this layer's
+ * type does. The panel header asks for this layer's name under `streamlines`
+ * instead — see `layerPanelHeader.tsx`.
  */
 export function registerFlowFieldMessages(catalogues: Record<string, Record<string, string>>): void {
   for (const messages of Object.values(catalogues)) {

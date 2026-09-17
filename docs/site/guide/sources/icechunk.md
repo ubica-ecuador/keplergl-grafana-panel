@@ -293,7 +293,7 @@ returned nothing.
 ## A wind field from the same archive
 
 The archive carries `wind_u_10m` and `wind_v_10m`, which are exactly what the
-[Flow field layer](../data/velocity-fields) wants — but that layer needs a **row per grid point**,
+[Streamlines layer](../data/velocity-fields) wants — but that layer needs a **row per grid point**,
 and the only thing that can read this archive is the tile server. Asking it point by point is
 ninety-eight round trips for a seven-by-seven lattice, and the database issues them one at a time:
 measured through DuckDB, **27.7 s**, with the first attempt dying on Grafana's timeout.

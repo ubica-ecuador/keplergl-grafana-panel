@@ -93,21 +93,30 @@ kepler auto-detects layers from column names, but not all of them:
 | ------------------ | ----------------------------------------------------------------------------------------------- |
 | **Trip**           | kepler's own heuristic insists on a column literally named `id`                                 |
 | **Flow**           | kepler does not auto-detect flows at all                                                        |
-| **Flow field**     | a layer type kepler does not have — the panel registers it, and it traces its own streamlines through a grid of velocities |
+| **Streamlines**    | a layer type the panel registers, tracing streamlines through a grid of velocities on the dashboard's clock — kepler's own Flow Field would be created for the same grid, and is removed |
 | **Raster tile**    | kepler builds one from its own tileset form, but not from a query — the panel turns a `raster_url` column into the dataset it needs |
 | **WMS**            | likewise, from a `wms_url` and `wms_layer` pair                                                 |
 
 See [How a query becomes a map](../guide/data/how-a-query-becomes-a-map).
 
-## Two layer types kepler does not ship
+## Layer types kepler does not ship
 
-**Zarr** and **Flow field** are registered by the panel into kepler's own layer registry, so they
-appear in the layer list and in the type selector alongside the rest. Nothing upstream corresponds
-to either: kepler's remote tile formats are MVT, PMTiles and WMS, none of which is a store of
-compressed arrays; and a velocity grid has no layer at all, because what it draws is in none of its
-rows.
+The panel registers layer types of its own into kepler's layer registry — **Zarr** and
+**Streamlines** among them — so they appear in the layer list and in the type selector alongside the
+rest. Their icons are **amber**, which is how they are told from kepler's in that menu. Nothing
+upstream corresponds to Zarr: kepler's remote tile formats are MVT, PMTiles and WMS, none of which is
+a store of compressed arrays.
 
-The flow field also carries a settings panel of its own — density, stroke, trail, cycle, smoothing
+Streamlines has had a counterpart since kepler.gl 3.3.0-alpha.12: an experimental **Flow Field**,
+which kepler creates by itself for any dataset with columns named `u` and `v` beside coordinates.
+It stays in the layer menu, but the panel removes it wherever it would sit over a grid the panel
+traces itself — the two would draw the same field twice, and kepler's runs on a clock of its own
+rather than the dashboard's. It is also why the panel's layer is called Streamlines: kepler's menu
+capitalises every label, and "Flow field" beside "Flow Field" read as one entry. A dashboard saved
+before the rename loads as it did — the layer type it stores did not change — and keeps the label
+it was saved with.
+
+Streamlines also carries a settings panel of its own — density, stroke, trail, cycle, smoothing
 and the vertical exaggeration of a stack of levels — which kepler renders through a layer
 configurator the panel extends. See [Velocity fields](../guide/data/velocity-fields).
 

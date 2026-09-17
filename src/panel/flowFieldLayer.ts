@@ -32,6 +32,9 @@ export type { CameraState, FlowFieldContext, ScreenCameraFactory };
 export type FlowFieldDataset = VelocityDataset;
 export const FLOW_FIELD_COLUMN_MODES = VELOCITY_COLUMN_MODES;
 
+/** The layer type, as a saved dashboard stores it. */
+export const FLOW_FIELD_TYPE = 'flowfield';
+
 /**
  * The kepler layer that draws a grid of velocities as animated streamlines.
  *
@@ -310,11 +313,14 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
     }
 
     get type(): string {
-      return 'flowfield';
+      return FLOW_FIELD_TYPE;
     }
 
+    // Not "Flow field": kepler 3.3.0-alpha.12 ships a Flow Field of its own, and
+    // its layer menu capitalises every label, so the two read as one entry. The
+    // type above is what a saved dashboard stores and stays as it is.
     get name(): string {
-      return 'Flow field';
+      return 'Streamlines';
     }
 
     get supportedColumnModes() {

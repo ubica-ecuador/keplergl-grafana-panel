@@ -3,6 +3,7 @@ import {
   provideRecipesToInjector,
   AnimationControllerFactory,
   LayerConfiguratorFactory,
+  LayerPanelHeaderFactory,
   MapControlFactory,
   RangeBrushFactory,
 } from '@kepler.gl/components';
@@ -40,6 +41,7 @@ describe('the recipes the panel injects', () => {
     ['the map control', MapControlFactory, 'CustomMapControl'],
     ['the animation controller', AnimationControllerFactory, 'SweepingAnimationController'],
     ['the layer configurator', LayerConfiguratorFactory, 'LayerConfiguratorWithFlowField'],
+    ['the layer panel header', LayerPanelHeaderFactory, 'LayerPanelHeaderWithOwnNames'],
     ['the range brush', RangeBrushFactory, 'BrushOnTop'],
   ])('still replaces %s when the whole list is provided', (_name, stock, expected) => {
     expect(nameOf(resolve().get(stock as never))).toBe(expected);

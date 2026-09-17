@@ -113,7 +113,7 @@ traced lines and drew nothing at all, because the playhead was parked at the sta
 
 ## 6. Tune it, on the layer
 
-Open the layer in the side panel — it is called **Flow field**. Everything about how the field is
+Open the layer in the side panel — it is called **Streamlines**. Everything about how the field is
 drawn is in there, in four groups.
 
 Start with **Streamlines → Lines per screen**, 9,000 by default. Zoom in and out: the density and

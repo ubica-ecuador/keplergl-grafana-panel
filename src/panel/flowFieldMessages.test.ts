@@ -1,5 +1,6 @@
 import { FLOW_FIELD_COLUMN_MODES, FLOW_FIELD_VIS_CONFIGS } from './flowFieldLayer';
 import { FLOW_FIELD_MESSAGES, registerFlowFieldMessages } from './flowFieldMessages';
+import { STREAMLINES_LABEL } from './localeMessages';
 import { VECTOR_FIELD_VIS_CONFIGS } from './vectorFieldLayer';
 
 describe('registerFlowFieldMessages', () => {
@@ -11,18 +12,28 @@ describe('registerFlowFieldMessages', () => {
 
     registerFlowFieldMessages(catalogues);
 
-    expect(catalogues.en['layer.type.flowfield']).toBe('Flow field');
-    expect(catalogues.es['layer.type.flowfield']).toBe('Flow field');
+    expect(catalogues.en['layer.type.streamlines']).toBe(STREAMLINES_LABEL);
+    expect(catalogues.es['layer.type.streamlines']).toBe(STREAMLINES_LABEL);
     expect(catalogues.es['layer.type.point']).toBe('Punto');
+  });
+
+  it('does not name kepler’s own Flow Field', () => {
+    // Both types lower-case to `flowfield`, so a message under that id would
+    // be read out for kepler's layer as well as this one.
+    const catalogues: Record<string, Record<string, string>> = { es: {} };
+
+    registerFlowFieldMessages(catalogues);
+
+    expect(catalogues.es['layer.type.flowfield']).toBeUndefined();
   });
 
   it('never overwrites a message kepler already has', () => {
     // A future kepler growing its own flow field should keep its own words.
-    const catalogues: Record<string, Record<string, string>> = { en: { 'layer.type.flowfield': 'Wind' } };
+    const catalogues: Record<string, Record<string, string>> = { en: { 'layer.type.streamlines': 'Wind' } };
 
     registerFlowFieldMessages(catalogues);
 
-    expect(catalogues.en['layer.type.flowfield']).toBe('Wind');
+    expect(catalogues.en['layer.type.streamlines']).toBe('Wind');
   });
 
   it('names every knob the layer registers and every column its modes ask for', () => {

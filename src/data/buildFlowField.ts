@@ -81,7 +81,7 @@ export function buildFlowField(roles: FieldRoles, dataId: string): FlowFieldLaye
     type: 'flowfield',
     config: {
       dataId,
-      label: 'Flow field',
+      label: 'Streamlines',
       columns,
       columnMode,
       isVisible: true,
