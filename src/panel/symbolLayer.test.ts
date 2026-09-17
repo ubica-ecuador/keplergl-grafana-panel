@@ -1,4 +1,11 @@
-import { deckAngle, makeSymbolLayer, metresPerPixelAt, SYMBOL_TYPE, SYMBOL_VIS_CONFIGS } from './symbolLayer';
+import {
+  deckAngle,
+  makeSymbolLayer,
+  metresPerPixelAt,
+  shownByFilters,
+  SYMBOL_TYPE,
+  SYMBOL_VIS_CONFIGS,
+} from './symbolLayer';
 
 /** A stand-in for kepler's base Layer, with only what the subclass touches. */
 class FakeBaseLayer {
@@ -71,6 +78,10 @@ class FakeBaseLayer {
 
   getDefaultDeckLayerProps(): Record<string, unknown> {
     return { id: this.id, pickable: true };
+  }
+
+  renderTextLabelLayer(): unknown[] {
+    return [];
   }
 }
 
@@ -252,5 +263,19 @@ describe('import-time cost', () => {
       expect((freshConfigs.symbol.options as string[]).length).toBeGreaterThan(0);
       expect(readSvgIcons).toBe(true);
     });
+  });
+});
+
+describe('shownByFilters', () => {
+  const rows = [{ t: 1 }, { t: 5 }, { t: 9 }];
+  const getFilterValue = (row: { t: number }) => [row.t, 0];
+
+  it('keeps the rows whose every filter value lies within its range', () => {
+    expect(shownByFilters(rows, getFilterValue, [[0, 6], [0, 0]])).toEqual([{ t: 1 }, { t: 5 }]);
+  });
+
+  it('keeps every row when there is no filter to test against', () => {
+    expect(shownByFilters(rows, undefined, [[0, 6]])).toBe(rows);
+    expect(shownByFilters(rows, getFilterValue, undefined)).toBe(rows);
   });
 });

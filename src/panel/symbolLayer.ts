@@ -122,6 +122,81 @@ export const SYMBOL_VIS_CONFIGS = {
     group: 'display',
     property: 'declutterSpacingPx',
   },
+  gradient: {
+    type: 'boolean',
+    defaultValue: false,
+    label: 'symbol.gradient',
+    group: 'color',
+    property: 'gradient',
+  },
+  gradientTail: {
+    type: 'number',
+    defaultValue: 0.7,
+    label: 'symbol.gradientTail',
+    isRanged: false,
+    range: [0, 1],
+    step: 0.05,
+    group: 'color',
+    property: 'gradientTail',
+  },
+  upright: {
+    type: 'boolean',
+    defaultValue: false,
+    label: 'symbol.upright',
+    group: 'display',
+    property: 'upright',
+  },
+  outline: {
+    type: 'boolean',
+    defaultValue: false,
+    label: 'symbol.outline',
+    group: 'display',
+    property: 'outline',
+  },
+  outlineColor: {
+    type: 'color-select',
+    defaultValue: [255, 255, 255],
+    label: 'symbol.outlineColor',
+    group: 'color',
+    property: 'outlineColor',
+  },
+  outlineThickness: {
+    type: 'number',
+    defaultValue: 3,
+    label: 'symbol.outlineThickness',
+    isRanged: false,
+    range: [1, 10],
+    step: 1,
+    group: 'display',
+    property: 'outlineThickness',
+  },
+  shadow: {
+    type: 'boolean',
+    defaultValue: false,
+    label: 'symbol.shadow',
+    group: 'display',
+    property: 'shadow',
+  },
+  shadowOpacity: {
+    type: 'number',
+    defaultValue: 0.5,
+    label: 'symbol.shadowOpacity',
+    isRanged: false,
+    range: [0, 1],
+    step: 0.05,
+    group: 'display',
+    property: 'shadowOpacity',
+  },
+  shadowDistance: {
+    type: 'number',
+    defaultValue: 4,
+    label: 'symbol.shadowDistance',
+    isRanged: false,
+    range: [0, 20],
+    step: 1,
+    group: 'display',
+    property: 'shadowDistance',
+  },
 } as const;
 
 /**
@@ -163,6 +238,80 @@ export function asRowAccessor<T>(value: unknown, fallback: T): (row: unknown) =>
   return () => constant;
 }
 
+/**
+ * The rows kepler's GPU filters would let through: every filter value within
+ * its range, the test deck's filter extension applies per vertex.
+ *
+ * All of them when there is nothing to test against — no filter accessor, or
+ * no range because the dataset has no filter.
+ */
+export function shownByFilters<T>(rows: T[], getFilterValue: unknown, filterRange: unknown): T[] {
+  if (typeof getFilterValue !== 'function' || !Array.isArray(filterRange)) {
+    return rows;
+  }
+  const ranges = filterRange as Array<[number, number]>;
+  return rows.filter((row) => {
+    const values = (getFilterValue as (row: T) => ArrayLike<number>)(row);
+    return ranges.every(([low, high], i) => i >= values.length || (values[i] >= low && values[i] <= high));
+  });
+}
+
+/** One of kepler's text labels, as far as this layer reads it. */
+interface TextLabel {
+  field?: { valueAccessor(row: unknown): unknown } | null;
+  size?: number;
+  anchor?: string;
+  alignment?: string;
+}
+
+/**
+ * What kepler's `renderTextLabelLayer` reads for each label: the text of a row,
+ * and every character any row's text uses, for the font atlas.
+ *
+ * kepler's point layer builds this with `formatTextLabelData`, which its
+ * package does not export; this is that function's row-object path — the only
+ * one a layer of plain rows takes.
+ */
+export function textLabelsFor(
+  textLabel: TextLabel[] | undefined,
+  rows: unknown[]
+): Array<{ getText: ((row: unknown) => string) | null; characterSet: string[] }> {
+  return (textLabel ?? []).map((label) => {
+    const field = label.field;
+    if (!field) {
+      return { getText: null, characterSet: [] };
+    }
+    const getText = (row: unknown) => {
+      const value = field.valueAccessor(row);
+      return value === null || value === undefined ? '' : String(value);
+    };
+    return { getText, characterSet: [...new Set(rows.map(getText).join(''))] };
+  });
+}
+
+/** Pixels between a symbol's edge and its label. */
+const LABEL_GAP_PX = 4;
+
+/**
+ * Where a label sits relative to its symbol: beside it, on the side the label's
+ * anchor and alignment name, clear of the symbol by its own half-size.
+ *
+ * Mirrors kepler's point layer, which clears a circle's radius; a symbol's
+ * half-size is its radius here, and it comes from the row, so a larger symbol
+ * pushes its label further out.
+ */
+export function labelOffsetBeside(sizeOf: (row: unknown) => number) {
+  return (label: TextLabel) => {
+    const x = label.anchor === 'middle' ? 0 : label.anchor === 'start' ? 1 : -1;
+    const y = label.alignment === 'center' ? 0 : label.alignment === 'bottom' ? 1 : -1;
+    const clearance = (row: unknown) => Number(sizeOf(row)) / 2 + LABEL_GAP_PX;
+    return (row: unknown): [number, number] => [
+      x * clearance(row) || 0,
+      y * (clearance(row) + (y === 0 ? 0 : (label.size ?? 0))) || 0,
+    ];
+  };
+}
+
 /** What a kepler dataset carries for the filters that run on the GPU. */
 interface GpuFilter {
   filterValueAccessor(dataContainer: unknown): () => (row: unknown) => unknown;
@@ -190,6 +339,8 @@ interface SymbolLayerLike {
     dataId?: string;
     columns?: Record<string, LayerColumn>;
     color?: [number, number, number];
+    angleField?: unknown;
+    textLabel?: TextLabel[];
     isVisible?: boolean;
     visConfig?: Record<string, unknown>;
   };
@@ -198,6 +349,7 @@ interface SymbolLayerLike {
   getAttributeAccessors(args: { dataContainer: unknown }): Record<string, unknown>;
   getVisualChannelUpdateTriggers(): Record<string, Record<string, unknown>>;
   getDefaultDeckLayerProps(opts: unknown): Record<string, unknown>;
+  renderTextLabelLayer(props: Record<string, unknown>, renderOpts: Record<string, unknown>): unknown[];
   getPointsBounds(dataContainer: unknown, getPosition?: unknown): [number, number, number, number];
   updateMeta(meta: Record<string, unknown>): unknown;
 }
@@ -372,6 +524,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
         data,
         getPosition: (row: { position: unknown }) => row.position,
         ...(getFilterValue ? { getFilterValue } : {}),
+        textLabels: textLabelsFor(this.config.textLabel, data),
         ...accessors,
       };
     }
@@ -380,6 +533,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       data?: Record<string, unknown>;
       visible?: boolean;
       gpuFilter?: Pick<GpuFilter, 'filterValueUpdateTriggers'>;
+      mapState?: { bearing?: number };
     }): unknown[] {
       const layerData = opts?.data;
       const rows = (layerData?.data ?? []) as unknown[];
@@ -397,13 +551,24 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       const sizeOf = asRowAccessor<number>(layerData?.getSize, setting(visConfig.symbolSize, 30));
       const colorOf = asRowAccessor<unknown>(layerData?.getColor, this.config.color);
 
+      const defaults = this.getDefaultDeckLayerProps(opts ?? {});
+      const getFilterValue = layerData?.getFilterValue;
+
       const camera = (visConfig.flowContext as { camera?: { zoom: number; latitude: number } } | undefined)?.camera;
       const metresPerPixel = camera ? metresPerPixelAt(camera.latitude, camera.zoom) : 0;
       const spacingDegrees = (setting(visConfig.declutterSpacingPx, 40) * metresPerPixel) / 111_320;
       const drawn =
         visConfig.declutter === true && spacingDegrees > 0
           ? thinBySpacing(
-              rows as Array<{ position: [number, number, number] }>,
+              // Only among the rows the filters show. They hide the rest on the
+              // GPU, after this runs, so thinning every row could keep a hidden
+              // one over the shown one beside it — the same station an hour
+              // later, say — and the place would draw nothing at all.
+              shownByFilters(
+                rows as Array<{ position: [number, number, number] }>,
+                getFilterValue,
+                defaults.filterRange
+              ),
               // Longitude is divided by the cosine of the latitude so a cell is
               // as wide as it is tall on the ground, instead of stretching
               // towards the poles.
@@ -420,11 +585,25 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       // the same row array, so a channel change reaches the GPU only through a
       // trigger: kepler's own per channel — its column, scale, domain, range
       // and constant — with this layer's reading of the angle added on top.
-      const channelTriggers = this.getVisualChannelUpdateTriggers();
-      const getFilterValue = layerData?.getFilterValue;
+      // Standing, deck turns a symbol on the screen rather than on the ground,
+      // so a bearing from a column gets the map's own bearing added back to
+      // keep pointing its way as the map turns. A fixed angle does not: with
+      // no column it is a tilt on the screen — a bus stop stands straight.
+      // Under a pitched camera a direction on the ground foreshortens and the
+      // screen angle is an approximation; lying flat is exact.
+      const upright = visConfig.upright === true;
+      const mapBearing = upright && this.config.angleField ? Number(opts?.mapState?.bearing ?? 0) || 0 : 0;
 
-      const deckLayer = buildDeckLayer({
-        ...this.getDefaultDeckLayerProps(opts ?? {}),
+      const channelTriggers = this.getVisualChannelUpdateTriggers();
+      const updateTriggers = {
+        ...channelTriggers,
+        getIcon: [symbol],
+        getAngle: { ...channelTriggers.getAngle, directionConvention: convention, mapBearing },
+        getFilterValue: opts?.gpuFilter?.filterValueUpdateTriggers,
+      };
+
+      const symbolProps = {
+        ...defaults,
         id: `${this.id}-symbol`,
         data: drawn,
         // Only the glyph in use, so the atlas stays one cell wide.
@@ -432,23 +611,111 @@ export function makeSymbolLayer<C extends Constructor<object>>(
         visible: this.config.isVisible !== false && shownInPane(opts),
         getPosition: layerData?.getPosition,
         getIcon: () => symbol,
-        getAngle: (row: unknown) => deckAngle(Number(angleOf(row) ?? 0), convention),
+        getAngle: (row: unknown) => deckAngle(Number(angleOf(row) ?? 0), convention) + mapBearing,
+        billboard: upright,
         getSize: sizeOf,
         getColor: colorOf,
         // Left out rather than passed as undefined when there is none, so the
         // filter extension keeps its own default instead of an empty prop.
         ...(getFilterValue ? { getFilterValue } : {}),
+        updateTriggers,
+      };
+
+      // Null when an atlas could not be painted: dropping a layer loses it for
+      // the frame rather than the whole map render.
+      // In drawing order: the shadow under the outline, the outline under the
+      // symbols, and the labels over everything. The gradient is the symbols'
+      // alone: a shadow or an outline is one flat tone.
+      const symbolLayers = [
+        visConfig.shadow === true ? this.shadowOf(symbolProps, visConfig) : null,
+        visConfig.outline === true ? this.outlineOf(symbolProps, visConfig) : null,
+        buildDeckLayer(
+          visConfig.gradient === true
+            ? { ...symbolProps, gradient: setting(visConfig.gradientTail, 0.7) }
+            : symbolProps
+        ),
+      ].filter(Boolean);
+
+      // kepler's own text labels, the ones its point layer draws, over the rows
+      // actually drawn — so declutter thins the labels with their symbols.
+      const labels = Array.isArray(layerData?.textLabels)
+        ? this.renderTextLabelLayer(
+            {
+              getPosition: layerData?.getPosition,
+              getPixelOffset: labelOffsetBeside(sizeOf),
+              updateTriggers,
+              sharedProps: {
+                ...(getFilterValue ? { getFilterValue } : {}),
+                extensions: defaults.extensions,
+                filterRange: defaults.filterRange,
+                visible: symbolProps.visible,
+              },
+            },
+            { ...opts, data: { ...layerData, data: drawn } }
+          )
+        : [];
+
+      return [...symbolLayers, ...labels];
+    }
+
+    /**
+     * The symbols' outline: the same rows, angles and sizes, painted from a
+     * grown copy of the glyph in one flat colour — the halo that keeps a symbol
+     * legible over a base map of any colour.
+     *
+     * Its thickness grows with each symbol, being part of the glyph: a larger
+     * symbol has a thicker outline, as a larger letter has a thicker stroke.
+     */
+    outlineOf(symbolProps: Record<string, any>, visConfig: Record<string, unknown>): unknown {
+      const thickness = setting(visConfig.outlineThickness, 3);
+      const rgb = Array.isArray(visConfig.outlineColor) ? visConfig.outlineColor.slice(0, 3) : [255, 255, 255];
+      const color = [...rgb, 255];
+      return buildDeckLayer({
+        ...symbolProps,
+        id: `${this.id}-symbol-outline`,
+        outline: thickness,
+        pickable: false,
+        onFilteredItemsChange: undefined,
+        getColor: () => color,
         updateTriggers: {
-          ...channelTriggers,
-          getIcon: [symbol],
-          getAngle: { ...channelTriggers.getAngle, directionConvention: convention },
-          getFilterValue: opts?.gpuFilter?.filterValueUpdateTriggers,
+          ...symbolProps.updateTriggers,
+          // A thickness is a different atlas, and a different atlas has to
+          // reach the icons deck has already looked up.
+          getIcon: [...symbolProps.updateTriggers.getIcon, thickness],
+          getColor: color,
         },
       });
+    }
 
-      // Null when the atlas could not be painted: dropping it loses this
-      // layer's symbols for the frame rather than the whole map render.
-      return deckLayer ? [deckLayer] : [];
+    /**
+     * The symbols' shadow: the same rows, angles and sizes, painted from a
+     * blurred copy of the glyph in a flat dark tone and pushed a few pixels
+     * down and to the right.
+     *
+     * The push is a constant pixel offset, and deck adds it after turning the
+     * icon, so every shadow falls the same way on screen whatever each symbol's
+     * bearing — the light has one direction. Not pickable, so a hover still
+     * finds the symbol and the tooltip does not answer twice; and not reporting
+     * filtered items, which the symbols already do.
+     */
+    shadowOf(symbolProps: Record<string, any>, visConfig: Record<string, unknown>): unknown {
+      const alpha = Math.round(255 * Math.min(1, Math.max(0, setting(visConfig.shadowOpacity, 0.5))));
+      const distance = setting(visConfig.shadowDistance, 4);
+      const color = [0, 0, 0, alpha];
+      return buildDeckLayer({
+        ...symbolProps,
+        id: `${this.id}-symbol-shadow`,
+        shadow: true,
+        pickable: false,
+        onFilteredItemsChange: undefined,
+        getColor: () => color,
+        getPixelOffset: [distance, distance],
+        updateTriggers: {
+          ...symbolProps.updateTriggers,
+          getColor: [alpha],
+          getPixelOffset: [distance],
+        },
+      });
     }
   }
 

@@ -440,6 +440,13 @@ export interface SymbolLayerSummary {
    * redraws anything at all.
    */
   angleTriggerField: string | null;
+  /** Every deck layer the symbol layer builds, in drawing order. */
+  deckLayerIds: string[];
+  /** The symbols' deck extensions, by name: kepler's own, then the gradient. */
+  extensions: string[];
+  gradientTail: number | null;
+  /** Whether the symbols face the camera: standing upright. */
+  billboard: boolean;
 }
 
 /** Reads what the symbol layer is about to draw, from kepler's own store. */
@@ -479,8 +486,13 @@ export async function readSymbolLayer(map: Locator): Promise<SymbolLayerSummary 
     // without it the layer builds no `filterRange`, and the clock check below
     // would have nothing to measure.
     const gpuFilter = visState.datasets?.[layer.config.dataId]?.gpuFilter;
-    const built = rows.length > 0 ? layer.renderLayer({ data: layerData, mapState: {}, gpuFilter }) : [];
-    const props = built[0]?.props;
+    const built = (rows.length > 0 ? layer.renderLayer({ data: layerData, mapState: {}, gpuFilter }) : []) as Array<{
+      id: string;
+      props: any;
+    }>;
+    // The symbols themselves, not whatever is drawn first: a shadow and an
+    // outline come before them, and labels after.
+    const props = (built.find((deckLayer) => deckLayer.id.endsWith('-symbol')) ?? built[0])?.props;
     const angles: number[] = [];
     const iconKeys: string[] = [];
     let shown = 0;
@@ -520,6 +532,12 @@ export async function readSymbolLayer(map: Locator): Promise<SymbolLayerSummary 
         sizeField: layer.config.sizeField?.name ?? null,
       },
       angleTriggerField: props?.updateTriggers?.getAngle?.angleField?.name ?? null,
+      deckLayerIds: built.map((deckLayer) => deckLayer.id),
+      extensions: (props?.extensions ?? []).map(
+        (extension: { constructor?: { extensionName?: string } }) => extension?.constructor?.extensionName ?? ''
+      ),
+      gradientTail: typeof props?.gradientTail === 'number' ? props.gradientTail : null,
+      billboard: props?.billboard === true,
     };
   });
 }

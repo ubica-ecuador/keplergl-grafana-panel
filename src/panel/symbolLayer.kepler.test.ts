@@ -200,6 +200,36 @@ describe('symbol layer on kepler’s real Layer', () => {
     expect(props.updateTriggers.getFilterValue).toBe(table.gpuFilter.filterValueUpdateTriggers);
   });
 
+  it('thins among the rows the clock shows, so a station hidden later does not hide its shown hour', () => {
+    // Cuenca is 4 at the first timestep and 5 at the second, at the same place.
+    // Thinning every row kept the heavier second one, which the clock's window
+    // over the first then hid on the GPU: the station vanished altogether.
+    const table = stationsTable();
+    const layer = symbolLayer(table, { size: 'speed' });
+    layer.updateLayerVisConfig({
+      declutter: true,
+      declutterSpacingPx: 10,
+      flowContext: { camera: { zoom: 6, latitude: -2 } },
+    });
+
+    const { filter } = applyFilterFieldName(
+      getDefaultFilter({ dataId: table.id, id: 'clock' }) as never,
+      { [table.id]: table } as never,
+      table.id,
+      'time'
+    );
+    table.filterTable([{ ...(filter as any), gpuChannel: [0], value: [T0, T0 + 30_000] }] as never, [layer], {});
+
+    const props = render(layer, table);
+    const [low, high] = props.filterRange[0];
+    const shown = props.data.filter((row: unknown) => {
+      const value = props.getFilterValue(row)[0];
+      return value >= low && value <= high;
+    });
+
+    expect(shown.map((row: { index: number }) => row.index).sort()).toEqual([0, 1, 2]);
+  });
+
   it('gives deck an update trigger for every channel, so changing a column redraws', () => {
     const table = stationsTable();
     const layer = symbolLayer(table, { angle: 'heading' });
@@ -233,6 +263,259 @@ describe('symbol layer on kepler’s real Layer', () => {
     expect(fixed).not.toEqual(unbound);
     expect(bound).not.toEqual(fixed);
     expect(turned).not.toEqual(bound);
+  });
+
+  it('draws no shadow unless asked to', () => {
+    const table = stationsTable();
+    render(symbolLayer(table), table);
+
+    expect(built).toHaveLength(1);
+    expect(built[0].shadow).toBeUndefined();
+  });
+
+  it('draws a shadow beneath the symbols: the same rows, dark, offset the same way whatever their angle', () => {
+    const table = stationsTable();
+    const layer = symbolLayer(table, { angle: 'heading', size: 'speed' });
+    layer.updateLayerVisConfig({ shadow: true, shadowOpacity: 0.5, shadowDistance: 6 });
+
+    render(layer, table);
+    const [shadow, symbols] = built;
+
+    // First in the list, so deck draws it underneath.
+    expect(built).toHaveLength(2);
+    expect(shadow.shadow).toBe(true);
+    expect(symbols.shadow).toBeUndefined();
+    expect(shadow.id).not.toBe(symbols.id);
+
+    expect(shadow.data).toBe(symbols.data);
+    expect(shadow.symbols).toEqual(symbols.symbols);
+    for (const row of shadow.data) {
+      expect(shadow.getAngle(row)).toBe(symbols.getAngle(row));
+      expect(shadow.getSize(row)).toBe(symbols.getSize(row));
+      expect(shadow.getColor(row)).toEqual([0, 0, 0, 128]);
+    }
+    // A constant, and deck adds it after turning the icon, so every shadow
+    // falls the same way on screen.
+    expect(shadow.getPixelOffset).toEqual([6, 6]);
+
+    // Hidden with its symbol by the clock, and never the thing a hover finds.
+    expect(shadow.getFilterValue).toBe(symbols.getFilterValue);
+    expect(shadow.filterRange).toBe(symbols.filterRange);
+    expect(shadow.pickable).toBe(false);
+    expect(shadow.onFilteredItemsChange).toBeUndefined();
+  });
+
+  it('redraws the shadow when its intensity or distance changes', () => {
+    const table = stationsTable();
+    const layer = symbolLayer(table);
+    layer.updateLayerVisConfig({ shadow: true, shadowOpacity: 0.5, shadowDistance: 4 });
+
+    render(layer, table);
+    const before = built[0].updateTriggers;
+    layer.updateLayerVisConfig({ shadowOpacity: 0.8, shadowDistance: 10 });
+    render(layer, table);
+    const after = built[0].updateTriggers;
+
+    expect(after.getColor).not.toEqual(before.getColor);
+    expect(after.getPixelOffset).not.toEqual(before.getPixelOffset);
+  });
+
+  it('draws an outline between the shadow and the symbols: the same rows, in the outline colour, not offset', () => {
+    const table = stationsTable();
+    const layer = symbolLayer(table, { angle: 'heading', size: 'speed' });
+    layer.updateLayerVisConfig({
+      shadow: true,
+      outline: true,
+      outlineColor: [20, 30, 40],
+      outlineThickness: 4,
+    });
+
+    render(layer, table);
+    const [shadow, outline, symbols] = built;
+
+    expect(built).toHaveLength(3);
+    expect(shadow.shadow).toBe(true);
+    expect(outline.outline).toBe(4);
+    expect(symbols.outline).toBeUndefined();
+    expect(new Set(built.map((props) => props.id)).size).toBe(3);
+
+    expect(outline.data).toBe(symbols.data);
+    for (const row of outline.data) {
+      expect(outline.getAngle(row)).toBe(symbols.getAngle(row));
+      expect(outline.getSize(row)).toBe(symbols.getSize(row));
+      expect(outline.getColor(row)).toEqual([20, 30, 40, 255]);
+    }
+    expect(outline.getPixelOffset).toBeUndefined();
+    expect(outline.getFilterValue).toBe(symbols.getFilterValue);
+    expect(outline.pickable).toBe(false);
+    expect(outline.onFilteredItemsChange).toBeUndefined();
+  });
+
+  it('redraws the outline when its colour or thickness changes', () => {
+    const table = stationsTable();
+    const layer = symbolLayer(table);
+    layer.updateLayerVisConfig({ outline: true, outlineColor: [255, 255, 255], outlineThickness: 2 });
+
+    render(layer, table);
+    const before = built[0].updateTriggers;
+    layer.updateLayerVisConfig({ outlineColor: [0, 0, 0], outlineThickness: 6 });
+    render(layer, table);
+    const after = built[0].updateTriggers;
+
+    expect(after.getColor).not.toEqual(before.getColor);
+    expect(after.getIcon).not.toEqual(before.getIcon);
+  });
+
+  it('asks for the tail-to-tip gradient on the symbols alone, not on their shadow or outline', () => {
+    const table = stationsTable();
+    const layer = symbolLayer(table);
+    layer.updateLayerVisConfig({ gradient: true, gradientTail: 0.6, shadow: true, outline: true });
+
+    render(layer, table);
+    const [shadow, outline, symbols] = built;
+
+    expect(symbols.gradient).toBe(0.6);
+    expect(shadow.gradient).toBeUndefined();
+    expect(outline.gradient).toBeUndefined();
+    // kepler's own extensions — the GPU filter among them — still travel.
+    expect(symbols.extensions.length).toBeGreaterThan(0);
+  });
+
+  it('asks for no gradient unless it is switched on', () => {
+    const table = stationsTable();
+    const layer = symbolLayer(table);
+    layer.updateLayerVisConfig({ gradientTail: 0.6 });
+
+    expect(render(layer, table).gradient).toBeUndefined();
+  });
+
+  describe('text labels', () => {
+    /** What `renderLayer` returns, which is where kepler's own text layers land. */
+    function renderAll(layer: any, table: InstanceType<typeof KeplerTable>) {
+      built.length = 0;
+      return layer.renderLayer({
+        data: layer.formatLayerData({ [table.id]: table }),
+        gpuFilter: table.gpuFilter,
+        mapState: { zoom: 6, latitude: -2, longitude: -79 },
+        idx: 0,
+        visible: true,
+      }) as any[];
+    }
+
+    /** Sets the first label the way kepler's text label updater does: a new config. */
+    function setLabel(layer: any, patch: Record<string, unknown>) {
+      layer.updateLayerConfig({ textLabel: [{ ...layer.config.textLabel[0], ...patch }] });
+    }
+
+    it('draws none until a column is chosen', () => {
+      const table = stationsTable();
+      const layers = renderAll(symbolLayer(table), table);
+
+      expect(layers).toHaveLength(1);
+    });
+
+    it('labels each drawn symbol with the chosen column, after the symbols', () => {
+      const table = stationsTable();
+      const layer = symbolLayer(table);
+      setLabel(layer, { field: fieldOf(table, 'name') });
+
+      const layers = renderAll(layer, table);
+      const label = layers[layers.length - 1];
+      const [symbols] = built;
+
+      expect(layers).toHaveLength(2);
+      expect(label.id).toBe('symbols-label-name');
+      expect(label.props.data).toBe(symbols.data);
+      const first = label.props.data.find((row: { index: number }) => row.index === 0);
+      expect(label.props.getText(first)).toBe('Cuenca');
+      expect([...label.props.characterSet].sort()).toEqual(expect.arrayContaining(['C', 'Q', 'G']));
+      // Hidden by the clock with its symbol.
+      expect(label.props.getFilterValue).toBe(symbols.getFilterValue);
+      expect(label.props.filterRange).toBe(symbols.filterRange);
+    });
+
+    it('sets a label beside its symbol, clear of the symbol whatever its size', () => {
+      const table = stationsTable();
+      const layer = symbolLayer(table, { size: 'speed' });
+      setLabel(layer, { field: fieldOf(table, 'name'), anchor: 'start', alignment: 'center' });
+
+      const layers = renderAll(layer, table);
+      const label = layers[layers.length - 1];
+      const [symbols] = built;
+      const quito = label.props.data.find((row: { index: number }) => row.index === 1);
+      const cuenca = label.props.data.find((row: { index: number }) => row.index === 0);
+
+      const [quitoX, quitoY] = label.props.getPixelOffset(quito);
+      const [cuencaX] = label.props.getPixelOffset(cuenca);
+      expect(quitoY).toBe(0);
+      expect(quitoX).toBeGreaterThan(symbols.getSize(quito) / 2);
+      // The faster wind's larger symbol pushes its label further out.
+      expect(quitoX).toBeGreaterThan(cuencaX);
+    });
+  });
+
+  describe('standing upright', () => {
+    /** Renders with the map turned to a bearing, as a user rotating it would. */
+    function renderAtBearing(layer: any, table: InstanceType<typeof KeplerTable>, bearing: number) {
+      built.length = 0;
+      layer.renderLayer({
+        data: layer.formatLayerData({ [table.id]: table }),
+        gpuFilter: table.gpuFilter,
+        mapState: { zoom: 6, latitude: -2, longitude: -79, bearing, pitch: 50 },
+        idx: 0,
+        visible: true,
+      });
+      return built;
+    }
+
+    it('lies on the map unless asked to stand', () => {
+      const table = stationsTable();
+      const [props] = renderAtBearing(symbolLayer(table, { angle: 'heading' }), table, 30);
+
+      expect(props.billboard).toBe(false);
+      expect(props.getAngle(props.data.find((row: { index: number }) => row.index === 0))).toBe(
+        deckAngle(90, 'towards')
+      );
+    });
+
+    it('faces the camera, with its shadow and outline, when asked to stand', () => {
+      const table = stationsTable();
+      const layer = symbolLayer(table);
+      layer.updateLayerVisConfig({ upright: true, shadow: true, outline: true });
+
+      const drawn = renderAtBearing(layer, table, 0);
+
+      expect(drawn).toHaveLength(3);
+      expect(drawn.map((props) => props.billboard)).toEqual([true, true, true]);
+    });
+
+    it('keeps a bearing from a column pointing its way on the ground as the map turns', () => {
+      // Standing, deck turns a symbol on the screen, not on the ground: the
+      // map's own bearing has to be added back, or turning the map would leave
+      // every arrow pointing where it pointed before.
+      const table = stationsTable();
+      const layer = symbolLayer(table, { angle: 'heading' });
+      layer.updateLayerVisConfig({ upright: true });
+
+      const [props] = renderAtBearing(layer, table, 30);
+      const first = props.data.find((row: { index: number }) => row.index === 0);
+
+      expect(props.getAngle(first)).toBe(deckAngle(90, 'towards') + 30);
+      const turned = renderAtBearing(layer, table, 60)[0];
+      expect(turned.updateTriggers.getAngle).not.toEqual(props.updateTriggers.getAngle);
+    });
+
+    it('keeps a symbol with no bearing column upright on the screen as the map turns', () => {
+      // A bus stop or an airport stands straight: a fixed angle is a tilt on
+      // the screen, not a direction on the ground.
+      const table = stationsTable();
+      const layer = symbolLayer(table);
+      layer.updateLayerVisConfig({ upright: true, angleDegrees: 0 });
+
+      const [props] = renderAtBearing(layer, table, 30);
+
+      expect(props.getAngle(props.data[0])).toBe(0);
+    });
   });
 
   it('draws the fallback glyph, and asks deck for it by name, when the saved shape is unknown', () => {

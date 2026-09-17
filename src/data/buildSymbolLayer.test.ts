@@ -53,6 +53,36 @@ describe('buildSymbolLayer', () => {
     expect(layer!.config.visConfig.directionConvention).toBe('towards');
   });
 
+  it.each(['wind_direction', 'winddirection', 'wind_direction_10m', 'wind_dir', 'wd'])(
+    'reads %s as where the wind comes from, with no speed beside it',
+    (column) => {
+      // A station table that reports only a direction is still a wind: the
+      // name says so. Requiring a speed turned these arrows half round.
+      const layer = buildSymbolLayer({ latitude: 'lat', longitude: 'lon', direction: column }, 'grafana-A');
+
+      expect(layer!.config.visConfig.directionConvention).toBe('from');
+    }
+  );
+
+  it('reads a bare direction as a wind when the speed beside it is named as one', () => {
+    const layer = buildSymbolLayer(
+      { latitude: 'lat', longitude: 'lon', direction: 'Direction', speed: 'wind_speed' },
+      'grafana-A'
+    );
+
+    expect(layer!.config.visConfig.directionConvention).toBe('from');
+  });
+
+  it('reads a bare direction beside a bare speed as where it goes', () => {
+    // `speed` and `direction` are what a vehicle table calls its own.
+    const layer = buildSymbolLayer(
+      { latitude: 'lat', longitude: 'lon', direction: 'direction', speed: 'speed' },
+      'grafana-A'
+    );
+
+    expect(layer!.config.visConfig.directionConvention).toBe('towards');
+  });
+
   it('draws unturned symbols when only coordinates are mapped', () => {
     const layer = buildSymbolLayer({ latitude: 'lat', longitude: 'lon' }, 'grafana-A');
 

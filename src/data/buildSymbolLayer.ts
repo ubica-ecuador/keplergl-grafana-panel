@@ -34,6 +34,15 @@ function channel(roles: FieldRoles, column: string | undefined): { name: string 
   return column ? { name: keplerColumnName(roles, column) } : null;
 }
 
+/** Whether the direction column is a wind's: its name, or the speed's beside it, says so. */
+function readsAsWind(roles: FieldRoles): boolean {
+  const lower = (name: string | undefined) => name?.toLowerCase();
+  if (lower(roles.direction) !== 'direction') {
+    return true;
+  }
+  return Boolean(roles.speed) && lower(roles.speed) !== 'speed';
+}
+
 /**
  * Builds a symbol layer for a table of points, or null when it has no
  * coordinates to put them on.
@@ -43,10 +52,13 @@ function channel(roles: FieldRoles, column: string | undefined): { name: string 
  * two are half a turn apart and both look right on a map, so the reading is
  * taken from which roles matched rather than left to the reader.
  *
- * A direction alone does not make a wind. The `direction` role also claims a
- * bare `direction` or `wd`, which a vehicle table uses for where it is going;
- * read as meteorological, every arrow would point backwards. So `from` needs a
- * wind speed beside the direction — the pair that makes the reading a wind.
+ * The `direction` role is the wind's, and reads as `from` — with one exception.
+ * It also claims a bare `direction`, which is what a vehicle table calls where
+ * it is going; read as meteorological, every arrow would point backwards. That
+ * one word is a wind only beside a speed named as one. Everything else the role
+ * holds already says wind — `wind_direction`, `wd`, a column mapped to it by
+ * hand — and asking those for a speed too turned a direction-only station
+ * table half round.
  */
 export function buildSymbolLayer(roles: FieldRoles, dataId: string): SymbolLayerConfig | null {
   if (!roles.latitude || !roles.longitude) {
@@ -61,7 +73,7 @@ export function buildSymbolLayer(roles: FieldRoles, dataId: string): SymbolLayer
     columns.altitude = KEPLER_COLUMN.altitude;
   }
 
-  const meteorological = !roles.rotation && Boolean(roles.direction) && Boolean(roles.speed);
+  const meteorological = !roles.rotation && Boolean(roles.direction) && readsAsWind(roles);
   const bearing = roles.rotation ?? roles.direction;
   const magnitude = roles.magnitude ?? roles.speed;
 

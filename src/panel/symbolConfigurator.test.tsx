@@ -25,6 +25,54 @@ describe('symbol layer panel', () => {
     expect(typeof (Configurator.prototype as Record<string, unknown>)[method]).toBe('function');
   });
 
+  it('offers kepler’s own text label panel, wired to the layer’s labels', () => {
+    // kepler hands its configurator the panel as a dependency, third in line;
+    // the symbol layer's panel has to receive it from there, and the action
+    // that edits a label from the configurator's props.
+    const [, Factory] = replaceLayerConfigurator();
+    const received: Array<Record<string, unknown>> = [];
+    const TextLabelPanel = (props: Record<string, unknown>) => {
+      received.push(props);
+      return <div>text label panel</div>;
+    };
+    const deps = (Factory as unknown as { deps: unknown[] }).deps.map((_, i) =>
+      i === 2 ? TextLabelPanel : () => null
+    );
+    const Configurator = (Factory as unknown as (...args: unknown[]) => new (props: unknown) => any)(...deps);
+    const updateLayerTextLabel = jest.fn();
+    const configurator = new Configurator({ updateLayerTextLabel });
+
+    const textLabel = [{ field: null }];
+    const fields = [{ name: 'name' }];
+    const layer = {
+      id: 'layer-1',
+      type: SYMBOL_TYPE,
+      config: { visConfig: { symbol: 'arrow' }, colorField: null, colorUI: {}, textLabel },
+      visConfigSettings: {},
+      visualChannels: {
+        angle: { key: 'angle', property: 'angle' },
+        size: { key: 'size', property: 'size' },
+        color: { key: 'color', property: 'color' },
+      },
+    };
+
+    render(
+      <IntlProvider locale="en" messages={{ ...messages.en, ...SYMBOL_MESSAGES }}>
+        <ThemeProvider theme={theme}>
+          {configurator._renderSymbolLayerConfig({
+            layer,
+            visConfiguratorProps: { layer, fields, onChange: () => undefined },
+            layerConfiguratorProps: { layer, onChange: () => undefined },
+            layerChannelConfigProps: { layer, fields: [], onChange: () => undefined },
+          })}
+        </ThemeProvider>
+      </IntlProvider>
+    );
+
+    expect(screen.getByText('text label panel')).toBeInTheDocument();
+    expect(received[0]).toMatchObject({ id: 'layer-1', fields, textLabel, updateLayerTextLabel });
+  });
+
   it('shows the rotation and size groups', () => {
     const layer = {
       id: 'layer-1',
@@ -138,6 +186,69 @@ describe('symbol layer panel', () => {
     expect(screen.getByText('Minimum spacing (px)')).toBeInTheDocument();
   });
 
+  it.each([false, true])('offers outline and shadow as groups switched from their header (on: %s)', (on) => {
+    const layer = {
+      id: 'layer-1',
+      type: SYMBOL_TYPE,
+      config: {
+        visConfig: {
+          symbol: 'arrow',
+          directionConvention: 'towards',
+          outline: on,
+          outlineColor: [255, 255, 255],
+          outlineThickness: 3,
+          shadow: on,
+          shadowOpacity: 0.5,
+          shadowDistance: 4,
+          gradient: on,
+          gradientTail: 0.7,
+        },
+        colorField: null,
+        colorUI: {},
+      },
+      visConfigSettings: {
+        gradient: SYMBOL_VIS_CONFIGS.gradient,
+        gradientTail: SYMBOL_VIS_CONFIGS.gradientTail,
+        upright: SYMBOL_VIS_CONFIGS.upright,
+        outline: SYMBOL_VIS_CONFIGS.outline,
+        outlineColor: SYMBOL_VIS_CONFIGS.outlineColor,
+        outlineThickness: SYMBOL_VIS_CONFIGS.outlineThickness,
+        shadow: SYMBOL_VIS_CONFIGS.shadow,
+        shadowOpacity: SYMBOL_VIS_CONFIGS.shadowOpacity,
+        shadowDistance: SYMBOL_VIS_CONFIGS.shadowDistance,
+      } as unknown as Record<string, Record<string, unknown>>,
+      visualChannels: {
+        angle: { key: 'angle', property: 'angle' },
+        size: { key: 'size', property: 'size' },
+        color: { key: 'color', property: 'color' },
+      },
+    };
+
+    render(
+      <IntlProvider locale="en" messages={{ ...messages.en, ...SYMBOL_MESSAGES }}>
+        <ThemeProvider theme={theme}>
+          <SymbolLayerConfig
+            layer={layer}
+            visConfiguratorProps={{ layer, onChange: () => undefined }}
+            layerConfiguratorProps={{ layer, onChange: () => undefined }}
+            layerChannelConfigProps={{ layer, fields: [], onChange: () => undefined }}
+          />
+        </ThemeProvider>
+      </IntlProvider>
+    );
+
+    expect(screen.getByText('Lighten towards the tail')).toBeInTheDocument();
+    expect(screen.queryByText('Tail lightness') !== null).toBe(on);
+    expect(screen.getByText('Stand upright in 3D')).toBeInTheDocument();
+    expect(screen.getByText('Outline')).toBeInTheDocument();
+    expect(screen.getByText('Shadow')).toBeInTheDocument();
+    for (const label of ['Outline thickness', 'Shadow intensity', 'Shadow distance (px)']) {
+      const content = screen.getByText(label).closest('.layer-config-group__content');
+      expect(content).not.toBeNull();
+      expect(content!.classList.contains('disabled')).toBe(!on);
+    }
+  });
+
   it('names shapes by their glyph names, and lets the long list be searched', () => {
     // Glyph names have no messages on purpose. Put through react-intl like the
     // other selectors, each option rendered as `symbol.symbol.airport` and
@@ -207,5 +318,55 @@ describe('symbol layer panel', () => {
       .map(([error]) => String(error?.message ?? ''))
       .filter((message) => message.includes('"symbol.symbol.'));
     expect(missing).toEqual([]);
+  });
+
+  it('draws each shape beside its name, in the list and in the chosen value', () => {
+    // The drawing itself needs a 2D canvas, which jsdom lacks; what can be
+    // checked here is that every option carries one, for its own glyph.
+    const layer = {
+      id: 'layer-1',
+      type: SYMBOL_TYPE,
+      config: { visConfig: { symbol: 'airport', directionConvention: 'towards' }, colorField: null, colorUI: {} },
+      visConfigSettings: { symbol: SYMBOL_VIS_CONFIGS.symbol as unknown as Record<string, unknown> },
+      visualChannels: {
+        angle: { key: 'angle', property: 'angle' },
+        size: { key: 'size', property: 'size' },
+        color: { key: 'color', property: 'color' },
+      },
+    };
+
+    const { container } = render(
+      <IntlProvider locale="en" messages={{ ...messages.en, ...SYMBOL_MESSAGES }}>
+        <ThemeProvider theme={theme}>
+          <SymbolLayerConfig
+            layer={layer}
+            visConfiguratorProps={{ layer, onChange: () => undefined }}
+            layerConfiguratorProps={{ layer, onChange: () => undefined }}
+            layerChannelConfigProps={{ layer, fields: [], onChange: () => undefined }}
+          />
+        </ThemeProvider>
+      </IntlProvider>
+    );
+
+    const [shape] = container.querySelectorAll('.item-selector__dropdown');
+    expect(shape.querySelector('canvas')?.getAttribute('data-symbol')).toBe('airport');
+
+    const scope = globalThis as { IntersectionObserver?: unknown };
+    const original = scope.IntersectionObserver;
+    scope.IntersectionObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+    try {
+      fireEvent.click(shape);
+      const items = [...document.body.querySelectorAll('.list__item')];
+      expect(items.length).toBeGreaterThan(0);
+      for (const item of items) {
+        expect(item.querySelector('canvas')?.getAttribute('data-symbol')).toBe(item.textContent);
+      }
+    } finally {
+      scope.IntersectionObserver = original;
+    }
   });
 });

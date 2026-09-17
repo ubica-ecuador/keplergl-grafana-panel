@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ComponentType } from 'react';
 import {
   ChannelByValueSelector,
   ConfigGroupCollapsibleContent,
@@ -10,6 +10,7 @@ import {
 } from '@kepler.gl/components';
 
 import { SelectKnob } from './selectKnob';
+import { SymbolOption } from './symbolOption';
 
 /**
  * The layer panel for the symbol layer.
@@ -21,13 +22,24 @@ import { SelectKnob } from './selectKnob';
  */
 interface ConfiguratorArgs {
   layer: {
-    config: { visConfig: Record<string, unknown>; angleField?: unknown; sizeField?: unknown; colorField?: unknown };
+    id?: string;
+    config: {
+      visConfig: Record<string, unknown>;
+      angleField?: unknown;
+      sizeField?: unknown;
+      colorField?: unknown;
+      textLabel?: unknown;
+    };
     visConfigSettings: Record<string, Record<string, unknown>>;
     visualChannels: Record<string, unknown>;
   };
   visConfiguratorProps: Record<string, unknown>;
   layerConfiguratorProps: Record<string, unknown>;
   layerChannelConfigProps: Record<string, unknown>;
+  /** kepler's text label panel, from the configurator's dependencies. */
+  TextLabelPanel?: ComponentType<Record<string, unknown>>;
+  /** The action that edits one of the layer's labels. */
+  updateLayerTextLabel?: unknown;
 }
 
 export function SymbolLayerConfig({
@@ -35,6 +47,8 @@ export function SymbolLayerConfig({
   visConfiguratorProps,
   layerConfiguratorProps,
   layerChannelConfigProps,
+  TextLabelPanel,
+  updateLayerTextLabel,
 }: ConfiguratorArgs) {
   const settings = layer.visConfigSettings;
   const slider = (key: string) => <VisConfigSlider {...settings[key]} {...visConfiguratorProps} />;
@@ -44,17 +58,42 @@ export function SymbolLayerConfig({
       <LayerConfigGroup label={'symbol.group.symbol'} collapsible>
         {/* The shape's options are glyph names — the words a person reads, with
             no messages behind them — and there are several hundred, so the
-            list is searched rather than scrolled. */}
+            list is searched rather than scrolled. Each is drawn beside its
+            name: `rail`, `rail-light` and `rail-metro` are words apart and
+            shapes apart. */}
         <SelectKnob
           layer={layer}
           visConfiguratorProps={visConfiguratorProps}
           property="symbol"
           displayOption={(name) => name}
           searchable
+          OptionComponent={SymbolOption}
         />
         <SelectKnob layer={layer} visConfiguratorProps={visConfiguratorProps} property="directionConvention" />
+        {settings.upright ? <VisConfigSwitch {...settings.upright} {...visConfiguratorProps} /> : null}
         <ConfigGroupCollapsibleContent>{slider('opacity')}</ConfigGroupCollapsibleContent>
       </LayerConfigGroup>
+
+      {/* Outline and shadow are groups switched from their header, the way
+          kepler's point layer offers its outline: off, the controls stay in
+          view but disabled. */}
+      {settings.outline ? (
+        <LayerConfigGroup {...settings.outline} {...visConfiguratorProps} collapsible>
+          <LayerColorSelector
+            {...visConfiguratorProps}
+            selectedColor={layer.config.visConfig.outlineColor}
+            property="outlineColor"
+          />
+          {slider('outlineThickness')}
+        </LayerConfigGroup>
+      ) : null}
+
+      {settings.shadow ? (
+        <LayerConfigGroup {...settings.shadow} {...visConfiguratorProps} collapsible>
+          {slider('shadowOpacity')}
+          {slider('shadowDistance')}
+        </LayerConfigGroup>
+      ) : null}
 
       <LayerConfigGroup label={'symbol.group.rotation'} collapsible>
         <ChannelByValueSelector channel={layer.visualChannels.angle} {...layerChannelConfigProps} />
@@ -92,7 +131,22 @@ export function SymbolLayerConfig({
         ) : (
           <LayerColorSelector {...layerConfiguratorProps} />
         )}
+        {settings.gradient ? (
+          <>
+            <VisConfigSwitch {...settings.gradient} {...visConfiguratorProps} />
+            {layer.config.visConfig.gradient ? slider('gradientTail') : null}
+          </>
+        ) : null}
       </LayerConfigGroup>
+
+      {TextLabelPanel ? (
+        <TextLabelPanel
+          id={layer.id}
+          fields={visConfiguratorProps.fields}
+          updateLayerTextLabel={updateLayerTextLabel}
+          textLabel={layer.config.textLabel}
+        />
+      ) : null}
     </div>
   );
 }
