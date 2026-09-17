@@ -39,7 +39,16 @@ export function levelFor(metresPerPixel: number, spacingPx: number, latitude: nu
   return Math.max(0, Math.round(Math.log2(1 / degrees)));
 }
 
-/** The cell a point falls in. */
+/**
+ * The cell a point falls in.
+ *
+ * Floors rather than rounds: a point belongs to the cell whose west/south
+ * edge it has passed, so a cell's own half-open range
+ * `[col*size, (col+1)*size)` is exactly what `sizeAt`'s neighbours tile
+ * without gaps or overlap. Rounding would instead put a point in whichever
+ * cell was merely nearer, which breaks that tiling and can flip a point
+ * between cells on nothing but floating-point noise near a boundary.
+ */
 export function cellAt(level: number, lon: number, lat: number): Cell {
   const size = sizeAt(level);
   return { level, col: Math.floor(lon / size), row: Math.floor(lat / size) };
@@ -49,17 +58,46 @@ export function keyOf(cell: Cell): string {
   return `${cell.level}:${cell.col}:${cell.row}`;
 }
 
-/** A number from a cell's key, the same every time. */
-function hashOf(cell: Cell): number {
-  let hash = 2166136261;
-  for (const value of [cell.level, cell.col, cell.row]) {
-    hash ^= value | 0;
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
+/** murmur3's finalizer — the avalanche step `hashOf` leans on. */
+function fmix32(value: number): number {
+  let h = value >>> 0;
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
+  return h >>> 0;
 }
 
-/** Two numbers between 0 and 1 from that hash. */
+/**
+ * Combines a cell's three integer fields into one well-mixed hash.
+ *
+ * A single XOR-then-multiply per field (this module's first version) is close
+ * to an affine map: incrementing one coordinate by one — exactly what a
+ * neighbouring cell does — moves the hash by a near-constant delta instead
+ * of scattering it, so adjacent cells got near-identical seeds and phases and
+ * the field drew the cell lattice instead of hiding it. Running each field
+ * through murmur3's finalizer before folding it in gives a single flipped
+ * input bit roughly even odds of flipping any given output bit, which an
+ * affine map cannot do.
+ */
+function hashOf(cell: Cell): number {
+  let hash = 0;
+  for (const value of [cell.level, cell.col, cell.row]) {
+    hash = fmix32(hash ^ fmix32(value | 0));
+  }
+  return hash;
+}
+
+/**
+ * Two numbers between 0 and 1 from that hash.
+ *
+ * `seedOf` needs an x and a y that don't move together, or every seed would
+ * sit on the same diagonal through its cell. Slicing two different bit
+ * ranges out of one already-avalanched hash is enough to decorrelate them
+ * without hashing the cell a second time — scattering nearby cells apart is
+ * `hashOf`'s job, not this one's.
+ */
 function pairFrom(hash: number): [number, number] {
   const first = (hash >>> 8) / 16777216;
   const second = ((Math.imul(hash, 1103515245) + 12345) >>> 8) / 16777216;
@@ -79,7 +117,17 @@ export function seedOf(cell: Cell): [number, number] {
   return [(cell.col + 0.15 + x * 0.7) * size, (cell.row + 0.15 + y * 0.7) * size];
 }
 
-/** Where in the cycle this cell's trail starts, from 0 to 1. */
+/**
+ * Where in the cycle this cell's trail starts, from 0 to 1.
+ *
+ * Hashed as if the cell sat 101 levels up rather than reusing `seedOf`'s own
+ * hash: without that shift this would fold to the same combination `seedOf`
+ * uses for the seed's y-offset, so a cell born high up in its own cell would
+ * also always be the one that starts late in the cycle — a correlation
+ * between where a line is drawn and when it starts that would read as
+ * another kind of lattice. 101 is arbitrary; it only has to differ from every
+ * level this module is actually asked to work at.
+ */
 export function phaseOf(cell: Cell): number {
   return pairFrom(hashOf({ ...cell, level: cell.level + 101 }))[0];
 }

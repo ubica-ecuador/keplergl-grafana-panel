@@ -46,11 +46,25 @@ describe('seedOf', () => {
     expect(lat).toBeLessThan((cell.row + 1) * size);
   });
 
-  it('gives neighbouring cells different offsets', () => {
-    const a = seedOf(cellAt(4, -79, -2));
-    const b = seedOf(cellAt(4, -78.9, -2));
-    const size = Math.pow(2, -4);
-    expect(Math.abs((a[0] % size) - (b[0] % size))).toBeGreaterThan(1e-6);
+  it('spreads a run of neighbouring cells across the cell instead of clustering them', () => {
+    // A hash that moves adjacent cells by a near-constant delta — the bug this
+    // guards against — leaves most of these offsets sitting on a handful of
+    // near-duplicate points instead of spread through the band. Checked at a
+    // realistic magnitude (the same column `cellAt(4, -79, -2)` sits in above),
+    // not near zero where small integers are easy to hash well by accident.
+    const level = 4;
+    const size = Math.pow(2, -level);
+    const row = -32;
+    const offsets = Array.from({ length: 200 }, (_, i) => {
+      const cell = { level, col: -1264 + i, row };
+      return (seedOf(cell)[0] - cell.col * size) / size;
+    });
+
+    const distinctToFourPlaces = new Set(offsets.map((v) => v.toFixed(4))).size;
+    expect(distinctToFourPlaces).toBeGreaterThan(180);
+
+    const range = Math.max(...offsets) - Math.min(...offsets);
+    expect(range).toBeGreaterThan(0.5);
   });
 });
 
@@ -60,5 +74,20 @@ describe('phaseOf', () => {
     expect(phaseOf(cell)).toBe(phaseOf(cell));
     expect(phaseOf(cell)).toBeGreaterThanOrEqual(0);
     expect(phaseOf(cell)).toBeLessThan(1);
+  });
+
+  it('spreads a run of neighbouring cells across the cycle instead of clustering them', () => {
+    // Neighbouring lines all starting at the same point in the cycle would
+    // pulse as one instead of animating as an unrelated field — the same
+    // clustering failure as seedOf's, but for time instead of place.
+    const level = 4;
+    const row = -32;
+    const phases = Array.from({ length: 200 }, (_, i) => phaseOf({ level, col: -1264 + i, row }));
+
+    const distinctToFourPlaces = new Set(phases.map((v) => v.toFixed(4))).size;
+    expect(distinctToFourPlaces).toBeGreaterThan(180);
+
+    const range = Math.max(...phases) - Math.min(...phases);
+    expect(range).toBeGreaterThan(0.5);
   });
 });
