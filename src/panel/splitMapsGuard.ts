@@ -12,7 +12,7 @@
  *
  * It does not survive the wait. The panel refreshes a dataset with
  * `replaceDataInMap`, and `prepareStateForDatasetReplace`
- * (@kepler.gl/reducers `vis-state-updaters`, 3.3.0-alpha.11) does
+ * (@kepler.gl/reducers `vis-state-updaters`, 3.3.0-alpha.12) does
  *
  *     if (nextState.layerToBeMerged?.length) {
  *       nextState.splitMapsToBeMerged = serializedState?.splitMaps ?? [];

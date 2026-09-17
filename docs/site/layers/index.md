@@ -1,7 +1,7 @@
 # Layer gallery
 
 Every layer type the panel can build from query rows, with the query that produces it. Thirteen of
-kepler's twenty-one registered layer types can be driven by data — and the panel registers two more
+kepler's twenty-two registered layer types can be driven by data — and the panel registers two more
 that kepler does not have: a [flow field](../guide/data/velocity-fields) for a grid of velocities,
 and a [Zarr tileset](../guide/data/zarr) for a store of arrays.
 

@@ -8,7 +8,14 @@
  * second dataset's own layer list, empty when it has no layers. The first
  * dataset's layers then come back reversed: a heatmap meant to sit under the
  * points ends up on top of them (`replaceDatasetDepsInState` in
- * @kepler.gl/reducers, 3.3.0-alpha.11 and master).
+ * @kepler.gl/reducers).
+ *
+ * keplergl/kepler.gl#3728, released in 3.3.0-alpha.12, fixed only half of it:
+ * the overwrite is skipped when the second dataset parks nothing, and still
+ * happens when it has layers of its own — the list it writes is then those
+ * layers alone, since the first dataset's are parked and no longer in the
+ * state it reads. Measured on alpha.12 with points and a heatmap on one query
+ * and a layer on another: the first two swapped on 12 refreshes out of 12.
  *
  * Free of kepler and React so the decision can be tested with literal values.
  * The caller captures the order before refreshing and dispatches what this

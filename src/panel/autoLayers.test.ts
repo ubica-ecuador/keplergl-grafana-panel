@@ -71,6 +71,25 @@ describe('supersededLayerIds — flow fields', () => {
     expect(supersededLayerIds(layers, ours)).toEqual([]);
   });
 
+  it('drops the Flow Field kepler guesses from the same `u`/`v` columns', () => {
+    // kepler 3.3.0-alpha.12 ships a flow field of its own and creates it for
+    // any dataset with columns named `u` and `v` beside coordinates — the very
+    // grid this panel traces — so the map would draw two sets of streamlines.
+    const layers = [
+      { id: 'auto1', type: 'point', config: { dataId: 'grafana-A' } },
+      { id: 'auto2', type: 'flowField', config: { dataId: 'grafana-A' } },
+      { id: 'flowfield-grafana-A', type: 'flowfield', config: { dataId: 'grafana-A' } },
+    ];
+
+    expect(supersededLayerIds(layers, ours)).toEqual(['auto1', 'auto2']);
+  });
+
+  it("keeps kepler's Flow Field on another query", () => {
+    const layers = [{ id: 'auto2', type: 'flowField', config: { dataId: 'grafana-B' } }];
+
+    expect(supersededLayerIds(layers, ours)).toEqual([]);
+  });
+
   it('never drops a second flow field on the same grid', () => {
     // Two fields over one dataset is a deliberate act: a user comparing
     // densities, or colouring one by speed and leaving the other plain.
