@@ -27,6 +27,9 @@ export const SYMBOL_MESSAGES: Record<string, string> = {
   'symbol.fixedSize': 'Use the column’s number',
   'symbol.declutter': 'Thin overlapping symbols',
   'symbol.declutterSpacingPx': 'Minimum spacing (px)',
+  'symbol.shadow': 'Shadow',
+  'symbol.shadowOpacity': 'Shadow intensity',
+  'symbol.shadowDistance': 'Shadow distance (px)',
 };
 
 /** Adds them to every locale kepler ships, never overwriting an existing entry. */

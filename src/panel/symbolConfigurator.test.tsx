@@ -138,6 +138,55 @@ describe('symbol layer panel', () => {
     expect(screen.getByText('Minimum spacing (px)')).toBeInTheDocument();
   });
 
+  it.each([
+    [false, []],
+    [true, ['Shadow intensity', 'Shadow distance (px)']],
+  ])('offers the shadow switch, and its two sliders when it is on (%s)', (on, sliders) => {
+    const layer = {
+      id: 'layer-1',
+      type: SYMBOL_TYPE,
+      config: {
+        visConfig: {
+          symbol: 'arrow',
+          directionConvention: 'towards',
+          shadow: on,
+          shadowOpacity: 0.5,
+          shadowDistance: 4,
+        },
+        colorField: null,
+        colorUI: {},
+      },
+      visConfigSettings: {
+        shadow: SYMBOL_VIS_CONFIGS.shadow,
+        shadowOpacity: SYMBOL_VIS_CONFIGS.shadowOpacity,
+        shadowDistance: SYMBOL_VIS_CONFIGS.shadowDistance,
+      } as unknown as Record<string, Record<string, unknown>>,
+      visualChannels: {
+        angle: { key: 'angle', property: 'angle' },
+        size: { key: 'size', property: 'size' },
+        color: { key: 'color', property: 'color' },
+      },
+    };
+
+    render(
+      <IntlProvider locale="en" messages={{ ...messages.en, ...SYMBOL_MESSAGES }}>
+        <ThemeProvider theme={theme}>
+          <SymbolLayerConfig
+            layer={layer}
+            visConfiguratorProps={{ layer, onChange: () => undefined }}
+            layerConfiguratorProps={{ layer, onChange: () => undefined }}
+            layerChannelConfigProps={{ layer, fields: [], onChange: () => undefined }}
+          />
+        </ThemeProvider>
+      </IntlProvider>
+    );
+
+    expect(screen.getByText('Shadow')).toBeInTheDocument();
+    for (const label of ['Shadow intensity', 'Shadow distance (px)']) {
+      expect(screen.queryByText(label) !== null).toBe((sliders as string[]).includes(label));
+    }
+  });
+
   it('names shapes by their glyph names, and lets the long list be searched', () => {
     // Glyph names have no messages on purpose. Put through react-intl like the
     // other selectors, each option rendered as `symbol.symbol.airport` and

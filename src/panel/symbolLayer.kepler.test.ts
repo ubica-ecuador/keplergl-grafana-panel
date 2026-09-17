@@ -265,6 +265,61 @@ describe('symbol layer on kepler’s real Layer', () => {
     expect(turned).not.toEqual(bound);
   });
 
+  it('draws no shadow unless asked to', () => {
+    const table = stationsTable();
+    render(symbolLayer(table), table);
+
+    expect(built).toHaveLength(1);
+    expect(built[0].shadow).toBeUndefined();
+  });
+
+  it('draws a shadow beneath the symbols: the same rows, dark, offset the same way whatever their angle', () => {
+    const table = stationsTable();
+    const layer = symbolLayer(table, { angle: 'heading', size: 'speed' });
+    layer.updateLayerVisConfig({ shadow: true, shadowOpacity: 0.5, shadowDistance: 6 });
+
+    render(layer, table);
+    const [shadow, symbols] = built;
+
+    // First in the list, so deck draws it underneath.
+    expect(built).toHaveLength(2);
+    expect(shadow.shadow).toBe(true);
+    expect(symbols.shadow).toBeUndefined();
+    expect(shadow.id).not.toBe(symbols.id);
+
+    expect(shadow.data).toBe(symbols.data);
+    expect(shadow.symbols).toEqual(symbols.symbols);
+    for (const row of shadow.data) {
+      expect(shadow.getAngle(row)).toBe(symbols.getAngle(row));
+      expect(shadow.getSize(row)).toBe(symbols.getSize(row));
+      expect(shadow.getColor(row)).toEqual([0, 0, 0, 128]);
+    }
+    // A constant, and deck adds it after turning the icon, so every shadow
+    // falls the same way on screen.
+    expect(shadow.getPixelOffset).toEqual([6, 6]);
+
+    // Hidden with its symbol by the clock, and never the thing a hover finds.
+    expect(shadow.getFilterValue).toBe(symbols.getFilterValue);
+    expect(shadow.filterRange).toBe(symbols.filterRange);
+    expect(shadow.pickable).toBe(false);
+    expect(shadow.onFilteredItemsChange).toBeUndefined();
+  });
+
+  it('redraws the shadow when its intensity or distance changes', () => {
+    const table = stationsTable();
+    const layer = symbolLayer(table);
+    layer.updateLayerVisConfig({ shadow: true, shadowOpacity: 0.5, shadowDistance: 4 });
+
+    render(layer, table);
+    const before = built[0].updateTriggers;
+    layer.updateLayerVisConfig({ shadowOpacity: 0.8, shadowDistance: 10 });
+    render(layer, table);
+    const after = built[0].updateTriggers;
+
+    expect(after.getColor).not.toEqual(before.getColor);
+    expect(after.getPixelOffset).not.toEqual(before.getPixelOffset);
+  });
+
   it('draws the fallback glyph, and asks deck for it by name, when the saved shape is unknown', () => {
     const table = stationsTable();
     const layer = symbolLayer(table);

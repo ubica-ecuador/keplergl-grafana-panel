@@ -122,6 +122,33 @@ export const SYMBOL_VIS_CONFIGS = {
     group: 'display',
     property: 'declutterSpacingPx',
   },
+  shadow: {
+    type: 'boolean',
+    defaultValue: false,
+    label: 'symbol.shadow',
+    group: 'display',
+    property: 'shadow',
+  },
+  shadowOpacity: {
+    type: 'number',
+    defaultValue: 0.5,
+    label: 'symbol.shadowOpacity',
+    isRanged: false,
+    range: [0, 1],
+    step: 0.05,
+    group: 'display',
+    property: 'shadowOpacity',
+  },
+  shadowDistance: {
+    type: 'number',
+    defaultValue: 4,
+    label: 'symbol.shadowDistance',
+    isRanged: false,
+    range: [0, 20],
+    step: 1,
+    group: 'display',
+    property: 'shadowDistance',
+  },
 } as const;
 
 /**
@@ -450,8 +477,14 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       // trigger: kepler's own per channel — its column, scale, domain, range
       // and constant — with this layer's reading of the angle added on top.
       const channelTriggers = this.getVisualChannelUpdateTriggers();
+      const updateTriggers = {
+        ...channelTriggers,
+        getIcon: [symbol],
+        getAngle: { ...channelTriggers.getAngle, directionConvention: convention },
+        getFilterValue: opts?.gpuFilter?.filterValueUpdateTriggers,
+      };
 
-      const deckLayer = buildDeckLayer({
+      const symbolProps = {
         ...defaults,
         id: `${this.id}-symbol`,
         data: drawn,
@@ -466,17 +499,44 @@ export function makeSymbolLayer<C extends Constructor<object>>(
         // Left out rather than passed as undefined when there is none, so the
         // filter extension keeps its own default instead of an empty prop.
         ...(getFilterValue ? { getFilterValue } : {}),
+        updateTriggers,
+      };
+
+      // Null when an atlas could not be painted: dropping a layer loses it for
+      // the frame rather than the whole map render.
+      return [visConfig.shadow === true ? this.shadowOf(symbolProps, visConfig) : null, buildDeckLayer(symbolProps)]
+        .filter(Boolean);
+    }
+
+    /**
+     * The symbols' shadow: the same rows, angles and sizes, painted from a
+     * blurred copy of the glyph in a flat dark tone and pushed a few pixels
+     * down and to the right.
+     *
+     * The push is a constant pixel offset, and deck adds it after turning the
+     * icon, so every shadow falls the same way on screen whatever each symbol's
+     * bearing — the light has one direction. Not pickable, so a hover still
+     * finds the symbol and the tooltip does not answer twice; and not reporting
+     * filtered items, which the symbols already do.
+     */
+    shadowOf(symbolProps: Record<string, any>, visConfig: Record<string, unknown>): unknown {
+      const alpha = Math.round(255 * Math.min(1, Math.max(0, setting(visConfig.shadowOpacity, 0.5))));
+      const distance = setting(visConfig.shadowDistance, 4);
+      const color = [0, 0, 0, alpha];
+      return buildDeckLayer({
+        ...symbolProps,
+        id: `${this.id}-symbol-shadow`,
+        shadow: true,
+        pickable: false,
+        onFilteredItemsChange: undefined,
+        getColor: () => color,
+        getPixelOffset: [distance, distance],
         updateTriggers: {
-          ...channelTriggers,
-          getIcon: [symbol],
-          getAngle: { ...channelTriggers.getAngle, directionConvention: convention },
-          getFilterValue: opts?.gpuFilter?.filterValueUpdateTriggers,
+          ...symbolProps.updateTriggers,
+          getColor: [alpha],
+          getPixelOffset: [distance],
         },
       });
-
-      // Null when the atlas could not be painted: dropping it loses this
-      // layer's symbols for the frame rather than the whole map render.
-      return deckLayer ? [deckLayer] : [];
     }
   }
 
