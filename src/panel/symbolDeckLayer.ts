@@ -15,13 +15,33 @@ import { glyphsFor, paintGlyphs, SymbolPainter } from './symbolGlyphs';
  * uses one.
  */
 
-let atlas: { key: string; canvas: HTMLCanvasElement; mapping: Record<string, IconFrame> } | null = null;
+interface Atlas {
+  canvas: HTMLCanvasElement;
+  mapping: Record<string, IconFrame>;
+}
 
-function atlasFor(names: string[]): { canvas: HTMLCanvasElement; mapping: Record<string, IconFrame> } | null {
+/**
+ * Painted atlases, by the glyphs they hold.
+ *
+ * One per set rather than one slot for the page: the module is shared by every
+ * panel, and a single slot meant two layers drawing different shapes repainted
+ * the canvas on every render, each time handing deck a new texture to upload
+ * and every row's icon to recompute. Bounded, least recently used first out,
+ * because a user flicking through the shape picker leaves a set behind per
+ * shape — and one glyph's atlas is small, but not free.
+ */
+const atlases = new Map<string, Atlas>();
+const MAX_ATLASES = 16;
+
+function atlasFor(names: string[]): Atlas | null {
   const glyphs = glyphsFor(names);
   const key = glyphs.map((glyph) => glyph.key).join(',');
-  if (atlas?.key === key) {
-    return atlas;
+  const cached = atlases.get(key);
+  if (cached) {
+    // Re-inserted, so the order of the map is the order of use.
+    atlases.delete(key);
+    atlases.set(key, cached);
+    return cached;
   }
 
   const created = createAtlasCanvas(glyphs.length);
@@ -31,7 +51,11 @@ function atlasFor(names: string[]): { canvas: HTMLCanvasElement; mapping: Record
     return null;
   }
 
-  atlas = { key, canvas: created.canvas, mapping: paintGlyphs(glyphs, created.ctx as unknown as SymbolPainter) };
+  const atlas = { canvas: created.canvas, mapping: paintGlyphs(glyphs, created.ctx as unknown as SymbolPainter) };
+  atlases.set(key, atlas);
+  if (atlases.size > MAX_ATLASES) {
+    atlases.delete(atlases.keys().next().value as string);
+  }
   return atlas;
 }
 
