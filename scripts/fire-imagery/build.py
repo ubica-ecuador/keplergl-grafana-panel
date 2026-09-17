@@ -104,15 +104,16 @@ def variables():
         custom_variable('s2cloud', 'Cloud ≤ %', '5,10,20,40,60,100', '40',
                         "The most cloud a scene may carry: the catalogue's eo:cloud_cover, over the whole granule."),
         custom_variable('s2cover', 'Box covered ≥ %', '0,10,25,50,75,100', '50',
-                        'How much of the drawn box a scene must cover to be listed.'),
+                        'How much of the box a scene must cover to be listed.'),
         custom_variable('bands', 'Bands', 'trueColor,forestBurn,infrared,nbr,ndmi', 'forestBurn',
                         'Which bands of each scene to draw. Forest burn shows the scar and the active '
                         'front through smoke; the indices measure rather than illustrate.'),
         custom_variable('lookback', 'Look back (days)', '30,60,90,180', '90',
                         'How far back to look for scenes before the fire. The days right before a fire '
                         'are often smoky or cloudy, so this is deliberately wide. The before side then '
-                        'draws the clearest of the six most recent scenes found, so it never reaches back '
-                        'into another season; the date drawn is always shown.'),
+                        'draws the clearest of the six most recent scenes that pass the cloud and coverage '
+                        'cuts, however far back those are; the date drawn is always shown, so a change of '
+                        'season can be seen.'),
         centroid_variable('aLat', 'Imagery box centre lat', 'ST_Y'),
         centroid_variable('aLng', 'Imagery box centre lng', 'ST_X'),
     ]
@@ -255,7 +256,7 @@ def sentinel_map_element(version):
     return panel(
         22, 'Sentinel-2 — the scene over your box',
         'The map opens split by a swipe curtain — drag it to compare. The left side is the clearest of '
-        'the six most recent scenes before the fire (the six the table below lists); the right side is '
+        'the six most recent scenes before the fire; the right side is '
         'the clearest scene from the paused window to the days after it. Pick another scene for either '
         'side in the table below — '
         'the days right before a fire are often smoky, so widen "Look back (days)" if the Before '
@@ -309,7 +310,8 @@ def contact_sheet_element():
     return panel(
         23, 'Scenes of your box, as pictures',
         'Sentinel-2 scenes that pass the cloud and coverage cuts, oldest first. Before rows are the six most '
-        'recent scenes before the fire — the ones the left side picks its clearest from; After rows are the '
+        'recent scenes before the fire, the ones the left side picks its clearest from — or, if you picked an '
+        'older one by hand, that one and the five most recent; After rows are the '
         'catalogue you actually browse, up to 24. Each thumbnail is your box cut out of that scene by the tile '
         'server. The Map column marks the two scenes the map is drawing '
         'right now, whether you picked them or not: ◀ on the left of the curtain, ▶ on the right. Click a row '
@@ -336,8 +338,9 @@ def figures_element():
                'showPercentChange': False, 'textMode': 'value_and_name', 'wideLayout': False}
     return panel(
         24, 'Your box in the catalogue',
-        'Box covered is what all the listed scenes see together. Before is the date of the scene the map draws '
-        'on the left: the clearest of the six most recent before the fire — widen "Look back (days)" if it '
+        'Scenes, Min cloud and Box covered are about the After scenes only; Box covered is what they see '
+        'together. Before is the date of the scene the map draws on the left: the clearest of the six most '
+        'recent before the fire, or the one you picked — widen "Look back (days)" if it '
         'says none in range. Matched is what the catalogue '
         'found; if Returned is lower, the list was cut. HTTP other than 200 means the search failed, not that '
         'there are no scenes.',
@@ -374,11 +377,13 @@ def fire_map_element(panel8):
     return panel(
         21, 'Fires — pause on a day, then draw a box',
         'Play the days, pause on the one you care about, and draw a rectangle with the map draw tool. '
-        'Draw it by pressing, dragging and releasing; a click, move, click does not close it on this map. '
+        'Draw it by pressing, dragging and releasing. '
         'Or click a fire: that sets a 6 km square around it as the box, which you can delete like a drawing. '
+        'Close the draw tool before clicking a fire; while it is open, a click on a fire sets no box. '
         'The map on the right splits by a swipe curtain and searches Sentinel-2 for that box on both '
-        'sides: the days after the paused window, and the clearest of the six most recent scenes before '
-        'it. The rectangle hides the cells outside it; delete it to see them again.',
+        'sides: from the paused window to the days after it, and the clearest of the six most recent scenes '
+        'before it. A drawn rectangle hides the cells outside it; delete it to see them again. A clicked '
+        'square leaves them visible.',
         query_a, KEPLER_GROUP, source['vizConfig']['version'], options)
 
 

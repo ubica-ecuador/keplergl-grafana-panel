@@ -1172,6 +1172,40 @@ class ImageryPanelsTest(unittest.TestCase):
         lookback = next(v for v in build.variables() if v['spec']['name'] == 'lookback')
         self.assertIn('six most recent', lookback['spec']['description'])
 
+    def test_no_description_promises_what_the_tab_does_not_do(self):
+        # Cada frase de aquí la desmintió una medición:
+        # - la hoja no siempre lista "las seis": una de antes pinchada a mano y
+        #   más vieja que ellas entra con las cinco más recientes;
+        # - el antes no está acotado en días sino en seis escenas TRAS los
+        #   cortes: Congo, nube <= 5 %, 90 días, daría un antes 74 días atrás;
+        # - un clic, mover, clic SÍ cierra un rectángulo en este mapa con GPU
+        #   (lo que fallaba era SwiftShader, que pierde los clics en este mapa).
+        texts = {element['spec']['id']: element['spec']['description'] for element in self.elements.values()
+                 if element['spec']['id'] in (21, 22, 23, 24)}
+        texts.update({v['spec']['name']: v['spec'].get('description', '') for v in build.variables()})
+        for key, text in texts.items():
+            for untrue in ('the six the table below lists', 'another season', 'does not close it'):
+                self.assertNotIn(untrue, text, key)
+        self.assertIn('picked an older one by hand', texts[23])
+        self.assertIn('change of season can be seen', texts['lookback'])
+
+    def test_fire_map_says_what_a_click_does_and_when_it_does_not(self):
+        description = self.elements['panel-21']['spec']['description']
+        # La trampa: tras dibujar, la herramienta sigue abierta y un clic en un
+        # incendio no pone recuadro.
+        self.assertIn('Close the draw tool before clicking a fire', description)
+        # Un rectángulo esconde las celdas de fuera; el cuadrado del clic no.
+        self.assertIn('A clicked square leaves them visible', description)
+        # La ventana de después empieza en el día pausado, no después de él.
+        self.assertIn('from the paused window to the days after it', description)
+
+    def test_catalogue_figures_say_which_side_they_count(self):
+        # figures.sql cuenta y mosaica fi_hit_after: solo el lado de después.
+        self.assertIn('fi_hit_after h', build.read_sql('figures'))
+        description = self.elements['panel-24']['spec']['description']
+        self.assertIn('After scenes only', description)
+        self.assertIn('or the one you picked', description)
+
     def test_the_sheet_colours_only_the_marked_cells(self):
         # La columna Map: fondo de color solo donde hay marca (◀/▶ desde las
         # value mappings), transparente en las demás, estrecha. Los dos glifos

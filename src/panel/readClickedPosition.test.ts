@@ -109,6 +109,37 @@ describe('readClickedPosition', () => {
     });
   });
 
+  // Every cell below is one `Number()` would turn into a finite number — 0 for
+  // most of them — and so into a box on Null Island. None of them is a position.
+  it.each([
+    ['null', null],
+    ['undefined', undefined],
+    ['an empty string', ''],
+    ['a blank string', '   '],
+    ['a non-numeric string', 'n/a'],
+    ['NaN', Number.NaN],
+    ['Infinity', Number.POSITIVE_INFINITY],
+    ['false', false],
+    ['true', true],
+    ['an empty array', []],
+    ['a one-element array', [39.25]],
+    ['an object', {}],
+  ])('is unresolved, not a box, when the coordinates are %s', (_name, cell) => {
+    expect(readClickedPosition(store({ clicked: ON_FIRE, rows: [['2026-09-12', cell, cell, 1]] }))).toMatchObject({
+      kind: 'unresolved',
+      reason: 'the clicked row has no numeric latitude/longitude',
+    });
+  });
+
+  it('still reads a coordinate stored as a numeric string', () => {
+    expect(
+      readClickedPosition(store({ clicked: ON_FIRE, rows: [['2026-09-12', '39.25', ' -122.95 ', 1]] }))
+    ).toMatchObject({
+      kind: 'position',
+      position: { lng: -122.95, lat: 39.25 },
+    });
+  });
+
   it('uses the centre of a picked geometry for a layer drawn from one', () => {
     const polygon = {
       picked: true,
