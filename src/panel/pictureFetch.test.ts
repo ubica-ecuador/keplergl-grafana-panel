@@ -1,5 +1,6 @@
 import { createPictureFetch, PictureError, PictureFetchDeps, pictureFetchFor } from './pictureFetch';
 import { pictureKey } from './pictureKeys';
+import { MAX_TRACKED_LAYERS } from './pictureState';
 
 function fakeDeps(overrides: Partial<PictureFetchDeps> = {}) {
   const deps: PictureFetchDeps = {
@@ -96,5 +97,16 @@ describe('pictureFetchFor', () => {
     expect(pictureFetchFor('l1')).toBe(pictureFetchFor('l1'));
     expect(pictureFetchFor('l1')).not.toBe(pictureFetchFor('l2'));
     expect(pictureFetchFor('l1').length).toBe(1);
+  });
+
+  it('keeps a layer that keeps asking, even past the tracked limit', () => {
+    const kept = pictureFetchFor('fix-round-1-kept');
+
+    for (let i = 0; i <= MAX_TRACKED_LAYERS; i++) {
+      pictureFetchFor(`fix-round-1-other-${i}`);
+      pictureFetchFor('fix-round-1-kept');
+    }
+
+    expect(pictureFetchFor('fix-round-1-kept')).toBe(kept);
   });
 });

@@ -157,13 +157,18 @@ const perLayer = new Map<string, (key: string) => Promise<unknown>>();
  * would arrive as the reporter.
  */
 export function pictureFetchFor(layerId: string): (key: string) => Promise<unknown> {
-  let fetchForLayer = perLayer.get(layerId);
-  if (!fetchForLayer) {
-    fetchForLayer = (key: string) => fetchInBrowser(key, (url, load) => recordPictureLoad(layerId, url, load));
-    perLayer.set(layerId, fetchForLayer);
-    if (perLayer.size > MAX_TRACKED_LAYERS) {
-      perLayer.delete(perLayer.keys().next().value as string);
-    }
+  const hit = perLayer.get(layerId);
+  if (hit) {
+    // Re-insert so eviction below drops the layer least recently asked for,
+    // not the first one this panel ever rendered.
+    perLayer.delete(layerId);
+    perLayer.set(layerId, hit);
+    return hit;
+  }
+  const fetchForLayer = (key: string) => fetchInBrowser(key, (url, load) => recordPictureLoad(layerId, url, load));
+  perLayer.set(layerId, fetchForLayer);
+  if (perLayer.size > MAX_TRACKED_LAYERS) {
+    perLayer.delete(perLayer.keys().next().value as string);
   }
   return fetchForLayer;
 }
