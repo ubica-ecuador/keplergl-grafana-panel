@@ -4,7 +4,7 @@ import KeplerTable from '@kepler.gl/table';
 
 import { pictureKey } from './pictureKeys';
 import { MAX_PICTURES } from './pictureRows';
-import { readPictureStatus, resetPictureStateForTests } from './pictureState';
+import { readPictureAssignment, resetPictureStateForTests } from './pictureState';
 import { makeSymbolLayer } from './symbolLayer';
 
 /**
@@ -79,8 +79,8 @@ describe('the symbol layer drawing pictures, on kepler’s real Layer', () => {
     const { symbols } = render(pictureLayer(table, { pictureAnchor: 'bottom' }), table);
 
     expect(symbols.picture).toBe(true);
-    expect(symbols.keplerLayerId).toBe('places');
-    expect(symbols.id).toBe('places-p0-symbol');
+    expect(symbols.keplerLayerId).toBeUndefined();
+    expect(symbols.id).toBe('places-picture-symbol');
     expect(symbols.symbols).toBeUndefined();
     expect(symbols.data.map((row: { index: number }) => row.index)).toEqual([0, 1]);
     expect(symbols.getIcon(symbols.data[0])).toMatchObject({
@@ -91,11 +91,24 @@ describe('the symbol layer drawing pictures, on kepler’s real Layer', () => {
     expect(symbols.getIcon(symbols.data[1]).id).toBe(pictureKey(PIN, 'bottom'));
   });
 
-  it('records the row whose URL cannot load against the layer', () => {
+  it('records the row whose URL cannot load against the layer object', () => {
     const table = placesTable();
-    render(pictureLayer(table), table);
+    const layer = pictureLayer(table);
+    render(layer, table);
 
-    expect(readPictureStatus('places')!.loads.get('javascript:alert(1)')).toBe('scheme');
+    expect(readPictureAssignment(layer)!.failures).toEqual([{ url: 'javascript:alert(1)', problem: 'scheme' }]);
+  });
+
+  it('keeps apart the pictures of two layers with the same id, as a repeated panel has', () => {
+    const table = placesTable();
+    const panelA = pictureLayer(table, {}, false);
+    const panelB = pictureLayer(table, { pictureUrl: 'https://example.org/other.png' }, false);
+    render(panelA, table);
+    render(panelB, table);
+
+    expect(panelA.id).toBe(panelB.id);
+    expect(readPictureAssignment(panelA)!.urls).toEqual([PIN]);
+    expect(readPictureAssignment(panelB)!.urls).toEqual(['https://example.org/other.png']);
   });
 
   it('draws every row with the layer picture when no column is bound', () => {
@@ -110,7 +123,7 @@ describe('the symbol layer drawing pictures, on kepler’s real Layer', () => {
     const table = placesTable();
     const { built: layers, symbols } = render(pictureLayer(table, { outline: true, shadow: true, gradient: true }), table);
 
-    expect(layers.map((props) => props.id)).toEqual(['places-p0-symbol']);
+    expect(layers.map((props) => props.id)).toEqual(['places-picture-symbol']);
     expect(symbols.gradient).toBeUndefined();
     expect(symbols.getColor).toEqual([255, 255, 255, 255]);
   });
@@ -148,19 +161,23 @@ describe('the symbol layer drawing pictures, on kepler’s real Layer', () => {
     expect(render(layer, table, second).symbols.data).toBe(drawnFirst);
   });
 
-  it('moves to a new deck layer once the pictures it has drawn overflow the cap', () => {
+  it('keeps one deck layer id however many pictures it has drawn: the texture starts afresh inside deck', () => {
     const table = placesTable();
     const layer = pictureLayer(table, {}, false);
     const data = layer.formatLayerData({ [table.id]: table });
     const ids: string[] = [];
+    const triggers: unknown[] = [];
 
     for (let i = 0; i <= MAX_PICTURES; i++) {
       layer.updateLayerConfig({ visConfig: { ...layer.config.visConfig, pictureUrl: `https://example.org/${i}.png` } });
-      ids.push(render(layer, table, data).symbols.id);
+      const { symbols } = render(layer, table, data);
+      ids.push(symbols.id);
+      triggers.push(symbols.updateTriggers.getIcon);
     }
 
-    expect(new Set(ids.slice(0, MAX_PICTURES))).toEqual(new Set(['places-p0-symbol']));
-    expect(ids[MAX_PICTURES]).toBe('places-p1-symbol');
+    expect(new Set(ids)).toEqual(new Set(['places-picture-symbol']));
+    // The picture, its anchor and its column: nothing that counts generations.
+    expect(triggers[MAX_PICTURES]).toEqual([`https://example.org/${MAX_PICTURES}.png`, 'center', -1]);
   });
 
   it('keeps a colour bound while drawing shapes out of the legend while drawing pictures', () => {

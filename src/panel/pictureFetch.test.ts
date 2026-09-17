@@ -1,6 +1,6 @@
-import { createPictureFetch, PictureError, PictureFetchDeps, pictureFetchFor } from './pictureFetch';
+import { createPictureFetch, PictureError, PictureFetchDeps, pictureFetch } from './pictureFetch';
 import { pictureKey } from './pictureKeys';
-import { MAX_TRACKED_LAYERS } from './pictureState';
+import { readPictureOutcomes, resetPictureStateForTests } from './pictureState';
 
 function fakeDeps(overrides: Partial<PictureFetchDeps> = {}) {
   const deps: PictureFetchDeps = {
@@ -92,21 +92,25 @@ describe('createPictureFetch', () => {
   });
 });
 
-describe('pictureFetchFor', () => {
-  it('hands each layer one stable function of one argument, as loaders.gl calls it', () => {
-    expect(pictureFetchFor('l1')).toBe(pictureFetchFor('l1'));
-    expect(pictureFetchFor('l1')).not.toBe(pictureFetchFor('l2'));
-    expect(pictureFetchFor('l1').length).toBe(1);
+describe('pictureFetch', () => {
+  beforeEach(() => {
+    resetPictureStateForTests();
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   });
 
-  it('keeps a layer that keeps asking, even past the tracked limit', () => {
-    const kept = pictureFetchFor('fix-round-1-kept');
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
 
-    for (let i = 0; i <= MAX_TRACKED_LAYERS; i++) {
-      pictureFetchFor(`fix-round-1-other-${i}`);
-      pictureFetchFor('fix-round-1-kept');
-    }
+  it('is one function of one argument, as loaders.gl calls it', () => {
+    expect(pictureFetch.length).toBe(1);
+  });
 
-    expect(pictureFetchFor('fix-round-1-kept')).toBe(kept);
+  it('records how a key loaded against the key, for every panel to read', async () => {
+    const key = pictureKey('javascript:alert(1)', 'bottom');
+
+    await expect(pictureFetch(key)).rejects.toMatchObject({ problem: 'scheme' });
+
+    expect(readPictureOutcomes().get(key)).toBe('scheme');
   });
 });

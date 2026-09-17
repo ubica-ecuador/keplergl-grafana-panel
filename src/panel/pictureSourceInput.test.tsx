@@ -6,15 +6,24 @@ import { theme } from '@kepler.gl/styles';
 import { messages } from '@kepler.gl/localization';
 
 import { MAX_UPLOAD_CHARS, PictureSourceInput } from './pictureSourceInput';
-import { recordPictureAssignment, recordPictureLoad, resetPictureStateForTests } from './pictureState';
+import { pictureKey } from './pictureKeys';
+import { recordPictureAssignment, recordPictureOutcome, resetPictureStateForTests } from './pictureState';
 import { SYMBOL_MESSAGES } from './symbolMessages';
+
+/** The kepler layer the panel is handed; only its identity matters to the input. */
+const layer = { id: 'l1' };
+
+/** An assignment as `assignPictures` makes one, for these URLs drawn with a centre anchor. */
+function assignment(urls: string[], extra: Record<string, unknown> = {}) {
+  return { keys: urls.map((url) => pictureKey(url, 'center')), urls, failures: [], overflow: 0, ...extra };
+}
 
 function renderInput(props: Partial<React.ComponentProps<typeof PictureSourceInput>> = {}) {
   const onChange = jest.fn();
   const utils = render(
     <IntlProvider locale="en" messages={{ ...messages.en, ...SYMBOL_MESSAGES }}>
       <ThemeProvider theme={theme}>
-        <PictureSourceInput layerId="l1" value="" onChange={onChange} {...props} />
+        <PictureSourceInput layer={layer} value="" onChange={onChange} {...props} />
       </ThemeProvider>
     </IntlProvider>
   );
@@ -116,12 +125,11 @@ describe('PictureSourceInput', () => {
     renderInput({ value: 'https://example.org/pin.png' });
 
     await act(async () => {
-      recordPictureAssignment('l1', {
-        urls: ['https://a/1.png', 'https://a/2.png'],
-        failures: [{ url: 'javascript:x', problem: 'scheme' }],
-        overflow: 0,
-      });
-      recordPictureLoad('l1', 'https://a/2.png', 'load');
+      recordPictureAssignment(
+        layer,
+        assignment(['https://a/1.png', 'https://a/2.png'], { failures: [{ url: 'javascript:x', problem: 'scheme' }] })
+      );
+      recordPictureOutcome(pictureKey('https://a/2.png', 'center'), 'https://a/2.png', 'load');
       await Promise.resolve();
     });
 
@@ -130,11 +138,26 @@ describe('PictureSourceInput', () => {
     expect(screen.getByText(/javascript:x — Only https, http and data:image URLs/)).toBeInTheDocument();
   });
 
+  it('reports its own layer’s pictures, not those of another panel’s layer with the same id', async () => {
+    renderInput({ value: 'https://example.org/pin.png' });
+
+    await act(async () => {
+      recordPictureAssignment(
+        { id: 'l1' },
+        assignment(['https://a/1.png'], { failures: [{ url: 'javascript:x', problem: 'scheme' }], overflow: 5 })
+      );
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByText(/could not load/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/over the 96 limit/)).not.toBeInTheDocument();
+  });
+
   it('says how many pictures went over the cap', async () => {
     renderInput();
 
     await act(async () => {
-      recordPictureAssignment('l1', { urls: ['https://a/1.png'], failures: [], overflow: 40 });
+      recordPictureAssignment(layer, assignment(['https://a/1.png'], { overflow: 40 }));
       await Promise.resolve();
     });
 

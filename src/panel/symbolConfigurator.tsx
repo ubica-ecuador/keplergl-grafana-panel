@@ -79,7 +79,7 @@ export function SymbolLayerConfig({
         {picture ? (
           <>
             <PictureSourceInput
-              layerId={layer.id ?? ''}
+              layer={layer}
               value={typeof visConfig.pictureUrl === 'string' ? visConfig.pictureUrl : ''}
               onChange={(url) => onVisConfigChange({ pictureUrl: url })}
             />

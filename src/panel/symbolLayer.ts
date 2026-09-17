@@ -6,7 +6,7 @@ import { setting } from './velocityField';
 import { resolveSymbol, SYMBOL_FALLBACK, symbolNames } from './symbolGlyphs';
 import { pictureAnchorOf } from './pictureKeys';
 import { assignPictures, PictureAssignment } from './pictureRows';
-import { generationFor, recordPictureAssignment } from './pictureState';
+import { recordPictureAssignment } from './pictureState';
 
 /**
  * A symbol per row, turned by one column and sized by another.
@@ -601,17 +601,17 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       // Which picture each row draws, when the layer draws pictures — and which
       // rows draw none, left out before deck sees them, since deck throws on a
       // row with no icon. Decided before declutter and the GPU filters, so the
-      // dashboard clock never changes which rows have a picture. Recorded on
-      // every render; the status ignores a write that changes nothing.
+      // dashboard clock never changes which rows have a picture. Recorded
+      // against this layer object on every render, which the memo makes an
+      // identity check: kept by id, it would mix with a repeated panel's.
       const pictures = visConfig.symbolSource === 'picture' ? this.picturesFor(rows, layerData?.getPicture, visConfig) : null;
       if (pictures) {
-        recordPictureAssignment(this.id, { urls: pictures.urls, failures: pictures.failures, overflow: pictures.overflow });
+        recordPictureAssignment(this, pictures);
       }
       const candidates = pictures ? pictures.rows : rows;
       if (candidates.length === 0) {
         return [];
       }
-      const generation = pictures ? generationFor(this.id, pictures.keys) : 0;
 
       // Resolved once and used twice, for the atlas and for deck's icon lookup.
       // A saved name this build lacks paints the arrow into the atlas, and deck
@@ -669,7 +669,6 @@ export function makeSymbolLayer<C extends Constructor<object>>(
               String(visConfig.pictureUrl ?? ''),
               pictureAnchorOf(visConfig.pictureAnchor),
               this.config.columns?.picture?.fieldIdx ?? -1,
-              generation,
             ]
           : [symbol],
         getAngle: { ...channelTriggers.getAngle, directionConvention: convention, mapBearing },
@@ -678,15 +677,15 @@ export function makeSymbolLayer<C extends Constructor<object>>(
 
       const symbolProps = {
         ...defaults,
-        // A picture layer's id carries its generation: a new one is a fresh
-        // deck layer and texture (see `nextGeneration`). It still ends in
-        // `-symbol`, which is what the probes look for.
-        id: pictures ? `${this.id}-p${generation}-symbol` : `${this.id}-symbol`,
+        // Its own id for pictures, so deck never hands a picture layer the
+        // manager of a glyph atlas. Stable: a full texture starts afresh
+        // inside the deck layer (`PictureIconLayer`), not as a new layer. It
+        // still ends in `-symbol`, which is what the probes look for.
+        id: pictures ? `${this.id}-picture-symbol` : `${this.id}-symbol`,
         data: drawn,
         ...(pictures
           ? {
               picture: true,
-              keplerLayerId: this.id,
               getIcon: (row: SymbolRow) => pictures.icons.get(row.index),
             }
           : {

@@ -593,7 +593,7 @@ export async function readMarkers(map: Locator): Promise<{ center: [number, numb
 
 /** What deck itself packed for the symbol layer's pictures. */
 export interface PictureDeckSummary {
-  /** The deck layer's id, `<kepler layer>-p<generation>-symbol`. */
+  /** The deck layer's id, `<kepler layer>-picture-symbol`. */
   id: string;
   /** Whether every picture deck asked for has settled, loaded or failed. */
   loaded: boolean;
@@ -625,7 +625,7 @@ export async function readPictureDeck(map: Locator): Promise<PictureDeckSummary 
     if (!deck) {
       throw new Error('deck.gl instance not found from map node');
     }
-    const layer = deck.layerManager.getLayers().find((candidate: { id: string }) => /-p\d+-symbol$/.test(candidate.id));
+    const layer = deck.layerManager.getLayers().find((candidate: { id: string }) => candidate.id.endsWith('-picture-symbol'));
     const manager = layer?.state?.iconManager;
     if (!manager) {
       return null;

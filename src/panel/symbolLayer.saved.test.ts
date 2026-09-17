@@ -9,7 +9,12 @@ import { KEPLER_INSTANCE_ID } from './constants';
 import { loadDatasets } from './keplerAdapter';
 import { createKeplerStore } from './keplerStore';
 import { pictureKey } from './pictureKeys';
-import { readPictureStatus, resetPictureStateForTests } from './pictureState';
+import {
+  readPictureAssignment,
+  readPictureOutcomes,
+  resetPictureStateForTests,
+  summarisePictures,
+} from './pictureState';
 
 /**
  * The provisioned styled and standing panels, restored the way kepler restores
@@ -137,14 +142,14 @@ describe('the provisioned symbol panels, restored from their saved config', () =
       expect(String(layer.config.visConfig.pictureUrl)).toMatch(/^data:image\/png;base64,/);
       expect(layer.config.columns.picture.value).toBe('picture');
 
-      expect(deckLayers.map((deckLayer) => deckLayer.id)).toEqual(['picture-stations-p0-symbol']);
+      expect(deckLayers.map((deckLayer) => deckLayer.id)).toEqual(['picture-stations-picture-symbol']);
       const symbols = deckLayers[0].props;
       expect(symbols.data).toHaveLength(4);
       const idOf = (index: number) => symbols.getIcon(symbols.data.find((row: { index: number }) => row.index === index)).id;
       expect(idOf(0)).toBe(pictureKey('/public/plugins/ubica-keplergl-panel/img/logo-small.svg', 'bottom'));
       expect(idOf(2)).toBe(pictureKey(layer.config.visConfig.pictureUrl, 'bottom'));
       expect(symbols.loadOptions.core.fetch).toEqual(expect.any(Function));
-      expect(readPictureStatus('picture-stations')!.loads.size).toBe(4);
+      expect(summarisePictures(readPictureAssignment(layer), readPictureOutcomes()).total).toBe(4);
     } finally {
       warn.mockRestore();
     }

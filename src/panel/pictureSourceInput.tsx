@@ -3,7 +3,13 @@ import { useIntl } from 'react-intl';
 import { Button, Input, PanelLabel, SidePanelSection } from '@kepler.gl/components';
 
 import { MAX_PICTURES } from './pictureRows';
-import { readPictureStatus, subscribePictureStatus, summarisePictureStatus } from './pictureState';
+import {
+  readPictureAssignment,
+  readPictureOutcomes,
+  readPictureVersion,
+  subscribePictures,
+  summarisePictures,
+} from './pictureState';
 
 /**
  * Where a symbol layer's picture comes from, and what became of its pictures.
@@ -38,11 +44,12 @@ function uploadedKb(dataUri: string): number {
 const noticeStyle: React.CSSProperties = { fontSize: 11, marginTop: 6, lineHeight: 1.4 };
 
 export function PictureSourceInput({
-  layerId,
+  layer,
   value,
   onChange,
 }: {
-  layerId: string;
+  /** The kepler layer object itself — the one the map renders — not its id, which another panel may share. */
+  layer: object;
   value: string;
   onChange: (url: string) => void;
 }) {
@@ -50,8 +57,10 @@ export function PictureSourceInput({
   const [draft, setDraft] = useState(value);
   const [uploadProblem, setUploadProblem] = useState<string | null>(null);
   const picker = useRef<HTMLInputElement>(null);
-  const status = useSyncExternalStore(subscribePictureStatus, () => readPictureStatus(layerId));
-  const summary = summarisePictureStatus(status);
+  // The version is only what tells React to render again; what is shown is
+  // read from the store itself.
+  useSyncExternalStore(subscribePictures, readPictureVersion);
+  const summary = summarisePictures(readPictureAssignment(layer), readPictureOutcomes());
   const uploaded = value.startsWith('data:');
 
   // What is saved wins over what was being typed when it changes from outside:

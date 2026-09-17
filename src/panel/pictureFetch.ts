@@ -6,7 +6,7 @@ import {
   PictureAnchor,
   PictureProblem,
 } from './pictureKeys';
-import { MAX_TRACKED_LAYERS, PictureLoad, recordPictureLoad } from './pictureState';
+import { PictureLoad, recordPictureOutcome } from './pictureState';
 
 /**
  * The fetch loaders.gl calls for a symbol picture, which never fetches.
@@ -70,7 +70,7 @@ export function createPictureFetch(deps: PictureFetchDeps) {
     if (cache.size > PICTURE_CACHE_SIZE) {
       cache.delete(cache.keys().next().value as string);
     }
-    // A failure is not remembered: the next generation, anchor or page load tries again.
+    // A failure is not remembered: a fresh icon manager, anchor or page load tries again.
     made.catch(() => {
       if (cache.get(key) === made) {
         cache.delete(key);
@@ -147,28 +147,14 @@ const fetchInBrowser = createPictureFetch({
   timeoutMs: PICTURE_TIMEOUT_MS,
 });
 
-const perLayer = new Map<string, (key: string) => Promise<unknown>>();
-
 /**
- * The fetch one layer hands deck, reporting to that layer's status.
+ * The fetch every picture layer hands deck, reporting how each key loaded.
  *
- * One function per layer, kept: a stable identity for deck's props, and a
- * single argument, since loaders.gl calls `fetch(url)` and a second argument
- * would arrive as the reporter.
+ * One module-level function: a stable identity for deck's props, and a single
+ * argument, since loaders.gl calls `fetch(url)` and a second argument would
+ * arrive as the reporter. The key names the picture, so nothing about the
+ * layer that asked is needed.
  */
-export function pictureFetchFor(layerId: string): (key: string) => Promise<unknown> {
-  const hit = perLayer.get(layerId);
-  if (hit) {
-    // Re-insert so eviction below drops the layer least recently asked for,
-    // not the first one this panel ever rendered.
-    perLayer.delete(layerId);
-    perLayer.set(layerId, hit);
-    return hit;
-  }
-  const fetchForLayer = (key: string) => fetchInBrowser(key, (url, load) => recordPictureLoad(layerId, url, load));
-  perLayer.set(layerId, fetchForLayer);
-  if (perLayer.size > MAX_TRACKED_LAYERS) {
-    perLayer.delete(perLayer.keys().next().value as string);
-  }
-  return fetchForLayer;
+export function pictureFetch(key: string): Promise<unknown> {
+  return fetchInBrowser(key, (url, load) => recordPictureOutcome(key, url, load));
 }

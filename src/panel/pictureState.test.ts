@@ -1,16 +1,25 @@
-import { MAX_PICTURES } from './pictureRows';
+import { pictureKey } from './pictureKeys';
 import {
-  generationFor,
-  MAX_TRACKED_LAYERS,
-  readPictureStatus,
+  MAX_PICTURE_OUTCOMES,
+  PictureAssignmentStatus,
+  readPictureAssignment,
+  readPictureOutcomes,
+  readPictureVersion,
   recordPictureAssignment,
-  recordPictureLoad,
+  recordPictureOutcome,
   resetPictureStateForTests,
-  subscribePictureStatus,
-  summarisePictureStatus,
+  subscribePictures,
+  summarisePictures,
 } from './pictureState';
 
 const flush = () => Promise.resolve();
+
+/** An assignment as `assignPictures` makes one, for these URLs drawn with a centre anchor. */
+function assignment(urls: string[], extra: Partial<PictureAssignmentStatus> = {}): PictureAssignmentStatus {
+  return { keys: urls.map((url) => pictureKey(url, 'center')), urls, failures: [], overflow: 0, ...extra };
+}
+
+const key = (url: string) => pictureKey(url, 'center');
 
 beforeEach(() => {
   resetPictureStateForTests();
@@ -22,126 +31,139 @@ afterEach(() => {
 });
 
 describe('pictureState', () => {
-  it('starts each picture of an assignment as loading, and each failure with its problem', () => {
-    recordPictureAssignment('l1', {
-      urls: ['https://a/1.png'],
-      failures: [{ url: 'javascript:x', problem: 'scheme' }],
-      overflow: 2,
-    });
+  it('reports each picture of an assignment as loading until it has an outcome, and each failure with its problem', () => {
+    const layer = {};
+    recordPictureAssignment(
+      layer,
+      assignment(['https://a/1.png', 'https://a/2.png'], {
+        failures: [{ url: 'javascript:x', problem: 'scheme' }],
+        overflow: 2,
+      })
+    );
+    recordPictureOutcome(key('https://a/2.png'), 'https://a/2.png', 'loaded');
 
-    expect(summarisePictureStatus(readPictureStatus('l1'))).toEqual({
-      total: 2,
+    expect(summarisePictures(readPictureAssignment(layer), readPictureOutcomes())).toEqual({
+      total: 3,
       loading: 1,
       failed: [{ url: 'javascript:x', problem: 'scheme' }],
       overflow: 2,
     });
   });
 
-  it('keeps the same status when the same assignment comes again', () => {
-    recordPictureAssignment('l1', { urls: ['https://a/1.png'], failures: [], overflow: 0 });
-    recordPictureLoad('l1', 'https://a/1.png', 'loaded');
-    const before = readPictureStatus('l1');
+  it('keeps apart two layer objects that share a kepler id', () => {
+    // A repeated Grafana panel carries the same map config, and so the same layer ids.
+    const panelA = { id: 'stations' };
+    const panelB = { id: 'stations' };
+    recordPictureAssignment(panelA, assignment(['https://a/cat.png']));
+    recordPictureAssignment(panelB, assignment(['https://a/dog.png']));
+    recordPictureOutcome(key('https://a/dog.png'), 'https://a/dog.png', 'load');
 
-    recordPictureAssignment('l1', { urls: ['https://a/1.png'], failures: [], overflow: 0 });
-
-    expect(readPictureStatus('l1')).toBe(before);
-    expect(before!.loads.get('https://a/1.png')).toBe('loaded');
+    expect(summarisePictures(readPictureAssignment(panelA), readPictureOutcomes()).failed).toEqual([]);
+    expect(summarisePictures(readPictureAssignment(panelB), readPictureOutcomes()).failed).toEqual([
+      { url: 'https://a/dog.png', problem: 'load' },
+    ]);
   });
 
-  it('forgets a picture the layer no longer draws, and ignores late news of it', () => {
-    recordPictureAssignment('l1', { urls: ['https://a/old.png'], failures: [], overflow: 0 });
-    recordPictureAssignment('l1', { urls: ['https://a/new.png'], failures: [], overflow: 0 });
-    recordPictureLoad('l1', 'https://a/old.png', 'load');
+  it('still reports a failure when its URL leaves the assignment and comes back', () => {
+    const layer = {};
+    recordPictureAssignment(layer, assignment(['https://a/broken.png']));
+    recordPictureOutcome(key('https://a/broken.png'), 'https://a/broken.png', 'timeout');
 
-    expect([...readPictureStatus('l1')!.loads.keys()]).toEqual(['https://a/new.png']);
+    recordPictureAssignment(layer, assignment(['https://a/other.png']));
+    // Back again: deck already holds the cell and asks for nothing, so no new outcome arrives.
+    recordPictureAssignment(layer, assignment(['https://a/broken.png']));
+
+    expect(summarisePictures(readPictureAssignment(layer), readPictureOutcomes()).failed).toEqual([
+      { url: 'https://a/broken.png', problem: 'timeout' },
+    ]);
+  });
+
+  it('summarises a layer that has not rendered yet as nothing', () => {
+    expect(summarisePictures(readPictureAssignment({}), readPictureOutcomes())).toEqual({
+      total: 0,
+      loading: 0,
+      failed: [],
+      overflow: 0,
+    });
   });
 
   it('notifies once, after the writes, never inside them', async () => {
     const listener = jest.fn();
-    subscribePictureStatus(listener);
+    subscribePictures(listener);
 
-    recordPictureAssignment('l1', { urls: ['https://a/1.png'], failures: [], overflow: 0 });
-    recordPictureLoad('l1', 'https://a/1.png', 'loaded');
+    recordPictureAssignment({}, assignment(['https://a/1.png']));
+    recordPictureOutcome(key('https://a/1.png'), 'https://a/1.png', 'loaded');
     expect(listener).not.toHaveBeenCalled();
 
     await flush();
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
-  it('does not notify when nothing changed', async () => {
-    recordPictureAssignment('l1', { urls: ['https://a/1.png'], failures: [], overflow: 0 });
+  it('neither notifies nor moves the version when nothing changed', async () => {
+    const layer = {};
+    const same = assignment(['https://a/1.png']);
+    recordPictureAssignment(layer, same);
+    recordPictureOutcome(key('https://a/1.png'), 'https://a/1.png', 'loading');
     await flush();
     const listener = jest.fn();
-    subscribePictureStatus(listener);
+    subscribePictures(listener);
+    const version = readPictureVersion();
 
-    recordPictureAssignment('l1', { urls: ['https://a/1.png'], failures: [], overflow: 0 });
-    recordPictureLoad('l1', 'https://a/1.png', 'loading');
+    recordPictureAssignment(layer, same);
+    recordPictureOutcome(key('https://a/1.png'), 'https://a/1.png', 'loading');
     await flush();
 
     expect(listener).not.toHaveBeenCalled();
+    expect(readPictureVersion()).toBe(version);
+  });
+
+  it('moves the version on every change', () => {
+    const before = readPictureVersion();
+
+    recordPictureAssignment({}, assignment(['https://a/1.png']));
+
+    expect(readPictureVersion()).toBeGreaterThan(before);
   });
 
   it('stops notifying a listener that unsubscribed', async () => {
     const listener = jest.fn();
-    const unsubscribe = subscribePictureStatus(listener);
+    const unsubscribe = subscribePictures(listener);
     unsubscribe();
 
-    recordPictureAssignment('l1', { urls: ['https://a/1.png'], failures: [], overflow: 0 });
+    recordPictureAssignment({}, assignment(['https://a/1.png']));
     await flush();
 
     expect(listener).not.toHaveBeenCalled();
   });
 
   it('warns once per failing picture', () => {
-    recordPictureAssignment('l1', { urls: ['https://a/1.png'], failures: [], overflow: 0 });
-    recordPictureLoad('l1', 'https://a/1.png', 'load');
-    recordPictureAssignment('l1', { urls: ['https://a/1.png'], failures: [], overflow: 0 });
-    recordPictureLoad('l1', 'https://a/1.png', 'load');
+    const layer = {};
+    recordPictureAssignment(
+      layer,
+      assignment(['https://a/1.png'], { failures: [{ url: 'ftp://x', problem: 'scheme' }] })
+    );
+    recordPictureOutcome(key('https://a/1.png'), 'https://a/1.png', 'load');
+    recordPictureAssignment(
+      layer,
+      assignment(['https://a/1.png'], { failures: [{ url: 'ftp://x', problem: 'scheme' }] })
+    );
+    recordPictureOutcome(key('https://a/1.png'), 'https://a/1.png', 'loading');
+    recordPictureOutcome(key('https://a/1.png'), 'https://a/1.png', 'load');
 
-    expect(console.warn).toHaveBeenCalledTimes(1);
+    expect(console.warn).toHaveBeenCalledTimes(2);
   });
 
-  it('tracks at most MAX_TRACKED_LAYERS layers, dropping the oldest', () => {
-    for (let i = 0; i <= MAX_TRACKED_LAYERS; i++) {
-      recordPictureAssignment(`l${i}`, { urls: ['https://a/1.png'], failures: [], overflow: 0 });
+  it('keeps at most MAX_PICTURE_OUTCOMES outcomes, dropping the least recently written', () => {
+    recordPictureOutcome(key('https://a/kept.png'), 'https://a/kept.png', 'loaded');
+    recordPictureOutcome(key('https://a/old.png'), 'https://a/old.png', 'loaded');
+    for (let i = 0; i < MAX_PICTURE_OUTCOMES - 1; i++) {
+      recordPictureOutcome(key(`https://a/${i}.png`), `https://a/${i}.png`, 'loaded');
+      // Still being asked for: written again, unchanged.
+      recordPictureOutcome(key('https://a/kept.png'), 'https://a/kept.png', 'loaded');
     }
 
-    expect(readPictureStatus('l0')).toBeUndefined();
-    expect(readPictureStatus(`l${MAX_TRACKED_LAYERS}`)).toBeDefined();
-  });
-
-  it("keeps a layer's generation until what it has drawn overflows the cap", () => {
-    const first = Array.from({ length: MAX_PICTURES }, (_, i) => `k${i}`);
-
-    expect(generationFor('l1', first)).toBe(0);
-    expect(generationFor('l1', first.slice(0, 10))).toBe(0);
-    expect(generationFor('l1', ['k-new'])).toBe(1);
-    expect(generationFor('l2', ['k-new'])).toBe(0);
-  });
-
-  it('keeps a layer in the map while it keeps rendering unchanged', async () => {
-    const assignment = { urls: ['https://a/1.png'], failures: [], overflow: 0 };
-    recordPictureAssignment('kept', assignment);
-    await flush();
-    const keptAfterFirstWrite = readPictureStatus('kept');
-
-    // Record 64 other layers, and re-record 'kept' with the same assignment after each.
-    for (let i = 0; i < MAX_TRACKED_LAYERS; i++) {
-      recordPictureAssignment(`other${i}`, { urls: ['https://b/1.png'], failures: [], overflow: 0 });
-      recordPictureAssignment('kept', assignment);
-    }
-
-    // 'kept' should still be in the map and be the same object as after its first write.
-    expect(readPictureStatus('kept')).toBe(keptAfterFirstWrite);
-
-    // No-op re-records should not notify listeners.
-    await flush();
-    const listener = jest.fn();
-    subscribePictureStatus(listener);
-
-    recordPictureAssignment('kept', assignment);
-    await flush();
-
-    expect(listener).not.toHaveBeenCalled();
+    expect(readPictureOutcomes().size).toBe(MAX_PICTURE_OUTCOMES);
+    expect(readPictureOutcomes().has(key('https://a/old.png'))).toBe(false);
+    expect(readPictureOutcomes().get(key('https://a/kept.png'))).toBe('loaded');
   });
 });

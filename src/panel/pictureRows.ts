@@ -115,13 +115,13 @@ export interface GenerationRecord {
 }
 
 /**
- * The generation of a layer's deck icon layer after drawing these keys.
+ * The generation of a deck icon layer's texture after drawing these keys.
  *
- * deck never forgets an icon: its mapping only grows while the layer lives. A
- * dashboard whose pictures change on every refresh would fill the texture, so
- * once everything asked for since the generation began passes the cap, a new
- * generation — a new deck layer id, a fresh texture — starts with only what is
- * drawn now.
+ * deck never forgets an icon: its mapping only grows while its icon manager
+ * lives. A dashboard whose pictures change on every refresh would fill the
+ * texture, so once everything asked for since the generation began passes the
+ * cap, a new generation — a fresh icon manager and texture, see
+ * `PictureIconLayer` — starts with only what is drawn now.
  */
 export function nextGeneration(
   previous: GenerationRecord | undefined,
