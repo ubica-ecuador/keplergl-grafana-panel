@@ -134,6 +134,20 @@ describe('the symbol layer drawing pictures, on kepler’s real Layer', () => {
     expect(second.data).toBe(first.data);
   });
 
+  it('hands deck the same rows when kepler formats the layer again for a filter change', () => {
+    const table = placesTable();
+    const layer = pictureLayer(table);
+    const first = layer.formatLayerData({ [table.id]: table });
+    const drawnFirst = render(layer, table, first).symbols.data;
+
+    // What kepler does on every frame of the dashboard clock: format again,
+    // handing back the last result as the old data.
+    const second = layer.formatLayerData({ [table.id]: table }, first);
+
+    expect(second.data).toBe(first.data);
+    expect(render(layer, table, second).symbols.data).toBe(drawnFirst);
+  });
+
   it('moves to a new deck layer once the pictures it has drawn overflow the cap', () => {
     const table = placesTable();
     const layer = pictureLayer(table, {}, false);

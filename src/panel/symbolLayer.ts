@@ -566,9 +566,9 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       // a dataset built by hand.
       const getFilterValue = dataset.gpuFilter?.filterValueAccessor(dataset.dataContainer)();
 
-      // The picture column, read per row by its index as the position is. The
-      // function is made here, once per data update, so its identity tells
-      // `picturesFor` when the rows' pictures may have changed.
+      // The picture column, read per row by its index as the position is. A new
+      // function on every call — and kepler calls this on every frame of the
+      // dashboard clock — so `picturesFor` never keys on its identity.
       const pictureIdx = this.config.columns?.picture?.fieldIdx ?? -1;
       const container = dataset.dataContainer as DataContainer | undefined;
       const getPicture =
@@ -752,7 +752,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
     /** The last assignment and what it was made from; see `picturesFor`. */
     pictureMemo: {
       rows: SymbolRow[];
-      getPicture: unknown;
+      pictureIdx: number;
       url: unknown;
       anchor: string;
       origin: string;
@@ -763,20 +763,25 @@ export function makeSymbolLayer<C extends Constructor<object>>(
      * Which picture each row draws — the same object while nothing that
      * decides it changed.
      *
-     * kepler renders a layer on every hover and every move of the map. A new
-     * row array each time would have deck recompute every attribute and walk
-     * every row for icons each time. Keyed on the page's origin, not its
-     * address: only the scheme matters, for mixed content, and the address
-     * changes with every time range and variable.
+     * kepler renders a layer on every hover and every move of the map, and
+     * formats its data again on every frame of the dashboard clock. A new row
+     * array each time would have deck recompute every attribute and walk every
+     * row for icons each time. Keyed on the rows and the picture column's
+     * index rather than on the reader `formatLayerData` makes, which is new on
+     * every call: kepler hands back a new row array whenever the data, the
+     * columns, the filtered index or the revision change. Keyed on the page's
+     * origin, not its address: only the scheme matters, for mixed content,
+     * and the address changes with every time range and variable.
      */
     picturesFor(rows: SymbolRow[], getPicture: unknown, visConfig: Record<string, unknown>): PictureAssignment<SymbolRow> {
       const anchor = pictureAnchorOf(visConfig.pictureAnchor);
       const origin = typeof location === 'undefined' ? 'https://localhost' : location.origin;
+      const pictureIdx = typeof getPicture === 'function' ? (this.config.columns?.picture?.fieldIdx ?? -1) : -1;
       const memo = this.pictureMemo;
       if (
         memo &&
         memo.rows === rows &&
-        memo.getPicture === getPicture &&
+        memo.pictureIdx === pictureIdx &&
         memo.url === visConfig.pictureUrl &&
         memo.anchor === anchor &&
         memo.origin === origin
@@ -789,7 +794,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
         anchor,
         pageHref: `${origin}/`,
       });
-      this.pictureMemo = { rows, getPicture, url: visConfig.pictureUrl, anchor, origin, result };
+      this.pictureMemo = { rows, pictureIdx, url: visConfig.pictureUrl, anchor, origin, result };
       return result;
     }
 
