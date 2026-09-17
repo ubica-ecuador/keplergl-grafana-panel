@@ -163,6 +163,23 @@ function layerOver(
 
 const COMPONENTS = { lat: 'latitude', lng: 'longitude', u: 'u', v: 'v' };
 
+/**
+ * kepler 3.3.0-alpha.12 ships a layer of its own called Flow Field, and its menu
+ * capitalises every label: "Flow field" beside it read as the same entry twice.
+ * The type is what a saved dashboard stores, so it stays; only the name moves.
+ */
+describe('flow field layer — name', () => {
+  it('is called Streamlines, which kepler’s own Flow Field is not', () => {
+    const layer = new FlowFieldLayer({ dataId: 'grafana-A' });
+
+    expect(layer.name).toBe('Streamlines');
+  });
+
+  it('keeps the type saved dashboards already store', () => {
+    expect(new FlowFieldLayer({ dataId: 'grafana-A' }).type).toBe('flowfield');
+  });
+});
+
 describe('flow field layer — tracing', () => {
   it('traces paths through the grid the columns point at', () => {
     const dataset = eastwardGrid(6);

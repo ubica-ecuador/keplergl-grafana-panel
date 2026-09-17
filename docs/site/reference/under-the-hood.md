@@ -6,7 +6,7 @@ otherwise mysterious — why a layer tolerates a million rows and another does n
 over terrain, why clicking works the way it does.
 
 ::: info Extracted, not recalled
-The mapping below was read out of the **installed** `@kepler.gl/layers` 3.3.0-alpha.11 and
+The mapping below was read out of the **installed** `@kepler.gl/layers` 3.3.0-alpha.12 and
 cross-checked against deck.gl's own catalogue. Bundled deck.gl is **9.3.11**.
 :::
 
@@ -29,6 +29,7 @@ cross-checked against deck.gl's own catalogue. Bundled deck.gl is **9.3.11**.
 | **line**       | **`ArcLayer` with `getHeight: 0`**                              | `@deck.gl/layers`                             |
 | **flow**       | **`FlowmapLayer` — not deck.gl**                                | `@flowmap.gl/layers`                          |
 | trip           | `TripsLayer`, plus `ScenegraphLayer` for a 3D model at the head | `@deck.gl/geo-layers`, `@deck.gl/mesh-layers` |
+| flowField      | `TripsLayer`, plus `PathLayer`/`PolygonLayer` for a debug grid  | `@deck.gl/geo-layers`, `@deck.gl/layers`      |
 
 Two of those are worth pausing on.
 
@@ -115,7 +116,7 @@ See [Cross-filtering](../guide/dashboard/cross-filtering).
 
 kepler's documentation lists a **High-precision rendering when zooming in closely** switch on seven
 layer types. In the version this plugin bundles it is **not wired to anything**: it survives as a
-constant and a TypeScript type in kepler 3.3.0-alpha.11, and no layer declares or reads it.
+constant and a TypeScript type in kepler 3.3.0-alpha.12, and no layer declares or reads it.
 
 deck.gl retired the separate 64-bit code path years ago; its current handling shifts coordinates
 relative to the viewport centre and is always on. There is nothing to enable, and nothing to pay

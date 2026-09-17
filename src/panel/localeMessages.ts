@@ -12,17 +12,33 @@
  */
 
 /**
+ * The flow field's name as its messages show it: one word, with a soft hyphen.
+ *
+ * "Streamlines" is 70 px wide in kepler's layer menu, whose tile labels are
+ * 50 px, and a word that cannot break runs into the tile beside it. The soft
+ * hyphen shows nothing where the word fits — the layer card — and splits it as
+ * "Stream-" / "lines" where it does not. The layer's `name`, which the menu's
+ * search matches against, stays plain.
+ */
+export const STREAMLINES_LABEL = 'Stream\u00ADlines';
+
+/**
  * Layer type → the name to show, keyed exactly as kepler will look it up.
  *
  * **Lower-case keys.** kepler builds the id from the layer's type run through
  * `toLowerCase`, so `esriImage` is looked up as `layer.type.esriimage`; a key
  * spelled the way the class spells it would never be found.
+ *
+ * **The flow field is the exception.** Its type, `flowfield`, lower-cases to
+ * the same id as kepler's own `flowField`, so a name under `flowfield` would be
+ * read out for both. It is named under `streamlines` — the id its name gives in
+ * the layer menu, and the one `layerPanelHeader.tsx` sends its card to.
  */
 export const OWN_LAYER_LABELS: Record<string, string> = {
   zarr: 'Zarr',
   cogpainted: 'Raster (painted)',
   esriimage: 'ArcGIS Image Service',
-  flowfield: 'Flow field',
+  streamlines: STREAMLINES_LABEL,
   vectorfield: 'Vector field',
   symbol: 'Symbols',
   markers: 'Markers',

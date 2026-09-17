@@ -14,6 +14,12 @@ describe('buildFlowField', () => {
     expect(layer!.config.columns).toEqual({ lat: 'latitude', lng: 'longitude', u: 'ugrd', v: 'vgrd' });
   });
 
+  it('labels the layer with its name, Streamlines', () => {
+    const layer = buildFlowField({ latitude: 'lat', longitude: 'lon', u: 'u', v: 'v' }, 'grafana-A');
+
+    expect(layer!.config.label).toBe('Streamlines');
+  });
+
   it('builds a polar layer from speed/direction roles', () => {
     const layer = buildFlowField(
       { latitude: 'lat', longitude: 'lon', speed: 'wind_speed_10m', direction: 'wind_direction_10m' },

@@ -1,9 +1,10 @@
 # Layer gallery
 
 Every layer type the panel can build from query rows, with the query that produces it. Thirteen of
-kepler's twenty-one registered layer types can be driven by data — and the panel registers two more
-that kepler does not have: a [flow field](../guide/data/velocity-fields) for a grid of velocities,
-and a [Zarr tileset](../guide/data/zarr) for a store of arrays.
+kepler's twenty-two registered layer types can be driven by data — and the panel registers layer
+types of its own, shown with amber icons in kepler's layer menu: among them
+[Streamlines](../guide/data/velocity-fields) for a grid of velocities, and a
+[Zarr tileset](../guide/data/zarr) for a store of arrays.
 
 Two of kepler's own, `a5` and `geohash`, are grid-index layers like H3 and S2 but are not detected
 from a column; they can still be added by hand. See
@@ -72,8 +73,8 @@ choosing the dataset and pointing the layer's columns at it.
 | hexagonId (H3)      | a column whose values are valid H3 indices                 |
 | trip                | a trip id **and** a time **and** a position                |
 | flow                | origin and destination columns                             |
-| flowfield           | a position **and** a velocity, **and no trip id** — a layer type this plugin adds, which kepler does not have. See [Velocity fields](../guide/data/velocity-fields). |
-| vectorfield         | never guessed — switch a flow field's type, or add it from **Add Layer**. Arrows and wind barbs over the same grid. See [Velocity fields](../guide/data/velocity-fields#arrows-and-wind-barbs). |
+| flowfield           | a position **and** a velocity, **and no trip id** — a layer type this plugin adds, named **Streamlines**. kepler's own Flow Field would be created for the same grid, and is removed. See [Velocity fields](../guide/data/velocity-fields). |
+| vectorfield         | never guessed — switch a Streamlines layer's type, or add it from **Add Layer**. Arrows and wind barbs over the same grid. See [Velocity fields](../guide/data/velocity-fields#arrows-and-wind-barbs). |
 
 See [How a query becomes a map](../guide/data/how-a-query-becomes-a-map).
 

@@ -15,7 +15,7 @@ settings:
 enableFlowLayer: true
 ```
 
-The Flow layer is why this plugin pins **kepler.gl 3.3.0-alpha.11** rather than the 3.2.6 stable
+The Flow layer is why this plugin pins **kepler.gl 3.3.0-alpha.12** rather than the 3.2.6 stable
 release: it exists nowhere else. Stating it explicitly rather than relying on the upstream default
 means a change in that default cannot silently remove the feature the plugin is partly built around.
 
@@ -93,21 +93,30 @@ kepler auto-detects layers from column names, but not all of them:
 | ------------------ | ----------------------------------------------------------------------------------------------- |
 | **Trip**           | kepler's own heuristic insists on a column literally named `id`                                 |
 | **Flow**           | kepler does not auto-detect flows at all                                                        |
-| **Flow field**     | a layer type kepler does not have — the panel registers it, and it traces its own streamlines through a grid of velocities |
+| **Streamlines**    | a layer type the panel registers, tracing streamlines through a grid of velocities on the dashboard's clock — kepler's own Flow Field would be created for the same grid, and is removed |
 | **Raster tile**    | kepler builds one from its own tileset form, but not from a query — the panel turns a `raster_url` column into the dataset it needs |
 | **WMS**            | likewise, from a `wms_url` and `wms_layer` pair                                                 |
 
 See [How a query becomes a map](../guide/data/how-a-query-becomes-a-map).
 
-## Two layer types kepler does not ship
+## Layer types kepler does not ship
 
-**Zarr** and **Flow field** are registered by the panel into kepler's own layer registry, so they
-appear in the layer list and in the type selector alongside the rest. Nothing upstream corresponds
-to either: kepler's remote tile formats are MVT, PMTiles and WMS, none of which is a store of
-compressed arrays; and a velocity grid has no layer at all, because what it draws is in none of its
-rows.
+The panel registers layer types of its own into kepler's layer registry — **Zarr** and
+**Streamlines** among them — so they appear in the layer list and in the type selector alongside the
+rest. Their icons are **amber**, which is how they are told from kepler's in that menu. Nothing
+upstream corresponds to Zarr: kepler's remote tile formats are MVT, PMTiles and WMS, none of which is
+a store of compressed arrays.
 
-The flow field also carries a settings panel of its own — density, stroke, trail, cycle, smoothing
+Streamlines has had a counterpart since kepler.gl 3.3.0-alpha.12: an experimental **Flow Field**,
+which kepler creates by itself for any dataset with columns named `u` and `v` beside coordinates.
+It stays in the layer menu, but the panel removes it wherever it would sit over a grid the panel
+traces itself — the two would draw the same field twice, and kepler's runs on a clock of its own
+rather than the dashboard's. It is also why the panel's layer is called Streamlines: kepler's menu
+capitalises every label, and "Flow field" beside "Flow Field" read as one entry. A dashboard saved
+before the rename loads as it did — the layer type it stores did not change — and keeps the label
+it was saved with.
+
+Streamlines also carries a settings panel of its own — density, stroke, trail, cycle, smoothing
 and the vertical exaggeration of a stack of levels — which kepler renders through a layer
 configurator the panel extends. See [Velocity fields](../guide/data/velocity-fields).
 
@@ -149,10 +158,10 @@ re-runs.
 ## Where upstream documentation is behind this plugin
 
 kepler.gl's public documentation describes the **3.2 stable line**. This plugin bundles
-**3.3.0-alpha.11**. Two consequences when you follow an outbound link:
+**3.3.0-alpha.12**. Two consequences when you follow an outbound link:
 
-- Upstream lists **fifteen** layer types. The bundled pre-release registers **twenty-one** — the Flow
-  layer among them, which upstream does not document at all.
+- Upstream lists **fifteen** layer types. The bundled pre-release registers **twenty-two** — the Flow
+  layer and the Flow Field among them, neither of which upstream documents at all.
 - Some layer attributes exist in the UI without an upstream entry. `Trail Length` on Trip layers is
   the one you are most likely to want; it is deck.gl's `trailLength`, covered in
   [Under the hood](./under-the-hood).

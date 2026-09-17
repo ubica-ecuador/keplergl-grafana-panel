@@ -53,7 +53,7 @@ Backed by deck.gl's `TripsLayer`, plus `ScenegraphLayer` when a 3D model rides t
 
 ![Trajectories on the spike dashboard](/img/guide-trips.jpg)
 
-A query returning a grid of wind or current vectors produces a **Flow field** layer, which traces
+A query returning a grid of wind or current vectors produces a **Streamlines** layer, which traces
 streamlines through the field — the paths a massless particle would take — and animates a trail
 along each of them.
 

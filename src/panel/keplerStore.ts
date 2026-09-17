@@ -1,5 +1,6 @@
 import { Layer, LayerClasses, RasterTileIcon } from '@kepler.gl/layers';
 import { keplerGlReducer, enhanceReduxMiddleware } from '@kepler.gl/reducers';
+import type { ComponentType } from 'react';
 import { applyMiddleware, combineReducers, legacy_createStore, Store } from 'redux';
 
 import { buildCogPaintedDeckLayer } from './cogPaintedDeckLayer';
@@ -10,6 +11,7 @@ import { buildFlowFieldDeckLayer, makeScreenCamera } from './flowFieldDeckLayer'
 import { makeFlowFieldLayer } from './flowFieldLayer';
 import { buildMarkersDeckLayer } from './markersDeckLayer';
 import { makeMarkersLayer } from './markersLayer';
+import { ownLayerIcon } from './ownLayerIcon';
 import { buildSymbolDeckLayer } from './symbolDeckLayer';
 import { makeSymbolLayer } from './symbolLayer';
 import { withTile3dAltitude } from './tile3dAltitudeLayer';
@@ -42,14 +44,23 @@ export function iconOf(LayerClass: unknown): unknown {
   return descriptor?.get?.call(prototype);
 }
 
+/**
+ * A borrowed kepler icon, in the amber that marks this plugin's own layers in
+ * kepler's layer menu — see `ownLayerIcon.tsx`. The stock layers keep theirs.
+ */
+const own = (icon: unknown) => ownLayerIcon(icon as ComponentType);
+
 /** The arc layer's icon, which the flow field borrows: both draw curves. */
-const ARC_ICON = iconOf(LayerClasses.arc);
+const ARC_ICON = own(iconOf(LayerClasses.arc));
 
 /** The icon layer's icon, which the vector field borrows: both draw icons. */
-const ICON_LAYER_ICON = iconOf(LayerClasses.icon);
+const ICON_LAYER_ICON = own(iconOf(LayerClasses.icon));
 
 /** The point layer's icon, which the markers borrow: both draw dots. */
-const POINT_LAYER_ICON = iconOf(LayerClasses.point);
+const POINT_LAYER_ICON = own(iconOf(LayerClasses.point));
+
+/** kepler's raster tile icon, which the three tileset layers borrow. */
+const RASTER_ICON = own(RasterTileIcon);
 
 /**
  * kepler's layer classes, with the WMS layer taught to ask for a date and four
@@ -74,7 +85,7 @@ const layerClasses = {
   // wrap. Built on the base `Layer` rather than on a concrete one, which is
   // where `RasterTileLayer` starts from too: a tileset has no rows, so every
   // concrete layer's column handling would be dead weight at best.
-  zarr: makeZarrLayer(Layer as never, buildZarrDeckLayer, RasterTileIcon),
+  zarr: makeZarrLayer(Layer as never, buildZarrDeckLayer, RASTER_ICON),
   // A third addition, and the narrowest: it draws the same COGs kepler's own
   // raster layer draws, but asks the server for a finished picture instead of
   // raw arrays. kepler's layer cannot colour a *classified* raster — it rescales
@@ -82,13 +93,13 @@ const layerClasses = {
   // colour — while TiTiler reads the palette the file carries. Kept as a
   // separate class rather than a mode of the stock one so nothing changes for
   // the imagery that path already draws well.
-  cogPainted: makeCogPaintedLayer(Layer as never, buildCogPaintedDeckLayer, RasterTileIcon),
+  cogPainted: makeCogPaintedLayer(Layer as never, buildCogPaintedDeckLayer, RASTER_ICON),
   // A fourth addition, and the one that needs no file at all. An ArcGIS Image
   // Service is a mosaic dataset behind an endpoint: it holds the catalogue, the
   // rule for choosing among its rasters and a pyramid over the whole thing, so
   // it answers for any extent at any zoom. Where the COG paths need one query
   // per file — 200 of them for a global 10 m collection — this needs one.
-  esriImage: makeEsriImageLayer(Layer as never, buildEsriImageDeckLayer, RasterTileIcon),
+  esriImage: makeEsriImageLayer(Layer as never, buildEsriImageDeckLayer, RASTER_ICON),
   // Also an addition, and for a stranger reason than the Zarr one: what this
   // layer draws is in no dataset. The rows are a lattice of velocity samples and
   // what is painted are the paths a particle would take through them — geometry

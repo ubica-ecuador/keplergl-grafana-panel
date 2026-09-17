@@ -126,7 +126,7 @@ See [Origin–destination flows](./flows).
 
 A **velocity field** is different in kind. Its rows describe a grid of vectors, and what gets drawn
 is not the rows but the paths traced _through_ them. The rows travel to kepler as they came — one
-timestep of the lattice, columns and all — and a **Flow field** layer over them builds the field,
+timestep of the lattice, columns and all — and a **Streamlines** layer over them builds the field,
 smooths it and traces the streamlines, at draw time, from the current viewport. See
 [Wind and other velocity fields](./velocity-fields).
 

@@ -49,7 +49,7 @@ catalog flow and the release-archive install that works while the review is pend
 
 | Library        | Version                  |
 | -------------- | ------------------------ |
-| kepler.gl      | **3.3.0-alpha.11**        |
+| kepler.gl      | **3.3.0-alpha.12**       |
 | deck.gl        | **9.3.11**               |
 | MapLibre GL JS | **4** (pinned by kepler) |
 | React          | 18.3.1                   |
@@ -62,7 +62,7 @@ release to move to, so the pin stays exact rather than a caret range.
 
 The practical consequence for you is that kepler's public documentation describes a version older
 than the one you are running: it lists fifteen layer types where the bundled build registers
-twenty-one. See [Upstream documentation](./upstream-docs).
+twenty-two. See [Upstream documentation](./upstream-docs).
 
 ## Browser and hardware
 

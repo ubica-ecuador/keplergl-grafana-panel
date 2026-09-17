@@ -7,7 +7,7 @@ compiled third-party code and vendored assets. Their notices follow.
 
 | Library | Version | Licence | Copyright |
 | --- | --- | --- | --- |
-| kepler.gl and its `@kepler.gl/*` packages | 3.3.0-alpha.11 | MIT | Copyright contributors to the kepler.gl project |
+| kepler.gl and its `@kepler.gl/*` packages | 3.3.0-alpha.12 | MIT | Copyright contributors to the kepler.gl project |
 | @deck.gl/core, /layers, /geo-layers and the rest | 9.3.11 | MIT | Copyright Vis.gl contributors. |
 | @luma.gl/core and the rest | 9.3.6 | MIT | Copyright (c) 2020 vis.gl contributors |
 | @deck.gl-community/editable-layers | 9.3.8 | MIT | Copyright (c) 2020 vis.gl a Series of LF Projects, LLC |
@@ -43,7 +43,8 @@ in full, not by its filename resembling its siblings'.
 
 Every line above was read from that package's own `LICENSE` file in `node_modules` on 2026-08-31, and
 re-read on 2026-09-11 for every row whose version moved with the kepler.gl 3.3.0-alpha.11 bump — each
-copyright line came back unchanged. The
+copyright line came back unchanged. The kepler.gl 3.3.0-alpha.12 bump on 2026-09-17 moved no row but
+kepler's own, whose notice was re-read then, the new Flow Field layer's compiled header included. The
 `@kepler.gl/*` packages published to npm do not ship a `LICENSE` file individually; their notice is
 confirmed instead by the `// SPDX-License-Identifier: MIT` / `// Copyright contributors to the
 kepler.gl project` header carried in their own compiled output, and by `node_modules/kepler.gl/LICENSE`
