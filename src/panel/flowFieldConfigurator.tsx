@@ -10,6 +10,7 @@ import {
 } from '@kepler.gl/components';
 
 import { PaintedTilesetConfig } from './paintedTilesetConfigurator';
+import { MarkersLayerConfig } from './markersConfigurator';
 import { SelectKnob } from './selectKnob';
 import { SymbolLayerConfig } from './symbolConfigurator';
 import { Tile3dLayerConfig } from './tile3dConfigurator';
@@ -267,6 +268,10 @@ function CustomLayerConfiguratorFactory(...deps: Parameters<typeof LayerConfigur
 
     _renderVectorfieldLayerConfig(args: ConfiguratorArgs) {
       return <VectorFieldLayerConfig {...args} />;
+    }
+
+    _renderMarkersLayerConfig(args: ConfiguratorArgs) {
+      return <MarkersLayerConfig {...(args as unknown as React.ComponentProps<typeof MarkersLayerConfig>)} />;
     }
 
     _renderSymbolLayerConfig(args: ConfiguratorArgs) {

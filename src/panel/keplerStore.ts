@@ -8,6 +8,8 @@ import { buildEsriImageDeckLayer } from './esriImageDeckLayer';
 import { makeEsriImageLayer } from './esriImageLayer';
 import { buildFlowFieldDeckLayer, makeScreenCamera } from './flowFieldDeckLayer';
 import { makeFlowFieldLayer } from './flowFieldLayer';
+import { buildMarkersDeckLayer } from './markersDeckLayer';
+import { makeMarkersLayer } from './markersLayer';
 import { buildSymbolDeckLayer } from './symbolDeckLayer';
 import { makeSymbolLayer } from './symbolLayer';
 import { withTile3dAltitude } from './tile3dAltitudeLayer';
@@ -45,6 +47,9 @@ const ARC_ICON = iconOf(LayerClasses.arc);
 
 /** The icon layer's icon, which the vector field borrows: both draw icons. */
 const ICON_LAYER_ICON = iconOf(LayerClasses.icon);
+
+/** The point layer's icon, which the markers borrow: both draw dots. */
+const POINT_LAYER_ICON = iconOf(LayerClasses.point);
 
 /**
  * kepler's layer classes, with the WMS layer taught to ask for a date and four
@@ -101,6 +106,10 @@ const layerClasses = {
   // base `Layer` so kepler's row machinery — filters, the clock, tooltips —
   // applies unchanged.
   symbol: makeSymbolLayer(Layer as never, buildSymbolDeckLayer, ICON_LAYER_ICON),
+  // Reference points the user drags, each publishing its position to a pair of
+  // dashboard variables — an isochrone's origin and destination. Nothing from
+  // the dataset is drawn; see `markersLayer.ts`.
+  markers: makeMarkersLayer(Layer as never, buildMarkersDeckLayer, POINT_LAYER_ICON),
 };
 
 /**
