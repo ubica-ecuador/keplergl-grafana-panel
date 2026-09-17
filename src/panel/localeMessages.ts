@@ -25,6 +25,7 @@ export const OWN_LAYER_LABELS: Record<string, string> = {
   flowfield: 'Flow field',
   vectorfield: 'Vector field',
   symbol: 'Symbols',
+  markers: 'Markers',
 };
 
 /** kepler's message catalogue: locale → flat id → text. */

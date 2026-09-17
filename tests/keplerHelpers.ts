@@ -405,8 +405,7 @@ export async function readRasterLayer(map: Locator, dataId: string): Promise<Ras
     }
     const metadata = visState?.datasets?.[wanted]?.metadata;
     const asset = Object.values(metadata?.assets ?? {}).find((one: any) => typeof one?.href === 'string') as
-      | { href?: string }
-      | undefined;
+      { href?: string } | undefined;
     return {
       id: layer.id ?? '',
       type: layer.type ?? '',
@@ -539,5 +538,55 @@ export async function readSymbolLayer(map: Locator): Promise<SymbolLayerSummary 
       gradientTail: typeof props?.gradientTail === 'number' ? props.gradientTail : null,
       billboard: props?.billboard === true,
     };
+  });
+}
+
+/** A marker of the markers layer, with where it sits on screen. */
+export interface ProjectedMarker {
+  id: string;
+  x: number;
+  y: number;
+  position: [number, number];
+}
+
+/** The markers layer's markers and the map centre, from the kepler store. */
+export async function readMarkers(map: Locator): Promise<{ center: [number, number]; markers: ProjectedMarker[] }> {
+  return map.evaluate((node) => {
+    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
+    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
+    let store = null;
+    while (fiber) {
+      const candidate = fiber.memoizedProps && fiber.memoizedProps.store;
+      if (candidate && typeof candidate.getState === 'function') {
+        store = candidate;
+        break;
+      }
+      fiber = fiber.return;
+    }
+    if (!store) {
+      throw new Error('kepler store not found from map node');
+    }
+    const entry = Object.values(store.getState().keplerGl ?? {})[0] as any;
+    const { latitude, longitude, zoom } = entry.mapState;
+    const layer = entry.visState.layers.find((l: any) => l.type === 'markers');
+    const scale = 512 * Math.pow(2, zoom);
+    const project = (lng: number, lat: number): [number, number] => {
+      const s = Math.sin((lat * Math.PI) / 180);
+      return [((lng + 180) / 360) * scale, (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * scale];
+    };
+    const [cx, cy] = project(longitude, latitude);
+    const rect = node.getBoundingClientRect();
+    const markers = ((layer?.config.visConfig.markers ?? []) as any[])
+      .filter((m) => m.position)
+      .map((m) => {
+        const [px, py] = project(m.position[0], m.position[1]);
+        return {
+          id: m.id,
+          x: rect.x + rect.width / 2 + (px - cx),
+          y: rect.y + rect.height / 2 + (py - cy),
+          position: m.position,
+        };
+      });
+    return { center: [longitude, latitude] as [number, number], markers };
   });
 }

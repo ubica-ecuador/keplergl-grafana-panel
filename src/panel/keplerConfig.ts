@@ -4,6 +4,7 @@ import { initApplicationConfig } from '@kepler.gl/utils';
 import { DEFAULT_RASTER_SERVER_URL } from './constants';
 import { registerFlowFieldMessages } from './flowFieldMessages';
 import { registerSymbolMessages } from './symbolMessages';
+import { registerMarkersMessages } from './markersMessages';
 import { registerTile3dMessages } from './tile3dMessages';
 
 /**
@@ -58,6 +59,9 @@ export function configureKepler(): void {
   // The symbol layer is also one kepler does not ship, for the same reason as
   // the flow field above.
   registerSymbolMessages(messages);
+
+  // And the markers layer, for the same reason again.
+  registerMarkersMessages(messages);
 
   // The 3D tile layer is kepler's, but the two altitude knobs are not, so its
   // panel would show them as their own message ids.

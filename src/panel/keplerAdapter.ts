@@ -70,6 +70,8 @@ import { COG_PAINTED_TYPE } from './cogPaintedLayer';
 import { ESRI_IMAGE_TYPE } from './esriImageLayer';
 import { splitEsriRefresh, splitRasterRefresh, splitRefresh, splitWmsRefresh, splitZarrRefresh } from './loadDecision';
 import { KEPLER_INSTANCE_ID } from './constants';
+import { MarkerSpec, readMarkers } from './markers';
+import { MARKERS_TYPE } from './markersLayer';
 import { holdTilesetFraming } from './tile3dFraming';
 import { VECTOR_FIELD_TYPE } from './vectorFieldLayer';
 import { SYMBOL_TYPE } from './symbolLayer';
@@ -628,6 +630,26 @@ export function applyLayerVisConfigById(
     )
   );
   return true;
+}
+
+/** A markers layer on the map and the markers it holds — see `markers.ts`. */
+export interface MarkersLayerState {
+  id: string;
+  markers: MarkerSpec[];
+}
+
+/** The markers layers on the map, visible or not: a hidden marker still follows its variables. */
+export function readMarkersLayers(store: Store): MarkersLayerState[] {
+  const visState = getVisState(store);
+  if (!visState) {
+    return [];
+  }
+  return visState.layers
+    .filter((layer) => (layer as { type?: string }).type === MARKERS_TYPE)
+    .map((layer) => ({
+      id: layer.id,
+      markers: readMarkers((layer.config as { visConfig?: Record<string, unknown> }).visConfig),
+    }));
 }
 
 /** The layer type the panel registers for a grid of velocities. */

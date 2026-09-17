@@ -76,7 +76,11 @@ export const SYMBOL_FALLBACK = 'arrow';
  * of the cell. Filling the triangles of a triangulation paints the same solid
  * shape the outline would, and needs nothing our painter does not already do.
  *
- * The y axis is flipped: a mesh grows upwards, a canvas downwards.
+ * The y axis is kept as it is. The meshes were made from SVG outlines, so their
+ * y already grows downwards, as a canvas's does — kepler's own icon layer is
+ * the proof: it negates y to draw them in its y-up world
+ * (`icon-layer.js`, `-icon.mesh.positions[p][1]`). Flipping it here drew every
+ * kepler icon upside down.
  */
 export function meshGlyphs(icons: KeplerIcon[]): Glyph[] {
   return icons.map((icon) => ({
@@ -86,7 +90,7 @@ export function meshGlyphs(icons: KeplerIcon[]): Glyph[] {
       kind: 'polygon' as const,
       points: cell.map((index) => {
         const [x, y] = icon.mesh.positions[index];
-        return [round(MID + x * MID), round(MID - y * MID)] as [number, number];
+        return [round(MID + x * MID), round(MID + y * MID)] as [number, number];
       }),
     })),
   }));

@@ -51,11 +51,12 @@ describe('meshGlyphs', () => {
     expect(glyphs).toHaveLength(1);
     expect(glyphs[0].key).toBe('tri');
     expect(glyphs[0].shapes).toHaveLength(1);
-    // x: -1 -> left edge, 1 -> right edge. y is flipped, because a mesh's y
-    // grows upwards and a canvas's grows downwards.
+    // x: -1 -> left edge, 1 -> right edge. y is NOT flipped: kepler's meshes
+    // come from SVG and already grow downwards, like a canvas — kepler's own
+    // icon layer negates y to draw them in its y-up world.
     expect(glyphs[0].shapes[0]).toEqual({
       kind: 'polygon',
-      points: [[0, 96], [96, 96], [48, 0]],
+      points: [[0, 0], [96, 0], [48, 96]],
     });
   });
 

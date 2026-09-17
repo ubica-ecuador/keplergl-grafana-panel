@@ -57,6 +57,8 @@ import { savedViewportOf } from './viewportGuard';
 import { useViewportSync } from './useViewportSync';
 import type { ViewportVariables } from './viewportSync';
 import { useAreaSync } from './useAreaSync';
+import { useMarkerSync } from './useMarkerSync';
+import { scopeLabelClicks } from './scopedLabelClicks';
 import { useClickArea } from './useClickArea';
 import { useTimeVariableSync } from './useTimeVariableSync';
 import type { TimeRangeMs, TimeSyncMode } from './timeSync';
@@ -410,6 +412,14 @@ export function KeplerMap({
   // One-way and silent on its first pass — it adopts whatever figures a saved
   // config restored without publishing — so it contends with nothing on load.
   useAreaSync({ store, isReady, variable: areaVariable });
+
+  // Both ways: a dropped marker writes its lat/lng pair once, and a pair changed
+  // from outside moves its marker. Never writes on load.
+  useMarkerSync({ store, isReady, element: styleTarget });
+
+  // kepler's switches find their input by a page-wide id, and two panels with
+  // layers of the same id toggled each other's — see `scopedLabelClicks.ts`.
+  useEffect(() => (styleTarget ? scopeLabelClicks(styleTarget) : undefined), [styleTarget]);
 
   // The other way to set that area: click an entity. Writes no variable of its
   // own — the square becomes a drawn figure and the sync above publishes it.
