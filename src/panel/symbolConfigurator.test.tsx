@@ -25,6 +25,54 @@ describe('symbol layer panel', () => {
     expect(typeof (Configurator.prototype as Record<string, unknown>)[method]).toBe('function');
   });
 
+  it('offers kepler’s own text label panel, wired to the layer’s labels', () => {
+    // kepler hands its configurator the panel as a dependency, third in line;
+    // the symbol layer's panel has to receive it from there, and the action
+    // that edits a label from the configurator's props.
+    const [, Factory] = replaceLayerConfigurator();
+    const received: Array<Record<string, unknown>> = [];
+    const TextLabelPanel = (props: Record<string, unknown>) => {
+      received.push(props);
+      return <div>text label panel</div>;
+    };
+    const deps = (Factory as unknown as { deps: unknown[] }).deps.map((_, i) =>
+      i === 2 ? TextLabelPanel : () => null
+    );
+    const Configurator = (Factory as unknown as (...args: unknown[]) => new (props: unknown) => any)(...deps);
+    const updateLayerTextLabel = jest.fn();
+    const configurator = new Configurator({ updateLayerTextLabel });
+
+    const textLabel = [{ field: null }];
+    const fields = [{ name: 'name' }];
+    const layer = {
+      id: 'layer-1',
+      type: SYMBOL_TYPE,
+      config: { visConfig: { symbol: 'arrow' }, colorField: null, colorUI: {}, textLabel },
+      visConfigSettings: {},
+      visualChannels: {
+        angle: { key: 'angle', property: 'angle' },
+        size: { key: 'size', property: 'size' },
+        color: { key: 'color', property: 'color' },
+      },
+    };
+
+    render(
+      <IntlProvider locale="en" messages={{ ...messages.en, ...SYMBOL_MESSAGES }}>
+        <ThemeProvider theme={theme}>
+          {configurator._renderSymbolLayerConfig({
+            layer,
+            visConfiguratorProps: { layer, fields, onChange: () => undefined },
+            layerConfiguratorProps: { layer, onChange: () => undefined },
+            layerChannelConfigProps: { layer, fields: [], onChange: () => undefined },
+          })}
+        </ThemeProvider>
+      </IntlProvider>
+    );
+
+    expect(screen.getByText('text label panel')).toBeInTheDocument();
+    expect(received[0]).toMatchObject({ id: 'layer-1', fields, textLabel, updateLayerTextLabel });
+  });
+
   it('shows the rotation and size groups', () => {
     const layer = {
       id: 'layer-1',

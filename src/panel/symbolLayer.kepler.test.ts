@@ -366,6 +366,71 @@ describe('symbol layer on kepler’s real Layer', () => {
     expect(after.getIcon).not.toEqual(before.getIcon);
   });
 
+  describe('text labels', () => {
+    /** What `renderLayer` returns, which is where kepler's own text layers land. */
+    function renderAll(layer: any, table: InstanceType<typeof KeplerTable>) {
+      built.length = 0;
+      return layer.renderLayer({
+        data: layer.formatLayerData({ [table.id]: table }),
+        gpuFilter: table.gpuFilter,
+        mapState: { zoom: 6, latitude: -2, longitude: -79 },
+        idx: 0,
+        visible: true,
+      }) as any[];
+    }
+
+    /** Sets the first label the way kepler's text label updater does: a new config. */
+    function setLabel(layer: any, patch: Record<string, unknown>) {
+      layer.updateLayerConfig({ textLabel: [{ ...layer.config.textLabel[0], ...patch }] });
+    }
+
+    it('draws none until a column is chosen', () => {
+      const table = stationsTable();
+      const layers = renderAll(symbolLayer(table), table);
+
+      expect(layers).toHaveLength(1);
+    });
+
+    it('labels each drawn symbol with the chosen column, after the symbols', () => {
+      const table = stationsTable();
+      const layer = symbolLayer(table);
+      setLabel(layer, { field: fieldOf(table, 'name') });
+
+      const layers = renderAll(layer, table);
+      const label = layers[layers.length - 1];
+      const [symbols] = built;
+
+      expect(layers).toHaveLength(2);
+      expect(label.id).toBe('symbols-label-name');
+      expect(label.props.data).toBe(symbols.data);
+      const first = label.props.data.find((row: { index: number }) => row.index === 0);
+      expect(label.props.getText(first)).toBe('Cuenca');
+      expect([...label.props.characterSet].sort()).toEqual(expect.arrayContaining(['C', 'Q', 'G']));
+      // Hidden by the clock with its symbol.
+      expect(label.props.getFilterValue).toBe(symbols.getFilterValue);
+      expect(label.props.filterRange).toBe(symbols.filterRange);
+    });
+
+    it('sets a label beside its symbol, clear of the symbol whatever its size', () => {
+      const table = stationsTable();
+      const layer = symbolLayer(table, { size: 'speed' });
+      setLabel(layer, { field: fieldOf(table, 'name'), anchor: 'start', alignment: 'center' });
+
+      const layers = renderAll(layer, table);
+      const label = layers[layers.length - 1];
+      const [symbols] = built;
+      const quito = label.props.data.find((row: { index: number }) => row.index === 1);
+      const cuenca = label.props.data.find((row: { index: number }) => row.index === 0);
+
+      const [quitoX, quitoY] = label.props.getPixelOffset(quito);
+      const [cuencaX] = label.props.getPixelOffset(cuenca);
+      expect(quitoY).toBe(0);
+      expect(quitoX).toBeGreaterThan(symbols.getSize(quito) / 2);
+      // The faster wind's larger symbol pushes its label further out.
+      expect(quitoX).toBeGreaterThan(cuencaX);
+    });
+  });
+
   describe('standing upright', () => {
     /** Renders with the map turned to a bearing, as a user rotating it would. */
     function renderAtBearing(layer: any, table: InstanceType<typeof KeplerTable>, bearing: number) {

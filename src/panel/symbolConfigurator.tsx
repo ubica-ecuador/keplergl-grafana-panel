@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ComponentType } from 'react';
 import {
   ChannelByValueSelector,
   ConfigGroupCollapsibleContent,
@@ -22,13 +22,24 @@ import { SymbolOption } from './symbolOption';
  */
 interface ConfiguratorArgs {
   layer: {
-    config: { visConfig: Record<string, unknown>; angleField?: unknown; sizeField?: unknown; colorField?: unknown };
+    id?: string;
+    config: {
+      visConfig: Record<string, unknown>;
+      angleField?: unknown;
+      sizeField?: unknown;
+      colorField?: unknown;
+      textLabel?: unknown;
+    };
     visConfigSettings: Record<string, Record<string, unknown>>;
     visualChannels: Record<string, unknown>;
   };
   visConfiguratorProps: Record<string, unknown>;
   layerConfiguratorProps: Record<string, unknown>;
   layerChannelConfigProps: Record<string, unknown>;
+  /** kepler's text label panel, from the configurator's dependencies. */
+  TextLabelPanel?: ComponentType<Record<string, unknown>>;
+  /** The action that edits one of the layer's labels. */
+  updateLayerTextLabel?: unknown;
 }
 
 export function SymbolLayerConfig({
@@ -36,6 +47,8 @@ export function SymbolLayerConfig({
   visConfiguratorProps,
   layerConfiguratorProps,
   layerChannelConfigProps,
+  TextLabelPanel,
+  updateLayerTextLabel,
 }: ConfiguratorArgs) {
   const settings = layer.visConfigSettings;
   const slider = (key: string) => <VisConfigSlider {...settings[key]} {...visConfiguratorProps} />;
@@ -119,6 +132,15 @@ export function SymbolLayerConfig({
           <LayerColorSelector {...layerConfiguratorProps} />
         )}
       </LayerConfigGroup>
+
+      {TextLabelPanel ? (
+        <TextLabelPanel
+          id={layer.id}
+          fields={visConfiguratorProps.fields}
+          updateLayerTextLabel={updateLayerTextLabel}
+          textLabel={layer.config.textLabel}
+        />
+      ) : null}
     </div>
   );
 }

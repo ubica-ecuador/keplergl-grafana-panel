@@ -239,6 +239,62 @@ export function shownByFilters<T>(rows: T[], getFilterValue: unknown, filterRang
   });
 }
 
+/** One of kepler's text labels, as far as this layer reads it. */
+interface TextLabel {
+  field?: { valueAccessor(row: unknown): unknown } | null;
+  size?: number;
+  anchor?: string;
+  alignment?: string;
+}
+
+/**
+ * What kepler's `renderTextLabelLayer` reads for each label: the text of a row,
+ * and every character any row's text uses, for the font atlas.
+ *
+ * kepler's point layer builds this with `formatTextLabelData`, which its
+ * package does not export; this is that function's row-object path — the only
+ * one a layer of plain rows takes.
+ */
+export function textLabelsFor(
+  textLabel: TextLabel[] | undefined,
+  rows: unknown[]
+): Array<{ getText: ((row: unknown) => string) | null; characterSet: string[] }> {
+  return (textLabel ?? []).map((label) => {
+    const field = label.field;
+    if (!field) {
+      return { getText: null, characterSet: [] };
+    }
+    const getText = (row: unknown) => {
+      const value = field.valueAccessor(row);
+      return value === null || value === undefined ? '' : String(value);
+    };
+    return { getText, characterSet: [...new Set(rows.map(getText).join(''))] };
+  });
+}
+
+/** Pixels between a symbol's edge and its label. */
+const LABEL_GAP_PX = 4;
+
+/**
+ * Where a label sits relative to its symbol: beside it, on the side the label's
+ * anchor and alignment name, clear of the symbol by its own half-size.
+ *
+ * Mirrors kepler's point layer, which clears a circle's radius; a symbol's
+ * half-size is its radius here, and it comes from the row, so a larger symbol
+ * pushes its label further out.
+ */
+export function labelOffsetBeside(sizeOf: (row: unknown) => number) {
+  return (label: TextLabel) => {
+    const x = label.anchor === 'middle' ? 0 : label.anchor === 'start' ? 1 : -1;
+    const y = label.alignment === 'center' ? 0 : label.alignment === 'bottom' ? 1 : -1;
+    const clearance = (row: unknown) => Number(sizeOf(row)) / 2 + LABEL_GAP_PX;
+    return (row: unknown): [number, number] => [
+      x * clearance(row) || 0,
+      y * (clearance(row) + (y === 0 ? 0 : (label.size ?? 0))) || 0,
+    ];
+  };
+}
+
 /** What a kepler dataset carries for the filters that run on the GPU. */
 interface GpuFilter {
   filterValueAccessor(dataContainer: unknown): () => (row: unknown) => unknown;
@@ -267,6 +323,7 @@ interface SymbolLayerLike {
     columns?: Record<string, LayerColumn>;
     color?: [number, number, number];
     angleField?: unknown;
+    textLabel?: TextLabel[];
     isVisible?: boolean;
     visConfig?: Record<string, unknown>;
   };
@@ -275,6 +332,7 @@ interface SymbolLayerLike {
   getAttributeAccessors(args: { dataContainer: unknown }): Record<string, unknown>;
   getVisualChannelUpdateTriggers(): Record<string, Record<string, unknown>>;
   getDefaultDeckLayerProps(opts: unknown): Record<string, unknown>;
+  renderTextLabelLayer(props: Record<string, unknown>, renderOpts: Record<string, unknown>): unknown[];
   getPointsBounds(dataContainer: unknown, getPosition?: unknown): [number, number, number, number];
   updateMeta(meta: Record<string, unknown>): unknown;
 }
@@ -449,6 +507,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
         data,
         getPosition: (row: { position: unknown }) => row.position,
         ...(getFilterValue ? { getFilterValue } : {}),
+        textLabels: textLabelsFor(this.config.textLabel, data),
         ...accessors,
       };
     }
@@ -548,12 +607,33 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       // Null when an atlas could not be painted: dropping a layer loses it for
       // the frame rather than the whole map render.
       // In drawing order: the shadow under the outline, the outline under the
-      // symbols.
-      return [
+      // symbols, and the labels over everything.
+      const symbolLayers = [
         visConfig.shadow === true ? this.shadowOf(symbolProps, visConfig) : null,
         visConfig.outline === true ? this.outlineOf(symbolProps, visConfig) : null,
         buildDeckLayer(symbolProps),
       ].filter(Boolean);
+
+      // kepler's own text labels, the ones its point layer draws, over the rows
+      // actually drawn — so declutter thins the labels with their symbols.
+      const labels = Array.isArray(layerData?.textLabels)
+        ? this.renderTextLabelLayer(
+            {
+              getPosition: layerData?.getPosition,
+              getPixelOffset: labelOffsetBeside(sizeOf),
+              updateTriggers,
+              sharedProps: {
+                ...(getFilterValue ? { getFilterValue } : {}),
+                extensions: defaults.extensions,
+                filterRange: defaults.filterRange,
+                visible: symbolProps.visible,
+              },
+            },
+            { ...opts, data: { ...layerData, data: drawn } }
+          )
+        : [];
+
+      return [...symbolLayers, ...labels];
     }
 
     /**

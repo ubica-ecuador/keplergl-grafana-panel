@@ -79,6 +79,10 @@ class FakeBaseLayer {
   getDefaultDeckLayerProps(): Record<string, unknown> {
     return { id: this.id, pickable: true };
   }
+
+  renderTextLabelLayer(): unknown[] {
+    return [];
+  }
 }
 
 /**
