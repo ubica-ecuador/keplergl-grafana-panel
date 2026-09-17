@@ -10,6 +10,7 @@ import {
 } from '@kepler.gl/components';
 
 import { SelectKnob } from './selectKnob';
+import { SymbolOption } from './symbolOption';
 
 /**
  * The layer panel for the symbol layer.
@@ -44,13 +45,16 @@ export function SymbolLayerConfig({
       <LayerConfigGroup label={'symbol.group.symbol'} collapsible>
         {/* The shape's options are glyph names — the words a person reads, with
             no messages behind them — and there are several hundred, so the
-            list is searched rather than scrolled. */}
+            list is searched rather than scrolled. Each is drawn beside its
+            name: `rail`, `rail-light` and `rail-metro` are words apart and
+            shapes apart. */}
         <SelectKnob
           layer={layer}
           visConfiguratorProps={visConfiguratorProps}
           property="symbol"
           displayOption={(name) => name}
           searchable
+          OptionComponent={SymbolOption}
         />
         <SelectKnob layer={layer} visConfiguratorProps={visConfiguratorProps} property="directionConvention" />
         <ConfigGroupCollapsibleContent>{slider('opacity')}</ConfigGroupCollapsibleContent>

@@ -208,4 +208,54 @@ describe('symbol layer panel', () => {
       .filter((message) => message.includes('"symbol.symbol.'));
     expect(missing).toEqual([]);
   });
+
+  it('draws each shape beside its name, in the list and in the chosen value', () => {
+    // The drawing itself needs a 2D canvas, which jsdom lacks; what can be
+    // checked here is that every option carries one, for its own glyph.
+    const layer = {
+      id: 'layer-1',
+      type: SYMBOL_TYPE,
+      config: { visConfig: { symbol: 'airport', directionConvention: 'towards' }, colorField: null, colorUI: {} },
+      visConfigSettings: { symbol: SYMBOL_VIS_CONFIGS.symbol as unknown as Record<string, unknown> },
+      visualChannels: {
+        angle: { key: 'angle', property: 'angle' },
+        size: { key: 'size', property: 'size' },
+        color: { key: 'color', property: 'color' },
+      },
+    };
+
+    const { container } = render(
+      <IntlProvider locale="en" messages={{ ...messages.en, ...SYMBOL_MESSAGES }}>
+        <ThemeProvider theme={theme}>
+          <SymbolLayerConfig
+            layer={layer}
+            visConfiguratorProps={{ layer, onChange: () => undefined }}
+            layerConfiguratorProps={{ layer, onChange: () => undefined }}
+            layerChannelConfigProps={{ layer, fields: [], onChange: () => undefined }}
+          />
+        </ThemeProvider>
+      </IntlProvider>
+    );
+
+    const [shape] = container.querySelectorAll('.item-selector__dropdown');
+    expect(shape.querySelector('canvas')?.getAttribute('data-symbol')).toBe('airport');
+
+    const scope = globalThis as { IntersectionObserver?: unknown };
+    const original = scope.IntersectionObserver;
+    scope.IntersectionObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+    try {
+      fireEvent.click(shape);
+      const items = [...document.body.querySelectorAll('.list__item')];
+      expect(items.length).toBeGreaterThan(0);
+      for (const item of items) {
+        expect(item.querySelector('canvas')?.getAttribute('data-symbol')).toBe(item.textContent);
+      }
+    } finally {
+      scope.IntersectionObserver = original;
+    }
+  });
 });
