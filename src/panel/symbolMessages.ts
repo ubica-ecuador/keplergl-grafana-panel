@@ -36,6 +36,16 @@ export const SYMBOL_MESSAGES: Record<string, string> = {
   'symbol.shadow': 'Shadow',
   'symbol.shadowOpacity': 'Shadow intensity',
   'symbol.shadowDistance': 'Shadow distance (px)',
+
+  'symbol.symbolSource': 'Draw',
+  'symbol.symbolSource.shape': 'A shape',
+  'symbol.symbolSource.picture': 'A picture',
+  'symbol.pictureUrl': 'Picture URL',
+  'symbol.pictureAnchor': 'Anchor',
+  'symbol.pictureAnchor.center': 'Centre',
+  'symbol.pictureAnchor.bottom': 'Bottom',
+  // kepler labels a column with the message `columns.<name>`.
+  'columns.picture': 'picture URL',
 };
 
 /** Adds them to every locale kepler ships, never overwriting an existing entry. */

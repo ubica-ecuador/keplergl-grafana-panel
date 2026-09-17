@@ -4,6 +4,9 @@ import { thinBySpacing } from './declutter';
 import { shownInPane } from './paneVisibility';
 import { setting } from './velocityField';
 import { resolveSymbol, SYMBOL_FALLBACK, symbolNames } from './symbolGlyphs';
+import { pictureAnchorOf } from './pictureKeys';
+import { assignPictures, PictureAssignment } from './pictureRows';
+import { generationFor, recordPictureAssignment } from './pictureState';
 
 /**
  * A symbol per row, turned by one column and sized by another.
@@ -197,7 +200,45 @@ export const SYMBOL_VIS_CONFIGS = {
     group: 'display',
     property: 'shadowDistance',
   },
+  /**
+   * What each symbol is: a shape of the catalogue, or a picture. `shape` by
+   * default, so a layer saved before pictures existed draws as it did.
+   */
+  symbolSource: {
+    type: 'select',
+    defaultValue: 'shape',
+    options: ['shape', 'picture'],
+    label: 'symbol.symbolSource',
+    group: 'display',
+    property: 'symbolSource',
+  },
+  /** The layer's picture: an https, http or data:image URL, or a path on Grafana's own origin. */
+  pictureUrl: {
+    type: 'text',
+    defaultValue: '',
+    label: 'symbol.pictureUrl',
+    group: 'display',
+    property: 'pictureUrl',
+  },
+  pictureAnchor: {
+    type: 'select',
+    defaultValue: 'center',
+    options: ['center', 'bottom'],
+    label: 'symbol.pictureAnchor',
+    group: 'display',
+    property: 'pictureAnchor',
+  },
 } as const;
+
+/**
+ * The colour a picture is drawn with. deck multiplies a non-mask icon's alpha
+ * by it and ignores the rest, so white leaves the picture as it is while the
+ * layer's opacity still applies.
+ */
+const PICTURE_TINT = [255, 255, 255, 255];
+
+/** A row as kepler hands it to a row-based layer. */
+type SymbolRow = { index: number; position: [number, number, number] };
 
 /**
  * The angle deck must turn a glyph by, in degrees.
@@ -382,7 +423,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
     }
 
     get optionalColumns(): string[] {
-      return ['altitude'];
+      return ['altitude', 'picture'];
     }
 
     /**
@@ -494,6 +535,11 @@ export function makeSymbolLayer<C extends Constructor<object>>(
           accessor: 'getColor',
           channelScaleType: CHANNEL_SCALES.color,
           defaultValue: (config: { color: [number, number, number] }) => config.color,
+          // A picture keeps its own colours, so a colour bound while drawing
+          // shapes means nothing on the map. kepler's legend skips a channel
+          // whose condition is false, and nothing else in kepler reads it: the
+          // binding survives a trip to pictures and back.
+          condition: (config: { visConfig: Record<string, unknown> }) => config.visConfig.symbolSource !== 'picture',
         },
       };
     }
@@ -520,10 +566,19 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       // a dataset built by hand.
       const getFilterValue = dataset.gpuFilter?.filterValueAccessor(dataset.dataContainer)();
 
+      // The picture column, read per row by its index as the position is. The
+      // function is made here, once per data update, so its identity tells
+      // `picturesFor` when the rows' pictures may have changed.
+      const pictureIdx = this.config.columns?.picture?.fieldIdx ?? -1;
+      const container = dataset.dataContainer as DataContainer | undefined;
+      const getPicture =
+        pictureIdx > -1 && container ? (row: { index: number }) => container.valueAt(row.index, pictureIdx) : undefined;
+
       return {
         data,
         getPosition: (row: { position: unknown }) => row.position,
         ...(getFilterValue ? { getFilterValue } : {}),
+        ...(getPicture ? { getPicture } : {}),
         textLabels: textLabelsFor(this.config.textLabel, data),
         ...accessors,
       };
@@ -536,12 +591,28 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       mapState?: { bearing?: number };
     }): unknown[] {
       const layerData = opts?.data;
-      const rows = (layerData?.data ?? []) as unknown[];
+      const rows = (layerData?.data ?? []) as SymbolRow[];
       if (rows.length === 0) {
         return [];
       }
 
       const visConfig = this.config.visConfig ?? {};
+
+      // Which picture each row draws, when the layer draws pictures — and which
+      // rows draw none, left out before deck sees them, since deck throws on a
+      // row with no icon. Decided before declutter and the GPU filters, so the
+      // dashboard clock never changes which rows have a picture. Recorded on
+      // every render; the status ignores a write that changes nothing.
+      const pictures = visConfig.symbolSource === 'picture' ? this.picturesFor(rows, layerData?.getPicture, visConfig) : null;
+      if (pictures) {
+        recordPictureAssignment(this.id, { urls: pictures.urls, failures: pictures.failures, overflow: pictures.overflow });
+      }
+      const candidates = pictures ? pictures.rows : rows;
+      if (candidates.length === 0) {
+        return [];
+      }
+      const generation = pictures ? generationFor(this.id, pictures.keys) : 0;
+
       // Resolved once and used twice, for the atlas and for deck's icon lookup.
       // A saved name this build lacks paints the arrow into the atlas, and deck
       // still asking for the old name finds nothing there: its empty icon.
@@ -564,11 +635,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
               // GPU, after this runs, so thinning every row could keep a hidden
               // one over the shown one beside it — the same station an hour
               // later, say — and the place would draw nothing at all.
-              shownByFilters(
-                rows as Array<{ position: [number, number, number] }>,
-                getFilterValue,
-                defaults.filterRange
-              ),
+              shownByFilters(candidates, getFilterValue, defaults.filterRange),
               // Longitude is divided by the cosine of the latitude so a cell is
               // as wide as it is tall on the ground, instead of stretching
               // towards the poles.
@@ -579,7 +646,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
               spacingDegrees,
               (row) => Number(sizeOf(row))
             )
-          : rows;
+          : candidates;
 
       // deck treats any two accessor functions as equal, and kepler hands back
       // the same row array, so a channel change reaches the GPU only through a
@@ -597,24 +664,42 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       const channelTriggers = this.getVisualChannelUpdateTriggers();
       const updateTriggers = {
         ...channelTriggers,
-        getIcon: [symbol],
+        getIcon: pictures
+          ? [
+              String(visConfig.pictureUrl ?? ''),
+              pictureAnchorOf(visConfig.pictureAnchor),
+              this.config.columns?.picture?.fieldIdx ?? -1,
+              generation,
+            ]
+          : [symbol],
         getAngle: { ...channelTriggers.getAngle, directionConvention: convention, mapBearing },
         getFilterValue: opts?.gpuFilter?.filterValueUpdateTriggers,
       };
 
       const symbolProps = {
         ...defaults,
-        id: `${this.id}-symbol`,
+        // A picture layer's id carries its generation: a new one is a fresh
+        // deck layer and texture (see `nextGeneration`). It still ends in
+        // `-symbol`, which is what the probes look for.
+        id: pictures ? `${this.id}-p${generation}-symbol` : `${this.id}-symbol`,
         data: drawn,
-        // Only the glyph in use, so the atlas stays one cell wide.
-        symbols: [symbol],
+        ...(pictures
+          ? {
+              picture: true,
+              keplerLayerId: this.id,
+              getIcon: (row: SymbolRow) => pictures.icons.get(row.index),
+            }
+          : {
+              // Only the glyph in use, so the atlas stays one cell wide.
+              symbols: [symbol],
+              getIcon: () => symbol,
+            }),
         visible: this.config.isVisible !== false && shownInPane(opts),
         getPosition: layerData?.getPosition,
-        getIcon: () => symbol,
         getAngle: (row: unknown) => deckAngle(Number(angleOf(row) ?? 0), convention) + mapBearing,
         billboard: upright,
         getSize: sizeOf,
-        getColor: colorOf,
+        getColor: pictures ? PICTURE_TINT : colorOf,
         // Left out rather than passed as undefined when there is none, so the
         // filter extension keeps its own default instead of an empty prop.
         ...(getFilterValue ? { getFilterValue } : {}),
@@ -625,16 +710,22 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       // the frame rather than the whole map render.
       // In drawing order: the shadow under the outline, the outline under the
       // symbols, and the labels over everything. The gradient is the symbols'
-      // alone: a shadow or an outline is one flat tone.
-      const symbolLayers = [
-        visConfig.shadow === true ? this.shadowOf(symbolProps, visConfig) : null,
-        visConfig.outline === true ? this.outlineOf(symbolProps, visConfig) : null,
-        buildDeckLayer(
-          visConfig.gradient === true
-            ? { ...symbolProps, gradient: setting(visConfig.gradientTail, 0.7) }
-            : symbolProps
-        ),
-      ].filter(Boolean);
+      // alone: a shadow or an outline is one flat tone. A picture has none of
+      // the three: they are cut from the glyph atlas, and a picture's atlas is
+      // deck's.
+      const symbolLayers = (
+        pictures
+          ? [buildDeckLayer(symbolProps)]
+          : [
+              visConfig.shadow === true ? this.shadowOf(symbolProps, visConfig) : null,
+              visConfig.outline === true ? this.outlineOf(symbolProps, visConfig) : null,
+              buildDeckLayer(
+                visConfig.gradient === true
+                  ? { ...symbolProps, gradient: setting(visConfig.gradientTail, 0.7) }
+                  : symbolProps
+              ),
+            ]
+      ).filter(Boolean);
 
       // kepler's own text labels, the ones its point layer draws, over the rows
       // actually drawn — so declutter thins the labels with their symbols.
@@ -656,6 +747,50 @@ export function makeSymbolLayer<C extends Constructor<object>>(
         : [];
 
       return [...symbolLayers, ...labels];
+    }
+
+    /** The last assignment and what it was made from; see `picturesFor`. */
+    pictureMemo: {
+      rows: SymbolRow[];
+      getPicture: unknown;
+      url: unknown;
+      anchor: string;
+      origin: string;
+      result: PictureAssignment<SymbolRow>;
+    } | null = null;
+
+    /**
+     * Which picture each row draws — the same object while nothing that
+     * decides it changed.
+     *
+     * kepler renders a layer on every hover and every move of the map. A new
+     * row array each time would have deck recompute every attribute and walk
+     * every row for icons each time. Keyed on the page's origin, not its
+     * address: only the scheme matters, for mixed content, and the address
+     * changes with every time range and variable.
+     */
+    picturesFor(rows: SymbolRow[], getPicture: unknown, visConfig: Record<string, unknown>): PictureAssignment<SymbolRow> {
+      const anchor = pictureAnchorOf(visConfig.pictureAnchor);
+      const origin = typeof location === 'undefined' ? 'https://localhost' : location.origin;
+      const memo = this.pictureMemo;
+      if (
+        memo &&
+        memo.rows === rows &&
+        memo.getPicture === getPicture &&
+        memo.url === visConfig.pictureUrl &&
+        memo.anchor === anchor &&
+        memo.origin === origin
+      ) {
+        return memo.result;
+      }
+      const result = assignPictures(rows, {
+        urlOf: typeof getPicture === 'function' ? (getPicture as (row: SymbolRow) => unknown) : null,
+        layerPicture: visConfig.pictureUrl,
+        anchor,
+        pageHref: `${origin}/`,
+      });
+      this.pictureMemo = { rows, getPicture, url: visConfig.pictureUrl, anchor, origin, result };
+      return result;
     }
 
     /**
