@@ -127,8 +127,8 @@ function barbShapes(parts: ReturnType<typeof barbParts>, side: 1 | -1): Shape[] 
   return shapes;
 }
 
-export function atlasSize(count: number, columns = ATLAS_COLUMNS): { width: number; height: number } {
-  return { width: columns * CELL, height: Math.ceil(count / columns) * CELL };
+export function atlasSize(count: number, columns = ATLAS_COLUMNS, cell = CELL): { width: number; height: number } {
+  return { width: columns * cell, height: Math.ceil(count / columns) * cell };
 }
 
 /** Paints one glyph into the cell whose top-left corner is (x, y). */
@@ -187,9 +187,15 @@ export function paintAtlas<T extends Glyph>(
  * null rather than throwing when there is no 2D context to paint into — a
  * browser out of canvas contexts, say. Nothing is cached on that path, so the
  * next call tries again rather than remembering the failure.
+ *
+ * `cell` is the side of one cell: a glyph's by default, larger for an atlas
+ * whose cells carry padding, like the symbol layer's shadows.
  */
-export function createAtlasCanvas(count: number): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
-  const { width, height } = atlasSize(count);
+export function createAtlasCanvas(
+  count: number,
+  cell = CELL
+): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
+  const { width, height } = atlasSize(count, ATLAS_COLUMNS, cell);
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;

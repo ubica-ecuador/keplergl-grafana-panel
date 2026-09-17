@@ -279,7 +279,17 @@ function CustomLayerConfiguratorFactory(...deps: Parameters<typeof LayerConfigur
       // vector field panels and has no `layerChannelConfigProps`; kepler passes
       // it anyway (see `layer-configurator.tsx`'s own channel-bearing layers),
       // so the cast only tells TypeScript what is already true at runtime.
-      return <SymbolLayerConfig {...(args as unknown as React.ComponentProps<typeof SymbolLayerConfig>)} />;
+      //
+      // The text label panel is kepler's, handed to this factory third among
+      // its dependencies; the action that edits a label arrives as one of the
+      // configurator's props, as it does for kepler's point layer.
+      return (
+        <SymbolLayerConfig
+          {...(args as unknown as React.ComponentProps<typeof SymbolLayerConfig>)}
+          TextLabelPanel={deps[2] as unknown as React.ComponentType<Record<string, unknown>>}
+          updateLayerTextLabel={(this.props as { updateLayerTextLabel?: unknown }).updateLayerTextLabel}
+        />
+      );
     }
 
     // The three layers whose picture arrives already drawn share one panel —

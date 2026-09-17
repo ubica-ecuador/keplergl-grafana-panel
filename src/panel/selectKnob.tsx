@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactElement } from 'react';
 import { useIntl } from 'react-intl';
 import { ItemSelector, PanelLabel, SidePanelSection } from '@kepler.gl/components';
 
@@ -37,6 +37,15 @@ export interface SelectKnobProps {
   displayOption?: (option: string) => string;
   /** Offers a search box over the options; for a list too long to scroll. */
   searchable?: boolean;
+  /**
+   * Renders an option, in the list and as the chosen value, when its name alone
+   * is not enough — the symbol layer's shapes, drawn beside their names.
+   */
+  OptionComponent?: (props: {
+    value: string;
+    displayOption: (option: string) => string;
+    disabled?: boolean;
+  }) => ReactElement;
 }
 
 export function SelectKnob({
@@ -46,6 +55,7 @@ export function SelectKnob({
   options,
   displayOption,
   searchable = false,
+  OptionComponent,
 }: SelectKnobProps) {
   const intl = useIntl();
   const setting = layer.visConfigSettings[property] as
@@ -70,6 +80,8 @@ export function SelectKnob({
         searchable={searchable}
         getOptionValue={(option: string) => option}
         displayOption={displayOption ?? ((option: string) => intl.formatMessage({ id: `${label}.${option}` }))}
+        // Left to kepler's own line item when none is given.
+        {...(OptionComponent ? { DropDownLineItemRenderComponent: OptionComponent } : {})}
         // `ItemSelector` types its handler for the multi-select case too; ours
         // is single-select over strings, and anything else is not an answer.
         onChange={(value) => {

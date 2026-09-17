@@ -195,3 +195,56 @@ test('leaves one symbol per station under the dashboard clock', async ({
   // ...and it lets one hour through: a symbol per station, not two stacked.
   await expect.poll(async () => (await readSymbolLayer(map))?.shown, { timeout: 30_000 }).toBe(8);
 });
+
+test('restores the styled panel with its shadow, outline, gradient and labels', async ({
+  gotoPanelEditPage,
+  readProvisionedDashboard,
+  page,
+}) => {
+  test.slow();
+  // The third panel carries a saved map config, so no layer is added for it:
+  // everything drawn comes from what was saved. `symbolLayer.saved.test.ts`
+  // restores the same config through kepler's merger in jest.
+  const dashboard = await readProvisionedDashboard({ fileName: 'symbols.json' });
+  const panelEditPage = await gotoPanelEditPage({ dashboard, id: '3' });
+
+  const map = panelEditPage.panel.locator.locator('canvas').first();
+  await expect(map).toBeVisible({ timeout: 60_000 });
+  await settle(page);
+
+  await expect
+    .poll(async () => (await readKepler(map)).layers.map((l) => l.type), { timeout: 60_000 })
+    .toEqual(['symbol']);
+  await expect.poll(async () => (await readSymbolLayer(map))?.symbols ?? 0, { timeout: 60_000 }).toBe(8);
+
+  const drawn = (await readSymbolLayer(map))!;
+  // Drawn bottom to top: the shadow, the outline, the symbols, their labels.
+  expect(drawn.deckLayerIds).toEqual([
+    'styled-stations-symbol-shadow',
+    'styled-stations-symbol-outline',
+    'styled-stations-symbol',
+    'styled-stations-label-name',
+  ]);
+  // The gradient rides after kepler's own filter extension, never instead of it.
+  expect(drawn.extensions).toEqual(['DataFilterExtension', 'SymbolGradientExtension']);
+  expect(drawn.gradientTail).toBe(0.75);
+  expect(drawn.billboard).toBe(false);
+});
+
+test('stands the symbols up in the 3D panel', async ({ gotoPanelEditPage, readProvisionedDashboard, page }) => {
+  test.slow();
+  const dashboard = await readProvisionedDashboard({ fileName: 'symbols.json' });
+  const panelEditPage = await gotoPanelEditPage({ dashboard, id: '4' });
+
+  const map = panelEditPage.panel.locator.locator('canvas').first();
+  await expect(map).toBeVisible({ timeout: 60_000 });
+  await settle(page);
+
+  await expect.poll(async () => (await readSymbolLayer(map))?.symbols ?? 0, { timeout: 60_000 }).toBe(8);
+
+  const drawn = (await readSymbolLayer(map))!;
+  expect(drawn.billboard).toBe(true);
+  expect(drawn.iconKeys).toEqual(['marker']);
+  // No bearing column: a standing marker is not turned.
+  expect(new Set(drawn.angles)).toEqual(new Set([0]));
+});
