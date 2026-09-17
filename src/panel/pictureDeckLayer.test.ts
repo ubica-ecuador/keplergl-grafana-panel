@@ -76,6 +76,7 @@ describe('the picture branch of buildSymbolDeckLayer', () => {
 describe('PictureIconLayer', () => {
   /** Stands in for deck's `IconManager`, which needs a GPU device. */
   class FakeIconManager {
+    _texture: unknown = { width: 1024, height: 2048 };
     finalize = jest.fn();
     constructor(
       readonly device: unknown,
@@ -115,6 +116,8 @@ describe('PictureIconLayer', () => {
     expect(next).not.toBe(first);
     expect(next).toBeInstanceOf(FakeIconManager);
     expect(first.finalize).toHaveBeenCalledTimes(1);
+    // Its pending loads must find no texture to write into.
+    expect(first._texture).toBeNull();
     expect(next.device).toBe('device');
     expect(next.callbacks.onUpdate).toEqual(expect.any(Function));
     expect(next.callbacks.onError).toEqual(expect.any(Function));

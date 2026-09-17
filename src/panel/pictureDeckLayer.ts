@@ -64,8 +64,9 @@ function iconIdsOf(data: unknown, getIcon: unknown): string[] {
  * refresh that changes nothing about the pictures does not rebuild the texture.
  *
  * Reaches into `IconLayer` 9.3's internals — `state.iconManager`, `_onUpdate`,
- * `_onError` — to build the manager exactly as `initializeState` does; the
- * manager's class is taken from the live one, so no private module is imported.
+ * `_onError`, and the manager's `_texture` — to build the manager exactly as
+ * `initializeState` does; the manager's class is taken from the live one, so no
+ * private module is imported.
  */
 export class PictureIconLayer extends IconLayer {
   static layerName = 'PictureIconLayer';
@@ -86,9 +87,18 @@ export class PictureIconLayer extends IconLayer {
     const previous = state.pictures;
     const next = nextGeneration(previous, iconIdsOf(data, getIcon));
     if (previous && next.generation !== previous.generation && state.iconManager) {
-      const full = state.iconManager as unknown as { finalize(): void; constructor: IconManagerClass };
+      const full = state.iconManager as unknown as {
+        finalize(): void;
+        _texture: unknown;
+        constructor: IconManagerClass;
+      };
       const IconManager = full.constructor;
       full.finalize();
+      // `finalize` deletes the texture but keeps it, and loads still pending
+      // on this manager would write into it — or, since WebGL cannot bind a
+      // deleted texture, into whichever texture is bound. Without one they
+      // skip the write.
+      full._texture = null;
       const internals = this as unknown as {
         _onUpdate(didFrameChange: boolean): void;
         _onError(event: unknown): void;
