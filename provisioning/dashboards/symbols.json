@@ -65,6 +65,280 @@
       ],
       "title": "Wind stations, hourly",
       "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      },
+      "id": 3,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "basemap": "positron",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "visState": {
+              "layers": [
+                {
+                  "id": "styled-stations",
+                  "type": "symbol",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Styled stations",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "symbol": "arrow",
+                      "directionConvention": "from",
+                      "fixedAngle": true,
+                      "sizeRange": [
+                        22,
+                        56
+                      ],
+                      "outline": true,
+                      "outlineColor": [
+                        255,
+                        255,
+                        255
+                      ],
+                      "outlineThickness": 3,
+                      "shadow": true,
+                      "shadowOpacity": 0.45,
+                      "shadowDistance": 5,
+                      "gradient": true,
+                      "gradientTail": 0.75
+                    },
+                    "textLabel": [
+                      {
+                        "field": {
+                          "name": "name",
+                          "type": "string"
+                        },
+                        "color": [
+                          40,
+                          40,
+                          40
+                        ],
+                        "size": 13,
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "anchor": "start",
+                        "alignment": "center",
+                        "outlineWidth": 0,
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ]
+                      }
+                    ]
+                  },
+                  "visualChannels": {
+                    "angleField": {
+                      "name": "wind_direction",
+                      "type": "integer"
+                    },
+                    "angleScale": "linear",
+                    "sizeField": {
+                      "name": "wind_speed",
+                      "type": "real"
+                    },
+                    "sizeScale": "sqrt",
+                    "colorField": {
+                      "name": "wind_speed",
+                      "type": "real"
+                    },
+                    "colorScale": "quantize"
+                  }
+                }
+              ],
+              "filters": [],
+              "interactionConfig": {},
+              "splitMaps": []
+            },
+            "mapState": {
+              "latitude": -1.6,
+              "longitude": -79.3,
+              "zoom": 6.4,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "mapStyle": {
+              "styleType": "positron"
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\": {\"fields\": [{\"name\": \"name\", \"type\": \"string\"}, {\"name\": \"latitude\", \"type\": \"number\"}, {\"name\": \"longitude\", \"type\": \"number\"}, {\"name\": \"wind_speed\", \"type\": \"number\"}, {\"name\": \"wind_direction\", \"type\": \"number\"}]}, \"data\": {\"values\": [[\"Cuenca\", \"Quito\", \"Guayaquil\", \"Loja\", \"Manta\", \"Esmeraldas\", \"Ambato\", \"Machala\"], [-2.9, -0.19, -2.17, -3.99, -0.95, 0.96, -1.24, -3.26], [-79.0, -78.48, -79.92, -79.2, -80.71, -79.65, -78.62, -79.96], [3.1, 5.4, 7.2, 2.8, 6.5, 4.1, 3.9, 5.8], [90, 180, 270, 45, 135, 225, 315, 20]]}}]"
+        }
+      ],
+      "title": "Wind stations, styled",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 60
+      },
+      "id": 4,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "basemap": "voyager",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "visState": {
+              "layers": [
+                {
+                  "id": "standing-stations",
+                  "type": "symbol",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Standing stations",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "symbol": "marker",
+                      "fixedAngle": true,
+                      "angleDegrees": 0,
+                      "sizeRange": [
+                        28,
+                        60
+                      ],
+                      "upright": true,
+                      "outline": true,
+                      "outlineColor": [
+                        255,
+                        255,
+                        255
+                      ],
+                      "outlineThickness": 2,
+                      "shadow": true,
+                      "shadowOpacity": 0.4,
+                      "shadowDistance": 4
+                    },
+                    "textLabel": [
+                      {
+                        "field": {
+                          "name": "name",
+                          "type": "string"
+                        },
+                        "color": [
+                          40,
+                          40,
+                          40
+                        ],
+                        "size": 12,
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "anchor": "middle",
+                        "alignment": "bottom",
+                        "outlineWidth": 0,
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ]
+                      }
+                    ]
+                  },
+                  "visualChannels": {
+                    "angleField": null,
+                    "angleScale": "linear",
+                    "sizeField": {
+                      "name": "wind_speed",
+                      "type": "real"
+                    },
+                    "sizeScale": "sqrt",
+                    "colorField": {
+                      "name": "wind_speed",
+                      "type": "real"
+                    },
+                    "colorScale": "quantize"
+                  }
+                }
+              ],
+              "filters": [],
+              "interactionConfig": {},
+              "splitMaps": []
+            },
+            "mapState": {
+              "latitude": -1.9,
+              "longitude": -79.3,
+              "zoom": 6.6,
+              "bearing": -20,
+              "pitch": 55,
+              "dragRotate": true
+            },
+            "mapStyle": {
+              "styleType": "voyager"
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\": {\"fields\": [{\"name\": \"name\", \"type\": \"string\"}, {\"name\": \"latitude\", \"type\": \"number\"}, {\"name\": \"longitude\", \"type\": \"number\"}, {\"name\": \"wind_speed\", \"type\": \"number\"}, {\"name\": \"wind_direction\", \"type\": \"number\"}]}, \"data\": {\"values\": [[\"Cuenca\", \"Quito\", \"Guayaquil\", \"Loja\", \"Manta\", \"Esmeraldas\", \"Ambato\", \"Machala\"], [-2.9, -0.19, -2.17, -3.99, -0.95, 0.96, -1.24, -3.26], [-79.0, -78.48, -79.92, -79.2, -80.71, -79.65, -78.62, -79.96], [3.1, 5.4, 7.2, 2.8, 6.5, 4.1, 3.9, 5.8], [90, 180, 270, 45, 135, 225, 315, 20]]}}]"
+        }
+      ],
+      "title": "Wind stations, standing in 3D",
+      "type": "ubica-keplergl-panel"
     }
   ],
   "refresh": "",
