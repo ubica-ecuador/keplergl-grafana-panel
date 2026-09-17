@@ -1,5 +1,6 @@
+import { WebMercatorViewport } from '@deck.gl/core';
 import { WindField } from './buildWindField';
-import { traceStreamlines } from './traceStreamlines';
+import { ScreenCamera, Streamline, traceStreamlines } from './traceStreamlines';
 
 /** A field with the same velocity everywhere, spanning ±10°. */
 function uniformField(u: number, v: number): WindField {
@@ -568,5 +569,108 @@ describe('traceStreamlines — seeding through the camera', () => {
     };
 
     expect(traceStreamlines(field, { count: 100, seed: 1, baseMs: 0, camera: sky })).toEqual([]);
+  });
+});
+
+/**
+ * A steady eastward field spanning enough ground for a real map camera.
+ *
+ * The file's `uniformField(u, v)` only spans ±10°, which is plenty when a test
+ * also invents its own tiny coordinate system, but a camera centred on a real
+ * place — Ecuador's, below — sits nowhere near that domain: every seed would
+ * fall outside it and trace nothing. This is the same idea, a uniform wind
+ * over a 2×2 grid, stretched to cover the whole Mercator range instead.
+ */
+function wideEastwardField(): WindField {
+  return {
+    data: Float32Array.from([8, 0, 8, 0, 8, 0, 8, 0]),
+    columns: 2,
+    rows: 2,
+    west: -180,
+    south: -85,
+    stepLon: 360,
+    stepLat: 170,
+  };
+}
+
+describe('traceStreamlines — anchored to the ground', () => {
+  const field = wideEastwardField();
+
+  /** A camera over the field, as `flowFieldDeckLayer.makeScreenCamera` builds one. */
+  function cameraOver(centre: [number, number], zoom: number, pitch = 0): ScreenCamera {
+    const viewport = new WebMercatorViewport({
+      longitude: centre[0],
+      latitude: centre[1],
+      zoom,
+      pitch,
+      bearing: 0,
+      width: 800,
+      height: 600,
+    });
+    const groundAt = (x: number, y: number): [number, number] | null => {
+      const [lng, lat] = viewport.unproject([x, y]);
+      return Number.isFinite(lng) && Number.isFinite(lat) && Math.abs(lat) < 85 ? [lng, lat] : null;
+    };
+    const corners = [groundAt(0, 0)!, groundAt(800, 600)!];
+    return {
+      widthPx: 800,
+      heightPx: 600,
+      bounds: {
+        west: Math.min(corners[0][0], corners[1][0]),
+        east: Math.max(corners[0][0], corners[1][0]),
+        south: Math.min(corners[0][1], corners[1][1]),
+        north: Math.max(corners[0][1], corners[1][1]),
+      },
+      metresPerPixel: viewport.metersPerPixel,
+      unproject: groundAt,
+    };
+  }
+
+  const BASE = { count: 400, seed: 7, baseMs: 0, cycleMs: 60_000, lifeFraction: 0.5, maxVertices: 30 };
+
+  it('keeps the lines it has already traced when the map is panned', () => {
+    // What this ends: the seeds were pixels, so the same random sequence fell
+    // on different ground and every line jumped at once.
+    const cells = new Map<string, Streamline[] | null>();
+    const before = traceStreamlines(field, { ...BASE, camera: cameraOver([-79, -2], 8), cells });
+    const after = traceStreamlines(field, { ...BASE, camera: cameraOver([-78.99, -2], 8), cells });
+
+    const kept = new Set(before.map((line) => line.cell));
+    const shared = after.filter((line) => kept.has(line.cell));
+    expect(shared.length).toBeGreaterThan(after.length * 0.6);
+    // And the ones that were kept are the same geometry, not a fresh trace.
+    const sample = after.find((line) => kept.has(line.cell))!;
+    expect(before.find((line) => line.cell === sample.cell)!.path[0]).toEqual(sample.path[0]);
+  });
+
+  it('fills a tilted screen from top to bottom', () => {
+    // A ground lattice with one step for the whole screen piles its lines up
+    // against the horizon: measured on kepler's, 4,580 in the top quarter of
+    // the screen against 272 in the bottom.
+    const camera = cameraOver([-79, -2], 8, 60);
+    const viewport = new WebMercatorViewport({
+      longitude: -79,
+      latitude: -2,
+      zoom: 8,
+      pitch: 60,
+      bearing: 0,
+      width: 800,
+      height: 600,
+    });
+
+    const lines = traceStreamlines(field, { ...BASE, camera });
+    const bands = [0, 0, 0, 0];
+    for (const line of lines) {
+      const [x, y] = viewport.project([line.path[0][0], line.path[0][1]]);
+      if (x < 0 || x > 800 || y < 0 || y > 600) {
+        continue;
+      }
+      bands[Math.min(3, Math.floor((y / 600) * 4))]++;
+    }
+
+    const most = Math.max(...bands);
+    const least = Math.min(...bands);
+    expect(least).toBeGreaterThan(0);
+    expect(most / least).toBeLessThan(3);
   });
 });

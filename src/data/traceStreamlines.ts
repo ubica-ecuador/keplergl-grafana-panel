@@ -1,4 +1,5 @@
 import { sampleWindField, WindField } from './buildWindField';
+import { cellAt, keyOf, levelFor, phaseOf, seedOf } from './groundCells';
 
 /**
  * One traced path, in the shape deck's `TripsLayer` reads.
@@ -13,6 +14,14 @@ export interface Streamline {
   path: Array<[number, number, number, number]>;
   /** Mean speed along the line, in m/s — what the colour ramp reads. */
   speed: number;
+  /**
+   * The ground cell this line is anchored to — see `groundCells.ts`.
+   *
+   * Only set for a line seeded through a `camera`: the viewport and no-camera
+   * paths seed at a scattered point, not a patch of ground a caller could look
+   * up again.
+   */
+  cell?: string;
 }
 
 /** What the map is currently showing: a geographic extent and its size on screen. */
@@ -81,6 +90,14 @@ export interface StreamlineOptions {
    * rectangle of ground — see `ScreenCamera`.
    */
   camera?: ScreenCamera;
+  /**
+   * Lines already traced, by ground cell.
+   *
+   * Handed in by the layer, which keeps one of these per forecast hour. A cell
+   * in here is not traced again, which is what makes panning cheap and keeps a
+   * line from moving under the reader.
+   */
+  cells?: Map<string, Streamline[] | null>;
   /**
    * How much the line count follows the ground rather than the screen, from 0 to
    * 1 — see `zoomFactor`.
@@ -233,6 +250,18 @@ function cameraSettings(camera: ScreenCamera, extent: Box, segmentPixels: number
   };
 }
 
+/** The cell level for a band of the screen, from the ground a pixel covers there. */
+function levelOfBand(camera: ScreenCamera, y: number, spacingPx: number): number | null {
+  const here = camera.unproject(camera.widthPx / 2, y);
+  const across = camera.unproject(camera.widthPx / 2 + 1, y);
+  if (!here || !across) {
+    return null;
+  }
+  const metres =
+    Math.abs(across[0] - here[0]) * METRES_PER_DEGREE * Math.max(0.2, Math.cos((here[1] * Math.PI) / 180));
+  return levelFor(metres, spacingPx, here[1]);
+}
+
 function viewportSettings(
   viewport: Viewport,
   extent: Box,
@@ -327,28 +356,9 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
   const traced: Vertex[][] = [];
 
   const camera = options.camera;
-  if (camera) {
-    /**
-     * One attempt per line asked for, and whatever traces is the field.
-     *
-     * No retrying towards a target here, unlike the path below. Seeding the
-     * screen already answers the question the retry was compensating for: a
-     * field covering a third of the view gets a third of the lines because two
-     * thirds of the seeds land where there is no data, which is the honest
-     * answer. Retrying to reach the count would refill that third to the
-     * density of a full screen.
-     */
-    for (let attempt = 0; attempt < wanted; attempt++) {
-      const at = camera.unproject(random() * camera.widthPx, random() * camera.heightPx);
-      if (!at) {
-        continue;
-      }
-      const vertices = trace(field, at[0], at[1], settings);
-      if (vertices) {
-        traced.push(vertices);
-      }
-    }
-  } else {
+  const lines: Streamline[] = [];
+
+  if (!camera) {
     // More attempts than lines asked for: some seeds land in calm air, in a hole
     // or next to the edge, and yield nothing usable.
     const maxAttempts = wanted * 4;
@@ -364,9 +374,91 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
     }
   }
 
+  // `emit` closes over `scale`, so it has to exist before the camera branch
+  // below can call it — `traced` is only ever filled by the branch above, so
+  // computing this here rather than after both branches changes nothing for
+  // either of them.
   const scale = timeScale(traced, options.targetLifetimeMs);
 
-  return traced.flatMap((vertices, id) => emit(vertices, id));
+  if (camera) {
+    /**
+     * Walked in horizontal bands rather than seeded at one uniform spacing:
+     * on a tilted camera the ground a pixel covers grows several times over
+     * from the bottom of the screen to the top, and a single cell size for
+     * the whole view is exactly what piled every line against the horizon.
+     * Each band gets the cell size the ground *there* calls for, so the
+     * count of lines per screen stays roughly even from top to bottom.
+     *
+     * A cell replaces the pixel as the unit of seeding: two calls that land
+     * on the same patch of ground get the same seed point and the same birth
+     * phase (`seedOf`/`phaseOf`, both pure functions of the cell), and the
+     * `cells` cache below skips retracing it altogether. That is what lets a
+     * pan reuse the lines it already drew instead of jumping all of them to
+     * a fresh set of random pixels.
+     */
+    const spacingPx = Math.max(4, Math.sqrt((camera.widthPx * camera.heightPx) / Math.max(1, wanted)));
+    // Fine enough to track the ground's foreshortening without walking every
+    // scanline as its own band.
+    const bands = 8;
+    const seen = new Set<string>();
+
+    for (let band = 0; band < bands; band++) {
+      const top = (band / bands) * camera.heightPx;
+      const height = camera.heightPx / bands;
+      const middle = top + height / 2;
+
+      // How much ground a pixel covers in this band. On a tilted map that is
+      // several times more at the top of the screen than at the bottom, and a
+      // single answer for the whole screen is what leaves the distance bare.
+      const level = levelOfBand(camera, middle, spacingPx);
+      if (level === null) {
+        continue;
+      }
+
+      for (let y = top; y < top + height; y += spacingPx) {
+        for (let x = 0; x < camera.widthPx; x += spacingPx) {
+          // A deterministic nudge, so the samples are not a visible grid of
+          // their own and two adjacent rows do not sample the same column.
+          // Clamped to the screen: unjittered, the loop bounds already keep x
+          // and y on it, and this nudge must not walk a sample back off past
+          // the edge the loop just stopped at — a camera happily unprojects a
+          // pixel past its own bounds, which is ground the screen never shows.
+          const jitter = (((Math.sin((x + y * 7.3) * 12.9898) * 43758.5453) % 1) + 1) % 1;
+          const px = Math.min(camera.widthPx, x + jitter * spacingPx);
+          const py = Math.min(camera.heightPx, y + ((jitter * 3) % 1) * spacingPx);
+          const at = camera.unproject(px, py);
+          if (!at) {
+            continue;
+          }
+
+          const cell = cellAt(level, at[0], at[1]);
+          const key = keyOf(cell);
+          if (seen.has(key)) {
+            continue;
+          }
+          seen.add(key);
+
+          const cached = options.cells?.get(key);
+          if (cached !== undefined) {
+            if (cached) {
+              lines.push(...cached);
+            }
+            continue;
+          }
+
+          const [lon, lat] = seedOf(cell);
+          const vertices = trace(field, lon, lat, settings);
+          const emitted = vertices ? emit(vertices, key, phaseOf(cell)) : null;
+          options.cells?.set(key, emitted);
+          if (emitted) {
+            lines.push(...emitted);
+          }
+        }
+      }
+    }
+  }
+
+  return camera ? lines : traced.flatMap((vertices, id) => emit(vertices, id));
 
   /**
    * One traced polyline as the streamlines that draw it — usually one, and two
@@ -394,18 +486,23 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
    * and without the second the field visibly empties into the loop and refills
    * out of it.
    */
-  function emit(vertices: Vertex[], id: number): Streamline[] {
+  function emit(vertices: Vertex[], id: string | number, phase?: number): Streamline[] {
     const total = vertices[vertices.length - 1].seconds;
     const meanSpeed = vertices.reduce((sum, p) => sum + p.speed, 0) / vertices.length;
     const speed = Number(meanSpeed.toFixed(2));
     const pathOf = (timeAt: (p: Vertex) => number): Streamline['path'] =>
       vertices.map((p) => [p.lon, p.lat, settings.altitudeMeters, timeAt(p)] as [number, number, number, number]);
+    // Only the camera path calls this with a real ground cell; the viewport
+    // and no-camera paths pass their loop index, which names nothing a caller
+    // could look up again.
+    const cell = typeof id === 'string' ? id : undefined;
 
     if (options.cycleMs === undefined || total <= 0) {
       return [
         {
           path: pathOf((p) => options.baseMs + offsetFor(id) + Math.round(p.seconds * 1000 * scale)),
           speed,
+          cell,
         },
       ];
     }
@@ -413,7 +510,10 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
     const cycleMs = options.cycleMs;
     const share = Math.min(1, Math.max(0.05, options.lifeFraction ?? 1));
     const life = share * cycleMs;
-    const birth = birthWithin(cycleMs, life);
+    // The cell's own phase when it has one, so a line re-traced after a pan or
+    // a change of forecast hour carries on where it was instead of starting
+    // its trail again from nothing.
+    const birth = phase === undefined ? birthWithin(cycleMs, life) : Math.round(phase * cycleMs);
     const timeAt = (shift: number) => (p: Vertex) =>
       options.baseMs + birth - shift + Math.round(p.seconds * 1000 * share);
 
@@ -421,9 +521,9 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
     // cut short: only a line that genuinely overruns the cycle has a crossing to
     // carry.
     const lived = total * 1000 * share;
-    const lines = [{ path: pathOf(timeAt(0)), speed }];
+    const lines = [{ path: pathOf(timeAt(0)), speed, cell }];
     if (options.seamless && birth + lived > cycleMs) {
-      lines.push({ path: pathOf(timeAt(cycleMs)), speed });
+      lines.push({ path: pathOf(timeAt(cycleMs)), speed, cell });
     }
     return lines;
   }
@@ -444,7 +544,7 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
     return options.lifeFraction === undefined ? 0 : Math.round(random() * (cycleMs - life));
   }
 
-  function offsetFor(_id: number): number {
+  function offsetFor(_id: string | number): number {
     return options.staggerMs === undefined ? 0 : Math.round(random() * options.staggerMs);
   }
 }
