@@ -110,6 +110,21 @@ describe('PictureSourceInput', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it('drops a refused upload’s message once a URL is written instead', async () => {
+    const { onChange, container } = renderInput();
+    fireEvent.change(fileInput(container), {
+      target: { files: [new File(['<html>'], 'page.html', { type: 'text/html' })] },
+    });
+    expect(await screen.findByText('Not an image')).toBeInTheDocument();
+
+    const field = screen.getByPlaceholderText('https://…');
+    fireEvent.change(field, { target: { value: 'https://example.org/pin.png' } });
+    fireEvent.blur(field);
+
+    expect(onChange).toHaveBeenCalledWith('https://example.org/pin.png');
+    expect(screen.queryByText('Not an image')).not.toBeInTheDocument();
+  });
+
   it('shows an uploaded picture by its size rather than as a wall of base64, and lets it go', () => {
     const { onChange } = renderInput({ value: `data:image/png;base64,${'A'.repeat(4096)}` });
 

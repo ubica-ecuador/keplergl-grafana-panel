@@ -80,6 +80,8 @@ export function PictureSourceInput({
   const commit = () => {
     const next = draft.trim();
     if (next !== value) {
+      // A refused upload is no longer what the picture is.
+      setUploadProblem(null);
       onChange(next);
     }
   };

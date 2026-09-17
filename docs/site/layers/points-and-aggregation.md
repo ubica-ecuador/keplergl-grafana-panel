@@ -123,6 +123,9 @@ nothing beyond Grafana's default `img-src * data:`. Two things still stop one:
 - **Mixed content.** A picture over `http:` on a Grafana served over `https:` is blocked by the
   browser.
 
+Pictures load in the browser of whoever views the dashboard, with their Grafana session, so a
+picture column should come from data you trust.
+
 The layer panel names each picture that could not load, and why. A layer draws at most 96 different
 pictures. Rows beyond that take the layer's picture, or, when the layer has no picture of its own,
 are not drawn; the panel says which.
