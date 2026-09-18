@@ -23,7 +23,7 @@
   "panels": [
     {
       "gridPos": {
-        "h": 5,
+        "h": 3,
         "w": 24,
         "x": 0,
         "y": 0
@@ -51,9 +51,9 @@
       "description": "Wind streamlines over the sea-level pressure field's contours, which are traced as still lines and coloured by the gradient in hPa per 100 km: where they crowd, the wind is strong. Near the surface, friction turns the wind a little toward the low, and near the equator, where the Coriolis force fades, it cuts across the isobars. They stand still because, drawn moving, they would run against the wind south of the equator. Along the Andes they crowd for want of a sea: the pressure there is carried down to a sea level kilometres below the ground, so read that bright band as the mountains, not the weather.",
       "gridPos": {
         "h": 21,
-        "w": 24,
+        "w": 16,
         "x": 0,
-        "y": 5
+        "y": 3
       },
       "id": 4,
       "options": {
@@ -718,170 +718,31 @@
         "type": "datasource",
         "uid": "-- Dashboard --"
       },
-      "id": 6,
-      "type": "table",
-      "title": "Countries: the next 48 hours",
       "description": "Each country's wind and rain, hour by hour over the next two days, from the map's own rows: no second request to ERDDAP. Averages are over the country's one-degree cells, each weighted by its area; the peak is the strongest wind in any of them. A cell counts for the country its centre falls in, so a small country has few cells (Ecuador 20, Uruguay 17); French Guiana counts as France in Natural Earth and is not here. Rain in 48 h is the mean rate times 48: GFS gives rates averaged over its steps, not totals. The table does not follow the map's bar. Each small chart is scaled to its own row, so read the shape there and the size in the figure beside it.",
-      "targets": [
-        {
-          "datasource": {
-            "type": "datasource",
-            "uid": "-- Dashboard --"
-          },
-          "panelId": 4,
-          "refId": "A"
-        }
-      ],
-      "transformations": [
-        {
-          "id": "filterByValue",
-          "options": {
-            "type": "exclude",
-            "match": "any",
-            "filters": [
-              {
-                "fieldName": "country",
-                "config": {
-                  "id": "isNull",
-                  "options": {}
-                }
-              }
-            ]
-          }
-        },
-        {
-          "id": "groupBy",
-          "options": {
-            "fields": {
-              "country": {
-                "operation": "groupby",
-                "aggregations": []
-              },
-              "time": {
-                "operation": "groupby",
-                "aggregations": []
-              },
-              "country_wind": {
-                "operation": "aggregate",
-                "aggregations": [
-                  "lastNotNull"
-                ]
-              },
-              "country_wind_max": {
-                "operation": "aggregate",
-                "aggregations": [
-                  "lastNotNull"
-                ]
-              },
-              "country_rain": {
-                "operation": "aggregate",
-                "aggregations": [
-                  "lastNotNull"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "id": "groupBy",
-          "options": {
-            "fields": {
-              "country": {
-                "operation": "groupby",
-                "aggregations": []
-              },
-              "country_wind (lastNotNull)": {
-                "operation": "aggregate",
-                "aggregations": [
-                  "allValues",
-                  "mean"
-                ]
-              },
-              "country_wind_max (lastNotNull)": {
-                "operation": "aggregate",
-                "aggregations": [
-                  "max"
-                ]
-              },
-              "country_rain (lastNotNull)": {
-                "operation": "aggregate",
-                "aggregations": [
-                  "allValues",
-                  "mean"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "id": "calculateField",
-          "options": {
-            "mode": "binary",
-            "alias": "Rain in 48 h",
-            "replaceFields": false,
-            "binary": {
-              "left": {
-                "matcher": {
-                  "id": "byName",
-                  "options": "country_rain (lastNotNull) (mean)"
-                }
-              },
-              "operator": "*",
-              "right": {
-                "fixed": "48"
-              }
-            }
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "country_rain (lastNotNull) (mean)": true
-            },
-            "indexByName": {
-              "country": 0,
-              "country_wind (lastNotNull) (allValues)": 1,
-              "country_wind (lastNotNull) (mean)": 2,
-              "country_wind_max (lastNotNull) (max)": 3,
-              "country_rain (lastNotNull) (allValues)": 4,
-              "Rain in 48 h": 5
-            },
-            "renameByName": {
-              "country": "Country",
-              "country_wind (lastNotNull) (allValues)": "Wind, 48 h",
-              "country_wind (lastNotNull) (mean)": "Mean wind",
-              "country_wind_max (lastNotNull) (max)": "Peak wind",
-              "country_rain (lastNotNull) (allValues)": "Rain, 48 h"
-            }
-          }
-        },
-        {
-          "id": "sortBy",
-          "options": {
-            "sort": [
-              {
-                "field": "Rain in 48 h",
-                "desc": true
-              }
-            ]
-          }
-        }
-      ],
-      "options": {
-        "showHeader": true,
-        "cellHeight": "md",
-        "footer": {
-          "show": false
-        }
-      },
       "fieldConfig": {
         "defaults": {
           "custom": {
             "align": "auto",
             "cellOptions": {
               "type": "auto"
-            }
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
           }
         },
         "overrides": [
@@ -893,7 +754,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 130
+                "value": 73
               }
             ]
           },
@@ -906,14 +767,14 @@
               {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "sparkline",
                   "drawStyle": "line",
-                  "lineInterpolation": "smooth",
-                  "lineWidth": 2,
                   "fillOpacity": 35,
                   "gradientMode": "scheme",
+                  "hideValue": true,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
                   "showPoints": "never",
-                  "hideValue": true
+                  "type": "sparkline"
                 }
               },
               {
@@ -932,7 +793,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 230
+                "value": 106
               }
             ]
           },
@@ -945,8 +806,8 @@
               {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "color-background",
-                  "mode": "gradient"
+                  "mode": "gradient",
+                  "type": "color-background"
                 }
               },
               {
@@ -973,7 +834,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 110
+                "value": 65
               }
             ]
           },
@@ -986,8 +847,8 @@
               {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "color-background",
-                  "mode": "gradient"
+                  "mode": "gradient",
+                  "type": "color-background"
                 }
               },
               {
@@ -1014,7 +875,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 110
+                "value": 80
               }
             ]
           },
@@ -1027,14 +888,14 @@
               {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "sparkline",
                   "drawStyle": "line",
-                  "lineInterpolation": "smooth",
-                  "lineWidth": 2,
                   "fillOpacity": 35,
                   "gradientMode": "scheme",
+                  "hideValue": true,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
                   "showPoints": "never",
-                  "hideValue": true
+                  "type": "sparkline"
                 }
               },
               {
@@ -1053,7 +914,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 230
+                "value": 94
               }
             ]
           },
@@ -1066,8 +927,8 @@
               {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "color-background",
-                  "mode": "gradient"
+                  "mode": "gradient",
+                  "type": "color-background"
                 }
               },
               {
@@ -1094,18 +955,172 @@
               },
               {
                 "id": "custom.width",
-                "value": 110
+                "value": 87
               }
             ]
           }
         ]
       },
       "gridPos": {
-        "h": 14,
-        "w": 24,
-        "x": 0,
-        "y": 26
-      }
+        "h": 21,
+        "w": 8,
+        "x": 16,
+        "y": 3
+      },
+      "id": 6,
+      "options": {
+        "cellHeight": "md",
+        "showHeader": true
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 4,
+          "refId": "A"
+        }
+      ],
+      "title": "Countries: the next 48 hours",
+      "transformations": [
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "config": {
+                  "id": "isNull",
+                  "options": {}
+                },
+                "fieldName": "country"
+              }
+            ],
+            "match": "any",
+            "type": "exclude"
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "country": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "country_rain": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "aggregate"
+              },
+              "country_wind": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "aggregate"
+              },
+              "country_wind_max": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "aggregate"
+              },
+              "time": {
+                "aggregations": [],
+                "operation": "groupby"
+              }
+            }
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "country": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "country_rain (lastNotNull)": {
+                "aggregations": [
+                  "allValues",
+                  "mean"
+                ],
+                "operation": "aggregate"
+              },
+              "country_wind (lastNotNull)": {
+                "aggregations": [
+                  "allValues",
+                  "mean"
+                ],
+                "operation": "aggregate"
+              },
+              "country_wind_max (lastNotNull)": {
+                "aggregations": [
+                  "max"
+                ],
+                "operation": "aggregate"
+              }
+            }
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "Rain in 48 h",
+            "binary": {
+              "left": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "country_rain (lastNotNull) (mean)"
+                }
+              },
+              "operator": "*",
+              "right": {
+                "fixed": "48"
+              }
+            },
+            "mode": "binary",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "country_rain (lastNotNull) (mean)": true
+            },
+            "indexByName": {
+              "Rain in 48 h": 5,
+              "country": 0,
+              "country_rain (lastNotNull) (allValues)": 4,
+              "country_wind (lastNotNull) (allValues)": 1,
+              "country_wind (lastNotNull) (mean)": 2,
+              "country_wind_max (lastNotNull) (max)": 3
+            },
+            "renameByName": {
+              "country": "Country",
+              "country_rain (lastNotNull) (allValues)": "Rain, 48 h",
+              "country_wind (lastNotNull) (allValues)": "Wind, 48 h",
+              "country_wind (lastNotNull) (mean)": "Mean wind",
+              "country_wind_max (lastNotNull) (max)": "Peak wind"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "desc": true,
+                "field": "Rain in 48 h"
+              }
+            ]
+          }
+        }
+      ],
+      "type": "table"
     },
     {
       "datasource": {
@@ -1317,7 +1332,7 @@
         "h": 16,
         "w": 24,
         "x": 0,
-        "y": 40
+        "y": 24
       },
       "id": 5,
       "options": {
@@ -1374,5 +1389,5 @@
   "timezone": "utc",
   "title": "Wind, pressure and airports — NOAA GFS over South America",
   "uid": "gfs-wind-synoptic",
-  "version": 14
+  "version": 27
 }
