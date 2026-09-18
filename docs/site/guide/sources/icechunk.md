@@ -356,10 +356,17 @@ further does not buy proportional safety — measured cold, a request of nine ce
 That is what `ICECHUNK_PRELOAD` is for: it holds the repository open from boot, in every worker, so
 no request pays for opening it.
 
-There is no walking the forecast here. A flow field holds one instant — the panel keeps the first
-moment a query offers and drops the rest along with the time column — so the hour comes from a
-dropdown that re-runs the query, and the map's own time bar is a sixty-second loop that animates the
-streaks rather than a clock over the forecast.
+There is no walking the forecast here, and not because the panel cannot — every hour a query returns
+now reaches the map, and its own clock draws the latest one still inside its window, the same as any
+other velocity field (see [the velocity fields guide](../data/velocity-fields)). It is the *cost* of
+a single hour that rules it out: forty-nine points already means six requests and about ten seconds,
+almost all of it opening the repository and clipping window after window, so asking for several
+hours in the same query would multiply that on every refresh. The hour stays a dropdown that
+re-runs the query for one instant at a time instead — the same tool
+[ERDDAP's forecast step uses](./erddap#which-clock-and-why-it-is-a-dropdown), for the same reason:
+the server (or in this case the archive itself) only answers one instant per request. What
+does keep running on its own sixty-second loop is the streamlines' own animation — a trail moving
+along a traced line, unrelated to which hour is drawn.
 
 ### A raster under the field
 

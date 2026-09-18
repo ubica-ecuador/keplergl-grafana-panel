@@ -68,9 +68,17 @@ export async function readKepler(map: Locator): Promise<KeplerSummary> {
 
 /** What the flow field spec asserts about a traced layer. */
 export interface FlowFieldSummary {
-  /** The animation window the layer settled on, in epoch ms. */
-  domain: [number, number] | null;
-  /** The window kepler's own clock is showing — the two must agree. */
+  /**
+   * The animation config the layer carries.
+   *
+   * kepler's base layer gives every layer `{enabled: false}`, and the flow field
+   * leaves it that way: the streamlines run on a clock of their own, so
+   * kepler's is left for the data — see `flowFieldClock.ts`. A layer that
+   * switched it on again would put a sixty-second phase back on the axis that
+   * says which hour is drawn.
+   */
+  animation: { enabled?: boolean; domain?: [number, number] | null } | null;
+  /** The window kepler's clock is showing, if any layer has claimed it. */
   animationDomain: [number, number] | null;
   /** How many streamlines the layer traced. */
   lines: number;
@@ -154,7 +162,7 @@ export async function readFlowField(map: Locator): Promise<FlowFieldSummary | nu
     }
 
     return {
-      domain: layer.config?.animation?.domain ?? null,
+      animation: layer.config?.animation ?? null,
       animationDomain: visState.animationConfig?.domain ?? null,
       lines: lines.length,
       sample,

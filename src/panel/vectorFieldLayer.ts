@@ -2,12 +2,14 @@ import type { LayerIcon } from './cogPaintedLayer';
 import { bearingOf, onDataCells, onScreenGrid } from '../data/placeSymbols';
 import { shownInPane } from './paneVisibility';
 import {
+  altitudeMeaningOf,
   buildVelocityField,
   fieldBounds,
   fieldSpeedDomain,
   FlowFieldContext,
   gridFrameOf,
   LayerColumn,
+  latestStepOf,
   legendDescription,
   legendPatch,
   paintDomain,
@@ -158,6 +160,21 @@ export interface VectorFieldLayerData {
   speedDomain: [number, number];
   signature: string;
   container: unknown;
+  /**
+   * The forecast hour this was placed from, or null with no time column — see
+   * `latestStepOf`. Not part of `signature`, for the same reason
+   * `flowFieldLayer.ts`'s `stepMs` is not part of its `traceSignature`: it says
+   * which hour to show, not what a placement is made of.
+   *
+   * Checked on the fast path for the same reason `flowFieldLayer.ts` checks it:
+   * `KeplerTable.filterTable` mutates the table in place and returns `this`, so
+   * `dataset.dataContainer` is the same object before and after the map's
+   * clock moves — comparing `signature` and `container` alone reads a real
+   * hour change as nothing having changed at all, and the symbols stay on
+   * whichever hour they were first placed from until some other change (a pan,
+   * with a screen-grid placement) forces a re-place.
+   */
+  stepMs: number | null;
 }
 
 type VectorSymbolKind = 'arrow' | 'classified' | 'barb';
@@ -282,7 +299,18 @@ export function makeVectorFieldLayer<C extends Constructor<object>>(
       }
 
       const signature = symbolSignature(this.config);
-      if (oldLayerData && oldLayerData.signature === signature && oldLayerData.container === dataset.dataContainer) {
+      // Which hour the map's clock has picked — see `latestStepOf`. Checked
+      // alongside `signature` and `container`, not folded into `signature`
+      // itself, the same split `flowFieldLayer.ts`'s `traceSignature`/`stepMs`
+      // makes: this is what a placement is made of, `stepMs` only says which
+      // hour to show.
+      const stepMs = latestStepOf(dataset);
+      if (
+        oldLayerData &&
+        oldLayerData.signature === signature &&
+        oldLayerData.container === dataset.dataContainer &&
+        oldLayerData.stepMs === stepMs
+      ) {
         this.updateLegend(oldLayerData.speedDomain);
         return oldLayerData;
       }
@@ -293,7 +321,7 @@ export function makeVectorFieldLayer<C extends Constructor<object>>(
       const frame = gridFrameOf(dataset, columns);
       const field = frame ? buildVelocityField(frame, columns, this.config.columnMode, visConfig, 0) : null;
       if (!frame || !field) {
-        return { data: [], moving: [], speedDomain: [0, 1], signature, container: dataset.dataContainer };
+        return { data: [], moving: [], speedDomain: [0, 1], signature, container: dataset.dataContainer, stepMs };
       }
 
       const speedDomain = fieldSpeedDomain(field);
@@ -308,8 +336,14 @@ export function makeVectorFieldLayer<C extends Constructor<object>>(
           : onDataCells(field);
 
       // The same stacking the flow field does, so a level drawn both ways sits
-      // at one height.
-      const altitude = stackedAltitude(frame, columns, visConfig, context, camera);
+      // at one height. `stackedAltitude` only knows what to do with a level,
+      // though: a varying column is terrain, and a symbol placed on it is drawn
+      // on the ground rather than draped over it. Following the terrain height
+      // per symbol the way `traceStreamlines` follows it per vertex is a
+      // feature of its own, not a by-product of this layer reading the same
+      // column the level case needs.
+      const meaning = altitudeMeaningOf(frame, columns.altitude?.value, visConfig);
+      const altitude = meaning.kind === 'level' ? stackedAltitude(meaning.metres, visConfig, context, camera) : 0;
 
       const data: VectorSymbol[] = placed.map((p) => ({
         position: [p.lng, p.lat, altitude],
@@ -321,7 +355,7 @@ export function makeVectorFieldLayer<C extends Constructor<object>>(
       const moving = data.filter((s) => s.speed > 0);
 
       this.updateLegend(speedDomain);
-      return { data, moving, speedDomain, signature, container: dataset.dataContainer };
+      return { data, moving, speedDomain, signature, container: dataset.dataContainer, stepMs };
     }
 
     renderLayer(opts?: { data?: VectorFieldLayerData; visible?: boolean }): unknown[] {

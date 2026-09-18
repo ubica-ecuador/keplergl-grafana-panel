@@ -1,4 +1,5 @@
 import { sampleWindField, WindField } from './buildWindField';
+import { cellAt, keyOf, levelFor, phaseOf, seedOf, sizeAt } from './groundCells';
 
 /**
  * One traced path, in the shape deck's `TripsLayer` reads.
@@ -13,6 +14,14 @@ export interface Streamline {
   path: Array<[number, number, number, number]>;
   /** Mean speed along the line, in m/s — what the colour ramp reads. */
   speed: number;
+  /**
+   * The ground cell this line is anchored to — see `groundCells.ts`.
+   *
+   * Only set for a line seeded through a `camera`: the viewport and no-camera
+   * paths seed at a scattered point, not a patch of ground a caller could look
+   * up again.
+   */
+  cell?: string;
 }
 
 /** What the map is currently showing: a geographic extent and its size on screen. */
@@ -39,8 +48,20 @@ export interface StreamlineOptions {
   maxVertices?: number;
   /** Below this speed a streamline ends, in m/s. */
   minSpeed?: number;
-  /** Height above ground for every vertex, in metres. */
+  /** Height above ground for every vertex, in metres. Ignored when `altitudeAt` is given. */
   altitudeMeters?: number;
+  /**
+   * The height under a vertex, in metres — terrain rather than a level. Supply
+   * it and every vertex takes its own height instead of the one flat
+   * `altitudeMeters`, so a line laid over varying ground follows it up and
+   * down instead of floating at a single altitude.
+   *
+   * Returns null over a hole in the terrain data, which is not the same as a
+   * height of zero: zero is a real answer (sea level), and inventing one at a
+   * hole would plant the line at the basemap regardless of what is actually
+   * there. A hole instead carries the last height the line knew — see `emit`.
+   */
+  altitudeAt?: (lon: number, lat: number) => number | null;
   /**
    * Run every streamline over one shared window of this length, so all of them
    * are on screen at all times. Wins over `targetLifetimeMs` and `staggerMs`.
@@ -60,6 +81,10 @@ export interface StreamlineOptions {
   /**
    * Rescale times so the median streamline lasts this long. Omit to keep
    * physical time.
+   *
+   * A no-op together with `camera` and no `cycleMs`: the camera path collects
+   * finished streamlines directly rather than raw vertices, so there is no
+   * median left to measure by the time this would apply.
    */
   targetLifetimeMs?: number;
   /**
@@ -81,6 +106,21 @@ export interface StreamlineOptions {
    * rectangle of ground — see `ScreenCamera`.
    */
   camera?: ScreenCamera;
+  /**
+   * Lines already traced, by ground cell.
+   *
+   * Handed in by the layer, which keeps one of these per forecast hour. A cell
+   * in here is not traced again, which is what makes panning cheap and keeps a
+   * line from moving under the reader.
+   *
+   * Reused exactly as traced, so only valid while everything a line is made of
+   * holds: the field, and the camera's `metresPerPixel` and `altitudeMeters`
+   * it was traced at. Keeping it to one of those is the caller's job — the
+   * layer empties it when either moves (`traceScaleKey` in
+   * `flowFieldLayer.ts`). Nothing else here depends on the camera's position,
+   * which is what lets a pan reuse it.
+   */
+  cells?: Map<string, Streamline[] | null>;
   /**
    * How much the line count follows the ground rather than the screen, from 0 to
    * 1 — see `zoomFactor`.
@@ -224,13 +264,154 @@ function cameraSettings(camera: ScreenCamera, extent: Box, segmentPixels: number
   const response = Math.min(1, Math.max(0, zoomResponse));
 
   return {
-    // Only used to sample typical speeds; the seeds themselves come from the
-    // screen, so this needs to be where the data and the view overlap.
+    // Where the data and the view overlap — only asked whether it is empty:
+    // the seeds themselves come from the screen, and the typical speed the
+    // advection is scaled by is the whole field's (see `speedScaleFor`).
     seedArea: intersect(camera.bounds, extent),
     coverage: Math.pow(share, response),
     segmentMeters: camera.metresPerPixel * segmentPixels,
     metresPerPixel: camera.metresPerPixel,
   };
+}
+
+/**
+ * Below this, a pitch stops being a sampling step and starts being a loop
+ * that never ends — the floor a degenerate camera (looking edge-on at the
+ * ground, say) cannot push through.
+ */
+const MIN_CELL_PITCH_PX = 2;
+
+/**
+ * How much of a cell's own pixel pitch the sample lattice steps by.
+ *
+ * Stepping exactly one pitch pairs samples with cells one to one only where
+ * the two lattices are in phase. Where they are not — and they never are for
+ * long, because the cells are pinned to the ground and the samples to the
+ * screen — two consecutive samples straddle a cell and miss it, and the cells
+ * clipped by the edge of a band or of the screen are missed outright.
+ * Measured at the density the plugin ships (9,000), a lattice stepped at
+ * exactly one pitch reached 73% of the cells on screen flat and 68% at a
+ * pitch of 60, and since which cells it missed moved with the camera, a
+ * 3.6-pixel pan — an 800th of the screen — lost a quarter of its lines to
+ * nothing but that.
+ *
+ * This constant alone is not the whole of the step, and shrinking it is not
+ * a safety margin against every camera: at a bearing of 0 the two screen axes
+ * are also the compass axes, so the larger of a step vector's two components
+ * *is* the step's own length, and any share below one reaches every cell
+ * regardless of which fraction it is. Turn the camera and that stops being
+ * true — a step at 45° to the compass splits evenly between both components,
+ * so the larger one alone reads as only ~71% of how far the pixel actually
+ * moved, and a lattice sized from that underestimate steps too far and
+ * checkerboards across the diagonal. `bandSampling`'s `pitchOf` divides by
+ * the step vector's full length (`Math.hypot`) rather than its larger
+ * component for exactly this reason — it is what makes the share below
+ * bearing-independent, not this number.
+ *
+ * With that fixed, 0.7 is chosen the same way 0.8 was before it: measured at
+ * density 9,000, deck's own viewport, bearings of 0/30/45 and pitches of
+ * 0/60, a 10-pixel pan kept 98.1–98.9% of its lines either way — no share
+ * tried bought more than a point over this one — at 30,600 `unproject` calls
+ * per trace flat and 23,400 at a pitch of 60 (half the cost of stepping at a
+ * half, a third the cost of stepping at a third). `seen` absorbs every
+ * duplicate sample and a cell is traced exactly once whatever the share, so
+ * what a finer lattice spends is `unproject` calls, never `trace` calls.
+ */
+const SAMPLE_STEP_SHARE = 0.7;
+
+/**
+ * The ground-cell level for a band of the screen, and how many screen pixels
+ * one of its cells spans along each screen axis there.
+ *
+ * The level comes from the ground **area** one pixel covers, not from the
+ * east-west span alone. Cells of `s` degrees tile a screen of `W·H` pixels
+ * `W·H·areaPerPixel / s²` times, so the size that reproduces the budget is
+ * `s = spacingPx · √areaPerPixel` — the geometric mean of the ground per
+ * pixel on the two axes. Sizing from east-west alone ignores that a tilted
+ * camera stretches only the other axis: at a pitch of 60 a pixel near the
+ * horizon covers several times more ground north-south than east-west, so
+ * the distance was tiled with far more, far flatter cells than the budget
+ * asked for — 17,822 lines against a budget of 9,000, with the top quarter
+ * of the screen carrying 3.7 times the lines of the bottom.
+ *
+ * Both the area and the two pitches are measured from the vectors a step
+ * across and a step down the screen trace on the ground, rather than from one
+ * number per compass axis, because a rotated map turns the screen against the
+ * compass: at a bearing of 90 a step down the screen changes no latitude at
+ * all, and a north-south reading would call that zero ground per pixel and
+ * size the whole band off a division by nothing.
+ *
+ * The pitches are what the lattice is stepped by, and they are a separate
+ * question from the size: `levelFor` rounds to the nearest power of two, so
+ * the cell it returns is anywhere from 0.7 to 1.4 times the size asked for,
+ * and a tilted cell that is `spacingPx` wide is only a few pixels tall. A
+ * lattice stepped by `spacingPx` on both axes therefore does not track the
+ * cells at all.
+ */
+function bandSampling(
+  camera: ScreenCamera,
+  y: number,
+  spacingPx: number
+): { level: number; pitchX: number; pitchY: number } | null {
+  const here = camera.unproject(camera.widthPx / 2, y);
+  const across = camera.unproject(camera.widthPx / 2 + 1, y);
+  const down = camera.unproject(camera.widthPx / 2, y + 1);
+  if (!here || !across || !down) {
+    return null;
+  }
+
+  const stepX: [number, number] = [across[0] - here[0], across[1] - here[1]];
+  const stepY: [number, number] = [down[0] - here[0], down[1] - here[1]];
+
+  // Square degrees under one pixel: the determinant of those two steps, which
+  // is the same number however the map is turned. Zero means the band is
+  // looking at the ground edge-on and has no size to measure; skipped rather
+  // than divided by.
+  const areaPerPixel = Math.abs(stepX[0] * stepY[1] - stepY[0] * stepX[1]);
+  if (!(areaPerPixel > 0)) {
+    return null;
+  }
+
+  // `levelFor` takes metres and divides them straight back out by the same
+  // east-west factor; multiplying by it here is how a target in degrees is
+  // handed to a metres-shaped signature without touching `groundCells.ts`,
+  // which is closed.
+  //
+  // Levels are powers of two, so this rounds the size asked for by up to
+  // ~1.41x either way, and the resulting line count — one over the square of
+  // the size — lands anywhere from half the budget to twice it, even with no
+  // tilt at all. Where the zoom crosses from one level to the next the cell
+  // halves (or doubles) at once, so the count jumps by up to four times at
+  // that one zoom: the crossing watched below measured ×3.06.
+  //
+  // Watched in a real browser rather than only computed (2026-09-17, at pitch
+  // 15, screenshots either side of a level crossing): the line count went
+  // 4,128 -> 12,635 (×3.06) across it, and the field reads as getting a bit
+  // busier or sparser, not as reshuffling — the streamlines visible in both
+  // frames stay where they were, the denser frame just fills in more between
+  // them. Tilted to 60° and to 85° at a fixed zoom, no band seam was visible
+  // either: the field tapers smoothly into the trapezoid rather than showing a
+  // density cliff. Neither one was judged to need a fix from that look —
+  // half-levels or hysteresis remain the candidates if a wider field or a
+  // steeper crossing ever reads worse.
+  const eastPerDegree = METRES_PER_DEGREE * Math.max(0.2, Math.cos((here[1] * Math.PI) / 180));
+  const level = levelFor(Math.sqrt(areaPerPixel) * eastPerDegree, spacingPx, here[1]);
+  const sizeDegrees = sizeAt(level);
+
+  // The step vector's full length (`Math.hypot`), not its larger compass
+  // component: a step at a bearing is a diagonal of the ground it crosses,
+  // and the larger component alone is the diagonal's shadow on one axis, not
+  // its own length. Sizing the pitch from that shadow understates how far a
+  // pixel actually moves everywhere except bearing 0 or 90 — worst at 45°,
+  // where each component is only ~71% of the step — so the lattice steps too
+  // far and starts missing cells in a checkerboard across the diagonal, not
+  // only at the band's or the screen's own edge. The hypotenuse is what
+  // bounds the step correctly whichever way the two screen axes happen to
+  // fall across the compass.
+  const pitchOf = (step: [number, number]) =>
+    Math.max(MIN_CELL_PITCH_PX, (SAMPLE_STEP_SHARE * sizeDegrees) / Math.hypot(step[0], step[1]));
+
+  return { level, pitchX: pitchOf(stepX), pitchY: pitchOf(stepY) };
 }
 
 function viewportSettings(
@@ -307,6 +488,13 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
     return [];
   }
 
+  // The typical speed and the patch's size are the whole field's, not the part
+  // of it on screen. A caller that keeps lines by ground cell (`cells`) reuses
+  // them after a pan exactly as they were traced, so nothing a line is made of
+  // may move with the pan: measured across a 3 -> 15 m/s gradient, a median
+  // taken over the visible part left the kept lines and the fresh ones beside
+  // them stepping five times apart. The colour ramp is the whole field's for
+  // the same reason (`fieldSpeedDomain`).
   const step: Step =
     options.cycleMs === undefined
       ? { kind: 'arc', segmentMeters: scaled.segmentMeters }
@@ -315,9 +503,9 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
           seconds: options.cycleMs / 1000 / (base.maxVertices - 1),
           speedScale: speedScaleFor(
             field,
-            scaled.seedArea,
+            extent,
             options.cycleMs,
-            travelPixelsFor(scaled.seedArea, base.travelPixels, scaled.metresPerPixel),
+            travelPixelsFor(extent, base.travelPixels, scaled.metresPerPixel),
             scaled.metresPerPixel
           ),
         };
@@ -327,28 +515,9 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
   const traced: Vertex[][] = [];
 
   const camera = options.camera;
-  if (camera) {
-    /**
-     * One attempt per line asked for, and whatever traces is the field.
-     *
-     * No retrying towards a target here, unlike the path below. Seeding the
-     * screen already answers the question the retry was compensating for: a
-     * field covering a third of the view gets a third of the lines because two
-     * thirds of the seeds land where there is no data, which is the honest
-     * answer. Retrying to reach the count would refill that third to the
-     * density of a full screen.
-     */
-    for (let attempt = 0; attempt < wanted; attempt++) {
-      const at = camera.unproject(random() * camera.widthPx, random() * camera.heightPx);
-      if (!at) {
-        continue;
-      }
-      const vertices = trace(field, at[0], at[1], settings);
-      if (vertices) {
-        traced.push(vertices);
-      }
-    }
-  } else {
+  const lines: Streamline[] = [];
+
+  if (!camera) {
     // More attempts than lines asked for: some seeds land in calm air, in a hole
     // or next to the edge, and yield nothing usable.
     const maxAttempts = wanted * 4;
@@ -364,9 +533,92 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
     }
   }
 
+  // `emit` closes over `scale`, so it has to exist before the camera branch
+  // below can call it — `traced` is only ever filled by the branch above, so
+  // computing this here rather than after both branches changes nothing for
+  // either of them.
   const scale = timeScale(traced, options.targetLifetimeMs);
 
-  return traced.flatMap((vertices, id) => emit(vertices, id));
+  if (camera) {
+    /**
+     * Walked in horizontal bands rather than seeded at one uniform spacing:
+     * on a tilted camera the ground a pixel covers grows several times over
+     * from the bottom of the screen to the top, and a single cell size for
+     * the whole view is exactly what piled every line against the horizon.
+     * Each band gets the cell size the ground *there* calls for, so the
+     * count of lines per screen stays roughly even from top to bottom.
+     *
+     * The lattice within a band is stepped at a fraction of that cell's own
+     * pixel pitch — measured along each screen axis by `bandSampling` — not
+     * at this uniform `spacingPx`: a cell sized from `spacingPx` is not
+     * `spacingPx` pixels wide on screen (rounding) or tall (tilt), and
+     * sampling at the wrong pitch is what let the lattice miss whole cells,
+     * a different set on every pan.
+     *
+     * A cell replaces the pixel as the unit of seeding: two calls that land
+     * on the same patch of ground get the same seed point and the same birth
+     * phase (`seedOf`/`phaseOf`, both pure functions of the cell), and the
+     * `cells` cache below skips retracing it altogether. That is what lets a
+     * pan reuse the lines it already drew instead of jumping all of them to
+     * a fresh set of random pixels.
+     */
+    const spacingPx = Math.max(4, Math.sqrt((camera.widthPx * camera.heightPx) / Math.max(1, wanted)));
+    // Fine enough to track the ground's foreshortening without walking every
+    // scanline as its own band.
+    const bands = 8;
+    const seen = new Set<string>();
+
+    for (let band = 0; band < bands; band++) {
+      const top = (band / bands) * camera.heightPx;
+      const height = camera.heightPx / bands;
+      const middle = top + height / 2;
+
+      const sampling = bandSampling(camera, middle, spacingPx);
+      if (sampling === null) {
+        continue;
+      }
+      const { level, pitchX, pitchY } = sampling;
+
+      for (let y = top; y < top + height; y += pitchY) {
+        for (let x = 0; x < camera.widthPx; x += pitchX) {
+          // Sampled where the lattice actually falls. There was a jitter here
+          // while a sample *was* a seed; now it only names a cell, and
+          // `seedOf` places the line inside that cell, so all a jitter could
+          // do was carry a sample a whole pitch from where the step put it —
+          // leaving some cells sampled twice and others not at all.
+          const at = camera.unproject(x, y);
+          if (!at) {
+            continue;
+          }
+
+          const cell = cellAt(level, at[0], at[1]);
+          const key = keyOf(cell);
+          if (seen.has(key)) {
+            continue;
+          }
+          seen.add(key);
+
+          const cached = options.cells?.get(key);
+          if (cached !== undefined) {
+            if (cached) {
+              lines.push(...cached);
+            }
+            continue;
+          }
+
+          const [lon, lat] = seedOf(cell);
+          const vertices = trace(field, lon, lat, settings);
+          const emitted = vertices ? emit(vertices, key, phaseOf(cell)) : null;
+          options.cells?.set(key, emitted);
+          if (emitted) {
+            lines.push(...emitted);
+          }
+        }
+      }
+    }
+  }
+
+  return camera ? lines : traced.flatMap((vertices, id) => emit(vertices, id));
 
   /**
    * One traced polyline as the streamlines that draw it — usually one, and two
@@ -394,18 +646,43 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
    * and without the second the field visibly empties into the loop and refills
    * out of it.
    */
-  function emit(vertices: Vertex[], id: number): Streamline[] {
+  function emit(vertices: Vertex[], id: string | number, phase?: number): Streamline[] {
     const total = vertices[vertices.length - 1].seconds;
     const meanSpeed = vertices.reduce((sum, p) => sum + p.speed, 0) / vertices.length;
     const speed = Number(meanSpeed.toFixed(2));
-    const pathOf = (timeAt: (p: Vertex) => number): Streamline['path'] =>
-      vertices.map((p) => [p.lon, p.lat, settings.altitudeMeters, timeAt(p)] as [number, number, number, number]);
+    // The height at one vertex: the flat `altitudeMeters` with no terrain, or
+    // terrain's own reading under the vertex, carrying the last height known
+    // across a hole rather than inventing one — see `altitudeAt`'s own comment.
+    const heightAt = (lon: number, lat: number, last: number): number => {
+      if (!options.altitudeAt) {
+        return settings.altitudeMeters;
+      }
+      const height = options.altitudeAt(lon, lat);
+      return height === null ? last : height;
+    };
+    // Walked from a fresh `last` of 0 on every call rather than a single running
+    // value shared across both emissions of a seamless line: that is what makes
+    // the two emissions — the same vertices, only the clock differs — come out
+    // with identical heights rather than one carrying over whatever hole the
+    // other had already crossed.
+    const pathOf = (timeAt: (p: Vertex) => number): Streamline['path'] => {
+      let last = 0;
+      return vertices.map((p) => {
+        last = heightAt(p.lon, p.lat, last);
+        return [p.lon, p.lat, last, timeAt(p)] as [number, number, number, number];
+      });
+    };
+    // Only the camera path calls this with a real ground cell; the viewport
+    // and no-camera paths pass their loop index, which names nothing a caller
+    // could look up again.
+    const cell = typeof id === 'string' ? id : undefined;
 
     if (options.cycleMs === undefined || total <= 0) {
       return [
         {
           path: pathOf((p) => options.baseMs + offsetFor(id) + Math.round(p.seconds * 1000 * scale)),
           speed,
+          cell,
         },
       ];
     }
@@ -413,7 +690,18 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
     const cycleMs = options.cycleMs;
     const share = Math.min(1, Math.max(0.05, options.lifeFraction ?? 1));
     const life = share * cycleMs;
-    const birth = birthWithin(cycleMs, life);
+    // The cell's own phase when it has one, so a line re-traced after a pan or
+    // a change of forecast hour carries on where it was instead of starting
+    // its trail again from nothing. Mapped into the same window `birthWithin`
+    // is itself limited to — the whole cycle when the loop is seamless, but
+    // only as far as `cycleMs - life` when it is not — or a line born from a
+    // high phase would still be alive past the end of a non-seamless cycle
+    // with no second emission to carry it: exactly the cut trail
+    // `seamless: false` exists to avoid.
+    const birth =
+      phase === undefined
+        ? birthWithin(cycleMs, life)
+        : Math.round(phase * (options.seamless ? cycleMs : cycleMs - life));
     const timeAt = (shift: number) => (p: Vertex) =>
       options.baseMs + birth - shift + Math.round(p.seconds * 1000 * share);
 
@@ -421,9 +709,9 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
     // cut short: only a line that genuinely overruns the cycle has a crossing to
     // carry.
     const lived = total * 1000 * share;
-    const lines = [{ path: pathOf(timeAt(0)), speed }];
+    const lines = [{ path: pathOf(timeAt(0)), speed, cell }];
     if (options.seamless && birth + lived > cycleMs) {
-      lines.push({ path: pathOf(timeAt(cycleMs)), speed });
+      lines.push({ path: pathOf(timeAt(cycleMs)), speed, cell });
     }
     return lines;
   }
@@ -444,7 +732,7 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
     return options.lifeFraction === undefined ? 0 : Math.round(random() * (cycleMs - life));
   }
 
-  function offsetFor(_id: number): number {
+  function offsetFor(_id: string | number): number {
     return options.staggerMs === undefined ? 0 : Math.round(random() * options.staggerMs);
   }
 }
@@ -543,12 +831,12 @@ function trace(
  * place. Capping the travel to a share of the patch's size on screen keeps the
  * motion where the data is, at whatever scale the data happens to be.
  */
-function travelPixelsFor(seedArea: Box, nominal: number, metresPerPixel: number): number {
+function travelPixelsFor(patch: Box, nominal: number, metresPerPixel: number): number {
   if (metresPerPixel <= 0) {
     return nominal;
   }
 
-  const widthPx = ((seedArea.east - seedArea.west) * METRES_PER_DEGREE) / metresPerPixel;
+  const widthPx = ((patch.east - patch.west) * METRES_PER_DEGREE) / metresPerPixel;
   return Math.min(nominal, Math.max(8, widthPx * 0.25));
 }
 
@@ -565,7 +853,7 @@ function travelPixelsFor(seedArea: Box, nominal: number, metresPerPixel: number)
  */
 function speedScaleFor(
   field: WindField,
-  seedArea: Box,
+  area: Box,
   cycleMs: number,
   travelPixels: number,
   metresPerPixel: number
@@ -580,8 +868,8 @@ function speedScaleFor(
     for (let i = 0; i <= samples; i++) {
       const uv = sampleWindField(
         field,
-        seedArea.west + ((seedArea.east - seedArea.west) * i) / samples,
-        seedArea.south + ((seedArea.north - seedArea.south) * j) / samples
+        area.west + ((area.east - area.west) * i) / samples,
+        area.south + ((area.north - area.south) * j) / samples
       );
       if (uv) {
         speeds.push(Math.hypot(uv[0], uv[1]));

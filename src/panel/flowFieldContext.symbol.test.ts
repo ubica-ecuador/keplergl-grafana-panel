@@ -24,8 +24,7 @@ describe('outdatedFlowContexts with a symbol layer present', () => {
         { id: 'flow-1', altitudeMeters: 100, type: FLOW_FIELD_TYPE },
         { id: 'symbol-1', altitudeMeters: 0, type: SYMBOL_TYPE },
       ],
-      CAMERA,
-      0
+      CAMERA
     );
 
     expect(patches.map((p) => p.id)).toEqual(['flow-1', 'symbol-1']);
@@ -40,8 +39,7 @@ describe('outdatedFlowContexts with a symbol layer present', () => {
         // real level on the map — it must not be mistaken for one.
         { id: 'symbol-1', altitudeMeters: 5000, type: SYMBOL_TYPE },
       ],
-      CAMERA,
-      0
+      CAMERA
     );
 
     expect(patches.map((p) => p.context.tallest)).toEqual([100, 100]);

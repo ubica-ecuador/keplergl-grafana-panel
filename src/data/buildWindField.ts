@@ -118,7 +118,7 @@ export interface GradientColumns {
 }
 
 /** A scalar sampled on the same regular lattice a `WindField` uses. */
-interface ScalarField {
+export interface ScalarField {
   /** One value per cell, row-major from the south-west corner; NaN for a hole. */
   data: Float32Array;
   columns: number;
@@ -151,7 +151,7 @@ export function buildGradientField(
   columns: GradientColumns,
   options: { direction?: GradientDirection; smoothing?: number } = {}
 ): WindField | null {
-  const scalar = buildScalarField(frame, columns);
+  const scalar = buildScalarFieldFrom(frame, columns);
   if (!scalar) {
     return null;
   }
@@ -176,8 +176,15 @@ export function buildGradientField(
   return gradientOf({ ...scalar, data }, options.direction ?? 'downhill');
 }
 
-/** The scalar the rows describe, on the lattice they sit on. */
-function buildScalarField(frame: GridFrame, columns: GradientColumns): ScalarField | null {
+/**
+ * The scalar the rows describe, on the lattice they sit on.
+ *
+ * Exported, alongside `ScalarField` and `sampleScalarField` below, so a terrain
+ * column can be read the same way outside a gradient: `flowFieldLayer.ts` builds
+ * one of these to drape streamlines on the ground when `altitudeMeaningOf` finds
+ * the altitude column varies row to row rather than naming one level.
+ */
+export function buildScalarFieldFrom(frame: GridFrame, columns: GradientColumns): ScalarField | null {
   const field = (name: string) => frame.fields.find((f) => f.name === name);
 
   const latField = field(columns.latitude);
@@ -220,6 +227,41 @@ function buildScalarField(frame: GridFrame, columns: GradientColumns): ScalarFie
     stepLon: lons.step,
     stepLat: lats.step,
   };
+}
+
+/**
+ * The scalar under a point, bilinearly, or null over a hole or outside.
+ *
+ * The same walk `sampleWindField` makes, over one channel instead of two. Kept
+ * as its own function rather than generalising that one: a shared version would
+ * be reading indices through a stride and harder to follow than either.
+ */
+export function sampleScalarField(field: ScalarField, lon: number, lat: number): number | null {
+  const fx = (lon - field.west) / field.stepLon;
+  const fy = (lat - field.south) / field.stepLat;
+  if (fx < 0 || fy < 0 || fx > field.columns - 1 || fy > field.rows - 1) {
+    return null;
+  }
+
+  const i = Math.min(Math.floor(fx), field.columns - 2);
+  const j = Math.min(Math.floor(fy), field.rows - 2);
+  const tx = fx - i;
+  const ty = fy - j;
+
+  const at = (column: number, row: number) => field.data[row * field.columns + column];
+  const v00 = at(i, j);
+  const v10 = at(i + 1, j);
+  const v01 = at(i, j + 1);
+  const v11 = at(i + 1, j + 1);
+
+  // A hole in any corner refuses the cell, so a height is never invented beside
+  // one — the same rule the velocity sampler follows.
+  if (![v00, v10, v01, v11].every(Number.isFinite)) {
+    return null;
+  }
+
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+  return lerp(lerp(v00, v10, tx), lerp(v01, v11, tx), ty);
 }
 
 /** The scalar's gradient, as a velocity field. */

@@ -1,7 +1,10 @@
 import type { LayerIcon } from './cogPaintedLayer';
-import { Streamline, traceStreamlines } from '../data/traceStreamlines';
+import { buildScalarFieldFrom, sampleScalarField, type WindField } from '../data/buildWindField';
+import { ScreenCamera, Streamline, traceStreamlines } from '../data/traceStreamlines';
 import { shownInPane } from './paneVisibility';
 import {
+  altitudeMeaningOf,
+  atTraceScale,
   buildVelocityField,
   CameraState,
   colorForSpeed,
@@ -10,6 +13,7 @@ import {
   FlowFieldContext,
   gridFrameOf,
   LayerColumn,
+  latestStepOf,
   legendDescription,
   legendPatch,
   levelHeight,
@@ -74,6 +78,11 @@ export type FlowFieldDeckLayerFactory = (props: Record<string, unknown>) => unkn
  * their keep the moment there is a second level: they are what puts 850 hPa and
  * 700 hPa in their real proportion to each other.
  *
+ * `animate` is the switch between a field that moves and a picture of one. Off,
+ * the streamlines are drawn end to end and the layer asks deck for no further
+ * frames — which is also what a machine set to reduce motion gets, and what a
+ * panel scrolled out of the dashboard falls back to.
+ *
  * `cycleSeconds` runs every streamline over one shared window, so the whole
  * field is on screen at all times and what moves is a short trail — the
  * earth.nullschool look. `lifeFraction` is how much of that window one line
@@ -127,6 +136,13 @@ export const FLOW_FIELD_VIS_CONFIGS = {
     step: 1,
     group: 'display',
     property: 'lineLength',
+  },
+  animate: {
+    type: 'boolean',
+    defaultValue: true,
+    label: 'flowfield.animate',
+    group: 'display',
+    property: 'animate',
   },
   cycleSeconds: {
     type: 'number',
@@ -242,6 +258,76 @@ export interface FlowFieldLayerData {
   signature: string;
   /** The rows it was traced from, compared by identity. */
   container: unknown;
+  /**
+   * The forecast hour this trace is of, or null when the query carries no
+   * time column — see `latestStepOf`. Not part of `signature`: the hour picks
+   * *which* trace to show, it is not one of the things a trace is made of.
+   */
+  stepMs: number | null;
+  /**
+   * The camera these lines were seeded for, compared by value with
+   * `sameCameraState` — also not part of `signature`, for the same reason.
+   * Carried here so the fast path below can tell a genuine no-op from kepler
+   * handing this call its own previous output after the view has moved.
+   */
+  camera: CameraState | undefined;
+}
+
+/**
+ * One forecast hour's trace, kept so walking back to it costs nothing.
+ *
+ * Held per hour rather than as a single "last trace" because the map's clock
+ * moves back through a forecast as often as forward through it — scrubbing a
+ * timeline, or a panel simply catching up to a window that has since moved on
+ * — and re-tracing on every step back is exactly the blink this exists to
+ * avoid.
+ */
+interface HourEntry {
+  field: WindField;
+  speedDomain: [number, number];
+  /**
+   * Lines already traced, by ground cell — see `groundCells.ts`. Owned by
+   * this hour: a pan within it reuses these, a pan into another hour must
+   * not.
+   */
+  cells: Map<string, Streamline[] | null>;
+  /**
+   * The scale every line in `cells` was traced at: the snapped metres per
+   * pixel and the level's height — see `traceScaleKey`. A line is made of
+   * these as much as of the field, so `cells` is only worth reusing while they
+   * hold, and is emptied the moment they do not.
+   */
+  traceScale: string;
+  /** The whole set of lines, in the order deck draws them. */
+  lines: Streamline[];
+  /**
+   * The camera `lines` was traced for. Checked on every visit to this hour,
+   * not only the first: a camera that has since moved makes `lines` stale,
+   * but not necessarily `field` or `cells`. The field's data has not changed,
+   * and a cell already in `cells` is still the right line for its patch of
+   * ground **as long as the trace scale has not moved** — its length on the
+   * ground and a lifted level's height both follow the camera's scale, which
+   * a pan at a fixed zoom leaves where it was and a zoom does not.
+   * `formatLayerData` re-traces through the same `cells` map when the scale
+   * still matches, so a pan costs only the ground newly on screen, and through
+   * an empty one when it does not.
+   */
+  camera: CameraState | undefined;
+}
+
+/**
+ * The scale a trace was made at, as a key a held hour's cells can be checked
+ * against: the snapped metres per pixel the tracer was handed (see
+ * `traceMetresPerPixel`) and the height of the level.
+ *
+ * The height is in the key as well as the scale, though it follows from it,
+ * because it follows from more than it: the width of the panel moves it too,
+ * and a line kept across a resize would float at the old height while its
+ * level's arrows moved. The rest of what moves it — the tallest level, the
+ * exaggeration, the metres — is in `traceSignature` already.
+ */
+function traceScaleKey(camera: ScreenCamera | null, altitudeMeters: number): string {
+  return JSON.stringify([camera ? camera.metresPerPixel : null, altitudeMeters]);
 }
 
 // Contravariant constructor parameters, so `any[]` rather than `unknown[]`; the
@@ -259,6 +345,23 @@ type Constructor<T> = new (...args: any[]) => T;
  *
  * So the trace is kept and reused unless something in here changed. The rows
  * themselves are compared separately, by identity: they are not summarisable.
+ *
+ * The camera is deliberately absent, for the same reason the hour is (see
+ * `formatLayerData`'s `stepMs`): this is what the geometry is *made of* —
+ * columns, knobs, the tallest level — and the camera only says which cells of
+ * it are on screen right now. `useFlowFieldContext` republishes a new camera
+ * about every 250 ms once the view has settled, so folding it in here emptied
+ * every held hour, cells map included, on almost every pan — the whole ground-
+ * cell cache from `traceStreamlines` was unreachable from this call site as a
+ * result, and a settled pan re-traced the *entire* field instead of only the
+ * cells that had just come into view. A camera change is instead handled in
+ * `formatLayerData` as its own, cheaper case: re-trace the current hour only,
+ * handing the tracer its own already-populated cells map.
+ *
+ * The camera's *scale* is the one part of it that does shape the lines — how
+ * far each runs on the ground, and how high a lifted level sits — and it is
+ * kept out of here too, as the hour's own `traceScaleKey`: a zoom then empties
+ * only the hour being looked at, not every hour on hand.
  */
 export function traceSignature(config: FlowFieldLayerLike['config']): string {
   const visConfig = config.visConfig ?? {};
@@ -277,10 +380,40 @@ export function traceSignature(config: FlowFieldLayerLike['config']): string {
     visConfig.heightMeters,
     visConfig.elevationScale,
     visConfig.zoomResponse,
-    context.baseMs,
     context.tallest,
-    context.camera,
   ]);
+}
+
+/**
+ * Whether two cameras see the same thing, compared by value rather than by
+ * reference.
+ *
+ * A copy of `sameCameraState` in `flowFieldContext.ts`, not an import of it:
+ * that module already imports `CameraState`/`FlowFieldContext` from this one,
+ * and importing back would make the two files depend on each other. The
+ * duplication is small and closed — both copies compare the same seven
+ * fields kepler's map state carries — and cheaper to keep in step than a
+ * cycle is to unwind.
+ *
+ * Value comparison matters because `useFlowFieldContext` writes a fresh
+ * `CameraState` object into `visConfig` on every republish, whether or not
+ * the numbers inside it actually moved; comparing by `===` would treat that
+ * as a change every time and defeat the whole point of keeping it out of
+ * `traceSignature`.
+ */
+function sameCameraState(a?: CameraState, b?: CameraState): boolean {
+  if (!a || !b) {
+    return a === b;
+  }
+  return (
+    a.latitude === b.latitude &&
+    a.longitude === b.longitude &&
+    a.zoom === b.zoom &&
+    a.pitch === b.pitch &&
+    a.bearing === b.bearing &&
+    a.width === b.width &&
+    a.height === b.height
+  );
 }
 
 /**
@@ -300,6 +433,13 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
   icon?: LayerIcon
 ): C {
   class FlowFieldLayer extends (BaseLayer as Constructor<FlowFieldLayerLike>) {
+    /** One entry per forecast hour currently held — see `HourEntry`. */
+    private _hours: Map<string, HourEntry> = new Map();
+    /** The signature `_hours` was traced under — see the reset in `formatLayerData`. */
+    private _hoursSignature: string | undefined;
+    /** The container `_hours` was traced from — see the reset in `formatLayerData`. */
+    private _hoursContainer: unknown;
+
     constructor(props?: Record<string, unknown>) {
       super(props);
       this.registerVisConfig(FLOW_FIELD_VIS_CONFIGS as unknown as Record<string, unknown>);
@@ -349,28 +489,21 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
     }
 
     /**
-     * Animatable, and with a domain of its own.
+     * Not animatable, deliberately.
      *
-     * The clock at the bottom of the map exists only for layers that say this,
-     * and a velocity field without it is a still picture — which is the same as
-     * a blank map, because at the start of the window every trail has zero
-     * length.
+     * kepler's clock exists to say *when* — which hour of a forecast a map is
+     * showing — and this layer's animation answers nothing of the sort: what
+     * moves along a streamline is a trail whose speed the tracer normalises to
+     * a legible number of pixels per cycle. Claiming the clock for that spent
+     * the only time axis a dashboard has on a phase, merged a sixty-second
+     * window into the days a WMS or a set of trips runs over, and left a paused
+     * map blank. The layer keeps its own clock instead — `flowFieldClock.ts`.
      */
     getDefaultLayerConfig(props?: Record<string, unknown>): Record<string, unknown> {
       return {
         ...super.getDefaultLayerConfig(props),
         columnMode: (props?.columnMode as string) ?? 'components',
-        animation: { enabled: true, domain: null },
       };
-    }
-
-    /** The window every streamline is stretched over, in epoch ms. */
-    updateAnimationDomain(domain: [number, number]): void {
-      const current = this.config.animation?.domain;
-      if (current && current[0] === domain[0] && current[1] === domain[1]) {
-        return;
-      }
-      this.updateLayerConfig({ animation: { ...this.config.animation, domain } });
     }
 
     formatLayerData(
@@ -384,32 +517,84 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       }
 
       const signature = traceSignature(this.config);
+      // Which hour the map's clock has picked — see `latestStepOf`. Deliberately
+      // not folded into `signature`: the signature is what a trace is made of,
+      // and the hour only says which of the hours already traced to show.
+      const stepMs = latestStepOf(dataset);
       const visConfig = this.config.visConfig ?? {};
       const context = (visConfig.flowContext ?? {}) as FlowFieldContext;
-      const baseMs = setting(context.baseMs, 0);
       const cycleMs = setting(visConfig.cycleSeconds, 60) * 1000;
-
-      // The domain is put back even on a cache hit: it costs a comparison, and
-      // getting it wrong leaves the map with a clock that runs somewhere the
-      // lines do not.
-      this.updateAnimationDomain([baseMs, baseMs + cycleMs]);
+      const columns = this.config.columns ?? {};
 
       if (
         oldLayerData &&
         oldLayerData.signature === signature &&
-        oldLayerData.container === dataset.dataContainer
+        oldLayerData.container === dataset.dataContainer &&
+        oldLayerData.stepMs === stepMs &&
+        sameCameraState(oldLayerData.camera, context.camera)
       ) {
         // A range set by hand is paint and keeps the trace, but the legend has
         // to follow it or it describes a ramp the map is no longer drawing.
+        //
+        // `stepMs` and the camera have to agree too, and not only signature
+        // and container: kepler's own render loop hands this call back its
+        // own previous output as `oldLayerData` on every call, not only when
+        // nothing changed. Stepping the clock back an hour, or settling
+        // somewhere else on the map, touches neither the signature nor the
+        // dataset's `dataContainer` — so without this the map would read
+        // either as nothing relevant having changed and never leave the
+        // first hour or the first view it drew.
         this.updateLegend(oldLayerData.speedDomain);
         return oldLayerData;
       }
 
-      const columns = this.config.columns ?? {};
+      // Everything the hours share: the columns, the knobs, the tallest
+      // level. The camera is deliberately not here — see `traceSignature` —
+      // so a pan does not throw every hour on hand away; only a change to
+      // what the geometry is made of does.
+      if (this._hoursSignature !== signature || this._hoursContainer !== dataset.dataContainer) {
+        this._hours = new Map();
+        this._hoursSignature = signature;
+        this._hoursContainer = dataset.dataContainer;
+      }
+
+      // Keyed by `String(stepMs)` rather than `stepMs` itself: a dataset with
+      // no time column answers `null` from `latestStepOf`, and that still
+      // needs a stable entry of its own — a plain `Map` would key it by the
+      // same `null` regardless, but stringifying is what makes that
+      // deliberate rather than incidental.
+      const hourKey = String(stepMs);
+      const held = this._hours.get(hourKey);
+
+      // A held hour is only handed back untouched when it was traced for the
+      // view now on screen. Re-inserting on every hit — a plain hit here, or
+      // the re-trace below — moves the entry to the end of the map's own
+      // iteration order, which is what makes the eviction loop further down
+      // keep the hours actually being looked at rather than the ones merely
+      // traced first.
+      if (held && sameCameraState(held.camera, context.camera)) {
+        this._hours.delete(hourKey);
+        this._hours.set(hourKey, held);
+        this.updateLegend(held.speedDomain);
+        return {
+          data: held.lines,
+          speedDomain: held.speedDomain,
+          signature,
+          container: dataset.dataContainer,
+          stepMs,
+          camera: context.camera,
+        };
+      }
+
       const frame = gridFrameOf(dataset, columns);
-      const field = frame ? buildVelocityField(frame, columns, this.config.columnMode, visConfig, 3) : null;
+      // A held field is reused rather than rebuilt: the columns and the
+      // smoothing are in `signature`, so if they had changed `held` itself
+      // would already have been emptied above. The field does not depend on
+      // the camera at all; which ground is walked, and at what scale, is the
+      // tracer's business below.
+      const field = held ? held.field : frame ? buildVelocityField(frame, columns, this.config.columnMode, visConfig, 3) : null;
       if (!frame || !field) {
-        return { data: [], speedDomain: [0, 1], signature, container: dataset.dataContainer };
+        return { data: [], speedDomain: [0, 1], signature, container: dataset.dataContainer, stepMs, camera: context.camera };
       }
 
       // The extent of the grid, which is the extent of everything this layer
@@ -421,19 +606,63 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       // layer that would have known better is the Point layer this one replaces.
       //
       // The field's speed range rides along for the panel, which starts a range
-      // set by hand from it and sizes that range's slider to it.
-      const speedDomain = fieldSpeedDomain(field);
-      this.updateMeta({ bounds: fieldBounds(field), speedDomain });
+      // set by hand from it and sizes that range's slider to it. Skipped on a
+      // re-trace: the field itself has not changed, so the domain already
+      // reported for this hour still holds.
+      const speedDomain = held ? held.speedDomain : fieldSpeedDomain(field);
+      if (!held) {
+        this.updateMeta({ bounds: fieldBounds(field), speedDomain });
+      }
+
+      // The camera at the snapped trace scale — see `traceMetresPerPixel`. The
+      // tracer sizes a line's run on the ground from this, and the height of a
+      // level below comes from the same number, so every line kept under one
+      // `traceScaleKey` is exactly the line a fresh trace would draw.
+      const screen = context.camera ? makeCamera(context.camera) : null;
+      const camera = screen ? atTraceScale(screen) : null;
 
       // The tracer produces its own geometry, so the altitude has to be handed
-      // to it as a value. The exaggeration follows the view, because levels a
-      // few kilometres apart are invisible over a region hundreds of kilometres
-      // wide, and a factor that reads over a country puts the top level off the
-      // screen over a city. Shared with the vector field via `stackedAltitude`,
-      // so a level drawn as streamlines and as arrows sits at the same height.
-      const camera = context.camera ? makeCamera(context.camera) : null;
-      const altitudeMeters = stackedAltitude(frame, columns, visConfig, context, camera);
+      // to it as a value (a level) or a function (terrain) — see
+      // `altitudeMeaningOf`. The exaggeration follows the view for a level,
+      // because levels a few kilometres apart are invisible over a region
+      // hundreds of kilometres wide, and a factor that reads over a country puts
+      // the top level off the screen over a city. Shared with the vector field
+      // via `stackedAltitude`, so a level drawn as streamlines and as arrows
+      // sits at the same height.
+      const meaning = altitudeMeaningOf(frame, columns.altitude?.value, visConfig);
+      const altitudeMeters = meaning.kind === 'level' ? stackedAltitude(meaning.metres, visConfig, context, camera) : 0;
+      const traceScale = traceScaleKey(camera, altitudeMeters);
+      // Built fresh from this call's own `frame` rather than carried on the
+      // held hour: the hour's `cells` cache bakes a height into every vertex it
+      // keeps, so only the ground newly traced this call ever reads `terrain`
+      // — see `traceStreamlines`'s `cells` option and `emit`'s `pathOf`.
+      const terrain =
+        meaning.kind === 'terrain'
+          ? buildScalarFieldFrom(frame, {
+              latitude: columns.lat!.value!,
+              longitude: columns.lng!.value!,
+              value: columns.altitude!.value!,
+            })
+          : null;
+      const exaggeration = setting(visConfig.elevationScale, 1);
 
+      // A held hour's own cells map is handed straight back in, not a fresh
+      // one: a cell already in it is skipped by `traceStreamlines` rather
+      // than re-seeded, which is what makes a settled pan cost only the
+      // ground that has just come into view. A brand-new hour starts with
+      // nothing, same as before — it owns this map from here on, never
+      // shared with any other hour's.
+      //
+      // But only while the scale it was traced at still holds. A zoom moves
+      // it, and a kept line would then run its old length on the ground and a
+      // lifted level sit at its old height — measured at 171 px instead of 130
+      // after a zoom from 7.0 to 7.4, and a level left at 73,252 m while a
+      // fresh trace put it at 55,500 m. The same cells, re-traced from empty,
+      // come back with the same seeds and phases (both are the cell's own), so
+      // a zoom within one level redraws the lines in place rather than
+      // reshuffling them; a pan at a fixed zoom keeps the key and costs only
+      // the ground it uncovers.
+      const cells = held && held.traceScale === traceScale ? held.cells : new Map<string, Streamline[] | null>();
       const data = traceStreamlines(field, {
         // Traced from zero rather than from `baseMs`: deck holds a vertex time
         // as a float32, which cannot tell two epoch milliseconds apart at all.
@@ -448,15 +677,48 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
         camera: camera ?? undefined,
         zoomResponse: setting(visConfig.zoomResponse, 0),
         altitudeMeters,
+        altitudeAt: terrain
+          ? (lon: number, lat: number) => {
+              const height = sampleScalarField(terrain, lon, lat);
+              // The user's exaggeration applies to terrain too, but not the
+              // normalisation against the tallest level: real ground has to
+              // stay on the basemap under it.
+              return height === null ? null : height * exaggeration;
+            }
+          : undefined,
+        cells,
       });
 
+      // Bounded to the ground this trace actually walked, not left to grow
+      // across every pan and zoom an open dashboard ever sees. A cell from a
+      // previous, differently-zoomed view keys under a different level (see
+      // `groundCells.ts`) and would otherwise sit in the map forever, never
+      // matched again. A cell that traced to nothing is lost along with it —
+      // it costs nothing to trace again if the view comes back to it.
+      const onScreen = new Set(data.map((line) => line.cell).filter((cell): cell is string => cell !== undefined));
+      for (const key of cells.keys()) {
+        if (!onScreen.has(key)) {
+          cells.delete(key);
+        }
+      }
+
+      this._hours.delete(hourKey);
+      this._hours.set(hourKey, { field, speedDomain, cells, traceScale, lines: data, camera: context.camera });
+      // Three hours: the one on show and the two most recently looked at
+      // before it — see the re-insertion above. A dashboard left open on a
+      // long forecast would otherwise hold every hour it ever drew.
+      for (const key of [...this._hours.keys()].slice(0, Math.max(0, this._hours.size - 3))) {
+        this._hours.delete(key);
+      }
+
       this.updateLegend(speedDomain);
-      return { data, speedDomain, signature, container: dataset.dataContainer };
+      return { data, speedDomain, signature, container: dataset.dataContainer, stepMs, camera: context.camera };
     }
 
+    // No `animationConfig`: kepler passes one, and this layer has nothing to do
+    // with the playhead in it — see `getDefaultLayerConfig` above.
     renderLayer(opts?: {
       data?: FlowFieldLayerData;
-      animationConfig?: { currentTime?: number; domain?: [number, number] | null };
       /** The split map's verdict: shown in this panel, or the other one. */
       visible?: boolean;
     }): unknown[] {
@@ -467,11 +729,6 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
 
       const visConfig = this.config.visConfig ?? {};
       const cycleMs = setting(visConfig.cycleSeconds, 60) * 1000;
-      const domain0 = this.config.animation?.domain?.[0] ?? 0;
-      const currentTime = opts?.animationConfig?.currentTime;
-      if (!Number.isFinite(currentTime)) {
-        return [];
-      }
 
       const colors = ((visConfig.colorRange as { colors?: string[] })?.colors ?? []) as string[];
       const speedDomain = paintDomain(visConfig, opts?.data?.speedDomain ?? [0, 1]);
@@ -493,10 +750,11 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
           id: `${this.id}-flowfield`,
           data: lines,
           visible: this.config.isVisible !== false && shownInPane(opts),
-          // The vertices were traced from zero, so the playhead is offset by the
-          // same base the domain starts at.
-          currentTime: (currentTime as number) - domain0,
-          trailLength: (cycleMs * setting(visConfig.trailShare, 4)) / 100,
+          // The cycle and the trail, not a playhead: the layer runs its own
+          // clock over these — see `flowFieldClock.ts`.
+          cycleMs,
+          trailMs: (cycleMs * setting(visConfig.trailShare, 4)) / 100,
+          animate: visConfig.animate !== false,
           getWidth: widthBySpeed
             ? (line: Streamline) => thinnest + share(line) * (thickest - thinnest)
             : setting(visConfig.thickness, 2),

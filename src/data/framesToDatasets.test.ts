@@ -281,23 +281,51 @@ describe('framesToDatasets — a velocity grid with several timesteps', () => {
     });
   };
 
-  it('keeps the earliest hour instead of mixing them', () => {
-    // Left alone, each cell would be overwritten by whichever row came last,
-    // which for a reversing wind means drawing the opposite of the truth.
-    const [dataset] = framesToDatasets([forecast()]);
+  it('hands kepler every hour of a forecast, with the time column', () => {
+    // The clock at the bottom of the map is what walks a forecast, and it can
+    // only bind to a column it can see. Keeping one hour was the workaround for
+    // a clock already spent on the animation's phase.
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'time', type: FieldType.time, values: [1_000, 1_000, 2_000, 2_000] },
+        { name: 'lat', type: FieldType.number, values: [0, 0.25, 0, 0.25] },
+        // Both axes have to vary — a constant longitude leaves `describesLattice`
+        // unable to find a step on that axis, so the frame would fall through to
+        // the ordinary tabular path and this test would pass without exercising
+        // the velocity branch at all.
+        { name: 'lng', type: FieldType.number, values: [0, 0.25, 0, 0.25] },
+        { name: 'u', type: FieldType.number, values: [1, 1, -1, -1] },
+        { name: 'v', type: FieldType.number, values: [0, 0, 0, 0] },
+      ],
+    });
 
-    expect(dataset.rows).toHaveLength(16);
-    expect(dataset.rows.every((row) => row.u === 12)).toBe(true);
+    const [dataset] = framesToDatasets([frame]);
+
+    expect(dataset.rows).toHaveLength(4);
+    expect(Object.keys(dataset.rows[0])).toHaveLength(5);
   });
 
-  it('drops the time column with the hours it belonged to', () => {
-    // A grid reaching kepler with a timestamp grows a time filter over rows
-    // nobody filters — the layer reads the whole dataset — leaving a widget on
-    // the map that moves and changes nothing.
+  it('keeps both hours of a reversing forecast instead of just the earliest', () => {
+    // The query still describes a lattice: 16 cells, sampled twice. Both
+    // samples now reach kepler — filtering down to one hour is `latestStepRows`'
+    // job (velocityField.ts), reading whatever the map's own clock leaves
+    // standing, not this function's.
     const [dataset] = framesToDatasets([forecast()]);
 
-    expect(dataset.rows[0].time).toBeUndefined();
-    expect(Object.keys(dataset.rows[0])).toEqual(['latitude', 'longitude', 'u', 'v']);
+    expect(dataset.rows).toHaveLength(32);
+    expect(dataset.rows.filter((row) => row.u === 12)).toHaveLength(16);
+    expect(dataset.rows.filter((row) => row.u === -12)).toHaveLength(16);
+  });
+
+  it('keeps the time column, for kepler to build a filter on', () => {
+    // A grid reaching kepler without a timestamp gives the map no column to
+    // build a clock from, so the forecast could never be walked — only ever
+    // viewed as one contradictory jumble of both hours.
+    const [dataset] = framesToDatasets([forecast()]);
+
+    expect(dataset.rows[0].time).toBe(1_000);
+    expect(Object.keys(dataset.rows[0])).toEqual(['latitude', 'longitude', 'time', 'u', 'v']);
   });
 });
 
@@ -395,8 +423,9 @@ describe('framesToDatasets: stations versus grids', () => {
 
     const [dataset] = framesToDatasets([withTime]);
 
-    // The grid path would have kept one timestep and dropped the column; this
-    // one keeps every row, and kepler's filter separates them.
+    // Both paths keep every row and the time column now, so this is really
+    // re-confirming that three irregular stations classify as non-lattice —
+    // not a distinct behaviour of the tabular path any more.
     expect(dataset.rows).toHaveLength(6);
     expect(Object.keys(dataset.rows[0])).toContain('time');
   });

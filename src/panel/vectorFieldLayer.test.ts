@@ -92,6 +92,31 @@ function eastwardGrid(side: number, speed = 10, south = 0) {
 
 const COMPONENTS = { lat: 'latitude', lng: 'longitude', u: 'u', v: 'v' };
 
+/**
+ * Two hours of the same small grid, blowing opposite ways, so which hour won
+ * is visible in `bearingTo` — for `formatLayerData`'s hour-tracking fast path.
+ */
+function timedGrid(side: number) {
+  const rows: Array<Record<string, number>> = [];
+  for (const hour of [1000, 2000]) {
+    for (let j = 0; j < side; j++) {
+      for (let i = 0; i < side; i++) {
+        rows.push({ time: hour, latitude: j, longitude: i, u: hour === 1000 ? 10 : -10, v: 0 });
+      }
+    }
+  }
+  const names = Object.keys(rows[0]);
+  return {
+    dataContainer: {
+      numRows: () => rows.length,
+      valueAt: (row: number, column: number) => rows[row][names[column]],
+    },
+    fields: names.map((name) => ({ name, type: name === 'time' ? 'timestamp' : undefined })),
+    columnIndex: Object.fromEntries(names.map((name, index) => [name, index])),
+    filteredIndex: undefined as number[] | undefined,
+  };
+}
+
 function layerOver(
   dataset: ReturnType<typeof gridDataset>,
   columnKeys: Record<string, string>,
@@ -107,7 +132,7 @@ function layerOver(
   layer.config.columns = Object.fromEntries(
     Object.entries(columnKeys).map(([key, name]) => [key, { value: name, fieldIdx: dataset.columnIndex[name] }])
   );
-  layer.config.visConfig = { ...layer.config.visConfig, flowContext: { baseMs: 0, tallest: 0 }, ...visConfig };
+  layer.config.visConfig = { ...layer.config.visConfig, flowContext: { tallest: 0 }, ...visConfig };
   return layer;
 }
 
@@ -132,7 +157,7 @@ describe('vector field layer — placing symbols', () => {
     const layer = layerOver(dataset, COMPONENTS, {
       placement: 'screen',
       spacingPx: 100,
-      flowContext: { baseMs: 0, tallest: 0, camera: cameraShowing({ west: 0, east: 2, south: 0, north: 2 }) },
+      flowContext: { tallest: 0, camera: cameraShowing({ west: 0, east: 2, south: 0, north: 2 }) },
     });
 
     expect(layer.formatLayerData({ 'grafana-A': dataset }).data).toHaveLength(32);
@@ -159,7 +184,7 @@ describe('vector field layer — placing symbols', () => {
 
     layer.config.visConfig = {
       ...layer.config.visConfig,
-      flowContext: { baseMs: 0, tallest: 0, camera: cameraShowing({ west: 0, east: 1, south: 0, north: 1 }) },
+      flowContext: { tallest: 0, camera: cameraShowing({ west: 0, east: 1, south: 0, north: 1 }) },
     };
 
     expect(layer.formatLayerData({ 'grafana-A': dataset }, first)).toBe(first);
@@ -172,7 +197,7 @@ describe('vector field layer — placing symbols', () => {
 
     layer.config.visConfig = {
       ...layer.config.visConfig,
-      flowContext: { baseMs: 0, tallest: 0, camera: cameraShowing({ west: 0, east: 2, south: 0, north: 2 }) },
+      flowContext: { tallest: 0, camera: cameraShowing({ west: 0, east: 2, south: 0, north: 2 }) },
     };
 
     expect(layer.formatLayerData({ 'grafana-A': dataset }, first)).not.toBe(first);
@@ -196,12 +221,78 @@ describe('vector field layer — placing symbols', () => {
 
     expect(layer.config.animation?.enabled).not.toBe(true);
   });
+
+  it('re-places the symbols when the map\'s clock narrows to an earlier hour, even with the same container', () => {
+    // `KeplerTable.filterTable` mutates the table in place and returns `this`
+    // (kepler-table.js:660), so the container is the *same object* before and
+    // after the map's clock moves — only `filteredIndex` changes. A fast path
+    // comparing `signature` and `container` alone cannot see that at all.
+    const dataset = timedGrid(3);
+    const layer = layerOver(dataset, COMPONENTS, { placement: 'cells' });
+
+    const first = layer.formatLayerData({ 'grafana-A': dataset });
+    // No filter yet: every row is read, and the latest hour (2000, westward) wins.
+    expect(first.data[0].bearingTo).toBeCloseTo(270, 9);
+
+    dataset.filteredIndex = Array.from({ length: 9 }, (_, i) => i); // hour 1000's rows only
+
+    const second = layer.formatLayerData({ 'grafana-A': dataset }, first);
+    expect(second).not.toBe(first);
+    expect(second.data[0].bearingTo).toBeCloseTo(90, 9);
+  });
+
+  it('re-places the symbols when the map\'s clock moves across an ISO-timestamped forecast', () => {
+    // The same fast path, reached through the hour's name instead of the rows.
+    // kepler holds an ISO time column raw and compares it through
+    // `filterProps.mappedValue`; `latestStepOf` read `Number(valueAt(...))`
+    // and named every hour `null`, so moving the window from one hour to the
+    // next looked like nothing at all and the arrows kept the first hour's
+    // bearing for good.
+    const first = Date.parse('2026-01-01T00:00:00Z');
+    const rows: Array<[string, number, number, number, number]> = [];
+    const mapped: number[] = [];
+    for (const [hour, u] of [
+      [0, 10],
+      [1, -10],
+    ]) {
+      for (let j = 0; j < 3; j++) {
+        for (let i = 0; i < 3; i++) {
+          rows.push([new Date(first + hour * 3_600_000).toISOString(), j, i, u, 0]);
+          mapped.push(first + hour * 3_600_000);
+        }
+      }
+    }
+    const window = { type: 'timeRange', name: ['time'], value: [first - 60_000, first + 60_000] };
+    const dataset = {
+      dataContainer: { numRows: () => rows.length, valueAt: (row: number, column: number) => rows[row][column] },
+      fields: [
+        { name: 'time', type: 'timestamp', filterProps: { mappedValue: mapped } },
+        { name: 'latitude' },
+        { name: 'longitude' },
+        { name: 'u' },
+        { name: 'v' },
+      ],
+      columnIndex: { time: 0, latitude: 1, longitude: 2, u: 3, v: 4 },
+      filterRecord: { gpu: [window] },
+    };
+    const layer = layerOver(dataset as never, COMPONENTS, { placement: 'cells' });
+
+    const before = layer.formatLayerData({ 'grafana-A': dataset });
+    expect(before.data[0].bearingTo).toBeCloseTo(90, 9);
+
+    // kepler moves the window in place: same dataset, same container.
+    window.value = [first + 3_600_000 - 60_000, first + 3_600_000 + 60_000];
+    const after = layer.formatLayerData({ 'grafana-A': dataset }, before);
+
+    expect(after).not.toBe(before);
+    expect(after.data[0].bearingTo).toBeCloseTo(270, 9);
+  });
 });
 
 describe('symbolSignature', () => {
   const at = (visConfig: Record<string, unknown>, columns: Record<string, { value: string }> = {}) =>
     symbolSignature({ columns, visConfig });
-  const camera = (west: number) => ({ baseMs: 0, tallest: 0, camera: cameraShowing({ west, east: west + 1, south: 0, north: 1 }) });
+  const camera = (west: number) => ({ tallest: 0, camera: cameraShowing({ west, east: west + 1, south: 0, north: 1 }) });
 
   it('ignores the camera when the symbols sit on the data at ground level', () => {
     expect(at({ placement: 'cells', flowContext: camera(0) })).toBe(at({ placement: 'cells', flowContext: camera(5) }));

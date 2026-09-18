@@ -167,6 +167,10 @@ function FlowFieldLayerConfig({ layer, visConfiguratorProps, layerConfiguratorPr
           decides the pulsing: with it on, the lifetime says only how much of the
           field is lit at once, which is a thing worth reaching for. */}
       <LayerConfigGroup label={'flowfield.group.animation'} collapsible>
+        {/* First, because it decides whether the rest of the group means
+            anything: switched off, the field is a still picture of the
+            streamlines, drawn end to end. */}
+        <VisConfigSwitch {...settings.animate} {...visConfiguratorProps} />
         {slider('cycleSeconds')}
         {slider('lifeFraction')}
         <VisConfigSwitch {...settings.seamlessLoop} {...visConfiguratorProps} />

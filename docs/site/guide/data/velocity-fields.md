@@ -147,8 +147,16 @@ snapping error. See [Tutorial 6](../../tutorials/wind-field).
 Rows are cells. The grid itself is **inferred**, so the query may return them in any order —
 `ORDER BY lat, lon` is for your own benefit when you inspect the rows, not the panel's.
 
-When the query spans several timesteps the **earliest** is used. Select a single one to be explicit
-rather than relying on that.
+When the query spans several timesteps, every one of them reaches the map — nothing is dropped at
+the panel. The map's own clock, at the bottom, is what chooses which hour the field draws: always
+the **latest** hour still inside the clock's window. Narrow the window and an earlier hour becomes
+the one on show; widen it back out and the newest hour wins again. A query of one timestep needs
+none of this — the clock stays put and that one hour is all there ever is to choose from.
+
+The clock walks **one query**. kepler binds its time filter to the first dataset on the map that
+carries a timestamp, so a second velocity query with hours of its own — a second level, say — keeps
+drawing its **latest** hour whatever the clock says. *Several levels at once*, below, has the way to
+stack levels that walk together.
 
 ### Holes are holes, not calm air
 
@@ -176,14 +184,27 @@ scalar before the slope is taken from it, where it is doing considerably more th
 
 ## The lines follow the view
 
-::: tip Nothing is drawn until you press play
-At the start of the animation window every trail has zero length. A paused field is a blank map —
-press play on the timeline.
+::: tip The field animates itself
+There is no play button to press. The streamlines run on a clock of their own, because what moves
+along them is a trail rather than the weather: the tracer normalises the speed to a legible number
+of pixels per cycle. The map's own timeline is left for the data.
+
+Switch **Animation → Animate** off for a still field: the streamlines then draw end to end, which is
+the version to print or to read rather than watch. A system set to reduce motion gets that field
+without asking, and a panel scrolled out of the dashboard stops animating until it comes back.
 :::
 
-Density and on-screen length hold steady as you zoom, because the field is **re-traced whenever the
-map settles** — a fixed budget of lines per screen, each a fixed number of pixels long. Only the
-share of the screen your data actually covers gets drawn.
+Density and on-screen length hold steady as you zoom: a fixed budget of lines per screen, each
+about the same number of pixels long. Only the share of the screen your data actually covers gets
+drawn.
+
+The lines belong to the **ground**, not to the screen. A **pan** keeps every line already on screen
+exactly as it was and traces only the ground that has just come into view. A **zoom** — anything
+from a sixteenth of a zoom level up — re-traces the view at its new scale: each line keeps its place
+and its moment in the cycle but is drawn again to the new length, and a lifted level to its new
+height. Zoom far enough and a finer or coarser set of lines takes over, which reads as the field
+filling in or thinning out rather than reshuffling. How far a line runs is scaled by the typical speed of the **whole** field, not of the part
+on screen, so panning from slack air into a jet does not stretch the slack lines to match.
 
 The lines are seeded by picking points **on the screen** and asking the camera what ground is under
 them, so a tilted or rotated map is covered to its edges. That matters more than it sounds: tilt the
@@ -192,7 +213,7 @@ horizon — measured at a pitch of 50°, two and a half times deeper up-range th
 is tall. A field seeded into the rectangle simply stops halfway up the screen.
 
 Re-tracing reads the grid already in the browser, so panning costs no database work, and it does not
-touch the dataset — the playhead keeps running through it.
+touch the dataset.
 
 ## Density
 
@@ -233,13 +254,40 @@ spends 6,000 on a single field, so the default is deliberately generous.
 
 One query per level, in the same panel. Each becomes its own layer.
 
+::: warning With a forecast, only the first level walks
+The map's clock binds to the first query that carries a timestamp, so in a stack of one query per
+level only that level follows it; the others stay on their latest hour. To walk them all, return
+every level from **one** query, side by side as columns of the same rows — `u850, v850, u700, v700`,
+one row per cell and hour — and add a Streamlines layer per level on it, each pointed at its own
+columns in the layer panel. Stacked as rows instead, with a `level` column, the levels land on the
+same cells and overwrite each other. Otherwise, accept that only the first level follows the clock.
+:::
+
 To separate them in the vertical, give each layer a height and tilt the camera with the 3D control.
 Two ways, and the layer takes the first that applies:
 
-1. **A height column** — return one and bind it to the layer's optional `altitude` column. Its first
-   value is the level's height; one query is one level, so it is read as a constant.
+1. **A height column** — return one and bind it to the layer's optional `altitude` column. When it
+   barely varies it is the level's height: if the spread from its lowest value to its highest is no
+   more than **a tenth of its mean**, the level is drawn flat at that mean. That is what a pressure
+   level's real height does — 850 hPa's geopotential height runs from about 1,450 to 1,550 m across
+   a region, 100 m on a mean of 1,500, under 7% — so returning it keeps the level in its place in
+   the stack.
 2. **Height (m), when no column** — under **Field**. For the ordinary case, where the height of a
    level is a property of the query rather than of its rows and there is no column to return.
+
+A height column that varies by more than a tenth of its mean is not a level but **terrain**: every
+vertex of every line takes the height under it, multiplied by the vertical exaggeration below but
+not scaled with the stack, so the lines follow the ground. Near sea level any real relief counts —
+a tenth of a mean of a few metres is next to nothing — so a coastline is always terrain.
+
+::: warning Where that rule guesses wrong
+A plateau whose relief is under a tenth of its height — a patch of the Altiplano around 3,800 m with
+less than 380 m between its lowest cell and its highest — reads as a level: one flat sheet at its
+mean height, lifted with the stack like any other level, rather than laid on the ground. The other
+way round, a level over a continent-sized map with a deep low in it can spread past a tenth (850 hPa
+from 1,250 to 1,600 m is 25%) and is laid out as terrain. Setting the level with **Height (m)**
+instead of a column always keeps it in its place in the stack.
+:::
 
 Height is opt-in either way. Nothing autodetects an altitude: an `elevation` column picked up by
 accident lifts a layer kilometres into the air, where it vanishes as soon as the camera descends
@@ -304,6 +352,7 @@ Every knob is in the layer's own panel, grouped as **Colour**, **Streamlines**, 
 | Width by speed | Streamlines | Replaces the one width with **Width range (px)**: slow lines draw at its low end, fast ones at its high end. Off by default. |
 | Trail length | Streamlines | How much of the cycle the moving trail spans, as a percentage. |
 | Line length | Streamlines | Vertices per streamline — how far a line reaches, not how much of it is lit. |
+| Animate | Animation | Off draws the streamlines whole and still, and asks for no more frames. On by default. |
 | Cycle | Animation | The length of the loop, in seconds. |
 | Line lifetime | Animation | The share of the cycle one line lives for, and so how much of the field is lit at once. |
 | Seamless loop | Animation | Carries a line whose life runs past the end of the cycle round to the start of it. On by default. |

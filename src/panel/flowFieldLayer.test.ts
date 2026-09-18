@@ -113,15 +113,21 @@ const FlowFieldLayer = makeFlowFieldLayer(FakeBaseLayer, fakeBuild, fakeCamera a
   props?: Record<string, unknown>
 ) => any;
 
-/** A kepler dataset holding a grid, in the shape `formatLayerData` reads. */
-function gridDataset(rows: Array<Record<string, number>>) {
+/**
+ * A kepler dataset holding a grid, in the shape `formatLayerData` reads.
+ *
+ * `types` names the kepler field type of any column that needs one — in
+ * practice only a time column, whose type `latestStepOf` reads to find it
+ * among the others. Every other column is untyped, as before.
+ */
+function gridDataset(rows: Array<Record<string, number>>, types: Record<string, string> = {}) {
   const names = Object.keys(rows[0] ?? {});
   return {
     dataContainer: {
       numRows: () => rows.length,
       valueAt: (row: number, column: number) => rows[row][names[column]],
     },
-    fields: names.map((name) => ({ name })),
+    fields: names.map((name) => ({ name, type: types[name] })),
     columnIndex: Object.fromEntries(names.map((name, index) => [name, index])),
   };
 }
@@ -143,7 +149,53 @@ function eastwardGrid(side: number, speed = 12, altitude?: number) {
   return gridDataset(rows);
 }
 
-const CONTEXT: FlowFieldContext = { baseMs: 1_000, tallest: 0 };
+/**
+ * The same lattice at two forecast hours, with `u`/`v` differing between them
+ * so the two hours trace differently and not merely re-time the same lines.
+ */
+function twoHourGrid(side = 6) {
+  const rows: Array<Record<string, number>> = [];
+  for (const [time, u, v] of [
+    [1_000, 12, 0],
+    [2_000, 0, 12],
+  ] as const) {
+    for (let j = 0; j < side; j++) {
+      for (let i = 0; i < side; i++) {
+        rows.push({ latitude: j, longitude: i, time, u, v });
+      }
+    }
+  }
+  return gridDataset(rows, { time: 'timestamp' });
+}
+
+/** The rows of `dataset` (built by `twoHourGrid` or `manyHourGrid`) at `time`. */
+function rowsAt(dataset: ReturnType<typeof gridDataset>, time: number): number[] {
+  const container = dataset.dataContainer;
+  const timeIndex = dataset.columnIndex.time;
+  return Array.from({ length: container.numRows() }, (_, i) => i).filter(
+    (row) => container.valueAt(row, timeIndex) === time
+  );
+}
+
+/** The indices of `twoHourGrid()`'s earlier (`1_000`) rows. */
+function earlierRowsOf(dataset: ReturnType<typeof gridDataset>): number[] {
+  return rowsAt(dataset, 1_000);
+}
+
+/** The same lattice at as many forecast hours as `times` gives, each blowing a bit harder. */
+function manyHourGrid(times: number[], side = 6) {
+  const rows: Array<Record<string, number>> = [];
+  times.forEach((time, index) => {
+    for (let j = 0; j < side; j++) {
+      for (let i = 0; i < side; i++) {
+        rows.push({ latitude: j, longitude: i, time, u: 12 + index, v: 0 });
+      }
+    }
+  });
+  return gridDataset(rows, { time: 'timestamp' });
+}
+
+const CONTEXT: FlowFieldContext = { tallest: 0 };
 
 function layerOver(
   dataset: ReturnType<typeof gridDataset>,
@@ -355,13 +407,24 @@ describe('flow field layer — reusing the trace', () => {
 });
 
 describe('flow field layer — the clock', () => {
-  it('runs every streamline over one window starting at the dashboard range', () => {
+  it('leaves the map\'s clock alone', () => {
+    // The trail's speed is not the wind's — the tracer normalises it to a
+    // legible number of pixels per cycle — so this layer has no business on the
+    // one axis a dashboard has. It animates itself; the clock is for the hour
+    // of the forecast that is drawn.
     const dataset = eastwardGrid(6);
     const layer = layerOver(dataset, COMPONENTS, { cycleSeconds: 30 });
 
     layer.formatLayerData({ 'grafana-A': dataset });
 
-    expect(layer.config.animation).toEqual({ enabled: true, domain: [1_000, 31_000] });
+    // kepler's rule, spelled out: a layer is animatable when it has switched
+    // the animation on *and* carries a window. Its base class hands every layer
+    // `{enabled: false}` — the stub base class here hands it nothing — so what
+    // is asserted is that this layer never turns it on, rather than the absence
+    // of a key that only the real kepler supplies.
+    const animation = layer.config.animation;
+    expect(animation?.enabled).not.toBe(true);
+    expect(animation?.domain).toBeUndefined();
   });
 
   it('traces the vertex times from zero, not from the epoch', () => {
@@ -500,6 +563,69 @@ describe('flow field layer — height', () => {
   it('flattens the stack when the exaggeration is turned down to zero', () => {
     expect(heightOf(3000, 3000, 0)).toBe(0);
   });
+
+  it('lays each vertex on the terrain under it, times the exaggeration and nothing else', () => {
+    // An altitude column that climbs 400 m a degree east is terrain, not a
+    // level, and terrain is real metres: the user's exaggeration multiplies
+    // it, but the normalisation against the tallest level and the width of
+    // the view must not — rescaling the ground to a share of the view would
+    // peel the lines off the basemap under them.
+    const rows: Array<Record<string, number>> = [];
+    for (let j = 0; j < 8; j++) {
+      for (let i = 0; i < 8; i++) {
+        rows.push({ latitude: j, longitude: i, u: 12, v: 0, altitude: 500 + 400 * i });
+      }
+    }
+    const dataset = gridDataset(rows);
+
+    const heightsUnder = (context: FlowFieldContext) => {
+      const layer = layerOver(
+        dataset,
+        { ...COMPONENTS, altitude: 'altitude' },
+        { elevationScale: 2, flowContext: context }
+      );
+      return layer.formatLayerData({ 'grafana-A': dataset }).data.flatMap((line: { path: number[][] }) => line.path);
+    };
+
+    for (const context of [
+      contextWith(3000),
+      { ...CONTEXT, tallest: 30_000, camera: cameraShowing({ west: 2, east: 5, south: 2, north: 5 }) },
+    ]) {
+      const vertices = heightsUnder(context);
+      expect(vertices.length).toBeGreaterThan(0);
+      for (const [lon, , height] of vertices) {
+        // The terrain is linear in longitude, so its bilinear sample is exact.
+        expect(height).toBeCloseTo((500 + 400 * lon) * 2, 3);
+      }
+    }
+  });
+
+  it('lifts a level whose geopotential height varies a little as one flat level', () => {
+    // 850 hPa is not one number: it runs from about 1,450 to 1,550 m across a
+    // synoptic map. Read as terrain for varying at all, the level lost its
+    // place in the stack — every vertex at its own real height, a few hundred
+    // metres off the ground, while the level above it was lifted to a share
+    // of the view.
+    const rows: Array<Record<string, number>> = [];
+    for (let j = 0; j < 8; j++) {
+      for (let i = 0; i < 8; i++) {
+        rows.push({ latitude: j, longitude: i, u: 12, v: 0, altitude: 1450 + (100 * i) / 7 });
+      }
+    }
+    const dataset = gridDataset(rows);
+    const layer = layerOver(
+      dataset,
+      { ...COMPONENTS, altitude: 'altitude' },
+      { flowContext: contextWith(1500) }
+    );
+
+    const heights = layer
+      .formatLayerData({ 'grafana-A': dataset })
+      .data.flatMap((line: { path: number[][] }) => line.path.map((vertex) => vertex[2]));
+
+    expect(new Set(heights).size).toBe(1);
+    expect(heights[0]).toBeCloseTo(heightOf(1500, 1500), 6);
+  });
 });
 
 describe('flow field layer — drawing', () => {
@@ -509,13 +635,33 @@ describe('flow field layer — drawing', () => {
     built.length = 0;
   });
 
-  it('gives deck the playhead relative to the window the lines were traced in', () => {
+  it('hands deck the cycle to run itself on', () => {
     const layer = layerOver(dataset, COMPONENTS, { cycleSeconds: 60 });
     const data = layer.formatLayerData({ 'grafana-A': dataset });
 
-    layer.renderLayer({ data, animationConfig: { currentTime: 21_000, domain: [1_000, 61_000] } });
+    layer.renderLayer({ data });
 
-    expect(built[0].currentTime).toBe(20_000);
+    expect(built[0].cycleMs).toBe(60_000);
+    expect(built[0].animate).toBe(true);
+  });
+
+  it('draws without anyone pressing play', () => {
+    // What this replaces: the field was blank until the map's clock ran, since
+    // a playhead parked at the start of the window sits where every trail has
+    // zero length. A dashboard that loads showing nothing reads as broken.
+    const layer = layerOver(dataset, COMPONENTS);
+    const data = layer.formatLayerData({ 'grafana-A': dataset });
+
+    expect(layer.renderLayer({ data })).toHaveLength(1);
+  });
+
+  it('draws a still field when the animation is switched off', () => {
+    const layer = layerOver(dataset, COMPONENTS, { animate: false });
+    const data = layer.formatLayerData({ 'grafana-A': dataset });
+
+    layer.renderLayer({ data });
+
+    expect(built[0].animate).toBe(false);
   });
 
   it('measures the trail against the cycle, not against a bare number', () => {
@@ -526,18 +672,9 @@ describe('flow field layer — drawing', () => {
     const layer = layerOver(dataset, COMPONENTS, { cycleSeconds: 60, trailShare: 5 });
     const data = layer.formatLayerData({ 'grafana-A': dataset });
 
-    layer.renderLayer({ data, animationConfig: { currentTime: 21_000, domain: [1_000, 61_000] } });
+    layer.renderLayer({ data });
 
-    expect(built[0].trailLength).toBe(3_000);
-  });
-
-  it('draws nothing before the clock has a value', () => {
-    // A paused field is a blank map: at the start of the window every trail has
-    // zero length, and with no playhead at all there is no window.
-    const layer = layerOver(dataset, COMPONENTS);
-    const data = layer.formatLayerData({ 'grafana-A': dataset });
-
-    expect(layer.renderLayer({ data, animationConfig: {} })).toEqual([]);
+    expect(built[0].trailMs).toBe(3_000);
   });
 
   it('switches itself off when the layer is hidden', () => {
@@ -576,7 +713,7 @@ describe('flow field layer — drawing', () => {
 
     expect(
       layer.renderLayer({
-        data: { data: [], speedDomain: [0, 1], signature: '', container: null },
+        data: { data: [], speedDomain: [0, 1], signature: '', container: null, stepMs: null },
         animationConfig: { currentTime: 5 },
       })
     ).toEqual([]);
@@ -871,6 +1008,355 @@ describe('flow field layer — the legend', () => {
   });
 });
 
+describe('flow field layer — walking the hours', () => {
+  it('traces a new hour, and keeps the old lines until it has', () => {
+    const dataset = twoHourGrid();
+    const layer = layerOver(dataset, COMPONENTS);
+
+    const first = layer.formatLayerData({ 'grafana-A': dataset });
+    expect(first.stepMs).toBe(2_000);
+
+    // The filter hides the later hour: the field is the earlier one now.
+    const filtered = { ...dataset, filteredIndex: earlierRowsOf(dataset) };
+    const second = layer.formatLayerData({ 'grafana-A': filtered });
+
+    expect(second.stepMs).toBe(1_000);
+    expect(second.data).not.toBe(first.data);
+  });
+
+  it('does not trace an hour it has already traced', () => {
+    const dataset = twoHourGrid();
+    const layer = layerOver(dataset, COMPONENTS);
+    const filtered = { ...dataset, filteredIndex: earlierRowsOf(dataset) };
+
+    const first = layer.formatLayerData({ 'grafana-A': dataset });
+    layer.formatLayerData({ 'grafana-A': filtered });
+    const back = layer.formatLayerData({ 'grafana-A': dataset });
+
+    // Stepping back to an hour already walked costs nothing: the same lines,
+    // by identity.
+    expect(back.data).toBe(first.data);
+  });
+
+  it('does not get stuck on the old hour when kepler hands the previous frame back', () => {
+    // kepler's real render loop passes the previous layerData in as
+    // `oldLayerData` on every call, not only when the caller has nothing new
+    // to hand it. A fast path keyed on signature and container alone reads a
+    // change of hour as "nothing relevant changed" — same columns, same
+    // knobs, same rows container — and would leave the map parked on the
+    // first hour it ever drew.
+    const dataset = twoHourGrid();
+    const layer = layerOver(dataset, COMPONENTS);
+    const filtered = { ...dataset, filteredIndex: earlierRowsOf(dataset) };
+
+    const first = layer.formatLayerData({ 'grafana-A': dataset });
+    const second = layer.formatLayerData({ 'grafana-A': filtered }, first);
+
+    expect(second.stepMs).toBe(1_000);
+    expect(second.data).not.toBe(first.data);
+  });
+
+  it('holds only the three hours most recently traced', () => {
+    // A dashboard left open on a long forecast would otherwise hold every
+    // hour it ever drew.
+    const times = [1_000, 2_000, 3_000, 4_000];
+    const dataset = manyHourGrid(times);
+    const layer = layerOver(dataset, COMPONENTS);
+    const at = (time: number) => ({ ...dataset, filteredIndex: rowsAt(dataset, time) });
+
+    const first = layer.formatLayerData({ 'grafana-A': at(1_000) });
+    layer.formatLayerData({ 'grafana-A': at(2_000) });
+    layer.formatLayerData({ 'grafana-A': at(3_000) });
+    // A fourth hour pushes the first one out.
+    layer.formatLayerData({ 'grafana-A': at(4_000) });
+
+    const again = layer.formatLayerData({ 'grafana-A': at(1_000) });
+    expect(again.data).not.toBe(first.data);
+  });
+
+  it('protects a revisited hour from eviction, and evicts the one left untouched', () => {
+    // Eviction used to go by trace order, not view order: a `Map`'s
+    // iteration order is insertion order, and a cache hit never re-inserted,
+    // so a hit's own position never moved. Revisiting an old hour then did
+    // nothing to protect it — only tracing something *new* did — which is
+    // the opposite of "the hour at the playhead and the two most recently
+    // drawn" that the eviction exists to keep.
+    const times = [1_000, 2_000, 3_000, 4_000];
+    const dataset = manyHourGrid(times);
+    const layer = layerOver(dataset, COMPONENTS);
+    const at = (time: number) => ({ ...dataset, filteredIndex: rowsAt(dataset, time) });
+
+    const a = layer.formatLayerData({ 'grafana-A': at(1_000) });
+    const b = layer.formatLayerData({ 'grafana-A': at(2_000) });
+    layer.formatLayerData({ 'grafana-A': at(3_000) });
+    // Revisiting A counts as using it, as recently as C.
+    layer.formatLayerData({ 'grafana-A': at(1_000) });
+    // A new fourth hour must now push out the one nobody has looked at
+    // since — B, not A.
+    layer.formatLayerData({ 'grafana-A': at(4_000) });
+
+    const aAgain = layer.formatLayerData({ 'grafana-A': at(1_000) });
+    const bAgain = layer.formatLayerData({ 'grafana-A': at(2_000) });
+
+    expect(aAgain.data).toBe(a.data);
+    expect(bAgain.data).not.toBe(b.data);
+  });
+});
+
+/**
+ * Two forecast hours whose time column is an ISO string, the way kepler holds
+ * one: raw in the container, with the numeric reading it compares by in
+ * `filterProps.mappedValue`, and the map's time filter in the dataset's own
+ * `filterRecord` — see `latestStepRows`. Returned with a way to move that
+ * filter's window in place, since kepler narrows the table it already has
+ * rather than handing the layer a new one.
+ */
+function isoTwoHourDataset(side: number, hours: Array<{ u: number; v: number }>) {
+  const first = Date.parse('2026-01-01T00:00:00Z');
+  const rows: Array<{ time: string; latitude: number; longitude: number; u: number; v: number }> = [];
+  const mapped: number[] = [];
+  hours.forEach(({ u, v }, hour) => {
+    const at = first + hour * 3_600_000;
+    for (let j = 0; j < side; j++) {
+      for (let i = 0; i < side; i++) {
+        rows.push({ time: new Date(at).toISOString(), latitude: j, longitude: i, u, v });
+        mapped.push(at);
+      }
+    }
+  });
+  const names = ['time', 'latitude', 'longitude', 'u', 'v'] as const;
+  const window = { type: 'timeRange', name: ['time'], value: [first, first] as [number, number] };
+  const dataset = {
+    dataContainer: {
+      numRows: () => rows.length,
+      valueAt: (row: number, column: number) => rows[row][names[column]],
+    },
+    fields: names.map((name) =>
+      name === 'time' ? { name, type: 'timestamp', filterProps: { mappedValue: mapped } } : { name }
+    ),
+    columnIndex: Object.fromEntries(names.map((name, index) => [name, index])) as Record<string, number>,
+    filterRecord: { gpu: [window] },
+  };
+  return {
+    dataset,
+    /** Moves the map's clock to hour `hour` (0-based), in place. */
+    showHour: (hour: number) => {
+      const at = first + hour * 3_600_000;
+      window.value = [at - 60_000, at + 60_000];
+    },
+    hourMs: (hour: number) => first + hour * 3_600_000,
+  };
+}
+
+describe('flow field layer — walking an ISO-timestamped forecast', () => {
+  it('leaves the first hour when the map\'s clock moves on, with the same table', () => {
+    // The regression: `latestStepOf` read `Number(valueAt(...))`, which is NaN
+    // for an ISO string, so every hour was named `null`. kepler narrows the
+    // table in place, so the container and the signature both stayed put, the
+    // fast path saw nothing change, and the field never left the hour it
+    // first drew — eastward here, when the map's clock was on the northward one.
+    const { dataset, showHour, hourMs } = isoTwoHourDataset(6, [
+      { u: 12, v: 0 },
+      { u: 0, v: 12 },
+    ]);
+    const layer = layerOver(dataset as never, COMPONENTS);
+
+    showHour(0);
+    const first = layer.formatLayerData({ 'grafana-A': dataset });
+    expect(first.stepMs).toBe(hourMs(0));
+
+    showHour(1);
+    const second = layer.formatLayerData({ 'grafana-A': dataset }, first);
+
+    expect(second.stepMs).toBe(hourMs(1));
+    const [line] = second.data;
+    // Northward: the latitude climbs and the longitude does not move.
+    expect(line.path[line.path.length - 1][1]).toBeGreaterThan(line.path[0][1]);
+    expect(line.path[line.path.length - 1][0]).toBeCloseTo(line.path[0][0], 6);
+  });
+});
+
+describe('flow field layer — a settled pan costs only the ground it uncovers', () => {
+  /**
+   * The same camera, nudged east by a few pixels' worth of ground.
+   *
+   * Moves `longitude` as well as `box`: `longitude` is the field
+   * `sameCameraState` actually compares (it is what a real `CameraState`
+   * carries), and `box` is this test file's own addition that only
+   * `fakeCamera` reads. Nudging one without the other would pan the seeded
+   * ground while leaving the layer's own camera-equality check unable to see
+   * that anything moved.
+   */
+  const nudgedEast = (camera: TestCamera, degrees: number): TestCamera => ({
+    ...camera,
+    longitude: camera.longitude + degrees,
+    box: { ...camera.box, west: camera.box.west + degrees, east: camera.box.east + degrees },
+  });
+
+  /**
+   * `line.cell`, keyed for lookup — only lines seeded through a camera carry
+   * one. Grouped into arrays rather than one line per key: a line that wraps
+   * the seamless loop is emitted twice, both copies sharing the same cell, so
+   * a single-value map would silently drop one of the two on every such cell.
+   */
+  const byCell = (lines: Array<{ cell?: string }>) => {
+    const map = new Map<string, Array<{ cell?: string }>>();
+    for (const line of lines) {
+      if (line.cell === undefined) {
+        continue;
+      }
+      const existing = map.get(line.cell);
+      if (existing) {
+        existing.push(line);
+      } else {
+        map.set(line.cell, [line]);
+      }
+    }
+    return map;
+  };
+
+  it('reuses most lines by identity when only the camera settles, at the same hour', () => {
+    // The regression this whole describe block exists for: `traceSignature`
+    // used to carry the raw camera, and `useFlowFieldContext` republishes a
+    // fresh one roughly every 250 ms once the view has settled — so almost
+    // every pan looked like a change to what the geometry is *made of* and
+    // threw the whole hour away, cells map included. Every settle then
+    // re-traced the entire field instead of only the strip that had just
+    // come into view.
+    const dataset = eastwardGrid(40);
+    const camera1 = cameraShowing({ west: 0, east: 39, south: 0, north: 39 });
+    const layer = layerOver(dataset, COMPONENTS, { density: 4000, flowContext: { ...CONTEXT, camera: camera1 } });
+
+    const first = layer.formatLayerData({ 'grafana-A': dataset });
+    const before = byCell(first.data);
+    expect(before.size).toBeGreaterThan(0);
+
+    // About a pixel's worth of ground, at this camera's width and extent.
+    const camera2 = nudgedEast(camera1, 0.05);
+    layer.config.visConfig = { ...layer.config.visConfig, flowContext: { ...CONTEXT, camera: camera2 } };
+    const second = layer.formatLayerData({ 'grafana-A': dataset });
+
+    expect(second.data).not.toBe(first.data);
+    const shared = second.data.filter((line: { cell?: string }) => line.cell && before.has(line.cell));
+    expect(shared.length).toBeGreaterThan(before.size * 0.5);
+    // Reused, not merely re-traced onto the same patch of ground: the very
+    // same object survived, which is what makes the reuse free.
+    expect(
+      shared.every((line: { cell?: string }) => (before.get(line.cell as string) ?? []).includes(line))
+    ).toBe(true);
+  });
+
+  it('does not throw away a held hour that was not the one just panned', () => {
+    // The more severe form of the same defect: the old code reset the whole
+    // `_hours` map on any signature change, so a pan while looking at one
+    // hour used to empty every *other* hour on hand too, not only the
+    // current one.
+    const dataset = twoHourGrid(40);
+    const camera1 = cameraShowing({ west: 0, east: 39, south: 0, north: 39 });
+    const layer = layerOver(dataset, COMPONENTS, { density: 4000, flowContext: { ...CONTEXT, camera: camera1 } });
+
+    // Trace the later hour, then switch to the earlier one.
+    const laterFirst = layer.formatLayerData({ 'grafana-A': dataset });
+    const filtered = { ...dataset, filteredIndex: earlierRowsOf(dataset) };
+    layer.formatLayerData({ 'grafana-A': filtered });
+
+    // Pan while the earlier hour is current — the later hour sits idle.
+    const camera2 = nudgedEast(camera1, 0.05);
+    layer.config.visConfig = { ...layer.config.visConfig, flowContext: { ...CONTEXT, camera: camera2 } };
+    layer.formatLayerData({ 'grafana-A': filtered });
+
+    // Back to the later hour: most of its lines should still be the ones
+    // traced right at the start, not a from-scratch retrace.
+    const laterAgain = layer.formatLayerData({ 'grafana-A': dataset });
+    const before = byCell(laterFirst.data);
+    const shared = laterAgain.data.filter((line: { cell?: string }) => line.cell && before.has(line.cell));
+    expect(shared.length).toBeGreaterThan(before.size * 0.5);
+    // By identity, not merely by matching cell key: `seedOf`/`phaseOf` are
+    // pure functions of the cell, so a from-scratch retrace lands on the same
+    // ground and would pass a same-key check too, without the hour — or its
+    // cells map — having survived at all.
+    expect(
+      shared.every((line: { cell?: string }) => (before.get(line.cell as string) ?? []).includes(line))
+    ).toBe(true);
+  });
+});
+
+describe('flow field layer — a zoom re-traces what the scale shapes', () => {
+  /**
+   * A lifted level over a steady wind, seen through `camera`: one altitude
+   * everywhere and a tallest of the same, so the height is the whole
+   * exaggeration and follows the width of the view.
+   */
+  const liftedLayer = (camera: TestCamera) => {
+    const dataset = eastwardGrid(40, 12, 3000);
+    const layer = layerOver(
+      dataset,
+      { ...COMPONENTS, altitude: 'altitude' },
+      { density: 4000, flowContext: { ...CONTEXT, tallest: 3000, camera } }
+    );
+    return { dataset, layer };
+  };
+
+  /** How long a line is on this camera's screen, in pixels, end to end. */
+  const pixelLength = (camera: TestCamera, line: { path: number[][] }) => {
+    const pxPerDegree = camera.width / (camera.box.east - camera.box.west);
+    const start = line.path[0];
+    const end = line.path[line.path.length - 1];
+    return Math.hypot(end[0] - start[0], end[1] - start[1]) * pxPerDegree;
+  };
+
+  /** Each cell's first line, for comparing one trace with another cell by cell. */
+  const firstByCell = (lines: Array<{ cell?: string; path: number[][] }>) => {
+    const map = new Map<string, { cell?: string; path: number[][] }>();
+    for (const line of lines) {
+      if (line.cell !== undefined && !map.has(line.cell)) {
+        map.set(line.cell, line);
+      }
+    }
+    return map;
+  };
+
+  it('draws a line zoomed into within one level as long, and as high, as a fresh trace would', () => {
+    // The defect: a line kept in the hour's cells map is reused as it was
+    // traced, and its length on screen (through the metres a pixel covers) and
+    // a lifted level's height (through the width of the view) both depend on
+    // the camera's scale. Measured in the browser, zoom 7.0 -> 7.4 kept 3,426
+    // lines at ~171 px instead of 130, and a level stayed at 73,252 m where a
+    // fresh trace put it at 55,500 m while its own vector-field arrows moved.
+    const wide = cameraShowing({ west: 0, east: 39, south: 0, north: 39 });
+    // Zoomed by 2^0.4 about the same centre, still inside the same cell level.
+    // The zoom itself is moved too: it is what a real camera state carries,
+    // and the only thing that tells this one apart from the wide one.
+    const span = 39 / Math.pow(2, 0.4);
+    const close = {
+      ...cameraShowing({ west: 19.5 - span / 2, east: 19.5 + span / 2, south: 19.5 - span / 2, north: 19.5 + span / 2 }),
+      zoom: wide.zoom + 0.4,
+    };
+
+    const { dataset, layer } = liftedLayer(wide);
+    const before = layer.formatLayerData({ 'grafana-A': dataset });
+    layer.config.visConfig = { ...layer.config.visConfig, flowContext: { ...CONTEXT, tallest: 3000, camera: close } };
+    const zoomed = layer.formatLayerData({ 'grafana-A': dataset }, before);
+
+    const fresh = liftedLayer(close);
+    const expected = firstByCell(fresh.layer.formatLayerData({ 'grafana-A': fresh.dataset }).data);
+
+    // The zoom stayed inside one cell level, so the old map had these cells
+    // to offer — which is what makes this a test of reuse at all.
+    const beforeCells = firstByCell(before.data);
+    const zoomedCells = firstByCell(zoomed.data);
+    const kept = [...zoomedCells.keys()].filter((cell) => beforeCells.has(cell));
+    expect(kept.length).toBeGreaterThan(zoomedCells.size * 0.5);
+
+    for (const [cell, line] of zoomedCells) {
+      const reference = expected.get(cell)!;
+      expect(reference).toBeDefined();
+      expect(pixelLength(close, line)).toBeCloseTo(pixelLength(close, reference), 6);
+      expect(line.path.map((vertex) => vertex[2])).toEqual(reference.path.map((vertex) => vertex[2]));
+    }
+  });
+});
+
 describe('fieldSpeedDomain', () => {
   const fieldOf = (data: number[]) => ({
     data: Float32Array.from(data),
@@ -947,5 +1433,20 @@ describe('traceSignature', () => {
     const after = { columns: {}, visConfig: { directionConvention: 'towards' } };
 
     expect(traceSignature(after)).not.toBe(traceSignature(before));
+  });
+
+  it('ignores the camera', () => {
+    // The regression this guards: `useFlowFieldContext` republishes a fresh
+    // camera roughly every 250 ms once the view has settled. Folding it in
+    // here would make almost every pan look like a change to what the
+    // geometry is made of, and `formatLayerData` empties every hour it holds
+    // — cells map included — whenever the signature changes. A settled pan
+    // must cost only the ground that just came into view, not the whole
+    // field; see `formatLayerData`'s own, separate handling of the camera.
+    const camera = { latitude: 0, longitude: 0, zoom: 8, pitch: 0, bearing: 0, width: 800, height: 800 };
+    const before = { columns: {}, visConfig: { flowContext: { tallest: 0, camera } } };
+    const after = { columns: {}, visConfig: { flowContext: { tallest: 0, camera: { ...camera, longitude: 4 } } } };
+
+    expect(traceSignature(after)).toBe(traceSignature(before));
   });
 });

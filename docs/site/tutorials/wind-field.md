@@ -100,16 +100,15 @@ straight from a GFS file needs no renaming. Both pairs are all-or-nothing: half 
 nothing.
 :::
 
-## 5. Press play
+## 5. Watch it
 
-::: warning The map looks empty until the clock runs
-At the start of the animation window every trail has zero length, so a paused field is a blank map.
+The field is already moving: it animates on a clock of its own, sixty seconds to the loop, and
+nobody has to press anything. The timeline at the bottom of the map is not involved — it belongs to
+the data, and a grid of one hour has no need of it.
 
-Press **play** on the timeline at the bottom. The window is 60 seconds long and loops.
-:::
-
-This catches everyone once, including the person who wrote this page: the panel reported 4,826
-traced lines and drew nothing at all, because the playhead was parked at the start.
+If the map holds still, look for three reasons before anything else: **Animation → Animate** is off,
+the panel is scrolled out of view, or this machine is set to reduce motion. In all three the
+streamlines are still drawn, end to end rather than as moving trails.
 
 ## 6. Tune it, on the layer
 
@@ -125,6 +124,38 @@ three-kilometre patches around two weather stations, and a field of parallel arr
 block at a density a swirling one reads well at. Lower it when the field looks matted, raise it when
 it looks sparse.
 
+### Walking the forecast
+
+Not a second query: another query for another hour becomes its own dataset, and so its own
+Streamlines layer stacked on top of this one — kepler has no way to merge them back into one field,
+and the map's time filter binds only to the **first** dataset it finds with a timestamp column, so
+the second layer would sit there deaf to the clock. One query, unnesting the hourly arrays Open-Meteo
+already gives you, is what turns "the whole day" into "one row per hour":
+
+```sql
+SELECT round(latitude  * 4) / 4 AS latitude,
+       round(longitude * 4) / 4 AS longitude,
+       CAST(UNNEST(hourly.time[1:3]) AS TIMESTAMP) AS "time",
+       UNNEST(hourly.wind_speed_10m[1:3])     AS speed,
+       UNNEST(hourly.wind_direction_10m[1:3]) AS direction
+FROM read_json_auto('https://api.open-meteo.com/v1/forecast?latitude=…&longitude=…&hourly=wind_speed_10m,wind_direction_10m&forecast_days=1');
+```
+
+`hourly.time`, `hourly.wind_speed_10m` and `hourly.wind_direction_10m` are parallel arrays, one
+entry per forecast hour. DuckDB unnests same-length lists together, position by position, rather
+than crossing them — so this turns the tutorial's 49 rows of "the whole day" into 49 × 3 rows of
+"one hour each." `[1:3]` keeps it to the first three hours; drop the slice for the whole day, at
+forty-nine times the rows. `CAST(… AS TIMESTAMP)` matters as much as the unnesting itself: without
+it Open-Meteo's timestamp strings stay text, and a query that never names a time column is exactly
+what section 5 described — a field with nothing for the map's clock to hold onto.
+
+Every hour now reaches the panel as one dataset; it is the map's own clock, at the bottom, that
+picks which one the field draws, always the **latest** hour still inside its window.
+
+Drag the clock's window back and the field redraws for an earlier hour without its lines jumping to
+a fresh scatter — they stay anchored to the same patch of ground, so what changes is the shape of
+the flow, not where it starts. Widen the window back out and the newest hour wins again.
+
 ## 7. Style it
 
 Two knobs decide the character of the map, both under **Streamlines**:
@@ -136,8 +167,8 @@ Two knobs decide the character of the map, both under **Streamlines**:
 Colour comes from speed by default: each line is coloured by its own mean, through the ramp under
 **Colour**. Turn **Colour by speed** off for a single flat colour.
 
-**Animation → Cycle** is the length of the loop; the clock at the bottom follows it. **Line
-lifetime** next to it is how much of the field is lit at once — raise it for a fuller map.
+**Animation → Cycle** is the length of the loop. **Line lifetime** next to it is how much of the
+field is lit at once — raise it for a fuller map.
 
 Leave **Seamless loop** on. Off, the field visibly empties as the animation reaches the end and
 refills as it starts again; on, a line that runs past the end is carried round to the beginning and
@@ -177,7 +208,7 @@ half-broken grid produces a patchy map rather than a smooth wrong one.
 - **The grid must be regular**, and a coordinate API that snaps to its own model grid will quietly
   destroy that. Round, and space wider than the snapping error.
 - A field with no lines and no error is the signature of a failed grid inference.
-- Streamlines draw nothing until you press play.
+- The streamlines animate on their own clock; the map's timeline is for the data, not for them.
 - Density is a per-screen budget, and it lives on the layer along with everything else.
 
 ## Where to go from here

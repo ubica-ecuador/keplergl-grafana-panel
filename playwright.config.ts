@@ -55,6 +55,21 @@ export default defineConfig<PluginOptions>({
       password: process.env.GRAFANA_ADMIN_PASSWORD || 'admin',
     },
 
+    /*
+     * The flow field animates itself, and these maps render in software.
+     *
+     * A field of nine thousand streamlines repainting for as long as it is on
+     * screen keeps swiftshader on the main thread permanently: measured on the
+     * legend spec, `evaluate` timed out at 30 s and a click on a switch that
+     * Playwright itself called "visible, enabled and stable" never landed.
+     *
+     * The layer already honours this preference by drawing the streamlines
+     * still, which is what every spec but one wants: they are about geometry,
+     * colour and switches, not about movement. The one that *is* about movement
+     * asks for motion back — see `flowfield.spec.ts`.
+     */
+    reducedMotion: 'reduce',
+
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
   },

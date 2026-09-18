@@ -90,6 +90,14 @@ describe('the flow field panel', () => {
     expect(container.textContent).toContain('Downhill');
   });
 
+  it('offers the switch that stops the animation', () => {
+    // The knob for a still field, and the answer to a map that has to be
+    // printed or read rather than watched.
+    const { container } = renderPanel();
+
+    expect(container.textContent).toContain('Animate');
+  });
+
   it('keeps the direction out of the panel when the field is a wind', () => {
     // u and v already say which way the air goes. Offering to reverse them here
     // would be a knob that does nothing, which is worse than no knob.

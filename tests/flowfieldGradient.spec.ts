@@ -16,9 +16,9 @@ const meanEastward = (sample: StreamlineSample[]) =>
  * velocity anywhere in either query, and `u` and `v` are computed from the
  * slope, which is the whole of what this mode does.
  *
- * Asserted as geometry rather than as a picture, for the reason the sibling
- * spec gives: at the start of the animation window every trail has zero length,
- * so a paused field draws nothing at all.
+ * Asserted as geometry rather than as a picture: what is at stake is which way
+ * the lines run, and a screenshot of an animated field answers that no better
+ * than the traced paths do.
  */
 
 /** The panel's map, once it holds a flow field that has traced something. */

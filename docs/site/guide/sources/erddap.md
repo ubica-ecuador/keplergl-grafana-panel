@@ -166,12 +166,18 @@ different things.
 
 ## Which clock, and why it is a dropdown
 
-A velocity field holds **one instant**. The panel keeps the earliest timestep a query returns and
-drops the rest along with the time column, so there is no forecast for the map's own time bar to
-walk — that bar is a synthetic sixty-second loop animating the streaks.
+The map's own clock can walk a forecast: every hour a query returns reaches the panel, and the
+clock at the bottom draws the latest one still inside its window — see
+[the velocity fields guide](../data/velocity-fields). That needs every hour to arrive as rows of
+**one query**, though, and ERDDAP does not hand you that: its subset syntax pins **one instant per
+request** (`Thgt%5B(2026-09-10T12:00:00Z)%5D…` above), so a day of hours is a day of separate HTTP
+requests, not one query's worth of nested arrays the way [an unnested JSON forecast is](../../tutorials/wind-field#walking-the-forecast).
 
-So the forecast step is a Grafana template variable, and the list comes from the server rather than
-from arithmetic:
+It also has to move the background layer with it. The polygons painting the field are the *same
+rows* as the streamlines — "one query, one dataset, two layers" above — and a GeoJSON layer has no
+clock of its own to bind to; whichever instant the query names is what both layers show together.
+Picking that instant, and re-running the query for it, is what the dropdown is for — a Grafana
+template variable, with the list coming from the server rather than from arithmetic:
 
 ```sql
 SELECT strftime(paso::TIMESTAMP - INTERVAL '5 hours', '%d %b %H:%M') || ' local' AS __text,

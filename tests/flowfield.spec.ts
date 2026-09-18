@@ -31,10 +31,11 @@ test.describe.configure({ timeout: 180_000 });
  * rows are that lattice; the streamlines are computed by the layer, from the
  * viewport, and exist nowhere in the data.
  *
- * The map is deliberately not screenshotted. At the start of the animation
- * window every trail has zero length, so a paused field draws nothing at all —
- * a picture would assert where the playhead is rather than what the layer did.
- * What is asserted is the geometry the layer traced.
+ * This first test asserts the geometry the layer traced rather than a picture
+ * of it: what is at stake here is which layers the panel built and how many
+ * lines came out, and a screenshot would answer neither. The test below does
+ * take pictures, because what it asks — does this move on its own? — is a
+ * question about pixels.
  */
 test('draws a velocity grid as a flow field, superseding the point layer', async ({
   gotoPanelEditPage,
@@ -60,31 +61,46 @@ test('draws a velocity grid as a flow field, superseding the point layer', async
   await expect.poll(async () => (await readFlowField(map))?.lines ?? 0, { timeout: 60_000 }).toBeGreaterThan(100);
 });
 
-test('runs the streamlines on a clock kepler agrees with', async ({
-  gotoPanelEditPage,
-  readProvisionedDashboard,
-  page,
-}) => {
-  test.slow();
-  // `layerVisConfigChange` recomputes a layer's data but never republishes the
-  // animation domain, so without the nudge in `useFlowFieldAnimationDomain` the
-  // window the lines were traced in is one the clock knows nothing about — and
-  // on first load the time widget does not appear at all.
-  const dashboard = await readProvisionedDashboard({ fileName: 'flowfield.json' });
-  const panelEditPage = await gotoPanelEditPage({ dashboard, id: '1' });
+// The suite runs with `prefers-reduced-motion: reduce` so the software renderer
+// is not pegged by a field nobody is watching — see `playwright.config.ts`. This
+// test is the exception, because movement is what it asks about.
+test.describe('with motion allowed', () => {
+  test.use({ reducedMotion: 'no-preference' });
 
-  const map = panelEditPage.panel.locator.locator('canvas').first();
-  await expect(map).toBeVisible({ timeout: 60_000 });
-  await settle(page);
+  test('animates itself, and leaves kepler\'s clock alone', async ({
+    gotoPanelEditPage,
+    readProvisionedDashboard,
+    page,
+  }) => {
+    test.slow();
+    // What this replaces: the field used to be stretched over kepler's own clock,
+    // so it drew nothing until someone pressed play — and it spent the map's one
+    // time axis on a phase that says nothing about the weather.
+    const dashboard = await readProvisionedDashboard({ fileName: 'flowfield.json' });
+    const panelEditPage = await gotoPanelEditPage({ dashboard, id: '1' });
 
-  await expect.poll(async () => (await readFlowField(map))?.animationDomain, { timeout: 60_000 }).not.toBeNull();
-  await expect.poll(async () => (await readFlowField(map))?.lines ?? 0, { timeout: 60_000 }).toBeGreaterThan(100);
+    const map = panelEditPage.panel.locator.locator('canvas').first();
+    await expect(map).toBeVisible({ timeout: 60_000 });
+    await settle(page);
+    await expect.poll(async () => (await readFlowField(map))?.lines ?? 0, { timeout: 60_000 }).toBeGreaterThan(100);
 
-  const field = await readFlowField(map);
-  const [start, end] = field!.domain!;
-  // The default cycle, in the window the layer traced.
-  expect(end - start).toBe(60_000);
-  expect(field!.animationDomain).toEqual(field!.domain);
+    const field = await readFlowField(map);
+    // kepler hands every layer `animation: {enabled: false}` (`base-layer.ts`), so
+    // the claim is not that the key is absent but that this layer never switches
+    // it on — and that the map's clock is left with no window at all, which is
+    // what keeps the time widget off a map whose only layer is a field.
+    expect(field!.animation?.enabled).not.toBe(true);
+    expect(field!.animationDomain).toBeNull();
+
+    // Nobody presses play, and the picture has to change anyway. Two shots of the
+    // same canvas a second apart: equal bytes would mean a still map, and a still
+    // map is what this whole change exists to end.
+    const first = await map.screenshot();
+    await page.waitForTimeout(1_500);
+    const second = await map.screenshot();
+
+    expect(Buffer.compare(first, second)).not.toBe(0);
+  });
 });
 
 test('re-traces the field when the layer panel asks for fewer lines', async ({
@@ -187,11 +203,11 @@ test('shows its colour ramp in the legend, and follows a range set by hand', asy
 /**
  * What this layer would hand deck right now, asked of the layer itself.
  *
- * Not measured off the canvas, though that was the first instinct. Under the
- * software renderer the animation advances about a tenth of a second of its own
- * clock per second of real time, so the playhead never leaves the start of the
- * window — where every trail has zero length and the map is legitimately blank.
- * A pixel count there measures the renderer's speed, not the layer's decision.
+ * Not measured off the canvas, though that was the first instinct: a hidden
+ * layer and a layer drawn in a colour close to the basemap's look the same to a
+ * pixel count, and what is at issue here is the decision, not the paint. (The
+ * test above does read pixels, because *movement* is a thing only pixels can
+ * show, and the field's clock runs in real time whatever the renderer manages.)
  */
 async function deckVisibility(map: import('@playwright/test').Locator): Promise<boolean | undefined> {
   return map.evaluate((node) => {
@@ -248,4 +264,129 @@ test('is switched off by the eye in the layer panel', async ({
   await page.locator('.layer-panel__header').first().hover();
   await eye.click();
   await expect.poll(() => deckVisibility(map), { timeout: 30_000 }).toBe(true);
+});
+
+/**
+ * Narrows the map's time filter so its right edge sits at the middle of the
+ * dataset's own distinct hours — an earlier hour becomes the latest one still
+ * inside the window.
+ *
+ * Not driven through a slider: kepler's time widget renders `RangeSlider` with
+ * `showInput={false}` (`time-range-slider.tsx`), so its two handles are plain
+ * `<span>` elements a `MouseEventHandler` drags — there is no `<input>` here for
+ * Playwright to focus or send a key to, unlike the density and legend controls
+ * elsewhere in this file. Driven through the store instead, the way
+ * `readFlowField` reaches it: walk the React fiber from the map node up to the
+ * `<Provider store>`, then dispatch the same shape `wrapTo(KEPLER_INSTANCE_ID,
+ * createOrUpdateFilter(...))` builds in `keplerAdapter.ts` — built by hand
+ * because nothing in the bundle exposes `@kepler.gl/actions` to the page.
+ */
+async function narrowTimeFilterToMiddleHour(map: import('@playwright/test').Locator): Promise<void> {
+  await map.evaluate((node) => {
+    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
+    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
+    let store: any = null;
+    while (fiber) {
+      const candidate = fiber.memoizedProps && fiber.memoizedProps.store;
+      if (candidate && typeof candidate.getState === 'function') {
+        store = candidate;
+        break;
+      }
+      fiber = fiber.return;
+    }
+    if (!store) {
+      throw new Error('kepler store not found from map node');
+    }
+    const state = store.getState();
+    const instanceId = Object.keys(state.keplerGl ?? {})[0];
+    const entry = state.keplerGl?.[instanceId];
+    const filter = (entry?.visState?.filters ?? []).find((f: { type?: string }) => f.type === 'timeRange');
+    const dataset = Object.values(entry?.visState?.datasets ?? {})[0] as any;
+    const timeIdx = (dataset?.fields ?? []).findIndex((f: { type?: string }) => f.type === 'timestamp');
+    if (!filter || !dataset || timeIdx < 0) {
+      throw new Error('no time filter, or no time column to read it from');
+    }
+
+    // The middle of the dataset's own distinct hours, not a hardcoded
+    // timestamp: read straight from the rows so the test does not have to
+    // agree with the fixture's exact epoch values by coincidence.
+    const times = new Set<number>();
+    for (let i = 0; i < dataset.dataContainer.numRows(); i++) {
+      times.add(Number(dataset.dataContainer.valueAt(i, timeIdx)));
+    }
+    const sorted = [...times].sort((a, b) => a - b);
+    const middle = sorted[Math.floor((sorted.length - 1) / 2)];
+
+    const action = {
+      type: '@@kepler.gl/CREATE_OR_UPDATE_FILTER',
+      id: filter.id,
+      dataId: undefined,
+      field: undefined,
+      value: [filter.value[0], middle],
+    };
+    store.dispatch({
+      type: action.type,
+      payload: { ...action, meta: { ...(action as { meta?: unknown }).meta, _id_: instanceId } },
+      meta: { _forward_: '@redux-forward/FORWARD', _addr_: `@@KG_${instanceId.toUpperCase()}` },
+    });
+  });
+}
+
+test('walks the forecast with the map’s clock, without moving the lines', async ({
+  gotoPanelEditPage,
+  readProvisionedDashboard,
+  page,
+}) => {
+  test.slow();
+  // The two halves of this change, in one test: the hour is the clock's to
+  // choose, and choosing another one must change the shape of the field
+  // without reshuffling where its lines start.
+  const dashboard = await readProvisionedDashboard({ fileName: 'flowfieldHours.json' });
+  const panelEditPage = await gotoPanelEditPage({ dashboard, id: '1' });
+
+  const map = panelEditPage.panel.locator.locator('canvas').first();
+  await expect(map).toBeVisible({ timeout: 60_000 });
+  await settle(page);
+  await expect.poll(async () => (await readFlowField(map))?.lines ?? 0, { timeout: 60_000 }).toBeGreaterThan(100);
+
+  const before = (await readFlowField(map))!.sample;
+
+  // See `narrowTimeFilterToMiddleHour`: the dashboard's default time range
+  // covers all three hours, so the map opens on the latest one — this moves
+  // the window's right edge down to the middle hour, which becomes the new
+  // latest one standing inside it.
+  await narrowTimeFilterToMiddleHour(map);
+
+  // A small pan, between the two reads on purpose: at a fixed camera this
+  // test would pass just as well against the old, pixel-seeded tracer — a
+  // screen pixel names the same point on screen whether or not the hour
+  // changed underneath it. Moving the camera is what only a *ground-cell*
+  // seed can survive: the flowfieldHours fixture stays on one level at this
+  // zoom, so the cells barely move, and most of `before`'s starts should
+  // still be there once the dust settles.
+  const box = await map.boundingBox();
+  if (!box) {
+    throw new Error('map has no bounding box');
+  }
+  const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await page.mouse.move(centre.x, centre.y);
+  await page.mouse.down();
+  await page.mouse.move(centre.x + 12, centre.y + 8, { steps: 4 });
+  await page.mouse.up();
+  await settle(page);
+
+  await expect
+    .poll(async () => JSON.stringify((await readFlowField(map))!.sample.map((s) => s.eastward)), { timeout: 30_000 })
+    .not.toBe(JSON.stringify(before.map((s) => s.eastward)));
+
+  const after = (await readFlowField(map))!.sample;
+  // Pins which hour actually won: of the three, only the middle one
+  // (2026-01-01T01:00Z, the shear negated) blows westward everywhere — every
+  // sample's eastward drift has to be negative once the window has narrowed
+  // to it, not just "some number different from before."
+  expect(after.every((s) => s.eastward < 0)).toBe(true);
+
+  const starts = (rows: typeof before) => new Set(rows.map((s) => `${s.lng.toFixed(4)}:${s.lat.toFixed(4)}`));
+  const kept = [...starts(after)].filter((key) => starts(before).has(key));
+  expect(kept.length).toBeGreaterThan(after.length * 0.5);
 });

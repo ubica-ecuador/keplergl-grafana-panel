@@ -13,8 +13,6 @@ export interface FlowFieldLayerState {
   altitudeMeters: number;
   /** What the layer is currently carrying. */
   context?: FlowFieldContext;
-  /** The animation window the layer has settled on, once it has traced. */
-  domain?: [number, number] | null;
   /**
    * The kepler layer type this entry came from, when the caller knows it.
    *
@@ -70,8 +68,7 @@ function isStackedLevel(layer: FlowFieldLayerState): boolean {
  */
 export function outdatedFlowContexts(
   layers: FlowFieldLayerState[],
-  camera: CameraState | null,
-  baseMs: number
+  camera: CameraState | null
 ): FlowContextPatch[] {
   if (layers.length === 0) {
     return [];
@@ -79,7 +76,6 @@ export function outdatedFlowContexts(
 
   const context: FlowFieldContext = {
     camera: camera ?? undefined,
-    baseMs,
     tallest: Math.max(0, ...layers.filter(isStackedLevel).map((layer) => layer.altitudeMeters)),
   };
 
@@ -91,7 +87,7 @@ export function sameContext(a: FlowFieldContext | undefined, b: FlowFieldContext
   if (!a) {
     return false;
   }
-  return a.baseMs === b.baseMs && a.tallest === b.tallest && sameCameraState(a.camera, b.camera);
+  return a.tallest === b.tallest && sameCameraState(a.camera, b.camera);
 }
 
 /**

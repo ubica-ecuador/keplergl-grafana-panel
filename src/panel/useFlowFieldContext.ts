@@ -19,14 +19,6 @@ interface Params {
   store: Store | null;
   /** kepler only accepts actions once its instance has registered. */
   isReady: boolean;
-  /**
-   * Epoch ms the streamline animation starts from — the dashboard range's start.
-   *
-   * Started at "now" instead, the animation runs into the future, and the
-   * default time sync — which pushes the dashboard range onto the map as a
-   * filter — hides the whole layer.
-   */
-  baseMs: number;
 }
 
 /**
@@ -44,13 +36,8 @@ interface Params {
  * playhead, and the previous version of this hook had to capture and restore
  * both on every pan.
  */
-export function useFlowFieldContext({ store, isReady, baseMs }: Params): void {
-  const baseRef = useRef(baseMs);
+export function useFlowFieldContext({ store, isReady }: Params): void {
   const publishRef = useRef<() => void>(() => undefined);
-
-  useEffect(() => {
-    baseRef.current = baseMs;
-  });
 
   useEffect(() => {
     if (!store || !isReady) {
@@ -63,7 +50,7 @@ export function useFlowFieldContext({ store, isReady, baseMs }: Params): void {
     let lastSeen: MapStateLike | null = null;
 
     const pending = () =>
-      outdatedFlowContexts(readFlowFieldLayers(store), cameraFromMapState(readMapState(store)), baseRef.current);
+      outdatedFlowContexts(readFlowFieldLayers(store), cameraFromMapState(readMapState(store)));
 
     const publish = () => {
       timer = null;
@@ -122,13 +109,4 @@ export function useFlowFieldContext({ store, isReady, baseMs }: Params): void {
     };
   }, [store, isReady]);
 
-  // A new dashboard range moves the clock the streamlines run on, and nothing
-  // in the map's own state changes to announce it.
-  useEffect(() => {
-    if (!store || !isReady) {
-      return;
-    }
-    const publish = publishRef.current;
-    void Promise.resolve().then(publish);
-  }, [store, isReady, baseMs]);
 }

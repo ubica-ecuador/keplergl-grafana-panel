@@ -701,39 +701,8 @@ export function readFlowFieldLayers(store: Store): FlowFieldLayerState[] {
           config.visConfig ?? {}
         ),
         context: config.visConfig?.flowContext,
-        domain: (layer.config as { animation?: { domain?: [number, number] | null } }).animation?.domain ?? null,
       };
     });
-}
-
-/**
- * Makes kepler notice that a layer's animation window has moved.
- *
- * `layerVisConfigChange` recomputes the layer's data but never republishes the
- * animation domain — only a change of `columns` or of `isVisible` does
- * (`vis-state-updaters.js`). So a flow field that has just been told where the
- * map is, or whose cycle the user has just lengthened, ends up with a window the
- * clock at the bottom of the map knows nothing about: the widget shows the old
- * one, or never appears at all.
- *
- * Re-asserting the visibility it already has is the cheapest of the two doors:
- * `isVisible` is in kepler's own list of properties that do not affect layer
- * data, so nothing is recalculated on the way through.
- */
-export function republishAnimationDomain(store: Store, dispatch: Dispatch, layerId: string): boolean {
-  const layer = getVisState(store)?.layers.find((candidate) => candidate.id === layerId);
-  if (!layer) {
-    return false;
-  }
-  dispatch(
-    wrapTo(
-      KEPLER_INSTANCE_ID,
-      layerConfigChange(layer as unknown as Parameters<typeof layerConfigChange>[0], {
-        isVisible: (layer.config as { isVisible?: boolean }).isVisible,
-      })
-    )
-  );
-  return true;
 }
 
 /** The animation window `animationConfig` is currently showing. */

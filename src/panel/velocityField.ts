@@ -49,8 +49,6 @@ export type ScreenCameraFactory = (camera: CameraState) => ScreenCamera | null;
 export interface FlowFieldContext {
   /** Where the map is looking from, so seeding and step length follow the screen. */
   camera?: CameraState;
-  /** Epoch ms the animation starts from — the dashboard range's start. */
-  baseMs: number;
   /**
    * The tallest level on the map, in metres.
    *
@@ -219,17 +217,196 @@ export const VELOCITY_LEGEND_CHANNEL = {
   channelScaleType: 'color',
 } as const;
 
+/** One filter as kepler leaves it inside a dataset's own filter record — see `timeWindowOf`. */
+interface DatasetFilterRecordEntry {
+  type?: string;
+  value?: unknown;
+  /** kepler's own: one field name per dataset the filter is bound to. */
+  name?: unknown;
+}
+
+/** kepler's `KeplerTable.filterRecord`: the same filters, sorted by where each one runs. */
+interface DatasetFilterRecord {
+  cpu?: DatasetFilterRecordEntry[];
+  gpu?: DatasetFilterRecordEntry[];
+}
+
 /** The kepler dataset a velocity layer reads: rows, and the columns they are in. */
 export interface VelocityDataset {
   dataContainer?: { numRows(): number; valueAt(row: number, column: number): unknown };
-  fields?: Array<{ name: string }>;
+  /**
+   * `type` is kepler's own: a time column carries `timestamp`. `filterProps` is
+   * also kepler's own, and only present once a filter has bound to the field —
+   * see `timeValueAt`.
+   */
+  fields?: Array<{ name: string; type?: string; filterProps?: { mappedValue?: unknown[] } }>;
+  /**
+   * The rows that survived kepler's *CPU-mode* filters, when it has applied
+   * any — kepler defaults a `timestamp` field's filter to GPU mode
+   * (`getFilterProps` in `@kepler.gl/utils` sets `gpu: true` for
+   * `ALL_FIELD_TYPES.timestamp`), and a numeric `range` filter the same way
+   * (`ALL_FIELD_TYPES.real`/`.integer`), so in practice this narrows for
+   * neither a time window nor a numeric threshold — only for a filter kepler
+   * happens to run on the CPU (a category picked from a list, say). The time
+   * window reaches the field a different way — see `timeWindowOf`.
+   */
+  filteredIndex?: number[];
+  /** Set by `KeplerTable.filterTable` on every filter change — see `timeWindowOf`. */
+  filterRecord?: DatasetFilterRecord;
+}
+
+/** kepler's name for a time column. */
+const TIME_FIELD_TYPE = 'timestamp';
+
+/** Which column holds the time, or -1. */
+function timeColumnOf(dataset: VelocityDataset): number {
+  return (dataset.fields ?? []).findIndex((field) => field?.type === TIME_FIELD_TYPE);
+}
+
+/** Whether a filter's `name` — kepler's own, one entry per dataset it binds to — names `field`. */
+function bindsToField(filterName: unknown, field: string | undefined): boolean {
+  if (!field) {
+    return false;
+  }
+  return Array.isArray(filterName) ? filterName.includes(field) : filterName === field;
+}
+
+/**
+ * The window a time-range filter bound to this dataset's own time column is
+ * open to, or null when there is none.
+ *
+ * Read from the dataset's own filter record rather than trusted to have already
+ * narrowed `filteredIndex`, because it has not — see the field comment on
+ * `filteredIndex`. Measured in the browser: narrowing the map's time filter
+ * left `filteredIndex` holding every row of every hour, while
+ * `dataset.filterRecord.gpu` carried the filter's real, narrowed `[from, to]`
+ * throughout.
+ *
+ * Both buckets (`cpu` and `gpu`) are checked, and the match is by field name
+ * rather than "the first `timeRange` filter there is": cheap either way, and
+ * it keeps working if a kepler version ever sorts a time filter into `cpu` (a
+ * category filter already living in that bucket does not disqualify it), or if
+ * a second, unrelated time-range filter is ever bound to some other column of
+ * the same dataset.
+ */
+function timeWindowOf(dataset: VelocityDataset, column: number): [number, number] | null {
+  const fieldName = dataset.fields?.[column]?.name;
+  const record = dataset.filterRecord;
+  const value = [...(record?.cpu ?? []), ...(record?.gpu ?? [])].find(
+    (f) => f?.type === 'timeRange' && bindsToField(f.name, fieldName)
+  )?.value;
+  return Array.isArray(value) && value.length === 2 && typeof value[0] === 'number' && typeof value[1] === 'number'
+    ? [value[0], value[1]]
+    : null;
+}
+
+/**
+ * A row's time column, in epoch ms.
+ *
+ * Reads kepler's own `field.filterProps.mappedValue[row]` first rather than
+ * `Number(valueAt(...))` alone: kepler keeps some timestamp formats raw in the
+ * data container — an ISO string is never converted to a number, only the `x`/
+ * `X` (already-numeric) formats are (`ALL_FIELD_TYPES.timestamp`'s `parse` in
+ * `processors/data-processor.js`) — and instead compares such a column through
+ * this precomputed, per-row numeric array once a filter has bound to it
+ * (`getTimestampFieldDomain`; read the same way in `gpu-filter-utils.js`'s
+ * `getFilterValueAccessor`). `Number(valueAt(...))` is the fallback, both for a
+ * column that already holds epoch ms and for the moment before any filter has
+ * bound to an ISO one and computed the mapping.
+ *
+ * Without this, an ISO-string time column read `Number("2026-01-01T00:00:00Z")`
+ * as `NaN` for every row once a time filter existed — before the filter was
+ * read at all this silently drew every hour at once; after `timeWindowOf` this
+ * silently drew none, since a window narrows to nothing when it cannot read a
+ * single row's time.
+ */
+function timeValueAt(dataset: VelocityDataset, column: number, row: number): number {
+  const mapped = dataset.fields?.[column]?.filterProps?.mappedValue?.[row];
+  if (typeof mapped === 'number') {
+    return mapped;
+  }
+  return Number(dataset.dataContainer?.valueAt(row, column));
+}
+
+/**
+ * The rows the layers should read: the filtered ones, narrowed to the latest
+ * hour among them.
+ *
+ * A forecast repeats every cell once per hour. Reading them all lets whichever
+ * row came last win each cell — for a wind that reverses, the opposite of the
+ * truth. "The latest inside the window" is the same rule `pickLatestWithin`
+ * states for the WMS, both ends of the window included.
+ */
+export function latestStepRows(dataset: VelocityDataset): number[] {
+  const container = dataset.dataContainer;
+  if (!container) {
+    return [];
+  }
+  let rows = dataset.filteredIndex ?? Array.from({ length: container.numRows() }, (_, i) => i);
+  const column = timeColumnOf(dataset);
+  if (column < 0) {
+    return rows;
+  }
+
+  // The window a GPU-mode time filter never reached `filteredIndex` with — see
+  // `timeWindowOf`. Applied on top of `filteredIndex` rather than instead of
+  // it, so whatever `filteredIndex` does narrow for still holds. A window with
+  // no row of any hour inside it is not a signal to fall back to every row —
+  // it means the map's clock is looking at a stretch of the forecast this
+  // dataset has nothing in, and the layer should draw nothing until it moves.
+  const window = timeWindowOf(dataset, column);
+  if (window) {
+    const [from, to] = window;
+    rows = rows.filter((row) => {
+      const time = timeValueAt(dataset, column, row);
+      return Number.isFinite(time) && time >= from && time <= to;
+    });
+  }
+
+  let latest = -Infinity;
+  for (const row of rows) {
+    const time = timeValueAt(dataset, column, row);
+    if (Number.isFinite(time) && time > latest) {
+      latest = time;
+    }
+  }
+  if (!Number.isFinite(latest)) {
+    return rows;
+  }
+  return rows.filter((row) => timeValueAt(dataset, column, row) === latest);
+}
+
+/**
+ * The hour on show, in epoch ms, or null when the query carries no time.
+ *
+ * Read through `timeValueAt`, the same reader `latestStepRows` chose the rows
+ * with, and not `Number(valueAt(...))`: this is the key both layers keep their
+ * hours and their fast paths by, and for an ISO-string column the bare parse is
+ * `NaN` — every hour came out `null`, one name for all of them. Since kepler
+ * narrows the table in place (same container, same signature), a layer then saw
+ * nothing change when the map's clock moved and drew the first hour for good.
+ */
+export function latestStepOf(dataset: VelocityDataset): number | null {
+  const container = dataset.dataContainer;
+  const column = timeColumnOf(dataset);
+  if (!container || column < 0) {
+    return null;
+  }
+  const rows = latestStepRows(dataset);
+  if (rows.length === 0) {
+    return null;
+  }
+  const time = timeValueAt(dataset, column, rows[0]);
+  return Number.isFinite(time) ? time : null;
 }
 
 /**
  * The rows kepler holds, in the shape `buildWindField` reads.
  *
- * Only the columns the layer was pointed at are materialised. A velocity query
- * is normally narrow, but there is no reason to copy a column nobody reads.
+ * Only the columns the layer was pointed at are materialised, and only the
+ * rows of the latest hour still standing after kepler's filters — see
+ * `latestStepRows`. A velocity query is normally narrow, but there is no
+ * reason to copy a column, or an hour, nobody reads.
  */
 export function gridFrameOf(
   dataset: VelocityDataset,
@@ -240,7 +417,7 @@ export function gridFrameOf(
     return null;
   }
 
-  const length = container.numRows();
+  const rows = latestStepRows(dataset);
   const fields: GridFrame['fields'] = [];
 
   for (const column of Object.values(columns)) {
@@ -249,14 +426,14 @@ export function gridFrameOf(
     if (!name || index === undefined || index < 0) {
       continue;
     }
-    const values = new Float64Array(length);
-    for (let row = 0; row < length; row++) {
-      values[row] = Number(container.valueAt(row, index));
+    const values = new Float64Array(rows.length);
+    for (let i = 0; i < rows.length; i++) {
+      values[i] = Number(container.valueAt(rows[i], index));
     }
     fields.push({ name, values });
   }
 
-  return { length, fields };
+  return { length: rows.length, fields };
 }
 
 /** The grid's extent, as kepler's `[west, south, east, north]`. */
@@ -290,46 +467,155 @@ export function levelHeight(
   return columnValue ? fromColumn : setting(visConfig.heightMeters, 0);
 }
 
-/** The value of a column that is the same for every row — a level's height. */
-export function constantOf(frame: GridFrame, column?: string | null): number {
+/** What the altitude column of a velocity query means. */
+export type AltitudeMeaning = { kind: 'level'; metres: number } | { kind: 'terrain' };
+
+/**
+ * How far an altitude column may spread (max − min), as a share of its mean,
+ * and still be one level.
+ *
+ * A pressure level's real height is a geopotential height, and that varies
+ * across space: 850 hPa runs from about 1,450 to 1,550 m over a region, which
+ * is 100 m of spread on a mean of 1,500 — 6.7%, so a threshold of 5% still
+ * read that very case as terrain. Ten per cent keeps it a level with room to
+ * spare. Terrain is another order of thing: the Andes run from the coast to
+ * 6,000 m, and a lowland from a few metres to a few hundred, many times its
+ * own mean. The price is at both ends: a plateau whose relief is under a tenth
+ * of its height is drawn as a level at its mean rather than draped, and a
+ * continental map through a deep low (850 hPa from 1,250 to 1,600 m, 25%) is
+ * drawn as terrain — a level set with the height knob instead of the column
+ * keeps its place in the stack either way.
+ */
+const LEVEL_SPREAD_SHARE = 0.1;
+
+/**
+ * Which of the two an altitude column is, decided by the data.
+ *
+ * A level's height is a property of the query — "this is the 850 hPa surface" —
+ * and stays within a few per cent of one number: a spread (max − min) of no
+ * more than `LEVEL_SPREAD_SHARE` of the mean's magnitude is a level, drawn at
+ * its mean.
+ * Terrain is a height per place, and the lines should lie on it. Reading the
+ * first value and calling it the level, which is what this did before
+ * `constantOf` was retired, flattened a terrain column in silence; calling any
+ * variation at all terrain, which it did after, flattened a stack of levels
+ * instead, since every geopotential height varies a little.
+ *
+ * Measured against the mean's magnitude, so near sea level — where the mean is
+ * a few metres, or nothing at all for a column that straddles zero — any real
+ * relief is terrain, as it must be: read as a level, a coast would be lifted
+ * with the stack rather than laid on the ground. Only a column with no spread
+ * at all is a level there, which a column of zeros is.
+ */
+export function altitudeMeaningOf(
+  frame: GridFrame,
+  column: string | null | undefined,
+  visConfig: Record<string, unknown>
+): AltitudeMeaning {
   const field = column ? frame.fields.find((f) => f.name === column) : undefined;
   if (!field) {
-    return 0;
+    return { kind: 'level', metres: setting(visConfig.heightMeters, 0) };
   }
+
+  let min = Infinity;
+  let max = -Infinity;
+  let sum = 0;
+  let count = 0;
   for (let row = 0; row < frame.length; row++) {
     const value = Number(field.values[row]);
-    if (Number.isFinite(value)) {
-      return value;
+    if (!Number.isFinite(value)) {
+      continue;
     }
+    min = Math.min(min, value);
+    max = Math.max(max, value);
+    sum += value;
+    count++;
   }
-  return 0;
+  if (count === 0) {
+    return { kind: 'level', metres: setting(visConfig.heightMeters, 0) };
+  }
+
+  const mean = sum / count;
+  return max - min <= LEVEL_SPREAD_SHARE * Math.abs(mean) ? { kind: 'level', metres: mean } : { kind: 'terrain' };
 }
 
 /**
- * How high a level is drawn: its height (column or knob, see `levelHeight`),
- * exaggerated against the tallest level on the map and the width of the view,
- * then scaled by the user's exaggeration. Shared so a level drawn as streamlines
- * and as arrows sits at one height.
+ * How many steps of the trace scale there are to a doubling of the zoom.
+ *
+ * Sixteen, so the scale a line was traced at is never more than 2^(1/32) —
+ * about 2% — off the camera's own: a zoom of a sixteenth of a level or more
+ * always lands on another step, and a mouse-wheel notch is well past that. A
+ * pan at a fixed zoom moves the metres a pixel covers only through the latitude
+ * of the centre, which over Ecuador is a few thousandths of a doubling and at
+ * 45° about a fortieth per degree panned, so it stays on its step.
+ */
+const TRACE_SCALE_STEPS_PER_DOUBLING = 16;
+
+/**
+ * The metres a pixel covers, snapped to the trace scale's steps.
+ *
+ * A traced line is made of the camera's scale as well as of the field: how far
+ * it runs on the ground (so that it is a legible number of pixels long) and how
+ * high a lifted level sits (a share of the view's width) are both metres per
+ * pixel. The flow field keeps lines by ground cell and reuses them across
+ * camera moves, so it needs a scale that a pan does not move and a zoom always
+ * does — a continuous one changes, by a hair, with every pan to another
+ * latitude, and a line kept across a zoom was measured at 171 px where a fresh
+ * trace drew 130. Snapped, the scale is a key the kept lines can be checked
+ * against, and everything traced under one key agrees with a fresh trace
+ * exactly.
+ */
+export function traceMetresPerPixel(metresPerPixel: number): number {
+  if (!(metresPerPixel > 0) || !Number.isFinite(metresPerPixel)) {
+    return metresPerPixel;
+  }
+  const step = Math.round(Math.log2(metresPerPixel) * TRACE_SCALE_STEPS_PER_DOUBLING);
+  return Math.pow(2, step / TRACE_SCALE_STEPS_PER_DOUBLING);
+}
+
+/**
+ * The camera as a trace sees it: the same ground under every pixel, at the
+ * snapped scale — see `traceMetresPerPixel`.
+ *
+ * Built field by field rather than spread, so a camera whose `unproject` lives
+ * on a prototype rather than on the object keeps it.
+ */
+export function atTraceScale(camera: ScreenCamera): ScreenCamera {
+  return {
+    widthPx: camera.widthPx,
+    heightPx: camera.heightPx,
+    bounds: camera.bounds,
+    metresPerPixel: traceMetresPerPixel(camera.metresPerPixel),
+    unproject: (x, y) => camera.unproject(x, y),
+  };
+}
+
+/**
+ * How high a level is drawn: its height in metres — the level's own, from
+ * `altitudeMeaningOf` or `levelHeight` — exaggerated against the tallest level
+ * on the map and the width of the view, then scaled by the user's exaggeration.
+ * Shared so a level drawn as streamlines and as arrows sits at one height.
+ *
+ * Takes the metres rather than the frame and the columns: the two callers now
+ * have to ask `altitudeMeaningOf` first, because a *terrain* column has no
+ * single height for this to exaggerate — only a level does.
  */
 export function stackedAltitude(
-  frame: GridFrame,
-  columns: Record<string, LayerColumn>,
+  metres: number,
   visConfig: Record<string, unknown>,
   context: FlowFieldContext,
   camera: ScreenCamera | null
 ): number {
-  const rawAltitude = levelHeight(
-    columns.altitude?.value,
-    constantOf(frame, columns.altitude?.value),
-    visConfig
-  );
   // How wide the view is across its middle, which is what a person means by
   // it — and unlike the ground the camera can see, it does not balloon when
-  // the map is tilted.
-  const metresAcross = camera ? camera.metresPerPixel * camera.widthPx : undefined;
+  // the map is tilted. At the snapped scale rather than the camera's own: the
+  // flow field keeps a level's lines for as long as that scale holds (see
+  // `traceMetresPerPixel`), and the vector field's arrows for the same level
+  // have to sit at the height those kept lines do.
+  const metresAcross = camera ? traceMetresPerPixel(camera.metresPerPixel) * camera.widthPx : undefined;
   return (
-    rawAltitude *
-    stackExaggeration(setting(context.tallest, rawAltitude), metresAcross) *
+    metres *
+    stackExaggeration(setting(context.tallest, metres), metresAcross) *
     setting(visConfig.elevationScale, 1)
   );
 }
