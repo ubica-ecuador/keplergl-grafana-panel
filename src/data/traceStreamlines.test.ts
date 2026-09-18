@@ -536,10 +536,22 @@ describe('traceStreamlines — seeding through the camera', () => {
   it('keeps the budget for the screen when the zoom response is 0', () => {
     // Esri's model, and what this drew before the knob existed: the same number
     // of lines whether the screen shows the whole field or a corner of it.
+    // These two cameras show 81 and 4 square degrees, so a budget that followed
+    // the ground would give the close one a twentieth of the lines — the case
+    // the zoom-response-1 test below measures from the other side.
     const wide = trace(cameraShowing({ west: 0, east: 9, south: 0, north: 9 }), 0);
     const close = trace(cameraShowing({ west: 4, east: 6, south: 4, north: 6 }), 0);
 
-    expect(close.length).toBeGreaterThan(0.8 * wide.length);
+    // Not tighter than half, because a ground cell's size is a power of two:
+    // `levelFor` rounds the size this budget asks for to the nearest one, so
+    // the cell can come back up to 1.41 times the size asked for and the count
+    // — one over the square of it — as little as half the budget. These two
+    // cameras round different ways, which is the whole of the gap between them
+    // (342 lines against 272 here, both within that band of their own budget).
+    // The threshold was 0.8 while the sample lattice still missed cells: the
+    // wide camera missed 8% of its own and the close one none, which flattered
+    // the ratio to 0.856 by losing lines rather than by placing them.
+    expect(close.length).toBeGreaterThan(0.5 * wide.length);
   });
 
   it('spends the budget on the whole field when the zoom response is 1', () => {
@@ -552,24 +564,11 @@ describe('traceStreamlines — seeding through the camera', () => {
     expect(close.length).toBeLessThan(0.2 * wide.length);
   });
 
-  it('never asks for more lines than a camera that exactly fits the field', () => {
-    // This used to compare against a camera showing only a ninth of the
-    // field's area. Under the pixel-random seeding this module had before
-    // cell-anchored seeding, a much bigger box wasted most of its budget on
-    // ground with no data, and so happened to fall behind even that small
-    // corner's own count — which made the corner a passable stand-in for
-    // "the budget" without actually being one. Cell seeding is exhaustive
-    // rather than lossy: a camera that fully contains the field now reaches
-    // close to its true field-sized budget (`cameraSettings`'s `coverage`
-    // is 1 for both cameras here) regardless of how much emptier-than-field
-    // its own box is — which is the fix working as intended, not a
-    // regression — so the fair comparison is against another camera that
-    // also shows the whole field, snugly.
-    const beyond = trace(cameraShowing({ west: -20, east: 30, south: -20, north: 30 }), 1);
-    const wholeField = trace(cameraShowing({ west: -10, east: 10, south: -10, north: 10 }), 1);
-
-    expect(beyond.length).toBeLessThanOrEqual(wholeField.length * 1.1);
-  });
+  // The budget test that used to live here compared two cameras that both
+  // bottomed out at `levelFor`'s old one-degree floor, so it never actually
+  // measured the budget — see "keeps the number of cells within budget at a
+  // world-scale zoom" below, which replaces it with the real camera and the
+  // zoom where that floor actually mattered.
 
   it('draws nothing from a camera that shows no ground at all', () => {
     const sky = {
@@ -638,27 +637,117 @@ describe('traceStreamlines — anchored to the ground', () => {
     };
   }
 
-  const BASE = { count: 400, seed: 7, baseMs: 0, cycleMs: 60_000, lifeFraction: 0.5, maxVertices: 30 };
+  /**
+   * The density `flowFieldLayer.ts` actually ships, not a token count.
+   *
+   * At a few hundred lines a cell is many times wider than the sample lattice's
+   * own step, so every cell on screen is landed on however crudely the lattice
+   * is walked, and a reuse or evenness test measures nothing. At 9,000 a cell is
+   * about six pixels across: the two lattices are the same order of size, which
+   * is where every defect this block exists to catch actually shows.
+   */
+  const BASE = { count: 9_000, seed: 7, baseMs: 0, cycleMs: 60_000, lifeFraction: 0.5, maxVertices: 30 };
+
+  /** Degrees of longitude per screen pixel at zoom 8 — deck's world is 512 px at zoom 0. */
+  const DEG_PER_PX = 360 / (512 * Math.pow(2, 8));
+
+  /**
+   * What a pan of this many pixels may cost, as a share of the lines on screen.
+   *
+   * The whole point of anchoring a line to the ground is that a pan only pays
+   * for the ground it brings on screen: a drag of `panPx` across an 800-pixel
+   * panel uncovers a strip of `panPx/800` of it, and every line outside that
+   * strip was already traced and must come back from the cache. Anything worse
+   * is lines being lost to the sample lattice rather than to the pan — the
+   * failure this test exists for, measured at 74.8% for a 3.6-pixel pan that
+   * should have cost half a percent. One point of slack absorbs the cells
+   * straddling the strip's own edge.
+   */
+  const reuseFloor = (panPx: number) => 1 - panPx / 800 - 0.01;
+
+  function reuseAcross(panPx: number, pitch: number) {
+    const cells = new Map<string, Streamline[] | null>();
+    const before = traceStreamlines(field, { ...BASE, camera: cameraOver([-79, -2], 8, pitch), cells });
+    const after = traceStreamlines(field, {
+      ...BASE,
+      camera: cameraOver([-79 + panPx * DEG_PER_PX, -2], 8, pitch),
+      cells,
+    });
+    const kept = new Set(before.map((line) => line.cell));
+    return { before, after, kept, shared: after.filter((line) => kept.has(line.cell)) };
+  }
 
   it('keeps the lines it has already traced when the map is panned', () => {
     // What this ends: the seeds were pixels, so the same random sequence fell
     // on different ground and every line jumped at once.
-    const cells = new Map<string, Streamline[] | null>();
-    const before = traceStreamlines(field, { ...BASE, camera: cameraOver([-79, -2], 8), cells });
-    const after = traceStreamlines(field, { ...BASE, camera: cameraOver([-78.99, -2], 8), cells });
+    const { before, after, kept, shared } = reuseAcross(3.64, 0);
 
-    const kept = new Set(before.map((line) => line.cell));
-    const shared = after.filter((line) => kept.has(line.cell));
-    expect(shared.length).toBeGreaterThan(after.length * 0.6);
+    expect(shared.length / after.length).toBeGreaterThan(reuseFloor(3.64));
     // And the ones that were kept are the same geometry, not a fresh trace.
     const sample = after.find((line) => kept.has(line.cell))!;
     expect(before.find((line) => line.cell === sample.cell)!.path[0]).toEqual(sample.path[0]);
   });
 
+  it('pays for a pan only in the ground the pan uncovered', () => {
+    // A drag is a sequence of small pans, and a tilted map is the case where
+    // the sample lattice and the cell lattice disagree most, so both are
+    // measured. Before the lattice was stepped to match the cells — and while
+    // a jitter still carried each sample up to a whole step away from where
+    // the walk put it — these came out at 74.8 / 73.2 / 68.8 flat and
+    // 79.4 / 69.1 / 66.4 tilted: a 3.6-pixel pan, an 800th of the screen,
+    // threw away a quarter of the field.
+    for (const pitch of [0, 60]) {
+      for (const panPx of [3.64, 10, 50]) {
+        const { after, shared } = reuseAcross(panPx, pitch);
+        expect(shared.length / after.length).toBeGreaterThan(reuseFloor(panPx));
+      }
+    }
+  });
+
+  it('keeps every band of a tilted screen through a pan, not just the near ones', () => {
+    // The bands near the horizon are where a cell is flattest against the
+    // screen, and they were the worst hit: band 0 reused 57.7% where the
+    // screen as a whole managed 79.4%. A band that loses its lines on every
+    // pan is a band that visibly reshuffles while the reader drags.
+    const { after, kept } = reuseAcross(3.64, 60);
+    const viewport = new WebMercatorViewport({
+      longitude: -79 + 3.64 * DEG_PER_PX,
+      latitude: -2,
+      zoom: 8,
+      pitch: 60,
+      bearing: 0,
+      width: 800,
+      height: 600,
+    });
+
+    const total = new Array(8).fill(0);
+    const reused = new Array(8).fill(0);
+    for (const line of after) {
+      const [x, y] = viewport.project([line.path[0][0], line.path[0][1]]);
+      if (x < 0 || x > 800 || y < 0 || y > 600) {
+        continue;
+      }
+      const band = Math.min(7, Math.floor((y / 600) * 8));
+      total[band]++;
+      if (kept.has(line.cell)) {
+        reused[band]++;
+      }
+    }
+
+    for (let band = 0; band < 8; band++) {
+      expect(total[band]).toBeGreaterThan(0);
+      expect(reused[band] / total[band]).toBeGreaterThan(reuseFloor(3.64));
+    }
+  });
+
   it('fills a tilted screen from top to bottom', () => {
     // A ground lattice with one step for the whole screen piles its lines up
     // against the horizon: measured on kepler's, 4,580 in the top quarter of
-    // the screen against 272 in the bottom.
+    // the screen against 272 in the bottom. Sizing a band's cells from the
+    // east-west ground per pixel alone only halves that — at this density it
+    // left the top quarter with 7,161 against the bottom's 1,932, a ratio of
+    // 3.71 — because a tilt stretches the *other* axis, which an east-west
+    // measurement cannot see.
     const camera = cameraOver([-79, -2], 8, 60);
     const viewport = new WebMercatorViewport({
       longitude: -79,
@@ -684,41 +773,60 @@ describe('traceStreamlines — anchored to the ground', () => {
     const least = Math.min(...bands);
     expect(least).toBeGreaterThan(0);
     expect(most / least).toBeLessThan(3);
+    // And specifically not top-heavy: the quarter nearest the horizon is the
+    // one the old sizing packed solid, and it is the one a reader sees as a
+    // band of mush across the distance.
+    expect(bands[0]).toBeLessThan(bands[3] * 1.5);
   });
 
-  it('keeps most lines through a pan at the density the plugin actually ships', () => {
-    // At BASE's count of 400 a cell is comfortably wider than the sample
-    // lattice's own spacing, so reuse looked solid even when the lattice was
-    // walked at a uniform pitch that did not actually track a cell's real
-    // footprint on screen. `flowFieldLayer.ts`'s own default is a density of
-    // 9,000, where a cell is only a few pixels across — close enough to the
-    // sample spacing that sampling at the wrong pitch missed cells outright,
-    // a different set on every pan.
-    const dense = { ...BASE, count: 9_000 };
-    const reuseFor = (lon2: number) => {
+  it('lets the budget set the line count, not the cell tiling', () => {
+    // `count` is a budget per screen. It stopped being one when the cells
+    // took over the seeding: 11,002 lines flat and 17,822 at a pitch of 60
+    // against a budget of 9,000, each one a full 30-vertex trace, and the
+    // tilted camera the more expensive of the two — precisely backwards,
+    // since a tilt shows the distance at a coarser scale, not a finer one.
+    const flat = traceStreamlines(field, { ...BASE, camera: cameraOver([-79, -2], 8) }).length;
+    const tilted = traceStreamlines(field, { ...BASE, camera: cameraOver([-79, -2], 8, 60) }).length;
+
+    // A tilt must not multiply the tiling. This is what sizing a cell from the
+    // ground *area* under a pixel buys, and what sizing it east-west alone
+    // cannot: that measurement was 1.62 before, and is 0.79 now.
+    expect(tilted).toBeLessThan(flat * 1.25);
+
+    // Both stay within the cell lattice's own quantisation of the budget.
+    // `levelFor` rounds the cell to a power of two, so the cell it returns is
+    // between 0.71 and 1.41 times the size asked for and the count, which goes
+    // as one over the square of it, between half the budget and twice it.
+    // Measured here: 1.66x flat and 1.31x tilted at zoom 8, and 0.83x flat at
+    // zoom 8.5, where the same target rounds the other way. Closing that gap
+    // needs a cell size that is not a power of two, which `groundCells.ts`
+    // owns and this module cannot reach.
+    for (const count of [flat, tilted]) {
+      expect(count).toBeGreaterThan(BASE.count * 0.5);
+      expect(count).toBeLessThan(BASE.count * 2);
+    }
+  });
+
+  it('keeps the number of cells within budget at a world-scale zoom', () => {
+    // `levelFor` was floored at one degree — no cell coarser than that —
+    // which is fine at the zoom this module was built for, but a camera
+    // pulled back to see most of the planet covers many degrees per pixel,
+    // and the floor stopped the cells from growing to match: on the commit
+    // this guards against, that asked for 29,715 cells at zoom 1 and 51,009
+    // at zoom 0.5, against a budget of 9,000 (verified by running this
+    // exact assertion against that commit — it fails, at both zooms). The
+    // test this replaces compared two cameras that both bottomed out at
+    // that same one-degree floor, so it never actually measured the budget.
+    //
+    // Cells, not lines: `seamless` draws a line twice when it crosses the
+    // loop, a cost this module pays on purpose (see `emit`'s own doc
+    // comment), not one the seeding lattice should be charged for.
+    const budget = 9_000;
+    for (const zoom of [0.5, 1]) {
       const cells = new Map<string, Streamline[] | null>();
-      const before = traceStreamlines(field, { ...dense, camera: cameraOver([-79, -2], 8), cells });
-      const after = traceStreamlines(field, { ...dense, camera: cameraOver([lon2, -2], 8), cells });
-      const kept = new Set(before.map((line) => line.cell));
-      return after.filter((line) => kept.has(line.cell)).length / after.length;
-    };
-
-    // A small, incremental pan — the kind a drag actually produces between
-    // two renders — moves the ground by a small fraction of one cell, so
-    // reuse should be close to total.
-    expect(reuseFor(-78.9999)).toBeGreaterThan(0.98);
-
-    // The 0.01° pan used throughout this file's low-density tests moves the
-    // ground by about two-thirds of a cell's own width at this density —
-    // comparable to the cell itself, so a real share of cells crossing their
-    // own boundary is expected geometry, not a bug: measured directly, reuse
-    // falls smoothly from 99.5% at a tenth of this pan to 96.7% at a tenth
-    // again, before landing here. What the fix buys is exactly that smooth
-    // fall-off with pan size; measured on the unfixed, uniform-pitch
-    // sampling this same pan reused only 62%, because which cells the
-    // lattice happened to land in was close to arbitrary rather than
-    // following the ground.
-    expect(reuseFor(-78.99)).toBeGreaterThan(0.7);
+      traceStreamlines(field, { ...BASE, count: budget, camera: cameraOver([-79, -2], zoom), cells });
+      expect(cells.size).toBeLessThan(budget * 1.5);
+    }
   });
 
   it('keeps a non-seamless line born before the cycle ends', () => {
@@ -768,5 +876,14 @@ describe('traceStreamlines — anchored to the ground', () => {
     for (const line of shared) {
       expect(line.path[0][3]).toBe(birthOf.get(line.cell));
     }
+
+    // A constant phase passes every check above: it is still "the same
+    // value both times", since `first` and `second` visit the same cells
+    // in the same order and a constant does not depend on which cell it is
+    // asked for. What no constant can do is spread the births out — a real,
+    // per-cell phase should scatter them across most of the cycle, and a
+    // constant collapses them onto a single instant.
+    const distinctBirths = new Set(first.map((line) => line.path[0][3])).size;
+    expect(distinctBirths).toBeGreaterThan(first.length / 2);
   });
 });

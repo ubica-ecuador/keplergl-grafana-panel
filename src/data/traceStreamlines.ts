@@ -262,28 +262,61 @@ function cameraSettings(camera: ScreenCamera, extent: Box, segmentPixels: number
 const MIN_CELL_PITCH_PX = 2;
 
 /**
+ * How much of a cell's own pixel pitch the sample lattice steps by.
+ *
+ * Stepping exactly one pitch pairs samples with cells one to one only where
+ * the two lattices are in phase. Where they are not — and they never are for
+ * long, because the cells are pinned to the ground and the samples to the
+ * screen — two consecutive samples straddle a cell and miss it, and the cells
+ * clipped by the edge of a band or of the screen are missed outright.
+ * Measured at the density the plugin ships, a lattice stepped at exactly one
+ * pitch reached 73% of the cells on screen flat and 68% at a pitch of 60, and
+ * since which cells it missed moved with the camera, a 3.6-pixel pan — an
+ * 800th of the screen — lost a quarter of its lines to nothing but that.
+ *
+ * Any share below one already puts a sample inside every whole cell, so what
+ * a smaller one buys is only the cells clipped at an edge. Measured flat at
+ * that density: a half reaches 15,052 cells against this 14,946 and takes a
+ * 3.6-pixel pan's reuse from 99.3% to 100%, for 60,900 `unproject` calls
+ * against 24,000; a third is no better than 0.8 on either count and costs
+ * 121,600. At a pitch of 60 the three sit within 0.05 points of each other.
+ * So the lattice is stepped at 0.8: a finer one buys a fraction of a point at
+ * the smallest pan and pays two and a half times the unprojections for it.
+ *
+ * A duplicate sample is cheap whatever the share — `seen` absorbs it and a
+ * cell is traced once — so what a finer lattice costs is `unproject` calls,
+ * not `trace` calls.
+ */
+const SAMPLE_STEP_SHARE = 0.8;
+
+/**
  * The ground-cell level for a band of the screen, and how many screen pixels
- * one of its cells spans in each direction there.
+ * one of its cells spans along each screen axis there.
  *
- * `levelFor` rounds to the nearest power of two, so a cell can land anywhere
- * from about 0.7 to 1.4 times `spacingPx` wide — already enough, at the
- * density the plugin actually ships, for a sample lattice walked at
- * `spacingPx` to miss whole cells outright. Tilt the camera and it gets
- * worse on one axis only: at a pitch of 60 a pixel can cover several times
- * more ground north-south than east-west near the horizon, so a cell
- * `spacingPx` wide east-west is only a few pixels *tall* there. Sampling
- * both axes at the same spacing then either straddles a whole row of cells
- * between two samples, or lands three samples inside one — and which cells
- * that misses depends on where the camera happens to sit, so it reshuffles
- * on every pan. Measuring the pitch separately on each axis and stepping the
- * lattice by *that* keeps roughly one sample per cell whatever the
- * anisotropy, so the reuse a pan is for survives at real density and at any
- * tilt.
+ * The level comes from the ground **area** one pixel covers, not from the
+ * east-west span alone. Cells of `s` degrees tile a screen of `W·H` pixels
+ * `W·H·areaPerPixel / s²` times, so the size that reproduces the budget is
+ * `s = spacingPx · √areaPerPixel` — the geometric mean of the ground per
+ * pixel on the two axes. Sizing from east-west alone ignores that a tilted
+ * camera stretches only the other axis: at a pitch of 60 a pixel near the
+ * horizon covers several times more ground north-south than east-west, so
+ * the distance was tiled with far more, far flatter cells than the budget
+ * asked for — 17,822 lines against a budget of 9,000, with the top quarter
+ * of the screen carrying 3.7 times the lines of the bottom.
  *
- * The level itself still comes from the east-west measurement alone, exactly
- * as before: that is what ties a cell's size to `spacingPx` — the density
- * knob — and nothing here changes what a level *means* (`groundCells.ts`
- * owns that contract).
+ * Both the area and the two pitches are measured from the vectors a step
+ * across and a step down the screen trace on the ground, rather than from one
+ * number per compass axis, because a rotated map turns the screen against the
+ * compass: at a bearing of 90 a step down the screen changes no latitude at
+ * all, and a north-south reading would call that zero ground per pixel and
+ * size the whole band off a division by nothing.
+ *
+ * The pitches are what the lattice is stepped by, and they are a separate
+ * question from the size: `levelFor` rounds to the nearest power of two, so
+ * the cell it returns is anywhere from 0.7 to 1.4 times the size asked for,
+ * and a tilted cell that is `spacingPx` wide is only a few pixels tall. A
+ * lattice stepped by `spacingPx` on both axes therefore does not track the
+ * cells at all.
  */
 function bandSampling(
   camera: ScreenCamera,
@@ -297,19 +330,38 @@ function bandSampling(
     return null;
   }
 
-  const lonPerPixel = Math.abs(across[0] - here[0]);
-  const latPerPixel = Math.abs(down[1] - here[1]);
-  const metresPerPixelEW =
-    lonPerPixel * METRES_PER_DEGREE * Math.max(0.2, Math.cos((here[1] * Math.PI) / 180));
+  const stepX: [number, number] = [across[0] - here[0], across[1] - here[1]];
+  const stepY: [number, number] = [down[0] - here[0], down[1] - here[1]];
 
-  const level = levelFor(metresPerPixelEW, spacingPx, here[1]);
+  // Square degrees under one pixel: the determinant of those two steps, which
+  // is the same number however the map is turned. Zero means the band is
+  // looking at the ground edge-on and has no size to measure; skipped rather
+  // than divided by.
+  const areaPerPixel = Math.abs(stepX[0] * stepY[1] - stepY[0] * stepX[1]);
+  if (!(areaPerPixel > 0)) {
+    return null;
+  }
+
+  // `levelFor` takes metres and divides them straight back out by the same
+  // east-west factor; multiplying by it here is how a target in degrees is
+  // handed to a metres-shaped signature without touching `groundCells.ts`,
+  // which is closed.
+  const eastPerDegree = METRES_PER_DEGREE * Math.max(0.2, Math.cos((here[1] * Math.PI) / 180));
+  const level = levelFor(Math.sqrt(areaPerPixel) * eastPerDegree, spacingPx, here[1]);
   const sizeDegrees = sizeAt(level);
 
-  return {
-    level,
-    pitchX: Math.max(MIN_CELL_PITCH_PX, lonPerPixel > 0 ? sizeDegrees / lonPerPixel : spacingPx),
-    pitchY: Math.max(MIN_CELL_PITCH_PX, latPerPixel > 0 ? sizeDegrees / latPerPixel : spacingPx),
-  };
+  // Taken from the faster-moving of a step's two components, so the lattice
+  // never steps further than the cell reaches on the axis that is changing
+  // quickest: under a bearing the screen's x runs partly north, and counting
+  // only the longitude it covers would overstate how far a sample may travel
+  // and start skipping cells again.
+  const pitchOf = (step: [number, number]) =>
+    Math.max(
+      MIN_CELL_PITCH_PX,
+      (SAMPLE_STEP_SHARE * sizeDegrees) / Math.max(Math.abs(step[0]), Math.abs(step[1]))
+    );
+
+  return { level, pitchX: pitchOf(stepX), pitchY: pitchOf(stepY) };
 }
 
 function viewportSettings(
@@ -439,8 +491,8 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
      * Each band gets the cell size the ground *there* calls for, so the
      * count of lines per screen stays roughly even from top to bottom.
      *
-     * The lattice within a band is stepped at that cell's own pixel pitch —
-     * measured separately east-west and north-south by `bandSampling` — not
+     * The lattice within a band is stepped at a fraction of that cell's own
+     * pixel pitch — measured along each screen axis by `bandSampling` — not
      * at this uniform `spacingPx`: a cell sized from `spacingPx` is not
      * `spacingPx` pixels wide on screen (rounding) or tall (tilt), and
      * sampling at the wrong pitch is what let the lattice miss whole cells,
@@ -472,17 +524,12 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
 
       for (let y = top; y < top + height; y += pitchY) {
         for (let x = 0; x < camera.widthPx; x += pitchX) {
-          // A deterministic nudge — invisible at this density — that keeps
-          // the sample lattice from beating against the cell lattice as a
-          // moiré pattern. Clamped to the screen: unjittered, the loop
-          // bounds already keep x and y on it, and this nudge must not walk
-          // a sample back off past the edge the loop just stopped at — a
-          // camera happily unprojects a pixel past its own bounds, which is
-          // ground the screen never shows.
-          const jitter = (((Math.sin((x + y * 7.3) * 12.9898) * 43758.5453) % 1) + 1) % 1;
-          const px = Math.min(camera.widthPx, x + jitter * pitchX);
-          const py = Math.min(camera.heightPx, y + ((jitter * 3) % 1) * pitchY);
-          const at = camera.unproject(px, py);
+          // Sampled where the lattice actually falls. There was a jitter here
+          // while a sample *was* a seed; now it only names a cell, and
+          // `seedOf` places the line inside that cell, so all a jitter could
+          // do was carry a sample a whole pitch from where the step put it —
+          // leaving some cells sampled twice and others not at all.
+          const at = camera.unproject(x, y);
           if (!at) {
             continue;
           }
