@@ -126,9 +126,31 @@ it looks sparse.
 
 ### Walking the forecast
 
-Add a second query for another hour of the same grid — same columns, a later `time` value — and a
-third if you want a whole day. Every hour now reaches the panel; it is the map's own clock, at the
-bottom, that picks which one the field draws, always the **latest** hour still inside its window.
+Not a second query: another query for another hour becomes its own dataset, and so its own
+Streamlines layer stacked on top of this one — kepler has no way to merge them back into one field,
+and the map's time filter binds only to the **first** dataset it finds with a timestamp column, so
+the second layer would sit there deaf to the clock. One query, unnesting the hourly arrays Open-Meteo
+already gives you, is what turns "the whole day" into "one row per hour":
+
+```sql
+SELECT round(latitude  * 4) / 4 AS latitude,
+       round(longitude * 4) / 4 AS longitude,
+       CAST(UNNEST(hourly.time[1:3]) AS TIMESTAMP) AS "time",
+       UNNEST(hourly.wind_speed_10m[1:3])     AS speed,
+       UNNEST(hourly.wind_direction_10m[1:3]) AS direction
+FROM read_json_auto('https://api.open-meteo.com/v1/forecast?latitude=…&longitude=…&hourly=wind_speed_10m,wind_direction_10m&forecast_days=1');
+```
+
+`hourly.time`, `hourly.wind_speed_10m` and `hourly.wind_direction_10m` are parallel arrays, one
+entry per forecast hour. DuckDB unnests same-length lists together, position by position, rather
+than crossing them — so this turns the tutorial's 49 rows of "the whole day" into 49 × 3 rows of
+"one hour each." `[1:3]` keeps it to the first three hours; drop the slice for the whole day, at
+forty-nine times the rows. `CAST(… AS TIMESTAMP)` matters as much as the unnesting itself: without
+it Open-Meteo's timestamp strings stay text, and a query that never names a time column is exactly
+what section 5 described — a field with nothing for the map's clock to hold onto.
+
+Every hour now reaches the panel as one dataset; it is the map's own clock, at the bottom, that
+picks which one the field draws, always the **latest** hour still inside its window.
 
 Drag the clock's window back and the field redraws for an earlier hour without its lines jumping to
 a fresh scatter — they stay anchored to the same patch of ground, so what changes is the shape of
