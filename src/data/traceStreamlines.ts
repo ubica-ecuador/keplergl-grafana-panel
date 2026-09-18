@@ -275,30 +275,29 @@ const MIN_CELL_PITCH_PX = 2;
  * 3.6-pixel pan — an 800th of the screen — lost a quarter of its lines to
  * nothing but that.
  *
- * Any share below one already puts a sample inside every whole cell, so all a
- * finer lattice can add is the cells clipped at an edge — and measurement
- * says it adds nothing worth having. This constant has now been flipped
- * between 0.8, a half and a third more than once, so here are all three at
- * density 9,000, with deck's own viewport, flat and at a pitch of 60:
+ * This constant alone is not the whole of the step, and shrinking it is not
+ * a safety margin against every camera: at a bearing of 0 the two screen axes
+ * are also the compass axes, so the larger of a step vector's two components
+ * *is* the step's own length, and any share below one reaches every cell
+ * regardless of which fraction it is. Turn the camera and that stops being
+ * true — a step at 45° to the compass splits evenly between both components,
+ * so the larger one alone reads as only ~71% of how far the pixel actually
+ * moved, and a lattice sized from that underestimate steps too far and
+ * checkerboards across the diagonal. `bandSampling`'s `pitchOf` divides by
+ * the step vector's full length (`Math.hypot`) rather than its larger
+ * component for exactly this reason — it is what makes the share below
+ * bearing-independent, not this number.
  *
- * | share | reuse flat, 3.6/10/50 px | reuse at pitch 60 | `unproject` calls |
- * |-------|--------------------------|-------------------|-------------------|
- * | 0.8   | 99.3 / 98.6 / 93.6       | 99.6 / 98.9 / 94.1 | 24.0k flat, 18.1k tilted |
- * | 0.5   | 100.0 / 99.3 / 94.3      | 99.6 / 98.9 / 94.0 | 60.9k flat, 42.6k tilted |
- * | 0.33  | 99.3 / 98.6 / 93.6       | 99.6 / 98.8 / 94.1 | 121.6k flat, 75.1k tilted |
- *
- * All three agree to within a point on every pan and both pitches — including
- * the near-horizon band, the one a tilt hurts most, where the worst band of
- * the eight reused 99.6% at 0.8 against 99.6% at a half — and they agree to
- * within a hundred lines on the count and to two decimal places on the
- * evenness of a tilted screen. So 0.8 is chosen on cost, not on coverage: it
- * is two and a half times cheaper than a half and five times cheaper than a
- * third, for the same picture. A finer share is not a safety margin, it is
- * only more `unproject` calls — `seen` absorbs every duplicate sample and a
- * cell is traced exactly once whatever the share, so what a finer lattice
- * spends is never `trace` calls.
+ * With that fixed, 0.7 is chosen the same way 0.8 was before it: measured at
+ * density 9,000, deck's own viewport, bearings of 0/30/45 and pitches of
+ * 0/60, a 10-pixel pan kept 98.1–98.9% of its lines either way — no share
+ * tried bought more than a point over this one — at 30,600 `unproject` calls
+ * per trace flat and 23,400 at a pitch of 60 (half the cost of stepping at a
+ * half, a third the cost of stepping at a third). `seen` absorbs every
+ * duplicate sample and a cell is traced exactly once whatever the share, so
+ * what a finer lattice spends is `unproject` calls, never `trace` calls.
  */
-const SAMPLE_STEP_SHARE = 0.8;
+const SAMPLE_STEP_SHARE = 0.7;
 
 /**
  * The ground-cell level for a band of the screen, and how many screen pixels
@@ -357,20 +356,27 @@ function bandSampling(
   // east-west factor; multiplying by it here is how a target in degrees is
   // handed to a metres-shaped signature without touching `groundCells.ts`,
   // which is closed.
+  //
+  // Levels are powers of two, so this rounds the size asked for by up to
+  // ~1.41x either way, and the resulting line count — one over the square of
+  // the size — swings by roughly 0.6x to 1.3x of the budget as the zoom
+  // crosses from one level to the next, even with no tilt at all.
   const eastPerDegree = METRES_PER_DEGREE * Math.max(0.2, Math.cos((here[1] * Math.PI) / 180));
   const level = levelFor(Math.sqrt(areaPerPixel) * eastPerDegree, spacingPx, here[1]);
   const sizeDegrees = sizeAt(level);
 
-  // Taken from the faster-moving of a step's two components, so the lattice
-  // never steps further than the cell reaches on the axis that is changing
-  // quickest: under a bearing the screen's x runs partly north, and counting
-  // only the longitude it covers would overstate how far a sample may travel
-  // and start skipping cells again.
+  // The step vector's full length (`Math.hypot`), not its larger compass
+  // component: a step at a bearing is a diagonal of the ground it crosses,
+  // and the larger component alone is the diagonal's shadow on one axis, not
+  // its own length. Sizing the pitch from that shadow understates how far a
+  // pixel actually moves everywhere except bearing 0 or 90 — worst at 45°,
+  // where each component is only ~71% of the step — so the lattice steps too
+  // far and starts missing cells in a checkerboard across the diagonal, not
+  // only at the band's or the screen's own edge. The hypotenuse is what
+  // bounds the step correctly whichever way the two screen axes happen to
+  // fall across the compass.
   const pitchOf = (step: [number, number]) =>
-    Math.max(
-      MIN_CELL_PITCH_PX,
-      (SAMPLE_STEP_SHARE * sizeDegrees) / Math.max(Math.abs(step[0]), Math.abs(step[1]))
-    );
+    Math.max(MIN_CELL_PITCH_PX, (SAMPLE_STEP_SHARE * sizeDegrees) / Math.hypot(step[0], step[1]));
 
   return { level, pitchX: pitchOf(stepX), pitchY: pitchOf(stepY) };
 }

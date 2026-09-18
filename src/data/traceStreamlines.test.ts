@@ -608,13 +608,13 @@ describe('traceStreamlines — anchored to the ground', () => {
   const field = wideEastwardField();
 
   /** A camera over the field, as `flowFieldDeckLayer.makeScreenCamera` builds one. */
-  function cameraOver(centre: [number, number], zoom: number, pitch = 0): ScreenCamera {
+  function cameraOver(centre: [number, number], zoom: number, pitch = 0, bearing = 0): ScreenCamera {
     const viewport = new WebMercatorViewport({
       longitude: centre[0],
       latitude: centre[1],
       zoom,
       pitch,
-      bearing: 0,
+      bearing,
       width: 800,
       height: 600,
     });
@@ -740,6 +740,41 @@ describe('traceStreamlines — anchored to the ground', () => {
     }
   });
 
+  it('keeps most lines through a pan on a rotated map', () => {
+    // No test above sets a bearing, which is why nothing caught this: taking
+    // a lattice's pitch from a step's larger *compass* component reads the
+    // step's own length correctly only when the two screen axes line up with
+    // the two compass axes. Off that alignment the reading falls short —
+    // worst at 45°, where a step splits evenly between both components and
+    // each alone is only ~71% of the step's real length — so the lattice
+    // stepped too far and checkerboarded across a cell's diagonal. Measured
+    // on the code this guards against, a bearing of 45° kept only 69.9% of
+    // lines through a 10 px pan where bearing 0 kept 98.6%.
+    const bearing = 45;
+    const turned = new WebMercatorViewport({
+      longitude: -79,
+      latitude: -2,
+      zoom: 8,
+      pitch: 0,
+      bearing,
+      width: 800,
+      height: 600,
+    });
+    // Panned by where the screen's own point 10 px right of centre now sits
+    // on the ground, not by a fixed shift in longitude — "right" is no
+    // longer "east" once the map is turned, and this is what a drag under
+    // rotation actually moves.
+    const panned = turned.unproject([800 / 2 + 10, 600 / 2]) as [number, number];
+
+    const cells = new Map<string, Streamline[] | null>();
+    const before = traceStreamlines(field, { ...BASE, camera: cameraOver([-79, -2], 8, 0, bearing), cells });
+    const after = traceStreamlines(field, { ...BASE, camera: cameraOver(panned, 8, 0, bearing), cells });
+
+    const kept = new Set(before.map((line) => line.cell));
+    const shared = after.filter((line) => kept.has(line.cell));
+    expect(shared.length / after.length).toBeGreaterThan(0.9);
+  });
+
   it('fills a tilted screen from top to bottom', () => {
     // A ground lattice with one step for the whole screen piles its lines up
     // against the horizon: measured on kepler's, 4,580 in the top quarter of
@@ -801,15 +836,21 @@ describe('traceStreamlines — anchored to the ground', () => {
     // 0.59x the budget to 1.66x while the tilted one only runs 1.10x to 1.31x,
     // and tilted/flat reaches 1.92 at zooms 6.75, 7.75, 8.75 and 9.75. An
     // assertion of 1.25 there passed at zoom 8 by coincidence and failed on
-    // cameras a reader can reach with one scroll.
+    // cameras a reader can reach with one scroll. Judging the tilt against a
+    // flat count that dips with the rounding measures the rounding, not the
+    // tilt — which is why the bound below is against the budget, not a ratio.
     //
     // Four quarter-zooms, because the quantisation is periodic in zoom with a
     // period of one — zoom 9 tiles exactly as zoom 8 does — so these four
-    // walk the whole cycle. The band still catches what the ratio was there
-    // for: sizing a cell from the east-west ground per pixel alone instead of
-    // from the area under a pixel puts the tilted count at 2.63x, 2.39x,
-    // 2.20x and 2.23x of the budget at these four zooms, over the ceiling at
-    // every one of them.
+    // walk the whole cycle. Flat keeps the wider [0.5, 2] band a camera
+    // looking straight down has always carried — measured here, z8 alone
+    // reaches 1.66x, the same power-of-two rounding as always, nothing to do
+    // with a tilt. A tilt must not add to that ceiling: every tilted count at
+    // these four zooms measured at most 1.30x, well inside [0.5, 1.5], so
+    // that is the band it is held to. Sizing a cell from the east-west ground
+    // per pixel alone instead of the area under a pixel — the defect this
+    // test exists for — puts the tilted count at 2.63x, 2.39x, 2.20x and
+    // 2.23x of the budget at these same four zooms, over both ceilings.
     for (const zoom of [8, 8.25, 8.5, 8.75]) {
       for (const pitch of [0, 60]) {
         const lines = traceStreamlines(field, {
@@ -819,6 +860,9 @@ describe('traceStreamlines — anchored to the ground', () => {
 
         expect(lines.length).toBeGreaterThan(BASE.count * 0.5);
         expect(lines.length).toBeLessThan(BASE.count * 2);
+        if (pitch !== 0) {
+          expect(lines.length).toBeLessThan(BASE.count * 1.5);
+        }
       }
     }
   });
