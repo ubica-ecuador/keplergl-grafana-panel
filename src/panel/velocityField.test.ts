@@ -37,11 +37,13 @@ const COMPONENTS = { lat: 'latitude', lng: 'longitude', u: 'u', v: 'v' };
 function datasetOf(
   fields: Array<{ name: string; type?: string }>,
   rows: unknown[][],
-  filteredIndex?: number[]
+  filteredIndex?: number[],
+  filterRecord?: { cpu?: Array<{ type?: string; value?: unknown }>; gpu?: Array<{ type?: string; value?: unknown }> }
 ) {
   return {
     fields,
     filteredIndex,
+    filterRecord,
     dataContainer: {
       numRows: () => rows.length,
       valueAt: (row: number, column: number) => rows[row][column],
@@ -257,6 +259,23 @@ describe('latestStepRows', () => {
   it('reads every row when the query carries no time', () => {
     const fields = [{ name: 'lat', type: 'real' }, { name: 'lng', type: 'real' }];
     expect(latestStepRows(datasetOf(fields, [[0, 0], [0, 1]]))).toEqual([0, 1]);
+  });
+
+  // kepler sorts a `timestamp` field's filter into GPU mode by default
+  // (`getFilterProps`), and a GPU filter's own value narrowing never reaches
+  // `filteredIndex` — `KeplerTable.filterTable` only recomputes that for
+  // filters it sorts into `filterRecord.cpu`. Measured in the browser:
+  // dragging the map's time filter left `filteredIndex` holding every row
+  // while `dataset.filterRecord.gpu` carried the real, narrowed window. Without
+  // reading the record, the map's clock has no way to reach this layer at all.
+  it('is the latest hour the filter left standing even when the filter runs on the GPU', () => {
+    const filterRecord = { gpu: [{ type: 'timeRange', value: [500, 1_500] }] };
+    expect(latestStepRows(datasetOf(FIELDS, ROWS, undefined, filterRecord))).toEqual([0, 1]);
+  });
+
+  it('checks the CPU bucket too, since four GPU filters push a fifth one there', () => {
+    const filterRecord = { cpu: [{ type: 'timeRange', value: [500, 1_500] }] };
+    expect(latestStepRows(datasetOf(FIELDS, ROWS, undefined, filterRecord))).toEqual([0, 1]);
   });
 });
 
