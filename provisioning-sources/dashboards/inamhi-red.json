@@ -1,1175 +1,2585 @@
 {
-  "uid": "inamhi-red",
-  "title": "Station network health — INAMHI (Ecuador)",
-  "description": "Ecuador's hydrometeorological network read live: what the service says is transmitting, and what each hydrological station actually answers when asked.",
-  "tags": [
-    "kepler",
-    "inamhi",
-    "ecuador",
-    "hidrometeorologia",
-    "infinity",
-    "duckdb"
-  ],
-  "timezone": "browser",
-  "editable": true,
-  "graphTooltip": 0,
-  "schemaVersion": 41,
-  "version": 1,
-  "refresh": "15m",
-  "time": {
-    "from": "now-5d",
-    "to": "now+5d"
+  "kind": "Dashboard",
+  "apiVersion": "dashboard.grafana.app/v2beta1",
+  "metadata": {
+    "name": "inamhi-red"
   },
-  "templating": {
-    "list": [
-      {
-        "type": "query",
-        "name": "estacion",
-        "label": "Station",
-        "description": "Only the stations the service reports as transmitting — there is no point offering a drill-down into one that publishes nothing. The default is a hydrological station with a river reach, which is the only kind that fills all four panels below: level, battery, sensor list and forecast.",
-        "datasource": {
-          "type": "motherduck-duckdb-datasource",
-          "uid": "duckdb"
-        },
-        "query": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n-- Es la misma lista que alimenta el visor de INAMHI, así que el tablero nunca\n-- puede hablar de una estación que el organismo no publique.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n)\nSELECT (e->>'punto_obs') || '  ·  ' || (e->>'codigo') AS __text,\n       (e->>'id_estacion')                            AS __value\nFROM inv\nWHERE (e->>'estado_transmision') = 'TRANSMITIENDO'\nORDER BY __text",
-        "refresh": 1,
-        "multi": false,
-        "includeAll": false,
-        "hide": 0,
-        "sort": 0,
-        "regex": "",
-        "skipUrlSync": false,
-        "options": [],
-        "definition": "estaciones transmitiendo, nombre · código",
-        "current": {
-          "text": "PAUTE EN PAUTE(DJ GUALACEO)  ·  H0894",
-          "value": "62179",
-          "selected": true
-        }
-      },
-      {
-        "type": "query",
-        "name": "parametro",
-        "label": "Sensor",
-        "description": "The chosen station's live sensors. Rebuilt whenever the station changes, so the list can never offer a sensor this particular box does not carry.",
-        "datasource": {
-          "type": "motherduck-duckdb-datasource",
-          "uid": "duckdb"
-        },
-        "query": "LOAD http_client;\n-- Los sensores que la estación elegida tiene VIVOS. El filtro de treinta días\n-- no es cosmético: hay cajas que siguen publicando sondas de suelo paradas en\n-- 2016, y sin él encabezan la lista.\nWITH r AS (\n  SELECT http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/parametros/?id_estacion='\n                  || '${estacion}' || '&id_aplicacion=vs_1h_inh') AS resp\n), s AS (\n  SELECT unnest(json_extract(\n    coalesce(nullif(resp->>'body', ''), '[]'), '$[*].params[*]')) AS p\n  FROM r\n)\nSELECT (p->>'descripcion_parametro') AS __text,\n       (p->>'nemonico')              AS __value\nFROM s\nWHERE strptime((p->>'fecha_ultimo_dato')[1:19], '%Y-%m-%dT%H:%M:%S')\n      > timezone('UTC', now()) - INTERVAL 30 DAY\nORDER BY __text",
-        "refresh": 1,
-        "multi": false,
-        "includeAll": false,
-        "hide": 0,
-        "sort": 0,
-        "regex": "",
-        "skipUrlSync": false,
-        "options": [],
-        "definition": "sensores con dato en los últimos 30 días",
-        "current": {
-          "text": "NIVEL DEL AGUA m PROM 1 HORAS",
-          "value": "014100401h",
-          "selected": true
-        }
-      }
-    ]
-  },
-  "panels": [
-    {
-      "id": 1,
-      "type": "text",
-      "gridPos": {
-        "x": 0,
-        "y": 0,
-        "w": 17,
-        "h": 9
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "# Station network health — INAMHI\n\nEcuador's hydrometeorological network, read live from the API behind INAMHI's own\n[Visor Hidrometeorológico](https://inamhi.gob.ec/info/). **1,894 stations** are on the books;\nthe service labels **224** of them as transmitting.\n\nThat label is what this dashboard is about. It is the network's own account of itself, and it is\nnot quite true: a station marked *TRANSMITIENDO* can be nine hours behind, and some return no\nsensor list at all. The map and the counters below show the label. The table further down stops\ntrusting it and **asks each hydrological station directly** how old its newest reading is.\n\nNothing here is stored or pre-computed — every panel is a live call, and the public history stops\nat ten days."
-      },
-      "transparent": true
-    },
-    {
-      "id": 2,
-      "type": "stat",
-      "title": "The network on paper",
-      "description": "Straight from the inventory call: what exists, and what the service says is alive.",
-      "gridPos": {
-        "x": 17,
-        "y": 0,
-        "w": 7,
-        "h": 9
-      },
-      "datasource": {
-        "type": "motherduck-duckdb-datasource",
-        "uid": "duckdb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "editorMode": "code",
-          "format": 1,
-          "rawQuery": true,
-          "rawSql": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n-- Es la misma lista que alimenta el visor de INAMHI, así que el tablero nunca\n-- puede hablar de una estación que el organismo no publique.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n)\nSELECT\n  count(*)                                                                   AS \"Stations\",\n  count(*) FILTER (WHERE (e->>'estado_transmision') = 'TRANSMITIENDO')       AS \"Transmitting\",\n  round(100.0 * count(*) FILTER (WHERE (e->>'estado_transmision') = 'TRANSMITIENDO')\n        / count(*), 1)                                                       AS \"Share (%)\",\n  count(*) FILTER (WHERE (e->>'estado_transmision') = 'TRANSMITIENDO'\n                     AND (e->>'categoria') LIKE '%HIDRO%')                   AS \"Hydrological\"\nFROM inv"
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "text"
-          },
-          "unit": "none"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Share (%)"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "percent"
-              },
-              {
-                "id": "decimals",
-                "value": 1
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Transmitting"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "green"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": 3,
-      "type": "ubica-keplergl-panel",
-      "title": "The network as INAMHI labels it",
-      "description": "Every station on the books, coloured by the transmission status the service publishes. One request, 1,894 points. Switch to 'by kind' in the layer list to see how the hydrological stations sit on the rivers.",
-      "gridPos": {
-        "x": 0,
-        "y": 9,
-        "w": 17,
-        "h": 22
-      },
-      "datasource": {
-        "type": "yesoreyeram-infinity-datasource",
-        "uid": "infinity"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "yesoreyeram-infinity-datasource",
-            "uid": "infinity"
-          },
-          "type": "json",
-          "source": "url",
-          "parser": "backend",
-          "format": "table",
-          "url": "https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh",
-          "root_selector": "",
-          "columns": [
-            {
-              "selector": "latitud",
-              "text": "latitude",
-              "type": "number"
-            },
-            {
-              "selector": "longitud",
-              "text": "longitude",
-              "type": "number"
-            },
-            {
-              "selector": "codigo",
-              "text": "code",
-              "type": "string"
-            },
-            {
-              "selector": "punto_obs",
-              "text": "station",
-              "type": "string"
-            },
-            {
-              "selector": "categoria",
-              "text": "category",
-              "type": "string"
-            },
-            {
-              "selector": "estado_transmision",
-              "text": "status",
-              "type": "string"
-            },
-            {
-              "selector": "propietario",
-              "text": "owner",
-              "type": "string"
-            },
-            {
-              "selector": "provincia",
-              "text": "province",
-              "type": "string"
-            },
-            {
-              "selector": "altitud",
-              "text": "altitude",
-              "type": "number"
+  "spec": {
+    "annotations": [],
+    "cursorSync": "Off",
+    "description": "Ecuador's hydrometeorological network read live: what the service says is transmitting, and what each station actually answers when asked.",
+    "editable": true,
+    "elements": {
+      "panel-1": {
+        "kind": "Panel",
+        "spec": {
+          "id": 1,
+          "title": "",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
             }
-          ],
-          "url_options": {
-            "method": "GET"
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "text",
+            "version": "",
+            "spec": {
+              "options": {
+                "mode": "markdown",
+                "content": "# Station network health — INAMHI\n\nEcuador's hydrometeorological network, read live from the API behind INAMHI's own\n[Visor Hidrometeorológico](https://inamhi.gob.ec/info/). **1,894 stations** are on the books; the\nservice labels **224** of them as transmitting.\n\nThat label is what this dashboard is about. It is the network's own account of itself, and it is\nnot quite true: a station marked *TRANSMITIENDO* can be ten hours behind, some return no sensor\nlist at all, and eighteen of them are **manual** stations, which by definition cannot transmit.\n\nThis tab shows the label. **Reality check** stops trusting it and asks each hydrological station\ndirectly. **Station** opens one box up, sensor by sensor. **Forecast** leaves the network aside and\nshows what INAMHI tells the public.\n\nThe filters at the top cross all of it: status, province, owner, kind. Nothing here is stored or\npre-computed — every panel is a live call."
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
           }
         }
-      ],
-      "options": {
-        "showSidePanel": false,
-        "followGrafanaTheme": true,
-        "basemap": "positron",
-        "timeSync": "off",
-        "publishWhilePlaying": false,
-        "peerTimeSync": false,
-        "variableMappings": [],
-        "viewportVariables": {},
-        "mapConfig": {
-          "version": "v1",
-          "config": {
-            "mapState": {
-              "latitude": -1.6,
-              "longitude": -78.6,
-              "zoom": 5.6,
-              "bearing": 0,
-              "pitch": 0,
-              "dragRotate": false
-            },
-            "visState": {
-              "layerBlending": "normal",
-              "filters": [],
-              "layers": [
+      },
+      "panel-2": {
+        "kind": "Panel",
+        "spec": {
+          "id": 2,
+          "title": "The network on paper",
+          "description": "Straight from the inventory call, and cut by the filters above: what exists, and what the service says is alive.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
                 {
-                  "id": "estado",
-                  "type": "point",
-                  "config": {
-                    "dataId": "grafana-A",
-                    "label": "Stations — as labelled",
-                    "columns": {
-                      "lat": "latitude",
-                      "lng": "longitude"
-                    },
-                    "isVisible": true,
-                    "visConfig": {
-                      "radius": 7,
-                      "opacity": 0.85,
-                      "outline": false,
-                      "filled": true,
-                      "radiusRange": [
-                        3,
-                        40
-                      ],
-                      "colorRange": {
-                        "name": "Transmission status",
-                        "type": "custom",
-                        "category": "Custom",
-                        "colors": [
-                          "#2b8c5d",
-                          "#6b7280"
-                        ],
-                        "colorMap": [
-                          [
-                            "TRANSMITIENDO",
-                            "#2b8c5d"
-                          ],
-                          [
-                            "NO TRANSMITIENDO",
-                            "#6b7280"
-                          ]
-                        ]
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n)\nSELECT\n  count(*)                                                             AS \"Stations\",\n  count(*) FILTER (WHERE (e->>'estado_transmision') = 'TRANSMITIENDO') AS \"Transmitting\",\n  round(100.0 * count(*) FILTER (WHERE (e->>'estado_transmision') = 'TRANSMITIENDO')\n        / nullif(count(*), 0), 1)                                      AS \"Share (%)\",\n  count(*) FILTER (WHERE (e->>'estado_transmision') = 'TRANSMITIENDO'\n                     AND (e->>'categoria') LIKE '%HIDRO%')             AS \"Hydrological\"\nFROM inv\n  WHERE ($transmite = 'Todas' OR (e->>'estado_transmision') = $transmite)\n    AND ((e->>'provincia')   IN (${provincia:singlequote}))\n    AND ((e->>'propietario') IN (${propietario:singlequote}))\n    AND ((e->>'categoria')   IN (${categoria:singlequote}))"
                       }
-                    }
-                  },
-                  "visualChannels": {
-                    "colorField": {
-                      "name": "status",
-                      "type": "string"
                     },
-                    "colorScale": "customOrdinal"
-                  }
-                },
-                {
-                  "id": "categoria",
-                  "type": "point",
-                  "config": {
-                    "dataId": "grafana-A",
-                    "label": "Stations — by kind",
-                    "columns": {
-                      "lat": "latitude",
-                      "lng": "longitude"
-                    },
-                    "isVisible": false,
-                    "visConfig": {
-                      "radius": 7,
-                      "opacity": 0.85,
-                      "outline": false,
-                      "filled": true,
-                      "colorRange": {
-                        "name": "Station kind",
-                        "type": "custom",
-                        "category": "Custom",
-                        "colors": [
-                          "#1f5fa9",
-                          "#e7b416",
-                          "#8c6bb1"
-                        ],
-                        "colorMap": [
-                          [
-                            "HIDROLOGICA",
-                            "#1f5fa9"
-                          ],
-                          [
-                            "METEOROLOGICA",
-                            "#e7b416"
-                          ],
-                          [
-                            "HIDRO - METEOROLOGICA",
-                            "#8c6bb1"
-                          ]
-                        ]
-                      }
-                    }
-                  },
-                  "visualChannels": {
-                    "colorField": {
-                      "name": "category",
-                      "type": "string"
-                    },
-                    "colorScale": "customOrdinal"
+                    "refId": "A",
+                    "hidden": false
                   }
                 }
               ],
-              "interactionConfig": {
-                "tooltip": {
-                  "fieldsToShow": {
-                    "grafana-A": [
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "",
+            "spec": {
+              "options": {
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "orientation": "auto",
+                "textMode": "auto",
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "fixed",
+                    "fixedColor": "text"
+                  },
+                  "unit": "none"
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Share (%)"
+                    },
+                    "properties": [
                       {
-                        "name": "station",
-                        "format": null
+                        "id": "unit",
+                        "value": "percent"
                       },
                       {
-                        "name": "code",
-                        "format": null
-                      },
-                      {
-                        "name": "category",
-                        "format": null
-                      },
-                      {
-                        "name": "status",
-                        "format": null
-                      },
-                      {
-                        "name": "owner",
-                        "format": null
-                      },
-                      {
-                        "name": "altitude",
-                        "format": null
+                        "id": "decimals",
+                        "value": 1
                       }
                     ]
                   },
-                  "compareMode": false,
-                  "compareType": "absolute",
-                  "enabled": true
-                },
-                "brush": {
-                  "size": 0.5,
-                  "enabled": false
-                },
-                "geocoder": {
-                  "enabled": false
-                },
-                "coordinate": {
-                  "enabled": false
-                }
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Transmitting"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "green"
+                        }
+                      }
+                    ]
+                  }
+                ]
               }
             }
           }
-        },
-        "saveRequest": 0
-      }
-    },
-    {
-      "id": 4,
-      "type": "barchart",
-      "title": "Where the live stations are",
-      "description": "Transmitting stations by province. Twelve provinces of the twenty-four hold almost all of it.",
-      "gridPos": {
-        "x": 17,
-        "y": 9,
-        "w": 7,
-        "h": 11
-      },
-      "datasource": {
-        "type": "motherduck-duckdb-datasource",
-        "uid": "duckdb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "editorMode": "code",
-          "format": 1,
-          "rawQuery": true,
-          "rawSql": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n-- Es la misma lista que alimenta el visor de INAMHI, así que el tablero nunca\n-- puede hablar de una estación que el organismo no publique.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n)\n-- Dónde está viva la red. El reparto no es geográfico sino presupuestario:\n-- Pichincha concentra casi un tercio de todo lo que transmite.\nSELECT e->>'provincia' AS key, count(*) AS n\nFROM inv\nWHERE (e->>'estado_transmision') = 'TRANSMITIENDO'\nGROUP BY ALL\nORDER BY n DESC\nLIMIT 12"
-        }
-      ],
-      "options": {
-        "orientation": "horizontal",
-        "xTickLabelRotation": 0,
-        "showValue": "auto",
-        "stacking": "none",
-        "groupWidth": 0.7,
-        "barWidth": 0.8,
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false,
-          "calcs": []
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
         }
       },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          }
-        },
-        "overrides": []
-      }
-    },
-    {
-      "id": 5,
-      "type": "barchart",
-      "title": "Who keeps them running",
-      "description": "Total stations and how many still transmit, by owner. INAMHI is not the only one: CELEC and the old EX-INERHI hold a large share of the books.",
-      "gridPos": {
-        "x": 17,
-        "y": 20,
-        "w": 7,
-        "h": 11
-      },
-      "datasource": {
-        "type": "motherduck-duckdb-datasource",
-        "uid": "duckdb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "editorMode": "code",
-          "format": 1,
-          "rawQuery": true,
-          "rawSql": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n-- Es la misma lista que alimenta el visor de INAMHI, así que el tablero nunca\n-- puede hablar de una estación que el organismo no publique.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n)\n-- La red no es toda de INAMHI: hay estaciones de EX-INERHI, de CELEC y de otros\n-- organismos. Esta es la lectura que no se ve en el visor — quién mantiene qué,\n-- y qué parte de lo suyo sigue en pie.\nSELECT e->>'propietario' AS key,\n       count(*) FILTER (WHERE (e->>'estado_transmision') = 'TRANSMITIENDO')     AS \"Transmitting\",\n       count(*) FILTER (WHERE (e->>'estado_transmision') <> 'TRANSMITIENDO')    AS \"Silent\"\nFROM inv\nGROUP BY ALL\nORDER BY \"Transmitting\" + \"Silent\" DESC\nLIMIT 10"
-        }
-      ],
-      "options": {
-        "orientation": "horizontal",
-        "xTickLabelRotation": 0,
-        "showValue": "auto",
-        "stacking": "normal",
-        "groupWidth": 0.7,
-        "barWidth": 0.8,
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true,
-          "calcs": []
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Transmitting"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "green"
+      "panel-3": {
+        "kind": "Panel",
+        "spec": {
+          "id": 3,
+          "title": "The network as INAMHI labels it",
+          "description": "Every station the filters leave standing, coloured by the transmission status the service publishes. One request, up to 1,894 points. The layer list has two more readings of the same points: by kind, and by how they are read — which is where the eighteen manual 'transmitting' stations hide.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n)\n-- El mapa se sirve por DuckDB y no por Infinity justamente para que los filtros\n-- de arriba lo recorten a él también: una URL fija no sabe filtrar, un WHERE sí.\nSELECT (e->>'latitud')::DOUBLE  AS latitude,\n       (e->>'longitud')::DOUBLE AS longitude,\n       e->>'codigo'             AS code,\n       e->>'punto_obs'          AS station,\n       e->>'categoria'          AS category,\n       e->>'estado_transmision' AS status,\n       e->>'propietario'        AS owner,\n       e->>'provincia'          AS province,\n       e->>'captor'             AS sensing,\n       (e->>'altitud')::DOUBLE  AS altitude\nFROM inv\n  WHERE ($transmite = 'Todas' OR (e->>'estado_transmision') = $transmite)\n    AND ((e->>'provincia')   IN (${provincia:singlequote}))\n    AND ((e->>'propietario') IN (${propietario:singlequote}))\n    AND ((e->>'categoria')   IN (${categoria:singlequote}))"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
                 }
-              }
-            ]
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
           },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Silent"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#6b7280"
-                }
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "ubica-keplergl-panel",
+            "version": "",
+            "spec": {
+              "options": {
+                "showSidePanel": false,
+                "followGrafanaTheme": true,
+                "basemap": "positron",
+                "timeSync": "off",
+                "publishWhilePlaying": false,
+                "peerTimeSync": false,
+                "variableMappings": [],
+                "viewportVariables": {},
+                "mapConfig": {
+                  "version": "v1",
+                  "config": {
+                    "mapState": {
+                      "latitude": -1.6,
+                      "longitude": -78.6,
+                      "zoom": 5.6,
+                      "bearing": 0,
+                      "pitch": 0,
+                      "dragRotate": false
+                    },
+                    "visState": {
+                      "layerBlending": "normal",
+                      "filters": [],
+                      "layers": [
+                        {
+                          "id": "estado",
+                          "type": "point",
+                          "config": {
+                            "dataId": "grafana-A",
+                            "label": "Stations — as labelled",
+                            "columns": {
+                              "lat": "latitude",
+                              "lng": "longitude"
+                            },
+                            "isVisible": true,
+                            "visConfig": {
+                              "radius": 7,
+                              "opacity": 0.85,
+                              "outline": false,
+                              "filled": true,
+                              "radiusRange": [
+                                3,
+                                40
+                              ],
+                              "colorRange": {
+                                "name": "Stations — as labelled",
+                                "type": "custom",
+                                "category": "Custom",
+                                "colors": [
+                                  "#2b8c5d",
+                                  "#6b7280"
+                                ],
+                                "colorMap": [
+                                  [
+                                    "TRANSMITIENDO",
+                                    "#2b8c5d"
+                                  ],
+                                  [
+                                    "NO TRANSMITIENDO",
+                                    "#6b7280"
+                                  ]
+                                ]
+                              }
+                            }
+                          },
+                          "visualChannels": {
+                            "colorField": {
+                              "name": "status",
+                              "type": "string"
+                            },
+                            "colorScale": "customOrdinal"
+                          }
+                        },
+                        {
+                          "id": "categoria",
+                          "type": "point",
+                          "config": {
+                            "dataId": "grafana-A",
+                            "label": "Stations — by kind",
+                            "columns": {
+                              "lat": "latitude",
+                              "lng": "longitude"
+                            },
+                            "isVisible": false,
+                            "visConfig": {
+                              "radius": 7,
+                              "opacity": 0.85,
+                              "outline": false,
+                              "filled": true,
+                              "radiusRange": [
+                                3,
+                                40
+                              ],
+                              "colorRange": {
+                                "name": "Stations — by kind",
+                                "type": "custom",
+                                "category": "Custom",
+                                "colors": [
+                                  "#1f5fa9",
+                                  "#e7b416",
+                                  "#8c6bb1"
+                                ],
+                                "colorMap": [
+                                  [
+                                    "HIDROLOGICA",
+                                    "#1f5fa9"
+                                  ],
+                                  [
+                                    "METEOROLOGICA",
+                                    "#e7b416"
+                                  ],
+                                  [
+                                    "HIDRO - METEOROLOGICA",
+                                    "#8c6bb1"
+                                  ]
+                                ]
+                              }
+                            }
+                          },
+                          "visualChannels": {
+                            "colorField": {
+                              "name": "category",
+                              "type": "string"
+                            },
+                            "colorScale": "customOrdinal"
+                          }
+                        },
+                        {
+                          "id": "captor",
+                          "type": "point",
+                          "config": {
+                            "dataId": "grafana-A",
+                            "label": "Stations — how they are read",
+                            "columns": {
+                              "lat": "latitude",
+                              "lng": "longitude"
+                            },
+                            "isVisible": false,
+                            "visConfig": {
+                              "radius": 7,
+                              "opacity": 0.85,
+                              "outline": false,
+                              "filled": true,
+                              "radiusRange": [
+                                3,
+                                40
+                              ],
+                              "colorRange": {
+                                "name": "Stations — how they are read",
+                                "type": "custom",
+                                "category": "Custom",
+                                "colors": [
+                                  "#0f766e",
+                                  "#b45309",
+                                  "#6b7280"
+                                ],
+                                "colorMap": [
+                                  [
+                                    "ELECTROMECANICA",
+                                    "#0f766e"
+                                  ],
+                                  [
+                                    "MANUAL",
+                                    "#b45309"
+                                  ],
+                                  [
+                                    "NO DEFINIDO",
+                                    "#6b7280"
+                                  ]
+                                ]
+                              }
+                            }
+                          },
+                          "visualChannels": {
+                            "colorField": {
+                              "name": "sensing",
+                              "type": "string"
+                            },
+                            "colorScale": "customOrdinal"
+                          }
+                        }
+                      ],
+                      "interactionConfig": {
+                        "tooltip": {
+                          "fieldsToShow": {
+                            "grafana-A": [
+                              {
+                                "name": "station",
+                                "format": null
+                              },
+                              {
+                                "name": "code",
+                                "format": null
+                              },
+                              {
+                                "name": "category",
+                                "format": null
+                              },
+                              {
+                                "name": "status",
+                                "format": null
+                              },
+                              {
+                                "name": "owner",
+                                "format": null
+                              },
+                              {
+                                "name": "sensing",
+                                "format": null
+                              },
+                              {
+                                "name": "altitude",
+                                "format": null
+                              }
+                            ]
+                          },
+                          "compareMode": false,
+                          "compareType": "absolute",
+                          "enabled": true
+                        },
+                        "brush": {
+                          "size": 0.5,
+                          "enabled": false
+                        },
+                        "geocoder": {
+                          "enabled": false
+                        },
+                        "coordinate": {
+                          "enabled": false
+                        }
+                      }
+                    }
+                  }
+                },
+                "saveRequest": 0
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
               }
-            ]
+            }
           }
-        ]
-      }
-    },
-    {
-      "id": 6,
-      "type": "table",
-      "title": "Measured, not labelled — the hydrological stations",
-      "description": "The 43 hydrological stations that claim to be transmitting, each asked directly how old its newest reading is. This panel takes 8–11 s: it makes 43 calls, one per station, because the API has no bulk endpoint for freshness. Anything red is a station that says it is alive and is not keeping up.",
-      "gridPos": {
-        "x": 0,
-        "y": 31,
-        "w": 24,
-        "h": 13
-      },
-      "datasource": {
-        "type": "motherduck-duckdb-datasource",
-        "uid": "duckdb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "editorMode": "code",
-          "format": 1,
-          "rawQuery": true,
-          "rawSql": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n-- Es la misma lista que alimenta el visor de INAMHI, así que el tablero nunca\n-- puede hablar de una estación que el organismo no publique.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n),\n-- Las hidrológicas que DICEN transmitir. Son 43 y a cada una se le pregunta por\n-- separado: no existe endpoint que dé la frescura de toda la red de golpe\n-- (`parametros/` sin `id_estacion` responde 400).\nhidro AS (\n  SELECT (e->>'id_estacion')::BIGINT AS id_estacion,\n         e->>'codigo'    AS codigo,\n         e->>'punto_obs' AS nombre,\n         e->>'provincia' AS provincia\n  FROM inv\n  WHERE (e->>'estado_transmision') = 'TRANSMITIENDO'\n    AND (e->>'categoria') LIKE '%HIDRO%'\n),\n-- Un GET por estación, en serie dentro de la misma consulta: 43 peticiones,\n-- entre 8 y 11 s medidos. Por eso este panel es el único que tarda, y por eso\n-- no se extiende a las 224 que transmiten en total: serían ~29 s y tocarían el\n-- plazo de Grafana.\nprobed AS (\n  SELECT h.*,\n         http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/parametros/?id_estacion='\n                  || h.id_estacion || '&id_aplicacion=vs_1h_inh') AS r\n  FROM hidro h\n),\n-- El `coalesce` de dos pisos es el que salva a los muertos: una estación que\n-- devuelve cuerpo vacío se queda con lista vacía en vez de desaparecer. Con un\n-- LATERAL/unnest en su lugar, esas filas se esfuman sin avisar — justo las que\n-- este panel existe para enseñar.\nmedido AS (\n  SELECT codigo, nombre, provincia, (r->>'status') AS status,\n         coalesce(\n           json_extract_string(coalesce(nullif(r->>'body', ''), '[]'),\n                               '$[*].params[*].fecha_ultimo_dato'),\n           []::VARCHAR[]) AS sellos\n  FROM probed\n),\n-- `fecha_ultimo_dato` llega etiquetada `-05:00`, pero ese reloj ES UTC: si se\n-- creyera el sufijo, el último dato caería cinco horas en el futuro. Se corta a\n-- 19 caracteres y se compara contra UTC.\nfechas AS (\n  SELECT *, list_max(list_transform(sellos,\n             s -> strptime(s[1:19], '%Y-%m-%dT%H:%M:%S'))) AS ultimo\n  FROM medido\n)\nSELECT codigo      AS \"Code\",\n       nombre      AS \"Station\",\n       provincia   AS \"Province\",\n       len(sellos) AS \"Sensors\",\n       ultimo      AS \"Last datum (UTC)\",\n       round(date_diff('minute', ultimo, timezone('UTC', now())) / 60.0, 1) AS \"Hours behind\"\nFROM fechas\nORDER BY \"Hours behind\" DESC NULLS FIRST"
         }
-      ],
-      "options": {
-        "showHeader": true,
-        "cellHeight": "sm",
-        "footer": {
-          "show": false,
-          "reducer": [
-            "sum"
-          ],
-          "countRows": false,
-          "fields": ""
-        },
-        "sortBy": [
-          {
-            "displayName": "Hours behind",
-            "desc": true
-          }
-        ]
       },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": true
+      "panel-4": {
+        "kind": "Panel",
+        "spec": {
+          "id": 4,
+          "title": "Stations by province",
+          "description": "Follows every filter above, the status one included: leave Status on All and this is the whole inventory; set it to Transmitting and it becomes the map of where the network is still alive — Pichincha alone holds almost a third of it.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n)\n-- Obedece a TODOS los filtros, el de estado incluido. Antes forzaba\n-- TRANSMITIENDO por dentro y el título mentía en cuanto alguien tocaba el\n-- desplegable: contaba todas y seguía diciendo \"las vivas\".\nSELECT e->>'provincia' AS key, count(*) AS n\nFROM inv\n  WHERE ($transmite = 'Todas' OR (e->>'estado_transmision') = $transmite)\n    AND ((e->>'provincia')   IN (${provincia:singlequote}))\n    AND ((e->>'propietario') IN (${propietario:singlequote}))\n    AND ((e->>'categoria')   IN (${categoria:singlequote}))\nGROUP BY ALL\nORDER BY n DESC\nLIMIT 12"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
           },
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "text",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Hours behind"
-            },
-            "properties": [
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text"
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "barchart",
+            "version": "",
+            "spec": {
+              "options": {
+                "orientation": "horizontal",
+                "xTickLabelRotation": 0,
+                "showValue": "auto",
+                "stacking": "none",
+                "groupWidth": 0.7,
+                "barWidth": 0.8,
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false,
+                  "calcs": []
+                },
+                "tooltip": {
+                  "mode": "single",
+                  "sort": "none"
                 }
               },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-5": {
+        "kind": "Panel",
+        "spec": {
+          "id": 5,
+          "title": "Who keeps them running",
+          "description": "Stations by owner, split into what still transmits and what does not. INAMHI is not the only keeper: CELEC, EPMAPS and the old EX-INERHI hold a large share of the books.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n)\n-- Apilado a propósito: la barra entera es el total de ese dueño y el tramo verde\n-- lo que sigue vivo. Con dos series sueltas, 224 al lado de 1.500 era una raya.\nSELECT e->>'propietario' AS key,\n       count(*) FILTER (WHERE (e->>'estado_transmision') = 'TRANSMITIENDO')  AS \"Transmitting\",\n       count(*) FILTER (WHERE (e->>'estado_transmision') <> 'TRANSMITIENDO') AS \"Silent\"\nFROM inv\n  WHERE ($transmite = 'Todas' OR (e->>'estado_transmision') = $transmite)\n    AND ((e->>'provincia')   IN (${provincia:singlequote}))\n    AND ((e->>'propietario') IN (${propietario:singlequote}))\n    AND ((e->>'categoria')   IN (${categoria:singlequote}))\nGROUP BY ALL\nORDER BY \"Transmitting\" + \"Silent\" DESC\nLIMIT 10"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "barchart",
+            "version": "",
+            "spec": {
+              "options": {
+                "orientation": "horizontal",
+                "xTickLabelRotation": 0,
+                "showValue": "auto",
+                "stacking": "normal",
+                "groupWidth": 0.7,
+                "barWidth": 0.8,
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true,
+                  "calcs": []
+                },
+                "tooltip": {
+                  "mode": "single",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Transmitting"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "green"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Silent"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#6b7280"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-12": {
+        "kind": "Panel",
+        "spec": {
+          "id": 12,
+          "title": "The eighteen impossible ones",
+          "description": "Stations whose sensing is MANUAL — someone walks up and reads the instrument — and which the same row marks as transmitting. Both fields come from the inventory as they are. They are left out of the freshness tab on purpose: for a manual station `fecha_ultimo_dato` is not the age of the data (M1208 said the 17th at 18:02 while its newest reading was from the 15th at 12:05).",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n)\n-- Una contradicción que el propio inventario publica: estaciones cuyo captor es\n-- MANUAL —alguien va, lee el instrumento y lo anota— marcadas como que\n-- TRANSMITEN. Son 18 de las 224. No es un error de lectura nuestro: los dos\n-- campos vienen así en la misma fila.\n--\n-- Y sí responden a `parametros/`, pero con otra trampa encima: ahí\n-- `fecha_ultimo_dato` NO es la edad del dato. Medido el 2026-09-17 en M1208,\n-- decía «17 a las 18:02» mientras su último dato real era del «15 a las 12:05».\n-- Por eso estas estaciones se quedan fuera de la pestaña que mide frescura.\nSELECT e->>'codigo'      AS \"Code\",\n       e->>'punto_obs'   AS \"Station\",\n       e->>'categoria'   AS \"Kind\",\n       e->>'provincia'   AS \"Province\",\n       e->>'propietario' AS \"Owner\"\nFROM inv\nWHERE (e->>'captor') = 'MANUAL'\n  AND (e->>'estado_transmision') = 'TRANSMITIENDO'\nORDER BY \"Province\", \"Code\""
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "table",
+            "version": "",
+            "spec": {
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false,
+                  "reducer": [
+                    "sum"
+                  ],
+                  "countRows": false,
+                  "fields": ""
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "filterable": true
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "text",
+                        "value": null
+                      }
+                    ]
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Hours behind"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-text"
+                        }
+                      },
+                      {
+                        "id": "thresholds",
+                        "value": {
+                          "mode": "absolute",
+                          "steps": [
+                            {
+                              "color": "green",
+                              "value": null
+                            },
+                            {
+                              "color": "#e7b416",
+                              "value": 3
+                            },
+                            {
+                              "color": "red",
+                              "value": 6
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "id": "unit",
+                        "value": "h"
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 1
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 160
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Sensors"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 90
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Code"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 95
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Unit"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Last datum (UTC)"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 190
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-11": {
+        "kind": "Panel",
+        "spec": {
+          "id": 11,
+          "title": "",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "text",
+            "version": "",
+            "spec": {
+              "options": {
+                "mode": "markdown",
+                "content": "**Source** — INAMHI, *Visor Hidrometeorológico* (`inamhi.gob.ec/api_visor`), read live.\nForecast discharge from **GEOGLOWS** and the daily outlook from `api_pronos`, both served by INAMHI.\nLive rainfall from **GEOGLOWS**' PERSIANN, over WMS.\n\n**What the numbers do not say.** *Transmitting* is the organisation's own label and is not a\nmeasurement: the *Reality check* tab is. Public history is capped at **ten days** — a longer range\nreturns 401, not an error a panel can explain. Timestamps in the sensor listing arrive tagged\n`-05:00` on a clock that is really UTC, so every panel corrects it rather than repeating it. And a\nhandful of stations report impossible rainfall — a sensor fault the service passes through\nunfiltered — so a single station's spike is not evidence of weather."
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-20": {
+        "kind": "Panel",
+        "spec": {
+          "id": 20,
+          "title": "",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "text",
+            "version": "",
+            "spec": {
+              "options": {
+                "mode": "markdown",
+                "content": "### Measured, not labelled\n\nEverything on this tab asks the stations themselves. For each hydrological station that claims to\nbe transmitting, one call fetches its sensor list and the newest timestamp in it; the age is\ncomputed against UTC. **It takes 8 to 11 seconds** — 43 calls, one per station, because the API has\nno bulk endpoint for freshness and `parametros/` without a station answers 400. The tab only pays\nthat when you open it.\n\nGreen is under three hours, which is as fresh as an hourly network gets. Red is over six: a station\nthat says it is alive and is not keeping up. A station with **no sensors at all** keeps its row,\nwith an empty age — losing those would hide exactly what this tab is for."
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-6": {
+        "kind": "Panel",
+        "spec": {
+          "id": 6,
+          "title": "Measured, not labelled — the hydrological stations",
+          "description": "The hydrological stations that claim to be transmitting, each asked directly how old its newest reading is. Anything red says it is alive and is not keeping up.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n),\n-- Las hidrológicas que DICEN transmitir, ya recortadas por los filtros de arriba.\n-- Cada una se pregunta por separado: no existe endpoint que dé la frescura de\n-- toda la red de golpe (`parametros/` sin `id_estacion` responde 400).\nhidro AS (\n  SELECT (e->>'id_estacion')::BIGINT AS id_estacion,\n         e->>'codigo'    AS codigo,\n         e->>'punto_obs' AS nombre,\n         e->>'provincia' AS provincia,\n         (e->>'latitud')::DOUBLE  AS latitude,\n         (e->>'longitud')::DOUBLE AS longitude\n  FROM inv\n  WHERE (e->>'estado_transmision') = 'TRANSMITIENDO'\n    AND (e->>'categoria') LIKE '%HIDRO%'\n    AND ((e->>'provincia')   IN (${provincia:singlequote}))\n    AND ((e->>'propietario') IN (${propietario:singlequote}))\n    AND ((e->>'categoria')   IN (${categoria:singlequote}))\n),\nprobed AS (\n  SELECT h.*,\n         http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/parametros/?id_estacion='\n                  || h.id_estacion || '&id_aplicacion=vs_1h_inh') AS r\n  FROM hidro h\n),\n-- El `coalesce` de dos pisos es el que salva a los muertos: una estación que\n-- devuelve cuerpo vacío se queda con lista vacía en vez de desaparecer. Con un\n-- LATERAL/unnest en su lugar, esas filas se esfuman sin avisar — justo las que\n-- esta pestaña existe para enseñar.\nmedido AS (\n  SELECT codigo, nombre, provincia, latitude, longitude, (r->>'status') AS status,\n         coalesce(\n           json_extract_string(coalesce(nullif(r->>'body', ''), '[]'),\n                               '$[*].params[*].fecha_ultimo_dato'),\n           []::VARCHAR[]) AS sellos\n  FROM probed\n),\n-- `fecha_ultimo_dato` llega etiquetada `-05:00`, pero ese reloj ES UTC: si se\n-- creyera el sufijo, el último dato caería cinco horas en el futuro. Se corta a\n-- 19 caracteres y se compara contra UTC.\nfechas AS (\n  SELECT *, list_max(list_transform(sellos,\n             s -> strptime(s[1:19], '%Y-%m-%dT%H:%M:%S'))) AS ultimo\n  FROM medido\n)\nSELECT codigo      AS \"Code\",\n       nombre      AS \"Station\",\n       provincia   AS \"Province\",\n       len(sellos) AS \"Sensors\",\n       ultimo      AS \"Last datum (UTC)\",\n       round(date_diff('minute', ultimo, timezone('UTC', now())) / 60.0, 1) AS \"Hours behind\"\nFROM fechas\nORDER BY \"Hours behind\" DESC NULLS FIRST"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "table",
+            "version": "",
+            "spec": {
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false,
+                  "reducer": [
+                    "sum"
+                  ],
+                  "countRows": false,
+                  "fields": ""
+                },
+                "sortBy": [
+                  {
+                    "displayName": "Hours behind",
+                    "desc": true
+                  }
+                ]
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "filterable": true
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "text",
+                        "value": null
+                      }
+                    ]
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Hours behind"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-text"
+                        }
+                      },
+                      {
+                        "id": "thresholds",
+                        "value": {
+                          "mode": "absolute",
+                          "steps": [
+                            {
+                              "color": "green",
+                              "value": null
+                            },
+                            {
+                              "color": "#e7b416",
+                              "value": 3
+                            },
+                            {
+                              "color": "red",
+                              "value": 6
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "id": "unit",
+                        "value": "h"
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 1
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 160
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Sensors"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 90
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Code"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 95
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Unit"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Last datum (UTC)"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 190
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-13": {
+        "kind": "Panel",
+        "spec": {
+          "id": 13,
+          "title": "The same stations, coloured by what they answered",
+          "description": "The only layer on this dashboard that draws what was checked rather than what was declared. Grey is a station that answered nothing at all.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n),\n-- Las hidrológicas que DICEN transmitir, ya recortadas por los filtros de arriba.\n-- Cada una se pregunta por separado: no existe endpoint que dé la frescura de\n-- toda la red de golpe (`parametros/` sin `id_estacion` responde 400).\nhidro AS (\n  SELECT (e->>'id_estacion')::BIGINT AS id_estacion,\n         e->>'codigo'    AS codigo,\n         e->>'punto_obs' AS nombre,\n         e->>'provincia' AS provincia,\n         (e->>'latitud')::DOUBLE  AS latitude,\n         (e->>'longitud')::DOUBLE AS longitude\n  FROM inv\n  WHERE (e->>'estado_transmision') = 'TRANSMITIENDO'\n    AND (e->>'categoria') LIKE '%HIDRO%'\n    AND ((e->>'provincia')   IN (${provincia:singlequote}))\n    AND ((e->>'propietario') IN (${propietario:singlequote}))\n    AND ((e->>'categoria')   IN (${categoria:singlequote}))\n),\nprobed AS (\n  SELECT h.*,\n         http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/parametros/?id_estacion='\n                  || h.id_estacion || '&id_aplicacion=vs_1h_inh') AS r\n  FROM hidro h\n),\n-- El `coalesce` de dos pisos es el que salva a los muertos: una estación que\n-- devuelve cuerpo vacío se queda con lista vacía en vez de desaparecer. Con un\n-- LATERAL/unnest en su lugar, esas filas se esfuman sin avisar — justo las que\n-- esta pestaña existe para enseñar.\nmedido AS (\n  SELECT codigo, nombre, provincia, latitude, longitude, (r->>'status') AS status,\n         coalesce(\n           json_extract_string(coalesce(nullif(r->>'body', ''), '[]'),\n                               '$[*].params[*].fecha_ultimo_dato'),\n           []::VARCHAR[]) AS sellos\n  FROM probed\n),\n-- `fecha_ultimo_dato` llega etiquetada `-05:00`, pero ese reloj ES UTC: si se\n-- creyera el sufijo, el último dato caería cinco horas en el futuro. Se corta a\n-- 19 caracteres y se compara contra UTC.\nfechas AS (\n  SELECT *, list_max(list_transform(sellos,\n             s -> strptime(s[1:19], '%Y-%m-%dT%H:%M:%S'))) AS ultimo\n  FROM medido\n)\n-- El mismo trabajo, servido al mapa: aquí el color NO sale de la etiqueta sino\n-- de las horas de retraso medidas. Es la única capa del tablero que dibuja lo\n-- comprobado en vez de lo declarado.\nSELECT latitude, longitude,\n       codage    AS code,\n       nombre    AS station,\n       provincia AS province,\n       horas     AS hours_behind,\n       CASE WHEN horas IS NULL THEN 'silent'\n            WHEN horas < 3     THEN 'fresh'\n            WHEN horas < 6     THEN 'lagging'\n            ELSE                    'stale' END AS freshness\nFROM (\n  SELECT latitude, longitude, codigo AS codage, nombre, provincia,\n         round(date_diff('minute', ultimo, timezone('UTC', now())) / 60.0, 1) AS horas\n  FROM fechas\n)"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "ubica-keplergl-panel",
+            "version": "",
+            "spec": {
+              "options": {
+                "showSidePanel": false,
+                "followGrafanaTheme": true,
+                "basemap": "positron",
+                "timeSync": "off",
+                "publishWhilePlaying": false,
+                "peerTimeSync": false,
+                "variableMappings": [],
+                "viewportVariables": {},
+                "mapConfig": {
+                  "version": "v1",
+                  "config": {
+                    "mapState": {
+                      "latitude": -1.6,
+                      "longitude": -78.6,
+                      "zoom": 5.6,
+                      "bearing": 0,
+                      "pitch": 0,
+                      "dragRotate": false
+                    },
+                    "visState": {
+                      "layerBlending": "normal",
+                      "filters": [],
+                      "layers": [
+                        {
+                          "id": "frescura",
+                          "type": "point",
+                          "config": {
+                            "dataId": "grafana-A",
+                            "label": "Measured freshness",
+                            "columns": {
+                              "lat": "latitude",
+                              "lng": "longitude"
+                            },
+                            "isVisible": true,
+                            "visConfig": {
+                              "radius": 10,
+                              "opacity": 0.85,
+                              "outline": false,
+                              "filled": true,
+                              "radiusRange": [
+                                3,
+                                40
+                              ],
+                              "colorRange": {
+                                "name": "Measured freshness",
+                                "type": "custom",
+                                "category": "Custom",
+                                "colors": [
+                                  "#2b8c5d",
+                                  "#e7b416",
+                                  "#d62728",
+                                  "#6b7280"
+                                ],
+                                "colorMap": [
+                                  [
+                                    "fresh",
+                                    "#2b8c5d"
+                                  ],
+                                  [
+                                    "lagging",
+                                    "#e7b416"
+                                  ],
+                                  [
+                                    "stale",
+                                    "#d62728"
+                                  ],
+                                  [
+                                    "silent",
+                                    "#6b7280"
+                                  ]
+                                ]
+                              }
+                            }
+                          },
+                          "visualChannels": {
+                            "colorField": {
+                              "name": "freshness",
+                              "type": "string"
+                            },
+                            "colorScale": "customOrdinal"
+                          }
+                        }
+                      ],
+                      "interactionConfig": {
+                        "tooltip": {
+                          "fieldsToShow": {
+                            "grafana-A": [
+                              {
+                                "name": "station",
+                                "format": null
+                              },
+                              {
+                                "name": "code",
+                                "format": null
+                              },
+                              {
+                                "name": "province",
+                                "format": null
+                              },
+                              {
+                                "name": "hours_behind",
+                                "format": null
+                              },
+                              {
+                                "name": "freshness",
+                                "format": null
+                              }
+                            ]
+                          },
+                          "compareMode": false,
+                          "compareType": "absolute",
+                          "enabled": true
+                        },
+                        "brush": {
+                          "size": 0.5,
+                          "enabled": false
+                        },
+                        "geocoder": {
+                          "enabled": false
+                        },
+                        "coordinate": {
+                          "enabled": false
+                        }
+                      }
+                    }
+                  }
+                },
+                "saveRequest": 0
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-21": {
+        "kind": "Panel",
+        "spec": {
+          "id": 21,
+          "title": "",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "text",
+            "version": "",
+            "spec": {
+              "options": {
+                "mode": "markdown",
+                "content": "### One station, opened up\n\nThe charts below are **one per magnitude**, not one per sensor — the service publishes most\nreadings three times over (maximum, mean and minimum), so a panel per entry would be thirty-three\nlines of nothing. Each chart carries its magnitude's three statistics together.\n\n*Transmitting* is a property of the box, not of its sensors: the table shows stations an hour fresh\non rainfall and years stale on soil temperature, in the same cabinet. **Battery** is the one reading\nthat is about the station rather than the weather — about two in five report it, and a sagging\ncharge is what precedes a station going quiet."
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-9": {
+        "kind": "Panel",
+        "spec": {
+          "id": 9,
+          "title": "Sensor by sensor",
+          "description": "Every sensor in the chosen station and how far behind each one is.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "LOAD http_client;\n-- Los sensores de la estación elegida, con lo viejo que es el dato de cada uno.\n-- Aquí se ve que \"transmitiendo\" es una propiedad de la ESTACIÓN y no de sus\n-- sensores: en una misma caja conviven el pluviómetro de hace una hora y la\n-- sonda de suelo parada desde 2016.\nWITH r AS (\n  SELECT http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/parametros/?id_estacion='\n                  || $estacion || '&id_aplicacion=vs_1h_inh') AS resp\n), s AS (\n  SELECT unnest(json_extract(\n    coalesce(nullif(resp->>'body', ''), '[]'), '$[*].params[*]')) AS p\n  FROM r\n)\nSELECT p->>'descripcion_parametro' AS \"Sensor\",\n       p->>'simbolo_unidad'        AS \"Unit\",\n       strptime((p->>'fecha_ultimo_dato')[1:19], '%Y-%m-%dT%H:%M:%S') AS \"Last datum (UTC)\",\n       round(date_diff('minute',\n             strptime((p->>'fecha_ultimo_dato')[1:19], '%Y-%m-%dT%H:%M:%S'),\n             timezone('UTC', now())) / 60.0, 1) AS \"Hours behind\"\nFROM s\nORDER BY \"Hours behind\""
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "table",
+            "version": "",
+            "spec": {
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false,
+                  "reducer": [
+                    "sum"
+                  ],
+                  "countRows": false,
+                  "fields": ""
+                },
+                "sortBy": [
+                  {
+                    "displayName": "Hours behind",
+                    "desc": false
+                  }
+                ]
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "filterable": true
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "text",
+                        "value": null
+                      }
+                    ]
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Hours behind"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-text"
+                        }
+                      },
+                      {
+                        "id": "thresholds",
+                        "value": {
+                          "mode": "absolute",
+                          "steps": [
+                            {
+                              "color": "green",
+                              "value": null
+                            },
+                            {
+                              "color": "#e7b416",
+                              "value": 3
+                            },
+                            {
+                              "color": "red",
+                              "value": 6
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "id": "unit",
+                        "value": "h"
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 1
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 160
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Sensors"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 90
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Code"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 95
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Unit"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Last datum (UTC)"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 190
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-8": {
+        "kind": "Panel",
+        "spec": {
+          "id": 8,
+          "title": "Battery",
+          "description": "Supply voltage, where the station reports it — about two in five do. The daily sawtooth is a solar panel charging; a falling floor night after night is a station about to go quiet.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 0,
+                        "rawQuery": true,
+                        "rawSql": "LOAD http_client;\n-- Un panel por MAGNITUD, no por sensor. La diferencia importa: Gualaceo no tiene\n-- doce sensores sino treinta y tres entradas, porque cada magnitud aparece por\n-- triplicado (MAX, PROM, MIN). Repetir por entrada daría treinta y tres paneles\n-- de una línea; repetir por magnitud da doce con su banda máximo-mínimo y la\n-- media dentro, que es como se lee una variable meteorológica.\n--\n-- Por eso la consulta pide primero los códigos de ESTA magnitud y luego los pide\n-- todos juntos en un solo POST.\nWITH r AS (\n  SELECT http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/parametros/?id_estacion='\n                  || $estacion || '&id_aplicacion=vs_1h_inh') AS resp\n), grupos AS (\n  SELECT unnest(json_extract(\n    coalesce(nullif(resp->>'body', ''), '[]'), '$[*]')) AS g\n  FROM r\n), mio AS (\n  SELECT g FROM grupos WHERE (g->>'id_param') = '39'\n), pedido AS (\n  -- El mapa de cabeceras va VACÍO a propósito: `http_post` ya pone el suyo\n  -- `application/json`, y añadirlo otra vez manda «application/json,\n  -- application/json» y el servicio contesta 415 Unsupported Media Type.\n  --\n  -- Y las fechas van con BARRAS: con guiones, 500 y página de Django.\n  SELECT http_post(\n    'https://inamhi.gob.ec/api_visor/station_data_automaticas/get_data_hour/',\n    MAP {},\n    json_object(\n      'id_estacion',  CAST($estacion AS BIGINT),\n      -- Solo los códigos HORARIOS. El grupo de precipitación trae también el\n      -- acumulado diario (`017140801d`), y pedir un diario y un horario juntos a\n      -- `get_data_hour` devuelve 500: el panel entero se quedaba en \"No data\".\n      'table_names',  list_filter(json_extract_string(g, '$.params[*].nemonico'),\n                                  n -> n LIKE '%h'),\n      'fecha_desde',  strftime($__timeFrom()::TIMESTAMPTZ, '%Y/%m/%d'),\n      'fecha_hasta',  strftime($__timeTo()::TIMESTAMPTZ,   '%Y/%m/%d'))\n  ) AS resp\n  FROM mio\n), ok AS (\n  SELECT resp->>'body' AS body FROM pedido WHERE (resp->>'status') = '200'\n), ser AS (\n  SELECT unnest(json_extract(body, '$.series[*]')) AS s FROM ok\n)\nSELECT (d->>'date')::TIMESTAMPTZ AS time,\n       (d->>'value')::DOUBLE     AS value,\n       CASE s->>'measure_type' WHEN 'PROM' THEN 'mean'  WHEN 'MAX'  THEN 'max'\n                               WHEN 'MIN'  THEN 'min'   WHEN 'SUM'  THEN 'sum'\n                               WHEN 'INST' THEN 'value' ELSE lower(s->>'measure_type') END AS metric\nFROM ser, LATERAL (SELECT unnest(json_extract(s, '$.data[*]')) AS d) t\nORDER BY time"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "",
+            "spec": {
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true,
+                  "calcs": []
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "volt",
+                  "custom": {
+                    "lineWidth": 2,
+                    "fillOpacity": 8,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "displayName": "${__field.labels.metric}"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-7": {
+        "kind": "Panel",
+        "spec": {
+          "id": 7,
+          "title": "${magnitud}",
+          "description": "One chart per magnitude, with its statistics together: the band is maximum to minimum and the line through it the mean. Repeated over every magnitude the chosen station still reports.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 0,
+                        "rawQuery": true,
+                        "rawSql": "LOAD http_client;\n-- Un panel por MAGNITUD, no por sensor. La diferencia importa: Gualaceo no tiene\n-- doce sensores sino treinta y tres entradas, porque cada magnitud aparece por\n-- triplicado (MAX, PROM, MIN). Repetir por entrada daría treinta y tres paneles\n-- de una línea; repetir por magnitud da doce con su banda máximo-mínimo y la\n-- media dentro, que es como se lee una variable meteorológica.\n--\n-- Por eso la consulta pide primero los códigos de ESTA magnitud y luego los pide\n-- todos juntos en un solo POST.\nWITH r AS (\n  SELECT http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/parametros/?id_estacion='\n                  || $estacion || '&id_aplicacion=vs_1h_inh') AS resp\n), grupos AS (\n  SELECT unnest(json_extract(\n    coalesce(nullif(resp->>'body', ''), '[]'), '$[*]')) AS g\n  FROM r\n), mio AS (\n  SELECT g FROM grupos WHERE (g->>'id_param') = $magnitud\n), pedido AS (\n  -- El mapa de cabeceras va VACÍO a propósito: `http_post` ya pone el suyo\n  -- `application/json`, y añadirlo otra vez manda «application/json,\n  -- application/json» y el servicio contesta 415 Unsupported Media Type.\n  --\n  -- Y las fechas van con BARRAS: con guiones, 500 y página de Django.\n  SELECT http_post(\n    'https://inamhi.gob.ec/api_visor/station_data_automaticas/get_data_hour/',\n    MAP {},\n    json_object(\n      'id_estacion',  CAST($estacion AS BIGINT),\n      -- Solo los códigos HORARIOS. El grupo de precipitación trae también el\n      -- acumulado diario (`017140801d`), y pedir un diario y un horario juntos a\n      -- `get_data_hour` devuelve 500: el panel entero se quedaba en \"No data\".\n      'table_names',  list_filter(json_extract_string(g, '$.params[*].nemonico'),\n                                  n -> n LIKE '%h'),\n      'fecha_desde',  strftime($__timeFrom()::TIMESTAMPTZ, '%Y/%m/%d'),\n      'fecha_hasta',  strftime($__timeTo()::TIMESTAMPTZ,   '%Y/%m/%d'))\n  ) AS resp\n  FROM mio\n), ok AS (\n  SELECT resp->>'body' AS body FROM pedido WHERE (resp->>'status') = '200'\n), ser AS (\n  SELECT unnest(json_extract(body, '$.series[*]')) AS s FROM ok\n)\nSELECT (d->>'date')::TIMESTAMPTZ AS time,\n       (d->>'value')::DOUBLE     AS value,\n       CASE s->>'measure_type' WHEN 'PROM' THEN 'mean'  WHEN 'MAX'  THEN 'max'\n                               WHEN 'MIN'  THEN 'min'   WHEN 'SUM'  THEN 'sum'\n                               WHEN 'INST' THEN 'value' ELSE lower(s->>'measure_type') END AS metric\nFROM ser, LATERAL (SELECT unnest(json_extract(s, '$.data[*]')) AS d) t\nORDER BY time"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "",
+            "spec": {
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true,
+                  "calcs": []
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "none",
+                  "custom": {
+                    "lineWidth": 2,
+                    "fillOpacity": 8,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "displayName": "${__field.labels.metric}"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-10": {
+        "kind": "Panel",
+        "spec": {
+          "id": 10,
+          "title": "Forecast discharge — GEOGLOWS",
+          "description": "Fifteen days of modelled discharge for the river reach attached to this station, three-hourly, with its uncertainty band. The dashboard window reaches into the future so this has somewhere to be drawn: measurement stops at now, the forecast carries on. Only hydrological stations with a reach return anything; for the rest this panel is empty, which is the service's own answer and not a failure.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "LOAD http_client;\n-- GEOGLOWS solo contesta por las estaciones que tienen un tramo de río asociado\n-- —27 de las 651 hidrológicas—; al resto les responde 404 con su motivo:\n-- \"La estación no tiene un river_id asociado\". Ese 404 es la respuesta CORRECTA,\n-- no una avería, así que el guardián de estado lo convierte en cero filas en vez\n-- de en un aspa roja que contradiría la descripción del panel.\nWITH r AS (\n  SELECT http_get('https://inamhi.gob.ec/api_visor/geoglows/forecast/station/' || $estacion || '/') AS resp\n), ok AS (\n  SELECT resp->>'body' AS body FROM r WHERE (resp->>'status') = '200'\n), pts AS (\n  SELECT unnest(json_extract(body, '$.data[*]')) AS d FROM ok\n)\nSELECT (d->>'date')::TIMESTAMPTZ AS time,\n       (d->>'median')::DOUBLE    AS median,\n       (d->>'lower')::DOUBLE     AS lower,\n       (d->>'upper')::DOUBLE     AS upper\nFROM pts\nORDER BY time"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "",
+            "spec": {
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true,
+                  "calcs": []
+                },
+                "tooltip": {
+                  "mode": "multi",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "m3/s",
+                  "custom": {
+                    "lineWidth": 2,
+                    "fillOpacity": 8,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "lower"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "fill": "dash",
+                          "dash": [
+                            6,
+                            6
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "upper"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "fill": "dash",
+                          "dash": [
+                            6,
+                            6
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-22": {
+        "kind": "Panel",
+        "spec": {
+          "id": 22,
+          "title": "",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "text",
+            "version": "",
+            "spec": {
+              "options": {
+                "mode": "markdown",
+                "content": "### What the public is told\n\nINAMHI's daily outlook for the 26 provincial capitals, from a different API to everything else on\nthis dashboard. Underneath it, the rain a satellite actually saw: **PERSIANN**, served by GEOGLOWS\nover WMS and driven by the map's own clock.\n\nPut together they answer a question the station map cannot: the forecast says one thing, the\nsatellite saw another, and the gauges on the other tabs are what would settle it — if enough of\nthem were still reporting."
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-15": {
+        "kind": "Panel",
+        "spec": {
+          "id": 15,
+          "title": "Tomorrow, as announced — and the rain already falling",
+          "description": "The 26 provincial capitals with their outlook, over PERSIANN's live rainfall. The map builds the rainfall layer by itself as soon as it recognises a `wms_url` column, and its clock chooses which pass to draw.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "LOAD http_client;\n-- Otra API distinta —`api_pronos`, no `api_visor`— y la única del tablero que no\n-- habla de estaciones sino de ciudades: las 26 capitales, con coordenada. Es lo\n-- que ve el público cuando mira el tiempo.\nWITH r AS (\n  SELECT http_get('https://inamhi.gob.ec/api_pronos/forecast/daily_forecast/list_by_date_now/') AS resp\n), loc AS (\n  SELECT unnest(json_extract(resp->>'body', '$[*]')) AS l\n  FROM r WHERE (resp->>'status') = '200'\n), periodos AS (\n  -- Las cuatro franjas se giran a columnas por NOMBRE y no por posición: que el\n  -- array venga siempre en el mismo orden no lo garantiza nadie.\n  SELECT l,\n         max(CASE WHEN p->>'period_name' = 'Madrugada' THEN p->>'condition_name' END) AS madrugada,\n         max(CASE WHEN p->>'period_name' = 'Mañana'    THEN p->>'condition_name' END) AS manana,\n         max(CASE WHEN p->>'period_name' = 'Tarde'     THEN p->>'condition_name' END) AS tarde,\n         max(CASE WHEN p->>'period_name' = 'Noche'     THEN p->>'condition_name' END) AS noche\n  FROM loc, LATERAL (SELECT unnest(json_extract(l, '$.forecast[*]')) AS p) t\n  GROUP BY l\n)\nSELECT l->>'locality_name'    AS locality,\n       l->>'fk_province_name' AS province,\n       (l->>'latitude')::DOUBLE        AS latitude,\n       (l->>'longitude')::DOUBLE       AS longitude,\n       (l->>'min_temperature')::DOUBLE AS min_c,\n       (l->>'max_temperature')::DOUBLE AS max_c,\n       (l->>'uv_radiation')::INTEGER   AS uv,\n       CASE WHEN (l->>'rain')::BOOLEAN THEN 'rain' ELSE 'dry' END AS rain,\n       madrugada AS small_hours, manana AS morning,\n       tarde     AS afternoon,   noche  AS night\nFROM periodos\nORDER BY province"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "LOAD http_client;\n-- La lluvia que el satélite ve AHORA, debajo del pronóstico. Las fechas las\n-- publica el propio servicio en su GetCapabilities: la consulta no inventa un\n-- calendario, lo lee. El panel monta la capa él solo en cuanto reconoce una\n-- columna `wms_url`.\nWITH caps AS (\n  SELECT http_get('https://services.geoglows.org/geoserver/satellite_based_precipitation/wms'\n                  || '?service=WMS&request=GetCapabilities')->>'body' AS xml\n), extent AS (\n  SELECT regexp_extract(\n    xml,\n    '(?s)<Name>persiann_pdir_24h</Name>.*?<Dimension name=\"time\"[^>]*>([^<]*)</Dimension>',\n    1) AS times\n  FROM caps\n), fechas AS (\n  -- En su propia etapa: DuckDB no admite UNNEST en un SELECT que además filtra.\n  SELECT unnest(str_split(times, ','))::TIMESTAMPTZ AS time FROM extent\n)\nSELECT time,\n       'https://services.geoglows.org/geoserver/satellite_based_precipitation/wms' AS wms_url,\n       'persiann_pdir_24h' AS wms_layer\nFROM fechas\nWHERE time BETWEEN $__timeFrom()::TIMESTAMPTZ AND $__timeTo()::TIMESTAMPTZ\nORDER BY time"
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "ubica-keplergl-panel",
+            "version": "",
+            "spec": {
+              "options": {
+                "showSidePanel": false,
+                "followGrafanaTheme": true,
+                "basemap": "positron",
+                "timeSync": "toMap",
+                "publishWhilePlaying": false,
+                "peerTimeSync": false,
+                "variableMappings": [],
+                "viewportVariables": {},
+                "mapConfig": {
+                  "version": "v1",
+                  "config": {
+                    "mapState": {
+                      "latitude": -1.6,
+                      "longitude": -78.6,
+                      "zoom": 5.6,
+                      "bearing": 0,
+                      "pitch": 0,
+                      "dragRotate": false
+                    },
+                    "visState": {
+                      "layerBlending": "normal",
+                      "filters": [],
+                      "layers": [
+                        {
+                          "id": "ciudades",
+                          "type": "point",
+                          "config": {
+                            "dataId": "grafana-A",
+                            "label": "Capitals — rain expected",
+                            "columns": {
+                              "lat": "latitude",
+                              "lng": "longitude"
+                            },
+                            "isVisible": true,
+                            "visConfig": {
+                              "radius": 12,
+                              "opacity": 0.85,
+                              "outline": false,
+                              "filled": true,
+                              "radiusRange": [
+                                3,
+                                40
+                              ],
+                              "colorRange": {
+                                "name": "Capitals — rain expected",
+                                "type": "custom",
+                                "category": "Custom",
+                                "colors": [
+                                  "#1f5fa9",
+                                  "#e7b416"
+                                ],
+                                "colorMap": [
+                                  [
+                                    "rain",
+                                    "#1f5fa9"
+                                  ],
+                                  [
+                                    "dry",
+                                    "#e7b416"
+                                  ]
+                                ]
+                              }
+                            }
+                          },
+                          "visualChannels": {
+                            "colorField": {
+                              "name": "rain",
+                              "type": "string"
+                            },
+                            "colorScale": "customOrdinal"
+                          }
+                        }
+                      ],
+                      "interactionConfig": {
+                        "tooltip": {
+                          "fieldsToShow": {
+                            "grafana-A": [
+                              {
+                                "name": "locality",
+                                "format": null
+                              },
+                              {
+                                "name": "province",
+                                "format": null
+                              },
+                              {
+                                "name": "min_c",
+                                "format": null
+                              },
+                              {
+                                "name": "max_c",
+                                "format": null
+                              },
+                              {
+                                "name": "uv",
+                                "format": null
+                              },
+                              {
+                                "name": "rain",
+                                "format": null
+                              },
+                              {
+                                "name": "morning",
+                                "format": null
+                              },
+                              {
+                                "name": "afternoon",
+                                "format": null
+                              }
+                            ]
+                          },
+                          "compareMode": false,
+                          "compareType": "absolute",
+                          "enabled": true
+                        },
+                        "brush": {
+                          "size": 0.5,
+                          "enabled": false
+                        },
+                        "geocoder": {
+                          "enabled": false
+                        },
+                        "coordinate": {
+                          "enabled": false
+                        }
+                      }
+                    }
+                  }
+                },
+                "saveRequest": 0
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-16": {
+        "kind": "Panel",
+        "spec": {
+          "id": 16,
+          "title": "The outlook, city by city",
+          "description": "Minimum and maximum, the UV index, whether rain is expected, and the four periods the service publishes for the day.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "motherduck-duckdb-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "duckdb"
+                      },
+                      "spec": {
+                        "format": 1,
+                        "rawQuery": true,
+                        "rawSql": "LOAD http_client;\n-- Otra API distinta —`api_pronos`, no `api_visor`— y la única del tablero que no\n-- habla de estaciones sino de ciudades: las 26 capitales, con coordenada. Es lo\n-- que ve el público cuando mira el tiempo.\nWITH r AS (\n  SELECT http_get('https://inamhi.gob.ec/api_pronos/forecast/daily_forecast/list_by_date_now/') AS resp\n), loc AS (\n  SELECT unnest(json_extract(resp->>'body', '$[*]')) AS l\n  FROM r WHERE (resp->>'status') = '200'\n), periodos AS (\n  -- Las cuatro franjas se giran a columnas por NOMBRE y no por posición: que el\n  -- array venga siempre en el mismo orden no lo garantiza nadie.\n  SELECT l,\n         max(CASE WHEN p->>'period_name' = 'Madrugada' THEN p->>'condition_name' END) AS madrugada,\n         max(CASE WHEN p->>'period_name' = 'Mañana'    THEN p->>'condition_name' END) AS manana,\n         max(CASE WHEN p->>'period_name' = 'Tarde'     THEN p->>'condition_name' END) AS tarde,\n         max(CASE WHEN p->>'period_name' = 'Noche'     THEN p->>'condition_name' END) AS noche\n  FROM loc, LATERAL (SELECT unnest(json_extract(l, '$.forecast[*]')) AS p) t\n  GROUP BY l\n)\nSELECT l->>'locality_name'    AS locality,\n       l->>'fk_province_name' AS province,\n       (l->>'latitude')::DOUBLE        AS latitude,\n       (l->>'longitude')::DOUBLE       AS longitude,\n       (l->>'min_temperature')::DOUBLE AS min_c,\n       (l->>'max_temperature')::DOUBLE AS max_c,\n       (l->>'uv_radiation')::INTEGER   AS uv,\n       CASE WHEN (l->>'rain')::BOOLEAN THEN 'rain' ELSE 'dry' END AS rain,\n       madrugada AS small_hours, manana AS morning,\n       tarde     AS afternoon,   noche  AS night\nFROM periodos\nORDER BY province"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "table",
+            "version": "",
+            "spec": {
+              "options": {
+                "showHeader": true,
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false,
+                  "reducer": [
+                    "sum"
+                  ],
+                  "countRows": false,
+                  "fields": ""
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "filterable": true
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "max_c"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "celsius"
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "min_c"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "celsius"
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "uv"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 60
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "latitude"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.hidden",
+                        "value": true
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "longitude"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.hidden",
+                        "value": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "layout": {
+      "kind": "TabsLayout",
+      "spec": {
+        "tabs": [
+          {
+            "kind": "TabsLayoutTab",
+            "spec": {
+              "title": "The network",
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
                     {
-                      "color": "green",
-                      "value": null
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 16,
+                        "height": 9,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-1"
+                        }
+                      }
                     },
                     {
-                      "color": "#e7b416",
-                      "value": 3
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 16,
+                        "y": 0,
+                        "width": 8,
+                        "height": 9,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-2"
+                        }
+                      }
                     },
                     {
-                      "color": "red",
-                      "value": 6
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 9,
+                        "width": 16,
+                        "height": 20,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-3"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 16,
+                        "y": 9,
+                        "width": 8,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-4"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 16,
+                        "y": 19,
+                        "width": 8,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-5"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 29,
+                        "width": 24,
+                        "height": 9,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-12"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 38,
+                        "width": 24,
+                        "height": 6,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-11"
+                        }
+                      }
                     }
                   ]
                 }
-              },
-              {
-                "id": "unit",
-                "value": "h"
-              },
-              {
-                "id": "decimals",
-                "value": 1
-              },
-              {
-                "id": "custom.width",
-                "value": 160
               }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Sensors"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 90
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Code"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 90
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Unit"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 80
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Last datum (UTC)"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 190
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": 7,
-      "type": "timeseries",
-      "title": "The chosen station, the chosen sensor",
-      "description": "Hourly readings straight from the station. The public history stops at ten days — ask for more and the service answers 401, which reaches the panel as an empty chart.",
-      "gridPos": {
-        "x": 0,
-        "y": 44,
-        "w": 12,
-        "h": 9
-      },
-      "datasource": {
-        "type": "yesoreyeram-infinity-datasource",
-        "uid": "infinity"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "yesoreyeram-infinity-datasource",
-            "uid": "infinity"
-          },
-          "type": "json",
-          "source": "url",
-          "parser": "backend",
-          "format": "table",
-          "url": "https://inamhi.gob.ec/api_visor/station_data_automaticas/get_data_hour/",
-          "root_selector": "series.0.data",
-          "columns": [
-            {
-              "selector": "date",
-              "text": "time",
-              "type": "timestamp"
-            },
-            {
-              "selector": "value",
-              "text": "value",
-              "type": "number"
             }
-          ],
-          "url_options": {
-            "method": "POST",
-            "body_type": "raw",
-            "body_content_type": "application/json",
-            "data": "{\"id_estacion\":$estacion,\"table_names\":[\"$parametro\"],\"fecha_desde\":\"${__from:date:YYYY/MM/DD}\",\"fecha_hasta\":\"${__to:date:YYYY/MM/DD}\"}"
-          }
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true,
-          "calcs": []
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "none",
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 8,
-            "showPoints": "never",
-            "spanNulls": false
           },
-          "color": {
-            "mode": "palette-classic"
-          }
-        },
-        "overrides": []
-      }
-    },
-    {
-      "id": 8,
-      "type": "timeseries",
-      "title": "Battery",
-      "description": "Supply voltage, where the station reports it — about two in five do. It is the one reading that is about the station itself rather than the weather, and a sagging battery is what precedes a station going quiet.",
-      "gridPos": {
-        "x": 12,
-        "y": 44,
-        "w": 12,
-        "h": 9
-      },
-      "datasource": {
-        "type": "yesoreyeram-infinity-datasource",
-        "uid": "infinity"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "yesoreyeram-infinity-datasource",
-            "uid": "infinity"
-          },
-          "type": "json",
-          "source": "url",
-          "parser": "backend",
-          "format": "table",
-          "url": "https://inamhi.gob.ec/api_visor/station_data_automaticas/get_data_hour/",
-          "root_selector": "series.0.data",
-          "columns": [
-            {
-              "selector": "date",
-              "text": "time",
-              "type": "timestamp"
-            },
-            {
-              "selector": "value",
-              "text": "value",
-              "type": "number"
-            }
-          ],
-          "url_options": {
-            "method": "POST",
-            "body_type": "raw",
-            "body_content_type": "application/json",
-            "data": "{\"id_estacion\":$estacion,\"table_names\":[\"039191601h\"],\"fecha_desde\":\"${__from:date:YYYY/MM/DD}\",\"fecha_hasta\":\"${__to:date:YYYY/MM/DD}\"}"
-          }
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true,
-          "calcs": []
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "volt",
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 8,
-            "showPoints": "never",
-            "spanNulls": false
-          },
-          "color": {
-            "mode": "palette-classic"
-          }
-        },
-        "overrides": []
-      }
-    },
-    {
-      "id": 9,
-      "type": "table",
-      "title": "Sensor by sensor",
-      "description": "Every sensor in the chosen station and how far behind each one is. Transmitting is a property of the box, not of its sensors: a station can be an hour fresh on rainfall and years stale on soil temperature.",
-      "gridPos": {
-        "x": 0,
-        "y": 53,
-        "w": 12,
-        "h": 10
-      },
-      "datasource": {
-        "type": "motherduck-duckdb-datasource",
-        "uid": "duckdb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "editorMode": "code",
-          "format": 1,
-          "rawQuery": true,
-          "rawSql": "LOAD http_client;\n-- Los sensores de la estación elegida, con lo viejo que es el dato de cada uno.\n-- Aquí se ve que \"transmitiendo\" es una propiedad de la ESTACIÓN y no de sus\n-- sensores: en una misma caja conviven el pluviómetro de hace una hora y la\n-- sonda de suelo parada desde 2016.\n--\n-- $estacion va a pelo: en una consulta de panel el datasource la entrecomilla\n-- solo, así que queda '62541' y concatena sin más.\nWITH r AS (\n  SELECT http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/parametros/?id_estacion='\n                  || $estacion || '&id_aplicacion=vs_1h_inh') AS resp\n), s AS (\n  SELECT unnest(json_extract(\n    coalesce(nullif(resp->>'body', ''), '[]'), '$[*].params[*]')) AS p\n  FROM r\n)\nSELECT p->>'descripcion_parametro' AS \"Sensor\",\n       p->>'simbolo_unidad'        AS \"Unit\",\n       strptime((p->>'fecha_ultimo_dato')[1:19], '%Y-%m-%dT%H:%M:%S') AS \"Last datum (UTC)\",\n       round(date_diff('minute',\n             strptime((p->>'fecha_ultimo_dato')[1:19], '%Y-%m-%dT%H:%M:%S'),\n             timezone('UTC', now())) / 60.0, 1) AS \"Hours behind\"\nFROM s\nORDER BY \"Hours behind\""
-        }
-      ],
-      "options": {
-        "showHeader": true,
-        "cellHeight": "sm",
-        "footer": {
-          "show": false,
-          "reducer": [
-            "sum"
-          ],
-          "countRows": false,
-          "fields": ""
-        },
-        "sortBy": [
           {
-            "displayName": "Hours behind",
-            "desc": true
-          }
-        ]
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": true
-          },
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "text",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Hours behind"
-            },
-            "properties": [
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
+            "kind": "TabsLayoutTab",
+            "spec": {
+              "title": "Reality check",
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
                     {
-                      "color": "green",
-                      "value": null
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 24,
+                        "height": 5,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-20"
+                        }
+                      }
                     },
                     {
-                      "color": "#e7b416",
-                      "value": 3
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 5,
+                        "width": 14,
+                        "height": 18,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-6"
+                        }
+                      }
                     },
                     {
-                      "color": "red",
-                      "value": 6
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 14,
+                        "y": 5,
+                        "width": 10,
+                        "height": 18,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-13"
+                        }
+                      }
                     }
                   ]
                 }
-              },
-              {
-                "id": "unit",
-                "value": "h"
-              },
-              {
-                "id": "decimals",
-                "value": 1
-              },
-              {
-                "id": "custom.width",
-                "value": 160
               }
-            ]
+            }
           },
           {
-            "matcher": {
-              "id": "byName",
-              "options": "Sensors"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 90
+            "kind": "TabsLayoutTab",
+            "spec": {
+              "title": "Station",
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 24,
+                        "height": 5,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-21"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 5,
+                        "width": 10,
+                        "height": 11,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-9"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 10,
+                        "y": 5,
+                        "width": 14,
+                        "height": 11,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-8"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 16,
+                        "width": 12,
+                        "height": 8,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-7"
+                        },
+                        "repeat": {
+                          "mode": "variable",
+                          "value": "magnitud",
+                          "direction": "h"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 24,
+                        "width": 24,
+                        "height": 9,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-10"
+                        }
+                      }
+                    }
+                  ]
+                }
               }
-            ]
+            }
           },
           {
-            "matcher": {
-              "id": "byName",
-              "options": "Code"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 90
+            "kind": "TabsLayoutTab",
+            "spec": {
+              "title": "Forecast",
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 24,
+                        "height": 5,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-22"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 5,
+                        "width": 14,
+                        "height": 18,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-15"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 14,
+                        "y": 5,
+                        "width": 10,
+                        "height": 18,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-16"
+                        }
+                      }
+                    }
+                  ]
+                }
               }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Unit"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 80
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Last datum (UTC)"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 190
-              }
-            ]
+            }
           }
         ]
       }
     },
-    {
-      "id": 10,
-      "type": "timeseries",
-      "title": "Forecast discharge — GEOGLOWS",
-      "description": "Fifteen days of modelled discharge for the river reach attached to this station, three-hourly, with its uncertainty band. The dashboard window reaches into the future so this has somewhere to be drawn; measurement stops at now, the forecast carries on. Only the hydrological stations that have a reach return anything; for the rest this panel is empty on purpose.",
-      "gridPos": {
-        "x": 12,
-        "y": 53,
-        "w": 12,
-        "h": 10
-      },
-      "datasource": {
-        "type": "motherduck-duckdb-datasource",
-        "uid": "duckdb"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
-          },
-          "editorMode": "code",
-          "format": 1,
-          "rawQuery": true,
-          "rawSql": "LOAD http_client;\n-- GEOGLOWS solo contesta por las estaciones que tienen un tramo de río asociado\n-- —27 de las 651 hidrológicas—; al resto les responde 404 con su motivo:\n-- \"La estación no tiene un river_id asociado\". Ese 404 es la respuesta CORRECTA,\n-- no una avería, así que este panel se sirve por DuckDB y no por Infinity: el\n-- guardián de estado lo convierte en cero filas en vez de en un aspa roja que\n-- contradiría lo que promete la descripción del panel.\nWITH r AS (\n  SELECT http_get('https://inamhi.gob.ec/api_visor/geoglows/forecast/station/' || $estacion || '/') AS resp\n), ok AS (\n  SELECT resp->>'body' AS body FROM r WHERE (resp->>'status') = '200'\n), pts AS (\n  SELECT unnest(json_extract(body, '$.data[*]')) AS d FROM ok\n)\nSELECT (d->>'date')::TIMESTAMPTZ AS time,\n       (d->>'median')::DOUBLE    AS median,\n       (d->>'lower')::DOUBLE     AS lower,\n       (d->>'upper')::DOUBLE     AS upper\nFROM pts\nORDER BY time"
-        }
+    "links": [],
+    "liveNow": false,
+    "preload": false,
+    "tags": [
+      "kepler",
+      "inamhi",
+      "ecuador",
+      "hidrometeorologia",
+      "duckdb"
+    ],
+    "timeSettings": {
+      "timezone": "browser",
+      "from": "now-5d",
+      "to": "now+5d",
+      "autoRefresh": "15m",
+      "autoRefreshIntervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "1d"
       ],
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true,
-          "calcs": []
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
+      "hideTimepicker": false,
+      "fiscalYearStartMonth": 0
+    },
+    "title": "Station network health — INAMHI (Ecuador)",
+    "variables": [
+      {
+        "kind": "CustomVariable",
+        "spec": {
+          "name": "transmite",
+          "label": "Status",
+          "description": "The label the service publishes. It is what every panel on the first tab reports — and what the second tab goes and checks.",
+          "query": "All : Todas, Transmitting : TRANSMITIENDO, Silent : NO TRANSMITIENDO",
+          "current": {
+            "text": "All",
+            "value": "Todas"
+          },
+          "options": [],
+          "multi": false,
+          "includeAll": false,
+          "allowCustomValue": false,
+          "hide": "dontHide",
+          "skipUrlSync": false
         }
       },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "m3/s",
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 8,
-            "showPoints": "never",
-            "spanNulls": false
-          },
-          "color": {
-            "mode": "palette-classic"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "lower"
-            },
-            "properties": [
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "fill": "dash",
-                  "dash": [
-                    6,
-                    6
-                  ]
-                }
-              },
-              {
-                "id": "custom.fillOpacity",
-                "value": 0
-              }
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "provincia",
+          "label": "Province",
+          "description": "Crosses every panel. The station picker on the third tab obeys it too, so choosing a province narrows what you can drill into.",
+          "hide": "dontHide",
+          "refresh": "onDashboardLoad",
+          "skipUrlSync": false,
+          "current": {
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
             ]
           },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "upper"
+          "options": [],
+          "multi": true,
+          "includeAll": true,
+          "allowCustomValue": false,
+          "regex": "",
+          "sort": "disabled",
+          "definition": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n)\nSELECT DISTINCT (e->>'provincia') AS __text, (e->>'provincia') AS __value\nFROM inv WHERE (e->>'provincia') IS NOT NULL ORDER BY 1",
+          "query": {
+            "kind": "DataQuery",
+            "group": "motherduck-duckdb-datasource",
+            "version": "v0",
+            "datasource": {
+              "name": "duckdb"
             },
-            "properties": [
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "fill": "dash",
-                  "dash": [
-                    6,
-                    6
-                  ]
-                }
-              },
-              {
-                "id": "custom.fillOpacity",
-                "value": 0
-              }
-            ]
+            "spec": {
+              "__legacyStringValue": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n)\nSELECT DISTINCT (e->>'provincia') AS __text, (e->>'provincia') AS __value\nFROM inv WHERE (e->>'provincia') IS NOT NULL ORDER BY 1"
+            }
           }
-        ]
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "propietario",
+          "label": "Owner",
+          "description": "Who keeps the station. Worth crossing with the status: some owners have almost nothing left transmitting.",
+          "hide": "dontHide",
+          "refresh": "onDashboardLoad",
+          "skipUrlSync": false,
+          "current": {
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          },
+          "options": [],
+          "multi": true,
+          "includeAll": true,
+          "allowCustomValue": false,
+          "regex": "",
+          "sort": "disabled",
+          "definition": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n)\nSELECT DISTINCT (e->>'propietario') AS __text, (e->>'propietario') AS __value\nFROM inv WHERE (e->>'propietario') IS NOT NULL ORDER BY 1",
+          "query": {
+            "kind": "DataQuery",
+            "group": "motherduck-duckdb-datasource",
+            "version": "v0",
+            "datasource": {
+              "name": "duckdb"
+            },
+            "spec": {
+              "__legacyStringValue": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n)\nSELECT DISTINCT (e->>'propietario') AS __text, (e->>'propietario') AS __value\nFROM inv WHERE (e->>'propietario') IS NOT NULL ORDER BY 1"
+            }
+          }
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "categoria",
+          "label": "Kind",
+          "description": "Hydrological, meteorological, or both.",
+          "hide": "dontHide",
+          "refresh": "onDashboardLoad",
+          "skipUrlSync": false,
+          "current": {
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          },
+          "options": [],
+          "multi": true,
+          "includeAll": true,
+          "allowCustomValue": false,
+          "regex": "",
+          "sort": "disabled",
+          "definition": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n)\nSELECT DISTINCT (e->>'categoria') AS __text, (e->>'categoria') AS __value\nFROM inv WHERE (e->>'categoria') IS NOT NULL ORDER BY 1",
+          "query": {
+            "kind": "DataQuery",
+            "group": "motherduck-duckdb-datasource",
+            "version": "v0",
+            "datasource": {
+              "name": "duckdb"
+            },
+            "spec": {
+              "__legacyStringValue": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n)\nSELECT DISTINCT (e->>'categoria') AS __text, (e->>'categoria') AS __value\nFROM inv WHERE (e->>'categoria') IS NOT NULL ORDER BY 1"
+            }
+          }
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "estacion",
+          "label": "Station",
+          "description": "Only stations the service reports as transmitting, within the filters above — a silent station has no detail to open. The default is a hydrological one with a river reach, the only kind that fills every panel of its tab.",
+          "hide": "dontHide",
+          "refresh": "onDashboardLoad",
+          "skipUrlSync": false,
+          "current": {
+            "text": "PAUTE EN PAUTE(DJ GUALACEO)  ·  H0894",
+            "value": "62179"
+          },
+          "options": [],
+          "multi": false,
+          "includeAll": false,
+          "allowCustomValue": false,
+          "regex": "",
+          "sort": "disabled",
+          "definition": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n)\nSELECT (e->>'punto_obs') || '  ·  ' || (e->>'codigo') AS __text,\n       (e->>'id_estacion')                            AS __value\nFROM inv\nWHERE (e->>'estado_transmision') = 'TRANSMITIENDO'\n  AND ((e->>'provincia')   IN (${provincia:singlequote}))\n  AND ((e->>'propietario') IN (${propietario:singlequote}))\n  AND ((e->>'categoria')   IN (${categoria:singlequote}))\nORDER BY __text",
+          "query": {
+            "kind": "DataQuery",
+            "group": "motherduck-duckdb-datasource",
+            "version": "v0",
+            "datasource": {
+              "name": "duckdb"
+            },
+            "spec": {
+              "__legacyStringValue": "LOAD http_client;\n-- El inventario entero en UNA petición: 1.894 estaciones, 768 KB, medio segundo.\n--\n-- OJO con los paréntesis: `->>` tiene MENOS precedencia que `LIKE`, así que\n-- `e->>'categoria' LIKE '%HIDRO%'` se parsea como `e ->> ('categoria' LIKE ...)`\n-- e intenta usar un booleano como índice: \"Failed to cast value to numerical\".\nWITH inv AS (\n  SELECT unnest(json_extract(\n    http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh')->>'body', '$[*]')) AS e\n)\nSELECT (e->>'punto_obs') || '  ·  ' || (e->>'codigo') AS __text,\n       (e->>'id_estacion')                            AS __value\nFROM inv\nWHERE (e->>'estado_transmision') = 'TRANSMITIENDO'\n  AND ((e->>'provincia')   IN (${provincia:singlequote}))\n  AND ((e->>'propietario') IN (${propietario:singlequote}))\n  AND ((e->>'categoria')   IN (${categoria:singlequote}))\nORDER BY __text"
+            }
+          }
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "magnitud",
+          "label": "Magnitudes",
+          "description": "What the station still measures, and what the charts on its tab repeat over. Sensors with nothing newer than thirty days are left out.",
+          "hide": "dontHide",
+          "refresh": "onDashboardLoad",
+          "skipUrlSync": false,
+          "current": {
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          },
+          "options": [],
+          "multi": true,
+          "includeAll": true,
+          "allowCustomValue": false,
+          "regex": "",
+          "sort": "disabled",
+          "definition": "LOAD http_client;\n-- El filtro de treinta días no es cosmético: hay cajas que siguen publicando\n-- sondas de suelo paradas en 2016, y sin él encabezan la lista de paneles.\nWITH r AS (\n  SELECT http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/parametros/?id_estacion='\n                  || '${estacion}' || '&id_aplicacion=vs_1h_inh') AS resp\n), g AS (\n  SELECT unnest(json_extract(\n    coalesce(nullif(resp->>'body', ''), '[]'), '$[*]')) AS grp\n  FROM r\n), vivas AS (\n  SELECT grp,\n         list_max(list_transform(\n           coalesce(json_extract_string(grp, '$.params[*].fecha_ultimo_dato'), []::VARCHAR[]),\n           s -> strptime(s[1:19], '%Y-%m-%dT%H:%M:%S'))) AS ultimo\n  FROM g\n)\nSELECT (grp->>'name_param') || ' (' || (grp->>'simbolo_unidad') || ')' AS __text,\n       (grp->>'id_param')                                              AS __value\nFROM vivas\nWHERE ultimo > timezone('UTC', now()) - INTERVAL 30 DAY\n  -- El voltaje de la batería queda fuera: tiene panel propio arriba y repetirlo\n  -- aquí lo dibujaba dos veces en la misma pestaña.\n  AND (grp->>'id_param') <> '39'\nORDER BY __text",
+          "query": {
+            "kind": "DataQuery",
+            "group": "motherduck-duckdb-datasource",
+            "version": "v0",
+            "datasource": {
+              "name": "duckdb"
+            },
+            "spec": {
+              "__legacyStringValue": "LOAD http_client;\n-- El filtro de treinta días no es cosmético: hay cajas que siguen publicando\n-- sondas de suelo paradas en 2016, y sin él encabezan la lista de paneles.\nWITH r AS (\n  SELECT http_get('https://inamhi.gob.ec/api_visor/station_information/estaciones/parametros/?id_estacion='\n                  || '${estacion}' || '&id_aplicacion=vs_1h_inh') AS resp\n), g AS (\n  SELECT unnest(json_extract(\n    coalesce(nullif(resp->>'body', ''), '[]'), '$[*]')) AS grp\n  FROM r\n), vivas AS (\n  SELECT grp,\n         list_max(list_transform(\n           coalesce(json_extract_string(grp, '$.params[*].fecha_ultimo_dato'), []::VARCHAR[]),\n           s -> strptime(s[1:19], '%Y-%m-%dT%H:%M:%S'))) AS ultimo\n  FROM g\n)\nSELECT (grp->>'name_param') || ' (' || (grp->>'simbolo_unidad') || ')' AS __text,\n       (grp->>'id_param')                                              AS __value\nFROM vivas\nWHERE ultimo > timezone('UTC', now()) - INTERVAL 30 DAY\n  -- El voltaje de la batería queda fuera: tiene panel propio arriba y repetirlo\n  -- aquí lo dibujaba dos veces en la misma pestaña.\n  AND (grp->>'id_param') <> '39'\nORDER BY __text"
+            }
+          }
+        }
       }
-    },
-    {
-      "id": 11,
-      "type": "text",
-      "gridPos": {
-        "x": 0,
-        "y": 63,
-        "w": 24,
-        "h": 5
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "**Source** — INAMHI, *Visor Hidrometeorológico* (`inamhi.gob.ec/api_visor`), read live.\nForecast discharge from **GEOGLOWS**, served by INAMHI for the 27 hydrological stations that have\na river reach attached to them.\n\n**What the numbers do not say.** *Transmitting* is the organisation's own label and is not a\nmeasurement: the table is. Public history is capped at **ten days** — a longer range returns 401,\nnot an error the panel can explain. Timestamps in the sensor listing arrive tagged `-05:00` on a\nclock that is really UTC, so both tables correct it rather than repeat it. And a handful of\nstations report impossible rainfall — a sensor fault the service passes through unfiltered — so\na single station's spike is not evidence of weather.\n\n**One station in twenty answers nothing.** Pick one of those and the sensor list comes back empty,\nthe *Sensor* dropdown has nothing to offer, and the sensor chart flags an error rather than drawing\na blank — the query has no sensor code to ask for. That is the dashboard telling the truth about a\nstation the network still counts as transmitting."
-      },
-      "transparent": true
-    }
-  ]
+    ]
+  }
 }
