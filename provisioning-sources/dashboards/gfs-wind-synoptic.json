@@ -35,7 +35,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "**NOAA GFS 10 m wind** at 0.5°, read live from [PacIOOS ERDDAP](https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ncep_global.html): one CSV request for `u` and `v` over the next two days, 2,703 cells from 40°S to 12°N every three hours, queried with DuckDB. No tile server and no preprocessing.\n\nThe arrows and the barbs are **`vectorfield`**, a kepler.gl layer type registered by [this plugin](https://github.com/ubica-ecuador/keplergl-grafana-panel). It takes the same U/V (or speed/direction) columns as its sibling `flowfield`, so changing a layer's type between the two keeps its columns and colour ramp.\n\n- **Arrows on a screen grid**, sized and coloured by speed, over the flow field traced from the same rows. The grid is laid out in pixels, so the arrows stay legible at any zoom.\n- **Pressure and wind.** Wind streamlines over isobars coloured by how tightly they crowd, with WMO barbs on a screen grid and rain as blue dots sized by its rate. Away from the equator the wind runs nearly along the isobars; near it, it cuts across them.\n- **Airports.** The latest METAR from each airport against the nearest GFS cell. It stays on the present whatever the bar says.\n\n**The layer panel on the left of every map is live**: expand a layer to switch *Symbol* (arrow, classified arrow, wind barb) and *Placement* (screen grid, data cells); with speed and direction columns instead of u and v it also offers *Direction is* (from or towards).\n\n**The bar at the bottom of any map walks the forecast**: it opens on the step nearest to now; drag its window or press play, and both maps move together.",
+        "content": "**NOAA GFS 10 m wind, sea-level pressure and rain** over South America, live from [PacIOOS ERDDAP](https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ncep_global.html) with DuckDB: the next two days, every three hours, one degree apart.\n\n**The map** draws the wind as streamlines and arrows, the isobars as still lines coloured by how tightly they crowd, and rain above 0.3 mm/h as dots; its layer panel is live. **The bar at the bottom walks the forecast**: it opens on the step nearest to now; drag it or press play. **The table** sets the latest airport METARs against the nearest GFS cell, and stays on the present.",
         "mode": "markdown"
       },
       "pluginVersion": "13.2.1",
@@ -255,7 +255,6 @@
                 "synoptic-rain",
                 "synoptic-barbs",
                 "synoptic-wind",
-                "rtqpdndq",
                 "synoptic-isobars"
               ],
               "layers": [
@@ -391,7 +390,7 @@
                       255
                     ],
                     "isVisible": true,
-                    "label": "Wind barbs",
+                    "label": "Arrows",
                     "textLabel": [
                       {
                         "alignment": "center",
@@ -591,108 +590,6 @@
                       26,
                       255
                     ],
-                    "isVisible": false,
-                    "label": "Animated Isobars",
-                    "textLabel": [
-                      {
-                        "alignment": "center",
-                        "anchor": "start",
-                        "background": false,
-                        "backgroundColor": [
-                          0,
-                          0,
-                          200,
-                          255
-                        ],
-                        "collisionEnabled": false,
-                        "color": [
-                          255,
-                          255,
-                          255
-                        ],
-                        "offset": [
-                          0,
-                          0
-                        ],
-                        "outlineColor": [
-                          255,
-                          0,
-                          0,
-                          255
-                        ],
-                        "outlineWidth": 0,
-                        "size": 18,
-                        "weight": 400
-                      }
-                    ],
-                    "visConfig": {
-                      "animate": true,
-                      "calmOpacity": 0.12,
-                      "colorBySpeed": true,
-                      "colorRange": {
-                        "category": "Uber",
-                        "colors": [
-                          "#355C7D",
-                          "#766493",
-                          "#B5698A",
-                          "#D37D87",
-                          "#E8968C",
-                          "#F8B195"
-                        ],
-                        "name": "Sunrise",
-                        "type": "sequential"
-                      },
-                      "cycleSeconds": 150,
-                      "density": 7000,
-                      "directionConvention": "from",
-                      "elevationScale": 1,
-                      "fixedSpeedRange": false,
-                      "gradientDirection": "contours",
-                      "heightMeters": 0,
-                      "lifeFraction": 0.55,
-                      "lineLength": 60,
-                      "opacity": 0.9,
-                      "opacityBySpeed": true,
-                      "seamlessLoop": true,
-                      "smoothing": 3,
-                      "thickness": 1.4,
-                      "trailShare": 19,
-                      "widthBySpeed": true,
-                      "widthRange": [
-                        0.8,
-                        2.4
-                      ],
-                      "zoomResponse": 0
-                    }
-                  },
-                  "id": "rtqpdndq",
-                  "type": "flowfield",
-                  "visualChannels": {
-                    "colorScale": "quantile",
-                    "sizeScale": "linear"
-                  }
-                },
-                {
-                  "config": {
-                    "color": [
-                      200,
-                      210,
-                      220
-                    ],
-                    "columnMode": "gradient",
-                    "columns": {
-                      "lat": "latitude",
-                      "lng": "longitude",
-                      "value": "isobar_field"
-                    },
-                    "dataId": "grafana-A",
-                    "hidden": false,
-                    "highlightColor": [
-                      252,
-                      242,
-                      26,
-                      255
-                    ],
                     "isVisible": true,
                     "label": "Isobars",
                     "textLabel": [
@@ -800,7 +697,7 @@
           },
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- The synoptic chart's own query: the same 48 hours and the same one-degree\n-- lattice as the arrows map above, with sea-level pressure and rain beside u and v.\n--\n-- Its own and not the arrows map's, on purpose. ERDDAP's cost grows with every variable\n-- asked for: two take the map above about 7 s, four took 18 to 25 s. Asked for\n-- here, the wait is paid only by whoever scrolls this far, since Grafana does\n-- not query a panel until it comes into view. The map still walks with the\n-- other one: the time is shared between maps in the browser, not through a query.\n--\n-- The window, the one-step lead and `format`'s {0} and {1} are explained in the\n-- arrows map's query above.\nSELECT column0         AS time,\n       column1         AS latitude,\n       column2 - 360   AS longitude,\n       column3         AS u,\n       column4         AS v,\n       column5 / 100   AS pressure_hpa,  -- Pa\n       -- The same pressure a hundred thousand times over, for the isobars only:\n       -- the layer takes its slope per metre, so this one's reads in hPa per\n       -- 100 km, the unit its legend then shows.\n       column5 * 1000  AS isobar_field,\n       column6 * 3600  AS rain_mm_h,     -- kg m-2 s-1, a millimetre of water per square metre\n       -- What the dots are sized by. Capped, so the rare cloudburst does not set\n       -- the scale and shrink ordinary rain to specks.\n       least(column6 * 3600, 10) AS rain_mm_h_capped\nFROM read_csv(\n  format('https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ncep_global.csv0?ugrd10m%5B({0}):1:({1})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D,vgrd10m%5B({0}):1:({1})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D,prmslmsl%5B({0}):1:({1})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D,pratesfc%5B({0}):1:({1})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D',\n    strftime(time_bucket(INTERVAL 3 HOUR, (now() AT TIME ZONE 'UTC') - INTERVAL 90 MINUTE),\n             '%Y-%m-%dT%H:%M:%SZ'),\n    strftime(time_bucket(INTERVAL 3 HOUR, (now() AT TIME ZONE 'UTC') - INTERVAL 90 MINUTE) + INTERVAL 48 HOUR,\n             '%Y-%m-%dT%H:%M:%SZ')),\n  header = false,\n  columns = {'column0': 'TIMESTAMP', 'column1': 'DOUBLE', 'column2': 'DOUBLE', 'column3': 'DOUBLE',\n             'column4': 'DOUBLE', 'column5': 'DOUBLE', 'column6': 'DOUBLE'},\n  nullstr = 'NaN')\nWHERE column3 IS NOT NULL AND column4 IS NOT NULL AND column5 IS NOT NULL\n",
+          "rawSql": "-- NOAA GFS 10 m wind, sea-level pressure and rain for the next two days in ONE\n-- request: 17 three-hourly steps of 53 x 51 = 2,703 cells, 45,951 rows.\n--\n-- Every other cell of the 0.5 degree archive, so one per degree -- a regular\n-- lattice, which the velocity layers need: they deduce the spacing from the\n-- coordinates and draw nothing if it wobbles.\n--\n-- Every step comes back, each row with its time, and the map's clock -- the bar\n-- at the bottom -- chooses which one is drawn: the latest inside its window.\n-- The dashboard's range, now-90m to now+90m, is that window when the map opens,\n-- so the step on show is the one nearest to now.\n--\n-- The request starts at the step at or before now - 90 minutes, so the window\n-- lies wholly inside the data. Started any later, kepler would clip the\n-- window's leading edge to the first step and leave it narrower than the three\n-- hours between steps, and a window that narrow, playing, spends stretches with\n-- no step inside it and draws nothing.\n--\n-- The window is written into the URL from `now()` itself, not from a variable:\n-- it stays the same URL for three hours, so ERDDAP answers every visitor after\n-- the first from its own cache, and no hidden variable rides along in shared\n-- links. `{0}` and `{1}` are `format`'s, not Grafana's.\n--\n-- `.csv0` has no header and no units row, so read_csv names by position. Only\n-- `[` and `]` need escaping (%5B/%5D). The four subscripts must be written\n-- identically or ERDDAP answers 400.\n--\n-- The wait is ERDDAP's and DuckDB's together. ERDDAP's cost grows with every\n-- variable: u and v alone take about 7 s, these four 18 to 25 s. And DuckDB\n-- sends a HEAD before the GET, for which ERDDAP builds the whole response too.\n-- `SET force_download` would halve it, but it outlives this query on a\n-- connection every dashboard shares, and would stop range requests into large\n-- Parquet elsewhere; `http_get` cannot send this URL at all -- it rewrites the\n-- query string, and ERDDAP answers 400.\nSELECT column0         AS time,\n       column1         AS latitude,\n       column2 - 360   AS longitude,\n       column3         AS u,\n       column4         AS v,\n       column5 / 100   AS pressure_hpa,  -- Pa\n       -- The same pressure a hundred thousand times over, for the isobars only:\n       -- the layer takes its slope per metre, so this one's reads in hPa per\n       -- 100 km, the unit its legend then shows.\n       column5 * 1000  AS isobar_field,\n       column6 * 3600  AS rain_mm_h,     -- kg m-2 s-1, a millimetre of water per square metre\n       -- What the dots are sized by. Capped, so the rare cloudburst does not set\n       -- the scale and shrink ordinary rain to specks.\n       least(column6 * 3600, 10) AS rain_mm_h_capped\nFROM read_csv(\n  format('https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ncep_global.csv0?ugrd10m%5B({0}):1:({1})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D,vgrd10m%5B({0}):1:({1})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D,prmslmsl%5B({0}):1:({1})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D,pratesfc%5B({0}):1:({1})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D',\n    strftime(time_bucket(INTERVAL 3 HOUR, (now() AT TIME ZONE 'UTC') - INTERVAL 90 MINUTE),\n             '%Y-%m-%dT%H:%M:%SZ'),\n    strftime(time_bucket(INTERVAL 3 HOUR, (now() AT TIME ZONE 'UTC') - INTERVAL 90 MINUTE) + INTERVAL 48 HOUR,\n             '%Y-%m-%dT%H:%M:%SZ')),\n  header = false,\n  columns = {'column0': 'TIMESTAMP', 'column1': 'DOUBLE', 'column2': 'DOUBLE', 'column3': 'DOUBLE',\n             'column4': 'DOUBLE', 'column5': 'DOUBLE', 'column6': 'DOUBLE'},\n  nullstr = 'NaN')\nWHERE column3 IS NOT NULL AND column4 IS NOT NULL AND column5 IS NOT NULL\n",
           "refId": "A"
         }
       ],
@@ -812,7 +709,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "The latest METAR from each airport in the maps' box against the GFS half-degree cell nearest to it, at the forecast step nearest to the observation. Sorted by the size of the speed error. It stays on the present whatever the map's bar says: an observation exists only for now. A half-degree cell is not a mountain airport: at Quito part of the error is the grid's.",
+      "description": "The latest METAR from each airport in the map's box against the GFS half-degree cell nearest to it, at the forecast step nearest to the observation. Sorted by the size of the speed error. It stays on the present whatever the map's bar says: an observation exists only for now. A half-degree cell is not a mountain airport: at Quito part of the error is the grid's.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -1033,7 +930,7 @@
           },
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- The latest METAR from every airport in the maps' box, set against the GFS\n-- cell nearest to it, at the forecast step nearest to its own observation.\n--\n-- aviationweather.gov answers with one row per airport, its latest report. The\n-- direction is a number or the string \"VRB\" for a variable wind, so it arrives\n-- as JSON and is read as text first.\n--\n-- The GFS side is the full half-degree grid, not the maps' one-degree lattice,\n-- for the two steps around the observations: METARs are at most about an hour\n-- old, so the step at or before now - 3 h and the one nearest to now bracket\n-- them all.\nWITH metar AS (\n  SELECT icaoId                                       AS icao,\n         name,\n         lat,\n         lon,\n         to_timestamp(obsTime) AT TIME ZONE 'UTC'      AS observed,\n         TRY_CAST(wdir::VARCHAR AS INTEGER)           AS obs_dir,  -- NULL for \"VRB\"\n         wspd                                         AS obs_kn\n  FROM read_json('https://aviationweather.gov/api/data/metar?bbox=-40,-100,12,-50&format=json')\n),\ngfs AS (\n  SELECT column0                                                AS step,\n         column1                                                AS lat,\n         column2 - 360                                          AS lon,\n         sqrt(column3 * column3 + column4 * column4) * 1.943844 AS kn,  -- m/s to knots\n         -- Where the wind comes FROM, as a METAR reports it.\n         (degrees(atan2(-column3, -column4)) + 360) % 360       AS dir\n  FROM read_csv(\n    format('https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ncep_global.csv0?ugrd10m%5B({0}):1:({1})%5D%5B(-40.0):1:(12.0)%5D%5B(260.0):1:(310.0)%5D,vgrd10m%5B({0}):1:({1})%5D%5B(-40.0):1:(12.0)%5D%5B(260.0):1:(310.0)%5D',\n      strftime(time_bucket(INTERVAL 3 HOUR, (now() AT TIME ZONE 'UTC') - INTERVAL 3 HOUR), '%Y-%m-%dT%H:%M:%SZ'),\n      strftime(time_bucket(INTERVAL 3 HOUR, (now() AT TIME ZONE 'UTC') + INTERVAL 90 MINUTE), '%Y-%m-%dT%H:%M:%SZ')),\n    header = false,\n    columns = {'column0': 'TIMESTAMP', 'column1': 'DOUBLE', 'column2': 'DOUBLE',\n               'column3': 'DOUBLE', 'column4': 'DOUBLE'},\n    nullstr = 'NaN')\n  WHERE column3 IS NOT NULL AND column4 IS NOT NULL\n)\nSELECT icao                          AS \"Airport\",\n       name                          AS \"Name\",\n       round(kn - obs_kn, 1)         AS \"Speed error kn\",\n       -- The short way round the compass. Left empty for a variable or a light\n       -- wind: under 3 kn the vane says little, and those would swamp the mean.\n       CASE WHEN obs_dir IS NULL OR obs_kn < 3 THEN NULL\n            ELSE round(abs(((obs_dir - dir + 540) % 360) - 180)) END AS \"Direction error °\",\n       obs_dir                       AS \"Observed from\",\n       obs_kn                        AS \"Observed kn\",\n       round(dir)                    AS \"GFS from\",\n       round(kn, 1)                  AS \"GFS kn\",\n       observed                      AS \"Observed\"\nFROM metar\nJOIN gfs ON gfs.lat = round(metar.lat * 2) / 2 AND gfs.lon = round(metar.lon * 2) / 2\nQUALIFY row_number() OVER (PARTITION BY icao ORDER BY abs(epoch(step) - epoch(observed))) = 1\nORDER BY abs(kn - obs_kn) DESC\n",
+          "rawSql": "-- The latest METAR from every airport in the map's box, set against the GFS\n-- cell nearest to it, at the forecast step nearest to its own observation.\n--\n-- aviationweather.gov answers with one row per airport, its latest report. The\n-- direction is a number or the string \"VRB\" for a variable wind, so it arrives\n-- as JSON and is read as text first.\n--\n-- The GFS side is the full half-degree grid, not the maps' one-degree lattice,\n-- for the two steps around the observations: METARs are at most about an hour\n-- old, so the step at or before now - 3 h and the one nearest to now bracket\n-- them all.\nWITH metar AS (\n  SELECT icaoId                                       AS icao,\n         name,\n         lat,\n         lon,\n         to_timestamp(obsTime) AT TIME ZONE 'UTC'      AS observed,\n         TRY_CAST(wdir::VARCHAR AS INTEGER)           AS obs_dir,  -- NULL for \"VRB\"\n         wspd                                         AS obs_kn\n  FROM read_json('https://aviationweather.gov/api/data/metar?bbox=-40,-100,12,-50&format=json')\n),\ngfs AS (\n  SELECT column0                                                AS step,\n         column1                                                AS lat,\n         column2 - 360                                          AS lon,\n         sqrt(column3 * column3 + column4 * column4) * 1.943844 AS kn,  -- m/s to knots\n         -- Where the wind comes FROM, as a METAR reports it.\n         (degrees(atan2(-column3, -column4)) + 360) % 360       AS dir\n  FROM read_csv(\n    format('https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ncep_global.csv0?ugrd10m%5B({0}):1:({1})%5D%5B(-40.0):1:(12.0)%5D%5B(260.0):1:(310.0)%5D,vgrd10m%5B({0}):1:({1})%5D%5B(-40.0):1:(12.0)%5D%5B(260.0):1:(310.0)%5D',\n      strftime(time_bucket(INTERVAL 3 HOUR, (now() AT TIME ZONE 'UTC') - INTERVAL 3 HOUR), '%Y-%m-%dT%H:%M:%SZ'),\n      strftime(time_bucket(INTERVAL 3 HOUR, (now() AT TIME ZONE 'UTC') + INTERVAL 90 MINUTE), '%Y-%m-%dT%H:%M:%SZ')),\n    header = false,\n    columns = {'column0': 'TIMESTAMP', 'column1': 'DOUBLE', 'column2': 'DOUBLE',\n               'column3': 'DOUBLE', 'column4': 'DOUBLE'},\n    nullstr = 'NaN')\n  WHERE column3 IS NOT NULL AND column4 IS NOT NULL\n)\nSELECT icao                          AS \"Airport\",\n       name                          AS \"Name\",\n       round(kn - obs_kn, 1)         AS \"Speed error kn\",\n       -- The short way round the compass. Left empty for a variable or a light\n       -- wind: under 3 kn the vane says little, and those would swamp the mean.\n       CASE WHEN obs_dir IS NULL OR obs_kn < 3 THEN NULL\n            ELSE round(abs(((obs_dir - dir + 540) % 360) - 180)) END AS \"Direction error °\",\n       obs_dir                       AS \"Observed from\",\n       obs_kn                        AS \"Observed kn\",\n       round(dir)                    AS \"GFS from\",\n       round(kn, 1)                  AS \"GFS kn\",\n       observed                      AS \"Observed\"\nFROM metar\nJOIN gfs ON gfs.lat = round(metar.lat * 2) / 2 AND gfs.lon = round(metar.lon * 2) / 2\nQUALIFY row_number() OVER (PARTITION BY icao ORDER BY abs(epoch(step) - epoch(observed))) = 1\nORDER BY abs(kn - obs_kn) DESC\n",
           "refId": "A"
         }
       ],
