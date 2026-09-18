@@ -376,7 +376,16 @@ export function latestStepRows(dataset: VelocityDataset): number[] {
   return rows.filter((row) => timeValueAt(dataset, column, row) === latest);
 }
 
-/** The hour on show, in epoch ms, or null when the query carries no time. */
+/**
+ * The hour on show, in epoch ms, or null when the query carries no time.
+ *
+ * Read through `timeValueAt`, the same reader `latestStepRows` chose the rows
+ * with, and not `Number(valueAt(...))`: this is the key both layers keep their
+ * hours and their fast paths by, and for an ISO-string column the bare parse is
+ * `NaN` — every hour came out `null`, one name for all of them. Since kepler
+ * narrows the table in place (same container, same signature), a layer then saw
+ * nothing change when the map's clock moved and drew the first hour for good.
+ */
 export function latestStepOf(dataset: VelocityDataset): number | null {
   const container = dataset.dataContainer;
   const column = timeColumnOf(dataset);
@@ -387,7 +396,7 @@ export function latestStepOf(dataset: VelocityDataset): number | null {
   if (rows.length === 0) {
     return null;
   }
-  const time = Number(container.valueAt(rows[0], column));
+  const time = timeValueAt(dataset, column, rows[0]);
   return Number.isFinite(time) ? time : null;
 }
 

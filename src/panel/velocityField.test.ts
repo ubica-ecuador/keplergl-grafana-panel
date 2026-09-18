@@ -337,6 +337,25 @@ describe('latestStepOf', () => {
   it('answers null when there is no time column to name an hour with', () => {
     expect(latestStepOf(datasetOf([{ name: 'lat', type: 'real' }], [[0]]))).toBeNull();
   });
+
+  // The hour is the key both layers' caches and fast paths are kept by. Read as
+  // `Number(valueAt(...))`, an ISO-string column named every hour `null`: the
+  // same name for all of them, so once kepler had narrowed the table in place
+  // — same container, same signature — the layers handed back the first hour
+  // they drew for ever, whichever hour the map's clock was on.
+  it('names the hour of an ISO-string time column through kepler\'s own mapped value', () => {
+    const first = Date.parse('2026-01-01T00:00:00Z');
+    const fields = [
+      { name: 'time', type: 'timestamp', filterProps: { mappedValue: [first, first + 3_600_000] } },
+      { name: 'lat', type: 'real' },
+    ];
+    const rows = [
+      ['2026-01-01T00:00:00.000Z', 0],
+      ['2026-01-01T01:00:00.000Z', 0],
+    ];
+
+    expect(latestStepOf(datasetOf(fields, rows))).toBe(first + 3_600_000);
+  });
 });
 
 describe('gridFrameOf', () => {

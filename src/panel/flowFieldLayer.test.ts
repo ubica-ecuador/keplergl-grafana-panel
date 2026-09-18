@@ -1040,6 +1040,79 @@ describe('flow field layer — walking the hours', () => {
   });
 });
 
+/**
+ * Two forecast hours whose time column is an ISO string, the way kepler holds
+ * one: raw in the container, with the numeric reading it compares by in
+ * `filterProps.mappedValue`, and the map's time filter in the dataset's own
+ * `filterRecord` — see `latestStepRows`. Returned with a way to move that
+ * filter's window in place, since kepler narrows the table it already has
+ * rather than handing the layer a new one.
+ */
+function isoTwoHourDataset(side: number, hours: Array<{ u: number; v: number }>) {
+  const first = Date.parse('2026-01-01T00:00:00Z');
+  const rows: Array<{ time: string; latitude: number; longitude: number; u: number; v: number }> = [];
+  const mapped: number[] = [];
+  hours.forEach(({ u, v }, hour) => {
+    const at = first + hour * 3_600_000;
+    for (let j = 0; j < side; j++) {
+      for (let i = 0; i < side; i++) {
+        rows.push({ time: new Date(at).toISOString(), latitude: j, longitude: i, u, v });
+        mapped.push(at);
+      }
+    }
+  });
+  const names = ['time', 'latitude', 'longitude', 'u', 'v'] as const;
+  const window = { type: 'timeRange', name: ['time'], value: [first, first] as [number, number] };
+  const dataset = {
+    dataContainer: {
+      numRows: () => rows.length,
+      valueAt: (row: number, column: number) => rows[row][names[column]],
+    },
+    fields: names.map((name) =>
+      name === 'time' ? { name, type: 'timestamp', filterProps: { mappedValue: mapped } } : { name }
+    ),
+    columnIndex: Object.fromEntries(names.map((name, index) => [name, index])) as Record<string, number>,
+    filterRecord: { gpu: [window] },
+  };
+  return {
+    dataset,
+    /** Moves the map's clock to hour `hour` (0-based), in place. */
+    showHour: (hour: number) => {
+      const at = first + hour * 3_600_000;
+      window.value = [at - 60_000, at + 60_000];
+    },
+    hourMs: (hour: number) => first + hour * 3_600_000,
+  };
+}
+
+describe('flow field layer — walking an ISO-timestamped forecast', () => {
+  it('leaves the first hour when the map\'s clock moves on, with the same table', () => {
+    // The regression: `latestStepOf` read `Number(valueAt(...))`, which is NaN
+    // for an ISO string, so every hour was named `null`. kepler narrows the
+    // table in place, so the container and the signature both stayed put, the
+    // fast path saw nothing change, and the field never left the hour it
+    // first drew — eastward here, when the map's clock was on the northward one.
+    const { dataset, showHour, hourMs } = isoTwoHourDataset(6, [
+      { u: 12, v: 0 },
+      { u: 0, v: 12 },
+    ]);
+    const layer = layerOver(dataset as never, COMPONENTS);
+
+    showHour(0);
+    const first = layer.formatLayerData({ 'grafana-A': dataset });
+    expect(first.stepMs).toBe(hourMs(0));
+
+    showHour(1);
+    const second = layer.formatLayerData({ 'grafana-A': dataset }, first);
+
+    expect(second.stepMs).toBe(hourMs(1));
+    const [line] = second.data;
+    // Northward: the latitude climbs and the longitude does not move.
+    expect(line.path[line.path.length - 1][1]).toBeGreaterThan(line.path[0][1]);
+    expect(line.path[line.path.length - 1][0]).toBeCloseTo(line.path[0][0], 6);
+  });
+});
+
 describe('flow field layer — a settled pan costs only the ground it uncovers', () => {
   /**
    * The same camera, nudged east by a few pixels' worth of ground.

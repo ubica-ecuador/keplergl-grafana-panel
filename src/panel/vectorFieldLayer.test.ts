@@ -240,6 +240,53 @@ describe('vector field layer — placing symbols', () => {
     expect(second).not.toBe(first);
     expect(second.data[0].bearingTo).toBeCloseTo(90, 9);
   });
+
+  it('re-places the symbols when the map\'s clock moves across an ISO-timestamped forecast', () => {
+    // The same fast path, reached through the hour's name instead of the rows.
+    // kepler holds an ISO time column raw and compares it through
+    // `filterProps.mappedValue`; `latestStepOf` read `Number(valueAt(...))`
+    // and named every hour `null`, so moving the window from one hour to the
+    // next looked like nothing at all and the arrows kept the first hour's
+    // bearing for good.
+    const first = Date.parse('2026-01-01T00:00:00Z');
+    const rows: Array<[string, number, number, number, number]> = [];
+    const mapped: number[] = [];
+    for (const [hour, u] of [
+      [0, 10],
+      [1, -10],
+    ]) {
+      for (let j = 0; j < 3; j++) {
+        for (let i = 0; i < 3; i++) {
+          rows.push([new Date(first + hour * 3_600_000).toISOString(), j, i, u, 0]);
+          mapped.push(first + hour * 3_600_000);
+        }
+      }
+    }
+    const window = { type: 'timeRange', name: ['time'], value: [first - 60_000, first + 60_000] };
+    const dataset = {
+      dataContainer: { numRows: () => rows.length, valueAt: (row: number, column: number) => rows[row][column] },
+      fields: [
+        { name: 'time', type: 'timestamp', filterProps: { mappedValue: mapped } },
+        { name: 'latitude' },
+        { name: 'longitude' },
+        { name: 'u' },
+        { name: 'v' },
+      ],
+      columnIndex: { time: 0, latitude: 1, longitude: 2, u: 3, v: 4 },
+      filterRecord: { gpu: [window] },
+    };
+    const layer = layerOver(dataset as never, COMPONENTS, { placement: 'cells' });
+
+    const before = layer.formatLayerData({ 'grafana-A': dataset });
+    expect(before.data[0].bearingTo).toBeCloseTo(90, 9);
+
+    // kepler moves the window in place: same dataset, same container.
+    window.value = [first + 3_600_000 - 60_000, first + 3_600_000 + 60_000];
+    const after = layer.formatLayerData({ 'grafana-A': dataset }, before);
+
+    expect(after).not.toBe(before);
+    expect(after.data[0].bearingTo).toBeCloseTo(270, 9);
+  });
 });
 
 describe('symbolSignature', () => {
