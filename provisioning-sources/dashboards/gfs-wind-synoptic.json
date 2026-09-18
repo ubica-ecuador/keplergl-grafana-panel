@@ -1,0 +1,1367 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "NOAA GFS 10 m wind, sea-level pressure and rain over South America, read live from ERDDAP, with the latest airport observations set against the forecast.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "**NOAA GFS 10 m wind** at 0.5°, read live from [PacIOOS ERDDAP](https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ncep_global.html): one CSV request for `u` and `v` over the next two days, 2,703 cells from 40°S to 12°N every three hours, queried with DuckDB. No tile server and no preprocessing.\n\nThe first two maps draw **`vectorfield`**, a kepler.gl layer type registered by [this plugin](https://github.com/ubica-ecuador/keplergl-grafana-panel). It takes the same U/V (or speed/direction) columns as its sibling `flowfield`, so changing a layer's type between the two keeps its columns and colour ramp.\n\n- **First: WMO wind barbs on the data's own cells.** Half barb 5 kn, full barb 10, pennant 50, circle for calm. The feathers sit left of the staff in the northern hemisphere and right of it in the southern: look along the equator.\n- **Second: arrows on a screen grid**, sized and coloured by speed, over the flow field traced from the same rows. The grid is laid out in pixels, so the arrows stay legible at any zoom.\n- **Third: pressure and wind.** Isobars coloured by how tightly they crowd, barbs on a screen grid, rain as blue dots sized by its rate. Away from the equator the wind runs nearly along the isobars; near it, it cuts across them.\n- **Last: airports.** The latest METAR from each airport against the nearest GFS cell. It stays on the present whatever the bar says.\n\n**The layer panel on the left of every map is live**: expand a layer to switch *Symbol* (arrow, classified arrow, wind barb) and *Placement* (screen grid, data cells); with speed and direction columns instead of u and v it also offers *Direction is* (from or towards).\n\n**The bar at the bottom of any map walks the forecast**: it opens on the step nearest to now; drag its window or press play, and all three maps move together.",
+        "mode": "markdown"
+      },
+      "title": "What you are looking at",
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 2,
+      "options": {
+        "basemap": "auto",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": true,
+        "peerTimeSync": true,
+        "publishWhilePlaying": false,
+        "showSidePanel": true,
+        "timeSync": "toMap",
+        "tripLayerMode": "table",
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [
+                    40,
+                    63,
+                    93
+                  ],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [
+                    4,
+                    9,
+                    17
+                  ],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [
+                    114.75,
+                    114.75,
+                    114.75
+                  ],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [
+                    9,
+                    16,
+                    29
+                  ],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [
+                    17,
+                    35,
+                    48
+                  ]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": 0.0,
+              "longitude": -87.0,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_2D",
+              "maxPitch": 60,
+              "pitch": 0,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 5.6
+            },
+            "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
+              ],
+              "mapStyles": {},
+              "styleType": "dark-matter",
+              "threeDBuildingColor": [
+                9.311499150948377,
+                9.311499150948377,
+                9.311499150948377
+              ],
+              "topLayerGroups": {},
+              "visibleLayerGroups": {
+                "label": false,
+                "road": false
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "currentTime": null,
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "u"
+                      },
+                      {
+                        "name": "v"
+                      }
+                    ]
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "vectorfield-grafana-A"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "color": [
+                      235,
+                      240,
+                      245
+                    ],
+                    "columnMode": "components",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude",
+                      "u": "u",
+                      "v": "v"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Wind barbs",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "symbol": "barb",
+                      "placement": "cells",
+                      "symbolSize": 38,
+                      "speedUnit": "m/s",
+                      "directionConvention": "from",
+                      "colorBySpeed": false,
+                      "colorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#2E5A88",
+                          "#3E8FC1",
+                          "#4FC3D9",
+                          "#7DE0C0",
+                          "#C3F0A0",
+                          "#FFF3B0"
+                        ],
+                        "name": "Ocean",
+                        "type": "sequential"
+                      },
+                      "opacity": 0.95,
+                      "smoothing": 0
+                    }
+                  },
+                  "id": "vectorfield-grafana-A",
+                  "type": "vectorfield",
+                  "visualChannels": {
+                    "colorScale": "quantile",
+                    "sizeScale": "linear"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- NOAA GFS 10 m wind, u and v, for the next two days in ONE request: 17\n-- three-hourly steps of 53 x 51 = 2,703 cells, 45,951 rows.\n--\n-- Every other cell of the 0.5 degree archive, so one per degree -- a regular\n-- lattice, which both velocity layers need: they deduce the spacing from the\n-- coordinates and draw nothing if it wobbles.\n--\n-- Every step comes back, each row with its time, and the map's clock -- the bar\n-- at the bottom -- chooses which one is drawn: the latest inside its window.\n-- The dashboard's range, now-90m to now+90m, is that window when the map opens,\n-- so the step on show is the one nearest to now.\n--\n-- The request starts at the step at or before now - 90 minutes, so the window\n-- lies wholly inside the data. Started any later, kepler would clip the\n-- window's leading edge to the first step and leave it narrower than the three\n-- hours between steps, and a window that narrow, playing, spends stretches with\n-- no step inside it and draws nothing.\n--\n-- The window is written into the URL from `now()` itself, not from a variable:\n-- it stays the same URL for three hours, so ERDDAP answers every visitor after\n-- the first from its own cache, and no hidden variable rides along in shared\n-- links. `{0}` and `{1}` are `format`'s, not Grafana's.\n--\n-- `.csv0` has no header and no units row, so read_csv names by position. Only\n-- `[` and `]` need escaping (%5B/%5D). The two subscripts must be written\n-- identically or ERDDAP answers 400.\n--\n-- The cost is DuckDB's, twice over: it sends a HEAD before the GET, and ERDDAP\n-- builds the whole response for both. Measured at about 8 s once ERDDAP has the\n-- answer cached and 15 s before. `SET force_download` would halve it, but it\n-- outlives this query on a connection every dashboard shares, and would stop\n-- range requests into large Parquet elsewhere; `http_get` cannot send this URL\n-- at all -- it rewrites the query string, and ERDDAP answers 400.\nSELECT column0       AS time,\n       column1       AS latitude,\n       column2 - 360 AS longitude,  -- ERDDAP publishes longitude as 0..360\n       -- `u` and `v` are the names the velocity layers look for.\n       column3       AS u,\n       column4       AS v\nFROM read_csv(\n  format('https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ncep_global.csv0?ugrd10m%5B({0}):1:({1})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D,vgrd10m%5B({0}):1:({1})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D',\n    strftime(time_bucket(INTERVAL 3 HOUR, (now() AT TIME ZONE 'UTC') - INTERVAL 90 MINUTE),\n             '%Y-%m-%dT%H:%M:%SZ'),\n    strftime(time_bucket(INTERVAL 3 HOUR, (now() AT TIME ZONE 'UTC') - INTERVAL 90 MINUTE) + INTERVAL 48 HOUR,\n             '%Y-%m-%dT%H:%M:%SZ')),\n  header = false,\n  columns = {'column0': 'TIMESTAMP', 'column1': 'DOUBLE', 'column2': 'DOUBLE',\n             'column3': 'DOUBLE', 'column4': 'DOUBLE'},\n  nullstr = 'NaN')\nWHERE column3 IS NOT NULL AND column4 IS NOT NULL\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Wind barbs on the data cells",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 26,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "id": 3,
+      "options": {
+        "basemap": "auto",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": true,
+        "peerTimeSync": true,
+        "publishWhilePlaying": false,
+        "showSidePanel": true,
+        "timeSync": "toMap",
+        "tripLayerMode": "table",
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [
+                    40,
+                    63,
+                    93
+                  ],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [
+                    4,
+                    9,
+                    17
+                  ],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [
+                    114.75,
+                    114.75,
+                    114.75
+                  ],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [
+                    9,
+                    16,
+                    29
+                  ],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [
+                    17,
+                    35,
+                    48
+                  ]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": -14.0,
+              "longitude": -77.0,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_2D",
+              "maxPitch": 60,
+              "pitch": 0,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 3.2
+            },
+            "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
+              ],
+              "mapStyles": {},
+              "styleType": "dark-matter",
+              "threeDBuildingColor": [
+                9.311499150948377,
+                9.311499150948377,
+                9.311499150948377
+              ],
+              "topLayerGroups": {},
+              "visibleLayerGroups": {
+                "label": false,
+                "road": false
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": true
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "currentTime": null,
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "u"
+                      },
+                      {
+                        "name": "v"
+                      }
+                    ]
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "vectorfield-grafana-A",
+                "flowfield-grafana-A"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "color": [
+                      235,
+                      240,
+                      245
+                    ],
+                    "columnMode": "components",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude",
+                      "u": "u",
+                      "v": "v"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Arrows",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "symbol": "arrow",
+                      "placement": "screen",
+                      "spacingPx": 52,
+                      "symbolSize": 30,
+                      "sizeBySpeed": true,
+                      "sizeRange": [
+                        16,
+                        46
+                      ],
+                      "speedUnit": "m/s",
+                      "directionConvention": "from",
+                      "colorBySpeed": true,
+                      "colorRange": {
+                        "category": "Custom",
+                        "colors": [
+                          "#4FC3D9",
+                          "#7DE0C0",
+                          "#C3F0A0",
+                          "#FFF3B0",
+                          "#FFB870",
+                          "#FF7A5A"
+                        ],
+                        "name": "Breeze",
+                        "type": "sequential"
+                      },
+                      "fixedSpeedRange": true,
+                      "speedRange": [
+                        0,
+                        15
+                      ],
+                      "opacity": 0.95,
+                      "smoothing": 0
+                    }
+                  },
+                  "id": "vectorfield-grafana-A",
+                  "type": "vectorfield",
+                  "visualChannels": {
+                    "colorScale": "quantile",
+                    "sizeScale": "linear"
+                  }
+                },
+                {
+                  "config": {
+                    "color": [
+                      200,
+                      210,
+                      220
+                    ],
+                    "columnMode": "components",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude",
+                      "u": "u",
+                      "v": "v"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Flow field",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "colorBySpeed": false,
+                      "colorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#00939C",
+                          "#4EA7AD",
+                          "#78BCBF",
+                          "#9ED0D2",
+                          "#C2E5E6",
+                          "#E6FAFA"
+                        ],
+                        "name": "Uber Viz Sequential",
+                        "type": "sequential"
+                      },
+                      "cycleSeconds": 60,
+                      "density": 7000,
+                      "elevationScale": 1,
+                      "heightMeters": 0,
+                      "lifeFraction": 0.4,
+                      "lineLength": 30,
+                      "opacity": 0.5,
+                      "seamlessLoop": true,
+                      "smoothing": 1,
+                      "thickness": 1.2,
+                      "trailShare": 8,
+                      "zoomResponse": 0.4
+                    }
+                  },
+                  "id": "flowfield-grafana-A",
+                  "type": "flowfield",
+                  "visualChannels": {
+                    "colorScale": "quantile",
+                    "sizeScale": "linear"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 2,
+          "refId": "A"
+        }
+      ],
+      "title": "Arrows on a screen grid over the flow field",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 30,
+        "w": 24,
+        "x": 0,
+        "y": 60
+      },
+      "id": 4,
+      "options": {
+        "basemap": "auto",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": true,
+        "peerTimeSync": true,
+        "publishWhilePlaying": false,
+        "showSidePanel": true,
+        "timeSync": "toMap",
+        "tripLayerMode": "table",
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [
+                    40,
+                    63,
+                    93
+                  ],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [
+                    4,
+                    9,
+                    17
+                  ],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [
+                    114.75,
+                    114.75,
+                    114.75
+                  ],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [
+                    9,
+                    16,
+                    29
+                  ],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [
+                    17,
+                    35,
+                    48
+                  ]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": -25.0,
+              "longitude": -87.0,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_2D",
+              "maxPitch": 60,
+              "pitch": 0,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 3.1
+            },
+            "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
+              ],
+              "mapStyles": {},
+              "styleType": "dark-matter",
+              "threeDBuildingColor": [
+                9.311499150948377,
+                9.311499150948377,
+                9.311499150948377
+              ],
+              "topLayerGroups": {},
+              "visibleLayerGroups": {
+                "label": false,
+                "road": false
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": true
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "currentTime": null,
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "pressure_hpa"
+                      },
+                      {
+                        "name": "rain_mm_h"
+                      },
+                      {
+                        "name": "u"
+                      },
+                      {
+                        "name": "v"
+                      }
+                    ]
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "synoptic-barbs",
+                "synoptic-rain",
+                "synoptic-isobars"
+              ],
+              "layers": [
+                {
+                  "id": "synoptic-barbs",
+                  "type": "vectorfield",
+                  "config": {
+                    "color": [
+                      235,
+                      240,
+                      245
+                    ],
+                    "columnMode": "components",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude",
+                      "u": "u",
+                      "v": "v"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Wind barbs",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "symbol": "barb",
+                      "placement": "screen",
+                      "spacingPx": 58,
+                      "symbolSize": 30,
+                      "speedUnit": "m/s",
+                      "directionConvention": "from",
+                      "colorBySpeed": false,
+                      "opacity": 0.95,
+                      "smoothing": 0,
+                      "colorRange": {
+                        "category": "Custom",
+                        "colors": [
+                          "#4FC3D9",
+                          "#7DE0C0",
+                          "#C3F0A0",
+                          "#FFF3B0",
+                          "#FFB870",
+                          "#FF7A5A"
+                        ],
+                        "name": "Breeze",
+                        "type": "sequential"
+                      }
+                    }
+                  },
+                  "visualChannels": {
+                    "colorScale": "quantile",
+                    "sizeScale": "linear"
+                  }
+                },
+                {
+                  "id": "synoptic-isobars",
+                  "type": "flowfield",
+                  "config": {
+                    "color": [
+                      200,
+                      210,
+                      220
+                    ],
+                    "columnMode": "gradient",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude",
+                      "value": "isobar_field"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Isobars",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "gradientDirection": "contours",
+                      "animate": false,
+                      "density": 900,
+                      "lineLength": 60,
+                      "smoothing": 3,
+                      "thickness": 1.4,
+                      "opacity": 0.9,
+                      "colorBySpeed": true,
+                      "colorRange": {
+                        "category": "Custom",
+                        "name": "Isobars",
+                        "type": "sequential",
+                        "colors": [
+                          "#3E5C76",
+                          "#5B7FA3",
+                          "#8FA9C8",
+                          "#E0C9A6",
+                          "#E8A04F",
+                          "#E0603A"
+                        ]
+                      },
+                      "opacityBySpeed": true,
+                      "calmOpacity": 0.12,
+                      "widthBySpeed": true,
+                      "widthRange": [
+                        0.8,
+                        2.4
+                      ]
+                    }
+                  },
+                  "visualChannels": {
+                    "colorScale": "quantile",
+                    "sizeScale": "linear"
+                  }
+                },
+                {
+                  "id": "synoptic-rain",
+                  "type": "point",
+                  "config": {
+                    "color": [
+                      90,
+                      170,
+                      255
+                    ],
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Rain",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "radius": 10,
+                      "radiusRange": [
+                        0,
+                        10
+                      ],
+                      "opacity": 0.75,
+                      "filled": true,
+                      "outline": false,
+                      "thickness": 1,
+                      "fixedRadius": false
+                    }
+                  },
+                  "visualChannels": {
+                    "sizeField": {
+                      "name": "rain_mm_h_capped",
+                      "type": "real"
+                    },
+                    "sizeScale": "sqrt"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- The synoptic chart's own query: the same 48 hours and the same one-degree\n-- lattice as the maps above, with sea-level pressure and rain beside u and v.\n--\n-- Its own and not theirs on purpose. ERDDAP's cost grows with every variable\n-- asked for: two take the maps above about 7 s, four took 18 to 25 s. Asked for\n-- here, the wait is paid only by whoever scrolls this far, since Grafana does\n-- not query a panel until it comes into view. The map still walks with the\n-- others: the time is shared between maps in the browser, not through a query.\n--\n-- The window, the one-step lead and `format`'s {0} and {1} are explained in the\n-- barbs map's query above.\nSELECT column0         AS time,\n       column1         AS latitude,\n       column2 - 360   AS longitude,\n       column3         AS u,\n       column4         AS v,\n       column5 / 100   AS pressure_hpa,  -- Pa\n       -- The same pressure a hundred thousand times over, for the isobars only:\n       -- the layer takes its slope per metre, so this one's reads in hPa per\n       -- 100 km, the unit its legend then shows.\n       column5 * 1000  AS isobar_field,\n       column6 * 3600  AS rain_mm_h,     -- kg m-2 s-1, a millimetre of water per square metre\n       -- What the dots are sized by. Capped, so the rare cloudburst does not set\n       -- the scale and shrink ordinary rain to specks.\n       least(column6 * 3600, 10) AS rain_mm_h_capped\nFROM read_csv(\n  format('https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ncep_global.csv0?ugrd10m%5B({0}):1:({1})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D,vgrd10m%5B({0}):1:({1})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D,prmslmsl%5B({0}):1:({1})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D,pratesfc%5B({0}):1:({1})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D',\n    strftime(time_bucket(INTERVAL 3 HOUR, (now() AT TIME ZONE 'UTC') - INTERVAL 90 MINUTE),\n             '%Y-%m-%dT%H:%M:%SZ'),\n    strftime(time_bucket(INTERVAL 3 HOUR, (now() AT TIME ZONE 'UTC') - INTERVAL 90 MINUTE) + INTERVAL 48 HOUR,\n             '%Y-%m-%dT%H:%M:%SZ')),\n  header = false,\n  columns = {'column0': 'TIMESTAMP', 'column1': 'DOUBLE', 'column2': 'DOUBLE', 'column3': 'DOUBLE',\n             'column4': 'DOUBLE', 'column5': 'DOUBLE', 'column6': 'DOUBLE'},\n  nullstr = 'NaN')\nWHERE column3 IS NOT NULL AND column4 IS NOT NULL AND column5 IS NOT NULL\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Pressure and wind: the synoptic chart",
+      "type": "ubica-keplergl-panel",
+      "description": "The sea-level pressure field's contours, traced as still lines and coloured by the gradient in hPa per 100 km: where they crowd, the wind is strong. Near the surface, friction turns the wind a little toward the low, and near the equator, where the Coriolis force fades, it cuts across the isobars. They stand still because, drawn moving, they would run against the wind south of the equator. Along the Andes they crowd for want of a sea: the pressure there is carried down to a sea level kilometres below the ground, so read that bright band as the mountains, not the weather."
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "id": 5,
+      "title": "Airports: forecast against observation",
+      "type": "table",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- The latest METAR from every airport in the maps' box, set against the GFS\n-- cell nearest to it, at the forecast step nearest to its own observation.\n--\n-- aviationweather.gov answers with one row per airport, its latest report. The\n-- direction is a number or the string \"VRB\" for a variable wind, so it arrives\n-- as JSON and is read as text first.\n--\n-- The GFS side is the full half-degree grid, not the maps' one-degree lattice,\n-- for the two steps around the observations: METARs are at most about an hour\n-- old, so the step at or before now - 3 h and the one nearest to now bracket\n-- them all.\nWITH metar AS (\n  SELECT icaoId                                       AS icao,\n         name,\n         lat,\n         lon,\n         to_timestamp(obsTime) AT TIME ZONE 'UTC'      AS observed,\n         TRY_CAST(wdir::VARCHAR AS INTEGER)           AS obs_dir,  -- NULL for \"VRB\"\n         wspd                                         AS obs_kn\n  FROM read_json('https://aviationweather.gov/api/data/metar?bbox=-40,-100,12,-50&format=json')\n),\ngfs AS (\n  SELECT column0                                                AS step,\n         column1                                                AS lat,\n         column2 - 360                                          AS lon,\n         sqrt(column3 * column3 + column4 * column4) * 1.943844 AS kn,  -- m/s to knots\n         -- Where the wind comes FROM, as a METAR reports it.\n         (degrees(atan2(-column3, -column4)) + 360) % 360       AS dir\n  FROM read_csv(\n    format('https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ncep_global.csv0?ugrd10m%5B({0}):1:({1})%5D%5B(-40.0):1:(12.0)%5D%5B(260.0):1:(310.0)%5D,vgrd10m%5B({0}):1:({1})%5D%5B(-40.0):1:(12.0)%5D%5B(260.0):1:(310.0)%5D',\n      strftime(time_bucket(INTERVAL 3 HOUR, (now() AT TIME ZONE 'UTC') - INTERVAL 3 HOUR), '%Y-%m-%dT%H:%M:%SZ'),\n      strftime(time_bucket(INTERVAL 3 HOUR, (now() AT TIME ZONE 'UTC') + INTERVAL 90 MINUTE), '%Y-%m-%dT%H:%M:%SZ')),\n    header = false,\n    columns = {'column0': 'TIMESTAMP', 'column1': 'DOUBLE', 'column2': 'DOUBLE',\n               'column3': 'DOUBLE', 'column4': 'DOUBLE'},\n    nullstr = 'NaN')\n  WHERE column3 IS NOT NULL AND column4 IS NOT NULL\n)\nSELECT icao                          AS \"Airport\",\n       name                          AS \"Name\",\n       round(kn - obs_kn, 1)         AS \"Speed error kn\",\n       -- The short way round the compass. Left empty for a variable or a light\n       -- wind: under 3 kn the vane says little, and those would swamp the mean.\n       CASE WHEN obs_dir IS NULL OR obs_kn < 3 THEN NULL\n            ELSE round(abs(((obs_dir - dir + 540) % 360) - 180)) END AS \"Direction error °\",\n       obs_dir                       AS \"Observed from\",\n       obs_kn                        AS \"Observed kn\",\n       round(dir)                    AS \"GFS from\",\n       round(kn, 1)                  AS \"GFS kn\",\n       observed                      AS \"Observed\"\nFROM metar\nJOIN gfs ON gfs.lat = round(metar.lat * 2) / 2 AND gfs.lon = round(metar.lon * 2) / 2\nQUALIFY row_number() OVER (PARTITION BY icao ORDER BY abs(epoch(step) - epoch(observed))) = 1\nORDER BY abs(kn - obs_kn) DESC\n",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": true,
+          "reducer": [
+            "mean"
+          ],
+          "countRows": false,
+          "fields": [
+            "Speed error kn",
+            "Direction error °"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "width": 100
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Speed error kn"
+            },
+            "properties": [
+              {
+                "id": "description",
+                "value": "GFS minus observed: above zero the forecast blows harder than the airport measured."
+              },
+              {
+                "id": "min",
+                "value": -15
+              },
+              {
+                "id": "max",
+                "value": 15
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-BlYlRd"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Direction error °"
+            },
+            "properties": [
+              {
+                "id": "description",
+                "value": "The short way round the compass. Empty for a variable wind or one under 3 kn."
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 180
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-GrYlRd"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".* from"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "degree"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 115
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".* kn"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Name"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 220
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Airport"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^Observed$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time:HH:mm"
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*error.*"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 90
+      },
+      "description": "The latest METAR from each airport in the maps' box against the GFS half-degree cell nearest to it, at the forecast step nearest to the observation. Sorted by the size of the speed error. It stays on the present whatever the map's bar says: an observation exists only for now. A half-degree cell is not a mountain airport: at Quito part of the error is the grid's."
+    }
+  ],
+  "preload": false,
+  "schemaVersion": 41,
+  "tags": [
+    "duckdb",
+    "erddap",
+    "gfs",
+    "metar",
+    "pressure",
+    "vectorfield",
+    "wind"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-90m",
+    "to": "now+90m"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Wind, pressure and airports — NOAA GFS over South America",
+  "uid": "gfs-wind-synoptic",
+  "version": 1
+}
