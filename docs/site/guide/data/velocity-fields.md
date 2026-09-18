@@ -153,6 +153,11 @@ the **latest** hour still inside the clock's window. Narrow the window and an ea
 the one on show; widen it back out and the newest hour wins again. A query of one timestep needs
 none of this — the clock stays put and that one hour is all there ever is to choose from.
 
+The clock walks **one query**. kepler binds its time filter to the first dataset on the map that
+carries a timestamp, so a second velocity query with hours of its own — a second level, say — keeps
+drawing its **latest** hour whatever the clock says. *Several levels at once*, below, has the way to
+stack levels that walk together.
+
 ### Holes are holes, not calm air
 
 Cells the query omits are treated as **absent**, and streamlines stop at their edge. This is the
@@ -248,6 +253,15 @@ spends 6,000 on a single field, so the default is deliberately generous.
 ## Several levels at once
 
 One query per level, in the same panel. Each becomes its own layer.
+
+::: warning With a forecast, only the first level walks
+The map's clock binds to the first query that carries a timestamp, so in a stack of one query per
+level only that level follows it; the others stay on their latest hour. To walk them all, return
+every level from **one** query, side by side as columns of the same rows — `u850, v850, u700, v700`,
+one row per cell and hour — and add a Streamlines layer per level on it, each pointed at its own
+columns in the layer panel. Stacked as rows instead, with a `level` column, the levels land on the
+same cells and overwrite each other. Otherwise, accept that only the first level follows the clock.
+:::
 
 To separate them in the vertical, give each layer a height and tilt the camera with the 3D control.
 Two ways, and the layer takes the first that applies:
