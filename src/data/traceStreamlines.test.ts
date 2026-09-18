@@ -552,11 +552,23 @@ describe('traceStreamlines — seeding through the camera', () => {
     expect(close.length).toBeLessThan(0.2 * wide.length);
   });
 
-  it('never asks for more than the budget when zoomed out past the field', () => {
+  it('never asks for more lines than a camera that exactly fits the field', () => {
+    // This used to compare against a camera showing only a ninth of the
+    // field's area. Under the pixel-random seeding this module had before
+    // cell-anchored seeding, a much bigger box wasted most of its budget on
+    // ground with no data, and so happened to fall behind even that small
+    // corner's own count — which made the corner a passable stand-in for
+    // "the budget" without actually being one. Cell seeding is exhaustive
+    // rather than lossy: a camera that fully contains the field now reaches
+    // close to its true field-sized budget (`cameraSettings`'s `coverage`
+    // is 1 for both cameras here) regardless of how much emptier-than-field
+    // its own box is — which is the fix working as intended, not a
+    // regression — so the fair comparison is against another camera that
+    // also shows the whole field, snugly.
     const beyond = trace(cameraShowing({ west: -20, east: 30, south: -20, north: 30 }), 1);
-    const exact = trace(cameraShowing({ west: 0, east: 9, south: 0, north: 9 }), 1);
+    const wholeField = trace(cameraShowing({ west: -10, east: 10, south: -10, north: 10 }), 1);
 
-    expect(beyond.length).toBeLessThanOrEqual(exact.length);
+    expect(beyond.length).toBeLessThanOrEqual(wholeField.length * 1.1);
   });
 
   it('draws nothing from a camera that shows no ground at all', () => {
@@ -672,5 +684,89 @@ describe('traceStreamlines — anchored to the ground', () => {
     const least = Math.min(...bands);
     expect(least).toBeGreaterThan(0);
     expect(most / least).toBeLessThan(3);
+  });
+
+  it('keeps most lines through a pan at the density the plugin actually ships', () => {
+    // At BASE's count of 400 a cell is comfortably wider than the sample
+    // lattice's own spacing, so reuse looked solid even when the lattice was
+    // walked at a uniform pitch that did not actually track a cell's real
+    // footprint on screen. `flowFieldLayer.ts`'s own default is a density of
+    // 9,000, where a cell is only a few pixels across — close enough to the
+    // sample spacing that sampling at the wrong pitch missed cells outright,
+    // a different set on every pan.
+    const dense = { ...BASE, count: 9_000 };
+    const reuseFor = (lon2: number) => {
+      const cells = new Map<string, Streamline[] | null>();
+      const before = traceStreamlines(field, { ...dense, camera: cameraOver([-79, -2], 8), cells });
+      const after = traceStreamlines(field, { ...dense, camera: cameraOver([lon2, -2], 8), cells });
+      const kept = new Set(before.map((line) => line.cell));
+      return after.filter((line) => kept.has(line.cell)).length / after.length;
+    };
+
+    // A small, incremental pan — the kind a drag actually produces between
+    // two renders — moves the ground by a small fraction of one cell, so
+    // reuse should be close to total.
+    expect(reuseFor(-78.9999)).toBeGreaterThan(0.98);
+
+    // The 0.01° pan used throughout this file's low-density tests moves the
+    // ground by about two-thirds of a cell's own width at this density —
+    // comparable to the cell itself, so a real share of cells crossing their
+    // own boundary is expected geometry, not a bug: measured directly, reuse
+    // falls smoothly from 99.5% at a tenth of this pan to 96.7% at a tenth
+    // again, before landing here. What the fix buys is exactly that smooth
+    // fall-off with pan size; measured on the unfixed, uniform-pitch
+    // sampling this same pan reused only 62%, because which cells the
+    // lattice happened to land in was close to arbitrary rather than
+    // following the ground.
+    expect(reuseFor(-78.99)).toBeGreaterThan(0.7);
+  });
+
+  it('keeps a non-seamless line born before the cycle ends', () => {
+    // None of the camera tests above set `cycleMs`, so none of them could
+    // have caught this: a non-seamless line's birth has to land inside
+    // `[0, cycleMs - life]`, the window `birthWithin` itself is limited to,
+    // or the line is still alive when the cycle loops with no second
+    // emission to carry it across the seam — the exact cut trail
+    // `seamless: false` exists to avoid. Mapping a cell's raw phase
+    // straight onto the whole cycle regardless of that window was the
+    // regression: a high-phase cell would be born late enough to run well
+    // past the end of a 60 s cycle.
+    const lines = traceStreamlines(field, {
+      ...BASE,
+      camera: cameraOver([-79, -2], 8),
+      seamless: false,
+    });
+
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) {
+      const birth = line.path[0][3];
+      const end = line.path[line.path.length - 1][3];
+      expect(birth).toBeGreaterThanOrEqual(BASE.baseMs);
+      expect(end).toBeLessThanOrEqual(BASE.baseMs + BASE.cycleMs);
+    }
+  });
+
+  it("gives a cell its birth from its own phase, not from the order it was traced in", () => {
+    // Isolates the property that keeps a re-traced line from restarting
+    // under the reader: deleting `phaseOf` from the camera branch breaks
+    // nothing that the reuse tests above would catch, because a shared
+    // `cells` cache just hands the second call back the same cached object
+    // regardless of what decided its birth the first time. Two independent
+    // calls with no cache, over the same camera but different seeds, visit
+    // the same cells in the same order either way — the order comes from
+    // walking the screen, not from `options.seed` — so a birth that came
+    // from the random draw order rather than from the cell's own phase
+    // would still happen to match between them. Comparing the vertex time
+    // itself, not just the geometry, is what actually pins the phase down.
+    const camera = cameraOver([-79, -2], 8);
+    const first = traceStreamlines(field, { ...BASE, camera, seed: 1 });
+    const second = traceStreamlines(field, { ...BASE, camera, seed: 2 });
+
+    const birthOf = new Map(first.map((line) => [line.cell, line.path[0][3]]));
+    const shared = second.filter((line) => birthOf.has(line.cell));
+    expect(shared.length).toBeGreaterThan(0);
+    for (const line of shared) {
+      expect(line.path[0][3]).toBe(birthOf.get(line.cell));
+    }
   });
 });

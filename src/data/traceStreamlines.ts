@@ -1,5 +1,5 @@
 import { sampleWindField, WindField } from './buildWindField';
-import { cellAt, keyOf, levelFor, phaseOf, seedOf } from './groundCells';
+import { cellAt, keyOf, levelFor, phaseOf, seedOf, sizeAt } from './groundCells';
 
 /**
  * One traced path, in the shape deck's `TripsLayer` reads.
@@ -69,6 +69,10 @@ export interface StreamlineOptions {
   /**
    * Rescale times so the median streamline lasts this long. Omit to keep
    * physical time.
+   *
+   * A no-op together with `camera` and no `cycleMs`: the camera path collects
+   * finished streamlines directly rather than raw vertices, so there is no
+   * median left to measure by the time this would apply.
    */
   targetLifetimeMs?: number;
   /**
@@ -250,16 +254,62 @@ function cameraSettings(camera: ScreenCamera, extent: Box, segmentPixels: number
   };
 }
 
-/** The cell level for a band of the screen, from the ground a pixel covers there. */
-function levelOfBand(camera: ScreenCamera, y: number, spacingPx: number): number | null {
+/**
+ * Below this, a pitch stops being a sampling step and starts being a loop
+ * that never ends — the floor a degenerate camera (looking edge-on at the
+ * ground, say) cannot push through.
+ */
+const MIN_CELL_PITCH_PX = 2;
+
+/**
+ * The ground-cell level for a band of the screen, and how many screen pixels
+ * one of its cells spans in each direction there.
+ *
+ * `levelFor` rounds to the nearest power of two, so a cell can land anywhere
+ * from about 0.7 to 1.4 times `spacingPx` wide — already enough, at the
+ * density the plugin actually ships, for a sample lattice walked at
+ * `spacingPx` to miss whole cells outright. Tilt the camera and it gets
+ * worse on one axis only: at a pitch of 60 a pixel can cover several times
+ * more ground north-south than east-west near the horizon, so a cell
+ * `spacingPx` wide east-west is only a few pixels *tall* there. Sampling
+ * both axes at the same spacing then either straddles a whole row of cells
+ * between two samples, or lands three samples inside one — and which cells
+ * that misses depends on where the camera happens to sit, so it reshuffles
+ * on every pan. Measuring the pitch separately on each axis and stepping the
+ * lattice by *that* keeps roughly one sample per cell whatever the
+ * anisotropy, so the reuse a pan is for survives at real density and at any
+ * tilt.
+ *
+ * The level itself still comes from the east-west measurement alone, exactly
+ * as before: that is what ties a cell's size to `spacingPx` — the density
+ * knob — and nothing here changes what a level *means* (`groundCells.ts`
+ * owns that contract).
+ */
+function bandSampling(
+  camera: ScreenCamera,
+  y: number,
+  spacingPx: number
+): { level: number; pitchX: number; pitchY: number } | null {
   const here = camera.unproject(camera.widthPx / 2, y);
   const across = camera.unproject(camera.widthPx / 2 + 1, y);
-  if (!here || !across) {
+  const down = camera.unproject(camera.widthPx / 2, y + 1);
+  if (!here || !across || !down) {
     return null;
   }
-  const metres =
-    Math.abs(across[0] - here[0]) * METRES_PER_DEGREE * Math.max(0.2, Math.cos((here[1] * Math.PI) / 180));
-  return levelFor(metres, spacingPx, here[1]);
+
+  const lonPerPixel = Math.abs(across[0] - here[0]);
+  const latPerPixel = Math.abs(down[1] - here[1]);
+  const metresPerPixelEW =
+    lonPerPixel * METRES_PER_DEGREE * Math.max(0.2, Math.cos((here[1] * Math.PI) / 180));
+
+  const level = levelFor(metresPerPixelEW, spacingPx, here[1]);
+  const sizeDegrees = sizeAt(level);
+
+  return {
+    level,
+    pitchX: Math.max(MIN_CELL_PITCH_PX, lonPerPixel > 0 ? sizeDegrees / lonPerPixel : spacingPx),
+    pitchY: Math.max(MIN_CELL_PITCH_PX, latPerPixel > 0 ? sizeDegrees / latPerPixel : spacingPx),
+  };
 }
 
 function viewportSettings(
@@ -389,6 +439,13 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
      * Each band gets the cell size the ground *there* calls for, so the
      * count of lines per screen stays roughly even from top to bottom.
      *
+     * The lattice within a band is stepped at that cell's own pixel pitch —
+     * measured separately east-west and north-south by `bandSampling` — not
+     * at this uniform `spacingPx`: a cell sized from `spacingPx` is not
+     * `spacingPx` pixels wide on screen (rounding) or tall (tilt), and
+     * sampling at the wrong pitch is what let the lattice miss whole cells,
+     * a different set on every pan.
+     *
      * A cell replaces the pixel as the unit of seeding: two calls that land
      * on the same patch of ground get the same seed point and the same birth
      * phase (`seedOf`/`phaseOf`, both pure functions of the cell), and the
@@ -407,25 +464,24 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
       const height = camera.heightPx / bands;
       const middle = top + height / 2;
 
-      // How much ground a pixel covers in this band. On a tilted map that is
-      // several times more at the top of the screen than at the bottom, and a
-      // single answer for the whole screen is what leaves the distance bare.
-      const level = levelOfBand(camera, middle, spacingPx);
-      if (level === null) {
+      const sampling = bandSampling(camera, middle, spacingPx);
+      if (sampling === null) {
         continue;
       }
+      const { level, pitchX, pitchY } = sampling;
 
-      for (let y = top; y < top + height; y += spacingPx) {
-        for (let x = 0; x < camera.widthPx; x += spacingPx) {
-          // A deterministic nudge, so the samples are not a visible grid of
-          // their own and two adjacent rows do not sample the same column.
-          // Clamped to the screen: unjittered, the loop bounds already keep x
-          // and y on it, and this nudge must not walk a sample back off past
-          // the edge the loop just stopped at — a camera happily unprojects a
-          // pixel past its own bounds, which is ground the screen never shows.
+      for (let y = top; y < top + height; y += pitchY) {
+        for (let x = 0; x < camera.widthPx; x += pitchX) {
+          // A deterministic nudge — invisible at this density — that keeps
+          // the sample lattice from beating against the cell lattice as a
+          // moiré pattern. Clamped to the screen: unjittered, the loop
+          // bounds already keep x and y on it, and this nudge must not walk
+          // a sample back off past the edge the loop just stopped at — a
+          // camera happily unprojects a pixel past its own bounds, which is
+          // ground the screen never shows.
           const jitter = (((Math.sin((x + y * 7.3) * 12.9898) * 43758.5453) % 1) + 1) % 1;
-          const px = Math.min(camera.widthPx, x + jitter * spacingPx);
-          const py = Math.min(camera.heightPx, y + ((jitter * 3) % 1) * spacingPx);
+          const px = Math.min(camera.widthPx, x + jitter * pitchX);
+          const py = Math.min(camera.heightPx, y + ((jitter * 3) % 1) * pitchY);
           const at = camera.unproject(px, py);
           if (!at) {
             continue;
@@ -512,8 +568,16 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
     const life = share * cycleMs;
     // The cell's own phase when it has one, so a line re-traced after a pan or
     // a change of forecast hour carries on where it was instead of starting
-    // its trail again from nothing.
-    const birth = phase === undefined ? birthWithin(cycleMs, life) : Math.round(phase * cycleMs);
+    // its trail again from nothing. Mapped into the same window `birthWithin`
+    // is itself limited to — the whole cycle when the loop is seamless, but
+    // only as far as `cycleMs - life` when it is not — or a line born from a
+    // high phase would still be alive past the end of a non-seamless cycle
+    // with no second emission to carry it: exactly the cut trail
+    // `seamless: false` exists to avoid.
+    const birth =
+      phase === undefined
+        ? birthWithin(cycleMs, life)
+        : Math.round(phase * (options.seamless ? cycleMs : cycleMs - life));
     const timeAt = (shift: number) => (p: Vertex) =>
       options.baseMs + birth - shift + Math.round(p.seconds * 1000 * share);
 
