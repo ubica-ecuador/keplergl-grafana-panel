@@ -8,6 +8,7 @@ import {
   legendPatch,
   speedColorOf,
   stackedAltitude,
+  traceMetresPerPixel,
 } from './velocityField';
 
 /** A GridFrame from plain rows, the shape `buildWindField` reads. */
@@ -186,6 +187,50 @@ describe('stackedAltitude', () => {
 
   it('is scaled by the elevation knob', () => {
     expect(stackedAltitude(2500, { elevationScale: 2 }, { tallest: 0 }, null)).toBe(5000);
+  });
+});
+
+describe('traceMetresPerPixel', () => {
+  /** Web Mercator's metres per pixel at the centre of a 512-px world, as deck works it out. */
+  const mercator = (zoom: number, latitude: number) =>
+    (40_075_016.686 * Math.cos((latitude * Math.PI) / 180)) / (512 * Math.pow(2, zoom));
+  const steps = (metresPerPixel: number) => Math.log2(traceMetresPerPixel(metresPerPixel)) * 16;
+
+  it('lands on steps a sixteenth of a doubling apart, never more than half a step off', () => {
+    for (const metresPerPixel of [0.3, 12.7, 611.5, 9_784]) {
+      expect(steps(metresPerPixel)).toBeCloseTo(Math.round(steps(metresPerPixel)), 9);
+      expect(Math.abs(Math.log2(traceMetresPerPixel(metresPerPixel) / metresPerPixel))).toBeLessThanOrEqual(1 / 32);
+      // And a step is a step: snapping twice changes nothing.
+      expect(traceMetresPerPixel(traceMetresPerPixel(metresPerPixel))).toBe(traceMetresPerPixel(metresPerPixel));
+    }
+  });
+
+  it('keeps one scale for a pan across Ecuador at a fixed zoom, and moves for any zoom of a sixteenth or more', () => {
+    // A pan at a fixed zoom moves the metres a pixel covers only through the
+    // latitude of the centre; the flow field keeps its lines for as long as
+    // this holds, so a pan must not move it and a zoom must.
+    const here = traceMetresPerPixel(mercator(7, -2));
+    expect(traceMetresPerPixel(mercator(7, -3))).toBe(here);
+    expect(traceMetresPerPixel(mercator(7, 1))).toBe(here);
+    for (const zoom of [7 + 1 / 16, 7.1, 7.4, 6.9]) {
+      expect(traceMetresPerPixel(mercator(zoom, -2))).not.toBe(here);
+    }
+  });
+
+  it('snaps the height of a lifted level with it, so a level drawn twice sits at one height', () => {
+    // The vector field hands `stackedAltitude` the camera as it is, and the
+    // flow field the camera at the snapped scale: both have to come out the same.
+    const camera = (metresPerPixel: number) => ({
+      widthPx: 800,
+      heightPx: 600,
+      bounds: { west: 0, east: 1, south: 0, north: 1 },
+      metresPerPixel,
+      unproject: () => null,
+    });
+    const raw = 611.5;
+    expect(stackedAltitude(3000, {}, { tallest: 3000 }, camera(raw))).toBe(
+      stackedAltitude(3000, {}, { tallest: 3000 }, camera(traceMetresPerPixel(raw)))
+    );
   });
 });
 

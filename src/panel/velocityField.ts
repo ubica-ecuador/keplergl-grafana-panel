@@ -510,6 +510,57 @@ export function altitudeMeaningOf(
 }
 
 /**
+ * How many steps of the trace scale there are to a doubling of the zoom.
+ *
+ * Sixteen, so the scale a line was traced at is never more than 2^(1/32) —
+ * about 2% — off the camera's own: a zoom of a sixteenth of a level or more
+ * always lands on another step, and a mouse-wheel notch is well past that. A
+ * pan at a fixed zoom moves the metres a pixel covers only through the latitude
+ * of the centre, which over Ecuador is a few thousandths of a doubling and at
+ * 45° about a fortieth per degree panned, so it stays on its step.
+ */
+const TRACE_SCALE_STEPS_PER_DOUBLING = 16;
+
+/**
+ * The metres a pixel covers, snapped to the trace scale's steps.
+ *
+ * A traced line is made of the camera's scale as well as of the field: how far
+ * it runs on the ground (so that it is a legible number of pixels long) and how
+ * high a lifted level sits (a share of the view's width) are both metres per
+ * pixel. The flow field keeps lines by ground cell and reuses them across
+ * camera moves, so it needs a scale that a pan does not move and a zoom always
+ * does — a continuous one changes, by a hair, with every pan to another
+ * latitude, and a line kept across a zoom was measured at 171 px where a fresh
+ * trace drew 130. Snapped, the scale is a key the kept lines can be checked
+ * against, and everything traced under one key agrees with a fresh trace
+ * exactly.
+ */
+export function traceMetresPerPixel(metresPerPixel: number): number {
+  if (!(metresPerPixel > 0) || !Number.isFinite(metresPerPixel)) {
+    return metresPerPixel;
+  }
+  const step = Math.round(Math.log2(metresPerPixel) * TRACE_SCALE_STEPS_PER_DOUBLING);
+  return Math.pow(2, step / TRACE_SCALE_STEPS_PER_DOUBLING);
+}
+
+/**
+ * The camera as a trace sees it: the same ground under every pixel, at the
+ * snapped scale — see `traceMetresPerPixel`.
+ *
+ * Built field by field rather than spread, so a camera whose `unproject` lives
+ * on a prototype rather than on the object keeps it.
+ */
+export function atTraceScale(camera: ScreenCamera): ScreenCamera {
+  return {
+    widthPx: camera.widthPx,
+    heightPx: camera.heightPx,
+    bounds: camera.bounds,
+    metresPerPixel: traceMetresPerPixel(camera.metresPerPixel),
+    unproject: (x, y) => camera.unproject(x, y),
+  };
+}
+
+/**
  * How high a level is drawn: its height in metres — the level's own, from
  * `altitudeMeaningOf` or `levelHeight` — exaggerated against the tallest level
  * on the map and the width of the view, then scaled by the user's exaggeration.
@@ -527,8 +578,11 @@ export function stackedAltitude(
 ): number {
   // How wide the view is across its middle, which is what a person means by
   // it — and unlike the ground the camera can see, it does not balloon when
-  // the map is tilted.
-  const metresAcross = camera ? camera.metresPerPixel * camera.widthPx : undefined;
+  // the map is tilted. At the snapped scale rather than the camera's own: the
+  // flow field keeps a level's lines for as long as that scale holds (see
+  // `traceMetresPerPixel`), and the vector field's arrows for the same level
+  // have to sit at the height those kept lines do.
+  const metresAcross = camera ? traceMetresPerPixel(camera.metresPerPixel) * camera.widthPx : undefined;
   return (
     metres *
     stackExaggeration(setting(context.tallest, metres), metresAcross) *

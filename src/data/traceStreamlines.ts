@@ -112,6 +112,13 @@ export interface StreamlineOptions {
    * Handed in by the layer, which keeps one of these per forecast hour. A cell
    * in here is not traced again, which is what makes panning cheap and keeps a
    * line from moving under the reader.
+   *
+   * Reused exactly as traced, so only valid while everything a line is made of
+   * holds: the field, and the camera's `metresPerPixel` and `altitudeMeters`
+   * it was traced at. Keeping it to one of those is the caller's job — the
+   * layer empties it when either moves (`traceScaleKey` in
+   * `flowFieldLayer.ts`). Nothing else here depends on the camera's position,
+   * which is what lets a pan reuse it.
    */
   cells?: Map<string, Streamline[] | null>;
   /**
@@ -257,8 +264,9 @@ function cameraSettings(camera: ScreenCamera, extent: Box, segmentPixels: number
   const response = Math.min(1, Math.max(0, zoomResponse));
 
   return {
-    // Only used to sample typical speeds; the seeds themselves come from the
-    // screen, so this needs to be where the data and the view overlap.
+    // Where the data and the view overlap — only asked whether it is empty:
+    // the seeds themselves come from the screen, and the typical speed the
+    // advection is scaled by is the whole field's (see `speedScaleFor`).
     seedArea: intersect(camera.bounds, extent),
     coverage: Math.pow(share, response),
     segmentMeters: camera.metresPerPixel * segmentPixels,
@@ -478,6 +486,13 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
     return [];
   }
 
+  // The typical speed and the patch's size are the whole field's, not the part
+  // of it on screen. A caller that keeps lines by ground cell (`cells`) reuses
+  // them after a pan exactly as they were traced, so nothing a line is made of
+  // may move with the pan: measured across a 3 -> 15 m/s gradient, a median
+  // taken over the visible part left the kept lines and the fresh ones beside
+  // them stepping five times apart. The colour ramp is the whole field's for
+  // the same reason (`fieldSpeedDomain`).
   const step: Step =
     options.cycleMs === undefined
       ? { kind: 'arc', segmentMeters: scaled.segmentMeters }
@@ -486,9 +501,9 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
           seconds: options.cycleMs / 1000 / (base.maxVertices - 1),
           speedScale: speedScaleFor(
             field,
-            scaled.seedArea,
+            extent,
             options.cycleMs,
-            travelPixelsFor(scaled.seedArea, base.travelPixels, scaled.metresPerPixel),
+            travelPixelsFor(extent, base.travelPixels, scaled.metresPerPixel),
             scaled.metresPerPixel
           ),
         };
@@ -814,12 +829,12 @@ function trace(
  * place. Capping the travel to a share of the patch's size on screen keeps the
  * motion where the data is, at whatever scale the data happens to be.
  */
-function travelPixelsFor(seedArea: Box, nominal: number, metresPerPixel: number): number {
+function travelPixelsFor(patch: Box, nominal: number, metresPerPixel: number): number {
   if (metresPerPixel <= 0) {
     return nominal;
   }
 
-  const widthPx = ((seedArea.east - seedArea.west) * METRES_PER_DEGREE) / metresPerPixel;
+  const widthPx = ((patch.east - patch.west) * METRES_PER_DEGREE) / metresPerPixel;
   return Math.min(nominal, Math.max(8, widthPx * 0.25));
 }
 
@@ -836,7 +851,7 @@ function travelPixelsFor(seedArea: Box, nominal: number, metresPerPixel: number)
  */
 function speedScaleFor(
   field: WindField,
-  seedArea: Box,
+  area: Box,
   cycleMs: number,
   travelPixels: number,
   metresPerPixel: number
@@ -851,8 +866,8 @@ function speedScaleFor(
     for (let i = 0; i <= samples; i++) {
       const uv = sampleWindField(
         field,
-        seedArea.west + ((seedArea.east - seedArea.west) * i) / samples,
-        seedArea.south + ((seedArea.north - seedArea.south) * j) / samples
+        area.west + ((area.east - area.west) * i) / samples,
+        area.south + ((area.north - area.south) * j) / samples
       );
       if (uv) {
         speeds.push(Math.hypot(uv[0], uv[1]));

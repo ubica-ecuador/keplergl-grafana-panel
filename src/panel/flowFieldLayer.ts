@@ -1,9 +1,10 @@
 import type { LayerIcon } from './cogPaintedLayer';
 import { buildScalarFieldFrom, sampleScalarField, type WindField } from '../data/buildWindField';
-import { Streamline, traceStreamlines } from '../data/traceStreamlines';
+import { ScreenCamera, Streamline, traceStreamlines } from '../data/traceStreamlines';
 import { shownInPane } from './paneVisibility';
 import {
   altitudeMeaningOf,
+  atTraceScale,
   buildVelocityField,
   CameraState,
   colorForSpeed,
@@ -290,18 +291,43 @@ interface HourEntry {
    * not.
    */
   cells: Map<string, Streamline[] | null>;
+  /**
+   * The scale every line in `cells` was traced at: the snapped metres per
+   * pixel and the level's height — see `traceScaleKey`. A line is made of
+   * these as much as of the field, so `cells` is only worth reusing while they
+   * hold, and is emptied the moment they do not.
+   */
+  traceScale: string;
   /** The whole set of lines, in the order deck draws them. */
   lines: Streamline[];
   /**
    * The camera `lines` was traced for. Checked on every visit to this hour,
    * not only the first: a camera that has since moved makes `lines` stale,
-   * but `field` and `cells` are not — the field's data has not changed, and a
-   * cell already in `cells` is still the right line for that patch of ground.
-   * `formatLayerData` re-traces through the same `cells` map rather than a
-   * fresh one when this no longer matches, so only the ground newly on
-   * screen costs anything.
+   * but not necessarily `field` or `cells`. The field's data has not changed,
+   * and a cell already in `cells` is still the right line for its patch of
+   * ground **as long as the trace scale has not moved** — its length on the
+   * ground and a lifted level's height both follow the camera's scale, which
+   * a pan at a fixed zoom leaves where it was and a zoom does not.
+   * `formatLayerData` re-traces through the same `cells` map when the scale
+   * still matches, so a pan costs only the ground newly on screen, and through
+   * an empty one when it does not.
    */
   camera: CameraState | undefined;
+}
+
+/**
+ * The scale a trace was made at, as a key a held hour's cells can be checked
+ * against: the snapped metres per pixel the tracer was handed (see
+ * `traceMetresPerPixel`) and the height of the level.
+ *
+ * The height is in the key as well as the scale, though it follows from it,
+ * because it follows from more than it: the width of the panel moves it too,
+ * and a line kept across a resize would float at the old height while its
+ * level's arrows moved. The rest of what moves it — the tallest level, the
+ * exaggeration, the metres — is in `traceSignature` already.
+ */
+function traceScaleKey(camera: ScreenCamera | null, altitudeMeters: number): string {
+  return JSON.stringify([camera ? camera.metresPerPixel : null, altitudeMeters]);
 }
 
 // Contravariant constructor parameters, so `any[]` rather than `unknown[]`; the
@@ -331,6 +357,11 @@ type Constructor<T> = new (...args: any[]) => T;
  * cells that had just come into view. A camera change is instead handled in
  * `formatLayerData` as its own, cheaper case: re-trace the current hour only,
  * handing the tracer its own already-populated cells map.
+ *
+ * The camera's *scale* is the one part of it that does shape the lines — how
+ * far each runs on the ground, and how high a lifted level sits — and it is
+ * kept out of here too, as the hour's own `traceScaleKey`: a zoom then empties
+ * only the hour being looked at, not every hour on hand.
  */
 export function traceSignature(config: FlowFieldLayerLike['config']): string {
   const visConfig = config.visConfig ?? {};
@@ -558,9 +589,9 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       const frame = gridFrameOf(dataset, columns);
       // A held field is reused rather than rebuilt: the columns and the
       // smoothing are in `signature`, so if they had changed `held` itself
-      // would already have been emptied above. Only the seeding — which
-      // ground is walked and where the lines start — depends on the camera,
-      // so that is all a settled pan has to redo.
+      // would already have been emptied above. The field does not depend on
+      // the camera at all; which ground is walked, and at what scale, is the
+      // tracer's business below.
       const field = held ? held.field : frame ? buildVelocityField(frame, columns, this.config.columnMode, visConfig, 3) : null;
       if (!frame || !field) {
         return { data: [], speedDomain: [0, 1], signature, container: dataset.dataContainer, stepMs, camera: context.camera };
@@ -583,6 +614,13 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
         this.updateMeta({ bounds: fieldBounds(field), speedDomain });
       }
 
+      // The camera at the snapped trace scale — see `traceMetresPerPixel`. The
+      // tracer sizes a line's run on the ground from this, and the height of a
+      // level below comes from the same number, so every line kept under one
+      // `traceScaleKey` is exactly the line a fresh trace would draw.
+      const screen = context.camera ? makeCamera(context.camera) : null;
+      const camera = screen ? atTraceScale(screen) : null;
+
       // The tracer produces its own geometry, so the altitude has to be handed
       // to it as a value (a level) or a function (terrain) — see
       // `altitudeMeaningOf`. The exaggeration follows the view for a level,
@@ -591,9 +629,9 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       // the top level off the screen over a city. Shared with the vector field
       // via `stackedAltitude`, so a level drawn as streamlines and as arrows
       // sits at the same height.
-      const camera = context.camera ? makeCamera(context.camera) : null;
       const meaning = altitudeMeaningOf(frame, columns.altitude?.value, visConfig);
       const altitudeMeters = meaning.kind === 'level' ? stackedAltitude(meaning.metres, visConfig, context, camera) : 0;
+      const traceScale = traceScaleKey(camera, altitudeMeters);
       // Built fresh from this call's own `frame` rather than carried on the
       // held hour: the hour's `cells` cache bakes a height into every vertex it
       // keeps, so only the ground newly traced this call ever reads `terrain`
@@ -614,7 +652,17 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       // ground that has just come into view. A brand-new hour starts with
       // nothing, same as before — it owns this map from here on, never
       // shared with any other hour's.
-      const cells = held ? held.cells : new Map<string, Streamline[] | null>();
+      //
+      // But only while the scale it was traced at still holds. A zoom moves
+      // it, and a kept line would then run its old length on the ground and a
+      // lifted level sit at its old height — measured at 171 px instead of 130
+      // after a zoom from 7.0 to 7.4, and a level left at 73,252 m while a
+      // fresh trace put it at 55,500 m. The same cells, re-traced from empty,
+      // come back with the same seeds and phases (both are the cell's own), so
+      // a zoom within one level redraws the lines in place rather than
+      // reshuffling them; a pan at a fixed zoom keeps the key and costs only
+      // the ground it uncovers.
+      const cells = held && held.traceScale === traceScale ? held.cells : new Map<string, Streamline[] | null>();
       const data = traceStreamlines(field, {
         // Traced from zero rather than from `baseMs`: deck holds a vertex time
         // as a float32, which cannot tell two epoch milliseconds apart at all.
@@ -655,7 +703,7 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       }
 
       this._hours.delete(hourKey);
-      this._hours.set(hourKey, { field, speedDomain, cells, lines: data, camera: context.camera });
+      this._hours.set(hourKey, { field, speedDomain, cells, traceScale, lines: data, camera: context.camera });
       // Three hours: the one on show and the two most recently looked at
       // before it — see the re-insertion above. A dashboard left open on a
       // long forecast would otherwise hold every hour it ever drew.

@@ -1218,6 +1218,82 @@ describe('flow field layer — a settled pan costs only the ground it uncovers',
   });
 });
 
+describe('flow field layer — a zoom re-traces what the scale shapes', () => {
+  /**
+   * A lifted level over a steady wind, seen through `camera`: one altitude
+   * everywhere and a tallest of the same, so the height is the whole
+   * exaggeration and follows the width of the view.
+   */
+  const liftedLayer = (camera: TestCamera) => {
+    const dataset = eastwardGrid(40, 12, 3000);
+    const layer = layerOver(
+      dataset,
+      { ...COMPONENTS, altitude: 'altitude' },
+      { density: 4000, flowContext: { ...CONTEXT, tallest: 3000, camera } }
+    );
+    return { dataset, layer };
+  };
+
+  /** How long a line is on this camera's screen, in pixels, end to end. */
+  const pixelLength = (camera: TestCamera, line: { path: number[][] }) => {
+    const pxPerDegree = camera.width / (camera.box.east - camera.box.west);
+    const start = line.path[0];
+    const end = line.path[line.path.length - 1];
+    return Math.hypot(end[0] - start[0], end[1] - start[1]) * pxPerDegree;
+  };
+
+  /** Each cell's first line, for comparing one trace with another cell by cell. */
+  const firstByCell = (lines: Array<{ cell?: string; path: number[][] }>) => {
+    const map = new Map<string, { cell?: string; path: number[][] }>();
+    for (const line of lines) {
+      if (line.cell !== undefined && !map.has(line.cell)) {
+        map.set(line.cell, line);
+      }
+    }
+    return map;
+  };
+
+  it('draws a line zoomed into within one level as long, and as high, as a fresh trace would', () => {
+    // The defect: a line kept in the hour's cells map is reused as it was
+    // traced, and its length on screen (through the metres a pixel covers) and
+    // a lifted level's height (through the width of the view) both depend on
+    // the camera's scale. Measured in the browser, zoom 7.0 -> 7.4 kept 3,426
+    // lines at ~171 px instead of 130, and a level stayed at 73,252 m where a
+    // fresh trace put it at 55,500 m while its own vector-field arrows moved.
+    const wide = cameraShowing({ west: 0, east: 39, south: 0, north: 39 });
+    // Zoomed by 2^0.4 about the same centre, still inside the same cell level.
+    // The zoom itself is moved too: it is what a real camera state carries,
+    // and the only thing that tells this one apart from the wide one.
+    const span = 39 / Math.pow(2, 0.4);
+    const close = {
+      ...cameraShowing({ west: 19.5 - span / 2, east: 19.5 + span / 2, south: 19.5 - span / 2, north: 19.5 + span / 2 }),
+      zoom: wide.zoom + 0.4,
+    };
+
+    const { dataset, layer } = liftedLayer(wide);
+    const before = layer.formatLayerData({ 'grafana-A': dataset });
+    layer.config.visConfig = { ...layer.config.visConfig, flowContext: { ...CONTEXT, tallest: 3000, camera: close } };
+    const zoomed = layer.formatLayerData({ 'grafana-A': dataset }, before);
+
+    const fresh = liftedLayer(close);
+    const expected = firstByCell(fresh.layer.formatLayerData({ 'grafana-A': fresh.dataset }).data);
+
+    // The zoom stayed inside one cell level, so the old map had these cells
+    // to offer — which is what makes this a test of reuse at all.
+    const beforeCells = firstByCell(before.data);
+    const zoomedCells = firstByCell(zoomed.data);
+    const kept = [...zoomedCells.keys()].filter((cell) => beforeCells.has(cell));
+    expect(kept.length).toBeGreaterThan(zoomedCells.size * 0.5);
+
+    for (const [cell, line] of zoomedCells) {
+      const reference = expected.get(cell)!;
+      expect(reference).toBeDefined();
+      expect(pixelLength(close, line)).toBeCloseTo(pixelLength(close, reference), 6);
+      expect(line.path.map((vertex) => vertex[2])).toEqual(reference.path.map((vertex) => vertex[2]));
+    }
+  });
+});
+
 describe('fieldSpeedDomain', () => {
   const fieldOf = (data: number[]) => ({
     data: Float32Array.from(data),

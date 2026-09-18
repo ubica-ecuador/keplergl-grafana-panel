@@ -189,9 +189,17 @@ the version to print or to read rather than watch. A system set to reduce motion
 without asking, and a panel scrolled out of the dashboard stops animating until it comes back.
 :::
 
-Density and on-screen length hold steady as you zoom, because the field is **re-traced whenever the
-map settles** — a fixed budget of lines per screen, each a fixed number of pixels long. Only the
-share of the screen your data actually covers gets drawn.
+Density and on-screen length hold steady as you zoom: a fixed budget of lines per screen, each
+about the same number of pixels long. Only the share of the screen your data actually covers gets
+drawn.
+
+The lines belong to the **ground**, not to the screen. A **pan** keeps every line already on screen
+exactly as it was and traces only the ground that has just come into view. A **zoom** — anything
+from a sixteenth of a zoom level up — re-traces the view at its new scale: each line keeps its place
+and its moment in the cycle but is drawn again to the new length, and a lifted level to its new
+height. Zoom far enough and a finer or coarser set of lines takes over, which reads as the field
+filling in or thinning out rather than reshuffling. How far a line runs is scaled by the typical speed of the **whole** field, not of the part
+on screen, so panning from slack air into a jet does not stretch the slack lines to match.
 
 The lines are seeded by picking points **on the screen** and asking the camera what ground is under
 them, so a tilted or rotated map is covered to its edges. That matters more than it sounds: tilt the

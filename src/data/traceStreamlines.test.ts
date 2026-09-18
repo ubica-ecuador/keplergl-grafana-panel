@@ -570,6 +570,40 @@ describe('traceStreamlines — seeding through the camera', () => {
   // world-scale zoom" below, which replaces it with the real camera and the
   // zoom where that floor actually mattered.
 
+  it('scales the advection by the whole field, so a pan across a speed gradient does not rescale a line', () => {
+    // A line kept in the layer's per-hour cells map is reused on the next pan
+    // as it was traced, so everything its geometry depends on has to be the
+    // same after the pan as before it. The typical speed it is normalised
+    // by was the median over the *visible* part of the field: panning from
+    // slack air into a jet moved that median, and the lines kept from before
+    // and the ones traced fresh beside them stepped five times apart
+    // (measured across a 3 -> 15 m/s gradient).
+    const gradient: WindField = {
+      // 3 m/s along the west edge, 15 m/s along the east.
+      data: Float32Array.from([3, 0, 15, 0, 3, 0, 15, 0]),
+      columns: 2,
+      rows: 2,
+      west: 0,
+      south: 0,
+      stepLon: 10,
+      stepLat: 10,
+    };
+    const traceThrough = (camera: ReturnType<typeof cameraShowing>) =>
+      traceStreamlines(gradient, { count: 400, seed: 7, baseMs: 0, cycleMs: 60_000, camera });
+
+    // The same scale, looking at the slack west and then the windy east; the
+    // two views share the ground between 4° and 6°.
+    const west = traceThrough(cameraShowing({ west: 0, east: 6, south: 2, north: 8 }));
+    const east = traceThrough(cameraShowing({ west: 4, east: 10, south: 2, north: 8 }));
+
+    const eastByCell = new Map(east.map((line) => [line.cell, line]));
+    const shared = west.filter((line) => eastByCell.has(line.cell));
+    expect(shared.length).toBeGreaterThan(10);
+    for (const line of shared) {
+      expect(eastByCell.get(line.cell)!.path).toEqual(line.path);
+    }
+  });
+
   it('draws nothing from a camera that shows no ground at all', () => {
     const sky = {
       widthPx: 800,
