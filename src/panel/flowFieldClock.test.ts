@@ -71,6 +71,22 @@ describe('holdOffFor', () => {
     expect(holdOffFor(3)).toBe(0);
   });
 
+  it('asks for the next frame straight away at a 60 Hz display\'s own pace', () => {
+    // What the layer measures is the interval between two draws, and with
+    // vsync that is the display's frame, 16.7 ms, however little the drawing
+    // itself cost. Read as a frame's cost, that bought a pause on every
+    // frame, missed the next vsync, and ran a 60 Hz display at 30 fps.
+    expect(holdOffFor(1000 / 60)).toBe(0);
+  });
+
+  it('leaves a browser capped at 30 fps at 30 fps', () => {
+    // The same mistake one step down: Chrome's energy saver draws every other
+    // vsync, and a two-frame interval read off the clock lands a millisecond
+    // or so either side of 33.3 ms.
+    expect(holdOffFor(2 * (1000 / 60) - 1)).toBe(0);
+    expect(holdOffFor(2 * (1000 / 60) + 1)).toBe(0);
+  });
+
   it('waits as long as the drawing took when the drawing is expensive', () => {
     // Half the time drawing, half the time free. Measured on a map rendered in
     // software: without this the field asks for the next frame the instant the

@@ -155,6 +155,17 @@ describe('AnimatedTripsLayer', () => {
     expect(layer.nextFrameDelay(1_410)).toBe(0);
   });
 
+  it('runs at the display\'s own rate on a 60 Hz screen', () => {
+    // With vsync the interval between draws is the display's frame, 16.7 ms,
+    // whatever the drawing cost. Taken as the cost, it bought a pause on every
+    // frame and the field ran at 30 fps.
+    const { layer } = animatedLayer({});
+
+    expect(layer.nextFrameDelay(1_000)).toBe(0);
+    expect(layer.nextFrameDelay(1_016.7)).toBe(0);
+    expect(layer.nextFrameDelay(1_033.4)).toBe(0);
+  });
+
   it('stops when the system asks for less motion', () => {
     // Not thrift: a person who has told their machine that movement makes them
     // unwell has told this map too.

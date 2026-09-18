@@ -16,8 +16,21 @@
  * number of milliseconds, so the decisions can be tested without a canvas.
  */
 
-/** A frame cheap enough that pacing it would only cost smoothness. */
-const CHEAP_FRAME_MS = 16;
+/**
+ * A frame cheap enough that pacing it would only cost smoothness.
+ *
+ * A little over two frames of a 60 Hz display, not one. What the layer measures
+ * is the interval between two draws, and with vsync that interval *is* the
+ * display's frame — 16.7 ms, however little the drawing cost. A threshold of 16
+ * read every one of those as expensive, paid it back with a pause that missed
+ * the next vsync, and ran a 60 Hz display at 30 fps. Two frames rather than one
+ * and a bit, so a browser that caps itself at 30 fps (Chrome's energy saver
+ * does) is not halved again to 15 by the same mistake; and a little over two,
+ * because a two-frame interval read off the clock lands either side of 33.3 ms
+ * by a millisecond or so. A renderer in software, the case the pacing exists
+ * for, takes hundreds of milliseconds a frame and is far past this either way.
+ */
+const CHEAP_FRAME_MS = 36;
 
 /** The longest the field is ever left standing between frames. */
 const MAX_HOLD_OFF_MS = 500;
