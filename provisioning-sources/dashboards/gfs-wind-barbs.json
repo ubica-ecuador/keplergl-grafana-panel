@@ -23,7 +23,7 @@
   "panels": [
     {
       "gridPos": {
-        "h": 10,
+        "h": 11,
         "w": 24,
         "x": 0,
         "y": 0
@@ -35,7 +35,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "**NOAA GFS 10 m wind** at 0.5°, read live from [PacIOOS ERDDAP](https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ncep_global.html): one CSV request for `u` and `v`, 2,703 cells from 40°S to 12°N, queried with DuckDB. No tile server and no preprocessing.\n\nBoth maps draw **`vectorfield`**, a kepler.gl layer type registered by [this plugin](https://github.com/ubica-ecuador/keplergl-grafana-panel). It takes the same U/V (or speed/direction) columns as its sibling `flowfield`, so changing a layer's type between the two keeps its columns and colour ramp.\n\n- **Top: WMO wind barbs on the data's own cells.** Half barb 5 kn, full barb 10, pennant 50, circle for calm. The feathers sit left of the staff in the northern hemisphere and right of it in the southern: look along the equator.\n- **Bottom: arrows on a screen grid**, sized and coloured by speed, over the flow field traced from the same rows. The grid is laid out in pixels, so the arrows stay legible at any zoom.\n\n**The layer panel on the left of either map is live**: expand a layer to switch *Symbol* (arrow, classified arrow, wind barb) and *Placement* (screen grid, data cells); with speed and direction columns instead of u and v it also offers *Direction is* (from or towards). The picker above chooses the forecast hour.",
+        "content": "**NOAA GFS 10 m wind** at 0.5°, read live from [PacIOOS ERDDAP](https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ncep_global.html): one CSV request for `u` and `v` over the next two days, 2,703 cells from 40°S to 12°N every three hours, queried with DuckDB. No tile server and no preprocessing.\n\nBoth maps draw **`vectorfield`**, a kepler.gl layer type registered by [this plugin](https://github.com/ubica-ecuador/keplergl-grafana-panel). It takes the same U/V (or speed/direction) columns as its sibling `flowfield`, so changing a layer's type between the two keeps its columns and colour ramp.\n\n- **Top: WMO wind barbs on the data's own cells.** Half barb 5 kn, full barb 10, pennant 50, circle for calm. The feathers sit left of the staff in the northern hemisphere and right of it in the southern: look along the equator.\n- **Bottom: arrows on a screen grid**, sized and coloured by speed, over the flow field traced from the same rows. The grid is laid out in pixels, so the arrows stay legible at any zoom.\n\n**The layer panel on the left of either map is live**: expand a layer to switch *Symbol* (arrow, classified arrow, wind barb) and *Placement* (screen grid, data cells); with speed and direction columns instead of u and v it also offers *Direction is* (from or towards).\n\n**The bar at the bottom of either map walks the forecast**: it opens on the step nearest to now; drag its window or press play, and both maps move together.",
         "mode": "markdown"
       },
       "title": "What you are looking at",
@@ -54,17 +54,17 @@
         "h": 20,
         "w": 24,
         "x": 0,
-        "y": 10
+        "y": 11
       },
       "id": 2,
       "options": {
         "basemap": "auto",
         "flowRenderMode": "straight",
         "followGrafanaTheme": true,
-        "peerTimeSync": false,
+        "peerTimeSync": true,
         "publishWhilePlaying": false,
         "showSidePanel": true,
-        "timeSync": "off",
+        "timeSync": "toMap",
         "tripLayerMode": "table",
         "mapConfig": {
           "config": {
@@ -303,17 +303,17 @@
           },
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- NOAA GFS 10 m wind, u and v, in ONE request: 53 x 51 = 2,703 cells.\n--\n-- Every other cell of the 0.5 degree archive, so one per degree -- a regular\n-- lattice, which both velocity layers need: they deduce the spacing from the\n-- coordinates and draw nothing if it wobbles.\n--\n-- `.csv0` has no header and no units row, so read_csv names by position. Only\n-- `[` and `]` need escaping (%5B/%5D). The two subscripts must be written\n-- identically or ERDDAP answers 400.\n--\n-- The hour goes INSIDE a literal, hence `:raw` -- this datasource would\n-- otherwise quote it a second time.\nSELECT column1       AS latitude,\n       column2 - 360 AS longitude,  -- ERDDAP publishes longitude as 0..360\n       -- `u` and `v` are the names the velocity layers look for.\n       column3       AS u,\n       column4       AS v\nFROM read_csv('https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ncep_global.csv0?ugrd10m%5B(${hour:raw})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D,vgrd10m%5B(${hour:raw})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D',\n  header = false,\n  columns = {'column0': 'TIMESTAMP', 'column1': 'DOUBLE', 'column2': 'DOUBLE',\n             'column3': 'DOUBLE', 'column4': 'DOUBLE'},\n  nullstr = 'NaN')\n-- No time column, on purpose: a velocity field holds one instant, and the hour\n-- is fixed by the picker above.\nWHERE column3 IS NOT NULL AND column4 IS NOT NULL\n",
+          "rawSql": "-- NOAA GFS 10 m wind, u and v, for the next two days in ONE request: 17\n-- three-hourly steps of 53 x 51 = 2,703 cells, 45,951 rows.\n--\n-- Every other cell of the 0.5 degree archive, so one per degree -- a regular\n-- lattice, which both velocity layers need: they deduce the spacing from the\n-- coordinates and draw nothing if it wobbles.\n--\n-- Every step comes back, each row with its time, and the map's clock -- the bar\n-- at the bottom -- chooses which one is drawn: the latest inside its window.\n-- The dashboard's range, now-90m to now+90m, is that window when the map opens,\n-- so the step on show is the one nearest to now.\n--\n-- The request starts at the step at or before now - 90 minutes, so the window\n-- lies wholly inside the data. Started any later, kepler would clip the\n-- window's leading edge to the first step and leave it narrower than the three\n-- hours between steps, and a window that narrow, playing, spends stretches with\n-- no step inside it and draws nothing.\n--\n-- The window is written into the URL from `now()` itself, not from a variable:\n-- it stays the same URL for three hours, so ERDDAP answers every visitor after\n-- the first from its own cache, and no hidden variable rides along in shared\n-- links. `{0}` and `{1}` are `format`'s, not Grafana's.\n--\n-- `.csv0` has no header and no units row, so read_csv names by position. Only\n-- `[` and `]` need escaping (%5B/%5D). The two subscripts must be written\n-- identically or ERDDAP answers 400.\n--\n-- The cost is DuckDB's, twice over: it sends a HEAD before the GET, and ERDDAP\n-- builds the whole response for both. Measured at about 8 s once ERDDAP has the\n-- answer cached and 15 s before. `SET force_download` would halve it, but it\n-- outlives this query on a connection every dashboard shares, and would stop\n-- range requests into large Parquet elsewhere; `http_get` cannot send this URL\n-- at all -- it rewrites the query string, and ERDDAP answers 400.\nSELECT column0       AS time,\n       column1       AS latitude,\n       column2 - 360 AS longitude,  -- ERDDAP publishes longitude as 0..360\n       -- `u` and `v` are the names the velocity layers look for.\n       column3       AS u,\n       column4       AS v\nFROM read_csv(\n  format('https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ncep_global.csv0?ugrd10m%5B({0}):1:({1})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D,vgrd10m%5B({0}):1:({1})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D',\n    strftime(time_bucket(INTERVAL 3 HOUR, (now() AT TIME ZONE 'UTC') - INTERVAL 90 MINUTE),\n             '%Y-%m-%dT%H:%M:%SZ'),\n    strftime(time_bucket(INTERVAL 3 HOUR, (now() AT TIME ZONE 'UTC') - INTERVAL 90 MINUTE) + INTERVAL 48 HOUR,\n             '%Y-%m-%dT%H:%M:%SZ')),\n  header = false,\n  columns = {'column0': 'TIMESTAMP', 'column1': 'DOUBLE', 'column2': 'DOUBLE',\n             'column3': 'DOUBLE', 'column4': 'DOUBLE'},\n  nullstr = 'NaN')\nWHERE column3 IS NOT NULL AND column4 IS NOT NULL\n",
           "refId": "A"
         }
       ],
-      "title": "Wind barbs on the data cells · ${hour:text}",
+      "title": "Wind barbs on the data cells",
       "type": "ubica-keplergl-panel"
     },
     {
       "datasource": {
-        "type": "motherduck-duckdb-datasource",
-        "uid": "duckdb"
+        "type": "datasource",
+        "uid": "-- Dashboard --"
       },
       "fieldConfig": {
         "defaults": {},
@@ -323,17 +323,17 @@
         "h": 26,
         "w": 24,
         "x": 0,
-        "y": 30
+        "y": 31
       },
       "id": 3,
       "options": {
         "basemap": "auto",
         "flowRenderMode": "straight",
         "followGrafanaTheme": true,
-        "peerTimeSync": false,
+        "peerTimeSync": true,
         "publishWhilePlaying": false,
         "showSidePanel": true,
-        "timeSync": "off",
+        "timeSync": "toMap",
         "tripLayerMode": "table",
         "mapConfig": {
           "config": {
@@ -670,16 +670,14 @@
       "targets": [
         {
           "datasource": {
-            "type": "motherduck-duckdb-datasource",
-            "uid": "duckdb"
+            "type": "datasource",
+            "uid": "-- Dashboard --"
           },
-          "format": 1,
-          "rawQuery": true,
-          "rawSql": "-- NOAA GFS 10 m wind, u and v, in ONE request: 53 x 51 = 2,703 cells.\n--\n-- Every other cell of the 0.5 degree archive, so one per degree -- a regular\n-- lattice, which both velocity layers need: they deduce the spacing from the\n-- coordinates and draw nothing if it wobbles.\n--\n-- `.csv0` has no header and no units row, so read_csv names by position. Only\n-- `[` and `]` need escaping (%5B/%5D). The two subscripts must be written\n-- identically or ERDDAP answers 400.\n--\n-- The hour goes INSIDE a literal, hence `:raw` -- this datasource would\n-- otherwise quote it a second time.\nSELECT column1       AS latitude,\n       column2 - 360 AS longitude,  -- ERDDAP publishes longitude as 0..360\n       -- `u` and `v` are the names the velocity layers look for.\n       column3       AS u,\n       column4       AS v\nFROM read_csv('https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ncep_global.csv0?ugrd10m%5B(${hour:raw})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D,vgrd10m%5B(${hour:raw})%5D%5B(-40.0):2:(12.0)%5D%5B(260.0):2:(310.0)%5D',\n  header = false,\n  columns = {'column0': 'TIMESTAMP', 'column1': 'DOUBLE', 'column2': 'DOUBLE',\n             'column3': 'DOUBLE', 'column4': 'DOUBLE'},\n  nullstr = 'NaN')\n-- No time column, on purpose: a velocity field holds one instant, and the hour\n-- is fixed by the picker above.\nWHERE column3 IS NOT NULL AND column4 IS NOT NULL\n",
+          "panelId": 2,
           "refId": "A"
         }
       ],
-      "title": "Arrows on a screen grid over the flow field · ${hour:text}",
+      "title": "Arrows on a screen grid over the flow field",
       "type": "ubica-keplergl-panel"
     }
   ],
@@ -693,28 +691,11 @@
     "duckdb"
   ],
   "templating": {
-    "list": [
-      {
-        "datasource": {
-          "type": "motherduck-duckdb-datasource",
-          "uid": "duckdb"
-        },
-        "definition": "",
-        "description": "Which forecast step both maps draw. It is the only clock here: a velocity field holds one instant.",
-        "includeAll": false,
-        "label": "Forecast hour",
-        "name": "hour",
-        "options": [],
-        "query": "-- The forecast steps the server itself holds, not dates written by hand: the\n-- archive is three-hourly, and `last-64` to `last` is the newest run's week of\n-- forecast plus a little analysis behind it. The list moves on with every run.\n--\n-- Read as VARCHAR and handed back untouched: what ERDDAP wrote is exactly what\n-- ERDDAP accepts back. The cast is only for the label.\n--\n-- OJO: in a VARIABLE query this datasource quotes nothing by itself, unlike in a\n-- panel query.\nSELECT strftime(t::TIMESTAMP, '%a %d %b %H:%M UTC') AS __text,\n       t AS __value\nFROM read_csv('https://pae-paha.pacioos.hawaii.edu/erddap/griddap/ncep_global.csv0?time%5Blast-64:1:last%5D',\n              header = false, columns = {'t': 'VARCHAR'})\n-- Grafana takes the FIRST option by default, so the cut opens the dashboard on\n-- the step nearest to now: steps are three hours apart, so nothing older than\n-- ninety minutes can be the nearest.\nWHERE t::TIMESTAMP >= (now() AT TIME ZONE 'UTC') - INTERVAL '90 minutes'\nORDER BY t\n",
-        "refresh": 1,
-        "regex": "",
-        "type": "query"
-      }
-    ]
+    "list": []
   },
   "time": {
-    "from": "now-6h",
-    "to": "now+7d"
+    "from": "now-90m",
+    "to": "now+90m"
   },
   "timepicker": {},
   "timezone": "utc",
