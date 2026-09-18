@@ -267,14 +267,47 @@ describe('altitudeMeaningOf', () => {
     // 1500.1 has no exact float32 representation, so a query that returns it
     // through a float32 column can round to a slightly different float64 value
     // than the literal itself — genuinely the same level, differing only in
-    // storage. An absolute tolerance of 1e-6 is finer than that rounding error
-    // (about 2.4e-5 here) and would misread this single, constant level as
-    // terrain.
+    // storage.
     const rounded = Math.fround(1500.1);
-    expect(altitudeMeaningOf(columnFrame('altitude', [rounded, 1500.1, rounded]), 'altitude', {})).toEqual({
+    const meaning = altitudeMeaningOf(columnFrame('altitude', [rounded, 1500.1, rounded]), 'altitude', {});
+    expect(meaning.kind).toBe('level');
+    expect((meaning as { metres: number }).metres).toBeCloseTo(1500.1, 3);
+  });
+
+  it('reads a pressure level\'s geopotential height as that level, drawn at its mean', () => {
+    // The regression: a geopotential-height column is what a pressure level's
+    // height really is, and it varies across space — 850 hPa runs from about
+    // 1,450 to 1,550 m over a synoptic map. Read as terrain for varying at all,
+    // each level of a stack was laid on its own heights instead of lifted with
+    // the stack, and the stack came out flattened. And the mean, not the first
+    // value: the first row is wherever the query happened to start.
+    expect(altitudeMeaningOf(columnFrame('altitude', [1450, 1480, 1520, 1550]), 'altitude', {})).toEqual({
       kind: 'level',
-      metres: rounded,
+      metres: 1500,
     });
+  });
+
+  it('draws the line between a level and terrain at a spread of a tenth of the mean', () => {
+    // Around 1,000 m: 90 m of spread is 9%, 110 m is 11%.
+    expect(altitudeMeaningOf(columnFrame('altitude', [955, 1000, 1045]), 'altitude', {}).kind).toBe('level');
+    expect(altitudeMeaningOf(columnFrame('altitude', [945, 1000, 1055]), 'altitude', {}).kind).toBe('terrain');
+  });
+
+  it('reads the Andes as terrain', () => {
+    expect(altitudeMeaningOf(columnFrame('altitude', [40, 900, 2500, 3100, 5800]), 'altitude', {}).kind).toBe('terrain');
+  });
+
+  it('reads terrain at sea level as terrain, where a tenth of the mean is next to nothing', () => {
+    // A coast averages a few metres, so any relief at all is many times 5% of
+    // it — and a column that straddles sea level averages nothing at all.
+    // Misread as a level, it would be lifted with the stack rather than laid
+    // on the ground.
+    expect(altitudeMeaningOf(columnFrame('altitude', [0, 2, 5, 12]), 'altitude', {}).kind).toBe('terrain');
+    expect(altitudeMeaningOf(columnFrame('altitude', [-3, 0, 3]), 'altitude', {}).kind).toBe('terrain');
+  });
+
+  it('reads a column of zeros as a level on the ground', () => {
+    expect(altitudeMeaningOf(columnFrame('altitude', [0, 0, 0]), 'altitude', {})).toEqual({ kind: 'level', metres: 0 });
   });
 });
 

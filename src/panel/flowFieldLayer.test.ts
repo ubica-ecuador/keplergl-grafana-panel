@@ -563,6 +563,33 @@ describe('flow field layer — height', () => {
   it('flattens the stack when the exaggeration is turned down to zero', () => {
     expect(heightOf(3000, 3000, 0)).toBe(0);
   });
+
+  it('lifts a level whose geopotential height varies a little as one flat level', () => {
+    // 850 hPa is not one number: it runs from about 1,450 to 1,550 m across a
+    // synoptic map. Read as terrain for varying at all, the level lost its
+    // place in the stack — every vertex at its own real height, a few hundred
+    // metres off the ground, while the level above it was lifted to a share
+    // of the view.
+    const rows: Array<Record<string, number>> = [];
+    for (let j = 0; j < 8; j++) {
+      for (let i = 0; i < 8; i++) {
+        rows.push({ latitude: j, longitude: i, u: 12, v: 0, altitude: 1450 + (100 * i) / 7 });
+      }
+    }
+    const dataset = gridDataset(rows);
+    const layer = layerOver(
+      dataset,
+      { ...COMPONENTS, altitude: 'altitude' },
+      { flowContext: contextWith(1500) }
+    );
+
+    const heights = layer
+      .formatLayerData({ 'grafana-A': dataset })
+      .data.flatMap((line: { path: number[][] }) => line.path.map((vertex) => vertex[2]));
+
+    expect(new Set(heights).size).toBe(1);
+    expect(heights[0]).toBeCloseTo(heightOf(1500, 1500), 6);
+  });
 });
 
 describe('flow field layer — drawing', () => {

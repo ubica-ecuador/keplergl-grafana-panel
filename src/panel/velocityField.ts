@@ -471,13 +471,41 @@ export function levelHeight(
 export type AltitudeMeaning = { kind: 'level'; metres: number } | { kind: 'terrain' };
 
 /**
+ * How far an altitude column may spread (max − min), as a share of its mean,
+ * and still be one level.
+ *
+ * A pressure level's real height is a geopotential height, and that varies
+ * across space: 850 hPa runs from about 1,450 to 1,550 m over a region, which
+ * is 100 m of spread on a mean of 1,500 — 6.7%, so a threshold of 5% still
+ * read that very case as terrain. Ten per cent keeps it a level with room to
+ * spare. Terrain is another order of thing: the Andes run from the coast to
+ * 6,000 m, and a lowland from a few metres to a few hundred, many times its
+ * own mean. The price is at both ends: a plateau whose relief is under a tenth
+ * of its height is drawn as a level at its mean rather than draped, and a
+ * continental map through a deep low (850 hPa from 1,250 to 1,600 m, 25%) is
+ * drawn as terrain — a level set with the height knob instead of the column
+ * keeps its place in the stack either way.
+ */
+const LEVEL_SPREAD_SHARE = 0.1;
+
+/**
  * Which of the two an altitude column is, decided by the data.
  *
  * A level's height is a property of the query — "this is the 850 hPa surface" —
- * and is the same in every row. Terrain is not: it is a height per place, and
- * the lines should lie on it. Reading the first value and calling it the level,
- * which is what this did before `constantOf` was retired, flattened a terrain
- * column in silence.
+ * and stays within a few per cent of one number: a spread (max − min) of no
+ * more than `LEVEL_SPREAD_SHARE` of the mean's magnitude is a level, drawn at
+ * its mean.
+ * Terrain is a height per place, and the lines should lie on it. Reading the
+ * first value and calling it the level, which is what this did before
+ * `constantOf` was retired, flattened a terrain column in silence; calling any
+ * variation at all terrain, which it did after, flattened a stack of levels
+ * instead, since every geopotential height varies a little.
+ *
+ * Measured against the mean's magnitude, so near sea level — where the mean is
+ * a few metres, or nothing at all for a column that straddles zero — any real
+ * relief is terrain, as it must be: read as a level, a coast would be lifted
+ * with the stack rather than laid on the ground. Only a column with no spread
+ * at all is a level there, which a column of zeros is.
  */
 export function altitudeMeaningOf(
   frame: GridFrame,
@@ -489,24 +517,26 @@ export function altitudeMeaningOf(
     return { kind: 'level', metres: setting(visConfig.heightMeters, 0) };
   }
 
-  let first: number | null = null;
+  let min = Infinity;
+  let max = -Infinity;
+  let sum = 0;
+  let count = 0;
   for (let row = 0; row < frame.length; row++) {
     const value = Number(field.values[row]);
     if (!Number.isFinite(value)) {
       continue;
     }
-    if (first === null) {
-      first = value;
-    } else if (Math.abs(value - first) > 1e-6 * Math.max(1, Math.abs(first))) {
-      // Relative to the column's own magnitude, not a flat 1e-6: that is finer
-      // than a float32 column can even represent at level heights — about
-      // 1e-4 m near 1,500 m — so a genuinely constant level carried as float32
-      // could round to a slightly different value row to row and be misread
-      // as terrain for no reason but the storage type.
-      return { kind: 'terrain' };
-    }
+    min = Math.min(min, value);
+    max = Math.max(max, value);
+    sum += value;
+    count++;
   }
-  return { kind: 'level', metres: first ?? setting(visConfig.heightMeters, 0) };
+  if (count === 0) {
+    return { kind: 'level', metres: setting(visConfig.heightMeters, 0) };
+  }
+
+  const mean = sum / count;
+  return max - min <= LEVEL_SPREAD_SHARE * Math.abs(mean) ? { kind: 'level', metres: mean } : { kind: 'terrain' };
 }
 
 /**

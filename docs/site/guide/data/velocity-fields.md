@@ -252,10 +252,28 @@ One query per level, in the same panel. Each becomes its own layer.
 To separate them in the vertical, give each layer a height and tilt the camera with the 3D control.
 Two ways, and the layer takes the first that applies:
 
-1. **A height column** — return one and bind it to the layer's optional `altitude` column. Its first
-   value is the level's height; one query is one level, so it is read as a constant.
+1. **A height column** — return one and bind it to the layer's optional `altitude` column. When it
+   barely varies it is the level's height: if the spread from its lowest value to its highest is no
+   more than **a tenth of its mean**, the level is drawn flat at that mean. That is what a pressure
+   level's real height does — 850 hPa's geopotential height runs from about 1,450 to 1,550 m across
+   a region, 100 m on a mean of 1,500, under 7% — so returning it keeps the level in its place in
+   the stack.
 2. **Height (m), when no column** — under **Field**. For the ordinary case, where the height of a
    level is a property of the query rather than of its rows and there is no column to return.
+
+A height column that varies by more than a tenth of its mean is not a level but **terrain**: every
+vertex of every line takes the height under it, multiplied by the vertical exaggeration below but
+not scaled with the stack, so the lines follow the ground. Near sea level any real relief counts —
+a tenth of a mean of a few metres is next to nothing — so a coastline is always terrain.
+
+::: warning Where that rule guesses wrong
+A plateau whose relief is under a tenth of its height — a patch of the Altiplano around 3,800 m with
+less than 380 m between its lowest cell and its highest — reads as a level: one flat sheet at its
+mean height, lifted with the stack like any other level, rather than laid on the ground. The other
+way round, a level over a continent-sized map with a deep low in it can spread past a tenth (850 hPa
+from 1,250 to 1,600 m is 25%) and is laid out as terrain. Setting the level with **Height (m)**
+instead of a column always keeps it in its place in the stack.
+:::
 
 Height is opt-in either way. Nothing autodetects an altitude: an `elevation` column picked up by
 accident lifts a layer kilometres into the air, where it vanishes as soon as the camera descends
