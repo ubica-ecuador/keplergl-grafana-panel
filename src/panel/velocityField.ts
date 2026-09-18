@@ -385,7 +385,12 @@ export function altitudeMeaningOf(
     }
     if (first === null) {
       first = value;
-    } else if (Math.abs(value - first) > 1e-6) {
+    } else if (Math.abs(value - first) > 1e-6 * Math.max(1, Math.abs(first))) {
+      // Relative to the column's own magnitude, not a flat 1e-6: that is finer
+      // than a float32 column can even represent at level heights — about
+      // 1e-4 m near 1,500 m — so a genuinely constant level carried as float32
+      // could round to a slightly different value row to row and be misread
+      // as terrain for no reason but the storage type.
       return { kind: 'terrain' };
     }
   }

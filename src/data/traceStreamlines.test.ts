@@ -958,10 +958,8 @@ describe('traceStreamlines — anchored to the ground', () => {
 describe('traceStreamlines — over terrain', () => {
   const field = uniformField(10, 0);
   // Seeded to the west of 0.5° and pinned there with `expandFactor: 1`, so the
-  // very first vertex is guaranteed to land where `altitudeAt` below answers
-  // 700 rather than null — the only way the "carries across a hole" test can
-  // tell a genuine carry from a line that started in the hole and never had a
-  // height to carry in the first place.
+  // first vertex lands somewhere predictable rather than anywhere in the
+  // field's whole ±10° domain.
   const BASE = {
     count: 1,
     seed: 1,
@@ -980,9 +978,45 @@ describe('traceStreamlines — over terrain', () => {
   });
 
   it('carries the last height it knew across a hole', () => {
-    const lines = traceStreamlines(field, { ...BASE, altitudeAt: (lon: number) => (lon > 0.5 ? null : 700) });
-    for (const [, , height] of lines[0].path) {
+    // `trace()` never reads `altitudeAt` — see its own doc comment — so the
+    // lon/lat of every vertex is exactly the same whatever this call answers.
+    // A reference trace whose `altitudeAt` never returns null records that
+    // real path, and the hole's boundary is placed *on* it rather than
+    // guessed at from the seed and the field: guessing is what let the
+    // original version of this test pass without ever reaching the hole it
+    // meant to test (a 3.6-pixel-scale seed near lon ≈ -0.12 never advanced
+    // past lon ≈ 0.13 in 30 vertices, so `lon > 0.5` was never true).
+    const reference = traceStreamlines(field, { ...BASE, altitudeAt: () => 0 })[0];
+    const lons = reference.path.map((vertex) => vertex[0]);
+    expect(lons.length).toBeGreaterThan(4);
+
+    // A steady eastward wind moves lon strictly upward from one vertex to the
+    // next (see "traces a streamline..." above), so a point strictly between
+    // two consecutive vertices is a hard line: everything up to it still sees
+    // the ground, everything from there on has fallen into the hole.
+    const mid = Math.floor(lons.length / 2);
+    const boundary = (lons[mid - 1] + lons[mid]) / 2;
+
+    const lines = traceStreamlines(field, {
+      ...BASE,
+      altitudeAt: (lon: number) => (lon > boundary ? null : 700),
+    });
+    const path = lines[0].path;
+
+    // The hole is genuinely entered, not merely declared in the setup.
+    const firstInHole = path.findIndex((vertex) => vertex[0] > boundary);
+    expect(firstInHole).toBeGreaterThan(0);
+
+    // Every vertex before the boundary reads 700 straight off `altitudeAt`;
+    // every vertex from the boundary on carries whatever the line last read,
+    // which happens to be 700 throughout, so this also catches a height
+    // invented at the hole rather than carried into it.
+    for (const [, , height] of path) {
       expect(height).toBe(700);
     }
+    // And specifically: the first vertex inside the hole carries exactly what
+    // the vertex immediately before it had, not a fresh answer and not a
+    // dropped one.
+    expect(path[firstInHole][2]).toBe(path[firstInHole - 1][2]);
   });
 });

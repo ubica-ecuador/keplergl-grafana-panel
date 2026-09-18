@@ -212,6 +212,20 @@ describe('altitudeMeaningOf', () => {
       metres: 850,
     });
   });
+
+  it('reads a float32-rounded constant as a level, not as terrain', () => {
+    // 1500.1 has no exact float32 representation, so a query that returns it
+    // through a float32 column can round to a slightly different float64 value
+    // than the literal itself — genuinely the same level, differing only in
+    // storage. An absolute tolerance of 1e-6 is finer than that rounding error
+    // (about 2.4e-5 here) and would misread this single, constant level as
+    // terrain.
+    const rounded = Math.fround(1500.1);
+    expect(altitudeMeaningOf(columnFrame('altitude', [rounded, 1500.1, rounded]), 'altitude', {})).toEqual({
+      kind: 'level',
+      metres: rounded,
+    });
+  });
 });
 
 describe('latestStepRows', () => {
