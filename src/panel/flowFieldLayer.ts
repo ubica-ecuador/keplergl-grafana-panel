@@ -1,4 +1,5 @@
 import type { LayerIcon } from './cogPaintedLayer';
+import type { WindField } from '../data/buildWindField';
 import { Streamline, traceStreamlines } from '../data/traceStreamlines';
 import { shownInPane } from './paneVisibility';
 import {
@@ -10,6 +11,7 @@ import {
   FlowFieldContext,
   gridFrameOf,
   LayerColumn,
+  latestStepOf,
   legendDescription,
   legendPatch,
   levelHeight,
@@ -254,6 +256,34 @@ export interface FlowFieldLayerData {
   signature: string;
   /** The rows it was traced from, compared by identity. */
   container: unknown;
+  /**
+   * The forecast hour this trace is of, or null when the query carries no
+   * time column — see `latestStepOf`. Not part of `signature`: the hour picks
+   * *which* trace to show, it is not one of the things a trace is made of.
+   */
+  stepMs: number | null;
+}
+
+/**
+ * One forecast hour's trace, kept so walking back to it costs nothing.
+ *
+ * Held per hour rather than as a single "last trace" because the map's clock
+ * moves back through a forecast as often as forward through it — scrubbing a
+ * timeline, or a panel simply catching up to a window that has since moved on
+ * — and re-tracing on every step back is exactly the blink this exists to
+ * avoid.
+ */
+interface HourEntry {
+  field: WindField;
+  speedDomain: [number, number];
+  /**
+   * Lines already traced, by ground cell — see `groundCells.ts`. Owned by
+   * this hour: a pan within it reuses these, a pan into another hour must
+   * not.
+   */
+  cells: Map<string, Streamline[] | null>;
+  /** The whole set of lines, in the order deck draws them. */
+  lines: Streamline[];
 }
 
 // Contravariant constructor parameters, so `any[]` rather than `unknown[]`; the
@@ -311,6 +341,13 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
   icon?: LayerIcon
 ): C {
   class FlowFieldLayer extends (BaseLayer as Constructor<FlowFieldLayerLike>) {
+    /** One entry per forecast hour currently held — see `HourEntry`. */
+    private _hours: Map<string, HourEntry> = new Map();
+    /** The signature `_hours` was traced under — see the reset in `formatLayerData`. */
+    private _hoursSignature: string | undefined;
+    /** The container `_hours` was traced from — see the reset in `formatLayerData`. */
+    private _hoursContainer: unknown;
+
     constructor(props?: Record<string, unknown>) {
       super(props);
       this.registerVisConfig(FLOW_FIELD_VIS_CONFIGS as unknown as Record<string, unknown>);
@@ -388,6 +425,10 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       }
 
       const signature = traceSignature(this.config);
+      // Which hour the map's clock has picked — see `latestStepOf`. Deliberately
+      // not folded into `signature`: the signature is what a trace is made of,
+      // and the hour only says which of the hours already traced to show.
+      const stepMs = latestStepOf(dataset);
       const visConfig = this.config.visConfig ?? {};
       const context = (visConfig.flowContext ?? {}) as FlowFieldContext;
       const cycleMs = setting(visConfig.cycleSeconds, 60) * 1000;
@@ -395,19 +436,48 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       if (
         oldLayerData &&
         oldLayerData.signature === signature &&
-        oldLayerData.container === dataset.dataContainer
+        oldLayerData.container === dataset.dataContainer &&
+        oldLayerData.stepMs === stepMs
       ) {
         // A range set by hand is paint and keeps the trace, but the legend has
         // to follow it or it describes a ramp the map is no longer drawing.
+        //
+        // `stepMs` has to agree too, and not only signature and container:
+        // kepler's own render loop hands this call back its own previous
+        // output as `oldLayerData` on every call, not only when nothing
+        // changed. Stepping the clock back an hour touches neither the
+        // signature nor the dataset's `dataContainer` — only which of its rows
+        // `filteredIndex` leaves standing — so without this the map would
+        // read a change of hour as nothing relevant having changed at all and
+        // never leave the first hour it drew.
         this.updateLegend(oldLayerData.speedDomain);
         return oldLayerData;
+      }
+
+      // Everything the hours share: the columns, the knobs, the camera. When
+      // this changes, every hour on hand is stale.
+      if (this._hoursSignature !== signature || this._hoursContainer !== dataset.dataContainer) {
+        this._hours = new Map();
+        this._hoursSignature = signature;
+        this._hoursContainer = dataset.dataContainer;
+      }
+
+      // Keyed by `String(stepMs)` rather than `stepMs` itself: a dataset with
+      // no time column answers `null` from `latestStepOf`, and that still
+      // needs a stable entry of its own — a plain `Map` would key it by the
+      // same `null` regardless, but stringifying is what makes that
+      // deliberate rather than incidental.
+      const held = this._hours.get(String(stepMs));
+      if (held) {
+        this.updateLegend(held.speedDomain);
+        return { data: held.lines, speedDomain: held.speedDomain, signature, container: dataset.dataContainer, stepMs };
       }
 
       const columns = this.config.columns ?? {};
       const frame = gridFrameOf(dataset, columns);
       const field = frame ? buildVelocityField(frame, columns, this.config.columnMode, visConfig, 3) : null;
       if (!frame || !field) {
-        return { data: [], speedDomain: [0, 1], signature, container: dataset.dataContainer };
+        return { data: [], speedDomain: [0, 1], signature, container: dataset.dataContainer, stepMs };
       }
 
       // The extent of the grid, which is the extent of everything this layer
@@ -432,6 +502,11 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       const camera = context.camera ? makeCamera(context.camera) : null;
       const altitudeMeters = stackedAltitude(frame, columns, visConfig, context, camera);
 
+      // Owned by this hour, not shared with any other: a cell seeded under
+      // one hour's wind is the wrong line the moment the hour moves on, and a
+      // map shared between them would leak that line into the next hour's
+      // trace.
+      const cells = new Map<string, Streamline[] | null>();
       const data = traceStreamlines(field, {
         // Traced from zero rather than from `baseMs`: deck holds a vertex time
         // as a float32, which cannot tell two epoch milliseconds apart at all.
@@ -446,10 +521,19 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
         camera: camera ?? undefined,
         zoomResponse: setting(visConfig.zoomResponse, 0),
         altitudeMeters,
+        cells,
       });
 
+      this._hours.set(String(stepMs), { field, speedDomain, cells, lines: data });
+      // Three hours: the one on show and the two drawn before it. A dashboard
+      // left open on a long forecast would otherwise hold every hour it ever
+      // drew.
+      for (const key of [...this._hours.keys()].slice(0, Math.max(0, this._hours.size - 3))) {
+        this._hours.delete(key);
+      }
+
       this.updateLegend(speedDomain);
-      return { data, speedDomain, signature, container: dataset.dataContainer };
+      return { data, speedDomain, signature, container: dataset.dataContainer, stepMs };
     }
 
     // No `animationConfig`: kepler passes one, and this layer has nothing to do

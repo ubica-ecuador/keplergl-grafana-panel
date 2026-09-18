@@ -113,15 +113,21 @@ const FlowFieldLayer = makeFlowFieldLayer(FakeBaseLayer, fakeBuild, fakeCamera a
   props?: Record<string, unknown>
 ) => any;
 
-/** A kepler dataset holding a grid, in the shape `formatLayerData` reads. */
-function gridDataset(rows: Array<Record<string, number>>) {
+/**
+ * A kepler dataset holding a grid, in the shape `formatLayerData` reads.
+ *
+ * `types` names the kepler field type of any column that needs one — in
+ * practice only a time column, whose type `latestStepOf` reads to find it
+ * among the others. Every other column is untyped, as before.
+ */
+function gridDataset(rows: Array<Record<string, number>>, types: Record<string, string> = {}) {
   const names = Object.keys(rows[0] ?? {});
   return {
     dataContainer: {
       numRows: () => rows.length,
       valueAt: (row: number, column: number) => rows[row][names[column]],
     },
-    fields: names.map((name) => ({ name })),
+    fields: names.map((name) => ({ name, type: types[name] })),
     columnIndex: Object.fromEntries(names.map((name, index) => [name, index])),
   };
 }
@@ -141,6 +147,52 @@ function eastwardGrid(side: number, speed = 12, altitude?: number) {
     }
   }
   return gridDataset(rows);
+}
+
+/**
+ * The same lattice at two forecast hours, with `u`/`v` differing between them
+ * so the two hours trace differently and not merely re-time the same lines.
+ */
+function twoHourGrid(side = 6) {
+  const rows: Array<Record<string, number>> = [];
+  for (const [time, u, v] of [
+    [1_000, 12, 0],
+    [2_000, 0, 12],
+  ] as const) {
+    for (let j = 0; j < side; j++) {
+      for (let i = 0; i < side; i++) {
+        rows.push({ latitude: j, longitude: i, time, u, v });
+      }
+    }
+  }
+  return gridDataset(rows, { time: 'timestamp' });
+}
+
+/** The rows of `dataset` (built by `twoHourGrid` or `manyHourGrid`) at `time`. */
+function rowsAt(dataset: ReturnType<typeof gridDataset>, time: number): number[] {
+  const container = dataset.dataContainer;
+  const timeIndex = dataset.columnIndex.time;
+  return Array.from({ length: container.numRows() }, (_, i) => i).filter(
+    (row) => container.valueAt(row, timeIndex) === time
+  );
+}
+
+/** The indices of `twoHourGrid()`'s earlier (`1_000`) rows. */
+function earlierRowsOf(dataset: ReturnType<typeof gridDataset>): number[] {
+  return rowsAt(dataset, 1_000);
+}
+
+/** The same lattice at as many forecast hours as `times` gives, each blowing a bit harder. */
+function manyHourGrid(times: number[], side = 6) {
+  const rows: Array<Record<string, number>> = [];
+  times.forEach((time, index) => {
+    for (let j = 0; j < side; j++) {
+      for (let i = 0; i < side; i++) {
+        rows.push({ latitude: j, longitude: i, time, u: 12 + index, v: 0 });
+      }
+    }
+  });
+  return gridDataset(rows, { time: 'timestamp' });
 }
 
 const CONTEXT: FlowFieldContext = { tallest: 0 };
@@ -598,7 +650,7 @@ describe('flow field layer — drawing', () => {
 
     expect(
       layer.renderLayer({
-        data: { data: [], speedDomain: [0, 1], signature: '', container: null },
+        data: { data: [], speedDomain: [0, 1], signature: '', container: null, stepMs: null },
         animationConfig: { currentTime: 5 },
       })
     ).toEqual([]);
@@ -890,6 +942,73 @@ describe('flow field layer — the legend', () => {
     layer.formatLayerData({ 'grafana-A': dataset });
 
     expect(legendOf(layer).measure).toBeUndefined();
+  });
+});
+
+describe('flow field layer — walking the hours', () => {
+  it('traces a new hour, and keeps the old lines until it has', () => {
+    const dataset = twoHourGrid();
+    const layer = layerOver(dataset, COMPONENTS);
+
+    const first = layer.formatLayerData({ 'grafana-A': dataset });
+    expect(first.stepMs).toBe(2_000);
+
+    // The filter hides the later hour: the field is the earlier one now.
+    const filtered = { ...dataset, filteredIndex: earlierRowsOf(dataset) };
+    const second = layer.formatLayerData({ 'grafana-A': filtered });
+
+    expect(second.stepMs).toBe(1_000);
+    expect(second.data).not.toBe(first.data);
+  });
+
+  it('does not trace an hour it has already traced', () => {
+    const dataset = twoHourGrid();
+    const layer = layerOver(dataset, COMPONENTS);
+    const filtered = { ...dataset, filteredIndex: earlierRowsOf(dataset) };
+
+    const first = layer.formatLayerData({ 'grafana-A': dataset });
+    layer.formatLayerData({ 'grafana-A': filtered });
+    const back = layer.formatLayerData({ 'grafana-A': dataset });
+
+    // Stepping back to an hour already walked costs nothing: the same lines,
+    // by identity.
+    expect(back.data).toBe(first.data);
+  });
+
+  it('does not get stuck on the old hour when kepler hands the previous frame back', () => {
+    // kepler's real render loop passes the previous layerData in as
+    // `oldLayerData` on every call, not only when the caller has nothing new
+    // to hand it. A fast path keyed on signature and container alone reads a
+    // change of hour as "nothing relevant changed" — same columns, same
+    // knobs, same rows container — and would leave the map parked on the
+    // first hour it ever drew.
+    const dataset = twoHourGrid();
+    const layer = layerOver(dataset, COMPONENTS);
+    const filtered = { ...dataset, filteredIndex: earlierRowsOf(dataset) };
+
+    const first = layer.formatLayerData({ 'grafana-A': dataset });
+    const second = layer.formatLayerData({ 'grafana-A': filtered }, first);
+
+    expect(second.stepMs).toBe(1_000);
+    expect(second.data).not.toBe(first.data);
+  });
+
+  it('holds only the three hours most recently traced', () => {
+    // A dashboard left open on a long forecast would otherwise hold every
+    // hour it ever drew.
+    const times = [1_000, 2_000, 3_000, 4_000];
+    const dataset = manyHourGrid(times);
+    const layer = layerOver(dataset, COMPONENTS);
+    const at = (time: number) => ({ ...dataset, filteredIndex: rowsAt(dataset, time) });
+
+    const first = layer.formatLayerData({ 'grafana-A': at(1_000) });
+    layer.formatLayerData({ 'grafana-A': at(2_000) });
+    layer.formatLayerData({ 'grafana-A': at(3_000) });
+    // A fourth hour pushes the first one out.
+    layer.formatLayerData({ 'grafana-A': at(4_000) });
+
+    const again = layer.formatLayerData({ 'grafana-A': at(1_000) });
+    expect(again.data).not.toBe(first.data);
   });
 });
 
