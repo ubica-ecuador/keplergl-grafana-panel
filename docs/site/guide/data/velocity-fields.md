@@ -147,8 +147,11 @@ snapping error. See [Tutorial 6](../../tutorials/wind-field).
 Rows are cells. The grid itself is **inferred**, so the query may return them in any order —
 `ORDER BY lat, lon` is for your own benefit when you inspect the rows, not the panel's.
 
-When the query spans several timesteps the **earliest** is used. Select a single one to be explicit
-rather than relying on that.
+When the query spans several timesteps, every one of them reaches the map — nothing is dropped at
+the panel. The map's own clock, at the bottom, is what chooses which hour the field draws: always
+the **latest** hour still inside the clock's window. Narrow the window and an earlier hour becomes
+the one on show; widen it back out and the newest hour wins again. A query of one timestep needs
+none of this — the clock stays put and that one hour is all there ever is to choose from.
 
 ### Holes are holes, not calm air
 

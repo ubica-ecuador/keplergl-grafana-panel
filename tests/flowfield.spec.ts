@@ -265,3 +265,104 @@ test('is switched off by the eye in the layer panel', async ({
   await eye.click();
   await expect.poll(() => deckVisibility(map), { timeout: 30_000 }).toBe(true);
 });
+
+/**
+ * Narrows the map's time filter so its right edge sits at the middle of the
+ * dataset's own distinct hours — an earlier hour becomes the latest one still
+ * inside the window.
+ *
+ * Not driven through a slider: kepler's time widget renders `RangeSlider` with
+ * `showInput={false}` (`time-range-slider.tsx`), so its two handles are plain
+ * `<span>` elements a `MouseEventHandler` drags — there is no `<input>` here for
+ * Playwright to focus or send a key to, unlike the density and legend controls
+ * elsewhere in this file. Driven through the store instead, the way
+ * `readFlowField` reaches it: walk the React fiber from the map node up to the
+ * `<Provider store>`, then dispatch the same shape `wrapTo(KEPLER_INSTANCE_ID,
+ * createOrUpdateFilter(...))` builds in `keplerAdapter.ts` — built by hand
+ * because nothing in the bundle exposes `@kepler.gl/actions` to the page.
+ */
+async function narrowTimeFilterToMiddleHour(map: import('@playwright/test').Locator): Promise<void> {
+  await map.evaluate((node) => {
+    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
+    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
+    let store: any = null;
+    while (fiber) {
+      const candidate = fiber.memoizedProps && fiber.memoizedProps.store;
+      if (candidate && typeof candidate.getState === 'function') {
+        store = candidate;
+        break;
+      }
+      fiber = fiber.return;
+    }
+    if (!store) {
+      throw new Error('kepler store not found from map node');
+    }
+    const state = store.getState();
+    const instanceId = Object.keys(state.keplerGl ?? {})[0];
+    const entry = state.keplerGl?.[instanceId];
+    const filter = (entry?.visState?.filters ?? []).find((f: { type?: string }) => f.type === 'timeRange');
+    const dataset = Object.values(entry?.visState?.datasets ?? {})[0] as any;
+    const timeIdx = (dataset?.fields ?? []).findIndex((f: { type?: string }) => f.type === 'timestamp');
+    if (!filter || !dataset || timeIdx < 0) {
+      throw new Error('no time filter, or no time column to read it from');
+    }
+
+    // The middle of the dataset's own distinct hours, not a hardcoded
+    // timestamp: read straight from the rows so the test does not have to
+    // agree with the fixture's exact epoch values by coincidence.
+    const times = new Set<number>();
+    for (let i = 0; i < dataset.dataContainer.numRows(); i++) {
+      times.add(Number(dataset.dataContainer.valueAt(i, timeIdx)));
+    }
+    const sorted = [...times].sort((a, b) => a - b);
+    const middle = sorted[Math.floor((sorted.length - 1) / 2)];
+
+    const action = {
+      type: '@@kepler.gl/CREATE_OR_UPDATE_FILTER',
+      id: filter.id,
+      dataId: undefined,
+      field: undefined,
+      value: [filter.value[0], middle],
+    };
+    store.dispatch({
+      type: action.type,
+      payload: { ...action, meta: { ...(action as { meta?: unknown }).meta, _id_: instanceId } },
+      meta: { _forward_: '@redux-forward/FORWARD', _addr_: `@@KG_${instanceId.toUpperCase()}` },
+    });
+  });
+}
+
+test('walks the forecast with the map’s clock, without moving the lines', async ({
+  gotoPanelEditPage,
+  readProvisionedDashboard,
+  page,
+}) => {
+  test.slow();
+  // The two halves of this change, in one test: the hour is the clock's to
+  // choose, and choosing another one must change the shape of the field
+  // without reshuffling where its lines start.
+  const dashboard = await readProvisionedDashboard({ fileName: 'flowfieldHours.json' });
+  const panelEditPage = await gotoPanelEditPage({ dashboard, id: '1' });
+
+  const map = panelEditPage.panel.locator.locator('canvas').first();
+  await expect(map).toBeVisible({ timeout: 60_000 });
+  await settle(page);
+  await expect.poll(async () => (await readFlowField(map))?.lines ?? 0, { timeout: 60_000 }).toBeGreaterThan(100);
+
+  const before = (await readFlowField(map))!.sample;
+
+  // See `narrowTimeFilterToMiddleHour`: the dashboard's default time range
+  // covers all three hours, so the map opens on the latest one — this moves
+  // the window's right edge down to the middle hour, which becomes the new
+  // latest one standing inside it.
+  await narrowTimeFilterToMiddleHour(map);
+
+  await expect
+    .poll(async () => JSON.stringify((await readFlowField(map))!.sample.map((s) => s.eastward)), { timeout: 30_000 })
+    .not.toBe(JSON.stringify(before.map((s) => s.eastward)));
+
+  const after = (await readFlowField(map))!.sample;
+  const starts = (rows: typeof before) => new Set(rows.map((s) => `${s.lng.toFixed(4)}:${s.lat.toFixed(4)}`));
+  const kept = [...starts(after)].filter((key) => starts(before).has(key));
+  expect(kept.length).toBeGreaterThan(after.length * 0.5);
+});

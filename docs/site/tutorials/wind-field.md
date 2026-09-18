@@ -124,6 +124,16 @@ three-kilometre patches around two weather stations, and a field of parallel arr
 block at a density a swirling one reads well at. Lower it when the field looks matted, raise it when
 it looks sparse.
 
+### Walking the forecast
+
+Add a second query for another hour of the same grid — same columns, a later `time` value — and a
+third if you want a whole day. Every hour now reaches the panel; it is the map's own clock, at the
+bottom, that picks which one the field draws, always the **latest** hour still inside its window.
+
+Drag the clock's window back and the field redraws for an earlier hour without its lines jumping to
+a fresh scatter — they stay anchored to the same patch of ground, so what changes is the shape of
+the flow, not where it starts. Widen the window back out and the newest hour wins again.
+
 ## 7. Style it
 
 Two knobs decide the character of the map, both under **Streamlines**:
