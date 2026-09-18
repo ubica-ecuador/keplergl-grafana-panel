@@ -379,8 +379,10 @@ function bandSampling(
   //
   // Levels are powers of two, so this rounds the size asked for by up to
   // ~1.41x either way, and the resulting line count — one over the square of
-  // the size — swings by roughly 0.6x to 1.3x of the budget as the zoom
-  // crosses from one level to the next, even with no tilt at all.
+  // the size — lands anywhere from half the budget to twice it, even with no
+  // tilt at all. Where the zoom crosses from one level to the next the cell
+  // halves (or doubles) at once, so the count jumps by up to four times at
+  // that one zoom: the crossing watched below measured ×3.06.
   //
   // Watched in a real browser rather than only computed (2026-09-17, at pitch
   // 15, screenshots either side of a level crossing): the line count went
