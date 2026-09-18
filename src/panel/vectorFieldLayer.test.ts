@@ -92,6 +92,31 @@ function eastwardGrid(side: number, speed = 10, south = 0) {
 
 const COMPONENTS = { lat: 'latitude', lng: 'longitude', u: 'u', v: 'v' };
 
+/**
+ * Two hours of the same small grid, blowing opposite ways, so which hour won
+ * is visible in `bearingTo` — for `formatLayerData`'s hour-tracking fast path.
+ */
+function timedGrid(side: number) {
+  const rows: Array<Record<string, number>> = [];
+  for (const hour of [1000, 2000]) {
+    for (let j = 0; j < side; j++) {
+      for (let i = 0; i < side; i++) {
+        rows.push({ time: hour, latitude: j, longitude: i, u: hour === 1000 ? 10 : -10, v: 0 });
+      }
+    }
+  }
+  const names = Object.keys(rows[0]);
+  return {
+    dataContainer: {
+      numRows: () => rows.length,
+      valueAt: (row: number, column: number) => rows[row][names[column]],
+    },
+    fields: names.map((name) => ({ name, type: name === 'time' ? 'timestamp' : undefined })),
+    columnIndex: Object.fromEntries(names.map((name, index) => [name, index])),
+    filteredIndex: undefined as number[] | undefined,
+  };
+}
+
 function layerOver(
   dataset: ReturnType<typeof gridDataset>,
   columnKeys: Record<string, string>,
@@ -195,6 +220,25 @@ describe('vector field layer — placing symbols', () => {
     const layer = layerOver(eastwardGrid(3), COMPONENTS);
 
     expect(layer.config.animation?.enabled).not.toBe(true);
+  });
+
+  it('re-places the symbols when the map\'s clock narrows to an earlier hour, even with the same container', () => {
+    // `KeplerTable.filterTable` mutates the table in place and returns `this`
+    // (kepler-table.js:660), so the container is the *same object* before and
+    // after the map's clock moves — only `filteredIndex` changes. A fast path
+    // comparing `signature` and `container` alone cannot see that at all.
+    const dataset = timedGrid(3);
+    const layer = layerOver(dataset, COMPONENTS, { placement: 'cells' });
+
+    const first = layer.formatLayerData({ 'grafana-A': dataset });
+    // No filter yet: every row is read, and the latest hour (2000, westward) wins.
+    expect(first.data[0].bearingTo).toBeCloseTo(270, 9);
+
+    dataset.filteredIndex = Array.from({ length: 9 }, (_, i) => i); // hour 1000's rows only
+
+    const second = layer.formatLayerData({ 'grafana-A': dataset }, first);
+    expect(second).not.toBe(first);
+    expect(second.data[0].bearingTo).toBeCloseTo(90, 9);
   });
 });
 
