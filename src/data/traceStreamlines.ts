@@ -275,20 +275,30 @@ const MIN_CELL_PITCH_PX = 2;
  * 3.6-pixel pan — an 800th of the screen — lost a quarter of its lines to
  * nothing but that.
  *
- * A half and a third both close the gap to the same place: measured flat at
- * that density, pan reuse at 3.6/10/50 px was 99.3%/98.6%/93.6% at a half
- * and 99.3%/98.6%/93.6% at a third too — identical, and at a pitch of 60,
- * 99.6%/98.8%/94.0% either way, the tilted screen's near-horizon band
- * included (100% at 10 px). Going finer than a half buys nothing further
- * here, only cost: a third asks for roughly twice the `unproject` calls a
- * half does for the same result — measured at this density, ~121,600 against
- * ~60,900 per trace flat, ~75,100 against ~42,600 at a pitch of 60. So the
- * lattice is stepped at a half, the cheaper end of the two: `seen` still
- * absorbs every duplicate and a cell is still traced only once regardless of
- * its share, so what a finer lattice buys nothing more of costs calls to
- * `unproject`, not calls to `trace`.
+ * Any share below one already puts a sample inside every whole cell, so all a
+ * finer lattice can add is the cells clipped at an edge — and measurement
+ * says it adds nothing worth having. This constant has now been flipped
+ * between 0.8, a half and a third more than once, so here are all three at
+ * density 9,000, with deck's own viewport, flat and at a pitch of 60:
+ *
+ * | share | reuse flat, 3.6/10/50 px | reuse at pitch 60 | `unproject` calls |
+ * |-------|--------------------------|-------------------|-------------------|
+ * | 0.8   | 99.3 / 98.6 / 93.6       | 99.6 / 98.9 / 94.1 | 24.0k flat, 18.1k tilted |
+ * | 0.5   | 100.0 / 99.3 / 94.3      | 99.6 / 98.9 / 94.0 | 60.9k flat, 42.6k tilted |
+ * | 0.33  | 99.3 / 98.6 / 93.6       | 99.6 / 98.8 / 94.1 | 121.6k flat, 75.1k tilted |
+ *
+ * All three agree to within a point on every pan and both pitches — including
+ * the near-horizon band, the one a tilt hurts most, where the worst band of
+ * the eight reused 99.6% at 0.8 against 99.6% at a half — and they agree to
+ * within a hundred lines on the count and to two decimal places on the
+ * evenness of a tilted screen. So 0.8 is chosen on cost, not on coverage: it
+ * is two and a half times cheaper than a half and five times cheaper than a
+ * third, for the same picture. A finer share is not a safety margin, it is
+ * only more `unproject` calls — `seen` absorbs every duplicate sample and a
+ * cell is traced exactly once whatever the share, so what a finer lattice
+ * spends is never `trace` calls.
  */
-const SAMPLE_STEP_SHARE = 0.5;
+const SAMPLE_STEP_SHARE = 0.8;
 
 /**
  * The ground-cell level for a band of the screen, and how many screen pixels
