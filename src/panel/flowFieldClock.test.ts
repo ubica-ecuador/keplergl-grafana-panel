@@ -1,4 +1,4 @@
-import { holdOffFor, isRunning, phaseAt, tripsUniforms } from './flowFieldClock';
+import { holdOffFor, isRunning, phaseAt, tripsUniforms, waitsToBeSeen } from './flowFieldClock';
 
 describe('phaseAt', () => {
   it('walks the cycle and starts it again', () => {
@@ -60,6 +60,30 @@ describe('isRunning', () => {
     ['the system asks for less motion', { reducedMotion: true }],
   ])('stops when %s', (_reason, veto) => {
     expect(isRunning({ ...RUNNING, ...veto })).toBe(false);
+  });
+});
+
+describe('waitsToBeSeen', () => {
+  const RUNNING = { animate: true, onScreen: true, pageHidden: false, reducedMotion: false };
+
+  it.each([
+    ['its panel was scrolled out of sight', { onScreen: false }],
+    ['its tab went to the background', { pageHidden: true }],
+  ])('keeps looking for its way back when %s', (_reason, veto) => {
+    // Nothing else will: deck, luma and kepler all leave a stopped layer
+    // stopped when the canvas comes back into view.
+    expect(waitsToBeSeen({ ...RUNNING, ...veto })).toBe(true);
+  });
+
+  it.each([
+    ['it was switched to a still field', { animate: false, onScreen: false }],
+    ['the system asks for less motion', { reducedMotion: true, pageHidden: true }],
+  ])('does not look when %s, even out of sight', (_reason, veto) => {
+    expect(waitsToBeSeen({ ...RUNNING, ...veto })).toBe(false);
+  });
+
+  it('does not look while it is running', () => {
+    expect(waitsToBeSeen(RUNNING)).toBe(false);
   });
 });
 

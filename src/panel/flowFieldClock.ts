@@ -76,6 +76,28 @@ export function isRunning(state: {
   return state.animate && state.onScreen && !state.pageHidden && !state.reducedMotion;
 }
 
+/**
+ * How often a field stopped for being out of sight looks to see whether it is
+ * back, in ms. A quarter of a second is too soon for anyone scrolling back to
+ * see it catch up, and a check is two property reads.
+ */
+export const RETURN_CHECK_MS = 250;
+
+/**
+ * Whether a stopped field has to keep looking for its own way back.
+ *
+ * Only when it stopped for being out of sight — a panel scrolled away, a tab
+ * in the background — and not when it was told to stand still. A stopped field
+ * asks deck for no more frames, and nothing in deck, luma or kepler asks again
+ * when the canvas comes back into view: luma flips its visibility flag and
+ * leaves it there. Without looking, a panel scrolled away and back stayed a
+ * still picture for good. A field switched to a still one, or on a machine set
+ * to reduce motion, has nothing to come back to and is left alone.
+ */
+export function waitsToBeSeen(state: Parameters<typeof isRunning>[0]): boolean {
+  return state.animate && !state.reducedMotion && (!state.onScreen || state.pageHidden);
+}
+
 /** What deck's trips shader is told to draw. */
 export interface TripsUniforms {
   /** Where the playhead is, in the same milliseconds the vertices carry. */

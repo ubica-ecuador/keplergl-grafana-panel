@@ -4,7 +4,7 @@ import { PathLayer } from '@deck.gl/layers';
 
 import type { CameraState } from './flowFieldLayer';
 import type { ScreenCamera } from '../data/traceStreamlines';
-import { holdOffFor, isRunning, tripsUniforms } from './flowFieldClock';
+import { holdOffFor, isRunning, RETURN_CHECK_MS, tripsUniforms, waitsToBeSeen } from './flowFieldClock';
 
 /**
  * The deck.gl layer that draws the traced streamlines.
@@ -180,21 +180,15 @@ export class AnimatedTripsLayer extends TripsLayer<
     return this.lastHoldOff;
   }
 
-  /**
-   * Tells the shader where the trail is, and answers whether it is moving.
-   *
-   * Separate from `draw` so the decision can be exercised without deck's
-   * lifecycle: what is left there is the plumbing, which the browser tests.
-   */
-  writeAnimationUniforms(): boolean {
-    const props = this.props as unknown as { cycleMs?: number; trailMs?: number; animate?: boolean };
+  /** The four things that decide whether the field moves, read now — see `isRunning`. */
+  private clockState(): Parameters<typeof isRunning>[0] {
+    const props = this.props as unknown as { animate?: boolean };
     // luma watches every canvas it draws into with an `IntersectionObserver` of
     // its own and keeps this flag, which starts as `true`. So a panel scrolled
     // out of the dashboard answers for itself, and a browser without the
     // observer leaves the field running rather than stopping it for good.
     const canvas = (this.context as { device?: { canvasContext?: { isVisible?: boolean } } })?.device?.canvasContext;
-
-    const running = isRunning({
+    return {
       animate: props.animate !== false,
       onScreen: canvas?.isVisible !== false,
       // The observer above says nothing about a tab nobody is looking at: it
@@ -202,10 +196,24 @@ export class AnimatedTripsLayer extends TripsLayer<
       // when the window goes behind another.
       pageHidden: typeof document !== 'undefined' && document.hidden === true,
       reducedMotion: prefersReducedMotion(),
-    });
+    };
+  }
 
-    const model = (this.state as { model?: { shaderInputs: { setProps(p: unknown): void } } }).model;
-    model?.shaderInputs.setProps({
+  /**
+   * Tells the shader where the trail is, and answers whether it is moving.
+   *
+   * Separate from `draw` so the decision can be exercised without deck's
+   * lifecycle: what is left there is the plumbing, which the browser tests.
+   */
+  writeAnimationUniforms(): boolean {
+    const props = this.props as unknown as { cycleMs?: number; trailMs?: number };
+    const running = isRunning(this.clockState());
+
+    // Both optional, not only the model: a deck that moved `shaderInputs`
+    // should leave a field that stands still, not a map whose every layer
+    // fails to draw because this one threw.
+    const model = (this.state as { model?: { shaderInputs?: { setProps(p: unknown): void } } }).model;
+    model?.shaderInputs?.setProps({
       trips: tripsUniforms({
         nowMs: performance.now(),
         cycleMs: props.cycleMs ?? 0,
@@ -215,6 +223,47 @@ export class AnimatedTripsLayer extends TripsLayer<
     });
 
     return running;
+  }
+
+  /**
+   * Looks every `RETURN_CHECK_MS` for the field to be back in sight, and asks
+   * deck for a frame when it is — see `waitsToBeSeen` for why nothing else
+   * does.
+   *
+   * The pending look lives in deck's `state`, not on the instance: deck builds
+   * a new instance of the layer on every change of props and hands it the old
+   * one's state, and a panel out of sight still re-renders — kepler's clock, a
+   * peer panel's filter. Kept per instance, every such render would start a
+   * look of its own and leave the old ones running. Written straight onto
+   * the object rather than through `setState`, which would ask deck for an
+   * update cycle every quarter of a second for nothing. Whichever instance's
+   * look fires, `setNeedsRedraw` reaches the one deck now holds: they share
+   * the same internal state.
+   */
+  private lookForReturn(): void {
+    const state = this.state as { returnCheck?: ReturnType<typeof setTimeout> };
+    if (state.returnCheck !== undefined) {
+      return;
+    }
+    state.returnCheck = setTimeout(() => {
+      state.returnCheck = undefined;
+      const clock = this.clockState();
+      if (isRunning(clock)) {
+        this.setNeedsRedraw();
+      } else if (waitsToBeSeen(clock)) {
+        this.lookForReturn();
+      }
+    }, RETURN_CHECK_MS);
+  }
+
+  /** Stops looking for the way back once deck has let go of the layer for good. */
+  finalizeState(context: Parameters<TripsLayer['finalizeState']>[0]): void {
+    const state = this.state as { returnCheck?: ReturnType<typeof setTimeout> } | null;
+    if (state?.returnCheck !== undefined) {
+      clearTimeout(state.returnCheck);
+      state.returnCheck = undefined;
+    }
+    super.finalizeState(context);
   }
 
   draw(params: unknown): void {
@@ -229,7 +278,19 @@ export class AnimatedTripsLayer extends TripsLayer<
     // `PathLayer`'s draw rather than `TripsLayer`'s: the latter would overwrite
     // the block just written with the props deck last rendered with.
     PathLayer.prototype.draw.call(this as never, params as never);
+    this.requestNextFrame(running);
+  }
+
+  /**
+   * Asks deck for the next frame, paced — or, stopped, decides whether anyone
+   * will ever ask again. Separate from `draw` for the same reason as
+   * `writeAnimationUniforms`.
+   */
+  requestNextFrame(running: boolean): void {
     if (!running) {
+      if (waitsToBeSeen(this.clockState())) {
+        this.lookForReturn();
+      }
       return;
     }
 

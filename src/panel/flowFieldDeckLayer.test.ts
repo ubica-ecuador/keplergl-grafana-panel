@@ -82,24 +82,57 @@ describe('makeScreenCamera', () => {
 });
 
 /**
+ * Runs `body` on a machine that asks for less motion, and puts back the
+ * answer it had before.
+ *
+ * Put back rather than deleted: the scaffolded jest setup defines
+ * `matchMedia` as a property that cannot be deleted, so a `delete` left the
+ * reduced-motion answer in place for every later test in the file — which
+ * silently turned the tests after it into tests of a machine asking for less
+ * motion.
+ */
+function withReducedMotion(body: () => void): void {
+  const holder = window as unknown as { matchMedia: unknown };
+  const original = holder.matchMedia;
+  holder.matchMedia = () => ({ matches: true, media: '(prefers-reduced-motion: reduce)' });
+  try {
+    body();
+  } finally {
+    holder.matchMedia = original;
+  }
+}
+
+/**
  * The animated layer, without deck's lifecycle.
  *
  * `draw` itself is four lines of plumbing into deck and is covered in the
  * browser; what is worth asserting here is the decision it delegates — what the
  * shader is told, and whether another frame is asked for.
  */
-function animatedLayer(props: Record<string, unknown>, canvas: Record<string, unknown> = { isVisible: true }) {
+function animatedLayer(
+  props: Record<string, unknown>,
+  canvas: Record<string, unknown> = { isVisible: true },
+  // deck hands a layer's state on to the instance that replaces it, so two
+  // instances of one layer share this object — see "pile up" below.
+  state: Record<string, unknown> = {}
+) {
   const written: Array<Record<string, unknown>> = [];
   const layer = Object.create(AnimatedTripsLayer.prototype) as AnimatedTripsLayer;
+  const redraws = jest.fn();
 
+  Object.assign(state, {
+    model: { shaderInputs: { setProps: (p: Record<string, unknown>) => written.push(p) }, destroy: () => undefined },
+    ...state,
+  });
   Object.assign(layer, {
     props: { cycleMs: 1000, trailMs: 40, animate: true, ...props },
-    state: { model: { shaderInputs: { setProps: (p: Record<string, unknown>) => written.push(p) } } },
+    state,
     // luma keeps this flag per canvas, with its own IntersectionObserver.
-    context: { device: { canvasContext: canvas } },
+    context: { device: { canvasContext: canvas }, resourceManager: { unsubscribe: () => undefined } },
+    setNeedsRedraw: redraws,
   });
 
-  return { layer, trips: () => written[written.length - 1]?.trips as Record<string, unknown> };
+  return { layer, redraws, trips: () => written[written.length - 1]?.trips as Record<string, unknown> };
 }
 
 describe('AnimatedTripsLayer', () => {
@@ -169,13 +202,104 @@ describe('AnimatedTripsLayer', () => {
   it('stops when the system asks for less motion', () => {
     // Not thrift: a person who has told their machine that movement makes them
     // unwell has told this map too.
-    const asked = { matches: true, media: '(prefers-reduced-motion: reduce)' };
-    (window as unknown as { matchMedia: unknown }).matchMedia = () => asked;
-    try {
+    withReducedMotion(() => {
       expect(animatedLayer({}).layer.writeAnimationUniforms()).toBe(false);
+    });
+  });
+});
+
+describe('AnimatedTripsLayer — coming back into view', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('asks for a frame again once its panel is scrolled back into view', () => {
+    // A stopped field asks deck for no more frames, and nothing in deck, luma
+    // or kepler asks again when the canvas comes back: luma flips its flag and
+    // leaves it there. Without this a panel scrolled away and back stayed a
+    // still picture for good.
+    const canvas = { isVisible: false };
+    const { layer, redraws } = animatedLayer({}, canvas);
+
+    layer.requestNextFrame(false);
+    jest.advanceTimersByTime(1_000);
+    // Still out of sight: it keeps looking, and asks for nothing.
+    expect(redraws).not.toHaveBeenCalled();
+    expect(jest.getTimerCount()).toBe(1);
+
+    canvas.isVisible = true;
+    jest.advanceTimersByTime(250);
+
+    expect(redraws).toHaveBeenCalledTimes(1);
+    // And stops looking: the frame it asked for runs the field again.
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('asks for a frame again once its tab is brought back to the front', () => {
+    const hidden = jest.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+    try {
+      const { layer, redraws } = animatedLayer({});
+
+      layer.requestNextFrame(false);
+      jest.advanceTimersByTime(500);
+      expect(redraws).not.toHaveBeenCalled();
+
+      hidden.mockReturnValue(false);
+      jest.advanceTimersByTime(250);
+      expect(redraws).toHaveBeenCalledTimes(1);
     } finally {
-      delete (window as unknown as { matchMedia?: unknown }).matchMedia;
+      hidden.mockRestore();
     }
+  });
+
+  it('never holds more than one look pending, whichever instance asks', () => {
+    // deck builds a new instance of the layer whenever its props change and
+    // hands it the old one's state; a panel out of sight still re-renders. One
+    // pending look per instance would pile up a timer on every such render.
+    const state = {};
+    const first = animatedLayer({}, { isVisible: false }, state).layer;
+    const second = animatedLayer({}, { isVisible: false }, state).layer;
+
+    first.requestNextFrame(false);
+    first.requestNextFrame(false);
+    second.requestNextFrame(false);
+
+    expect(jest.getTimerCount()).toBe(1);
+  });
+
+  it('does not look for its way back when it was switched to a still field', () => {
+    animatedLayer({ animate: false }, { isVisible: false }).layer.requestNextFrame(false);
+
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('does not look for its way back when the system asks for less motion', () => {
+    withReducedMotion(() => {
+      animatedLayer({}, { isVisible: false }).layer.requestNextFrame(false);
+
+      expect(jest.getTimerCount()).toBe(0);
+    });
+  });
+
+  it('stops looking once deck has let go of the layer', () => {
+    const { layer } = animatedLayer({}, { isVisible: false });
+
+    layer.requestNextFrame(false);
+    layer.finalizeState(layer.context);
+
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('degrades rather than throws when deck no longer offers shader inputs', () => {
+    // `shaderInputs` is deck's plumbing, not its interface. A deck that moved
+    // it would otherwise take every layer on the map down with this one.
+    const { layer } = animatedLayer({}, { isVisible: true }, { model: {} });
+
+    expect(() => layer.writeAnimationUniforms()).not.toThrow();
   });
 });
 
