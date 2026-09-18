@@ -373,6 +373,17 @@ function bandSampling(
   // ~1.41x either way, and the resulting line count — one over the square of
   // the size — swings by roughly 0.6x to 1.3x of the budget as the zoom
   // crosses from one level to the next, even with no tilt at all.
+  //
+  // Watched in a real browser rather than only computed (2026-09-17, at pitch
+  // 15, screenshots either side of a level crossing): the line count went
+  // 4,128 -> 12,635 (×3.06) across it, and the field reads as getting a bit
+  // busier or sparser, not as reshuffling — the streamlines visible in both
+  // frames stay where they were, the denser frame just fills in more between
+  // them. Tilted to 60° and to 85° at a fixed zoom, no band seam was visible
+  // either: the field tapers smoothly into the trapezoid rather than showing a
+  // density cliff. Neither one was judged to need a fix from that look —
+  // half-levels or hysteresis remain the candidates if a wider field or a
+  // steeper crossing ever reads worse.
   const eastPerDegree = METRES_PER_DEGREE * Math.max(0.2, Math.cos((here[1] * Math.PI) / 180));
   const level = levelFor(Math.sqrt(areaPerPixel) * eastPerDegree, spacingPx, here[1]);
   const sizeDegrees = sizeAt(level);

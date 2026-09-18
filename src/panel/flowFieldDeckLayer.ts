@@ -30,12 +30,23 @@ import { holdOffFor, isRunning, tripsUniforms } from './flowFieldClock';
  * latitude. Projecting it back does not catch this: measured at pitch 85, deck
  * returns the original pixel for points it placed four degrees the wrong way.
  *
- * It does not arise today, and that is the reason there is no guard: kepler
- * clamps the pitch at 60, and at 60 the horizon is still above the top of the
- * screen — measured, the topmost row of pixels lands four degrees up-range, on
- * the ground. Should that clamp ever be lifted, the symptom to look for is lines
- * seeded behind the viewer, which is to say a field that thickens where the
- * camera is not looking.
+ * There is still no guard, and that is no longer only a "should the clamp ever
+ * be lifted" question: `keplerConfig.ts` already sets `maxPitch: 85` (kepler's
+ * own default clamp is 60, and this plugin raises it so an ordinary drag can
+ * reach the near-ground view a 3D tileset is worth looking at). Measured
+ * 2026-09-17 at pitch 85, scanning `unproject` down a vertical strip at mid-
+ * screen: the returned latitude runs away from the camera smoothly until
+ * y≈286 of a 790px-tall panel (36% down), reaches -43.95°, and eleven pixels
+ * later, at y≈299 (38%), flips sign to +24.73° — a point placed 68° the wrong
+ * way, comfortably inside the `Math.abs(lat) > 85` guard below and so never
+ * caught by it. More than a third of the screen is affected at this pitch.
+ *
+ * The symptom to look for is lines seeded behind the viewer, which is to say a
+ * field that thickens where the camera is not looking — not found on a
+ * field 1.5° across (its whole extent sits tens of degrees from every wrong
+ * value above, so every such seed traces to nothing), which is why this had
+ * gone unnoticed; a wider field, or a camera bearing that points the error
+ * back into the data, would draw it.
  */
 export function makeScreenCamera(camera: CameraState): ScreenCamera | null {
   if (!camera.width || !camera.height) {
