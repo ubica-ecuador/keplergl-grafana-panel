@@ -4,6 +4,8 @@ import {
   buildGradientField,
   buildWindField,
   describesLattice,
+  sampleScalarField,
+  ScalarField,
   sampleWindField,
   smoothWindField,
   speedDirToUV,
@@ -400,6 +402,47 @@ describe('buildGradientField', () => {
     expect(eastOfSpike(buildGradientField(frame, COLUMNS, { smoothing: 2 })!)).toBeLessThan(0);
   });
 
+});
+
+describe('sampleScalarField', () => {
+  /**
+   * Three columns by two rows, one degree apart from (10, 20):
+   *
+   *     row 1:   40   50  NaN
+   *     row 0:   10   20   30
+   */
+  const field: ScalarField = {
+    data: Float32Array.from([10, 20, 30, 40, 50, NaN]),
+    columns: 3,
+    rows: 2,
+    west: 10,
+    south: 20,
+    stepLon: 1,
+    stepLat: 1,
+  };
+
+  it('reads a node as it came', () => {
+    expect(sampleScalarField(field, 10, 20)).toBe(10);
+    expect(sampleScalarField(field, 10, 21)).toBe(40);
+  });
+
+  it('blends the four corners of a cell bilinearly', () => {
+    // A quarter of the way east and three quarters north across the first
+    // cell: along the south edge 12.5, along the north 42.5, and three
+    // quarters of the way from one to the other, 35.
+    expect(sampleScalarField(field, 10.25, 20.75)).toBeCloseTo(35, 9);
+  });
+
+  it('refuses a cell with a hole in any corner, rather than inventing a height beside it', () => {
+    // The north-east corner of the second cell is missing, so nothing inside
+    // that cell has a height — even a point right beside its three good ones.
+    expect(sampleScalarField(field, 11.1, 20.1)).toBeNull();
+  });
+
+  it('answers nothing outside the lattice', () => {
+    expect(sampleScalarField(field, 9.99, 20.5)).toBeNull();
+    expect(sampleScalarField(field, 10.5, 21.01)).toBeNull();
+  });
 });
 
 describe('speedDirToUV', () => {

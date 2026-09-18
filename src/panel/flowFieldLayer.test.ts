@@ -564,6 +564,42 @@ describe('flow field layer — height', () => {
     expect(heightOf(3000, 3000, 0)).toBe(0);
   });
 
+  it('lays each vertex on the terrain under it, times the exaggeration and nothing else', () => {
+    // An altitude column that climbs 400 m a degree east is terrain, not a
+    // level, and terrain is real metres: the user's exaggeration multiplies
+    // it, but the normalisation against the tallest level and the width of
+    // the view must not — rescaling the ground to a share of the view would
+    // peel the lines off the basemap under them.
+    const rows: Array<Record<string, number>> = [];
+    for (let j = 0; j < 8; j++) {
+      for (let i = 0; i < 8; i++) {
+        rows.push({ latitude: j, longitude: i, u: 12, v: 0, altitude: 500 + 400 * i });
+      }
+    }
+    const dataset = gridDataset(rows);
+
+    const heightsUnder = (context: FlowFieldContext) => {
+      const layer = layerOver(
+        dataset,
+        { ...COMPONENTS, altitude: 'altitude' },
+        { elevationScale: 2, flowContext: context }
+      );
+      return layer.formatLayerData({ 'grafana-A': dataset }).data.flatMap((line: { path: number[][] }) => line.path);
+    };
+
+    for (const context of [
+      contextWith(3000),
+      { ...CONTEXT, tallest: 30_000, camera: cameraShowing({ west: 2, east: 5, south: 2, north: 5 }) },
+    ]) {
+      const vertices = heightsUnder(context);
+      expect(vertices.length).toBeGreaterThan(0);
+      for (const [lon, , height] of vertices) {
+        // The terrain is linear in longitude, so its bilinear sample is exact.
+        expect(height).toBeCloseTo((500 + 400 * lon) * 2, 3);
+      }
+    }
+  });
+
   it('lifts a level whose geopotential height varies a little as one flat level', () => {
     // 850 hPa is not one number: it runs from about 1,450 to 1,550 m across a
     // synoptic map. Read as terrain for varying at all, the level lost its
