@@ -785,25 +785,41 @@ describe('traceStreamlines — anchored to the ground', () => {
     // against a budget of 9,000, each one a full 30-vertex trace, and the
     // tilted camera the more expensive of the two — precisely backwards,
     // since a tilt shows the distance at a coarser scale, not a finer one.
-    const flat = traceStreamlines(field, { ...BASE, camera: cameraOver([-79, -2], 8) }).length;
-    const tilted = traceStreamlines(field, { ...BASE, camera: cameraOver([-79, -2], 8, 60) }).length;
+    //
+    // What holds is that *every* count stays inside the cell lattice's own
+    // quantisation of the budget. `levelFor` rounds a cell to a power of two,
+    // so the cell it returns is between 0.71 and 1.41 times the size asked
+    // for, and the count — one over the square of that — between half the
+    // budget and twice it. Closing that band needs a cell size that is not a
+    // power of two, which `groundCells.ts` owns and this module cannot reach.
+    //
+    // What does *not* hold is any ratio between the tilted count and the flat
+    // one, which is what this test asserted until the sweep below was run.
+    // Flat and tilted round to different levels, and which way each rounds
+    // moves with the zoom, so their ratio swings while both stay in the band:
+    // measured from zoom 6 to 11 in quarter steps, the flat count runs from
+    // 0.59x the budget to 1.66x while the tilted one only runs 1.10x to 1.31x,
+    // and tilted/flat reaches 1.92 at zooms 6.75, 7.75, 8.75 and 9.75. An
+    // assertion of 1.25 there passed at zoom 8 by coincidence and failed on
+    // cameras a reader can reach with one scroll.
+    //
+    // Four quarter-zooms, because the quantisation is periodic in zoom with a
+    // period of one — zoom 9 tiles exactly as zoom 8 does — so these four
+    // walk the whole cycle. The band still catches what the ratio was there
+    // for: sizing a cell from the east-west ground per pixel alone instead of
+    // from the area under a pixel puts the tilted count at 2.63x, 2.39x,
+    // 2.20x and 2.23x of the budget at these four zooms, over the ceiling at
+    // every one of them.
+    for (const zoom of [8, 8.25, 8.5, 8.75]) {
+      for (const pitch of [0, 60]) {
+        const lines = traceStreamlines(field, {
+          ...BASE,
+          camera: cameraOver([-79, -2], zoom, pitch),
+        });
 
-    // A tilt must not multiply the tiling. This is what sizing a cell from the
-    // ground *area* under a pixel buys, and what sizing it east-west alone
-    // cannot: that measurement was 1.62 before, and is 0.79 now.
-    expect(tilted).toBeLessThan(flat * 1.25);
-
-    // Both stay within the cell lattice's own quantisation of the budget.
-    // `levelFor` rounds the cell to a power of two, so the cell it returns is
-    // between 0.71 and 1.41 times the size asked for and the count, which goes
-    // as one over the square of it, between half the budget and twice it.
-    // Measured here: 1.66x flat and 1.31x tilted at zoom 8, and 0.83x flat at
-    // zoom 8.5, where the same target rounds the other way. Closing that gap
-    // needs a cell size that is not a power of two, which `groundCells.ts`
-    // owns and this module cannot reach.
-    for (const count of [flat, tilted]) {
-      expect(count).toBeGreaterThan(BASE.count * 0.5);
-      expect(count).toBeLessThan(BASE.count * 2);
+        expect(lines.length).toBeGreaterThan(BASE.count * 0.5);
+        expect(lines.length).toBeLessThan(BASE.count * 2);
+      }
     }
   });
 
@@ -825,6 +841,13 @@ describe('traceStreamlines — anchored to the ground', () => {
     for (const zoom of [0.5, 1]) {
       const cells = new Map<string, Streamline[] | null>();
       traceStreamlines(field, { ...BASE, count: budget, camera: cameraOver([-79, -2], zoom), cells });
+
+      // Floored as well as capped: a cell that grew too far would tile the
+      // planet in a handful of them and pass a one-sided assertion while
+      // drawing almost nothing. Measured here, 7,577 cells at zoom 0.5 and
+      // 10,293 at zoom 1 — the same half-to-twice band the budget test above
+      // holds the ordinary zooms to, and for the same reason.
+      expect(cells.size).toBeGreaterThan(budget * 0.5);
       expect(cells.size).toBeLessThan(budget * 1.5);
     }
   });
