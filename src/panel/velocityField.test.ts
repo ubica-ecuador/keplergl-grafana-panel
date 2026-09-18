@@ -33,12 +33,15 @@ function lattice(side: number, cell: (i: number, j: number) => Record<string, nu
 
 const COMPONENTS = { lat: 'latitude', lng: 'longitude', u: 'u', v: 'v' };
 
+/** One filter as kepler leaves it in a dataset's filter record, for the tests below. */
+type FakeFilter = { type?: string; value?: unknown; name?: unknown };
+
 /** A kepler-shaped dataset: columns by name, rows as arrays of values. */
 function datasetOf(
-  fields: Array<{ name: string; type?: string }>,
+  fields: Array<{ name: string; type?: string; filterProps?: { mappedValue?: unknown[] } }>,
   rows: unknown[][],
   filteredIndex?: number[],
-  filterRecord?: { cpu?: Array<{ type?: string; value?: unknown }>; gpu?: Array<{ type?: string; value?: unknown }> }
+  filterRecord?: { cpu?: FakeFilter[]; gpu?: FakeFilter[] }
 ) {
   return {
     fields,
@@ -269,13 +272,59 @@ describe('latestStepRows', () => {
   // while `dataset.filterRecord.gpu` carried the real, narrowed window. Without
   // reading the record, the map's clock has no way to reach this layer at all.
   it('is the latest hour the filter left standing even when the filter runs on the GPU', () => {
-    const filterRecord = { gpu: [{ type: 'timeRange', value: [500, 1_500] }] };
+    const filterRecord = { gpu: [{ type: 'timeRange', value: [500, 1_500], name: ['time'] }] };
     expect(latestStepRows(datasetOf(FIELDS, ROWS, undefined, filterRecord))).toEqual([0, 1]);
   });
 
-  it('checks the CPU bucket too, since four GPU filters push a fifth one there', () => {
-    const filterRecord = { cpu: [{ type: 'timeRange', value: [500, 1_500] }] };
+  // Checked defensively rather than for a specific kepler mechanism that would
+  // move it there: this costs nothing and keeps working whichever bucket a
+  // future kepler version happens to sort a time filter into.
+  it('checks the CPU bucket too, in case kepler ever sorts the time filter there', () => {
+    const filterRecord = { cpu: [{ type: 'timeRange', value: [500, 1_500], name: ['time'] }] };
     expect(latestStepRows(datasetOf(FIELDS, ROWS, undefined, filterRecord))).toEqual([0, 1]);
+  });
+
+  it('ignores a time-range filter bound to a different column', () => {
+    // Some other dataset's time filter, sharing this one's filter record only
+    // because kepler carries every filter that could apply to this dataId —
+    // it must not be read as this field's own window.
+    const filterRecord = { gpu: [{ type: 'timeRange', value: [500, 1_500], name: ['other'] }] };
+    expect(latestStepRows(datasetOf(FIELDS, ROWS, undefined, filterRecord))).toEqual([2, 3]);
+  });
+
+  it('reads no rows when the window holds none of the hours', () => {
+    // Not a reason to fall back to every row: the map's clock is looking at a
+    // stretch of the forecast this dataset has nothing in.
+    const filterRecord = { gpu: [{ type: 'timeRange', value: [3_000, 4_000], name: ['time'] }] };
+    expect(latestStepRows(datasetOf(FIELDS, ROWS, undefined, filterRecord))).toEqual([]);
+  });
+
+  it('keeps a sample exactly on the window\'s edge, both ends included', () => {
+    // `pickLatestWithin`'s own rule for the WMS: `time < from || time > to` is
+    // excluded, so a sample sitting exactly on either edge stays in.
+    const atFrom = { gpu: [{ type: 'timeRange', value: [1_000, 1_999], name: ['time'] }] };
+    expect(latestStepRows(datasetOf(FIELDS, ROWS, undefined, atFrom))).toEqual([0, 1]);
+
+    const atTo = { gpu: [{ type: 'timeRange', value: [0, 2_000], name: ['time'] }] };
+    expect(latestStepRows(datasetOf(FIELDS, ROWS, undefined, atTo))).toEqual([2, 3]);
+  });
+
+  // kepler keeps an ISO-string timestamp raw in the data container — only the
+  // already-numeric `x`/`X` formats are converted by its own parser — and
+  // instead compares it through `field.filterProps.mappedValue`, a per-row
+  // numeric reading it computes once a filter binds to the column.
+  // `Number("2026-01-01T00:00:00Z")` is `NaN`, so without reading that mapping
+  // first, every row failed the window and the field drew nothing at all.
+  it('reads an ISO-string time column through kepler\'s own mapped value', () => {
+    const fields = [
+      { name: 'time', type: 'timestamp', filterProps: { mappedValue: [1_000, 2_000] } },
+      { name: 'lat', type: 'real' },
+    ];
+    const rows = [
+      ['2026-01-01T00:00:00.000Z', 0],
+      ['2026-01-01T00:00:02.000Z', 0],
+    ];
+    expect(latestStepRows(datasetOf(fields, rows))).toEqual([1]);
   });
 });
 

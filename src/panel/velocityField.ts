@@ -221,6 +221,8 @@ export const VELOCITY_LEGEND_CHANNEL = {
 interface DatasetFilterRecordEntry {
   type?: string;
   value?: unknown;
+  /** kepler's own: one field name per dataset the filter is bound to. */
+  name?: unknown;
 }
 
 /** kepler's `KeplerTable.filterRecord`: the same filters, sorted by where each one runs. */
@@ -232,18 +234,21 @@ interface DatasetFilterRecord {
 /** The kepler dataset a velocity layer reads: rows, and the columns they are in. */
 export interface VelocityDataset {
   dataContainer?: { numRows(): number; valueAt(row: number, column: number): unknown };
-  /** `type` is kepler's own: a time column carries `timestamp`. */
-  fields?: Array<{ name: string; type?: string }>;
   /**
-   * The rows that survived kepler's filters, when it has applied any.
-   *
-   * Reading this rather than the whole container is what puts the field on the
-   * map's clock: the time filter hides every hour but the window's, and any
-   * other filter — a region, a threshold — finally reaches the field too.
-   *
-   * That is the intent, but it is not the whole story for a time filter — see
-   * `timeWindowOf`, which is what actually carries the window past kepler's own
-   * blind spot here.
+   * `type` is kepler's own: a time column carries `timestamp`. `filterProps` is
+   * also kepler's own, and only present once a filter has bound to the field —
+   * see `timeValueAt`.
+   */
+  fields?: Array<{ name: string; type?: string; filterProps?: { mappedValue?: unknown[] } }>;
+  /**
+   * The rows that survived kepler's *CPU-mode* filters, when it has applied
+   * any — kepler defaults a `timestamp` field's filter to GPU mode
+   * (`getFilterProps` in `@kepler.gl/utils` sets `gpu: true` for
+   * `ALL_FIELD_TYPES.timestamp`), and a numeric `range` filter the same way
+   * (`ALL_FIELD_TYPES.real`/`.integer`), so in practice this narrows for
+   * neither a time window nor a numeric threshold — only for a filter kepler
+   * happens to run on the CPU (a category picked from a list, say). The time
+   * window reaches the field a different way — see `timeWindowOf`.
    */
   filteredIndex?: number[];
   /** Set by `KeplerTable.filterTable` on every filter change — see `timeWindowOf`. */
@@ -258,29 +263,69 @@ function timeColumnOf(dataset: VelocityDataset): number {
   return (dataset.fields ?? []).findIndex((field) => field?.type === TIME_FIELD_TYPE);
 }
 
+/** Whether a filter's `name` — kepler's own, one entry per dataset it binds to — names `field`. */
+function bindsToField(filterName: unknown, field: string | undefined): boolean {
+  if (!field) {
+    return false;
+  }
+  return Array.isArray(filterName) ? filterName.includes(field) : filterName === field;
+}
+
 /**
- * The window a time-range filter bound to this dataset is open to, or null when
- * there is none.
+ * The window a time-range filter bound to this dataset's own time column is
+ * open to, or null when there is none.
  *
  * Read from the dataset's own filter record rather than trusted to have already
- * narrowed `filteredIndex`, because it has not: kepler defaults a `timestamp`
- * field's filter to GPU mode (`getFilterProps` in `@kepler.gl/utils` sets
- * `gpu: true` for `ALL_FIELD_TYPES.timestamp`), and `KeplerTable.filterTable`
- * only recomputes `filteredIndex` for filters it sorts into `filterRecord.cpu`
- * (`shouldCalIndex = Boolean(changedFilters.cpu)`) — a GPU filter's own value
- * changing is invisible to it. Measured in the browser: narrowing the map's
- * time filter left `filteredIndex` holding every row of every hour, while
+ * narrowed `filteredIndex`, because it has not — see the field comment on
+ * `filteredIndex`. Measured in the browser: narrowing the map's time filter
+ * left `filteredIndex` holding every row of every hour, while
  * `dataset.filterRecord.gpu` carried the filter's real, narrowed `[from, to]`
- * throughout. Both buckets are checked because `setFilterGpuMode` moves a
- * filter to `cpu` once four GPU filters are already in use on the same
- * dataset, and the window has to be found either way.
+ * throughout.
+ *
+ * Both buckets (`cpu` and `gpu`) are checked, and the match is by field name
+ * rather than "the first `timeRange` filter there is": cheap either way, and
+ * it keeps working if a kepler version ever sorts a time filter into `cpu` (a
+ * category filter already living in that bucket does not disqualify it), or if
+ * a second, unrelated time-range filter is ever bound to some other column of
+ * the same dataset.
  */
-function timeWindowOf(dataset: VelocityDataset): [number, number] | null {
+function timeWindowOf(dataset: VelocityDataset, column: number): [number, number] | null {
+  const fieldName = dataset.fields?.[column]?.name;
   const record = dataset.filterRecord;
-  const value = [...(record?.cpu ?? []), ...(record?.gpu ?? [])].find((f) => f?.type === 'timeRange')?.value;
+  const value = [...(record?.cpu ?? []), ...(record?.gpu ?? [])].find(
+    (f) => f?.type === 'timeRange' && bindsToField(f.name, fieldName)
+  )?.value;
   return Array.isArray(value) && value.length === 2 && typeof value[0] === 'number' && typeof value[1] === 'number'
     ? [value[0], value[1]]
     : null;
+}
+
+/**
+ * A row's time column, in epoch ms.
+ *
+ * Reads kepler's own `field.filterProps.mappedValue[row]` first rather than
+ * `Number(valueAt(...))` alone: kepler keeps some timestamp formats raw in the
+ * data container — an ISO string is never converted to a number, only the `x`/
+ * `X` (already-numeric) formats are (`ALL_FIELD_TYPES.timestamp`'s `parse` in
+ * `processors/data-processor.js`) — and instead compares such a column through
+ * this precomputed, per-row numeric array once a filter has bound to it
+ * (`getTimestampFieldDomain`; read the same way in `gpu-filter-utils.js`'s
+ * `getFilterValueAccessor`). `Number(valueAt(...))` is the fallback, both for a
+ * column that already holds epoch ms and for the moment before any filter has
+ * bound to an ISO one and computed the mapping.
+ *
+ * Without this, an ISO-string time column read `Number("2026-01-01T00:00:00Z")`
+ * as `NaN` for every row once a time filter existed — before the filter was
+ * read at all this silently drew every hour at once; after `timeWindowOf` this
+ * silently drew none, since a window narrows to nothing when it cannot read a
+ * single row's time.
+ */
+function timeValueAt(dataset: VelocityDataset, column: number, row: number): number {
+  const mapped = dataset.fields?.[column]?.filterProps?.mappedValue?.[row];
+  if (typeof mapped === 'number') {
+    return mapped;
+  }
+  return Number(dataset.dataContainer?.valueAt(row, column));
 }
 
 /**
@@ -290,7 +335,7 @@ function timeWindowOf(dataset: VelocityDataset): [number, number] | null {
  * A forecast repeats every cell once per hour. Reading them all lets whichever
  * row came last win each cell — for a wind that reverses, the opposite of the
  * truth. "The latest inside the window" is the same rule `pickLatestWithin`
- * states for the WMS, reached here without the layer reading a filter at all.
+ * states for the WMS, both ends of the window included.
  */
 export function latestStepRows(dataset: VelocityDataset): number[] {
   const container = dataset.dataContainer;
@@ -305,20 +350,22 @@ export function latestStepRows(dataset: VelocityDataset): number[] {
 
   // The window a GPU-mode time filter never reached `filteredIndex` with — see
   // `timeWindowOf`. Applied on top of `filteredIndex` rather than instead of
-  // it, so a CPU filter on another column (a region, a threshold) still hides
-  // what it hides.
-  const window = timeWindowOf(dataset);
+  // it, so whatever `filteredIndex` does narrow for still holds. A window with
+  // no row of any hour inside it is not a signal to fall back to every row —
+  // it means the map's clock is looking at a stretch of the forecast this
+  // dataset has nothing in, and the layer should draw nothing until it moves.
+  const window = timeWindowOf(dataset, column);
   if (window) {
     const [from, to] = window;
     rows = rows.filter((row) => {
-      const time = Number(container.valueAt(row, column));
+      const time = timeValueAt(dataset, column, row);
       return Number.isFinite(time) && time >= from && time <= to;
     });
   }
 
   let latest = -Infinity;
   for (const row of rows) {
-    const time = Number(container.valueAt(row, column));
+    const time = timeValueAt(dataset, column, row);
     if (Number.isFinite(time) && time > latest) {
       latest = time;
     }
@@ -326,7 +373,7 @@ export function latestStepRows(dataset: VelocityDataset): number[] {
   if (!Number.isFinite(latest)) {
     return rows;
   }
-  return rows.filter((row) => Number(container.valueAt(row, column)) === latest);
+  return rows.filter((row) => timeValueAt(dataset, column, row) === latest);
 }
 
 /** The hour on show, in epoch ms, or null when the query carries no time. */
