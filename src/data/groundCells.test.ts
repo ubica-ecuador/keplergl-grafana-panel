@@ -16,6 +16,24 @@ describe('levelFor', () => {
     // ground, and a level that ignored it would leave the distance bare.
     expect(levelFor(100, 11, 0)).toBeGreaterThan(levelFor(1_000, 11, 0));
   });
+
+  it('asks for a level below zero when a pixel covers a lot of ground', () => {
+    // A camera pulled back to see most of the planet covers many degrees per
+    // pixel. A cell floored at one degree could not grow to match, and kept
+    // tiling the whole visible ground in one-degree cells regardless of how
+    // few of them the budget actually asked for — `sizeAt` already handles a
+    // negative level (a cell wider than a degree); nothing stopped this
+    // function from reaching for one except its own floor.
+    expect(levelFor(50_000, 11, 0)).toBeLessThan(0);
+  });
+
+  it('does not let the level run away for an arbitrarily huge pixel', () => {
+    // Without some floor a degenerate or wildly zoomed-out camera could ask
+    // for a level so negative that `2^-level` stops being a sane cell width.
+    // The exact bound is this module's own choice to make; what a caller can
+    // rely on is only that there is one.
+    expect(levelFor(1e12, 11, 0)).toBeGreaterThan(-20);
+  });
 });
 
 describe('cellAt', () => {

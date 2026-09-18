@@ -269,25 +269,26 @@ const MIN_CELL_PITCH_PX = 2;
  * long, because the cells are pinned to the ground and the samples to the
  * screen — two consecutive samples straddle a cell and miss it, and the cells
  * clipped by the edge of a band or of the screen are missed outright.
- * Measured at the density the plugin ships, a lattice stepped at exactly one
- * pitch reached 73% of the cells on screen flat and 68% at a pitch of 60, and
- * since which cells it missed moved with the camera, a 3.6-pixel pan — an
- * 800th of the screen — lost a quarter of its lines to nothing but that.
+ * Measured at the density the plugin ships (9,000), a lattice stepped at
+ * exactly one pitch reached 73% of the cells on screen flat and 68% at a
+ * pitch of 60, and since which cells it missed moved with the camera, a
+ * 3.6-pixel pan — an 800th of the screen — lost a quarter of its lines to
+ * nothing but that.
  *
- * Any share below one already puts a sample inside every whole cell, so what
- * a smaller one buys is only the cells clipped at an edge. Measured flat at
- * that density: a half reaches 15,052 cells against this 14,946 and takes a
- * 3.6-pixel pan's reuse from 99.3% to 100%, for 60,900 `unproject` calls
- * against 24,000; a third is no better than 0.8 on either count and costs
- * 121,600. At a pitch of 60 the three sit within 0.05 points of each other.
- * So the lattice is stepped at 0.8: a finer one buys a fraction of a point at
- * the smallest pan and pays two and a half times the unprojections for it.
- *
- * A duplicate sample is cheap whatever the share — `seen` absorbs it and a
- * cell is traced once — so what a finer lattice costs is `unproject` calls,
- * not `trace` calls.
+ * A half and a third both close the gap to the same place: measured flat at
+ * that density, pan reuse at 3.6/10/50 px was 99.3%/98.6%/93.6% at a half
+ * and 99.3%/98.6%/93.6% at a third too — identical, and at a pitch of 60,
+ * 99.6%/98.8%/94.0% either way, the tilted screen's near-horizon band
+ * included (100% at 10 px). Going finer than a half buys nothing further
+ * here, only cost: a third asks for roughly twice the `unproject` calls a
+ * half does for the same result — measured at this density, ~121,600 against
+ * ~60,900 per trace flat, ~75,100 against ~42,600 at a pitch of 60. So the
+ * lattice is stepped at a half, the cheaper end of the two: `seen` still
+ * absorbs every duplicate and a cell is still traced only once regardless of
+ * its share, so what a finer lattice buys nothing more of costs calls to
+ * `unproject`, not calls to `trace`.
  */
-const SAMPLE_STEP_SHARE = 0.8;
+const SAMPLE_STEP_SHARE = 0.5;
 
 /**
  * The ground-cell level for a band of the screen, and how many screen pixels

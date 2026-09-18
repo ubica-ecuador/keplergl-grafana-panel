@@ -20,7 +20,19 @@ export interface Cell {
 
 const METRES_PER_DEGREE = 111_320;
 
-/** How wide a cell is at a level, in degrees. */
+/**
+ * How far below level 0 a cell is allowed to grow.
+ *
+ * Without a floor, a camera zoomed out to see most of the planet asks for a
+ * cell sized to what a whole screen's worth of pixels covers, which is
+ * degrees enough that `2^-level` and the loop that walks a screen's worth of
+ * them both stop being sane. A cell this coarse (`sizeAt(MIN_LEVEL)` degrees)
+ * is already far bigger than any field this module traces, so nothing finer
+ * than this bound is ever lost to it — only the runaway is.
+ */
+const MIN_LEVEL = -8;
+
+/** How wide a cell is at a level, in degrees. Negative levels are coarser than one degree. */
 export function sizeAt(level: number): number {
   return Math.pow(2, -level);
 }
@@ -31,12 +43,20 @@ export function sizeAt(level: number): number {
  * Handed the metres a pixel covers *where the cell will be*, which on a tilted
  * map is not the same up the screen as down it — that difference is what the
  * caller's bands exist to measure.
+ *
+ * Was floored at 0 — no cell coarser than a degree — which is fine at the
+ * zoom this module was built for, but a camera pulled back to show most of
+ * the planet covers many degrees per pixel, and the floor stopped the cells
+ * from growing to match: `spacingPx` kept asking for a *budget's* worth of
+ * lines, and got a whole planet tiled in one-degree cells instead, however
+ * many that came to. Letting the level go negative (`MIN_LEVEL` still stops
+ * it going *arbitrarily* negative) is what keeps that budget at the source.
  */
 export function levelFor(metresPerPixel: number, spacingPx: number, latitude: number): number {
   const metres = Math.max(1e-3, metresPerPixel * Math.max(1, spacingPx));
   const east = METRES_PER_DEGREE * Math.max(0.2, Math.cos((latitude * Math.PI) / 180));
   const degrees = metres / east;
-  return Math.max(0, Math.round(Math.log2(1 / degrees)));
+  return Math.max(MIN_LEVEL, Math.round(Math.log2(1 / degrees)));
 }
 
 /**
