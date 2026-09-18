@@ -48,8 +48,20 @@ export interface StreamlineOptions {
   maxVertices?: number;
   /** Below this speed a streamline ends, in m/s. */
   minSpeed?: number;
-  /** Height above ground for every vertex, in metres. */
+  /** Height above ground for every vertex, in metres. Ignored when `altitudeAt` is given. */
   altitudeMeters?: number;
+  /**
+   * The height under a vertex, in metres — terrain rather than a level. Supply
+   * it and every vertex takes its own height instead of the one flat
+   * `altitudeMeters`, so a line laid over varying ground follows it up and
+   * down instead of floating at a single altitude.
+   *
+   * Returns null over a hole in the terrain data, which is not the same as a
+   * height of zero: zero is a real answer (sea level), and inventing one at a
+   * hole would plant the line at the basemap regardless of what is actually
+   * there. A hole instead carries the last height the line knew — see `emit`.
+   */
+  altitudeAt?: (lon: number, lat: number) => number | null;
   /**
    * Run every streamline over one shared window of this length, so all of them
    * are on screen at all times. Wins over `targetLifetimeMs` and `staggerMs`.
@@ -610,8 +622,28 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
     const total = vertices[vertices.length - 1].seconds;
     const meanSpeed = vertices.reduce((sum, p) => sum + p.speed, 0) / vertices.length;
     const speed = Number(meanSpeed.toFixed(2));
-    const pathOf = (timeAt: (p: Vertex) => number): Streamline['path'] =>
-      vertices.map((p) => [p.lon, p.lat, settings.altitudeMeters, timeAt(p)] as [number, number, number, number]);
+    // The height at one vertex: the flat `altitudeMeters` with no terrain, or
+    // terrain's own reading under the vertex, carrying the last height known
+    // across a hole rather than inventing one — see `altitudeAt`'s own comment.
+    const heightAt = (lon: number, lat: number, last: number): number => {
+      if (!options.altitudeAt) {
+        return settings.altitudeMeters;
+      }
+      const height = options.altitudeAt(lon, lat);
+      return height === null ? last : height;
+    };
+    // Walked from a fresh `last` of 0 on every call rather than a single running
+    // value shared across both emissions of a seamless line: that is what makes
+    // the two emissions — the same vertices, only the clock differs — come out
+    // with identical heights rather than one carrying over whatever hole the
+    // other had already crossed.
+    const pathOf = (timeAt: (p: Vertex) => number): Streamline['path'] => {
+      let last = 0;
+      return vertices.map((p) => {
+        last = heightAt(p.lon, p.lat, last);
+        return [p.lon, p.lat, last, timeAt(p)] as [number, number, number, number];
+      });
+    };
     // Only the camera path calls this with a real ground cell; the viewport
     // and no-camera paths pass their loop index, which names nothing a caller
     // could look up again.

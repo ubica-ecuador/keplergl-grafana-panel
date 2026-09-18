@@ -355,46 +355,66 @@ export function levelHeight(
   return columnValue ? fromColumn : setting(visConfig.heightMeters, 0);
 }
 
-/** The value of a column that is the same for every row — a level's height. */
-export function constantOf(frame: GridFrame, column?: string | null): number {
+/** What the altitude column of a velocity query means. */
+export type AltitudeMeaning = { kind: 'level'; metres: number } | { kind: 'terrain' };
+
+/**
+ * Which of the two an altitude column is, decided by the data.
+ *
+ * A level's height is a property of the query — "this is the 850 hPa surface" —
+ * and is the same in every row. Terrain is not: it is a height per place, and
+ * the lines should lie on it. Reading the first value and calling it the level,
+ * which is what this did before `constantOf` was retired, flattened a terrain
+ * column in silence.
+ */
+export function altitudeMeaningOf(
+  frame: GridFrame,
+  column: string | null | undefined,
+  visConfig: Record<string, unknown>
+): AltitudeMeaning {
   const field = column ? frame.fields.find((f) => f.name === column) : undefined;
   if (!field) {
-    return 0;
+    return { kind: 'level', metres: setting(visConfig.heightMeters, 0) };
   }
+
+  let first: number | null = null;
   for (let row = 0; row < frame.length; row++) {
     const value = Number(field.values[row]);
-    if (Number.isFinite(value)) {
-      return value;
+    if (!Number.isFinite(value)) {
+      continue;
+    }
+    if (first === null) {
+      first = value;
+    } else if (Math.abs(value - first) > 1e-6) {
+      return { kind: 'terrain' };
     }
   }
-  return 0;
+  return { kind: 'level', metres: first ?? setting(visConfig.heightMeters, 0) };
 }
 
 /**
- * How high a level is drawn: its height (column or knob, see `levelHeight`),
- * exaggerated against the tallest level on the map and the width of the view,
- * then scaled by the user's exaggeration. Shared so a level drawn as streamlines
- * and as arrows sits at one height.
+ * How high a level is drawn: its height in metres — the level's own, from
+ * `altitudeMeaningOf` or `levelHeight` — exaggerated against the tallest level
+ * on the map and the width of the view, then scaled by the user's exaggeration.
+ * Shared so a level drawn as streamlines and as arrows sits at one height.
+ *
+ * Takes the metres rather than the frame and the columns: the two callers now
+ * have to ask `altitudeMeaningOf` first, because a *terrain* column has no
+ * single height for this to exaggerate — only a level does.
  */
 export function stackedAltitude(
-  frame: GridFrame,
-  columns: Record<string, LayerColumn>,
+  metres: number,
   visConfig: Record<string, unknown>,
   context: FlowFieldContext,
   camera: ScreenCamera | null
 ): number {
-  const rawAltitude = levelHeight(
-    columns.altitude?.value,
-    constantOf(frame, columns.altitude?.value),
-    visConfig
-  );
   // How wide the view is across its middle, which is what a person means by
   // it — and unlike the ground the camera can see, it does not balloon when
   // the map is tilted.
   const metresAcross = camera ? camera.metresPerPixel * camera.widthPx : undefined;
   return (
-    rawAltitude *
-    stackExaggeration(setting(context.tallest, rawAltitude), metresAcross) *
+    metres *
+    stackExaggeration(setting(context.tallest, metres), metresAcross) *
     setting(visConfig.elevationScale, 1)
   );
 }

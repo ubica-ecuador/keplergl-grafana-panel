@@ -954,3 +954,35 @@ describe('traceStreamlines — anchored to the ground', () => {
     expect(distinctBirths).toBeGreaterThan(first.length / 2);
   });
 });
+
+describe('traceStreamlines — over terrain', () => {
+  const field = uniformField(10, 0);
+  // Seeded to the west of 0.5° and pinned there with `expandFactor: 1`, so the
+  // very first vertex is guaranteed to land where `altitudeAt` below answers
+  // 700 rather than null — the only way the "carries across a hole" test can
+  // tell a genuine carry from a line that started in the hole and never had a
+  // height to carry in the first place.
+  const BASE = {
+    count: 1,
+    seed: 1,
+    baseMs: 0,
+    viewport: { west: -1, south: -1, east: 0.4, north: 1, widthPx: 800, heightPx: 800 },
+    expandFactor: 1,
+  };
+
+  it('gives every vertex the height under it', () => {
+    const lines = traceStreamlines(field, {
+      ...BASE,
+      altitudeAt: (lon: number) => 1000 + lon * 10,
+    });
+    const [lon, , height] = lines[0].path[0];
+    expect(height).toBeCloseTo(1000 + lon * 10, 5);
+  });
+
+  it('carries the last height it knew across a hole', () => {
+    const lines = traceStreamlines(field, { ...BASE, altitudeAt: (lon: number) => (lon > 0.5 ? null : 700) });
+    for (const [, , height] of lines[0].path) {
+      expect(height).toBe(700);
+    }
+  });
+});

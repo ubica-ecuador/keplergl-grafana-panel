@@ -2,6 +2,7 @@ import type { LayerIcon } from './cogPaintedLayer';
 import { bearingOf, onDataCells, onScreenGrid } from '../data/placeSymbols';
 import { shownInPane } from './paneVisibility';
 import {
+  altitudeMeaningOf,
   buildVelocityField,
   fieldBounds,
   fieldSpeedDomain,
@@ -308,8 +309,14 @@ export function makeVectorFieldLayer<C extends Constructor<object>>(
           : onDataCells(field);
 
       // The same stacking the flow field does, so a level drawn both ways sits
-      // at one height.
-      const altitude = stackedAltitude(frame, columns, visConfig, context, camera);
+      // at one height. `stackedAltitude` only knows what to do with a level,
+      // though: a varying column is terrain, and a symbol placed on it is drawn
+      // on the ground rather than draped over it. Following the terrain height
+      // per symbol the way `traceStreamlines` follows it per vertex is a
+      // feature of its own, not a by-product of this layer reading the same
+      // column the level case needs.
+      const meaning = altitudeMeaningOf(frame, columns.altitude?.value, visConfig);
+      const altitude = meaning.kind === 'level' ? stackedAltitude(meaning.metres, visConfig, context, camera) : 0;
 
       const data: VectorSymbol[] = placed.map((p) => ({
         position: [p.lng, p.lat, altitude],

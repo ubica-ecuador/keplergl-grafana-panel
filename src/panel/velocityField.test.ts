@@ -1,4 +1,5 @@
 import {
+  altitudeMeaningOf,
   buildVelocityField,
   gridFrameOf,
   latestStepOf,
@@ -171,18 +172,45 @@ describe('speedColorOf', () => {
 });
 
 describe('stackedAltitude', () => {
-  // Only `columns` and `visConfig` are read when there is no altitude column
-  // bound, so a single arbitrary row is enough of a frame.
-  const frame = frameOf([{ latitude: 0, longitude: 0 }]);
-
-  it('rests on the height knob with no altitude column and no camera', () => {
-    expect(stackedAltitude(frame, {}, { heightMeters: 2500 }, { tallest: 0 }, null)).toBe(2500);
+  // Takes the level's metres directly rather than a frame and columns: reading
+  // the column is `altitudeMeaningOf`'s job now, and only it knows whether
+  // there even is a single height to exaggerate — see `altitudeMeaningOf`.
+  it('passes the metres through unchanged with no camera and no exaggeration', () => {
+    expect(stackedAltitude(2500, {}, { tallest: 0 }, null)).toBe(2500);
   });
 
   it('is scaled by the elevation knob', () => {
-    expect(
-      stackedAltitude(frame, {}, { heightMeters: 2500, elevationScale: 2 }, { tallest: 0 }, null)
-    ).toBe(5000);
+    expect(stackedAltitude(2500, { elevationScale: 2 }, { tallest: 0 }, null)).toBe(5000);
+  });
+});
+
+describe('altitudeMeaningOf', () => {
+  /** A frame of one column, in the shape `GridFrame` asks for. */
+  const columnFrame = (name: string, values: number[]) => ({
+    length: values.length,
+    fields: [{ name, values: Float64Array.from(values) }],
+  });
+
+  it('reads a column that never changes as the height of this level', () => {
+    expect(altitudeMeaningOf(columnFrame('altitude', [1500, 1500, 1500]), 'altitude', {})).toEqual({
+      kind: 'level',
+      metres: 1500,
+    });
+  });
+
+  it('reads a column that varies as terrain', () => {
+    // The bug this ends: the first finite value won, so a terrain column was
+    // silently flattened into one height and the lines floated over it.
+    expect(altitudeMeaningOf(columnFrame('altitude', [2400, 2600, 3100]), 'altitude', {})).toEqual({
+      kind: 'terrain',
+    });
+  });
+
+  it('falls back to the knob when no column is bound', () => {
+    expect(altitudeMeaningOf({ length: 0, fields: [] }, null, { heightMeters: 850 })).toEqual({
+      kind: 'level',
+      metres: 850,
+    });
   });
 });
 

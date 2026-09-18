@@ -1,8 +1,9 @@
 import type { LayerIcon } from './cogPaintedLayer';
-import type { WindField } from '../data/buildWindField';
+import { buildScalarFieldFrom, sampleScalarField, type WindField } from '../data/buildWindField';
 import { Streamline, traceStreamlines } from '../data/traceStreamlines';
 import { shownInPane } from './paneVisibility';
 import {
+  altitudeMeaningOf,
   buildVelocityField,
   CameraState,
   colorForSpeed,
@@ -583,13 +584,29 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
       }
 
       // The tracer produces its own geometry, so the altitude has to be handed
-      // to it as a value. The exaggeration follows the view, because levels a
-      // few kilometres apart are invisible over a region hundreds of kilometres
-      // wide, and a factor that reads over a country puts the top level off the
-      // screen over a city. Shared with the vector field via `stackedAltitude`,
-      // so a level drawn as streamlines and as arrows sits at the same height.
+      // to it as a value (a level) or a function (terrain) — see
+      // `altitudeMeaningOf`. The exaggeration follows the view for a level,
+      // because levels a few kilometres apart are invisible over a region
+      // hundreds of kilometres wide, and a factor that reads over a country puts
+      // the top level off the screen over a city. Shared with the vector field
+      // via `stackedAltitude`, so a level drawn as streamlines and as arrows
+      // sits at the same height.
       const camera = context.camera ? makeCamera(context.camera) : null;
-      const altitudeMeters = stackedAltitude(frame, columns, visConfig, context, camera);
+      const meaning = altitudeMeaningOf(frame, columns.altitude?.value, visConfig);
+      const altitudeMeters = meaning.kind === 'level' ? stackedAltitude(meaning.metres, visConfig, context, camera) : 0;
+      // Built fresh from this call's own `frame` rather than carried on the
+      // held hour: the hour's `cells` cache bakes a height into every vertex it
+      // keeps, so only the ground newly traced this call ever reads `terrain`
+      // — see `traceStreamlines`'s `cells` option and `emit`'s `pathOf`.
+      const terrain =
+        meaning.kind === 'terrain'
+          ? buildScalarFieldFrom(frame, {
+              latitude: columns.lat!.value!,
+              longitude: columns.lng!.value!,
+              value: columns.altitude!.value!,
+            })
+          : null;
+      const exaggeration = setting(visConfig.elevationScale, 1);
 
       // A held hour's own cells map is handed straight back in, not a fresh
       // one: a cell already in it is skipped by `traceStreamlines` rather
@@ -612,6 +629,15 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
         camera: camera ?? undefined,
         zoomResponse: setting(visConfig.zoomResponse, 0),
         altitudeMeters,
+        altitudeAt: terrain
+          ? (lon: number, lat: number) => {
+              const height = sampleScalarField(terrain, lon, lat);
+              // The user's exaggeration applies to terrain too, but not the
+              // normalisation against the tallest level: real ground has to
+              // stay on the basemap under it.
+              return height === null ? null : height * exaggeration;
+            }
+          : undefined,
         cells,
       });
 
