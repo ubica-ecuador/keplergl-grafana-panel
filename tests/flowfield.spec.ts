@@ -357,11 +357,35 @@ test('walks the forecast with the map’s clock, without moving the lines', asyn
   // latest one standing inside it.
   await narrowTimeFilterToMiddleHour(map);
 
+  // A small pan, between the two reads on purpose: at a fixed camera this
+  // test would pass just as well against the old, pixel-seeded tracer — a
+  // screen pixel names the same point on screen whether or not the hour
+  // changed underneath it. Moving the camera is what only a *ground-cell*
+  // seed can survive: the flowfieldHours fixture stays on one level at this
+  // zoom, so the cells barely move, and most of `before`'s starts should
+  // still be there once the dust settles.
+  const box = await map.boundingBox();
+  if (!box) {
+    throw new Error('map has no bounding box');
+  }
+  const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await page.mouse.move(centre.x, centre.y);
+  await page.mouse.down();
+  await page.mouse.move(centre.x + 12, centre.y + 8, { steps: 4 });
+  await page.mouse.up();
+  await settle(page);
+
   await expect
     .poll(async () => JSON.stringify((await readFlowField(map))!.sample.map((s) => s.eastward)), { timeout: 30_000 })
     .not.toBe(JSON.stringify(before.map((s) => s.eastward)));
 
   const after = (await readFlowField(map))!.sample;
+  // Pins which hour actually won: of the three, only the middle one
+  // (2026-01-01T01:00Z, the shear negated) blows westward everywhere — every
+  // sample's eastward drift has to be negative once the window has narrowed
+  // to it, not just "some number different from before."
+  expect(after.every((s) => s.eastward < 0)).toBe(true);
+
   const starts = (rows: typeof before) => new Set(rows.map((s) => `${s.lng.toFixed(4)}:${s.lat.toFixed(4)}`));
   const kept = [...starts(after)].filter((key) => starts(before).has(key));
   expect(kept.length).toBeGreaterThan(after.length * 0.5);
