@@ -1010,6 +1010,139 @@ describe('flow field layer — walking the hours', () => {
     const again = layer.formatLayerData({ 'grafana-A': at(1_000) });
     expect(again.data).not.toBe(first.data);
   });
+
+  it('protects a revisited hour from eviction, and evicts the one left untouched', () => {
+    // Eviction used to go by trace order, not view order: a `Map`'s
+    // iteration order is insertion order, and a cache hit never re-inserted,
+    // so a hit's own position never moved. Revisiting an old hour then did
+    // nothing to protect it — only tracing something *new* did — which is
+    // the opposite of "the hour at the playhead and the two most recently
+    // drawn" that the eviction exists to keep.
+    const times = [1_000, 2_000, 3_000, 4_000];
+    const dataset = manyHourGrid(times);
+    const layer = layerOver(dataset, COMPONENTS);
+    const at = (time: number) => ({ ...dataset, filteredIndex: rowsAt(dataset, time) });
+
+    const a = layer.formatLayerData({ 'grafana-A': at(1_000) });
+    const b = layer.formatLayerData({ 'grafana-A': at(2_000) });
+    layer.formatLayerData({ 'grafana-A': at(3_000) });
+    // Revisiting A counts as using it, as recently as C.
+    layer.formatLayerData({ 'grafana-A': at(1_000) });
+    // A new fourth hour must now push out the one nobody has looked at
+    // since — B, not A.
+    layer.formatLayerData({ 'grafana-A': at(4_000) });
+
+    const aAgain = layer.formatLayerData({ 'grafana-A': at(1_000) });
+    const bAgain = layer.formatLayerData({ 'grafana-A': at(2_000) });
+
+    expect(aAgain.data).toBe(a.data);
+    expect(bAgain.data).not.toBe(b.data);
+  });
+});
+
+describe('flow field layer — a settled pan costs only the ground it uncovers', () => {
+  /**
+   * The same camera, nudged east by a few pixels' worth of ground.
+   *
+   * Moves `longitude` as well as `box`: `longitude` is the field
+   * `sameCameraState` actually compares (it is what a real `CameraState`
+   * carries), and `box` is this test file's own addition that only
+   * `fakeCamera` reads. Nudging one without the other would pan the seeded
+   * ground while leaving the layer's own camera-equality check unable to see
+   * that anything moved.
+   */
+  const nudgedEast = (camera: TestCamera, degrees: number): TestCamera => ({
+    ...camera,
+    longitude: camera.longitude + degrees,
+    box: { ...camera.box, west: camera.box.west + degrees, east: camera.box.east + degrees },
+  });
+
+  /**
+   * `line.cell`, keyed for lookup — only lines seeded through a camera carry
+   * one. Grouped into arrays rather than one line per key: a line that wraps
+   * the seamless loop is emitted twice, both copies sharing the same cell, so
+   * a single-value map would silently drop one of the two on every such cell.
+   */
+  const byCell = (lines: Array<{ cell?: string }>) => {
+    const map = new Map<string, Array<{ cell?: string }>>();
+    for (const line of lines) {
+      if (line.cell === undefined) {
+        continue;
+      }
+      const existing = map.get(line.cell);
+      if (existing) {
+        existing.push(line);
+      } else {
+        map.set(line.cell, [line]);
+      }
+    }
+    return map;
+  };
+
+  it('reuses most lines by identity when only the camera settles, at the same hour', () => {
+    // The regression this whole describe block exists for: `traceSignature`
+    // used to carry the raw camera, and `useFlowFieldContext` republishes a
+    // fresh one roughly every 250 ms once the view has settled — so almost
+    // every pan looked like a change to what the geometry is *made of* and
+    // threw the whole hour away, cells map included. Every settle then
+    // re-traced the entire field instead of only the strip that had just
+    // come into view.
+    const dataset = eastwardGrid(40);
+    const camera1 = cameraShowing({ west: 0, east: 39, south: 0, north: 39 });
+    const layer = layerOver(dataset, COMPONENTS, { density: 4000, flowContext: { ...CONTEXT, camera: camera1 } });
+
+    const first = layer.formatLayerData({ 'grafana-A': dataset });
+    const before = byCell(first.data);
+    expect(before.size).toBeGreaterThan(0);
+
+    // About a pixel's worth of ground, at this camera's width and extent.
+    const camera2 = nudgedEast(camera1, 0.05);
+    layer.config.visConfig = { ...layer.config.visConfig, flowContext: { ...CONTEXT, camera: camera2 } };
+    const second = layer.formatLayerData({ 'grafana-A': dataset });
+
+    expect(second.data).not.toBe(first.data);
+    const shared = second.data.filter((line: { cell?: string }) => line.cell && before.has(line.cell));
+    expect(shared.length).toBeGreaterThan(before.size * 0.5);
+    // Reused, not merely re-traced onto the same patch of ground: the very
+    // same object survived, which is what makes the reuse free.
+    expect(
+      shared.every((line: { cell?: string }) => (before.get(line.cell as string) ?? []).includes(line))
+    ).toBe(true);
+  });
+
+  it('does not throw away a held hour that was not the one just panned', () => {
+    // The more severe form of the same defect: the old code reset the whole
+    // `_hours` map on any signature change, so a pan while looking at one
+    // hour used to empty every *other* hour on hand too, not only the
+    // current one.
+    const dataset = twoHourGrid(40);
+    const camera1 = cameraShowing({ west: 0, east: 39, south: 0, north: 39 });
+    const layer = layerOver(dataset, COMPONENTS, { density: 4000, flowContext: { ...CONTEXT, camera: camera1 } });
+
+    // Trace the later hour, then switch to the earlier one.
+    const laterFirst = layer.formatLayerData({ 'grafana-A': dataset });
+    const filtered = { ...dataset, filteredIndex: earlierRowsOf(dataset) };
+    layer.formatLayerData({ 'grafana-A': filtered });
+
+    // Pan while the earlier hour is current — the later hour sits idle.
+    const camera2 = nudgedEast(camera1, 0.05);
+    layer.config.visConfig = { ...layer.config.visConfig, flowContext: { ...CONTEXT, camera: camera2 } };
+    layer.formatLayerData({ 'grafana-A': filtered });
+
+    // Back to the later hour: most of its lines should still be the ones
+    // traced right at the start, not a from-scratch retrace.
+    const laterAgain = layer.formatLayerData({ 'grafana-A': dataset });
+    const before = byCell(laterFirst.data);
+    const shared = laterAgain.data.filter((line: { cell?: string }) => line.cell && before.has(line.cell));
+    expect(shared.length).toBeGreaterThan(before.size * 0.5);
+    // By identity, not merely by matching cell key: `seedOf`/`phaseOf` are
+    // pure functions of the cell, so a from-scratch retrace lands on the same
+    // ground and would pass a same-key check too, without the hour — or its
+    // cells map — having survived at all.
+    expect(
+      shared.every((line: { cell?: string }) => (before.get(line.cell as string) ?? []).includes(line))
+    ).toBe(true);
+  });
 });
 
 describe('fieldSpeedDomain', () => {
@@ -1088,5 +1221,20 @@ describe('traceSignature', () => {
     const after = { columns: {}, visConfig: { directionConvention: 'towards' } };
 
     expect(traceSignature(after)).not.toBe(traceSignature(before));
+  });
+
+  it('ignores the camera', () => {
+    // The regression this guards: `useFlowFieldContext` republishes a fresh
+    // camera roughly every 250 ms once the view has settled. Folding it in
+    // here would make almost every pan look like a change to what the
+    // geometry is made of, and `formatLayerData` empties every hour it holds
+    // — cells map included — whenever the signature changes. A settled pan
+    // must cost only the ground that just came into view, not the whole
+    // field; see `formatLayerData`'s own, separate handling of the camera.
+    const camera = { latitude: 0, longitude: 0, zoom: 8, pitch: 0, bearing: 0, width: 800, height: 800 };
+    const before = { columns: {}, visConfig: { flowContext: { tallest: 0, camera } } };
+    const after = { columns: {}, visConfig: { flowContext: { tallest: 0, camera: { ...camera, longitude: 4 } } } };
+
+    expect(traceSignature(after)).toBe(traceSignature(before));
   });
 });
