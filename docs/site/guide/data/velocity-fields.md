@@ -351,6 +351,7 @@ Every knob is in the layer's own panel, grouped as **Colour**, **Streamlines**, 
 | Stroke width | Streamlines | Line width in **pixels**, so it holds as you zoom. |
 | Width by speed | Streamlines | Replaces the one width with **Width range (px)**: slow lines draw at its low end, fast ones at its high end. Off by default. |
 | Trail length | Streamlines | How much of the cycle the moving trail spans, as a percentage. |
+| Speed contrast | Streamlines | How much longer a fast trail is than a slow one: 1 keeps the real contrast, 0.5 turns ten times the speed into about three times the trail, 0 draws them all alike. 1 by default. |
 | Line length | Streamlines | Vertices per streamline — how far a line reaches, not how much of it is lit. |
 | Animate | Animation | Off draws the streamlines whole and still, and asks for no more frames. On by default. |
 | Cycle | Animation | The length of the loop, in seconds. |
@@ -386,6 +387,14 @@ reads as holes in the data.
 particles, long as complete streamlines, closer to a classic wind chart. It is a *share of the
 cycle* rather than an absolute number, so lengthening the cycle does not silently shorten every
 trail.
+
+That share is a *time*, so what a trail measures on screen is how fast it moves — and it moves with
+the wind. Over an ocean at 10 m/s beside a continent at 2, the continent's trails are a fifth as
+long and read as dots; lengthening the trail lengthens the ocean's too. **Speed contrast** is the
+knob for that: it compresses the difference around the field's typical speed, so a field that is
+the same everywhere is left exactly as it was. At 0.5 the continent's trails come out at nearly half
+the ocean's instead of a fifth. Only the drawing is compressed: colour, width and opacity still
+read the real speed, so switching one of them on keeps the contrast visible.
 
 Every line lives for a little over half the cycle by default, with births scattered through it, so
 trails appear and fade continuously rather than the whole field restarting in unison.

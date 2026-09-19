@@ -117,6 +117,23 @@ export const FLOW_FIELD_VIS_CONFIGS = {
     group: 'stroke',
     property: 'trailShare',
   },
+  /**
+   * How much of the difference in speed the trails keep — see the tracer's
+   * `speedContrast`. A trail lasts a share of the cycle, so its length on
+   * screen is its pace, and beside a fast ocean a slow continent draws dots.
+   * 1 keeps the physical contrast and is what a map drawn before this existed
+   * gets.
+   */
+  speedContrast: {
+    type: 'number',
+    defaultValue: 1,
+    label: 'flowfield.speedContrast',
+    isRanged: false,
+    range: [0, 1],
+    step: 0.05,
+    group: 'stroke',
+    property: 'speedContrast',
+  },
   density: {
     type: 'number',
     defaultValue: 9000,
@@ -381,6 +398,7 @@ export function traceSignature(config: FlowFieldLayerLike['config']): string {
     visConfig.elevationScale,
     visConfig.zoomResponse,
     context.tallest,
+    visConfig.speedContrast,
   ]);
 }
 
@@ -674,6 +692,7 @@ export function makeFlowFieldLayer<C extends Constructor<object>>(
         cycleMs,
         lifeFraction: setting(visConfig.lifeFraction, 0.55),
         seamless: visConfig.seamlessLoop !== false,
+        speedContrast: setting(visConfig.speedContrast, 1),
         camera: camera ?? undefined,
         zoomResponse: setting(visConfig.zoomResponse, 0),
         altitudeMeters,

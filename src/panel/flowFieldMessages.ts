@@ -47,6 +47,7 @@ export const FLOW_FIELD_MESSAGES: Record<string, string> = {
   'flowfield.lineLength': 'Line length',
   'flowfield.thickness': 'Line width',
   'flowfield.trailShare': 'Trail length (% of cycle)',
+  'flowfield.speedContrast': 'Speed contrast (1 real, 0 even)',
   'flowfield.animate': 'Animate',
   'flowfield.cycleSeconds': 'Cycle (seconds)',
   'flowfield.lifeFraction': 'Line lifetime (share of cycle)',
