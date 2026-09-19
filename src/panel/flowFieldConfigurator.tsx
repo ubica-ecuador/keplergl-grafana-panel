@@ -153,13 +153,17 @@ function FlowFieldLayerConfig({ layer, visConfiguratorProps, layerConfiguratorPr
       {/* Density, width and trail are the three the field is actually shaped
           with, so none of them sits behind the group's expander. The trail
           especially: it is the difference between drifting particles and a
-          classic wind chart, which is not a choice to hide one click away. */}
+          classic wind chart, which is not a choice to hide one click away.
+          The speed contrast sits right under it because it is the trail's
+          other half: the length decides how long every trail is, the contrast
+          how much longer a fast one is than a slow one. */}
       <LayerConfigGroup label={'flowfield.group.streamlines'} collapsible>
         {slider('density')}
         {slider('zoomResponse')}
         <VisConfigSwitch {...settings.widthBySpeed} {...visConfiguratorProps} />
         {widthBySpeed ? slider('widthRange') : slider('thickness')}
         {slider('trailShare')}
+        {slider('speedContrast')}
         <ConfigGroupCollapsibleContent>{slider('lineLength')}</ConfigGroupCollapsibleContent>
       </LayerConfigGroup>
 

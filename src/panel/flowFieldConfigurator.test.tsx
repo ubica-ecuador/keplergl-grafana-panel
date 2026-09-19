@@ -98,6 +98,12 @@ describe('the flow field panel', () => {
     expect(container.textContent).toContain('Animate');
   });
 
+  it('offers the speed contrast, the knob that lets slack air keep a visible trail', () => {
+    const { container } = renderPanel('components');
+
+    expect(container.textContent).toContain('Speed contrast (1 real, 0 even)');
+  });
+
   it('keeps the direction out of the panel when the field is a wind', () => {
     // u and v already say which way the air goes. Offering to reverse them here
     // would be a knob that does nothing, which is worse than no knob.

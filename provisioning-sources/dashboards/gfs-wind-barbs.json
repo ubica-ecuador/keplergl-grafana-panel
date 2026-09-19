@@ -647,6 +647,7 @@
                       "opacity": 0.5,
                       "seamlessLoop": true,
                       "smoothing": 1,
+                      "speedContrast": 0.5,
                       "thickness": 1.2,
                       "trailShare": 8,
                       "zoomResponse": 0.4

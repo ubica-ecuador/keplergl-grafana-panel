@@ -404,6 +404,38 @@ describe('flow field layer — reusing the trace', () => {
 
     expect(layer.formatLayerData({ 'grafana-A': dataset }, first)).toBe(first);
   });
+
+  it('hands the speed contrast to the tracer, and re-traces when it changes', () => {
+    // Slack air in the southern half, a jet in the northern, both eastward. The
+    // contrast is traced, not painted — it is how far a particle runs — so a
+    // kept trace would leave the slider doing nothing.
+    const rows: Array<Record<string, number>> = [];
+    for (let j = 0; j < 6; j++) {
+      for (let i = 0; i < 6; i++) {
+        rows.push({ latitude: j, longitude: i, u: j < 3 ? 2 : 20, v: 0 });
+      }
+    }
+    const dataset = gridDataset(rows);
+    // Unsmoothed, or the two bands would blur into one another.
+    const layer = layerOver(dataset, COMPONENTS, { smoothing: 0 });
+    // How many times further the lines in the jet run than those in slack air.
+    const contrastOf = (data: { data: Array<{ path: number[][] }> }) => {
+      const span = (lines: Array<{ path: number[][] }>) =>
+        lines.reduce((sum, line) => sum + Math.abs(line.path[line.path.length - 1][0] - line.path[0][0]), 0) /
+        lines.length;
+      return (
+        span(data.data.filter((line) => line.path[0][1] > 3.2)) / span(data.data.filter((line) => line.path[0][1] < 1.8))
+      );
+    };
+
+    const physical = layer.formatLayerData({ 'grafana-A': dataset });
+    layer.config.visConfig = { ...layer.config.visConfig, speedContrast: 0 };
+    const flattened = layer.formatLayerData({ 'grafana-A': dataset }, physical);
+
+    expect(flattened).not.toBe(physical);
+    expect(contrastOf(physical)).toBeCloseTo(10, 0);
+    expect(contrastOf(flattened)).toBeCloseTo(1, 1);
+  });
 });
 
 describe('flow field layer — the clock', () => {
@@ -1415,6 +1447,13 @@ describe('traceSignature', () => {
     // before it changed would leave the map drawing the opposite of the truth.
     const before = { columns: {}, visConfig: { gradientDirection: 'downhill' } };
     const after = { columns: {}, visConfig: { gradientDirection: 'uphill' } };
+
+    expect(traceSignature(after)).not.toBe(traceSignature(before));
+  });
+
+  it('changes when the speed contrast is turned down', () => {
+    const before = { columns: {}, visConfig: { speedContrast: 1 } };
+    const after = { columns: {}, visConfig: { speedContrast: 0.5 } };
 
     expect(traceSignature(after)).not.toBe(traceSignature(before));
   });

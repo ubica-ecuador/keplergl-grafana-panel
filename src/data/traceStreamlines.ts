@@ -79,6 +79,24 @@ export interface StreamlineOptions {
    */
   seamless?: boolean;
   /**
+   * How much of the difference in speed the drawing keeps, as a power: a
+   * particle advances at `typical · (speed / typical)^speedContrast`, where
+   * `typical` is the field's median speed. 1, the default, is the physical
+   * contrast; 0.5 turns ten times the wind into √10 times the ground; 0 moves
+   * every particle at the typical pace, leaving speed to the colour.
+   *
+   * It exists because a trail lasts a fixed share of the cycle, so its length
+   * on screen is its pace: beside an ocean at 10 m/s, a continent at 2 draws
+   * trails a fifth as long, and at the thin widths a dense field needs they
+   * read as dots. Lengthening the trail lengthens both. Only the pace is
+   * compressed — every vertex still carries the real speed, which is what
+   * colour, width and opacity read.
+   *
+   * Only with `cycleMs`: without one the step is a fixed arc length, and every
+   * line already covers the same ground.
+   */
+  speedContrast?: number;
+  /**
    * Rescale times so the median streamline lasts this long. Omit to keep
    * physical time.
    *
@@ -495,6 +513,11 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
   // taken over the visible part left the kept lines and the fresh ones beside
   // them stepping five times apart. The colour ramp is the whole field's for
   // the same reason (`fieldSpeedDomain`).
+  //
+  // The contrast is compressed around that same typical speed, so a field
+  // that is the same everywhere draws exactly as it did, and the knob never
+  // does Trail length's job of making every trail longer at once.
+  const typical = options.cycleMs === undefined ? undefined : typicalSpeed(field, extent);
   const step: Step =
     options.cycleMs === undefined
       ? { kind: 'arc', segmentMeters: scaled.segmentMeters }
@@ -502,12 +525,13 @@ export function traceStreamlines(field: WindField, options: StreamlineOptions): 
           kind: 'time',
           seconds: options.cycleMs / 1000 / (base.maxVertices - 1),
           speedScale: speedScaleFor(
-            field,
-            extent,
+            typical,
             options.cycleMs,
             travelPixelsFor(extent, base.travelPixels, scaled.metresPerPixel),
             scaled.metresPerPixel
           ),
+          contrast: Math.min(1, Math.max(0, options.speedContrast ?? 1)),
+          typical: typical ?? 0,
         };
 
   const settings = { ...base, step };
@@ -773,10 +797,25 @@ interface Vertex {
  * between vertices carries the speed instead. The second is what the
  * earth.nullschool look needs: a trail that visibly races in strong wind and
  * crawls in slack air, rather than every trail moving at the same rate.
+ * `contrast` and `typical` say how much of that race to keep — see
+ * `speedContrast`.
  */
 type Step =
   | { kind: 'arc'; segmentMeters: number }
-  | { kind: 'time'; seconds: number; speedScale: number };
+  | { kind: 'time'; seconds: number; speedScale: number; contrast: number; typical: number };
+
+/**
+ * What a particle's velocity is multiplied by to compress the contrast — see
+ * `speedContrast`. 1 wherever there is nothing to compress: at the physical
+ * contrast, with no typical speed to compress around, and in dead calm, where
+ * a power below one of zero is infinite and the particle has nowhere to go.
+ */
+function paceFactor(step: Step, speed: number): number {
+  if (step.kind !== 'time' || step.contrast === 1 || !(step.typical > 0) || !(speed > 0)) {
+    return 1;
+  }
+  return (speed / step.typical) ** (step.contrast - 1);
+}
 
 function trace(
   field: WindField,
@@ -811,7 +850,8 @@ function trace(
 
     const dt =
       settings.step.kind === 'arc' ? settings.step.segmentMeters / speed : settings.step.seconds;
-    const advance = settings.step.kind === 'arc' ? dt : dt * settings.step.speedScale;
+    const advance =
+      settings.step.kind === 'arc' ? dt : dt * settings.step.speedScale * paceFactor(settings.step, speed);
 
     lat += (v * advance) / METRES_PER_DEGREE;
     lon += (u * advance) / (METRES_PER_DEGREE * Math.cos((lat * Math.PI) / 180));
@@ -852,16 +892,20 @@ function travelPixelsFor(patch: Box, nominal: number, metresPerPixel: number): n
  * Without a viewport there is no pixel to aim at, so physical speed stands.
  */
 function speedScaleFor(
-  field: WindField,
-  area: Box,
+  typical: number | undefined,
   cycleMs: number,
   travelPixels: number,
   metresPerPixel: number
 ): number {
-  if (metresPerPixel <= 0) {
+  if (metresPerPixel <= 0 || !typical) {
     return 1;
   }
 
+  return (travelPixels * metresPerPixel) / (typical * (cycleMs / 1000));
+}
+
+/** The field's median speed, sampled on a 13 × 13 lattice over `area`; undefined where it has none. */
+function typicalSpeed(field: WindField, area: Box): number | undefined {
   const speeds: number[] = [];
   const samples = 12;
   for (let j = 0; j <= samples; j++) {
@@ -878,12 +922,7 @@ function speedScaleFor(
   }
 
   speeds.sort((a, b) => a - b);
-  const median = speeds[Math.floor(speeds.length / 2)];
-  if (!median) {
-    return 1;
-  }
-
-  return (travelPixels * metresPerPixel) / (median * (cycleMs / 1000));
+  return speeds[Math.floor(speeds.length / 2)];
 }
 
 /**

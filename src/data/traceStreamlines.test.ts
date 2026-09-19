@@ -396,6 +396,113 @@ describe('traceStreamlines — lines cut short', () => {
   });
 });
 
+describe('traceStreamlines — speed contrast', () => {
+  /**
+   * Slack air across the south and a jet across the north, both blowing east,
+   * so a line keeps its latitude and never crosses from one to the other.
+   * Rows at −30° and −10° carry 2 m/s, rows at 10° and 30° carry 20.
+   */
+  const twoBands: WindField = {
+    data: Float32Array.from([2, 0, 2, 0, 2, 0, 2, 0, 20, 0, 20, 0, 20, 0, 20, 0]),
+    columns: 2,
+    rows: 4,
+    west: -60,
+    south: -30,
+    stepLon: 120,
+    stepLat: 20,
+  };
+
+  /** How far the lines in each band run, on average, in degrees of longitude. */
+  const spans = (speedContrast?: number) => {
+    const rows = traceStreamlines(twoBands, { count: 400, seed: 3, baseMs: 0, cycleMs: 30_000, speedContrast });
+    const mean = (lines: Streamline[]) =>
+      lines.reduce((sum, line) => sum + Math.abs(line.path[line.path.length - 1][0] - line.path[0][0]), 0) /
+      lines.length;
+    const slow = rows.filter((line) => line.path[0][1] < -12);
+    const fast = rows.filter((line) => line.path[0][1] > 12);
+    expect(slow.length).toBeGreaterThan(20);
+    expect(fast.length).toBeGreaterThan(20);
+    return { slow: mean(slow), fast: mean(fast), rows };
+  };
+
+  it('keeps the physical contrast by default', () => {
+    // Ten times the wind, ten times the ground in the same time: what the
+    // field drew before the knob existed, and what 1 still means.
+    const { slow, fast } = spans();
+
+    expect(fast / slow).toBeCloseTo(10, 0);
+    expect(spans(1).rows).toEqual(spans().rows);
+  });
+
+  it('compresses the contrast between fast and slack air to the power it is given', () => {
+    // The reason for the knob: a trail lasts a fixed time, so in air a fifth
+    // as fast it is a fifth as long, and over a continent beside an ocean it
+    // shrinks to a dot. At a half, ten times the wind is only √10 times the
+    // trail.
+    const { slow, fast } = spans(0.5);
+
+    expect(fast / slow).toBeCloseTo(Math.sqrt(10), 1);
+  });
+
+  it('draws every trail the same length at zero, leaving speed to the colour', () => {
+    const { slow, fast } = spans(0);
+
+    expect(fast / slow).toBeCloseTo(1, 1);
+  });
+
+  it('leaves the colour reading the real speed', () => {
+    // Only the pace of the drawing is compressed. The speed a line carries is
+    // what colour, width and opacity read, and it has to stay the wind's.
+    const bySpeed = (rows: Streamline[]) => rows.map((line) => line.speed);
+
+    expect(bySpeed(spans(0.3).rows)).toEqual(bySpeed(spans(1).rows));
+  });
+
+  it('keeps a typical line at the pace it had', () => {
+    // Compressed around the field's own typical speed, not around 1 m/s: a
+    // uniform field has nothing to compress, and must draw exactly as before
+    // — otherwise the knob would also shrink or stretch every trail at once,
+    // which is Trail length's job.
+    const field = uniformField(10, 3);
+    const trace = (speedContrast?: number) =>
+      traceStreamlines(field, { count: 30, seed: 6, baseMs: 0, cycleMs: 60_000, speedContrast });
+
+    const paths = (rows: Streamline[]) => rows.map((line) => line.path);
+    const before = paths(trace());
+    const after = paths(trace(0.4));
+    expect(after.length).toBe(before.length);
+    after.forEach((path, i) =>
+      path.forEach((vertex, k) => {
+        expect(vertex[0]).toBeCloseTo(before[i][k][0], 9);
+        expect(vertex[1]).toBeCloseTo(before[i][k][1], 9);
+      })
+    );
+  });
+
+  it('does not blow up in dead calm', () => {
+    // A power below one of a speed of zero is infinite. The particle in dead
+    // calm has no direction to go in either, so it stays where it is.
+    const calmAndWindy: WindField = {
+      data: Float32Array.from([0, 0, 8, 0, 0, 0, 8, 0]),
+      columns: 2,
+      rows: 2,
+      west: 0,
+      south: 0,
+      stepLon: 4,
+      stepLat: 4,
+    };
+
+    const rows = traceStreamlines(calmAndWindy, { count: 50, seed: 9, baseMs: 0, cycleMs: 10_000, speedContrast: 0 });
+
+    expect(rows.length).toBeGreaterThan(0);
+    for (const line of rows) {
+      for (const vertex of line.path) {
+        expect(vertex.every(Number.isFinite)).toBe(true);
+      }
+    }
+  });
+});
+
 describe('traceStreamlines — travel stays inside small patches', () => {
   it('shortens the travel when the data covers only a small patch of screen', () => {
     // 130 px of travel per cycle reads well across a country. Inside a patch a
