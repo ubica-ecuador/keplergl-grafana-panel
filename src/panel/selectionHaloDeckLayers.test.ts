@@ -130,8 +130,23 @@ describe('haloDeckLayers', () => {
     }>;
 
     expect(layers.map((layer) => layer.id)).toEqual(['panel-selection-halo-outlines-1']);
-    expect(layers[0].props).toMatchObject({ stroked: true, filled: false, pickable: false, getLineColor: HALO_COLOR });
+    expect(layers[0].props).toMatchObject({
+      stroked: true,
+      filled: false,
+      pickable: false,
+      getLineColor: HALO_COLOR,
+      lineWidthUnits: 'pixels',
+      getLineWidth: 3,
+      parameters: { depthTest: false },
+    });
     expect(layers[0].props.data).toHaveLength(1);
+  });
+
+  it('tests the outlines against the globe too', () => {
+    const [lines] = haloDeckLayers({ rings: [], outlines: haloOutlines([hexagon]) }, 0, { globe: true }) as Array<{
+      props: Record<string, any>;
+    }>;
+    expect(lines.props.parameters).toEqual({ depthTest: true, depthMask: false, cull: false });
   });
 
   it('hands deck the very arrays it was given, so a repaint is not new data', () => {

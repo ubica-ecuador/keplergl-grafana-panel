@@ -187,6 +187,54 @@ describe('haloInputFrom', () => {
     expect(right.sideLayers).toEqual({});
   });
 
+  describe("a point layer's radius, read as kepler's PointLayer reads it", () => {
+    const radiusOf = (config: { visConfig?: Record<string, unknown>; sizeField?: unknown }) =>
+      haloInputFrom({
+        visState: {
+          layers: [
+            {
+              id: 'points',
+              type: 'point',
+              config: {
+                dataId: 'A',
+                isVisible: true,
+                columns: { lat: { fieldIdx: 0 }, lng: { fieldIdx: 1 } },
+                ...config,
+              },
+            },
+          ],
+        },
+        zoom: 13,
+        index: 0,
+        selection: {},
+      }).layers[0].radius;
+
+    it('takes the radius when no column sizes the points', () => {
+      expect(radiusOf({ visConfig: { radius: 7, radiusRange: [0, 50] } })).toEqual({ base: 7, fixed: false });
+    });
+
+    it('takes the top of the radius range when a column sizes the points', () => {
+      expect(radiusOf({ visConfig: { radius: 7, radiusRange: [0, 50] }, sizeField: { name: 'value' } })).toEqual({
+        base: 50,
+        fixed: false,
+      });
+    });
+
+    it('fixes the radius in metres only with fixedRadius and a size column together', () => {
+      expect(radiusOf({ visConfig: { radius: 7, radiusRange: [0, 50], fixedRadius: true } })).toEqual({
+        base: 7,
+        fixed: false,
+      });
+      expect(
+        radiusOf({ visConfig: { radius: 7, radiusRange: [0, 50], fixedRadius: true }, sizeField: { name: 'value' } })
+      ).toEqual({ base: 50, fixed: true });
+    });
+
+    it("falls back to kepler's default radius", () => {
+      expect(radiusOf({})).toEqual({ base: 10, fixed: false });
+    });
+  });
+
   it('reads a split side without a layer list as showing every layer, as kepler does', () => {
     // kepler's getMapLayersFromSplitMaps hands `undefined` for such a side, and
     // isLayerVisible reads that as all visible.
