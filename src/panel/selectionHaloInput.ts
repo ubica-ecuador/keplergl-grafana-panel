@@ -1,5 +1,5 @@
 import { getDatasetFieldIndexForFilter } from '@kepler.gl/table';
-import { getFilterFunction, isValidFilterValue } from '@kepler.gl/utils';
+import { getFilterFunction, getPolygonFilterFunctor, isValidFilterValue } from '@kepler.gl/utils';
 
 import type { HaloDataset, HaloInput, HaloLayer, Selection } from './selectionHalo';
 
@@ -30,7 +30,15 @@ export interface VisStateLike {
       dataContainer: { numRows: () => number; valueAt: (row: number, column: number) => unknown };
     }
   >;
-  filters?: Array<{ id: string; type: string | null; value: unknown; dataId: string | string[]; enabled?: boolean }>;
+  filters?: Array<{
+    id: string;
+    type: string | null;
+    value: unknown;
+    dataId: string | string[];
+    enabled?: boolean;
+    /** A polygon filter's layers: the only ones it cuts. */
+    layerId?: string[];
+  }>;
   splitMaps?: Array<{ layers?: Record<string, boolean> }>;
 }
 
@@ -87,58 +95,91 @@ function haloDatasets(visState: VisStateLike): Record<string, HaloDataset> {
   return datasets;
 }
 
+/** kepler's `FILTER_TYPES.polygon`. */
+const POLYGON = 'polygon';
+
 /**
- * Whether a row passes kepler's filters, asked the way kepler asks it.
+ * Whether a row of a layer passes kepler's filters, asked the way kepler asks it.
  *
  * kepler's `filteredIndex` only reflects its CPU filters; range and time filters
  * run on the GPU and never reach it. So every valid filter on the dataset — CPU
- * and GPU, range, time and polygon — is evaluated here with kepler's own
+ * and GPU, range and time — is evaluated here with kepler's own
  * `getFilterFunction`, with the `{ index, dataContainer }` context
  * `filterDataByFilterTypes` hands it, skipping what kepler skips: disabled
- * filters and ones whose value is not valid yet. Only the selected rows are ever
- * asked, so this costs a handful of calls per repaint.
+ * filters and ones whose value is not valid yet.
+ *
+ * A polygon filter is not the dataset's but its layers': kepler cuts only the
+ * layers in its `layerId`, each with its own position accessor
+ * (`computePolygonFilteredIndexByLayer`), and leaves the others whole. So it
+ * counts only for a layer it targets, through `getPolygonFilterFunctor` for
+ * that layer. Only the selected rows are ever asked, so this costs a handful of
+ * calls per repaint.
  */
 function rowPassesFor(visState: VisStateLike): HaloInput['rowPasses'] {
   type Predicate = (context: { index: number; dataContainer: unknown }) => boolean;
   const perDataset = new Map<string, Predicate[]>();
+  const perLayer = new Map<string, Predicate[]>();
 
-  const predicatesOf = (dataId: string): Predicate[] => {
+  const liveFilters = (dataId: string) =>
+    (visState.filters ?? []).filter((filter) => {
+      const ids = Array.isArray(filter.dataId) ? filter.dataId : [filter.dataId];
+      return ids.includes(dataId) && filter.enabled !== false && isValidFilterValue(filter.type, filter.value);
+    });
+
+  const datasetPredicates = (dataId: string): Predicate[] => {
     const known = perDataset.get(dataId);
     if (known) {
       return known;
     }
     const dataset = visState.datasets?.[dataId];
     const predicates: Predicate[] = [];
-    for (const filter of visState.filters ?? []) {
-      const ids = Array.isArray(filter.dataId) ? filter.dataId : [filter.dataId];
-      if (
-        !dataset ||
-        !ids.includes(dataId) ||
-        filter.enabled === false ||
-        !isValidFilterValue(filter.type, filter.value)
-      ) {
-        continue;
+    if (dataset) {
+      for (const filter of liveFilters(dataId)) {
+        if (filter.type === POLYGON) {
+          continue;
+        }
+        const fieldIndex = getDatasetFieldIndexForFilter(dataId, filter as never);
+        const field = fieldIndex >= 0 ? dataset.fields[fieldIndex] : null;
+        predicates.push(
+          getFilterFunction(
+            field as never,
+            dataId,
+            filter as never,
+            (visState.layers ?? []) as never,
+            dataset.dataContainer as never
+          ) as unknown as Predicate
+        );
       }
-      const fieldIndex = getDatasetFieldIndexForFilter(dataId, filter as never);
-      const field = fieldIndex >= 0 ? dataset.fields[fieldIndex] : null;
-      predicates.push(
-        getFilterFunction(
-          field as never,
-          dataId,
-          filter as never,
-          (visState.layers ?? []) as never,
-          dataset.dataContainer as never
-        ) as unknown as Predicate
-      );
     }
     perDataset.set(dataId, predicates);
     return predicates;
   };
 
-  return (dataId, row) => {
+  const layerPredicates = (dataId: string, layerId: string): Predicate[] => {
+    const key = JSON.stringify([dataId, layerId]);
+    const known = perLayer.get(key);
+    if (known) {
+      return known;
+    }
+    const dataset = visState.datasets?.[dataId];
+    const layer = visState.layers?.find((candidate) => candidate.id === layerId && candidate.config.dataId === dataId);
+    const predicates: Predicate[] = [];
+    if (dataset && layer) {
+      for (const filter of liveFilters(dataId)) {
+        if (filter.type === POLYGON && filter.layerId?.includes(layerId)) {
+          predicates.push(getPolygonFilterFunctor(layer, filter, dataset.dataContainer) as Predicate);
+        }
+      }
+    }
+    perLayer.set(key, predicates);
+    return predicates;
+  };
+
+  return (dataId, row, layerId) => {
     const dataContainer = visState.datasets?.[dataId]?.dataContainer;
     const context = { index: row, dataContainer };
-    return predicatesOf(dataId).every((passes) => passes(context));
+    const passes = (predicate: Predicate) => predicate(context);
+    return datasetPredicates(dataId).every(passes) && layerPredicates(dataId, layerId).every(passes);
   };
 }
 

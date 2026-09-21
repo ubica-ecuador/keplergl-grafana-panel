@@ -1,5 +1,5 @@
 import { DataFrame, FieldType, toDataFrame } from '@grafana/data';
-import { registerEntry, toggleSplitMap, wrapTo } from '@kepler.gl/actions';
+import { duplicateLayer, registerEntry, setPolygonFilterLayer, toggleSplitMap, wrapTo } from '@kepler.gl/actions';
 import { readFileSync } from 'fs';
 
 import { framesToDatasets } from '../data/framesToDatasets';
@@ -78,10 +78,10 @@ describe('haloInputFrom', () => {
     expect(visState.filters.map((filter) => filter.gpu)).toEqual([true]);
 
     const input = haloInputFrom({ visState: visState as never, zoom: 13, index: 0, selection: {} });
-    const dataId = input.layers[0].dataId;
+    const { dataId, id: layerId } = input.layers[0];
 
-    expect(input.rowPasses(dataId, 1)).toBe(false); // site-02, value 13
-    expect(input.rowPasses(dataId, 6)).toBe(true); // site-07, value 28
+    expect(input.rowPasses(dataId, 1, layerId)).toBe(false); // site-02, value 13
+    expect(input.rowPasses(dataId, 6, layerId)).toBe(true); // site-07, value 28
   });
 
   it('ignores a filter with nothing selected, as kepler does', async () => {
@@ -90,7 +90,7 @@ describe('haloInputFrom', () => {
     await settle();
 
     const input = haloInputFrom({ visState: visStateOf(store), zoom: 13, index: 0, selection: {} });
-    expect(input.rowPasses(input.layers[0].dataId, 0)).toBe(true);
+    expect(input.rowPasses(input.layers[0].dataId, 0, input.layers[0].id)).toBe(true);
   });
 
   it('lets a row through the dashboard clock only in the hour it shows', async () => {
@@ -106,8 +106,56 @@ describe('haloInputFrom', () => {
 
     const input = haloInputFrom({ visState: visStateOf(store), zoom: 13, index: 0, selection: {} });
     // Sixteen rows, eight stations at two hours; the window covers the first.
-    const passing = [...Array(16).keys()].filter((row) => input.rowPasses(dataset.id, row));
+    const layerId = input.layers[0].id;
+    const passing = [...Array(16).keys()].filter((row) => input.rowPasses(dataset.id, row, layerId));
     expect(passing).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+  });
+
+  it('applies a polygon filter only to the layers it targets, as kepler does', async () => {
+    const store = await crossFilterStore();
+    const [original] = (visStateOf(store) as unknown as { layers: Array<{ id: string }> }).layers;
+    store.dispatch(wrapTo(KEPLER_INSTANCE_ID, duplicateLayer(original.id)) as never);
+    await settle();
+    // Around the middle column of sites (longitude −79.012): site-07 is inside,
+    // site-02 (longitude −79.02) is not.
+    const polygon = {
+      type: 'Feature',
+      id: 'halo-test-polygon',
+      properties: {},
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [-79.015, -2.91],
+            [-79.009, -2.91],
+            [-79.009, -2.87],
+            [-79.015, -2.87],
+            [-79.015, -2.91],
+          ],
+        ],
+      },
+    };
+    store.dispatch(wrapTo(KEPLER_INSTANCE_ID, setPolygonFilterLayer(original as never, polygon as never)) as never);
+    await settle();
+
+    const visState = visStateOf(store) as unknown as {
+      layers: Array<{ id: string; config: { dataId: string } }>;
+      filters: Array<{ type: string; layerId: string[] }>;
+      datasets: Record<string, { filteredIndexByLayer: Record<string, number[]> }>;
+    };
+    const [targeted, untargeted] = visState.layers;
+    const dataId = targeted.config.dataId;
+    expect(untargeted.config.dataId).toBe(dataId);
+    expect(visState.filters).toEqual([expect.objectContaining({ type: 'polygon', layerId: [targeted.id] })]);
+    // kepler's own per-layer index: the polygon cuts the targeted layer only.
+    expect(visState.datasets[dataId].filteredIndexByLayer).toEqual({ [targeted.id]: [5, 6, 7, 8, 9] });
+
+    const input = haloInputFrom({ visState: visState as never, zoom: 13, index: 0, selection: { site: ['site-02'] } });
+    expect(input.rowPasses(dataId, 6, targeted.id)).toBe(true); // site-07, inside
+    expect(input.rowPasses(dataId, 1, targeted.id)).toBe(false); // site-02, outside
+    expect(input.rowPasses(dataId, 1, untargeted.id)).toBe(true); // not this filter's layer
+    // site-02 is drawn by the untargeted layer, so it keeps its ring.
+    expect(selectionHalo(input).rings).toEqual([{ position: [-79.02, -2.895], radiusPx: 10 }]);
   });
 
   it('reads the layers of this side when the map is split', async () => {

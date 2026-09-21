@@ -177,7 +177,8 @@ describe('selectionHalo', () => {
   it("rings nothing that kepler's filters leave out", () => {
     const rowPasses = jest.fn(() => false);
     expect(selectionHalo(inputOf({ rowPasses })).rings).toEqual([]);
-    expect(rowPasses).toHaveBeenCalledWith('A', 1);
+    // The layer too: a polygon filter applies only to the layers it targets.
+    expect(rowPasses).toHaveBeenCalledWith('A', 1, 'points');
   });
 
   it('outlines a selected GeoJSON feature', () => {

@@ -98,8 +98,11 @@ export interface HaloInput {
   selection: Selection;
   layers: readonly HaloLayer[];
   datasets: Readonly<Record<string, HaloDataset>>;
-  /** Whether kepler's filters let this row through — every valid filter, CPU and GPU alike. */
-  rowPasses: (dataId: string, row: number) => boolean;
+  /**
+   * Whether kepler's filters let this row of this layer through — every valid
+   * filter, CPU and GPU alike; a polygon filter only on the layers it targets.
+   */
+  rowPasses: (dataId: string, row: number, layerId: string) => boolean;
   /** This side's layers when the map is split, null when it is not. */
   sideLayers: Readonly<Record<string, boolean>> | null;
   zoom: number;
@@ -196,7 +199,7 @@ export function selectionHalo(input: HaloInput): HaloTargets {
     }
 
     for (const row of selectedRows(dataset, input.selection)) {
-      if (!input.rowPasses(layer.dataId, row)) {
+      if (!input.rowPasses(layer.dataId, row, layer.id)) {
         continue;
       }
       if (kind === 'ring') {
