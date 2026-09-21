@@ -1,7 +1,12 @@
 import { GATE_GRACE_MS, GATE_HOLD_MS, PublishGate } from './publishGate';
+import { MIN_PUBLISH_INTERVAL_MS } from './timeVariableSync';
 
 describe('PublishGate', () => {
   const T = 10_000;
+
+  it('has its grace over by the shortest interval, so with no datasource the pace is the interval', () => {
+    expect(GATE_GRACE_MS).toBeLessThanOrEqual(MIN_PUBLISH_INTERVAL_MS);
+  });
 
   it('is open before anything was published', () => {
     expect(new PublishGate().waitMs(T)).toBe(0);
