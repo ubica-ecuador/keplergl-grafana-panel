@@ -222,4 +222,16 @@ export interface KeplerPanelOptions {
    * constant in degrees. 6000 by default.
    */
   clickAreaSizeMetres?: number;
+
+  /**
+   * Whether a click only shows the entity, and its popup's button selects it.
+   *
+   * Off by default, which is the behaviour every dashboard already has: the
+   * click publishes. On, no gesture over the map writes a variable — not the
+   * click, not the empty-map click — and the popup carries a Select button
+   * that does what the click used to, plus a Clear on the entity already
+   * selected. For a map whose selection drives a change of tab or a heavy
+   * query, so that looking at a point costs nothing.
+   */
+  clickConfirm?: boolean;
 }

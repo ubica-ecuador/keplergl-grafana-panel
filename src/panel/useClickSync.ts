@@ -1,9 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { locationService } from '@grafana/runtime';
 import type { Store } from 'redux';
 
 import { readClickedEntity, readClickSlices } from './keplerAdapter';
-import { decideClickPublish } from './clickSync';
+import { decideClickPublish, decideSelectionClear, isCurrentSelection, type ClickSelection } from './clickSync';
 import { isClickMapping, partitionMappings, type VariableMapping } from './variableSync';
 import { readVariable } from './useVariableSync';
 import { SliceWatcher } from './sliceWatcher';
@@ -14,6 +14,22 @@ interface Params {
   isReady: boolean;
   /** All the panel's mappings; only the `click` ones drive this hook. */
   mappings: VariableMapping[];
+  /**
+   * Whether a click only shows the entity, leaving the writing to the popup.
+   *
+   * See the note on confirm mode below.
+   */
+  confirm?: boolean;
+}
+
+/** What the popup's button calls, and what it needs to know to label itself. */
+export interface ClickSelectActions {
+  /** Publishes the entity showing in the pinned popup. */
+  select: () => void;
+  /** Empties the mapped variables. */
+  clear: () => void;
+  /** Whether the entity showing in the pinned popup is the published one. */
+  isSelected: () => boolean;
 }
 
 /**
@@ -36,49 +52,72 @@ interface Params {
  * running selection was published by this panel, so a dashboard opened from a
  * shared link keeps its variable until the user actually clicks.
  *
+ * **Confirm mode** unhooks all of that from the gesture. A click still opens
+ * kepler's popup, but nothing the user does on the map moves a variable: not
+ * the click, and not the empty-map click either. The reason the deselect goes
+ * quiet too is that dismissing a popup to look elsewhere would otherwise clear
+ * the selection and re-query the dashboard — the very cost the mode exists to
+ * avoid, arriving through the other door. What writes instead are `select` and
+ * `clear`, which the popup's own button calls.
+ *
  * Same structural rules as the sibling hooks: reconcile on a microtask, never
  * inside the store subscription, and react only when the watched slice —
  * `clicked` alone — actually moves.
  */
-export function useClickSync({ store, isReady, mappings }: Params): void {
+export function useClickSync({ store, isReady, mappings, confirm = false }: Params): ClickSelectActions {
   const mappingsRef = useRef(mappings);
+  const confirmRef = useRef(confirm);
   // Updated in an effect, not during render: reconcile only runs on a microtask.
   useEffect(() => {
     mappingsRef.current = mappings;
+    confirmRef.current = confirm;
   });
 
   /** Whether the mapped variables hold a selection this panel published. */
   const published = useRef(false);
 
-  const reconcile = useRef(() => {
+  /** The click mappings, the values their variables hold, and what is clicked. */
+  const readState = useRef(() => {
     const { click } = partitionMappings(mappingsRef.current);
-    if (!click.length) {
-      return;
-    }
-
     const variableValues: Record<string, unknown> = {};
     for (const { variable } of click) {
       variableValues[variable] = readVariable(variable);
     }
+    const selection: ClickSelection = click.length
+      ? readClickedEntity(
+          store,
+          click.map((m) => m.field)
+        )
+      : undefined;
+    return { click, variableValues, selection };
+  });
+
+  const write = useRef((writes: Record<string, string>) => {
+    const entries = Object.entries(writes);
+    if (entries.length) {
+      locationService.partial(Object.fromEntries(entries.map(([name, value]) => [`var-${name}`, value])), true);
+    }
+  });
+
+  const reconcile = useRef(() => {
+    // In confirm mode the map is read-only: the actions below are the writers.
+    if (confirmRef.current) {
+      return;
+    }
+
+    const { click, variableValues, selection } = readState.current();
+    if (!click.length) {
+      return;
+    }
 
     const decision = decideClickPublish({
-      selection: readClickedEntity(
-        store,
-        click.map((m) => m.field)
-      ),
+      selection,
       mappings: click,
       variableValues,
       published: published.current,
     });
     published.current = decision.published;
-
-    const writes = Object.entries(decision.writes);
-    if (writes.length) {
-      locationService.partial(
-        Object.fromEntries(writes.map(([name, value]) => [`var-${name}`, value])),
-        true
-      );
-    }
+    write.current(decision.writes);
   });
 
   const pending = useRef(false);
@@ -108,4 +147,39 @@ export function useClickSync({ store, isReady, mappings }: Params): void {
     schedule.current();
     return store.subscribe(onStoreChange.current);
   }, [isReady, mappings, store]);
+
+  // One stable object: it is handed to the popup through a context, and a new
+  // identity on every render would re-render every popup with it.
+  return useMemo<ClickSelectActions>(
+    () => ({
+      select: () => {
+        const { click, variableValues, selection } = readState.current();
+        if (!click.length) {
+          return;
+        }
+        const decision = decideClickPublish({
+          selection,
+          mappings: click,
+          variableValues,
+          published: published.current,
+        });
+        published.current = decision.published;
+        write.current(decision.writes);
+      },
+      clear: () => {
+        const { click, variableValues } = readState.current();
+        if (!click.length) {
+          return;
+        }
+        const decision = decideSelectionClear({ mappings: click, variableValues });
+        published.current = decision.published;
+        write.current(decision.writes);
+      },
+      isSelected: () => {
+        const { click, variableValues, selection } = readState.current();
+        return click.length ? isCurrentSelection({ selection, mappings: click, variableValues }) : false;
+      },
+    }),
+    []
+  );
 }

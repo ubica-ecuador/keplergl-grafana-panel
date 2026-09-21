@@ -181,6 +181,7 @@ export function KeplerPanel({
         areaVariable={options.areaVariable ?? ''}
         clickArea={Boolean(options.clickArea)}
         clickAreaSizeMetres={options.clickAreaSizeMetres ?? DEFAULT_CLICK_AREA_METRES}
+        clickConfirm={Boolean(options.clickConfirm)}
         viewportVariables={viewportVariables}
         timeVariables={options.timeVariables}
         publishWhilePlaying={options.publishWhilePlaying ?? false}

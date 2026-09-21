@@ -1,4 +1,11 @@
-import { WMS_VALUE_FIELD, decideClickPublish, rowFieldValue, wmsFeatureValues } from './clickSync';
+import {
+  WMS_VALUE_FIELD,
+  decideClickPublish,
+  decideSelectionClear,
+  isCurrentSelection,
+  rowFieldValue,
+  wmsFeatureValues,
+} from './clickSync';
 import type { VariableMapping } from './variableSync';
 
 /**
@@ -182,6 +189,107 @@ describe('decideClickPublish', () => {
   });
 });
 
+describe('isCurrentSelection', () => {
+  it('recognises the entity whose value the variable already holds', () => {
+    expect(
+      isCurrentSelection({
+        selection: { vehicle_id: 'v7' },
+        mappings: [vehicle],
+        variableValues: { vehicle: 'v7' },
+      })
+    ).toBe(true);
+  });
+
+  it('reads 80 from the row and "80" from the URL as the same value', () => {
+    expect(
+      isCurrentSelection({
+        selection: { vehicle_id: 80 },
+        mappings: [vehicle],
+        variableValues: { vehicle: '80' },
+      })
+    ).toBe(true);
+  });
+
+  it('is not the current selection when the variable holds another entity', () => {
+    expect(
+      isCurrentSelection({
+        selection: { vehicle_id: 'v7' },
+        mappings: [vehicle],
+        variableValues: { vehicle: 'v9' },
+      })
+    ).toBe(false);
+  });
+
+  it('is not the current selection when one of several mappings disagrees', () => {
+    expect(
+      isCurrentSelection({
+        selection: { vehicle_id: 'v7', route: 'r1' },
+        mappings: [vehicle, route],
+        variableValues: { vehicle: 'v7', routeVar: 'r2' },
+      })
+    ).toBe(false);
+  });
+
+  it('ignores a mapping the clicked entity does not resolve', () => {
+    // Clicking a point of another layer: only the column it has counts.
+    expect(
+      isCurrentSelection({
+        selection: { vehicle_id: 'v7' },
+        mappings: [vehicle, route],
+        variableValues: { vehicle: 'v7', routeVar: '' },
+      })
+    ).toBe(true);
+  });
+
+  it('is nothing to clear when the click resolves no mapped column at all', () => {
+    expect(
+      isCurrentSelection({
+        selection: { other: 'x' },
+        mappings: [vehicle],
+        variableValues: { vehicle: '' },
+      })
+    ).toBe(false);
+  });
+
+  it('is not the current selection with no click state', () => {
+    expect(isCurrentSelection({ selection: undefined, mappings: [vehicle], variableValues: {} })).toBe(false);
+    expect(isCurrentSelection({ selection: null, mappings: [vehicle], variableValues: {} })).toBe(false);
+  });
+});
+
+describe('decideSelectionClear', () => {
+  it('clears every mapped variable that holds a value', () => {
+    expect(
+      decideSelectionClear({ mappings: [vehicle, route], variableValues: { vehicle: 'v7', routeVar: 'r1' } })
+    ).toEqual({ writes: { vehicle: '', routeVar: '' }, published: false });
+  });
+
+  it('keeps a keepOnDeselect variable, as the empty-map click does', () => {
+    expect(
+      decideSelectionClear({
+        mappings: [{ ...vehicle, keepOnDeselect: true }],
+        variableValues: { vehicle: 'v7' },
+      })
+    ).toEqual({ writes: {}, published: false });
+  });
+
+  it('clears a variable this panel never published', () => {
+    // The shared-link guard exists against stray empty clicks. Pressing a
+    // button on the entity that is showing is not stray.
+    expect(decideSelectionClear({ mappings: [vehicle], variableValues: { vehicle: 'site-99' } })).toEqual({
+      writes: { vehicle: '' },
+      published: false,
+    });
+  });
+
+  it('does not write a clear over a variable that is already empty', () => {
+    expect(decideSelectionClear({ mappings: [vehicle], variableValues: { vehicle: '' } })).toEqual({
+      writes: {},
+      published: false,
+    });
+  });
+});
+
 describe('wmsFeatureValues', () => {
   const clicked = {
     wmsFeatureInfo: [
@@ -213,7 +321,13 @@ describe('wmsFeatureValues', () => {
   });
 
   it('skips attributes with no name or no value rather than publishing blanks', () => {
-    const partial = { wmsFeatureInfo: [{ name: '', value: '1' }, { name: 'GOOD', value: null }, { name: 'OK', value: '2' }] };
+    const partial = {
+      wmsFeatureInfo: [
+        { name: '', value: '1' },
+        { name: 'GOOD', value: null },
+        { name: 'OK', value: '2' },
+      ],
+    };
 
     expect(wmsFeatureValues(partial)).toEqual({ OK: '2', wms_value: '2' });
   });

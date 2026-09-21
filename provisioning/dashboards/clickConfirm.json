@@ -1,0 +1,94 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "id": 24,
+  "links": [],
+  "templating": {
+    "list": [
+      {
+        "name": "site",
+        "type": "textbox",
+        "label": "Site",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
+        "name": "siteKept",
+        "type": "textbox",
+        "label": "Site (kept on deselect)",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "options": [],
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "clickConfirm": true,
+        "variableMappings": [
+          {
+            "field": "site",
+            "variable": "site",
+            "source": "click"
+          },
+          {
+            "field": "site",
+            "variable": "siteKept",
+            "source": "click",
+            "keepOnDeselect": true
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"latitude\",\"type\":\"number\"},{\"name\":\"longitude\",\"type\":\"number\"},{\"name\":\"category\",\"type\":\"string\"},{\"name\":\"value\",\"type\":\"number\"},{\"name\":\"site\",\"type\":\"string\"}]},\"data\":{\"values\":[[-2.9,-2.895,-2.89,-2.885,-2.88,-2.9,-2.895,-2.89,-2.885,-2.88,-2.9,-2.895,-2.89,-2.885,-2.88],[-79.02,-79.02,-79.02,-79.02,-79.02,-79.012,-79.012,-79.012,-79.012,-79.012,-79.00399999999999,-79.00399999999999,-79.00399999999999,-79.00399999999999,-79.00399999999999],[\"parks\",\"parks\",\"parks\",\"parks\",\"parks\",\"roads\",\"roads\",\"roads\",\"roads\",\"roads\",\"schools\",\"schools\",\"schools\",\"schools\",\"schools\"],[10,13,16,19,22,25,28,31,34,37,40,43,46,49,52],[\"site-01\",\"site-02\",\"site-03\",\"site-04\",\"site-05\",\"site-06\",\"site-07\",\"site-08\",\"site-09\",\"site-10\",\"site-11\",\"site-12\",\"site-13\",\"site-14\",\"site-15\"]]}}]"
+        }
+      ],
+      "title": "Kepler.gl — select from the popup",
+      "type": "ubica-keplergl-panel"
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": [],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "",
+  "title": "Kepler.gl — confirm from the popup",
+  "uid": "d1e2f3a4-0000-4000-8000-000000000024",
+  "version": 1
+}

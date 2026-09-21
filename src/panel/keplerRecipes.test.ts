@@ -5,6 +5,7 @@ import {
   LayerConfiguratorFactory,
   LayerPanelHeaderFactory,
   MapControlFactory,
+  MapPopoverContentFactory,
   RangeBrushFactory,
 } from '@kepler.gl/components';
 
@@ -43,6 +44,7 @@ describe('the recipes the panel injects', () => {
     ['the layer configurator', LayerConfiguratorFactory, 'LayerConfiguratorWithFlowField'],
     ['the layer panel header', LayerPanelHeaderFactory, 'LayerPanelHeaderWithOwnNames'],
     ['the range brush', RangeBrushFactory, 'BrushOnTop'],
+    ['the popup content', MapPopoverContentFactory, 'ContentWithSelect'],
   ])('still replaces %s when the whole list is provided', (_name, stock, expected) => {
     expect(nameOf(resolve().get(stock as never))).toBe(expected);
   });
