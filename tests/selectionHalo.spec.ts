@@ -16,13 +16,11 @@ import { projectRows, readKepler, settle, urlVariable } from './keplerHelpers';
  * like a halo that does not move.
  */
 
-// Three maps share one row (Step 1's fixture puts each at a third of the grid),
-// and kepler's side panel is a fixed ~324px regardless of that width. At the
-// default viewport the panel leaves no clickable map surface at all — every
-// data point in "Halo — points" lands under the side panel, so `projectRows`
-// finds nothing. Wide enough that the panel's unconfigured, auto-fit point
-// layer clears the side panel with room for `site-07` (used by three tests).
-test.use({ viewport: { width: 3000, height: 1000 } });
+// kepler's side panel is a fixed ~324px overlay regardless of container width.
+// "Halo — points" gets a full-width row of its own so its auto-fit point
+// layer has room to clear it; this is the suite's usual size (matches
+// cogPainted, zarr, esriImage and others), not a size picked for this map.
+test.use({ viewport: { width: 1600, height: 1000 } });
 
 const FIXTURE = 'selectionHalo.json';
 const fixture = JSON.parse(readFileSync(`provisioning/dashboards/${FIXTURE}`, 'utf8'));
@@ -116,10 +114,11 @@ test('a shared link shows its selection ringed, with no click at all', async ({
     'var-site': 'site-07',
   });
 
-  const target = (await projectRows(map)).find((row) => String(row.values.site) === 'site-07')!;
+  const target = (await projectRows(map)).find((row) => String(row.values.site) === 'site-07');
+  expect(target, 'site-07 must be clickable on the map').toBeDefined();
   await expect.poll(async () => (await readHalo(map)).rings.length, { timeout: 10_000 }).toBe(1);
   const [ring] = (await readHalo(map)).rings;
-  expect(near(ring, target)).toBe(true);
+  expect(near(ring, target!)).toBe(true);
 });
 
 test('clicking another entity moves the ring to it', async ({ gotoDashboardPage, readProvisionedDashboard, page }) => {
@@ -153,10 +152,11 @@ test('a click on the ringed point still reaches the kepler layer under it', asyn
   const { map } = await openPanel(gotoDashboardPage, readProvisionedDashboard, page, 'Halo — points', {
     'var-site': 'site-07',
   });
-  const target = (await projectRows(map)).find((row) => String(row.values.site) === 'site-07')!;
+  const target = (await projectRows(map)).find((row) => String(row.values.site) === 'site-07');
+  expect(target, 'site-07 must be clickable on the map').toBeDefined();
   await expect.poll(async () => (await readHalo(map)).rings.length, { timeout: 10_000 }).toBe(1);
 
-  await page.mouse.click(target.x, target.y);
+  await page.mouse.click(target!.x, target!.y);
   await settle(page);
 
   await expect.poll(() => clickedLayerType(map), { timeout: 10_000 }).toBe('point');
