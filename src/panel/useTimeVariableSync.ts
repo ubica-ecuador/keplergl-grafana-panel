@@ -185,11 +185,15 @@ export function useTimeVariableSync({
 
   const schedulePublish = useRef((window: TimeRangeMs | null, domain: TimeRangeMs | null) => {
     pendingPublish.current = { window, domain };
-    // Held by the gate: keep only the newest window. The gate's own timer, or
-    // the datasource settling, publishes it.
-    if (heldByGate.current) {
+    // Held by the gate, and still playing: keep only the newest window. The
+    // gate's own timer, or the datasource settling, publishes it. Once the
+    // clock has stopped — a local stop, a peer's, or a hand taking over — the
+    // hold no longer applies, so the held step falls through to the ordinary
+    // debounce/interval path below and the final window leaves as it always did.
+    if (heldByGate.current && clockRunning.current()) {
       return;
     }
+    heldByGate.current = false;
     const now = Date.now();
     if (pendingSince.current === null) {
       pendingSince.current = now;
