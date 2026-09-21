@@ -313,8 +313,12 @@ function parseRangeBound(raw: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-/** Coerces any variable/filter value to a list of real selections. */
-function toStringValues(value: unknown): string[] {
+/**
+ * A variable's values as strings, without the empty value and Grafana's All —
+ * what counts as "selected". Shared with the selection halo, so both read a
+ * variable the same way.
+ */
+export function toStringValues(value: unknown): string[] {
   const list = Array.isArray(value) ? value : value === null || value === undefined ? [] : [value];
   return list.map(String).filter((v) => v !== '' && v !== ALL_VALUE);
 }

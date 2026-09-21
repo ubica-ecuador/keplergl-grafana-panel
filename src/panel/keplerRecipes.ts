@@ -1,6 +1,7 @@
 import { replaceAnimationController } from './animationSweepFix';
 import { replaceMapControl } from './effectsMapControl';
 import { replaceLayerConfigurator } from './flowFieldConfigurator';
+import { replaceMapContainer } from './haloMapContainer';
 import { replaceLayerPanelHeader } from './layerPanelHeader';
 import { replaceRangeBrush } from './rangeBrushFix';
 import { replaceMapPopoverContent } from './selectPopover';
@@ -30,11 +31,15 @@ import { replaceMapPopoverContent } from './selectPopover';
  * no runtime symptom to catch this, so `keplerRecipes.test.ts` resolves the
  * whole list and checks every replacement survives.
  *
+ * The map container is the extreme case: its tree holds the popup and the map
+ * control this list replaces, so it goes first.
+ *
  * Kept out of `KeplerMap.tsx` so the test can read the real list rather than a
  * copy of it — a copy would have gone on passing while the panel broke.
  */
 export function keplerRecipes(): Array<[unknown, unknown]> {
   return [
+    replaceMapContainer(),
     replaceMapControl(),
     replaceAnimationController(),
     replaceLayerConfigurator(),
