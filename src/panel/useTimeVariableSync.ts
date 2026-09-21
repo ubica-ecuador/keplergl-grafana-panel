@@ -16,6 +16,7 @@ import { SliceWatcher } from './sliceWatcher';
 import { timeChannel } from './timeChannel';
 import type { TimeRangeMs } from './timeSync';
 import {
+  DEFAULT_PUBLISH_INTERVAL_MS,
   decideTimeSync,
   nextPublishDelay,
   readWindowFromVariables,
@@ -204,7 +205,16 @@ export function useTimeVariableSync({
     // Rearming on every change is what collapses a drag into one write; the cap
     // is what stops playback from rearming it forever. Without the cap this is
     // the plain trailing debounce a drag has always had.
-    const cap = whilePlayingRef.current ? publishIntervalRef.current : Number.POSITIVE_INFINITY;
+    //
+    // The interval is a playback pace, so only a running clock gets it. A drag
+    // keeps the default cap it has always had with this option on, so one that
+    // never rests still writes every 1.5 s: a low interval would otherwise turn
+    // its debounce into a throttle, one write per interval mid-drag.
+    const cap = !whilePlayingRef.current
+      ? Number.POSITIVE_INFINITY
+      : clockRunning.current()
+        ? publishIntervalRef.current
+        : DEFAULT_PUBLISH_INTERVAL_MS;
     const delay = nextPublishDelay(now, pendingSince.current, PUBLISH_DELAY_MS, cap);
     publishTimer.current = setTimeout(() => publish.current(), delay);
   });

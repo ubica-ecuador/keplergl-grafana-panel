@@ -176,7 +176,7 @@ async function holdOnBusy(store: FakeStore): Promise<number> {
  * fake clock: frames of 16 ms, each moving the window a step, and a datasource
  * that is either absent or announces itself on a real event bus. What it pins
  * is the pace at the default and the minimum with no datasource, the hold on a
- * busy one, and the final window after a local stop.
+ * busy one, the final window after a local stop, and a drag's debounce.
  */
 describe('useTimeVariableSync, with publishing while playing on', () => {
   beforeEach(() => {
@@ -253,6 +253,36 @@ describe('useTimeVariableSync, with publishing while playing on', () => {
       expect(mockWrites).toHaveLength(held + 1);
       expect(mockWrites[held].from).toBe(mockMap.window.from);
       expect(mockWrites[held].at - stoppedAt).toBeLessThanOrEqual(300);
+    });
+  });
+
+  describe('a drag', () => {
+    it('writes once, 300 ms after the last move, whatever the interval', async () => {
+      const store = mount(250);
+      await frames(store, 50, false);
+      const start = performance.now();
+      await frames(store, 500, true);
+      const lastMove = performance.now();
+      await frames(store, 1000, false);
+
+      expect(writesSince(start)).toEqual([{ at: lastMove + 300, from: mockMap.window.from }]);
+    });
+
+    it('that never rests still writes every 1.5 s, as before the option existed', async () => {
+      const store = mount(250);
+      await frames(store, 50, false);
+      const start = performance.now();
+      await frames(store, 4000, true);
+      const lastMove = performance.now();
+      await frames(store, 1000, false);
+
+      const writes = writesSince(start);
+      expect(writes).toHaveLength(3);
+      const [first, second, last] = writes;
+      expect(first.at - start).toBeLessThanOrEqual(DEFAULT_PUBLISH_INTERVAL_MS + FRAME_MS);
+      expect(second.at - first.at).toBeGreaterThanOrEqual(DEFAULT_PUBLISH_INTERVAL_MS);
+      expect(second.at - first.at).toBeLessThanOrEqual(DEFAULT_PUBLISH_INTERVAL_MS + FRAME_MS);
+      expect(last).toEqual({ at: lastMove + 300, from: mockMap.window.from });
     });
   });
 });
