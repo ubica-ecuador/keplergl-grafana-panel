@@ -68,6 +68,11 @@ class DatasourceEvent extends BusEventWithPayload<{ state: 'busy' | 'settled'; a
   static type = 'ubica-duckdbwasm-activity';
 }
 
+/** Another plugin's event on the same type string, keeping none of the contract. */
+class ForeignEvent extends BusEventWithPayload<unknown> {
+  static type = 'ubica-duckdbwasm-activity';
+}
+
 const MAPPING = { from: 'mapFrom', to: 'mapTo' };
 
 /** About one animation frame. */
@@ -217,6 +222,30 @@ describe('useTimeVariableSync, with publishing while playing on', () => {
 
       const gaps = gapsSince(start);
       expect(gaps.length).toBeGreaterThanOrEqual(10);
+      for (const gap of gaps) {
+        expect(gap).toBeGreaterThanOrEqual(250);
+        expect(gap).toBeLessThanOrEqual(250 + FRAME_MS);
+      }
+    });
+
+    it('keeps that pace when events on the same type do not keep the contract', async () => {
+      const store = await playing({ interval: 250 });
+      // Where a busy would come: shortly after a write, inside the grace.
+      onNextWrite(() =>
+        setTimeout(() => {
+          mockBus.publish({ type: 'ubica-duckdbwasm-activity' });
+          mockBus.publish({ type: 'ubica-duckdbwasm-activity', payload: null });
+          mockBus.publish(new ForeignEvent({ state: 'other', at: performance.now(), pending: 0 }));
+          mockBus.publish(new ForeignEvent({ state: 'busy', at: undefined, pending: 1 }));
+          mockBus.publish(new ForeignEvent({ state: 'busy', at: Number.NaN, pending: 1 }));
+          mockBus.publish(new ForeignEvent({ state: 'busy', at: String(performance.now()), pending: 1 }));
+        }, 20)
+      );
+      const start = performance.now();
+      await frames(store, 2000, true);
+
+      const gaps = gapsSince(start);
+      expect(gaps.length).toBeGreaterThanOrEqual(6);
       for (const gap of gaps) {
         expect(gap).toBeGreaterThanOrEqual(250);
         expect(gap).toBeLessThanOrEqual(250 + FRAME_MS);

@@ -14,7 +14,7 @@ import type { GateSignal } from './publishGate';
  */
 export interface DuckdbWasmActivity {
   state: 'busy' | 'settled';
-  /** performance.now() when the transition happened. */
+  /** Main-thread performance.now() when the transition happened. */
   at: number;
   /** Work the datasource has in flight after the transition. */
   pending: number;
@@ -24,14 +24,40 @@ export class DuckdbWasmActivityEvent extends BusEventWithPayload<DuckdbWasmActiv
   static type = 'ubica-duckdbwasm-activity';
 }
 
-/** Calls `onSignal` for each activity event; the returned function unsubscribes. Never throws. */
+/**
+ * Calls `onSignal` for each activity event that keeps the contract; the
+ * returned function unsubscribes. Never throws.
+ */
 export function subscribeActivity(onSignal: (signal: GateSignal) => void): () => void {
   try {
-    const subscription = getAppEvents().subscribe(DuckdbWasmActivityEvent, (event) =>
-      onSignal({ state: event.payload.state, at: event.payload.at })
-    );
+    const subscription = getAppEvents().subscribe(DuckdbWasmActivityEvent, (event) => {
+      const signal = signalOf(event.payload);
+      if (signal) {
+        onSignal(signal);
+      }
+    });
     return () => subscription.unsubscribe();
   } catch {
     return () => undefined;
   }
+}
+
+/**
+ * The payload as a gate signal, or null when it does not keep the contract.
+ *
+ * The type string is public, on a bus every plugin on the page shares, so the
+ * payload is checked rather than trusted. Without a payload the handler would
+ * throw on every event; an `at` that is not a number would slip past the
+ * gate's check for events from before a publish and hold every step to the
+ * cap; an unknown state would count as settled.
+ */
+function signalOf(payload: Partial<DuckdbWasmActivity> | null | undefined): GateSignal | null {
+  if (
+    (payload?.state === 'busy' || payload?.state === 'settled') &&
+    typeof payload.at === 'number' &&
+    Number.isFinite(payload.at)
+  ) {
+    return { state: payload.state, at: payload.at };
+  }
+  return null;
 }
