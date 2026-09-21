@@ -10,26 +10,26 @@
  * `splitMapsToBeMerged` (`mergeSplitMaps`, @kepler.gl/reducers
  * `vis-state-merger`).
  *
- * It does not survive the wait. The panel refreshes a dataset with
- * `replaceDataInMap`, and `prepareStateForDatasetReplace`
- * (@kepler.gl/reducers `vis-state-updaters`, 3.3.0-alpha.12) does
+ * Up to kepler.gl 3.3.0-alpha.12 it did not survive the wait:
+ * `prepareStateForDatasetReplace` overwrote the parked assignment on any
+ * refresh while a layer was parked, and `mergeSplitMaps` appended panes rather
+ * than folding them in. keplergl/kepler.gl#3735, sent from this repo and
+ * released in 3.3.0-alpha.13, fixed both — kepler now keeps a parked assignment
+ * through back-to-back refreshes on its own.
  *
- *     if (nextState.layerToBeMerged?.length) {
- *       nextState.splitMapsToBeMerged = serializedState?.splitMaps ?? [];
- *     }
- *
- * — so *any* parked layer, for any reason, makes a refresh overwrite the parked
- * assignment with whatever the split currently shows. Measured on the fire
- * dashboard: the authored `{s2scene: false, s2scene-before: true}` pair was
- * replaced by the two live panes at the first refresh, and by `{}` once the
- * replaced layers had been removed; the next merge then took `mergeSplitMaps`'
- * empty-entry branch (`merged.push(sm)`), which *appends* rather than folds in,
- * leaving four panes. When the raster layers finally arrived,
- * `addNewLayersToSplitMap` added them to every pane as visible: both halves of
- * the curtain drawing the same thing, with no error anywhere.
- *
- * The same family of bug as `layerOrderGuard.ts` — same function, same
- * `layerToBeMerged.length` condition, a different piece of state clobbered.
+ * What it cannot keep is an assignment for a layer that comes back under
+ * another id, and on the fire dashboard every scene does. The saved config is
+ * applied once, at the first load, and the authored `rasterTile` ids do not
+ * last even that long: the panel repaints each scene (`reconcileRasterLayerType`)
+ * and kepler mints a new id for the changed layer type. A
+ * box too large, or one with no scene in range, then removes the scene
+ * datasets; the next box adds them back, and the layer built for each is the
+ * panel's default, `<dataset>-layer` (`cogPaintedLayer.ts`). The parked
+ * assignment names ids that never return, so `addNewLayersToSplitMap` puts both
+ * scenes on both halves: the curtain drawing the same thing, with no error
+ * anywhere. Measured on alpha.13 with this guard switched off: the first load
+ * kept its sides, and each of six round trips of the box through "too large"
+ * lost them. With it on, all seven kept them.
  *
  * Free of kepler and React so the decision can be tested with literal values.
  * The caller reads the store, dispatches the toggles this returns, and stops
@@ -88,8 +88,9 @@ export interface SplitMapsDecision {
  *
  * Only the panes kepler can draw are read. A config saved while the pane list
  * was doubling carries more than two, and reading them all would leave the
- * guard waiting for panes that the fold in `splitMapsNormalise.ts` has just
- * removed — until its 60 s window ran out, having repaired nothing.
+ * guard waiting for panes that `loadDatasets` folds away before kepler sees
+ * them (`splitMapsNormalise.ts`) — until its 60 s window ran out, having
+ * repaired nothing.
  */
 export function savedSplitAssignment(config: SavedMapConfig | null | undefined): SavedSplitAssignment | null {
   const visState = (config?.config as { visState?: Record<string, unknown> } | undefined)?.visState;
@@ -140,7 +141,8 @@ export function savedSplitAssignment(config: SavedMapConfig | null | undefined):
  * layers this guard exists for.
  *
  * Panes beyond the authored ones are never read and never touched: folding away
- * the surplus kepler's merge leaves behind is `splitMapsNormalise.ts`' job.
+ * the surplus a config saved during the doubling carries is
+ * `splitMapsNormalise.ts`' job.
  */
 export function decideSplitMapRepairs({
   desired,

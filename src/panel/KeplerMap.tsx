@@ -217,7 +217,7 @@ export function KeplerMap({
   const captureLayerOrder = useLayerOrderGuard(store);
 
   // A saved split says which half draws which layer, and a refresh throws that
-  // away whenever any layer is still waiting for its dataset — see
+  // away whenever a layer comes back under another id — see
   // `splitMapsGuard.ts`. Armed on every load and refresh below.
   const guardSplitMaps = useSplitMapsGuard({ store, mapConfig });
 

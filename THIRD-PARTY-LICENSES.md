@@ -7,14 +7,17 @@ compiled third-party code and vendored assets. Their notices follow.
 
 | Library | Version | Licence | Copyright |
 | --- | --- | --- | --- |
-| kepler.gl and its `@kepler.gl/*` packages | 3.3.0-alpha.12 | MIT | Copyright contributors to the kepler.gl project |
+| kepler.gl and its `@kepler.gl/*` packages | 3.3.0-alpha.13 | MIT | Copyright contributors to the kepler.gl project |
 | @deck.gl/core, /layers, /geo-layers and the rest | 9.3.11 | MIT | Copyright Vis.gl contributors. |
 | @luma.gl/core and the rest | 9.3.6 | MIT | Copyright (c) 2020 vis.gl contributors |
 | @deck.gl-community/editable-layers | 9.3.8 | MIT | Copyright (c) 2020 vis.gl a Series of LF Projects, LLC |
 | @flowmap.gl/data, @flowmap.gl/layers | 9.4.0 | Apache-2.0 | See the package's own LICENSE |
 | @hubble.gl/react, @hubble.gl/core | 2.0.0-alpha.4 | MIT | Copyright (c) 2021 Uber Technologies, Inc.; Copyright Vis.gl contributors. |
 | styled-components | 6.4.3 | MIT | Copyright (c) 2016-present Glen Maddern and Maximilian Stoiber |
-| @loaders.gl/core and the rest (30+ sub-packages) | 4.4.1 – 4.5.1 | MIT | Copyright (c) vis.gl contributors |
+| @loaders.gl/core and the rest (30+ sub-packages) | 4.4.1 – 4.5.2 | MIT | Copyright (c) vis.gl contributors |
+| FlatGeobuf (the copy vendored inside `@loaders.gl/flatgeobuf`) | 3.27.2 | BSD-2-Clause AND ISC | Copyright (c) 2018, Björn Harrtell |
+| proj4 (the copy nested under `@math.gl/proj4`) | 2.6.2 | MIT | Copyright (c) 2014, Mike Adair, Richard Greenwood, Didier Richard, Stephen Irons, Olivier Terral and Calvin Metcalf |
+| xlsx (SheetJS) | 0.18.5 | Apache-2.0 | Copyright (C) 2012-present SheetJS LLC |
 | @math.gl/core, /web-mercator, /culling and the rest | 4.1.0 | MIT | Copyright (c) 2017 Uber Technologies, Inc. |
 | @probe.gl/log, /env, /stats | 4.1.2 | MIT | Copyright Vis.gl contributors. |
 | mjolnir.js | 3.1.1 | MIT | Copyright (c) 2017 Uber Technologies, Inc. |
@@ -45,6 +48,11 @@ Every line above was read from that package's own `LICENSE` file in `node_module
 re-read on 2026-09-11 for every row whose version moved with the kepler.gl 3.3.0-alpha.11 bump — each
 copyright line came back unchanged. The kepler.gl 3.3.0-alpha.12 bump on 2026-09-17 moved no row but
 kepler's own, whose notice was re-read then, the new Flow Field layer's compiled header included. The
+3.3.0-alpha.13 bump on 2026-09-21 moved kepler's row and the top of the loaders.gl range, and brought in
+three rows with kepler's new Shapefile, Excel and FlatGeobuf loaders, each read from its own file:
+`xlsx`; `proj4`, pulled in by `@math.gl/proj4`; and FlatGeobuf, which `@loaders.gl/flatgeobuf` does not
+depend on but carries compiled inside its own `dist/flatgeobuf/3.27.2/` — so the MIT `LICENSE` of the
+loaders.gl package around it is not its licence, and the row takes the SPDX header of those files. The
 `@kepler.gl/*` packages published to npm do not ship a `LICENSE` file individually; their notice is
 confirmed instead by the `// SPDX-License-Identifier: MIT` / `// Copyright contributors to the
 kepler.gl project` header carried in their own compiled output, and by `node_modules/kepler.gl/LICENSE`
@@ -56,8 +64,9 @@ and probe.gl / react-map-gl / @vis.gl/react-maplibre say "Vis.gl contributors" w
 was read from its own file rather than assumed from its neighbours).
 
 `mapbox-gl` is the only package name in this table with two unrelated copies historically in the
-dependency tree: a top-level 3.28.1 under Mapbox's proprietary Terms of Service, and this 1.13.1
-BSD-3-Clause copy nested under `@kepler.gl/utils`. The 3.28.1 copy is excluded from the build (see
+dependency tree: a top-level copy (3.31.0 as of the kepler.gl 3.3.0-alpha.13 bump) under Mapbox's
+proprietary Terms of Service, and this 1.13.1 BSD-3-Clause copy nested under `@kepler.gl/utils`. The
+top-level copy is excluded from the build (see
 `webpack.config.ts`); only the 1.13.1 copy above ships, in `dist/32.js`.
 
 The full text of the MIT and Apache-2.0 licences is in `LICENSE.txt` alongside this file, along with
@@ -109,8 +118,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-`@flowmap.gl/data`, `@flowmap.gl/layers`, `long` and `a5-js` are also Apache-2.0 and bundled, but none
-of the four ships a `NOTICE` file (`long`'s own `@license` banner is carried verbatim in `LICENSE.txt`
+`@flowmap.gl/data`, `@flowmap.gl/layers`, `long`, `a5-js` and `xlsx` are also Apache-2.0 and bundled,
+but none of the five ships a `NOTICE` file (`xlsx` checked on 2026-09-21, when it came in with kepler's
+Excel loader) (`long`'s own `@license` banner is carried verbatim in `LICENSE.txt`
 regardless). `chroma-js` is dual BSD-3-Clause/Apache-2.0 for the small portion of it derived from
 colorbrewer2.org; that portion's Apache notice is already reproduced verbatim inside `LICENSE.txt`'s
 chroma.js banner, so it is not repeated here. `parquet-wasm` and `s2-geometry` are each licensed

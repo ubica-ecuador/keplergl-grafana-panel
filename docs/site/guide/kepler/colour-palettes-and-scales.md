@@ -11,6 +11,9 @@ Every layer has a flat **colour**, or a **Color Based On** a column plus a **pal
 - **Quantile** — equal _counts_ per step. Every colour is equally common; outliers do not dominate.
 - **Quantize** — equal _ranges_ per step. Colours are comparable between two maps of the same
   measure; a skewed distribution will look almost uniform.
+- **Jenks Natural Breaks** — steps placed where the data itself has gaps, recomputed when the number
+  of colours changes. A good first look at clustered data; not offered on vector tilesets, which never
+  hold the whole distribution.
 
 The choice matters more than the palette. A quantile scale on earthquake magnitude will make a
 magnitude-3 tremor look significant because a fifth of the data has to be in the top bucket;
@@ -58,5 +61,5 @@ that panel as the starting point for new maps.
 **Upstream:** [Color palettes](https://docs.kepler.gl/docs/user-guides/l-color-attributes) ·
 [Layer attributes](https://docs.kepler.gl/docs/user-guides/d-layer-attributes)
 
-Written against **kepler.gl 3.3.0-alpha.12**. See
+Written against **kepler.gl 3.3.0-alpha.13**. See
 [Upstream documentation](../../reference/upstream-docs).

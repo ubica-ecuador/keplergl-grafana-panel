@@ -1,4 +1,4 @@
-import { foldSurplusPanes, RENDERED_PANES, withFoldedSplitMaps } from './splitMapsNormalise';
+import { foldSavedSplitMaps, foldSurplusPanes, RENDERED_PANES } from './splitMapsNormalise';
 
 const pane = (label: string) => ({ layers: { [label]: true } });
 
@@ -23,66 +23,67 @@ describe('foldSurplusPanes', () => {
   });
 });
 
-function store(splitMaps: unknown[]) {
+/** A config as `parseSavedConfig` returns it, reduced to what the fold reads. */
+function config(splitMaps: unknown[]) {
   return {
-    keplerGl: {
-      grafana: { visState: { splitMaps, layers: [{ id: 'boxoutline' }] }, mapState: { isSplit: true } },
-    },
+    visState: { splitMaps, layers: [{ id: 'boxoutline' }] },
+    mapState: { isSplit: true },
   };
 }
 
-describe('withFoldedSplitMaps', () => {
+describe('foldSavedSplitMaps', () => {
   let warn: jest.SpyInstance;
   beforeEach(() => {
     warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
   });
   afterEach(() => warn.mockRestore());
 
-  it('returns the very same state object when nothing has grown, and says nothing', () => {
-    const state = store([pane('a'), pane('b')]);
-    expect(withFoldedSplitMaps(state)).toBe(state);
-    expect(withFoldedSplitMaps(store([]))).toBeDefined();
+  it('returns the very same config when it has no more panes than kepler draws, and says nothing', () => {
+    const two = config([pane('a'), pane('b')]);
+    expect(foldSavedSplitMaps(two)).toBe(two);
+    const unsplit = config([]);
+    expect(foldSavedSplitMaps(unsplit)).toBe(unsplit);
     expect(warn).not.toHaveBeenCalled();
   });
 
-  // What the bench showed on every normal curtain load: the appended panes are
-  // copies of the kept ones. Folding them loses nothing, so it says nothing.
+  // What a Save during the doubling wrote: the appended panes are copies of the
+  // kept ones. Folding them loses nothing, so it says nothing.
   it('stays silent when the dropped panes only repeat the kept ones', () => {
     const copy = { layers: { boxoutline: true } };
-    withFoldedSplitMaps(store([copy, copy, copy, copy]));
-    withFoldedSplitMaps(store([pane('a'), pane('b'), { layers: {} }, pane('a')]));
+    foldSavedSplitMaps(config([copy, copy, copy, copy]));
+    foldSavedSplitMaps(config([pane('a'), pane('b'), { layers: {} }, pane('a')]));
     expect(warn).not.toHaveBeenCalled();
   });
 
   it('warns once when a dropped pane held an assignment no kept pane has, naming the count', () => {
-    const next = withFoldedSplitMaps(
-      store([{ layers: { a: true, b: false } }, { layers: { a: false, b: true } }, { layers: { a: true, b: true } }])
+    const next = foldSavedSplitMaps(
+      config([{ layers: { a: true, b: false } }, { layers: { a: false, b: true } }, { layers: { a: true, b: true } }])
     );
-    expect(next.keplerGl.grafana.visState.splitMaps).toHaveLength(2);
+    expect(next.visState.splitMaps).toHaveLength(2);
     expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn.mock.calls[0][0]).toContain('had 3 panes');
+    expect(warn.mock.calls[0][0]).toContain('has 3 panes');
     expect(warn.mock.calls[0][0]).toContain('1 were dropped, 1 of them');
   });
 
-  it('is a no-op before kepler has registered, and for a state that is not kepler', () => {
-    const empty = {};
-    expect(withFoldedSplitMaps(empty)).toBe(empty);
-    expect(withFoldedSplitMaps(undefined)).toBeUndefined();
+  it('is a no-op for a config without a vis state, and for no config at all', () => {
+    const bare = { mapState: {} };
+    expect(foldSavedSplitMaps(bare)).toBe(bare);
+    expect(foldSavedSplitMaps(null)).toBeNull();
   });
 
-  it('folds the pane list and leaves the rest of the instance untouched', () => {
-    const state = store([pane('a'), pane('b'), pane('c'), pane('d')]);
-    const next = withFoldedSplitMaps(state);
-    expect(next).not.toBe(state);
-    expect(next.keplerGl.grafana.visState.splitMaps).toEqual([pane('a'), pane('b')]);
-    expect(next.keplerGl.grafana.visState.layers).toBe(state.keplerGl.grafana.visState.layers);
-    expect(next.keplerGl.grafana.mapState).toBe(state.keplerGl.grafana.mapState);
+  it('folds the pane list and leaves the rest of the config untouched', () => {
+    const saved = config([pane('a'), pane('b'), pane('c'), pane('d')]);
+    const next = foldSavedSplitMaps(saved);
+    expect(next).not.toBe(saved);
+    expect(next.visState.splitMaps).toEqual([pane('a'), pane('b')]);
+    expect(next.visState.layers).toBe(saved.visState.layers);
+    expect(next.mapState).toBe(saved.mapState);
   });
 
   it('is idempotent: folding what it just folded changes nothing, and warns no more', () => {
-    const once = withFoldedSplitMaps(store([pane('a'), pane('b'), pane('c'), pane('d')]));
+    const once = foldSavedSplitMaps(config([pane('a'), pane('b'), pane('c'), pane('d')]));
     warn.mockClear();
-    expect(withFoldedSplitMaps(once)).toBe(once);
+    expect(foldSavedSplitMaps(once)).toBe(once);
     expect(warn).not.toHaveBeenCalled();
   });
 });
