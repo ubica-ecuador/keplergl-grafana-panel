@@ -1,0 +1,320 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "id": 25,
+  "links": [],
+  "templating": {
+    "list": [
+      {
+        "name": "site",
+        "type": "textbox",
+        "label": "Site",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
+        "name": "valueMin",
+        "type": "textbox",
+        "label": "Value min",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
+        "name": "valueMax",
+        "type": "textbox",
+        "label": "Value max",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
+        "name": "zone",
+        "type": "textbox",
+        "label": "Zone",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
+        "name": "cell",
+        "type": "textbox",
+        "label": "Cell",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "options": [],
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "gridPos": {
+        "h": 14,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "variableMappings": [
+          {
+            "field": "site",
+            "variable": "site",
+            "source": "click"
+          },
+          {
+            "field": "value",
+            "variable": "valueMin",
+            "variableTo": "valueMax"
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"latitude\",\"type\":\"number\"},{\"name\":\"longitude\",\"type\":\"number\"},{\"name\":\"category\",\"type\":\"string\"},{\"name\":\"value\",\"type\":\"number\"},{\"name\":\"site\",\"type\":\"string\"}]},\"data\":{\"values\":[[-2.9,-2.895,-2.89,-2.885,-2.88,-2.9,-2.895,-2.89,-2.885,-2.88,-2.9,-2.895,-2.89,-2.885,-2.88],[-79.02,-79.02,-79.02,-79.02,-79.02,-79.012,-79.012,-79.012,-79.012,-79.012,-79.00399999999999,-79.00399999999999,-79.00399999999999,-79.00399999999999,-79.00399999999999],[\"parks\",\"parks\",\"parks\",\"parks\",\"parks\",\"roads\",\"roads\",\"roads\",\"roads\",\"roads\",\"schools\",\"schools\",\"schools\",\"schools\",\"schools\"],[10,13,16,19,22,25,28,31,34,37,40,43,46,49,52],[\"site-01\",\"site-02\",\"site-03\",\"site-04\",\"site-05\",\"site-06\",\"site-07\",\"site-08\",\"site-09\",\"site-10\",\"site-11\",\"site-12\",\"site-13\",\"site-14\",\"site-15\"]]}}]"
+        }
+      ],
+      "title": "Halo — points",
+      "type": "ubica-keplergl-panel",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      }
+    },
+    {
+      "gridPos": {
+        "h": 14,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "variableMappings": [
+          {
+            "field": "name",
+            "variable": "zone",
+            "source": "click"
+          }
+        ],
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "visState": {
+              "layers": [
+                {
+                  "id": "gallery-geojson",
+                  "type": "geojson",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "GeoJSON",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "columnMode": "geojson",
+                    "isVisible": true,
+                    "visConfig": {
+                      "opacity": 0.6,
+                      "strokeOpacity": 0.9,
+                      "thickness": 1,
+                      "filled": true,
+                      "stroked": true
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "value",
+                      "type": "integer"
+                    },
+                    "colorScale": "quantize"
+                  }
+                }
+              ],
+              "filters": [
+                {
+                  "dataId": ["grafana-A"],
+                  "id": "zona-geojson",
+                  "name": ["zona"],
+                  "type": "multiSelect",
+                  "value": ["norte", "centro", "sur"],
+                  "enabled": true
+                }
+              ],
+              "interactionConfig": {},
+              "splitMaps": []
+            },
+            "mapState": {
+              "latitude": -2.902,
+              "longitude": -79.004,
+              "zoom": 12,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "mapStyle": {
+              "styleType": "dark-matter"
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"geom\",\"type\":\"string\"},{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"value\",\"type\":\"number\"},{\"name\":\"zona\",\"type\":\"string\"}]},\"data\":{\"values\":[[\"POLYGON((-79.007804 -2.882, -79.013 -2.879, -79.018196 -2.882, -79.018196 -2.888, -79.013 -2.891, -79.007804 -2.888, -79.007804 -2.882))\",\"POLYGON((-78.994804 -2.871, -79 -2.868, -79.005196 -2.871, -79.005196 -2.877, -79 -2.88, -78.994804 -2.877, -78.994804 -2.871))\",\"POLYGON((-78.981804 -2.86, -78.987 -2.857, -78.992196 -2.86, -78.992196 -2.866, -78.987 -2.869, -78.981804 -2.866, -78.981804 -2.86))\",\"POLYGON((-79.015804 -2.91, -79.021 -2.907, -79.026196 -2.91, -79.026196 -2.916, -79.021 -2.919, -79.015804 -2.916, -79.015804 -2.91))\",\"POLYGON((-79.002804 -2.899, -79.008 -2.896, -79.013196 -2.899, -79.013196 -2.905, -79.008 -2.908, -79.002804 -2.905, -79.002804 -2.899))\",\"POLYGON((-78.989804 -2.888, -78.995 -2.885, -79.000196 -2.888, -79.000196 -2.894, -78.995 -2.897, -78.989804 -2.894, -78.989804 -2.888))\",\"POLYGON((-79.001804 -2.936, -79.007 -2.933, -79.012196 -2.936, -79.012196 -2.942, -79.007 -2.945, -79.001804 -2.942, -79.001804 -2.936))\",\"POLYGON((-78.988804 -2.925, -78.994 -2.922, -78.999196 -2.925, -78.999196 -2.931, -78.994 -2.934, -78.988804 -2.931, -78.988804 -2.925))\",\"POLYGON((-78.975804 -2.914, -78.981 -2.911, -78.986196 -2.914, -78.986196 -2.92, -78.981 -2.923, -78.975804 -2.92, -78.975804 -2.914))\"],[\"norte-1\",\"norte-2\",\"norte-3\",\"centro-1\",\"centro-2\",\"centro-3\",\"sur-1\",\"sur-2\",\"sur-3\"],[56,37,50,70,75,48,80,31,78],[\"norte\",\"norte\",\"norte\",\"centro\",\"centro\",\"centro\",\"sur\",\"sur\",\"sur\"]]}}]"
+        }
+      ],
+      "title": "Halo — polygons",
+      "type": "ubica-keplergl-panel",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      }
+    },
+    {
+      "gridPos": {
+        "h": 14,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "variableMappings": [
+          {
+            "field": "h3",
+            "variable": "cell",
+            "source": "click"
+          }
+        ],
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "visState": {
+              "layers": [
+                {
+                  "id": "gallery-hexagonid",
+                  "type": "hexagonId",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "H3",
+                    "columns": {
+                      "hex_id": "h3"
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "opacity": 0.75,
+                      "coverage": 0.92,
+                      "filled": true
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "value",
+                      "type": "integer"
+                    },
+                    "colorScale": "quantize"
+                  }
+                }
+              ],
+              "filters": [
+                {
+                  "dataId": ["grafana-A"],
+                  "id": "zona-hexagonid",
+                  "name": ["zona"],
+                  "type": "multiSelect",
+                  "value": ["norte", "centro", "sur"],
+                  "enabled": true
+                }
+              ],
+              "interactionConfig": {},
+              "splitMaps": []
+            },
+            "mapState": {
+              "latitude": -2.902,
+              "longitude": -79.004,
+              "zoom": 11.8,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "mapStyle": {
+              "styleType": "dark-matter"
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"h3\",\"type\":\"string\"},{\"name\":\"value\",\"type\":\"number\"},{\"name\":\"zona\",\"type\":\"string\"}]},\"data\":{\"values\":[[\"888f7699adfffff\",\"888f76d6dbfffff\",\"888f76d6d3fffff\",\"888f7699a5fffff\",\"888f7699a1fffff\",\"888f7699a9fffff\",\"888f7699e7fffff\",\"888f7699e5fffff\",\"888f76d6d9fffff\",\"888f76d6d1fffff\",\"888f76d6d7fffff\",\"888f76d699fffff\",\"888f76d69bfffff\",\"888f7699a7fffff\",\"888f7699a3fffff\",\"888f7699abfffff\",\"888f769985fffff\",\"888f7699e3fffff\",\"888f7699e1fffff\",\"888f7699edfffff\",\"888f769933fffff\",\"888f769937fffff\",\"888f76d6ddfffff\",\"888f76d6d5fffff\",\"888f76d68bfffff\",\"888f76d69dfffff\",\"888f76d691fffff\",\"888f76d693fffff\",\"888f768b4dfffff\",\"888f768b49fffff\",\"888f7699b5fffff\",\"888f7699bdfffff\",\"888f769987fffff\",\"888f769981fffff\",\"888f76998dfffff\",\"888f7699ebfffff\",\"888f7699e9fffff\"],[62,25,12,39,56,25,12,91,91,87,95,58,83,14,20,67,33,52,46,13,49,46,93,60,21,54,30,72,51,90,67,49,12,25,66,92,67],[\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"norte\",\"norte\",\"centro\",\"centro\",\"centro\",\"sur\",\"sur\",\"sur\",\"centro\",\"centro\",\"centro\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"centro\",\"centro\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"centro\",\"centro\",\"centro\",\"norte\",\"norte\"]]}}]"
+        }
+      ],
+      "title": "Halo — H3",
+      "type": "ubica-keplergl-panel",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": [],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "",
+  "title": "Kepler.gl — selection halo",
+  "uid": "d1e2f3a4-0000-4000-8000-000000000025",
+  "version": 1
+}
