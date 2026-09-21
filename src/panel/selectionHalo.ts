@@ -67,3 +67,145 @@ export function selectedRows(dataset: HaloDataset, selection: Selection): readon
   scans.set(dataset.cacheKey, { key, rows });
   return rows;
 }
+
+/** Room between a point's edge and its ring, in pixels. */
+export const RING_MARGIN_PX = 6;
+
+/** The smallest ring drawn, however small the point: a 2 px dot needs a visible ring. */
+export const RING_MIN_PX = 10;
+
+/** How kepler sizes a point layer's points, read from its config. */
+export interface PointRadius {
+  /** `visConfig.radius`, or the top of `visConfig.radiusRange` when a column sizes the points. */
+  base: number;
+  /** `fixedRadius` with a size column: metres on the ground at every zoom. */
+  fixed: boolean;
+}
+
+/** One kepler layer, as much of it as the halo needs. */
+export interface HaloLayer {
+  id: string;
+  type: string;
+  isVisible: boolean;
+  dataId: string;
+  /** kepler's column roles → field index; a role the layer does not use is absent. */
+  columns: Readonly<Partial<Record<'lat' | 'lng' | 'geojson' | 'hex_id', number>>>;
+  /** Point layers only. */
+  radius?: PointRadius;
+}
+
+export interface HaloInput {
+  selection: Selection;
+  layers: readonly HaloLayer[];
+  datasets: Readonly<Record<string, HaloDataset>>;
+  /** Whether kepler's filters let this row through — every valid filter, CPU and GPU alike. */
+  rowPasses: (dataId: string, row: number) => boolean;
+  /** This side's layers when the map is split, null when it is not. */
+  sideLayers: Readonly<Record<string, boolean>> | null;
+  zoom: number;
+}
+
+export interface HaloRing {
+  position: [number, number];
+  radiusPx: number;
+}
+
+/** A shape to outline: a GeoJSON cell's raw value, or an H3 index. */
+export interface HaloShape {
+  kind: 'geojson' | 'hexagon';
+  value: unknown;
+}
+
+export interface HaloTargets {
+  rings: HaloRing[];
+  shapes: HaloShape[];
+}
+
+const EARTH_CIRCUMFERENCE_M = 2 * Math.PI * 6378137;
+
+/** deck's web-mercator world is 512 pixels wide at zoom 0. */
+const TILE_SIZE_PX = 512;
+
+/**
+ * A kepler point's radius on screen, in pixels.
+ *
+ * kepler hands deck's `ScatterplotLayer` a radius in metres (deck's default
+ * `radiusUnits`): `getRadiusScaleByZoom` multiplies the layer's radius by
+ * `getZoomFactor`, 2^max(14 − zoom, 0), and uses 1 when the radius is fixed. So
+ * below zoom 14 a point keeps its size on screen and above it grows with the
+ * map.
+ */
+export function pointRadiusPx(radius: PointRadius, zoom: number, latitude: number): number {
+  const metres = radius.fixed ? radius.base : radius.base * Math.pow(2, Math.max(14 - zoom, 0));
+  const metresPerPixel =
+    (EARTH_CIRCUMFERENCE_M * Math.cos((latitude * Math.PI) / 180)) / (TILE_SIZE_PX * Math.pow(2, zoom));
+  return metres / metresPerPixel;
+}
+
+/** How a layer's rows are marked, or null for a type the halo leaves alone. */
+function haloKind(layer: HaloLayer): 'ring' | 'geojson' | 'hexagon' | null {
+  const has = (role: 'lat' | 'lng' | 'geojson' | 'hex_id') => (layer.columns[role] ?? -1) >= 0;
+  switch (layer.type) {
+    case 'point':
+      return has('lat') && has('lng') ? 'ring' : null;
+    case 'geojson':
+      return has('geojson') ? 'geojson' : null;
+    case 'hexagonId':
+      return has('hex_id') ? 'hexagon' : null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * The rings and outlines that mark the selection on one side of the map.
+ *
+ * Only where the row is drawn: its layer is visible, on this side of a split
+ * map, and kepler's filters let the row through — never a ring around nothing.
+ * One mark per row, however many layers draw it; two point layers keep the
+ * larger ring, so it stays outside both points.
+ */
+export function selectionHalo(input: HaloInput): HaloTargets {
+  const rings = new Map<string, HaloRing>();
+  const shapes = new Map<string, HaloShape>();
+
+  for (const layer of input.layers) {
+    if (!layer.isVisible || (input.sideLayers && !input.sideLayers[layer.id])) {
+      continue;
+    }
+    const dataset = input.datasets[layer.dataId];
+    const kind = haloKind(layer);
+    if (!dataset || !kind) {
+      continue;
+    }
+
+    for (const row of selectedRows(dataset, input.selection)) {
+      if (!input.rowPasses(layer.dataId, row)) {
+        continue;
+      }
+      const key = `${layer.dataId}:${row}`;
+
+      if (kind === 'ring') {
+        const lat = Number(dataset.valueAt(row, layer.columns.lat!));
+        const lng = Number(dataset.valueAt(row, layer.columns.lng!));
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          continue;
+        }
+        const pointPx = layer.radius ? pointRadiusPx(layer.radius, input.zoom, lat) : 0;
+        const radiusPx = Math.max(RING_MIN_PX, pointPx + RING_MARGIN_PX);
+        const existing = rings.get(key);
+        if (!existing || existing.radiusPx < radiusPx) {
+          rings.set(key, { position: [lng, lat], radiusPx });
+        }
+        continue;
+      }
+
+      const value = dataset.valueAt(row, kind === 'geojson' ? layer.columns.geojson! : layer.columns.hex_id!);
+      if (value !== null && value !== undefined && value !== '') {
+        shapes.set(`${key}:${kind}`, { kind, value });
+      }
+    }
+  }
+
+  return { rings: [...rings.values()], shapes: [...shapes.values()] };
+}
