@@ -178,13 +178,15 @@ export function useTimeVariableSync({
     for (const [variable, value] of Object.entries(writes)) {
       partial[`var-${variable}`] = value;
     }
-    locationService.partial(partial, true);
-    lastKey.current = windowKey(pending.window ?? pending.domain);
+    // Stamped and recorded before the write: the panels it sets off may say
+    // they are busy before partial() returns, and that busy is this step's.
     if (playing) {
       gate.current.published(performance.now());
     } else {
       gate.current.reset();
     }
+    locationService.partial(partial, true);
+    lastKey.current = windowKey(pending.window ?? pending.domain);
   });
 
   const schedulePublish = useRef((window: TimeRangeMs | null, domain: TimeRangeMs | null) => {

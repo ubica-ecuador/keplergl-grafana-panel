@@ -269,6 +269,16 @@ describe('useTimeVariableSync, with publishing while playing on', () => {
       expect(mockWrites).toHaveLength(held + 1);
     });
 
+    it('counts a busy announced during the write itself', async () => {
+      const store = await playing({ interval: 250 });
+      onNextWrite(() => announce('busy'));
+      await frames(store, 300, true);
+      const held = mockWrites.length;
+      await frames(store, 1000, true);
+
+      expect(mockWrites).toHaveLength(held);
+    });
+
     it('writes the final window within the rest delay of a local stop while held', async () => {
       const store = await playing({ interval: 250 });
       const held = await holdOnBusy(store);
