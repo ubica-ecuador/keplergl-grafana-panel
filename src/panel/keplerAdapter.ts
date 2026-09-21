@@ -15,6 +15,8 @@ import {
   removeLayer,
   reorderLayer,
   setFeatures,
+  setFilterAnimationTime,
+  toggleFilterAnimation,
   toggleLayerAnimation,
   toggleLayerForMap,
   replaceDataInMap,
@@ -1087,6 +1089,113 @@ function readDatasetIds(store: Store): string[] {
   return Object.keys(getVisState(store)?.datasets ?? {});
 }
 
+/** A time filter a refresh is about to catch playing: which one, and on what window. */
+export interface PlayingTimeFilter {
+  id: string;
+  value: [number, number];
+}
+
+/** How long a refreshed time filter gets to come back before its playback is given up on. */
+const RESUME_GIVE_UP_MS = 5_000;
+
+/**
+ * The time filter, when it is playing and refreshing `datasets` is about to
+ * replace the dataset it filters. Null otherwise, which is almost always.
+ *
+ * Read right before `refreshDatasets`, for `resumeTimeFilter` to use right
+ * after it — see there for why.
+ */
+export function capturePlayingTimeFilter(store: Store, datasets: PanelDataset[]): PlayingTimeFilter | null {
+  const visState = getVisState(store);
+  const filter = visState?.filters.find((f) => f.type === TIME_FILTER_TYPE);
+  if (!visState || !filter?.isAnimating || !isWindow(filter.value)) {
+    return null;
+  }
+  const filtered = ([] as string[]).concat(filter.dataId ?? []);
+  const { replace } = splitRefresh(datasets, Object.keys(visState.datasets));
+  if (!replace.some((dataset) => filtered.includes(dataset.id))) {
+    return null;
+  }
+  return { id: filter.id, value: [filter.value[0], filter.value[1]] };
+}
+
+/**
+ * Puts a time filter that a refresh caught playing back into play, on the
+ * window it had.
+ *
+ * `replaceDataInMap` keeps the filter, but not as it was. kepler serializes it,
+ * parks it in `filterToBeMerged`, and rebuilds it from the saved form once the
+ * new rows are in (`validateFilter` in @kepler.gl/utils). The saved form has no
+ * `isAnimating`, so the filter comes back paused — and a window whose end had
+ * run past the data comes back clamped to it. Every answer to the map's own
+ * queries used to stop playback that way: a variable they read, Refresh,
+ * auto-refresh.
+ *
+ * Watches the store until the filter is back under the same id and no longer
+ * parked, then sends what a user would: the window, if kepler moved it, and a
+ * press of play, if it came back paused. Nobody can pause it in between — the
+ * time widget is not even mounted while its filter is parked. On a microtask,
+ * like every store-driven reconcile here, so nothing is dispatched from inside
+ * the dispatch that set it off.
+ *
+ * Stops by itself once done, or after `giveUpMs` if the filter never comes
+ * back. Returns a function that stops it sooner.
+ */
+export function resumeTimeFilter(
+  store: Store,
+  dispatch: Dispatch,
+  playing: PlayingTimeFilter,
+  giveUpMs = RESUME_GIVE_UP_MS
+): () => void {
+  let stopped = false;
+  let scheduled = false;
+
+  const reconcile = () => {
+    scheduled = false;
+    const visState = getVisState(store);
+    if (stopped || !visState || visState.filterToBeMerged?.some((f) => f.id === playing.id)) {
+      return;
+    }
+    const idx = visState.filters.findIndex((f) => f.id === playing.id);
+    if (idx < 0) {
+      return;
+    }
+    stop();
+    const { value, isAnimating } = visState.filters[idx];
+    if (!isWindow(value) || value[0] !== playing.value[0] || value[1] !== playing.value[1]) {
+      dispatch(wrapTo(KEPLER_INSTANCE_ID, setFilterAnimationTime(idx, 'value', playing.value)));
+    }
+    if (!isAnimating) {
+      dispatch(wrapTo(KEPLER_INSTANCE_ID, toggleFilterAnimation(idx)));
+    }
+  };
+
+  const schedule = () => {
+    if (scheduled || stopped) {
+      return;
+    }
+    scheduled = true;
+    void Promise.resolve().then(reconcile);
+  };
+
+  const unsubscribe = store.subscribe(schedule);
+  const giveUp = setTimeout(() => stop(), giveUpMs);
+
+  function stop(): void {
+    stopped = true;
+    unsubscribe();
+    clearTimeout(giveUp);
+  }
+
+  // A refresh that parked nothing leaves no change to wait for.
+  schedule();
+  return stop;
+}
+
+function isWindow(value: unknown): value is [number, number] {
+  return Array.isArray(value) && typeof value[0] === 'number' && typeof value[1] === 'number';
+}
+
 /**
  * Swaps the rows behind one dataset, keeping the layers built on it.
  *
@@ -1176,7 +1285,11 @@ interface VisStateLike {
     domain?: unknown;
     /** True while kepler is playing the filter window across the domain. */
     isAnimating?: boolean;
+    /** The datasets it filters: an array in kepler 3. */
+    dataId?: string[] | string;
   }>;
+  /** Filters parked by a dataset replace, waiting to be merged back — in their saved form. */
+  filterToBeMerged?: Array<{ id?: string }>;
   datasets: Record<
     string,
     {

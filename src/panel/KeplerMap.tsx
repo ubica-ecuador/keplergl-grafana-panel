@@ -22,6 +22,7 @@ import { configureKepler } from './keplerConfig';
 import { createKeplerStore } from './keplerStore';
 import {
   captureMapConfig,
+  capturePlayingTimeFilter,
   closeMapPopover,
   loadDatasets,
   loadRasters,
@@ -33,6 +34,7 @@ import {
   refreshWms,
   refreshEsri,
   refreshZarr,
+  resumeTimeFilter,
   setBasemap,
   setSidePanel,
 } from './keplerAdapter';
@@ -217,6 +219,16 @@ export function KeplerMap({
 
   const captureLayerOrder = useLayerOrderGuard(store);
 
+  // A refresh that catches the time filter playing hands it back paused; the
+  // resume puts it back into play — see `resumeTimeFilter`. Held so that a
+  // rebuild or an unmount can call it off.
+  const timeFilterResume = useRef<(() => void) | null>(null);
+  const cancelTimeFilterResume = useCallback(() => {
+    timeFilterResume.current?.();
+    timeFilterResume.current = null;
+  }, []);
+  useEffect(() => cancelTimeFilterResume, [cancelTimeFilterResume]);
+
   // A saved split says which half draws which layer, and a refresh throws that
   // away whenever any layer is still waiting for its dataset — see
   // `splitMapsGuard.ts`. Armed on every load and refresh below.
@@ -276,6 +288,9 @@ export function KeplerMap({
     guardSplitMaps();
 
     if (action === 'rebuild') {
+      // A rebuild builds the map anew from its config, playing nothing; a
+      // refresh's resume still waiting for its filter does not carry over.
+      cancelTimeFilterResume();
       hasLoaded.current = true;
       appliedConfig.current = mapConfig;
       loadDatasets(store.dispatch, datasets, {}, mapConfig);
@@ -291,7 +306,17 @@ export function KeplerMap({
       // merges them back, and with two or more queries it can merge them back
       // reversed. The guard remembers the order and puts it back.
       captureLayerOrder();
+      // Before as well, for the same reason: kepler parks the time filter too,
+      // and it comes back paused.
+      const playing = capturePlayingTimeFilter(store, datasets);
       refreshDatasets(store, store.dispatch, datasets);
+      // Only when this refresh caught it playing. An answer landing while the
+      // filter is still parked from the previous one finds nothing playing,
+      // and must leave that one's resume running.
+      if (playing) {
+        cancelTimeFilterResume();
+        timeFilterResume.current = resumeTimeFilter(store, store.dispatch, playing);
+      }
       // Deliberately on the refresh path and never on rebuild. A rebuild frames
       // the viewport around the data and re-arms the viewport guard, so routing
       // a change of scene through it would move the map on every change of the
@@ -309,7 +334,19 @@ export function KeplerMap({
       // endpoint or renderer; changing the year moves a `visConfig` instead.
       refreshEsri(store, store.dispatch, esriLayers);
     }
-  }, [isReady, datasets, rasters, wms, zarrLayers, esriLayers, mapConfig, store, captureLayerOrder, guardSplitMaps]);
+  }, [
+    isReady,
+    datasets,
+    rasters,
+    wms,
+    zarrLayers,
+    esriLayers,
+    mapConfig,
+    store,
+    captureLayerOrder,
+    guardSplitMaps,
+    cancelTimeFilterResume,
+  ]);
 
   useViewportGuard({ store, isReady, mapConfig, arm: guardArm });
 
