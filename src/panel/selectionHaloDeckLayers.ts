@@ -3,7 +3,7 @@ import { GeoJsonLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { idToPolygonGeo } from '@kepler.gl/common-utils';
 import { parseGeoJsonRawFeature } from '@kepler.gl/layers';
 
-import type { HaloRing, HaloShape, HaloTargets } from './selectionHalo';
+import { RING_MIN_PX, type HaloRing, type HaloShape } from './selectionHalo';
 
 /** `#FFB300`, the amber that marks this plugin's own layers (`OWN_LAYER_TONES`). */
 export const HALO_COLOR: [number, number, number, number] = [255, 179, 0, 255];
@@ -24,6 +24,50 @@ export function haloShapeFeature(shape: HaloShape): object | null {
   return parseGeoJsonRawFeature(shape.value) ?? null;
 }
 
+interface Feature {
+  geometry?: { type: string; coordinates?: unknown } | null;
+}
+
+/**
+ * A polygon as the lines of its rings, everything else as it is.
+ *
+ * The outline layer is stroked and never filled, yet deck tessellates a polygon
+ * with earcut all the same. kepler converts its own hover highlight the same way
+ * (`featureToHoverOutline`, which `@kepler.gl/layers` does not export).
+ */
+function toOutline(feature: Feature): Feature {
+  const geometry = feature.geometry;
+  if (geometry?.type === 'Polygon') {
+    return { ...feature, geometry: { type: 'MultiLineString', coordinates: geometry.coordinates } };
+  }
+  if (geometry?.type === 'MultiPolygon') {
+    return {
+      ...feature,
+      geometry: { type: 'MultiLineString', coordinates: (geometry.coordinates as unknown[][]).flat() },
+    };
+  }
+  return feature;
+}
+
+/** The shapes as the features deck outlines; a shape that is not geometry is left out. */
+export function haloOutlines(shapes: readonly HaloShape[]): object[] {
+  return shapes.flatMap((shape) => {
+    const feature = haloShapeFeature(shape);
+    return feature ? [toOutline(feature)] : [];
+  });
+}
+
+/**
+ * What deck draws for one side of the map. Built only when the selection, the
+ * layers, the data, the filters or the split change — the rings also when the
+ * zoom does — so the arrays keep their identity across kepler's repaints and
+ * deck does not read them again.
+ */
+export interface HaloDeckData {
+  rings: readonly HaloRing[];
+  outlines: readonly object[];
+}
+
 /**
  * Off, so the halo always shows above extruded layers — but not on the globe.
  * There, kepler found its always-on-top labels showing through the planet when
@@ -39,17 +83,18 @@ function depthParameters(globe: boolean): Record<string, boolean> {
  *
  * Neither layer is pickable, so a click on a ringed point still reaches the
  * kepler layer under it — which is what kepler's popup and the click mappings
- * need.
+ * need. The layers are new on every call, which deck diffs prop by prop; the
+ * data is handed through as it came, so it stays the same data.
  */
-export function haloDeckLayers(targets: HaloTargets, side: number, { globe }: { globe: boolean }): Layer[] {
+export function haloDeckLayers(data: HaloDeckData, side: number, { globe }: { globe: boolean }): Layer[] {
   const layers: Layer[] = [];
   const parameters = depthParameters(globe);
 
-  if (targets.rings.length) {
+  if (data.rings.length) {
     layers.push(
       new ScatterplotLayer<HaloRing>({
         id: `${HALO_LAYER_PREFIX}-points-${side}`,
-        data: targets.rings,
+        data: data.rings,
         getPosition: (ring) => ring.position,
         getRadius: (ring) => ring.radiusPx,
         radiusUnits: 'pixels',
@@ -64,17 +109,21 @@ export function haloDeckLayers(targets: HaloTargets, side: number, { globe }: { 
     );
   }
 
-  const features = targets.shapes.map(haloShapeFeature).filter((feature): feature is object => feature !== null);
-  if (features.length) {
+  if (data.outlines.length) {
     layers.push(
       new GeoJsonLayer({
         id: `${HALO_LAYER_PREFIX}-outlines-${side}`,
-        data: features as never,
+        data: data.outlines as never,
         stroked: true,
         filled: false,
         lineWidthUnits: 'pixels',
         getLineWidth: HALO_LINE_PX,
         getLineColor: HALO_COLOR,
+        // A GeoJSON point gets a ring like a kepler point's, not deck's
+        // default one-metre dot.
+        pointType: 'circle',
+        pointRadiusUnits: 'pixels',
+        getPointRadius: RING_MIN_PX,
         pickable: false,
         parameters,
       }) as unknown as Layer

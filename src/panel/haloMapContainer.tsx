@@ -1,8 +1,8 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import { MapContainerFactory } from '@kepler.gl/components';
 
-import { selectionHalo, type Selection } from './selectionHalo';
-import { haloDeckLayers } from './selectionHaloDeckLayers';
+import { selectionHalo, type HaloRing, type Selection } from './selectionHalo';
+import { haloDeckLayers, haloOutlines } from './selectionHaloDeckLayers';
 import { haloInputFrom, type VisStateLike } from './selectionHaloInput';
 
 type Factory = typeof MapContainerFactory;
@@ -43,22 +43,49 @@ interface MapContainerProps {
   deckRenderCallbacks?: { onDeckRender?: OnDeckRender } & Record<string, unknown>;
 }
 
-/** kepler's `MapContainer`, drawing the selection halo on top of its layers. */
+const NO_RINGS: readonly HaloRing[] = [];
+const NO_OUTLINES: readonly object[] = [];
+
+/**
+ * kepler's `MapContainer`, drawing the selection halo on top of its layers.
+ *
+ * kepler renders the container again on every hover, every frame of a pan and
+ * every tick of an animation, each time with a new vis state object. The halo
+ * is worked out again only when what it is made of changes — the selection,
+ * the layers, the datasets, the filters, the split, this side; the rings also
+ * on a zoom, which sizes them — so deck is handed the same arrays and neither
+ * re-reads the rings nor re-parses the shapes on a repaint.
+ */
 export function withSelectionHalo<P extends MapContainerProps>(MapContainer: React.ComponentType<P>): React.FC<P> {
   const MapContainerWithHalo: React.FC<P> = (props) => {
-    const selection = useContext(HaloContext);
-    if (!selection || !Object.keys(selection).length || !props.visState) {
+    const context = useContext(HaloContext);
+    const selection = context && Object.keys(context).length && props.visState ? context : null;
+    const side = props.index ?? 0;
+    const zoom = props.mapState?.zoom ?? 0;
+
+    const { layers, datasets, filters, splitMaps } = props.visState ?? {};
+    const visState = useMemo<VisStateLike>(
+      () => ({ layers, datasets, filters, splitMaps }),
+      [layers, datasets, filters, splitMaps]
+    );
+    const outlines = useMemo(
+      () =>
+        selection
+          ? // The shapes do not depend on the zoom; only the rings' size does.
+            haloOutlines(selectionHalo(haloInputFrom({ visState, zoom: 0, index: side, selection })).shapes)
+          : NO_OUTLINES,
+      [selection, visState, side]
+    );
+    const rings = useMemo(
+      () => (selection ? selectionHalo(haloInputFrom({ visState, zoom, index: side, selection })).rings : NO_RINGS),
+      [selection, visState, side, zoom]
+    );
+
+    if (!selection) {
       return <MapContainer {...props} />;
     }
 
-    const side = props.index ?? 0;
-    const halo = haloDeckLayers(
-      selectionHalo(
-        haloInputFrom({ visState: props.visState, zoom: props.mapState?.zoom ?? 0, index: side, selection })
-      ),
-      side,
-      { globe: Boolean(props.mapState?.globe?.enabled) }
-    );
+    const halo = haloDeckLayers({ rings, outlines }, side, { globe: Boolean(props.mapState?.globe?.enabled) });
     const chained = props.deckRenderCallbacks?.onDeckRender;
     const deckRenderCallbacks = {
       ...props.deckRenderCallbacks,
