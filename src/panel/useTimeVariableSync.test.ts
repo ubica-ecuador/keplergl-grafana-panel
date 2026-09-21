@@ -78,6 +78,9 @@ const MAPPING = { from: 'mapFrom', to: 'mapTo' };
 /** About one animation frame. */
 const FRAME_MS = 16;
 
+/** A frame on a starved main thread: longer than the rest delay a drag waits for. */
+const SLOW_FRAME_MS = 400;
+
 /** What the datasource says as it starts answering, or once it has nothing left. */
 function announce(state: 'busy' | 'settled'): void {
   mockBus.publish(new DatasourceEvent({ state, at: performance.now(), pending: state === 'busy' ? 1 : 0 }));
@@ -130,9 +133,9 @@ function mount(interval: number, peerSync = false) {
 }
 
 /** Lets `ms` go by a frame at a time, moving the window one step each frame when `moving`. */
-async function frames(store: FakeStore, ms: number, moving: boolean): Promise<void> {
-  for (let elapsed = 0; elapsed < ms; elapsed += FRAME_MS) {
-    await jest.advanceTimersByTimeAsync(FRAME_MS);
+async function frames(store: FakeStore, ms: number, moving: boolean, frameMs = FRAME_MS): Promise<void> {
+  for (let elapsed = 0; elapsed < ms; elapsed += frameMs) {
+    await jest.advanceTimersByTimeAsync(frameMs);
     if (moving) {
       mockMap.window = { from: mockMap.window.from + 1000, to: mockMap.window.to + 1000 };
       store.touch();
@@ -212,6 +215,22 @@ describe('useTimeVariableSync, with publishing while playing on', () => {
         // Measured from the first change after a write, which comes up to a frame later.
         expect(gap).toBeGreaterThanOrEqual(DEFAULT_PUBLISH_INTERVAL_MS);
         expect(gap).toBeLessThanOrEqual(DEFAULT_PUBLISH_INTERVAL_MS + FRAME_MS);
+      }
+    });
+
+    // Measured under SwiftShader: 22 of 25 frame gaps over 300 ms, and 7 of 12
+    // writes closer than the interval, the closest 610 ms after the last.
+    it('keeps writes a full interval apart when frames come slower than the rest delay', async () => {
+      const store = await playing({ interval: DEFAULT_PUBLISH_INTERVAL_MS });
+      const start = performance.now();
+      await frames(store, 12_000, true, SLOW_FRAME_MS);
+
+      const gaps = gapsSince(start);
+      expect(gaps.length).toBeGreaterThanOrEqual(5);
+      for (const gap of gaps) {
+        expect(gap).toBeGreaterThanOrEqual(DEFAULT_PUBLISH_INTERVAL_MS);
+        // Measured from the first change after a write, which comes up to a frame later.
+        expect(gap).toBeLessThanOrEqual(DEFAULT_PUBLISH_INTERVAL_MS + SLOW_FRAME_MS);
       }
     });
 

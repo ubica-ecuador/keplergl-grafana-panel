@@ -124,6 +124,8 @@ export function useTimeVariableSync({
   const pendingPublish = useRef<{ window: TimeRangeMs | null; domain: TimeRangeMs | null } | null>(null);
   /** When the run of changes now waiting to be published began. */
   const pendingSince = useRef<number | null>(null);
+  /** When the window was last written, on the same clock as `pendingSince`. */
+  const lastPublishAt = useRef<number | null>(null);
   /** Holds a playback publish until the panels answering the previous one are done; see PublishGate. */
   const gate = useRef(new PublishGate());
   /** True while the pending publish waits on the gate rather than on the interval. */
@@ -185,6 +187,7 @@ export function useTimeVariableSync({
     } else {
       gate.current.reset();
     }
+    lastPublishAt.current = Date.now();
     locationService.partial(partial, true);
     lastKey.current = windowKey(pending.window ?? pending.domain);
   });
@@ -217,12 +220,20 @@ export function useTimeVariableSync({
     // keeps the default cap it has always had with this option on, so one that
     // never rests still writes every 1.5 s: a low interval would otherwise turn
     // its debounce into a throttle, one write per interval mid-drag.
+    const pacedPlayback = whilePlayingRef.current && clockRunning.current();
     const cap = !whilePlayingRef.current
       ? Number.POSITIVE_INFINITY
-      : clockRunning.current()
+      : pacedPlayback
         ? publishIntervalRef.current
         : DEFAULT_PUBLISH_INTERVAL_MS;
-    const delay = nextPublishDelay(now, pendingSince.current, PUBLISH_DELAY_MS, cap);
+    let delay = nextPublishDelay(now, pendingSince.current, PUBLISH_DELAY_MS, cap);
+    // The rest delay still fires whenever two frames are further apart than it,
+    // which a starved main thread makes the rule: measured under software GL,
+    // writes 610 ms apart at a 1500 ms interval. So while the clock runs, the
+    // interval is also measured from the last write, whatever the frames do.
+    if (pacedPlayback && lastPublishAt.current !== null) {
+      delay = Math.max(delay, publishIntervalRef.current - (now - lastPublishAt.current));
+    }
     publishTimer.current = setTimeout(() => publish.current(), delay);
   });
 
