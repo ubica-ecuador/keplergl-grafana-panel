@@ -139,6 +139,8 @@ export interface KeplerMapProps {
   timeVariables?: TimeVariableMapping;
   /** Whether playing the slider publishes as it runs, or only once it stops. */
   publishWhilePlaying: boolean;
+  /** The least time between two publishes while playing, in ms (defaulted and clamped). */
+  publishIntervalMs: number;
   /** Whether this map shares its clock with the other maps on the dashboard. */
   peerTimeSync: boolean;
 }
@@ -185,6 +187,7 @@ export function KeplerMap({
   viewportVariables,
   timeVariables,
   publishWhilePlaying,
+  publishIntervalMs,
   peerTimeSync,
 }: KeplerMapProps) {
   const store = useMemo(() => createKeplerStore(), []);
@@ -465,6 +468,7 @@ export function KeplerMap({
     enabled: timeSync === 'variables',
     mapping: timeVariables ?? NO_TIME_VARIABLES,
     whilePlaying: publishWhilePlaying,
+    publishIntervalMs,
     peerSync: peerTimeSync,
   });
 

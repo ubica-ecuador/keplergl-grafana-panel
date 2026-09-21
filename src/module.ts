@@ -11,6 +11,7 @@ import { AreaVariableEditor } from './editors/AreaVariableEditor';
 import { DEFAULT_CLICK_AREA_METRES } from './panel/clickArea';
 import { ViewportVariablesEditor } from './editors/ViewportVariablesEditor';
 import { DEFAULT_RASTER_SERVER_URL } from './panel/constants';
+import { DEFAULT_PUBLISH_INTERVAL_MS, MIN_PUBLISH_INTERVAL_MS } from './panel/timeVariableSync';
 
 export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelOptions((builder) =>
   builder
@@ -68,6 +69,16 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       category: ['Map'],
       defaultValue: false,
       showIf: (config) => config.timeSync === 'variables',
+    })
+    .addNumberInput({
+      path: 'publishIntervalMs',
+      name: 'Minimum interval while playing (ms)',
+      description:
+        'Least time between two updates of the variables during playback. With a datasource that reports when its panels have answered, an update also waits for them, so a low value never outruns the panels.',
+      category: ['Map'],
+      defaultValue: DEFAULT_PUBLISH_INTERVAL_MS,
+      settings: { min: MIN_PUBLISH_INTERVAL_MS, integer: true },
+      showIf: (config) => config.timeSync === 'variables' && Boolean(config.publishWhilePlaying),
     })
     .addBooleanSwitch({
       path: 'peerTimeSync',

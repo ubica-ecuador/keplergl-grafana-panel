@@ -4,6 +4,11 @@
 for it to be a change against — the entry below lists what the plugin **does**, not what changed to
 get it there. From 1.0.0 onwards, each release documents what changed since the one before it.
 
+## Unreleased
+
+- **Minimum interval while playing** (`publishIntervalMs`): the least time between two writes of
+  the time window during playback, 1500 ms by default as before, 250 ms and up.
+
 ## 1.0.0 (2026-09-05)
 
 Interactive kepler.gl maps inside Grafana dashboards, fed by any Grafana data source: points,

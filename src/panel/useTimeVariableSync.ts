@@ -34,9 +34,11 @@ interface Params {
    *
    * Off, a play is silent and the window reaches the dashboard once it stops —
    * the animation keeps every frame to itself. On, it publishes throughout, at
-   * most every `MAX_PUBLISH_WAIT_MS`.
+   * most every `publishIntervalMs`.
    */
   whilePlaying: boolean;
+  /** The least time between two publishes while playing, in ms. */
+  publishIntervalMs: number;
   /**
    * Whether this map follows the dashboard's shared clock.
    *
@@ -58,24 +60,6 @@ interface Params {
  * direct manipulation.
  */
 const PUBLISH_DELAY_MS = 300;
-
-/**
- * The longest a moving window may go unpublished, when publishing during
- * playback is turned on.
- *
- * Playback moves the filter about once a frame, so the delay above never
- * elapses and on its own would hold every update back until the animation
- * stopped. This cap makes the same timer fire mid-run, turning playback into a
- * dashboard that follows along instead of one that jumps at the end.
- *
- * The figure is a query budget, not a frame rate: each publish rewrites the URL
- * and re-runs every panel that reads the variables. Around a second and a half
- * reads as live while leaving a comfortable margin over the ~0.3 s an aggregate
- * over this data takes to come back. It does not buy smooth playback — the
- * propagation costs the animation frames either way, which is why the whole
- * behaviour is opt-in.
- */
-const MAX_PUBLISH_WAIT_MS = 1500;
 
 /**
  * Publishes the map's time window as a pair of dashboard variables, both ways.
@@ -100,18 +84,28 @@ const MAX_PUBLISH_WAIT_MS = 1500;
  * kepler's reducer; and read variables from the URL rather than the template
  * service, whose resolved values lag our own writes.
  */
-export function useTimeVariableSync({ store, isReady, enabled, mapping, whilePlaying, peerSync }: Params): void {
+export function useTimeVariableSync({
+  store,
+  isReady,
+  enabled,
+  mapping,
+  whilePlaying,
+  publishIntervalMs,
+  peerSync,
+}: Params): void {
   /** The window both sides last agreed on — the echo cutter. */
   const lastKey = useRef<string | undefined>(undefined);
 
   const mappingRef = useRef(mapping);
   const whilePlayingRef = useRef(whilePlaying);
   const peerSyncRef = useRef(peerSync);
+  const publishIntervalRef = useRef(publishIntervalMs);
   // Updated in an effect, not during render: reconcile only runs on a microtask.
   useEffect(() => {
     mappingRef.current = mapping;
     whilePlayingRef.current = whilePlaying;
     peerSyncRef.current = peerSync;
+    publishIntervalRef.current = publishIntervalMs;
   });
 
   /**
@@ -173,7 +167,7 @@ export function useTimeVariableSync({ store, isReady, enabled, mapping, whilePla
     // Rearming on every change is what collapses a drag into one write; the cap
     // is what stops playback from rearming it forever. Without the cap this is
     // the plain trailing debounce a drag has always had.
-    const cap = whilePlayingRef.current ? MAX_PUBLISH_WAIT_MS : Number.POSITIVE_INFINITY;
+    const cap = whilePlayingRef.current ? publishIntervalRef.current : Number.POSITIVE_INFINITY;
     const delay = nextPublishDelay(now, pendingSince.current, PUBLISH_DELAY_MS, cap);
     publishTimer.current = setTimeout(() => publish.current(), delay);
   });
