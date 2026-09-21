@@ -64,10 +64,24 @@ describe('haloInputFrom', () => {
     const input = haloInputFrom({ visState: visStateOf(store), zoom: 13, index: 0, selection: { site: ['site-02'] } });
 
     expect(input.layers).toEqual([
-      expect.objectContaining({ type: 'point', isVisible: true, radius: { base: 10, fixed: false } }),
+      expect.objectContaining({
+        type: 'point',
+        isVisible: true,
+        radius: { base: 10, fixed: false },
+        columnMode: 'points',
+      }),
     ]);
     expect(input.sideLayers).toBeNull();
     expect(selectionHalo(input).rings).toEqual([{ position: [-79.02, -2.895], radiusPx: 10 }]);
+  });
+
+  it("carries kepler's data revision, so an in-place update rescans", async () => {
+    const store = await crossFilterStore();
+    const input = haloInputFrom({ visState: visStateOf(store), zoom: 13, index: 0, selection: {} });
+    const dataset = input.datasets[input.layers[0].dataId];
+
+    expect(dataset.revision).toBe(0);
+    expect(dataset.numRows).toBe(15);
   });
 
   it('lets a row through a range filter — a GPU filter — only inside its window', async () => {
@@ -171,5 +185,14 @@ describe('haloInputFrom', () => {
     const right = haloInputFrom({ visState, zoom: 13, index: 1, selection: {} });
     expect(left.sideLayers).toEqual({ [left.layers[0].id]: true });
     expect(right.sideLayers).toEqual({});
+  });
+
+  it('reads a split side without a layer list as showing every layer, as kepler does', () => {
+    // kepler's getMapLayersFromSplitMaps hands `undefined` for such a side, and
+    // isLayerVisible reads that as all visible.
+    const visState = { layers: [], datasets: {}, filters: [], splitMaps: [{ layers: { points: true } }, {}] };
+
+    expect(haloInputFrom({ visState, zoom: 13, index: 0, selection: {} }).sideLayers).toEqual({ points: true });
+    expect(haloInputFrom({ visState, zoom: 13, index: 1, selection: {} }).sideLayers).toBeNull();
   });
 });

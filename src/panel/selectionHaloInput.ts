@@ -19,6 +19,7 @@ export interface VisStateLike {
       dataId: string | null;
       isVisible: boolean;
       columns?: Record<string, { fieldIdx?: number } | undefined>;
+      columnMode?: string;
       visConfig?: Record<string, unknown>;
       sizeField?: unknown;
     };
@@ -28,6 +29,8 @@ export interface VisStateLike {
     {
       fields: Array<{ name: string }>;
       dataContainer: { numRows: () => number; valueAt: (row: number, column: number) => unknown };
+      /** Bumped by kepler when rows change inside the same container. */
+      dataRevision?: number;
     }
   >;
   filters?: Array<{
@@ -49,7 +52,7 @@ const DEFAULT_POINT_RADIUS = 10;
 
 function haloLayers(visState: VisStateLike): HaloLayer[] {
   return (visState.layers ?? []).flatMap((layer) => {
-    const { dataId, isVisible, columns = {}, visConfig = {}, sizeField } = layer.config;
+    const { dataId, isVisible, columns = {}, columnMode, visConfig = {}, sizeField } = layer.config;
     if (!dataId || !layer.type) {
       return [];
     }
@@ -77,7 +80,7 @@ function haloLayers(visState: VisStateLike): HaloLayer[] {
           }
         : undefined;
 
-    return [{ id: layer.id, type: layer.type, isVisible, dataId, columns: roles, radius }];
+    return [{ id: layer.id, type: layer.type, isVisible, dataId, columns: roles, columnMode, radius }];
   });
 }
 
@@ -90,6 +93,7 @@ function haloDatasets(visState: VisStateLike): Record<string, HaloDataset> {
       numRows: container.numRows(),
       valueAt: (row, column) => container.valueAt(row, column),
       cacheKey: container,
+      revision: dataset.dataRevision,
     };
   }
   return datasets;
@@ -202,7 +206,9 @@ export function haloInputFrom({
     layers: haloLayers(visState),
     datasets: haloDatasets(visState),
     rowPasses: rowPassesFor(visState),
-    sideLayers: split ? (split[index]?.layers ?? {}) : null,
+    // kepler's getMapLayersFromSplitMaps: a side without a layer list shows
+    // every layer (isLayerVisible), the same as an unsplit map.
+    sideLayers: split?.[index]?.layers ?? null,
     zoom,
   };
 }

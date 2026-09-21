@@ -53,6 +53,14 @@ describe('haloShapeFeature', () => {
     expect(haloShapeFeature({ kind: 'geojson', value: 'not geometry' })).toBeNull();
     expect(haloShapeFeature({ kind: 'hexagon', value: 42 })).toBeNull();
   });
+
+  it('gives nothing for a string that is not an H3 index, as kepler draws nothing there', () => {
+    // h3-js returns a polygon near the pole for these instead of throwing;
+    // kepler skips any cell failing `h3IsValid`.
+    for (const value of ['site-02', '888f7699adfffffx', 'ffffffffffffffff', '']) {
+      expect(haloShapeFeature({ kind: 'hexagon', value })).toBeNull();
+    }
+  });
 });
 
 describe('haloOutlines', () => {

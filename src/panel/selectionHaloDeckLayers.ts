@@ -1,6 +1,6 @@
 import type { Layer } from '@deck.gl/core';
 import { GeoJsonLayer, ScatterplotLayer } from '@deck.gl/layers';
-import { idToPolygonGeo } from '@kepler.gl/common-utils';
+import { h3IsValid, idToPolygonGeo } from '@kepler.gl/common-utils';
 import { parseGeoJsonRawFeature } from '@kepler.gl/layers';
 
 import { RING_MIN_PX, type HaloRing, type HaloShape } from './selectionHalo';
@@ -15,11 +15,15 @@ export const HALO_LAYER_PREFIX = 'panel-selection-halo';
 /**
  * A shape as a GeoJSON feature, through the converters kepler's own "Select
  * Geometry" uses (`getSelectedFeature`): `idToPolygonGeo` for an H3 index and
- * `parseGeoJsonRawFeature` for a GeoJSON cell, object or string alike.
+ * `parseGeoJsonRawFeature` for a GeoJSON cell, object or string alike. An
+ * index that is not a valid H3 cell gets nothing, as kepler draws nothing for
+ * it: h3-js does not throw on one but returns a polygon near the pole.
  */
 export function haloShapeFeature(shape: HaloShape): object | null {
   if (shape.kind === 'hexagon') {
-    return typeof shape.value === 'string' ? (idToPolygonGeo({ id: shape.value }, { isClosed: true }) ?? null) : null;
+    return typeof shape.value === 'string' && h3IsValid(shape.value)
+      ? (idToPolygonGeo({ id: shape.value }, { isClosed: true }) ?? null)
+      : null;
   }
   return parseGeoJsonRawFeature(shape.value) ?? null;
 }

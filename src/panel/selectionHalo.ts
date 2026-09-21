@@ -22,10 +22,16 @@ export interface HaloDataset {
    * clock does not rescan while a new query result does.
    */
   cacheKey: object;
+  /**
+   * kepler's `dataRevision`: alpha.12's `update`, `appendRows` and `upsertRows`
+   * change rows inside the same container and bump it, so it is part of what
+   * makes a scan current.
+   */
+  revision?: unknown;
 }
 
 /** The last scan of each data container: one selection at a time is enough. */
-const scans = new WeakMap<object, { key: string; rows: readonly number[] }>();
+const scans = new WeakMap<object, { key: string; numRows: number; revision: unknown; rows: readonly number[] }>();
 
 /**
  * The rows whose value in any selected column is one of that column's values.
@@ -50,7 +56,7 @@ export function selectedRows(dataset: HaloDataset, selection: Selection): readon
 
   const key = JSON.stringify(columns.map(([index, values]) => [index, [...values].sort()]).sort());
   const last = scans.get(dataset.cacheKey);
-  if (last?.key === key) {
+  if (last?.key === key && last.numRows === dataset.numRows && last.revision === dataset.revision) {
     return last.rows;
   }
 
@@ -64,7 +70,7 @@ export function selectedRows(dataset: HaloDataset, selection: Selection): readon
       }
     }
   }
-  scans.set(dataset.cacheKey, { key, rows });
+  scans.set(dataset.cacheKey, { key, numRows: dataset.numRows, revision: dataset.revision, rows });
   return rows;
 }
 
@@ -90,6 +96,11 @@ export interface HaloLayer {
   dataId: string;
   /** kepler's column roles → field index; a role the layer does not use is absent. */
   columns: Readonly<Partial<Record<'lat' | 'lng' | 'geojson' | 'hex_id', number>>>;
+  /**
+   * kepler's `config.columnMode`. A layer switched to another mode keeps the old
+   * mode's column roles, so the roles alone do not say what it draws.
+   */
+  columnMode?: string;
   /** Point layers only. */
   radius?: PointRadius;
 }
@@ -160,14 +171,19 @@ function coordinate(value: unknown): number {
   return isEmptyCell(value) ? NaN : Number(value);
 }
 
-/** How a layer's rows are marked, or null for a type the halo leaves alone. */
+/**
+ * How a layer's rows are marked, or null for a type the halo leaves alone: a
+ * point layer only while it reads lat/lng columns (`points` mode), a GeoJSON
+ * layer only while it reads a geometry column (`geojson` mode).
+ */
 function haloKind(layer: HaloLayer): 'ring' | 'geojson' | 'hexagon' | null {
   const has = (role: 'lat' | 'lng' | 'geojson' | 'hex_id') => (layer.columns[role] ?? -1) >= 0;
+  const inMode = (mode: string) => layer.columnMode === undefined || layer.columnMode === mode;
   switch (layer.type) {
     case 'point':
-      return has('lat') && has('lng') ? 'ring' : null;
+      return inMode('points') && has('lat') && has('lng') ? 'ring' : null;
     case 'geojson':
-      return has('geojson') ? 'geojson' : null;
+      return inMode('geojson') && has('geojson') ? 'geojson' : null;
     case 'hexagonId':
       return has('hex_id') ? 'hexagon' : null;
     default:

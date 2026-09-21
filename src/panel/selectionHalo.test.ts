@@ -97,6 +97,30 @@ describe('selectedRows cache', () => {
     expect(selectedRows(refreshed, { site: ['site-02'] })).toEqual([0]);
     expect(refreshed.valueAt).toHaveBeenCalled();
   });
+
+  // kepler alpha.12's `update`, `appendRows` and `upsertRows` change rows in
+  // place: the data container stays the same object, `dataRevision` moves.
+  it('scans again when the same container is updated in place', () => {
+    const rows: unknown[][] = [
+      ['site-01', 10],
+      ['site-02', 13],
+    ];
+    const container = {};
+    const before = datasetOf(['site', 'value'], rows, container);
+    expect(selectedRows({ ...before, revision: 0 }, { site: ['site-03'] })).toEqual([]);
+
+    rows[1] = ['site-03', 16];
+    expect(selectedRows({ ...before, revision: 1 }, { site: ['site-03'] })).toEqual([1]);
+  });
+
+  it('scans again when the same container gains rows', () => {
+    const rows: unknown[][] = [['site-01', 10]];
+    const container = {};
+    expect(selectedRows(datasetOf(['site', 'value'], rows, container), { site: ['site-02'] })).toEqual([]);
+
+    rows.push(['site-02', 13]);
+    expect(selectedRows(datasetOf(['site', 'value'], rows, container), { site: ['site-02'] })).toEqual([1]);
+  });
 });
 
 describe('pointRadiusPx', () => {
@@ -295,6 +319,45 @@ describe('selectionHalo', () => {
         []
       );
     }
+  });
+
+  it('rings a point layer only while it reads points from lat/lng columns', () => {
+    // A layer switched to another column mode keeps its old lat/lng fieldIdx.
+    expect(selectionHalo(inputOf({ layers: [pointsLayer({ columnMode: 'geojson' })] })).rings).toEqual([]);
+    expect(selectionHalo(inputOf({ layers: [pointsLayer({ columnMode: 'geoarrow' })] })).rings).toEqual([]);
+    expect(selectionHalo(inputOf({ layers: [pointsLayer({ columnMode: 'points' })] })).rings).toHaveLength(1);
+    expect(selectionHalo(inputOf({ layers: [pointsLayer({ columnMode: undefined })] })).rings).toHaveLength(1);
+  });
+
+  it('outlines a GeoJSON layer only while it reads a geometry column', () => {
+    const polygon = {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [0, 0],
+        ],
+      ],
+    };
+    const zones = datasetOf(['_geojson', 'name'], [[polygon, 'north']]);
+    const zonesLayer = (columnMode?: string): HaloLayer => ({
+      id: 'zones',
+      type: 'geojson',
+      isVisible: true,
+      dataId: 'Z',
+      columns: { geojson: 0 },
+      columnMode,
+    });
+    const shapesWith = (columnMode?: string) =>
+      selectionHalo(
+        inputOf({ selection: { name: ['north'] }, layers: [zonesLayer(columnMode)], datasets: { Z: zones } })
+      ).shapes;
+
+    expect(shapesWith('table')).toEqual([]);
+    expect(shapesWith('geojson')).toHaveLength(1);
+    expect(shapesWith(undefined)).toHaveLength(1);
   });
 
   it("marks nothing when a layer's dataset is missing", () => {
