@@ -74,7 +74,7 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       path: 'publishIntervalMs',
       name: 'Minimum interval while playing (ms)',
       description:
-        'Least time between two updates of the variables during playback. With a datasource that reports when its panels have answered, an update also waits for them, so a low value never outruns the panels.',
+        'Least time between two updates of the variables during playback. With a datasource that reports when its panels have answered, each update also waits for those panels, for up to five seconds.',
       category: ['Map'],
       defaultValue: DEFAULT_PUBLISH_INTERVAL_MS,
       settings: { min: MIN_PUBLISH_INTERVAL_MS, integer: true },
