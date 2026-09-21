@@ -154,6 +154,9 @@ export function useTimeVariableSync({
     // While playing, a step also waits for the panels answering the previous
     // one, when a datasource on the page says when they are done. Only the
     // newest window is kept meanwhile; schedulePublish leaves the timer alone.
+    // Look again at least every rest delay, not only when the gate would
+    // open: a peer's stop is heard by nobody here, so this timer is what
+    // notices the clock has stopped and lets the final window leave.
     const playing = clockRunning.current();
     if (playing) {
       const wait = gate.current.waitMs(performance.now());
@@ -161,7 +164,7 @@ export function useTimeVariableSync({
         pendingPublish.current = pending;
         pendingSince.current = since;
         heldByGate.current = true;
-        publishTimer.current = setTimeout(() => publish.current(), wait);
+        publishTimer.current = setTimeout(() => publish.current(), Math.min(wait, PUBLISH_DELAY_MS));
         return;
       }
     }
@@ -188,9 +191,11 @@ export function useTimeVariableSync({
     pendingPublish.current = { window, domain };
     // Held by the gate, and still playing: keep only the newest window. The
     // gate's own timer, or the datasource settling, publishes it. Once the
-    // clock has stopped — a local stop, a peer's, or a hand taking over — the
-    // hold no longer applies, so the held step falls through to the ordinary
-    // debounce/interval path below and the final window leaves as it always did.
+    // clock has stopped the hold no longer applies, so the held step falls
+    // through to the ordinary debounce below and the final window leaves as it
+    // always did. That covers a local stop and a hand taking over, which both
+    // reach this store. A peer's stop does not: publish() catches that one when
+    // its timer looks again.
     if (heldByGate.current && clockRunning.current()) {
       return;
     }

@@ -176,7 +176,7 @@ async function holdOnBusy(store: FakeStore): Promise<number> {
  * fake clock: frames of 16 ms, each moving the window a step, and a datasource
  * that is either absent or announces itself on a real event bus. What it pins
  * is the pace at the default and the minimum with no datasource, the hold on a
- * busy one, the final window after a local stop, and a drag's debounce.
+ * busy one, the final window after a stop, and a drag's debounce.
  */
 describe('useTimeVariableSync, with publishing while playing on', () => {
   beforeEach(() => {
@@ -247,6 +247,20 @@ describe('useTimeVariableSync, with publishing while playing on', () => {
       // kepler's pause: the filter stops animating and the window stays put.
       mockMap.animating = false;
       store.touch();
+      const stoppedAt = performance.now();
+      await frames(store, 300, false);
+
+      expect(mockWrites).toHaveLength(held + 1);
+      expect(mockWrites[held].from).toBe(mockMap.window.from);
+      expect(mockWrites[held].at - stoppedAt).toBeLessThanOrEqual(300);
+    });
+
+    it("writes the final window within the rest delay of a peer's stop while held", async () => {
+      const store = await playing({ interval: 250, peer: true });
+      const held = await holdOnBusy(store);
+
+      // The peer's stop reaches the channel only: this store hears nothing.
+      mockPeers.playing = false;
       const stoppedAt = performance.now();
       await frames(store, 300, false);
 
