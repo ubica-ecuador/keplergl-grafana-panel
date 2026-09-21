@@ -38,8 +38,11 @@ interface HaloReading {
   outlines: number;
 }
 
-/** The halo layers deck was last handed, rings projected to page pixels. */
-async function readHalo(map: Locator): Promise<HaloReading> {
+/**
+ * The halo layers deck was last handed, rings projected to page pixels; null
+ * when no deck was found, so an empty halo is never read off a missing map.
+ */
+async function readHalo(map: Locator): Promise<HaloReading | null> {
   return map.evaluate((node: Element) => {
     const key = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
     let fiber = key ? (node as any)[key] : null;
@@ -49,7 +52,7 @@ async function readHalo(map: Locator): Promise<HaloReading> {
       fiber = fiber.return;
     }
     if (!deck) {
-      return { rings: [], outlines: -1 };
+      return null;
     }
     const layers: any[] = deck.props.layers ?? [];
     const rect = deck.canvas.getBoundingClientRect();
@@ -64,6 +67,58 @@ async function readHalo(map: Locator): Promise<HaloReading> {
       outlines: outlines ? outlines.props.data.length : 0,
     };
   });
+}
+
+/**
+ * How many rings and outlines deck holds, or 'no deck'. Every count assertion
+ * goes through this, so "no ring" can only pass on a deck that was found.
+ */
+async function haloCounts(map: Locator): Promise<{ rings: number; outlines: number } | 'no deck'> {
+  const halo = await readHalo(map);
+  return halo ? { rings: halo.rings.length, outlines: halo.outlines } : 'no deck';
+}
+
+/**
+ * Clicks a map point until `registered` says the click landed, trying up to
+ * three times. Under software rendering deck can drop a click without a trace;
+ * this only absorbs that — the proof stays what `registered` checks.
+ */
+async function clickUntil(
+  page: Page,
+  point: { x: number; y: number },
+  registered: () => Promise<boolean>,
+  what: string
+): Promise<void> {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await page.mouse.click(point.x, point.y);
+    await settle(page);
+    const deadline = Date.now() + 5_000;
+    while (Date.now() < deadline) {
+      if (await registered()) {
+        return;
+      }
+      await page.waitForTimeout(250);
+    }
+  }
+  expect(await registered(), `three clicks, and still not ${what}`).toBe(true);
+}
+
+/** Clicks a map point until its click mapping moves `$variable` to `value` in the URL. */
+async function clickUntilPublished(
+  page: Page,
+  point: { x: number; y: number },
+  variable: string,
+  value: string
+): Promise<void> {
+  expect(urlVariable(page, variable), `$${variable} already holds ${value}: no change to prove the click`).not.toBe(
+    value
+  );
+  await clickUntil(
+    page,
+    point,
+    async () => urlVariable(page, variable) === value,
+    `${value} published to $${variable}`
+  );
 }
 
 /** The kepler layer type the last click resolved to, or 'null'/'undefined'. */
@@ -116,26 +171,27 @@ test('a shared link shows its selection ringed, with no click at all', async ({
 
   const target = (await projectRows(map)).find((row) => String(row.values.site) === 'site-07');
   expect(target, 'site-07 must be clickable on the map').toBeDefined();
-  await expect.poll(async () => (await readHalo(map)).rings.length, { timeout: 10_000 }).toBe(1);
-  const [ring] = (await readHalo(map)).rings;
-  expect(near(ring, target!)).toBe(true);
+  await expect.poll(() => haloCounts(map), { timeout: 10_000 }).toEqual({ rings: 1, outlines: 0 });
+  const halo = await readHalo(map);
+  expect(halo, 'the map must have a deck').not.toBeNull();
+  expect(near(halo!.rings[0], target!)).toBe(true);
 });
 
 test('clicking another entity moves the ring to it', async ({ gotoDashboardPage, readProvisionedDashboard, page }) => {
   test.slow();
   const { map } = await openPanel(gotoDashboardPage, readProvisionedDashboard, page, 'Halo — points');
   const rows = await projectRows(map);
+  expect(rows[0], 'a first row must be clickable on the map').toBeDefined();
+  expect(rows[1], 'a second row must be clickable on the map').toBeDefined();
 
   for (const target of [rows[0], rows[1]]) {
-    await page.mouse.click(target.x, target.y);
-    await settle(page);
     // The click published: proof it registered, before the claim about the ring.
-    await expect.poll(() => urlVariable(page, 'site'), { timeout: 10_000 }).toBe(String(target.values.site));
+    await clickUntilPublished(page, target, 'site', String(target.values.site));
     await expect
       .poll(
         async () => {
-          const { rings } = await readHalo(map);
-          return rings.length === 1 && near(rings[0], target);
+          const halo = await readHalo(map);
+          return halo !== null && halo.rings.length === 1 && near(halo.rings[0], target);
         },
         { timeout: 10_000 }
       )
@@ -154,12 +210,12 @@ test('a click on the ringed point still reaches the kepler layer under it', asyn
   });
   const target = (await projectRows(map)).find((row) => String(row.values.site) === 'site-07');
   expect(target, 'site-07 must be clickable on the map').toBeDefined();
-  await expect.poll(async () => (await readHalo(map)).rings.length, { timeout: 10_000 }).toBe(1);
+  await expect.poll(() => haloCounts(map), { timeout: 10_000 }).toEqual({ rings: 1, outlines: 0 });
 
-  await page.mouse.click(target!.x, target!.y);
-  await settle(page);
-
-  await expect.poll(() => clickedLayerType(map), { timeout: 10_000 }).toBe('point');
+  // The link already selects site-07, so the URL cannot move: the proof here is
+  // kepler's own pick, which is also the claim — the ring did not take it.
+  expect(await clickedLayerType(map), 'nothing picked before the click').not.toBe('point');
+  await clickUntil(page, target!, async () => (await clickedLayerType(map)) === 'point', 'picked by the point layer');
 });
 
 test('hiding the layer hides its ring', async ({ gotoDashboardPage, readProvisionedDashboard, page }) => {
@@ -167,11 +223,11 @@ test('hiding the layer hides its ring', async ({ gotoDashboardPage, readProvisio
   const { panel, map } = await openPanel(gotoDashboardPage, readProvisionedDashboard, page, 'Halo — points', {
     'var-site': 'site-07',
   });
-  await expect.poll(async () => (await readHalo(map)).rings.length, { timeout: 10_000 }).toBe(1);
+  await expect.poll(() => haloCounts(map), { timeout: 10_000 }).toEqual({ rings: 1, outlines: 0 });
 
   await panel.locator('.layer__visibility-toggle').first().click();
 
-  await expect.poll(async () => (await readHalo(map)).rings.length, { timeout: 10_000 }).toBe(0);
+  await expect.poll(() => haloCounts(map), { timeout: 10_000 }).toEqual({ rings: 0, outlines: 0 });
 });
 
 test('a range filter that leaves the row out leaves no ring, and one that keeps it does', async ({
@@ -194,7 +250,7 @@ test('a range filter that leaves the row out leaves no ring, and one that keeps 
     await expect
       .poll(async () => (await readKepler(map)).filters.some((filter) => filter.type === 'range'), { timeout: 10_000 })
       .toBe(true);
-    await expect.poll(async () => (await readHalo(map)).rings.length, { timeout: 10_000 }).toBe(rings);
+    await expect.poll(() => haloCounts(map), { timeout: 10_000 }).toEqual({ rings, outlines: 0 });
   }
 });
 
@@ -211,7 +267,6 @@ test('a selected polygon and a selected hexagon are outlined, not ringed', async
     const { map } = await openPanel(gotoDashboardPage, readProvisionedDashboard, page, title, {
       [variable]: firstValue(title, column),
     });
-    await expect.poll(async () => (await readHalo(map)).outlines, { timeout: 10_000 }).toBe(1);
-    expect((await readHalo(map)).rings).toEqual([]);
+    await expect.poll(() => haloCounts(map), { timeout: 10_000 }).toEqual({ rings: 0, outlines: 1 });
   }
 });
