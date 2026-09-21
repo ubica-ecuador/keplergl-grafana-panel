@@ -97,6 +97,80 @@ export function decideClickPublish({
 }
 
 /**
+ * Whether the mapped variables already hold this entity's values.
+ *
+ * What the popup's button reads to know whether it offers "Select" or "Clear
+ * selection": the entity showing in a pinned popup either is the dashboard's
+ * current selection or it is not, and only the variables can say so — the
+ * panel deliberately keeps no memory of *which* entity it published, because a
+ * refresh resets kepler's click state and a shared link can arrive with the
+ * variable already set by someone else.
+ *
+ * Only the columns the entity resolves count, and at least one must: clicking
+ * a point of some other layer, whose columns none of these mappings name, is
+ * not "the current selection" however empty the variables are. Values are
+ * compared the way the publish rules compare them, so the 80 in the row and
+ * the "80" in the URL are one selection.
+ */
+export function isCurrentSelection({
+  selection,
+  mappings,
+  variableValues,
+}: {
+  selection: ClickSelection;
+  /** The click mappings only — see `partitionMappings`. */
+  mappings: VariableMapping[];
+  /** variable name → the value it currently holds (from the URL). */
+  variableValues: Record<string, unknown>;
+}): boolean {
+  if (!selection) {
+    return false;
+  }
+
+  let resolved = false;
+  for (const { field, variable } of mappings) {
+    const value = selection[field];
+    if (value === undefined || value === null) {
+      continue;
+    }
+    resolved = true;
+    if (normalizeFilterKey(String(value)) !== normalizeFilterKey(variableValues[variable])) {
+      return false;
+    }
+  }
+  return resolved;
+}
+
+/**
+ * What to write when the user asks, in so many words, to clear the selection.
+ *
+ * The same clear the empty-map click performs, minus the guard that protects a
+ * shared link's preset value: that guard is there because a click on bare map
+ * is so easy to make by accident, and pressing a button inside the popup of
+ * the entity that is showing is not an accident. `keepOnDeselect` still holds
+ * — its whole point is a variable every query needs, which no deselect of any
+ * kind may empty.
+ */
+export function decideSelectionClear({
+  mappings,
+  variableValues,
+}: {
+  /** The click mappings only — see `partitionMappings`. */
+  mappings: VariableMapping[];
+  /** variable name → the value it currently holds (from the URL). */
+  variableValues: Record<string, unknown>;
+}): ClickDecision {
+  const noValue = normalizeFilterKey(null);
+  const writes: Record<string, string> = {};
+  for (const { variable, keepOnDeselect } of mappings) {
+    if (!keepOnDeselect && normalizeFilterKey(variableValues[variable]) !== noValue) {
+      writes[variable] = '';
+    }
+  }
+  return { writes, published: false };
+}
+
+/**
  * The value at `fieldIdx` of whatever row shape a kepler layer's
  * `getHoverData` returned: a `DataRow` (point, geojson and trip-geojson
  * layers) read through `valueAt`, or the plain value array a trip layer in

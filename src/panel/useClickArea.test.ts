@@ -88,8 +88,10 @@ function dispatched(store: FakeStore) {
 const click = (index: number) => ({ picked: true, index, object: null, layer: { props: { idx: 0 } } });
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-function mount(store: FakeStore, enabled = true) {
-  return renderHook(() => useClickArea({ store: store as unknown as Store, isReady: true, enabled, sideMetres: 6000 }));
+function mount(store: FakeStore, enabled = true, confirm = false) {
+  return renderHook(() =>
+    useClickArea({ store: store as unknown as Store, isReady: true, enabled, sideMetres: 6000, confirm })
+  );
 }
 
 let warn: jest.SpyInstance;
@@ -113,6 +115,45 @@ it('places a 6 km square around a clicked fire, through the editor', async () =>
   expect(feature.properties).toEqual({ isClosed: true });
   expect(feature.id).toMatch(/^click-/);
   expect(warn).not.toHaveBeenCalled();
+});
+
+it('places no square on a click when the panel confirms from the popup', async () => {
+  const store = makeStore({ clicked: undefined });
+  mount(store, true, true);
+
+  store.set({ clicked: click(0) });
+  await flush();
+
+  expect(store.dispatch).not.toHaveBeenCalled();
+  expect(warn).not.toHaveBeenCalled();
+});
+
+it('places the square when the popup asks it to', async () => {
+  const store = makeStore({ clicked: undefined });
+  const { result } = mount(store, true, true);
+
+  store.set({ clicked: click(0) });
+  await flush();
+  result.current.select();
+
+  const actions = dispatched(store);
+  expect(actions).toHaveLength(1);
+  expect(actions[0].type).toBe('@@kepler.gl/SET_FEATURES');
+  const [feature] = actions[0].features as Array<{ geometry: unknown }>;
+  expect(feature.geometry).toEqual(squareAround({ lng: -122.95, lat: 39.25 }, 6000));
+});
+
+it('places no square from the popup on a panel that does not set the area by clicking', async () => {
+  // The popup's Select calls this hook on every confirm-mode panel, including
+  // the many whose click only publishes variables.
+  const store = makeStore({ clicked: undefined });
+  const { result } = mount(store, false, true);
+
+  store.set({ clicked: click(0) });
+  await flush();
+  result.current.select();
+
+  expect(store.dispatch).not.toHaveBeenCalled();
 });
 
 it('changes nothing for a click on empty map', async () => {

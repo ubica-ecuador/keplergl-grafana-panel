@@ -22,6 +22,7 @@ import { configureKepler } from './keplerConfig';
 import { createKeplerStore } from './keplerStore';
 import {
   captureMapConfig,
+  closeMapPopover,
   loadDatasets,
   loadRasters,
   loadWms,
@@ -42,6 +43,7 @@ import { useFlowFieldContext } from './useFlowFieldContext';
 import { usePeerTimeSync } from './usePeerTimeSync';
 import { useVariableSync } from './useVariableSync';
 import { useClickSync } from './useClickSync';
+import { offersSelection, selectApi, SelectContext } from './selectPopover';
 import { useCoordinateSync } from './useCoordinateSync';
 import { useCenterSync } from './useCenterSync';
 import { useRasterTimeline } from './useRasterTimeline';
@@ -130,6 +132,8 @@ export interface KeplerMapProps {
   clickArea: boolean;
   /** Side of that square, in metres. */
   clickAreaSizeMetres: number;
+  /** Whether a click only shows the entity, leaving the selecting to the popup. */
+  clickConfirm: boolean;
   viewportVariables?: ViewportVariables;
   /** The two variables the time slider's window is published to, if configured. */
   timeVariables?: TimeVariableMapping;
@@ -177,6 +181,7 @@ export function KeplerMap({
   areaVariable,
   clickArea,
   clickAreaSizeMetres,
+  clickConfirm,
   viewportVariables,
   timeVariables,
   publishWhilePlaying,
@@ -387,8 +392,14 @@ export function KeplerMap({
 
   // One-way: publishes the clicked entity's mapped columns, and clears only
   // what it published itself, so a shared link's variable survives stray
-  // clicks on the map background.
-  useClickSync({ store, isReady, mappings: variableMappings });
+  // clicks on the map background. In confirm mode it publishes nothing on its
+  // own and hands the panel the two actions the popup's button calls.
+  const clickVariables = useClickSync({
+    store,
+    isReady,
+    mappings: variableMappings,
+    confirm: clickConfirm,
+  });
 
   // One-way: publishes the clicked map coordinate as a lat/lng variable pair,
   // keeping the last pin through kepler's unpin toggle and data refreshes.
@@ -419,7 +430,28 @@ export function KeplerMap({
   // The other way to set that area: click an entity. Writes no variable of its
   // own — the square becomes a drawn figure and the sync above publishes it.
   // Off without an area variable, since nothing would ever read the square.
-  useClickArea({ store, isReady, enabled: clickArea && Boolean(areaVariable), sideMetres: clickAreaSizeMetres });
+  const clicksArea = clickArea && Boolean(areaVariable);
+  const clickSquare = useClickArea({
+    store,
+    isReady,
+    enabled: clicksArea,
+    sideMetres: clickAreaSizeMetres,
+    confirm: clickConfirm,
+  });
+
+  // The popup's button, the one writer left once the map goes read-only. Its
+  // identity has to hold still: it travels down a context to a component
+  // kepler re-renders on every pointer move.
+  const selection = useMemo(
+    () =>
+      selectApi({
+        armed: offersSelection({ confirm: clickConfirm, mappings: variableMappings, clickArea: clicksArea }),
+        variables: clickVariables,
+        area: clickSquare,
+        close: () => closeMapPopover(store.dispatch),
+      }),
+    [clickConfirm, variableMappings, clicksArea, clickVariables, clickSquare, store]
+  );
 
   // One-way: publishes the bbox of what the map shows once it comes to rest,
   // and once on load so a consuming panel never opens without one.
@@ -441,29 +473,33 @@ export function KeplerMap({
       {styleTarget && (
         <StyleSheetManager target={styleTarget}>
           <Provider store={store}>
-            <KeplerGl
-              id={KEPLER_INSTANCE_ID}
-              width={width}
-              height={height}
-              /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
-                 required by the type but unused unless a Mapbox style is picked. */
-              mapboxApiAccessToken=""
-              /* `appName` is deliberately left at kepler's own default: the
-                 side panel names the library the map comes from, and calling
-                 it "Grafana" claimed credit for someone else's work. */
-              theme={theme}
-              /* kepler ships translations for its own layer types only, so the
-                 four this plugin adds showed as `Layer.Type.Esriimage` and the
-                 like wherever a layer is named. */
-              localeMessages={localeMessages}
-              mapStyles={mapStyles}
-              /* Drops kepler's own list, which is half Mapbox styles that
-                 cannot load without an account — see REPLACES_DEFAULT_MAP_STYLES. */
-              mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
-              /* kepler renders one commit late and silently discards actions
-                 addressed to an instance that has not registered yet. */
-              onKeplerGlInitialized={() => setIsReady(true)}
-            />
+            {/* Reaches the popup kepler renders through a floating portal:
+                the portal moves the DOM node, not the element tree. */}
+            <SelectContext.Provider value={selection}>
+              <KeplerGl
+                id={KEPLER_INSTANCE_ID}
+                width={width}
+                height={height}
+                /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
+                   required by the type but unused unless a Mapbox style is picked. */
+                mapboxApiAccessToken=""
+                /* `appName` is deliberately left at kepler's own default: the
+                   side panel names the library the map comes from, and calling
+                   it "Grafana" claimed credit for someone else's work. */
+                theme={theme}
+                /* kepler ships translations for its own layer types only, so the
+                   four this plugin adds showed as `Layer.Type.Esriimage` and the
+                   like wherever a layer is named. */
+                localeMessages={localeMessages}
+                mapStyles={mapStyles}
+                /* Drops kepler's own list, which is half Mapbox styles that
+                   cannot load without an account — see REPLACES_DEFAULT_MAP_STYLES. */
+                mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
+                /* kepler renders one commit late and silently discards actions
+                   addressed to an instance that has not registered yet. */
+                onKeplerGlInitialized={() => setIsReady(true)}
+              />
+            </SelectContext.Provider>
           </Provider>
         </StyleSheetManager>
       )}

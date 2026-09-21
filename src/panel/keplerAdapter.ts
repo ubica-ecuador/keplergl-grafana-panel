@@ -9,6 +9,7 @@ import {
   layerTypeChange,
   layerVisConfigChange,
   mapStyleChange,
+  onLayerClick,
   removeDataset,
   removeFilter,
   removeLayer,
@@ -1598,6 +1599,18 @@ export function replaceFiguresWithSquare(dispatch: Dispatch, square: PolygonGeom
 }
 
 /** Removes one figure the way kepler's delete tool does. */
+/**
+ * Closes the map's pinned popup, exactly as its own close button does.
+ *
+ * kepler's `_onCloseMapPopover` is `onLayerClick(null)`: the popup exists for
+ * as long as there is a clicked entity, and clearing that is what dismisses
+ * it. The panel needs this because the Select button lives in the popup's
+ * *content*, which kepler hands no `onClose` — see `selectPopover.tsx`.
+ */
+export function closeMapPopover(dispatch: Dispatch): void {
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, onLayerClick(null)));
+}
+
 export function removeFigure(dispatch: Dispatch, figure: Figure): void {
   const feature = { id: figure.id, properties: figure.filterId ? { filterId: figure.filterId } : {} };
   dispatch(wrapTo(KEPLER_INSTANCE_ID, deleteFeature(feature as unknown as Parameters<typeof deleteFeature>[0])));

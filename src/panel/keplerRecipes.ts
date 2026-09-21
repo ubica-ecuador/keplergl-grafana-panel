@@ -3,6 +3,7 @@ import { replaceMapControl } from './effectsMapControl';
 import { replaceLayerConfigurator } from './flowFieldConfigurator';
 import { replaceLayerPanelHeader } from './layerPanelHeader';
 import { replaceRangeBrush } from './rangeBrushFix';
+import { replaceMapPopoverContent } from './selectPopover';
 
 /**
  * The component replacements the panel hands `injectComponents`, in the order
@@ -39,5 +40,6 @@ export function keplerRecipes(): Array<[unknown, unknown]> {
     replaceLayerConfigurator(),
     replaceLayerPanelHeader(),
     replaceRangeBrush(),
+    replaceMapPopoverContent(),
   ] as Array<[unknown, unknown]>;
 }

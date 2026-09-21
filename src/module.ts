@@ -231,6 +231,17 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       settings: { min: 1, integer: true },
       showIf: (config) => Boolean(config.areaVariable) && Boolean(config.clickArea),
     })
+    .addBooleanSwitch({
+      path: 'clickConfirm',
+      name: 'Select from the popup',
+      description:
+        'A click only shows the entity’s details; the popup’s Select button is what publishes, and Clear is what empties. For a map whose selection changes a tab or reloads data, so looking costs nothing.',
+      category: ['Cross-filtering'],
+      defaultValue: false,
+      showIf: (config) =>
+        (config.variableMappings ?? []).some((mapping) => mapping.source === 'click') ||
+        (Boolean(config.areaVariable) && Boolean(config.clickArea)),
+    })
     .addCustomEditor({
       id: 'viewportVariables',
       path: 'viewportVariables',
