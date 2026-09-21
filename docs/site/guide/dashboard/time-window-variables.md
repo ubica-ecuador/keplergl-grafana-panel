@@ -83,6 +83,11 @@ at the least. Lower means the numbers follow the map more closely, and more quer
 what the panels reading the window take to answer, or each write cancels the answers to the one
 before.
 
+With a datasource that reports when its panels have answered (the DuckDB-WASM datasource does), each
+write also waits for the panels answering the previous one, for up to five seconds. A low interval
+then never outruns them: the pace becomes whichever is slower, the interval or the panels. With any
+other datasource the interval is the whole story.
+
 ## Why not just move the dashboard range
 
 Because moving the range re-runs the map's own query, and the rows that fall outside the new window

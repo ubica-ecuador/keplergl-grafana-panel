@@ -10,6 +10,8 @@ import {
   readTimeDomain,
   readTimeRange,
 } from './keplerAdapter';
+import { subscribeActivity } from './duckdbWasmActivity';
+import { PublishGate } from './publishGate';
 import { SliceWatcher } from './sliceWatcher';
 import { timeChannel } from './timeChannel';
 import type { TimeRangeMs } from './timeSync';
@@ -121,10 +123,16 @@ export function useTimeVariableSync({
   const pendingPublish = useRef<{ window: TimeRangeMs | null; domain: TimeRangeMs | null } | null>(null);
   /** When the run of changes now waiting to be published began. */
   const pendingSince = useRef<number | null>(null);
+  /** Holds a playback publish until the panels answering the previous one are done; see PublishGate. */
+  const gate = useRef(new PublishGate());
+  /** True while the pending publish waits on the gate rather than on the interval. */
+  const heldByGate = useRef(false);
 
   const publish = useRef(() => {
     publishTimer.current = null;
+    const since = pendingSince.current;
     pendingSince.current = null;
+    heldByGate.current = false;
     const pending = pendingPublish.current;
     pendingPublish.current = null;
     if (!pending) {
@@ -142,6 +150,21 @@ export function useTimeVariableSync({
       return;
     }
 
+    // While playing, a step also waits for the panels answering the previous
+    // one, when a datasource on the page says when they are done. Only the
+    // newest window is kept meanwhile; schedulePublish leaves the timer alone.
+    const playing = clockRunning.current();
+    if (playing) {
+      const wait = gate.current.waitMs(performance.now());
+      if (wait > 0) {
+        pendingPublish.current = pending;
+        pendingSince.current = since;
+        heldByGate.current = true;
+        publishTimer.current = setTimeout(() => publish.current(), wait);
+        return;
+      }
+    }
+
     const writes = timeVariableWrites(pending.window, pending.domain, mappingRef.current);
     if (Object.keys(writes).length === 0) {
       return;
@@ -153,10 +176,20 @@ export function useTimeVariableSync({
     }
     locationService.partial(partial, true);
     lastKey.current = windowKey(pending.window ?? pending.domain);
+    if (playing) {
+      gate.current.published(performance.now());
+    } else {
+      gate.current.reset();
+    }
   });
 
   const schedulePublish = useRef((window: TimeRangeMs | null, domain: TimeRangeMs | null) => {
     pendingPublish.current = { window, domain };
+    // Held by the gate: keep only the newest window. The gate's own timer, or
+    // the datasource settling, publishes it.
+    if (heldByGate.current) {
+      return;
+    }
     const now = Date.now();
     if (pendingSince.current === null) {
       pendingSince.current = now;
@@ -179,6 +212,7 @@ export function useTimeVariableSync({
     }
     pendingPublish.current = null;
     pendingSince.current = null;
+    heldByGate.current = false;
   });
 
   const reconcile = useRef(() => {
@@ -268,9 +302,21 @@ export function useTimeVariableSync({
     const unsubscribeStore = store.subscribe(onStoreChange.current);
     // Dashboard → map: react to variable changes, which land in the URL.
     const unlisten = locationService.getHistory().listen(schedule.current);
+    // The DuckDB-WASM datasource, if it is on the page, says when the panels
+    // it answers are done. A step held for them goes as soon as they are.
+    const unsubscribeActivity = subscribeActivity((signal) => {
+      gate.current.signal(signal);
+      if (heldByGate.current && gate.current.waitMs(performance.now()) === 0) {
+        if (publishTimer.current !== null) {
+          clearTimeout(publishTimer.current);
+        }
+        publishTimer.current = setTimeout(() => publish.current(), 0);
+      }
+    });
     return () => {
       unsubscribeStore();
       unlisten();
+      unsubscribeActivity();
       cancel();
     };
   }, [isReady, enabled, mapping.from, mapping.to, store]);
