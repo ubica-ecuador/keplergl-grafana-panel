@@ -76,11 +76,12 @@ import { MARKERS_TYPE } from './markersLayer';
 import { holdTilesetFraming } from './tile3dFraming';
 import { VECTOR_FIELD_TYPE } from './vectorFieldLayer';
 import { SYMBOL_TYPE } from './symbolLayer';
+import { foldSavedSplitMaps } from './splitMapsNormalise';
 
 /**
  * The ONLY module that talks to the kepler.gl API.
  *
- * kepler.gl is pinned to a pre-release (3.3.0-alpha.12) because the Flow layer
+ * kepler.gl is pinned to a pre-release (3.3.0-alpha.13) because the Flow layer
  * exists nowhere else. Funnelling every kepler call through here means the
  * alpha -> stable upgrade touches one file instead of the whole tree.
  */
@@ -158,8 +159,9 @@ export function loadDatasets(
 ): void {
   // parseSavedConfig returns null for a config it cannot migrate — for example
   // one exported by an older kepler. Falling back to no config beats refusing
-  // to render the map at all.
-  const config = savedConfig ? KeplerGlSchema.parseSavedConfig(savedConfig) : null;
+  // to render the map at all. A split saved while kepler was doubling its pane
+  // list is folded back to the two it draws — see `splitMapsNormalise.ts`.
+  const config = savedConfig ? foldSavedSplitMaps(KeplerGlSchema.parseSavedConfig(savedConfig)) : null;
 
   // A saved config already positions the map; re-framing it around the data
   // would throw away the viewport the user deliberately saved.

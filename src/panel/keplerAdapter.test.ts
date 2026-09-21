@@ -3,7 +3,7 @@ import type { Store } from 'redux';
 import type { RasterDataset } from '../data/rasterDataset';
 import { stacTileTemplate } from '../data/stacTileUrl';
 import { KEPLER_INSTANCE_ID } from './constants';
-import { reconcileRasterLayerType, refreshRasters, swapRasterScene } from './keplerAdapter';
+import { loadDatasets, reconcileRasterLayerType, refreshRasters, swapRasterScene } from './keplerAdapter';
 
 const ITEM = 'https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a/items/S2C_10SEJ_20260913_0_L2A';
 
@@ -266,3 +266,30 @@ function compositeRaster(bands: { assets: string[]; rescale: string[] }): Raster
     ...bands,
   });
 }
+
+describe('loadDatasets — a split saved while kepler doubled its panes', () => {
+  // kepler.gl 3.3.0-alpha.13 merges split maps by index, so the saved list is
+  // loaded as it is: a Save made during the doubling would bring back every
+  // pane it wrote. Only the two kepler draws may reach it.
+  it('hands kepler the first two panes of a saved split', () => {
+    const dispatch = jest.fn();
+    const sides = [{ layers: { a: true, b: false } }, { layers: { a: false, b: true } }];
+    const savedConfig = {
+      version: 'v1',
+      config: {
+        visState: { layers: [], filters: [], splitMaps: [...sides, ...sides] },
+        mapState: { isSplit: true, latitude: 0, longitude: 0, zoom: 2 },
+        mapStyle: {},
+      },
+    };
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    loadDatasets(dispatch, [], {}, savedConfig as never);
+
+    const [action] = dispatch.mock.calls[0];
+    expect(action.payload.payload.config.visState.splitMaps).toEqual(sides);
+    // The dropped panes only repeat the kept ones, so nothing is lost to report.
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});

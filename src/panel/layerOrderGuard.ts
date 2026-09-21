@@ -16,6 +16,7 @@
  * layers alone, since the first dataset's are parked and no longer in the
  * state it reads. Measured on alpha.12 with points and a heatmap on one query
  * and a layer on another: the first two swapped on 12 refreshes out of 12.
+ * 3.3.0-alpha.13 leaves `replaceDatasetDepsInState` byte for byte as it was.
  *
  * Free of kepler and React so the decision can be tested with literal values.
  * The caller captures the order before refreshing and dispatches what this

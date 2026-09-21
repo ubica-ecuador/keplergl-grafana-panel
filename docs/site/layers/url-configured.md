@@ -1,6 +1,6 @@
 # Layers configured with a URL
 
-kepler.gl 3.3.0-alpha.12 registers twenty-two layer types. Thirteen are in [the gallery](./), and
+kepler.gl 3.3.0-alpha.13 registers twenty-two layer types. Thirteen are in [the gallery](./), and
 three more the panel does not build from a column: `a5` and `geohash`, kepler's other two grid-index
 layers, and `flowField`, which kepler would create for a grid of `u`/`v` columns and the panel
 replaces with its own Streamlines layer. Those are added by hand like the ones below. The other six are
