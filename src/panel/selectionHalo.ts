@@ -142,6 +142,21 @@ export function pointRadiusPx(radius: PointRadius, zoom: number, latitude: numbe
   return metres / metresPerPixel;
 }
 
+/**
+ * A cell that holds nothing. `Number(null)` and `Number('')` are 0, so an empty
+ * coordinate would pass `Number.isFinite` and be ringed at latitude 0 — inside
+ * Ecuador at longitude −79 — where kepler, which checks the raw values, draws
+ * no point at all.
+ */
+function isEmptyCell(value: unknown): value is null | undefined | '' {
+  return value === null || value === undefined || value === '';
+}
+
+/** A coordinate cell as a number, or NaN when it holds nothing. */
+function coordinate(value: unknown): number {
+  return isEmptyCell(value) ? NaN : Number(value);
+}
+
 /** How a layer's rows are marked, or null for a type the halo leaves alone. */
 function haloKind(layer: HaloLayer): 'ring' | 'geojson' | 'hexagon' | null {
   const has = (role: 'lat' | 'lng' | 'geojson' | 'hex_id') => (layer.columns[role] ?? -1) >= 0;
@@ -162,8 +177,9 @@ function haloKind(layer: HaloLayer): 'ring' | 'geojson' | 'hexagon' | null {
  *
  * Only where the row is drawn: its layer is visible, on this side of a split
  * map, and kepler's filters let the row through — never a ring around nothing.
- * One mark per row, however many layers draw it; two point layers keep the
- * larger ring, so it stays outside both points.
+ * One mark per row and geometry, however many layers draw it: two point layers
+ * on the same columns keep the larger ring, so it stays outside both points,
+ * while a trip's pickup and dropoff layers ring each end.
  */
 export function selectionHalo(input: HaloInput): HaloTargets {
   const rings = new Map<string, HaloRing>();
@@ -183,16 +199,17 @@ export function selectionHalo(input: HaloInput): HaloTargets {
       if (!input.rowPasses(layer.dataId, row)) {
         continue;
       }
-      const key = `${layer.dataId}:${row}`;
-
       if (kind === 'ring') {
-        const lat = Number(dataset.valueAt(row, layer.columns.lat!));
-        const lng = Number(dataset.valueAt(row, layer.columns.lng!));
+        const latIdx = layer.columns.lat!;
+        const lngIdx = layer.columns.lng!;
+        const lat = coordinate(dataset.valueAt(row, latIdx));
+        const lng = coordinate(dataset.valueAt(row, lngIdx));
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
           continue;
         }
         const pointPx = layer.radius ? pointRadiusPx(layer.radius, input.zoom, lat) : 0;
         const radiusPx = Math.max(RING_MIN_PX, pointPx + RING_MARGIN_PX);
+        const key = `${layer.dataId}:${row}:${latIdx}:${lngIdx}`;
         const existing = rings.get(key);
         if (!existing || existing.radiusPx < radiusPx) {
           rings.set(key, { position: [lng, lat], radiusPx });
@@ -200,9 +217,10 @@ export function selectionHalo(input: HaloInput): HaloTargets {
         continue;
       }
 
-      const value = dataset.valueAt(row, kind === 'geojson' ? layer.columns.geojson! : layer.columns.hex_id!);
-      if (value !== null && value !== undefined && value !== '') {
-        shapes.set(`${key}:${kind}`, { kind, value });
+      const columnIdx = kind === 'geojson' ? layer.columns.geojson! : layer.columns.hex_id!;
+      const value = dataset.valueAt(row, columnIdx);
+      if (!isEmptyCell(value)) {
+        shapes.set(`${layer.dataId}:${row}:${kind}:${columnIdx}`, { kind, value });
       }
     }
   }

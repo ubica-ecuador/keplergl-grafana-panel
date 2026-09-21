@@ -222,11 +222,50 @@ describe('selectionHalo', () => {
   });
 
   it('rings a row once when two layers draw it, keeping the larger ring', () => {
-    const layers = [pointsLayer(), pointsLayer({ id: 'big', radius: { base: 100, fixed: true } })];
-    const { rings } = selectionHalo(inputOf({ layers, zoom: 16 }));
+    const small = pointsLayer();
+    const big = pointsLayer({ id: 'big', radius: { base: 100, fixed: true } });
 
-    expect(rings).toHaveLength(1);
-    expect(rings[0].radiusPx).toBeGreaterThan(80);
+    for (const layers of [
+      [small, big],
+      [big, small],
+    ]) {
+      const { rings } = selectionHalo(inputOf({ layers, zoom: 16 }));
+      expect(rings).toHaveLength(1);
+      expect(rings[0].radiusPx).toBeGreaterThan(80);
+    }
+  });
+
+  it('rings each end of a row two point layers draw from different columns', () => {
+    // kepler's findPointFieldPairs makes a layer per lat/lng pair: a trip's
+    // pickup and its dropoff are two points of one row.
+    const trips = datasetOf(
+      ['pickup_lat', 'pickup_lng', 'dropoff_lat', 'dropoff_lng', 'site'],
+      [[-2.9, -79.02, -2.88, -79.0, 'site-02']]
+    );
+    const layers = [
+      pointsLayer({ id: 'pickup', columns: { lat: 0, lng: 1 } }),
+      pointsLayer({ id: 'dropoff', columns: { lat: 2, lng: 3 } }),
+    ];
+
+    expect(selectionHalo(inputOf({ layers, datasets: { A: trips } })).rings).toEqual([
+      { position: [-79.02, -2.9], radiusPx: RING_MIN_PX },
+      { position: [-79.0, -2.88], radiusPx: RING_MIN_PX },
+    ]);
+  });
+
+  it('outlines each geometry of a row two GeoJSON layers draw from different columns', () => {
+    const origin = { type: 'Point', coordinates: [0, 0] };
+    const destination = { type: 'Point', coordinates: [1, 1] };
+    const moves = datasetOf(['_origin', '_destination', 'name'], [[origin, destination, 'north']]);
+    const layers: HaloLayer[] = [
+      { id: 'from', type: 'geojson', isVisible: true, dataId: 'Z', columns: { geojson: 0 } },
+      { id: 'to', type: 'geojson', isVisible: true, dataId: 'Z', columns: { geojson: 1 } },
+    ];
+
+    expect(selectionHalo(inputOf({ selection: { name: ['north'] }, layers, datasets: { Z: moves } })).shapes).toEqual([
+      { kind: 'geojson', value: origin },
+      { kind: 'geojson', value: destination },
+    ]);
   });
 
   it('skips a row whose position is not a number', () => {
@@ -234,14 +273,27 @@ describe('selectionHalo', () => {
     expect(selectionHalo(inputOf({ datasets })).rings).toEqual([]);
   });
 
+  it('reads an empty coordinate as no position, not as zero', () => {
+    // Number(null) and Number('') are 0: latitude 0 at longitude −79 is inside
+    // Ecuador. kepler checks the raw values and draws no point for these rows.
+    for (const empty of [null, undefined, '']) {
+      const datasets = { A: datasetOf(['latitude', 'longitude', 'site'], [[empty, empty, 'site-02']]) };
+      expect(selectionHalo(inputOf({ datasets })).rings).toEqual([]);
+    }
+    const onlyLat = { A: datasetOf(['latitude', 'longitude', 'site'], [[-2.9, '', 'site-02']]) };
+    expect(selectionHalo(inputOf({ datasets: onlyLat })).rings).toEqual([]);
+  });
+
   it('skips a shape with no geometry in its cell', () => {
-    const zones = datasetOf(['_geojson', 'name'], [[null, 'north']]);
     const layers: HaloLayer[] = [
       { id: 'zones', type: 'geojson', isVisible: true, dataId: 'Z', columns: { geojson: 0 } },
     ];
-    expect(selectionHalo(inputOf({ selection: { name: ['north'] }, layers, datasets: { Z: zones } })).shapes).toEqual(
-      []
-    );
+    for (const empty of [null, undefined, '']) {
+      const zones = datasetOf(['_geojson', 'name'], [[empty, 'north']]);
+      expect(selectionHalo(inputOf({ selection: { name: ['north'] }, layers, datasets: { Z: zones } })).shapes).toEqual(
+        []
+      );
+    }
   });
 
   it("marks nothing when a layer's dataset is missing", () => {
