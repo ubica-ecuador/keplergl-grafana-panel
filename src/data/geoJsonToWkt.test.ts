@@ -1,7 +1,7 @@
 import { geoJsonToWkt } from './geoJsonToWkt';
 
 /**
- * The inverse of wkbToGeoJson: a drawn kepler feature's GeoJSON geometry
+ * The inverse of wkbToGeometry: a drawn kepler feature's GeoJSON geometry
  * becomes the canonical WKT that a dashboard variable carries into SQL
  * (`ST_GeomFromText($area, 4326)`). Canonical output — fixed micro-format,
  * plain numbers — is the SQL-injection story: the variable never carries text

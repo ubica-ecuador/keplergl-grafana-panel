@@ -6,7 +6,7 @@ interface GeoJsonGeometryLike {
 /**
  * Serializes a GeoJSON areal geometry into canonical WKT.
  *
- * The inverse of `wkbToGeoJson`: that module decodes geometry arriving *from*
+ * The inverse of `wkbToGeometry`: that module decodes geometry arriving *from*
  * the database, this one encodes the figure the user drew on the map so a
  * dashboard variable can carry it back *into* a query —
  * `ST_GeomFromText($area, 4326)` in PostGIS, MobilityDB or DuckDB `spatial`.

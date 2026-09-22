@@ -12,14 +12,20 @@ interface GeoJsonGeometry {
 }
 
 /**
- * Decodes WKB/EWKB hex into a GeoJSON geometry string.
+ * Decodes WKB/EWKB hex into a GeoJSON geometry.
  *
- * kepler.gl's geojson layer renders GeoJSON and WKT strings, but **not** WKB —
+ * kepler.gl's geojson layer renders GeoJSON and WKT, but **not** WKB —
  * verified end-to-end: a hex WKB column produces a blank map. Yet raw geometry
  * arrives as WKB hex from the two sources that matter here: the Grafana Postgres
  * data source returns PostGIS geometry as EWKB hex, and DuckDB's `ST_AsHEXWKB`
  * over GeoParquet returns ISO WKB hex. Decoding it here lets `SELECT geom` work
  * without the user wrapping every query in `ST_AsGeoJSON`.
+ *
+ * It returns the geometry as an object, which kepler wraps into a Feature
+ * itself (`parseGeoJsonRawFeature`). Returning a JSON string instead costs a
+ * `JSON.stringify` here and a `JSON.parse` in kepler for every row: measured
+ * over 200k points that pair was ~0.3 s of the ~1.0 s this conversion took,
+ * and ~0.5 s of ~1.1 s over 20k polygons of 24 vertices.
  *
  * Returns null for anything that is not WKB hex — GeoJSON, WKT, free text — so
  * the caller keeps those values untouched for kepler to parse directly.
@@ -27,7 +33,7 @@ interface GeoJsonGeometry {
  * Reads a cursor through the byte array; the structure walk (byte order, type,
  * SRID/Z/M flags, nested multi-geometries) mirrors the WKB spec.
  */
-export function wkbToGeoJson(value: string): string | null {
+export function wkbToGeometry(value: string): GeoJsonGeometry | null {
   if (!looksLikeWkbHex(value)) {
     return null;
   }
@@ -37,7 +43,7 @@ export function wkbToGeoJson(value: string): string | null {
     const geometry = reader.readGeometry();
     // A trailing-byte mismatch means we misread the structure; treat it as
     // "not WKB" rather than emit a half-parsed geometry.
-    return reader.done() ? JSON.stringify(geometry) : null;
+    return reader.done() ? geometry : null;
   } catch {
     return null;
   }
