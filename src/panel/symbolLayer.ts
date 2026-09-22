@@ -30,12 +30,12 @@ export const SYMBOL_VIS_CONFIGS = {
   symbol: {
     type: 'select',
     defaultValue: SYMBOL_FALLBACK,
-    // A getter, not a plain array: `symbolNames()` builds the whole glyph
-    // catalogue (kepler's 162 meshes triangulated into polygons among them),
-    // and this object is built the moment this module is imported — by every
-    // panel, whether or not a symbol layer is ever added. A getter defers that
-    // cost to the one place it is actually needed: the panel reading the list
-    // to draw the selector.
+    // A getter, not a plain array: `symbolNames()` assembles about a
+    // thousand names from three vendored JSON files, and a plain array here
+    // would do that the moment this module is imported — by every panel,
+    // whether or not a symbol layer is ever added. The getter defers that to
+    // the first read, and `symbolNames()` caches the result; the catalogue
+    // itself, kepler's meshes included, is only built once a symbol is drawn.
     get options() {
       return symbolNames();
     },
