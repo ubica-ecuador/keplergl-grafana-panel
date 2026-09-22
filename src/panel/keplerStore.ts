@@ -9,6 +9,7 @@ import { buildEsriImageDeckLayer } from './esriImageDeckLayer';
 import { makeEsriImageLayer } from './esriImageLayer';
 import { buildFlowFieldDeckLayer, makeScreenCamera } from './flowFieldDeckLayer';
 import { makeFlowFieldLayer } from './flowFieldLayer';
+import { withFlowRefresh } from './flowLayerRefresh';
 import { buildMarkersDeckLayer } from './markersDeckLayer';
 import { makeMarkersLayer } from './markersLayer';
 import { ownLayerIcon } from './ownLayerIcon';
@@ -78,6 +79,11 @@ const layerClasses = {
   // on a hill draws in mid-air — and past a certain camera does not draw at
   // all, with no error to explain it. `tile3dAltitude.ts` has the measurements.
   tile3d: withTile3dAltitude(LayerClasses.tile3d),
+  // A third repair. A refresh builds a new flow layer whose change counter
+  // starts again from zero, so deck sees the same `data` as before and the map
+  // goes on drawing the flows of the layer that is gone. `flowLayerRefresh.ts`
+  // has the mechanism and the measurement.
+  flow: withFlowRefresh(LayerClasses.flow),
   // Not a repair but an addition: kepler ships no generic raster tileset —
   // `RemoteTileFormat` is mvt, pmtiles or wms, and its raster path is wired to
   // STAC and PMTiles — so a Zarr rendered by TiTiler has nothing upstream to
