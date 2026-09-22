@@ -236,13 +236,18 @@ describe('import-time cost', () => {
    * panel's option list — once cost this branch two fix rounds for the
    * vector field layer's own version of the same mistake (commit 273a116).
    *
-   * `../icons/svg-icons.json` is what `symbolGlyphs.ts`'s catalogue reads to
-   * triangulate kepler's 162 meshes; mocking it with a getter turns "was the
-   * catalogue built" into an observable without needing to reach into
-   * `symbolGlyphs.ts`'s own module-private cache.
+   * `../icons/temaki-paths.json` is the observable: its `icons` are read both
+   * by `symbolNames()`, to list the names, and by `symbolCatalogue()`, to
+   * build the glyphs, but never merely by importing this module. Mocking its
+   * `icons` with a getter turns "was either one built" into an observable
+   * without reaching into `symbolGlyphs.ts`'s own module-private caches.
+   * `../icons/svg-icons.json` stays mocked too, the same way, so the test can
+   * also show that listing the names — unlike drawing a symbol — no longer
+   * needs kepler's meshes at all (see `symbolNames()` in `symbolGlyphs.ts`).
    */
   it('does not build the glyph catalogue merely by importing the layer, only by reading the panel options', () => {
     let readSvgIcons = false;
+    let readTemakiIcons = false;
 
     jest.isolateModules(() => {
       jest.doMock('../icons/svg-icons.json', () => {
@@ -255,14 +260,31 @@ describe('import-time cost', () => {
         };
       });
 
+      jest.doMock('../icons/temaki-paths.json', () => {
+        const actual = jest.requireActual('../icons/temaki-paths.json');
+        return {
+          source: actual.source,
+          version: actual.version,
+          license: actual.license,
+          get icons() {
+            readTemakiIcons = true;
+            return actual.icons;
+          },
+        };
+      });
+
       // A plain `require`, not the file's top-level `import`: this needs to
-      // run after the mock above is registered, inside the isolated registry.
+      // run after the mocks above are registered, inside the isolated registry.
       require('./symbolLayer');
       expect(readSvgIcons).toBe(false);
+      expect(readTemakiIcons).toBe(false);
 
       const { SYMBOL_VIS_CONFIGS: freshConfigs } = require('./symbolLayer');
       expect((freshConfigs.symbol.options as string[]).length).toBeGreaterThan(0);
-      expect(readSvgIcons).toBe(true);
+      expect(readTemakiIcons).toBe(true);
+      // Listing the names no longer triangulates kepler's meshes — only
+      // drawing a symbol does, through `symbolCatalogue()`.
+      expect(readSvgIcons).toBe(false);
     });
   });
 });
