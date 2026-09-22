@@ -231,6 +231,15 @@ The [contributing guide](https://ubica-ecuador.github.io/keplergl-grafana-panel/
 covers the three benches, the provisioned dashboards, the browser verification scripts and how the
 documentation screenshots are regenerated.
 
+## Support
+
+The plugin is free, and every feature is in this repository. For organisations that depend on it,
+[UBICA](https://ubica.dev) offers support for production use, sponsored features, dashboard
+implementation and training — see
+[Support and services](https://ubica-ecuador.github.io/keplergl-grafana-panel/support.html).
+Bugs and questions are welcome as [GitHub issues](https://github.com/ubica-ecuador/keplergl-grafana-panel/issues)
+either way.
+
 ## Licence
 
 Apache-2.0. The published archive bundles third-party code and assets — kepler.gl and deck.gl (MIT),

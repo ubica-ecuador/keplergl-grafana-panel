@@ -184,6 +184,10 @@ export default defineConfig({
         ],
       },
       {
+        text: 'Support',
+        items: [{ text: 'Support and services', link: '/support' }],
+      },
+      {
         text: 'Contributing',
         items: [{ text: 'Developing the plugin', link: '/contributing' }],
       },
