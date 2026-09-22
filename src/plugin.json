@@ -16,7 +16,7 @@
     "links": [
       {
         "name": "Documentation",
-        "url": "https://ubica-ecuador.github.io/keplergl-grafana-panel/"
+        "url": "https://docs.ubica.dev/"
       },
       {
         "name": "Source code",
@@ -28,7 +28,7 @@
       },
       {
         "name": "sponsorship",
-        "url": "https://ubica-ecuador.github.io/keplergl-grafana-panel/support.html"
+        "url": "https://docs.ubica.dev/support.html"
       }
     ],
     "screenshots": [

@@ -17,12 +17,13 @@ export const VERSIONS = {
 };
 
 /**
- * GitHub Pages serves a project site under `/<repo>/`, so every asset URL
- * carries that prefix. Taken from the environment rather than hardcoded, so
- * renaming the repository does not silently break every image on the site —
- * the workflow passes `github.event.repository.name`.
+ * The site is served at the root of its own domain, `docs.ubica.dev`, declared
+ * in `public/CNAME`. It stays configurable because a project Pages site without
+ * a custom domain lives under `/<repo>/`, and every asset URL then carries that
+ * prefix: `DOCS_BASE=/keplergl-grafana-panel/` builds that variant, which is
+ * what the default domain still serves through GitHub's redirect.
  */
-const base = process.env.DOCS_BASE ?? '/keplergl-grafana-panel/';
+const base = process.env.DOCS_BASE ?? '/';
 
 /**
  * The published instance: the `grafana-sources` bench behind grafana.ubica.ec,
