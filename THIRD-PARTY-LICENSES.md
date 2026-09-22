@@ -5,29 +5,29 @@ compiled third-party code and vendored assets. Their notices follow.
 
 ## Bundled libraries
 
-| Library | Version | Licence | Copyright |
-| --- | --- | --- | --- |
-| kepler.gl and its `@kepler.gl/*` packages | 3.3.0-alpha.13 | MIT | Copyright contributors to the kepler.gl project |
-| @deck.gl/core, /layers, /geo-layers and the rest | 9.3.11 | MIT | Copyright Vis.gl contributors. |
-| @luma.gl/core and the rest | 9.3.6 | MIT | Copyright (c) 2020 vis.gl contributors |
-| @deck.gl-community/editable-layers | 9.3.8 | MIT | Copyright (c) 2020 vis.gl a Series of LF Projects, LLC |
-| @flowmap.gl/data, @flowmap.gl/layers | 9.4.0 | Apache-2.0 | See the package's own LICENSE |
-| @hubble.gl/react, @hubble.gl/core | 2.0.0-alpha.4 | MIT | Copyright (c) 2021 Uber Technologies, Inc.; Copyright Vis.gl contributors. |
-| styled-components | 6.4.3 | MIT | Copyright (c) 2016-present Glen Maddern and Maximilian Stoiber |
-| @loaders.gl/core and the rest (30+ sub-packages) | 4.4.1 – 4.5.2 | MIT | Copyright (c) vis.gl contributors |
-| FlatGeobuf (the copy vendored inside `@loaders.gl/flatgeobuf`) | 3.27.2 | BSD-2-Clause AND ISC | Copyright (c) 2018, Björn Harrtell |
-| proj4 (the copy nested under `@math.gl/proj4`) | 2.6.2 | MIT | Copyright (c) 2014, Mike Adair, Richard Greenwood, Didier Richard, Stephen Irons, Olivier Terral and Calvin Metcalf |
-| xlsx (SheetJS) | 0.18.5 | Apache-2.0 | Copyright (C) 2012-present SheetJS LLC |
-| @math.gl/core, /web-mercator, /culling and the rest | 4.1.0 | MIT | Copyright (c) 2017 Uber Technologies, Inc. |
-| @probe.gl/log, /env, /stats | 4.1.2 | MIT | Copyright Vis.gl contributors. |
-| mjolnir.js | 3.1.1 | MIT | Copyright (c) 2017 Uber Technologies, Inc. |
-| react-map-gl | 8.1.3 | MIT | Copyright Vis.gl contributors. |
-| @vis.gl/react-maplibre | 8.1.1 | MIT | Copyright Vis.gl contributors. |
-| maplibre-gl | 4.7.1 | BSD-3-Clause | Copyright (c) 2023, MapLibre contributors |
-| mapbox-gl (the 1.13.1 copy nested under `@kepler.gl/utils`) | 1.13.1 | BSD-3-Clause | Copyright (c) 2020, Mapbox |
-| lodash, lodash-es | 4.17.21, 4.18.1 | MIT | Copyright OpenJS Foundation and other contributors \<https://openjsf.org/\> |
-| d3-array, d3-axis, d3-brush, d3-color, d3-dispatch, d3-drag, d3-dsv, d3-format, d3-geo, d3-interpolate, d3-path, d3-scale, d3-scale-chromatic, d3-selection, d3-shape, d3-time, d3-time-format, d3-timer, d3-transition (19 packages) | 3.0.0 – 4.1.0 | ISC | Copyright 2010–20XX Mike Bostock (end year varies by package/release, holder and licence text identical) |
-| d3-ease | 3.0.1 | BSD-3-Clause | Copyright 2010-2021 Mike Bostock; Copyright 2001 Robert Penner |
+| Library                                                                                                                                                                                                                               | Version         | Licence              | Copyright                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| kepler.gl and its `@kepler.gl/*` packages                                                                                                                                                                                             | 3.3.0-alpha.13  | MIT                  | Copyright contributors to the kepler.gl project                                                                     |
+| @deck.gl/core, /layers, /geo-layers and the rest                                                                                                                                                                                      | 9.3.11          | MIT                  | Copyright Vis.gl contributors.                                                                                      |
+| @luma.gl/core and the rest                                                                                                                                                                                                            | 9.3.6           | MIT                  | Copyright (c) 2020 vis.gl contributors                                                                              |
+| @deck.gl-community/editable-layers                                                                                                                                                                                                    | 9.3.8           | MIT                  | Copyright (c) 2020 vis.gl a Series of LF Projects, LLC                                                              |
+| @flowmap.gl/data, @flowmap.gl/layers                                                                                                                                                                                                  | 9.4.0           | Apache-2.0           | See the package's own LICENSE                                                                                       |
+| @hubble.gl/react, @hubble.gl/core                                                                                                                                                                                                     | 2.0.0-alpha.4   | MIT                  | Copyright (c) 2021 Uber Technologies, Inc.; Copyright Vis.gl contributors.                                          |
+| styled-components                                                                                                                                                                                                                     | 6.4.3           | MIT                  | Copyright (c) 2016-present Glen Maddern and Maximilian Stoiber                                                      |
+| @loaders.gl/core and the rest (30+ sub-packages)                                                                                                                                                                                      | 4.4.1 – 4.5.2   | MIT                  | Copyright (c) vis.gl contributors                                                                                   |
+| FlatGeobuf (the copy vendored inside `@loaders.gl/flatgeobuf`)                                                                                                                                                                        | 3.27.2          | BSD-2-Clause AND ISC | Copyright (c) 2018, Björn Harrtell                                                                                  |
+| proj4 (the copy nested under `@math.gl/proj4`)                                                                                                                                                                                        | 2.6.2           | MIT                  | Copyright (c) 2014, Mike Adair, Richard Greenwood, Didier Richard, Stephen Irons, Olivier Terral and Calvin Metcalf |
+| xlsx (SheetJS)                                                                                                                                                                                                                        | 0.18.5          | Apache-2.0           | Copyright (C) 2012-present SheetJS LLC                                                                              |
+| @math.gl/core, /web-mercator, /culling and the rest                                                                                                                                                                                   | 4.1.0           | MIT                  | Copyright (c) 2017 Uber Technologies, Inc.                                                                          |
+| @probe.gl/log, /env, /stats                                                                                                                                                                                                           | 4.1.2           | MIT                  | Copyright Vis.gl contributors.                                                                                      |
+| mjolnir.js                                                                                                                                                                                                                            | 3.1.1           | MIT                  | Copyright (c) 2017 Uber Technologies, Inc.                                                                          |
+| react-map-gl                                                                                                                                                                                                                          | 8.1.3           | MIT                  | Copyright Vis.gl contributors.                                                                                      |
+| @vis.gl/react-maplibre                                                                                                                                                                                                                | 8.1.1           | MIT                  | Copyright Vis.gl contributors.                                                                                      |
+| maplibre-gl                                                                                                                                                                                                                           | 4.7.1           | BSD-3-Clause         | Copyright (c) 2023, MapLibre contributors                                                                           |
+| mapbox-gl (the 1.13.1 copy nested under `@kepler.gl/utils`)                                                                                                                                                                           | 1.13.1          | BSD-3-Clause         | Copyright (c) 2020, Mapbox                                                                                          |
+| lodash, lodash-es                                                                                                                                                                                                                     | 4.17.21, 4.18.1 | MIT                  | Copyright OpenJS Foundation and other contributors \<https://openjsf.org/\>                                         |
+| d3-array, d3-axis, d3-brush, d3-color, d3-dispatch, d3-drag, d3-dsv, d3-format, d3-geo, d3-interpolate, d3-path, d3-scale, d3-scale-chromatic, d3-selection, d3-shape, d3-time, d3-time-format, d3-timer, d3-transition (19 packages) | 3.0.0 – 4.1.0   | ISC                  | Copyright 2010–20XX Mike Bostock (end year varies by package/release, holder and licence text identical)            |
+| d3-ease                                                                                                                                                                                                                               | 3.0.1           | BSD-3-Clause         | Copyright 2010-2021 Mike Bostock; Copyright 2001 Robert Penner                                                      |
 
 `lodash` is the single heaviest package in the bundle by sourcemap reference count (1051, ahead of
 `@kepler.gl/components` at 421); `lodash-es`'s `LICENSE` is byte-identical to `lodash`'s, confirmed by
@@ -138,12 +138,16 @@ and served from the plugin's own asset path so that no install has to call an ex
   matplotlib (Copyright (c) 2012-2024 Matplotlib Development Team, matplotlib licence, a
   BSD-style licence) by way of kepler.gl.
 
-This one is extracted from an npm package and compiled into the bundle rather than served as a file:
+These are extracted from the icon libraries' own files and compiled into the bundle rather than
+served as files. The symbol and markers layers offer them as shapes:
 
 - `src/icons/maki-paths.json` — the SVG path of each of the 215 icons of Maki, `@mapbox/maki`
-  8.2.0 (CC0-1.0, Mapbox), which the symbol layer offers as shapes. Written by
-  `scripts/vendor-maki.mjs`; nothing else of the package is shipped. CC0 asks for no attribution —
-  the entry is here so the origin of the shapes is on record.
+  8.2.0 (CC0-1.0, Mapbox). Written by `scripts/vendor-maki.mjs`; nothing else of the package is
+  shipped. CC0 asks for no attribution — the entry is here so the origin of the shapes is on
+  record.
+- `src/icons/temaki-paths.json` — the SVG paths of the 557 icons of Temaki,
+  `@rapideditor/temaki` 5.13.0 (CC0-1.0, the Temaki contributors), offered as `temaki:<name>`.
+  Written by `scripts/vendor-temaki.mjs`; nothing else of the package is shipped.
 
 ## Sample data
 
