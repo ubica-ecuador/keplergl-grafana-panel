@@ -257,7 +257,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Each bus icon is a vehicle from TriMet's vehicle feed, turned to the heading it reports: blue runs more than a minute early, green on time, amber 5–10 minutes late, red later. Lines are the routes in their public colors, drawn stop to stop rather than along the street. Amber rings are stops named in a service alert, and the cyan ring the selected vehicle. Click a vehicle to see its next stops.",
+      "description": "Each bus icon is a vehicle from TriMet's vehicle feed, turned to the heading it reports: blue runs more than a minute early, green on time, amber 5–10 minutes late, red later. Lines are the routes in their public colors, drawn stop to stop rather than along the street. Amber rings are stops named in a service alert, and the cyan ring the selected vehicle. Click a vehicle to see its next stops. Moving arrows run from each vehicle to its next two stops, where TriMet expects it within five minutes.",
       "gridPos": {
         "h": 18,
         "w": 15,
@@ -387,6 +387,11 @@
                       {
                         "name": "alert"
                       }
+                    ],
+                    "grafana-E": [
+                      {
+                        "name": "route"
+                      }
                     ]
                   }
                 }
@@ -397,6 +402,7 @@
                 "vehicle-icons",
                 "vehicle-hit",
                 "alerts",
+                "next-stops",
                 "lines"
               ],
               "layers": [
@@ -701,6 +707,30 @@
                 },
                 {
                   "config": {
+                    "columnMode": "LAT_LNG",
+                    "columns": {
+                      "count": "count",
+                      "lat0": "lat0",
+                      "lat1": "lat1",
+                      "lng0": "lng0",
+                      "lng1": "lng1"
+                    },
+                    "dataId": "grafana-E",
+                    "isVisible": true,
+                    "label": "Next two stops of each vehicle",
+                    "visConfig": {
+                      "flowClusteringEnabled": false,
+                      "flowFadeEnabled": true,
+                      "flowLinesRenderingMode": "animated-straight",
+                      "flowLocationTotalsEnabled": false
+                    }
+                  },
+                  "id": "next-stops",
+                  "type": "flow",
+                  "visualChannels": {}
+                },
+                {
+                  "config": {
                     "color": [
                       70,
                       121,
@@ -936,6 +966,17 @@
           "rawQuery": true,
           "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n-- TriMet through the sources-data proxy, which adds the AppID and asks for\n-- gzip -- 11 MB plain, 1 MB gzipped for the trip status -- and passes it\n-- through as it comes: hence compression = 'gzip'. See sources-data.nginx.conf.\n\n-- The vehicle picked on the map or in the delayed table, read live so the ring\n-- follows it on every refresh. Until then the read points at the small alerts\n-- feed, which has no vehicles under this schema.\nSELECT v.latitude, v.longitude, v.vehicleID::VARCHAR AS picked\nFROM (SELECT unnest(resultSet.vehicle) AS v\n      FROM read_json(CASE WHEN $vehicle = '' THEN 'http://sources-data/trimet/ws/v2/alerts' ELSE 'http://sources-data/trimet/ws/v2/vehicles' END,\n                     compression = 'gzip', maximum_object_size = 50000000, columns = {resultSet: 'STRUCT(queryTime BIGINT, vehicle STRUCT(vehicleID BIGINT, routeNumber BIGINT, routeSubType VARCHAR, type VARCHAR, tripID VARCHAR, signMessageLong VARCHAR, delay BIGINT, loadPercentage BIGINT, inCongestion BOOLEAN, nextLocID BIGINT, latitude DOUBLE, longitude DOUBLE, time BIGINT)[])'}))\nWHERE v.vehicleID::VARCHAR = $vehicle\n",
           "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n-- TriMet through the sources-data proxy, which adds the AppID and asks for\n-- gzip -- 11 MB plain, 1 MB gzipped for the trip status -- and passes it\n-- through as it comes: hence compression = 'gzip'. See sources-data.nginx.conf.\n\n-- Where each vehicle is headed: from where it is now to its next two stops,\n-- drawn as arrows. Only stops TriMet expects it at within five minutes, where\n-- the estimate is freshest and the arrow stays close to its bus. A vehicle\n-- that has not served a stop of its trip yet is on its way to the terminal or\n-- on layover, and a line from it to the first stop would not be a route, so\n-- it gets no arrow; nor does one silent for two minutes. A MAX train is two\n-- cars on one trip, and one arrow is enough. Filtered here, like the route\n-- lines: kepler binds a variable to one dataset only, the vehicles.\nWITH ts AS MATERIALIZED (\n  SELECT resultSet AS rs\n  FROM read_json('http://sources-data/trimet/ws/v2/tripStatus?showRoutes=false', compression = 'gzip', maximum_object_size = 100000000,\n                 columns = {resultSet: 'STRUCT(queryTime BIGINT, trip STRUCT(tripID VARCHAR, stop STRUCT(locid BIGINT, stopSequence BIGINT, isPassed BOOLEAN, aimedArrival BIGINT, adjustedArrival BIGINT, status VARCHAR)[])[], location STRUCT(id BIGINT, lat DOUBLE, lng DOUBLE)[])'})\n),\nroutes AS (\n  SELECT r.route AS num, r.\"desc\" AS route\n  FROM (SELECT unnest(resultSet.route) AS r\n        FROM read_json('http://sources-data/trimet/ws/V1/routeConfig?json=true', compression = 'gzip', maximum_object_size = 50000000))\n),\nveh AS MATERIALIZED (\n  SELECT qt, v.tripID AS trip, v.latitude AS lat, v.longitude AS lng,\n         coalesce(ro.route, v.routeNumber::VARCHAR) AS route\n  FROM (SELECT resultSet.queryTime AS qt, unnest(resultSet.vehicle) AS v\n        FROM read_json('http://sources-data/trimet/ws/v2/vehicles', compression = 'gzip', maximum_object_size = 50000000, columns = {resultSet: 'STRUCT(queryTime BIGINT, vehicle STRUCT(routeNumber BIGINT, routeSubType VARCHAR, tripID VARCHAR, lastStopSeq BIGINT, latitude DOUBLE, longitude DOUBLE, time BIGINT)[])'}))\n  LEFT JOIN routes ro ON ro.num = v.routeNumber\n  WHERE v.lastStopSeq IS NOT NULL\n    AND qt - v.time < 120000\n    AND CASE v.routeSubType WHEN 'Light Rail' THEN 'MAX light rail' WHEN 'BRT' THEN 'FX bus rapid transit' WHEN 'Commuter Rail' THEN 'WES commuter rail' WHEN 'Streetcar' THEN 'Streetcar' WHEN 'Aerial Tram' THEN 'Aerial tram' ELSE 'Bus' END IN ($mode)\n    AND ('__all__' IN ($route) OR coalesce(ro.route, v.routeNumber::VARCHAR) IN ($route))\n  QUALIFY row_number() OVER (PARTITION BY v.tripID ORDER BY v.time DESC) = 1\n),\nloc AS (\n  SELECT l.id, any_value(l.lat) AS lat, any_value(l.lng) AS lng FROM (SELECT unnest(rs.location) AS l FROM ts) GROUP BY 1\n),\n-- The vehicle counts as being where it last reported at the instant of the\n-- query, so every arrow starts from the bus on the map; stops due before that\n-- are behind it.\nahead AS (\n  SELECT v.trip, s.stopSequence AS seq, s.locid\n  FROM (SELECT t.tripID AS trip, unnest(t.stop) AS s FROM (SELECT unnest(rs.trip) AS t FROM ts)) x\n  JOIN veh v USING (trip)\n  WHERE NOT s.isPassed AND s.status <> 'canceled'\n    AND coalesce(s.adjustedArrival, s.aimedArrival) > v.qt\n    AND coalesce(s.adjustedArrival, s.aimedArrival) <= v.qt + 300000\n  QUALIFY row_number() OVER (PARTITION BY v.trip ORDER BY s.stopSequence) <= 2\n),\npts AS (\n  SELECT trip, 0 AS seq, lat, lng FROM veh WHERE trip IN (SELECT trip FROM ahead)\n  UNION ALL\n  SELECT a.trip, a.seq, l.lat, l.lng FROM ahead a JOIN loc l ON l.id = a.locid\n),\nhop AS (\n  SELECT trip, lat, lng, lead(lat) OVER w AS lat1, lead(lng) OVER w AS lng1\n  FROM pts WINDOW w AS (PARTITION BY trip ORDER BY seq)\n)\nSELECT h.lat  AS origin_lat,\n       h.lng  AS origin_lng,\n       h.lat1 AS dest_lat,\n       h.lng1 AS dest_lng,\n       count(*)::BIGINT     AS trips,\n       any_value(v.route)   AS route\nFROM hop h JOIN veh v USING (trip)\nWHERE h.lat1 IS NOT NULL\nGROUP BY 1, 2, 3, 4\n",
+          "refId": "E"
         }
       ],
       "title": "Fleet now — colored by punctuality",
