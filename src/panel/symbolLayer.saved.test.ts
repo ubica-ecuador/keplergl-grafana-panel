@@ -63,9 +63,10 @@ function rawFrame(content: string): DataFrame {
   });
 }
 
-async function restore(panelId: number) {
+async function restore(panelId: number, edit: (visConfig: Record<string, unknown>) => void = () => undefined) {
   const dashboard = JSON.parse(readFileSync('provisioning/dashboards/symbols.json', 'utf8'));
   const panel = dashboard.panels.find((candidate: { id: number }) => candidate.id === panelId);
+  edit(panel.options.mapConfig.config.visState.layers[0].config.visConfig);
 
   const [dataset] = framesToDatasets([rawFrame(panel.targets[0].rawFrameContent)]);
   const store = createKeplerStore();
@@ -153,5 +154,30 @@ describe('the provisioned symbol panels, restored from their saved config', () =
     } finally {
       warn.mockRestore();
     }
+  });
+
+  it('keeps drawing a symbol only kepler has, though the picker no longer offers it', async () => {
+    // kepler does not check a saved select against its options, so the name
+    // survives the restore; the catalogue still has its glyph.
+    const { layer, deckLayers } = await restore(4, (visConfig) => {
+      visConfig.symbol = 'directions';
+    });
+
+    expect(layer.config.visConfig.symbol).toBe('directions');
+    const symbols = deckLayers.find((deckLayer) => deckLayer.id === 'standing-stations-symbol')!.props;
+    expect(symbols.getIcon(symbols.data[0])).toBe('directions');
+  });
+
+  it.each([
+    [6, 'temaki-stations-symbol', 'temaki:power_tower'],
+    [7, 'ocha-stations-symbol', 'ocha:flood'],
+  ])('draws panel %i with its vendored icon', async (panelId, deckId, symbol) => {
+    const { layer, deckLayers } = await restore(panelId);
+
+    expect(layer.config.visConfig.symbol).toBe(symbol);
+    const symbols = deckLayers.find((deckLayer) => deckLayer.id === deckId)!.props;
+    expect(symbols.data).toHaveLength(8);
+    expect(symbols.getIcon(symbols.data[0])).toBe(symbol);
+    expect(symbols.getAngle(symbols.data[0])).toBe(0);
   });
 });

@@ -234,6 +234,7 @@ documentation screenshots are regenerated.
 ## Licence
 
 Apache-2.0. The published archive bundles third-party code and assets — kepler.gl and deck.gl (MIT),
-flowmap.gl (Apache-2.0), and kepler.gl's icon and colormap assets. Their notices are in
+flowmap.gl (Apache-2.0), kepler.gl's icon and colormap assets, and the map symbols of Maki, Temaki
+and the UN OCHA Humanitarian Icons (CC0). Their notices are in
 [THIRD-PARTY-LICENSES.md](https://github.com/ubica-ecuador/keplergl-grafana-panel/blob/main/THIRD-PARTY-LICENSES.md),
 which ships inside the plugin as well.

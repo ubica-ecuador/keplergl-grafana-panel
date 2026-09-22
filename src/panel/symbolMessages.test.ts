@@ -41,4 +41,8 @@ describe('registerSymbolMessages', () => {
     // `lng` and `altitude` it already names.
     expect(SYMBOL_MESSAGES['columns.picture']).toBe('picture URL');
   });
+
+  it('names the picker’s category selector, whose options are the taxonomy’s own words', () => {
+    expect(SYMBOL_MESSAGES['symbol.category']).toBe('Category');
+  });
 });

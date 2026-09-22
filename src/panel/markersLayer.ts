@@ -34,8 +34,9 @@ export const MARKERS_VIS_CONFIGS = {
   symbol: {
     type: 'select',
     defaultValue: 'circle',
-    // A getter, like the symbol layer's: building the catalogue is not free,
-    // and this object is built on import, by every panel.
+    // A getter, like the symbol layer's: `symbolNames()` only assembles and
+    // caches its list of names here; the catalogue itself — kepler's meshes
+    // included — is built only once a marker is actually drawn.
     get options() {
       return symbolNames();
     },

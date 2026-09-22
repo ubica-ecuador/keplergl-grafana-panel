@@ -3,12 +3,19 @@ import {
   isPathGlyph,
   makiGlyphs,
   meshGlyphs,
+  OCHA_ICONS,
+  ochaKey,
   ownGlyphs,
   paintGlyphs,
+  PathGlyph,
   resolveSymbol,
   symbolCatalogue,
   symbolNames,
   SYMBOL_FALLBACK,
+  TEMAKI_ICONS,
+  TEMAKI_PREFIX,
+  temakiKey,
+  vendoredGlyphs,
 } from './symbolGlyphs';
 import keplerIcons from '../icons/svg-icons.json';
 import maki from '../icons/maki-paths.json';
@@ -45,7 +52,17 @@ describe('meshGlyphs', () => {
   it('turns a triangulated mesh into polygons of the glyph cell', () => {
     // A single triangle spanning the whole normalised box.
     const glyphs = meshGlyphs([
-      { id: 'tri', mesh: { positions: [[-1, -1, 0], [1, -1, 0], [0, 1, 0]], cells: [[0, 1, 2]] } },
+      {
+        id: 'tri',
+        mesh: {
+          positions: [
+            [-1, -1, 0],
+            [1, -1, 0],
+            [0, 1, 0],
+          ],
+          cells: [[0, 1, 2]],
+        },
+      },
     ]);
 
     expect(glyphs).toHaveLength(1);
@@ -56,13 +73,27 @@ describe('meshGlyphs', () => {
     // icon layer negates y to draw them in its y-up world.
     expect(glyphs[0].shapes[0]).toEqual({
       kind: 'polygon',
-      points: [[0, 0], [96, 0], [48, 96]],
+      points: [
+        [0, 0],
+        [96, 0],
+        [48, 96],
+      ],
     });
   });
 
   it('anchors a mesh glyph at the centre of its cell', () => {
     const glyphs = meshGlyphs([
-      { id: 'tri', mesh: { positions: [[-1, -1, 0], [1, -1, 0], [0, 1, 0]], cells: [[0, 1, 2]] } },
+      {
+        id: 'tri',
+        mesh: {
+          positions: [
+            [-1, -1, 0],
+            [1, -1, 0],
+            [0, 1, 0],
+          ],
+          cells: [[0, 1, 2]],
+        },
+      },
     ]);
 
     expect(glyphs[0].anchor).toEqual([48, 48]);
@@ -81,15 +112,23 @@ describe('meshGlyphs', () => {
 });
 
 describe('makiGlyphs', () => {
-  it('carries the path as a string, because curves do not fit the shape model', () => {
+  it('carries the path as data, because curves do not fit the shape model', () => {
     const glyphs = makiGlyphs({ airport: 'M15,6.8L8.5,7.5z' });
 
     expect(glyphs).toHaveLength(1);
     expect(isPathGlyph(glyphs[0])).toBe(true);
-    expect(glyphs[0].path).toBe('M15,6.8L8.5,7.5z');
-    // Maki draws in a 15x15 box; the atlas cell is 96.
-    expect(glyphs[0].box).toBe(15);
-    expect(glyphs[0].anchor).toEqual([48, 48]);
+    // Maki draws one path in a 15x15 box, flush with its corner; the atlas cell is 96.
+    expect(glyphs[0]).toEqual({
+      key: 'airport',
+      anchor: [48, 48],
+      box: 15,
+      offset: [0, 0],
+      paths: [{ d: 'M15,6.8L8.5,7.5z' }],
+    });
+  });
+
+  it('tells a path glyph from a shape glyph', () => {
+    expect(isPathGlyph(ownGlyphs()[0])).toBe(false);
   });
 
   it('reads the vendored library, transport included', () => {
@@ -99,7 +138,8 @@ describe('makiGlyphs', () => {
     expect(glyphs.length).toBe(215);
     expect(names).toEqual(expect.arrayContaining(['airport', 'heliport', 'bus', 'rail', 'ferry', 'harbor', 'bicycle']));
     for (const glyph of glyphs) {
-      expect(glyph.path.length).toBeGreaterThan(0);
+      expect(glyph.paths).toHaveLength(1);
+      expect(glyph.paths[0].d.length).toBeGreaterThan(0);
     }
   });
 
@@ -108,7 +148,7 @@ describe('makiGlyphs', () => {
     const invalidPaths = [];
 
     for (const glyph of glyphs) {
-      const path = glyph.path;
+      const path = glyph.paths[0].d;
       // Every SVG path must start with a moveto command (M or m)
       if (!path.match(/^[Mm]/)) {
         invalidPaths.push(`${glyph.key}: does not start with M or m`);
@@ -125,14 +165,86 @@ describe('makiGlyphs', () => {
   });
 });
 
+describe('vendoredGlyphs', () => {
+  it('keys each icon by the name given and keeps its box, offset and every path', () => {
+    const [glyph] = vendoredGlyphs(
+      {
+        source: 'test',
+        version: '1',
+        license: 'CC0-1.0',
+        icons: {
+          latrine: { box: 48, offset: [13, 0], paths: [{ d: 'M0 0H1Z' }, { d: 'M2 2H3Z', evenOdd: true }] },
+        },
+      },
+      (name) => `temaki:${name}`
+    );
+
+    expect(glyph).toEqual({
+      key: 'temaki:latrine',
+      anchor: [48, 48],
+      box: 48,
+      offset: [13, 0],
+      paths: [{ d: 'M0 0H1Z' }, { d: 'M2 2H3Z', evenOdd: true }],
+    });
+    expect(isPathGlyph(glyph)).toBe(true);
+  });
+
+  it('reads Temaki whole, in the boxes it draws in, keeping icons of several paths whole', () => {
+    const glyphs = vendoredGlyphs(TEMAKI_ICONS, (name) => TEMAKI_PREFIX + name);
+
+    // 557 in the npm package, minus `crossing_markings-zebra_bicolour`: its
+    // stripes alternate solid and 30% opacity, which the glyph model cannot
+    // carry, and `crossing_markings-zebra` draws the same crossing without it.
+    expect(glyphs).toHaveLength(556);
+    expect(new Set(glyphs.map((glyph) => glyph.box))).toEqual(new Set([15, 48, 50, 100]));
+    expect(glyphs.filter((glyph) => glyph.paths.length > 1)).toHaveLength(116);
+    for (const glyph of glyphs) {
+      expect(glyph.key.startsWith('temaki:')).toBe(true);
+      for (const path of glyph.paths) {
+        expect(path.d).toMatch(/^[Mm]/);
+      }
+    }
+  });
+
+  it('reads OCHA under lower-case slugs, with its two even-odd icons', () => {
+    const glyphs = vendoredGlyphs(OCHA_ICONS, ochaKey);
+
+    expect(glyphs).toHaveLength(272);
+    for (const glyph of glyphs) {
+      expect(glyph.key).toMatch(/^ocha:[a-z0-9-]+$/);
+      expect(glyph.box).toBeGreaterThan(0);
+      expect(glyph.paths.length).toBeGreaterThan(0);
+    }
+    const evenOdd = glyphs.filter((glyph) => glyph.paths.some((path) => path.evenOdd)).map((glyph) => glyph.key);
+    expect(evenOdd.sort()).toEqual(['ocha:mobile-clinic', 'ocha:water-trucking']);
+  });
+});
+
+describe('temakiKey', () => {
+  it('prefixes a Temaki file name with temaki:', () => {
+    expect(temakiKey('power_tower')).toBe('temaki:power_tower');
+  });
+});
+
+describe('ochaKey', () => {
+  it('lower-cases an OCHA file name and turns its spaces into hyphens', () => {
+    // The same rule as `ochaSlug` in scripts/svg-paths.mjs.
+    expect(ochaKey('Indigenous people')).toBe('ocha:indigenous-people');
+    expect(ochaKey('Flood')).toBe('ocha:flood');
+  });
+});
+
 describe('symbolCatalogue', () => {
-  it('merges the three sources under unique names', () => {
+  it('merges the five sources, the vendored ones under their prefixes', () => {
     const catalogue = symbolCatalogue();
 
     expect(catalogue.get('chevron')).toBeDefined(); // ours
     expect(catalogue.get('directions')).toBeDefined(); // kepler
     expect(catalogue.get('airport')).toBeDefined(); // maki
-    expect(symbolNames().length).toBe(catalogue.size);
+    expect(catalogue.get('temaki:power_tower')).toBeDefined();
+    expect(catalogue.get('ocha:flood')).toBeDefined();
+    // Everything offered, plus kepler's 151 interface icons.
+    expect(catalogue.size).toBe(symbolNames().length + 151);
   });
 
   it('lets our own shapes win a name collision, so the basic shapes stay predictable', () => {
@@ -144,10 +256,51 @@ describe('symbolCatalogue', () => {
 });
 
 describe('symbolNames', () => {
-  it('caches the list rather than re-spreading the catalogue on every call', () => {
+  it('caches the list rather than rebuilding it on every call', () => {
     // Same array instance back, not just equal contents: this is what makes
     // a getter built on top of it cheap after the first read.
     expect(symbolNames()).toBe(symbolNames());
+  });
+
+  it('offers our shapes first, then Maki, Temaki and OCHA, each in alphabetical order', () => {
+    const names = symbolNames();
+    const own = ownGlyphs().map((glyph) => glyph.key);
+    const makiOnly = Object.keys(maki.paths)
+      .filter((name) => !own.includes(name))
+      .sort();
+
+    expect(names).toHaveLength(7 + 210 + 556 + 272);
+    expect(new Set(names).size).toBe(names.length);
+    expect(names.slice(0, 7)).toEqual(['arrow', 'circle', 'square', 'triangle', 'chevron', 'pin', 'cross']);
+    expect(names.slice(7, 217)).toEqual(makiOnly);
+    const temaki = names.slice(217, 773);
+    expect(temaki.every((name) => name.startsWith('temaki:'))).toBe(true);
+    expect(temaki).toEqual([...temaki].sort());
+    const ocha = names.slice(773);
+    expect(ocha.every((name) => name.startsWith('ocha:'))).toBe(true);
+    expect(ocha).toEqual([...ocha].sort());
+  });
+
+  it('leaves out the names only kepler has, which still draw', () => {
+    const own = new Set(ownGlyphs().map((glyph) => glyph.key));
+    const keplerOnly = (keplerIcons.svgIcons as Array<{ id: string }>)
+      .map((icon) => icon.id)
+      .filter((id) => !(id in maki.paths) && !own.has(id));
+    const offered = new Set(symbolNames());
+
+    expect(keplerOnly).toHaveLength(151);
+    expect(keplerOnly.filter((id) => offered.has(id))).toEqual([]);
+    // Hidden, not deleted: a dashboard that draws one keeps drawing it.
+    expect(resolveSymbol('directions')).toBe('directions');
+    expect(glyphsFor(['directions']).map((glyph) => glyph.key)).toEqual(['directions']);
+  });
+
+  it('still draws every name the repository’s dashboards save', () => {
+    for (const name of ['arrow', 'marker', 'bus']) {
+      expect(resolveSymbol(name)).toBe(name);
+    }
+    expect(resolveSymbol('temaki:power_tower')).toBe('temaki:power_tower');
+    expect(resolveSymbol('ocha:flood')).toBe('ocha:flood');
   });
 });
 
@@ -231,5 +384,45 @@ describe('paintGlyphs', () => {
     paintGlyphs([symbolCatalogue().get('airport')!], ctx);
 
     expect(calls).toEqual(expect.arrayContaining(['save', 'translate', 'scale', 'restore']));
+  });
+
+  it('fills each path of a glyph on its own, with its own rule, in the glyph box', () => {
+    const calls: unknown[][] = [];
+    const ctx = {
+      ...painter().ctx,
+      save: () => calls.push(['save']),
+      restore: () => calls.push(['restore']),
+      translate: (x: number, y: number) => calls.push(['translate', x, y]),
+      scale: (x: number, y: number) => calls.push(['scale', x, y]),
+      fill: (path?: unknown, rule?: string) => calls.push(['fill', (path as { d?: string } | undefined)?.d, rule]),
+    };
+    const one: PathGlyph = { key: 'one', anchor: [48, 48], box: 15, offset: [0, 0], paths: [{ d: 'M0 0H15V15Z' }] };
+    // Two outlines that overlap: joined in one Path2D, opposite windings would
+    // cancel where they meet, so each is filled on its own.
+    const two: PathGlyph = {
+      key: 'two',
+      anchor: [48, 48],
+      box: 50,
+      offset: [3, 4],
+      paths: [{ d: 'M0 0H40V40H0Z' }, { d: 'M10 10H30V30H10Z', evenOdd: true }],
+    };
+
+    paintGlyphs([one, two], ctx);
+
+    expect(calls).toEqual([
+      ['save'],
+      ['translate', 0, 0],
+      ['scale', 96 / 15, 96 / 15],
+      ['translate', 0, 0],
+      ['fill', 'M0 0H15V15Z', 'nonzero'],
+      ['restore'],
+      ['save'],
+      ['translate', 96, 0],
+      ['scale', 96 / 50, 96 / 50],
+      ['translate', 3, 4],
+      ['fill', 'M0 0H40V40H0Z', 'nonzero'],
+      ['fill', 'M10 10H30V30H10Z', 'evenodd'],
+      ['restore'],
+    ]);
   });
 });

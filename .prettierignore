@@ -6,3 +6,7 @@ testdata/
 # Managed by create-plugin; this project's constraints forbid modifying it, and
 # regenerating it would discard any formatting applied here anyway.
 /.config/
+
+# Written by scripts/vendor-*.mjs, which must reproduce them byte for byte.
+src/icons/temaki-paths.json
+src/icons/ocha-paths.json

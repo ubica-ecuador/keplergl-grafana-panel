@@ -43,6 +43,8 @@ jobs:
         run: npm run lint
       - name: Unit tests
         run: npm run test:ci
+      - name: Icon vendoring tests
+        run: npm run test:scripts
       - name: Build frontend
         run: npm run build
 
@@ -260,5 +262,3 @@ jobs:
       #     name: ${{ matrix.GRAFANA_IMAGE.NAME }}-v${{ matrix.GRAFANA_IMAGE.VERSION }}-${{github.run_id}}-server-log
       #     path: grafana-server.log
       #     retention-days: 5
-
-

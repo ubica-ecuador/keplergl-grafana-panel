@@ -34,6 +34,14 @@ function group(page: Page, label: string): Locator {
     .first();
 }
 
+/** A selector of the layer panel, found by the label above it. */
+function selector(page: Page, label: string): Locator {
+  return page
+    .locator('label.side-panel-panel__label', { hasText: new RegExp(`^${label}$`) })
+    .first()
+    .locator('xpath=following::div[contains(@class,"item-selector__dropdown")][1]');
+}
+
 test(
   'draws a symbol per station, turned by the direction column',
   async ({ gotoPanelEditPage, readProvisionedDashboard, page }) => {
@@ -145,16 +153,14 @@ test('paints the chosen shape into the atlas and draws with it', async ({
   // The atlas carries the glyph in use and nothing else.
   expect((await readSymbolLayer(map))!.atlasKeys).toEqual(['arrow']);
 
-  // Several hundred names, so the picker is searched rather than scrolled; each
-  // option reads as the glyph's own name. Matched whole, because the search
-  // keeps other names that merely contain the letters.
+  // The arrow is one of the shapes, so the picker opens there; the airport is
+  // under Transport. Each option reads as the glyph's own name, matched whole,
+  // because the search keeps other names that merely contain the letters.
   await openLayerPanel(page);
-  await click(
-    page
-      .locator('label.side-panel-panel__label', { hasText: /^Shape$/ })
-      .first()
-      .locator('xpath=following::div[contains(@class,"item-selector__dropdown")][1]')
-  );
+  await expect(selector(page, 'Category')).toContainText('Shapes');
+  await click(selector(page, 'Category'));
+  await click(page.locator('.list__item', { hasText: /^Transport$/ }).first());
+  await click(selector(page, 'Shape'));
   await page.locator('.typeahead__input').first().fill('airport');
   await click(page.locator('.list__item', { hasText: /^airport$/ }).first());
 
@@ -164,6 +170,75 @@ test('paints the chosen shape into the atlas and draws with it', async ({
   // And deck asks for it by the same name the atlas holds it under.
   expect(after.iconKeys).toEqual(['airport']);
 });
+
+test('offers the hazards, and draws OCHA’s flood from the list', async ({
+  gotoPanelEditPage,
+  readProvisionedDashboard,
+  page,
+}) => {
+  test.slow();
+  const dashboard = await readProvisionedDashboard({ fileName: 'symbols.json' });
+  const panelEditPage = await gotoPanelEditPage({ dashboard, id: '1' });
+
+  const map = panelEditPage.panel.locator.locator('canvas').first();
+  await expect(map).toBeVisible({ timeout: 60_000 });
+  await settle(page);
+  await expect.poll(async () => (await readSymbolLayer(map))?.symbols ?? 0, { timeout: 60_000 }).toBe(8);
+
+  await openLayerPanel(page);
+  await click(selector(page, 'Category'));
+  await click(page.locator('.list__item', { hasText: /^Hazards$/ }).first());
+  // A category narrows the list; it does not change what is drawn.
+  expect((await readSymbolLayer(map))!.symbol).toBe('arrow');
+
+  await click(selector(page, 'Shape'));
+  await page.locator('.typeahead__input').first().fill('flood');
+  await click(page.locator('.list__item', { hasText: /^ocha:flood$/ }).first());
+
+  await expect.poll(async () => (await readSymbolLayer(map))?.symbol, { timeout: 30_000 }).toBe('ocha:flood');
+  const after = (await readSymbolLayer(map))!;
+  expect(after.atlasKeys).toEqual(['ocha:flood']);
+  expect(after.iconKeys).toEqual(['ocha:flood']);
+  await expect(selector(page, 'Category')).toContainText('Hazards');
+
+  // The chosen value is drawn beside its name by the atlas's own painter.
+  const preview = selector(page, 'Shape').locator('canvas[data-symbol="ocha:flood"]');
+  await expect(preview).toBeVisible();
+  const inked = await preview.evaluate((canvas: HTMLCanvasElement) => {
+    const { data } = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height);
+    let count = 0;
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] > 0) {
+        count++;
+      }
+    }
+    return count;
+  });
+  expect(inked).toBeGreaterThan(20);
+});
+
+for (const [id, name] of [
+  ['6', 'temaki:power_tower'],
+  ['7', 'ocha:flood'],
+] as const) {
+  test(`draws the saved panel ${id} with ${name}`, async ({ gotoPanelEditPage, readProvisionedDashboard, page }) => {
+    test.slow();
+    const dashboard = await readProvisionedDashboard({ fileName: 'symbols.json' });
+    const panelEditPage = await gotoPanelEditPage({ dashboard, id });
+
+    const map = panelEditPage.panel.locator.locator('canvas').first();
+    await expect(map).toBeVisible({ timeout: 60_000 });
+    await settle(page);
+
+    await expect
+      .poll(async () => (await readKepler(map)).layers.map((l) => l.type), { timeout: 60_000 })
+      .toEqual(['symbol']);
+    await expect.poll(async () => (await readSymbolLayer(map))?.symbols ?? 0, { timeout: 60_000 }).toBe(8);
+    const drawn = (await readSymbolLayer(map))!;
+    expect(drawn.atlasKeys).toEqual([name]);
+    expect(drawn.iconKeys).toEqual([name]);
+  });
+}
 
 test('leaves one symbol per station under the dashboard clock', async ({
   gotoPanelEditPage,

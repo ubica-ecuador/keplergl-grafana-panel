@@ -40,6 +40,23 @@ function openKnob(extra: Partial<React.ComponentProps<typeof SelectKnob>> = {}) 
   return container;
 }
 
+/** Renders the knob drawing `placement`, without opening it. */
+function renderKnob(placement: string, extra: Partial<React.ComponentProps<typeof SelectKnob>> = {}) {
+  const { container } = render(
+    <IntlProvider locale="en" messages={catalogue}>
+      <ThemeProvider theme={theme}>
+        <SelectKnob
+          layer={{ ...layer, config: { visConfig: { placement } } }}
+          visConfiguratorProps={{ onChange: () => undefined }}
+          property="placement"
+          {...extra}
+        />
+      </ThemeProvider>
+    </IntlProvider>
+  );
+  return container.querySelector('.item-selector__dropdown') as HTMLElement;
+}
+
 describe('SelectKnob', () => {
   // kepler's dropdown list pages its options in with an IntersectionObserver,
   // which jsdom lacks; without a stand-in the list throws on mount and kepler's
@@ -75,5 +92,15 @@ describe('SelectKnob', () => {
     const listed = [...document.body.querySelectorAll('.list__item')].map((item) => item.textContent);
     expect(listed).toEqual(['screen', 'cells']);
     expect(document.body.querySelector('.typeahead__input')).not.toBeNull();
+  });
+
+  it('shows the first option for a value it does not offer', () => {
+    // What every other knob relies on: a stale value reads as the default.
+    expect(renderKnob('gone').textContent).toBe('Screen grid');
+  });
+
+  it('keeps showing a value it does not offer, when asked to', () => {
+    // The symbol picker's case: the symbol drawn is in another category.
+    expect(renderKnob('gone', { displayOption: (option) => option, keepChosen: true }).textContent).toBe('gone');
   });
 });

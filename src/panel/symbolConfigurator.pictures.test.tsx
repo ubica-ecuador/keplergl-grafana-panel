@@ -107,7 +107,7 @@ describe('the symbol layer panel, drawing shapes or pictures', () => {
     expect(screen.getByText('Anchor')).toBeInTheDocument();
     expect(screen.getByText('Rotation')).toBeInTheDocument();
     expect(screen.getByText('Size')).toBeInTheDocument();
-    for (const gone of ['Shape', 'Outline', 'Shadow', 'Color', 'Lighten towards the tail']) {
+    for (const gone of ['Shape', 'Category', 'Outline', 'Shadow', 'Color', 'Lighten towards the tail']) {
       expect(screen.queryByText(gone)).not.toBeInTheDocument();
     }
   });

@@ -558,7 +558,9 @@ export interface ProjectedMarker {
 }
 
 /** The markers layer's markers and the map centre, from the kepler store. */
-export async function readMarkers(map: Locator): Promise<{ center: [number, number]; markers: ProjectedMarker[] }> {
+export async function readMarkers(
+  map: Locator
+): Promise<{ center: [number, number]; markers: ProjectedMarker[]; symbol: string }> {
   return map.evaluate((node) => {
     const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
     let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
@@ -595,7 +597,11 @@ export async function readMarkers(map: Locator): Promise<{ center: [number, numb
           position: m.position,
         };
       });
-    return { center: [longitude, latitude] as [number, number], markers };
+    return {
+      center: [longitude, latitude] as [number, number],
+      markers,
+      symbol: String(layer?.config.visConfig.symbol ?? ''),
+    };
   });
 }
 

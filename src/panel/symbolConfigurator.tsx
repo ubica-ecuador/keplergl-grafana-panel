@@ -11,7 +11,7 @@ import {
 
 import { PictureSourceInput } from './pictureSourceInput';
 import { SelectKnob } from './selectKnob';
-import { SymbolOption } from './symbolOption';
+import { SymbolPicker } from './symbolPicker';
 
 /**
  * The layer panel for the symbol layer.
@@ -86,19 +86,11 @@ export function SymbolLayerConfig({
             <SelectKnob layer={layer} visConfiguratorProps={visConfiguratorProps} property="pictureAnchor" />
           </>
         ) : (
-          // The shape's options are glyph names — the words a person reads,
-          // with no messages behind them — and there are several hundred, so
-          // the list is searched rather than scrolled. Each is drawn beside its
-          // name: `rail`, `rail-light` and `rail-metro` are words apart and
-          // shapes apart.
-          <SelectKnob
-            layer={layer}
-            visConfiguratorProps={visConfiguratorProps}
-            property="symbol"
-            displayOption={(name) => name}
-            searchable
-            OptionComponent={SymbolOption}
-          />
+          // About a thousand glyph names, with no messages behind them: the
+          // picker narrows them by category and searches within it, and draws
+          // each beside its name — `rail`, `rail-light` and `rail-metro` are
+          // words apart and shapes apart.
+          <SymbolPicker layer={layer} visConfiguratorProps={visConfiguratorProps} />
         )}
         <SelectKnob layer={layer} visConfiguratorProps={visConfiguratorProps} property="directionConvention" />
         {settings.upright ? <VisConfigSwitch {...settings.upright} {...visConfiguratorProps} /> : null}

@@ -10,6 +10,18 @@ import { SymbolLayerConfig } from './symbolConfigurator';
 import { SYMBOL_MESSAGES } from './symbolMessages';
 import { SYMBOL_TYPE, SYMBOL_VIS_CONFIGS } from './symbolLayer';
 
+/** The selector under the side-panel label that reads `label`. */
+function selectorLabelled(container: HTMLElement, label: string): HTMLElement {
+  const section = [...container.querySelectorAll('.side-panel-panel__label')]
+    .find((element) => element.textContent === label)
+    ?.closest('.side-panel-section');
+  const dropdown = section?.querySelector('.item-selector__dropdown');
+  if (!dropdown) {
+    throw new Error(`No selector labelled ${label}`);
+  }
+  return dropdown as HTMLElement;
+}
+
 describe('symbol layer panel', () => {
   it('is found by the name kepler builds from the layer type', () => {
     // kepler calls `_render${capitalize(type)}LayerConfig` on the configurator.
@@ -285,6 +297,8 @@ describe('symbol layer panel', () => {
     expect(screen.getByText('airport')).toBeInTheDocument();
     // The small enumeration beside it is still translated.
     expect(screen.getByText('Where it goes')).toBeInTheDocument();
+    // The picker opens on the airport's own theme.
+    expect(selectorLabelled(container, 'Category').textContent).toBe('Transport');
 
     // kepler's dropdown list pages its options in with an IntersectionObserver,
     // which jsdom lacks. Without a stand-in the list throws on mount, and
@@ -298,14 +312,14 @@ describe('symbol layer panel', () => {
       disconnect() {}
     };
     try {
-      const [shape] = container.querySelectorAll('.item-selector__dropdown');
+      const shape = selectorLabelled(container, 'Shape');
       fireEvent.click(shape);
 
       const listed = () => [...document.body.querySelectorAll('.list__item')].map((item) => item.textContent);
       expect(listed().length).toBeGreaterThan(0);
       expect(listed().some((text) => text?.startsWith('symbol.'))).toBe(false);
 
-      // Maki's bus sits hundreds of names down; typing finds it.
+      // Typing finds Maki's bus among the transport symbols.
       const search = document.body.querySelector('.typeahead__input') as HTMLInputElement;
       expect(search).not.toBeNull();
       fireEvent.change(search, { target: { value: 'bus' } });
@@ -316,7 +330,7 @@ describe('symbol layer panel', () => {
 
     const missing = onError.mock.calls
       .map(([error]) => String(error?.message ?? ''))
-      .filter((message) => message.includes('"symbol.symbol.'));
+      .filter((message) => message.includes('"symbol.symbol.') || message.includes('"symbol.category'));
     expect(missing).toEqual([]);
   });
 
@@ -348,7 +362,7 @@ describe('symbol layer panel', () => {
       </IntlProvider>
     );
 
-    const [shape] = container.querySelectorAll('.item-selector__dropdown');
+    const shape = selectorLabelled(container, 'Shape');
     expect(shape.querySelector('canvas')?.getAttribute('data-symbol')).toBe('airport');
 
     const scope = globalThis as { IntersectionObserver?: unknown };
