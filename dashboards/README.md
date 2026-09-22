@@ -90,6 +90,13 @@ Three details break it silently if changed:
   It can take an expression over a literal, which is how `calles` picks its file out of `ov_files`:
   `read_parquet(regexp_extract('${ov_files}', 'segment=([^;]*)', 1))`.
   Reading the whole theme with a glob instead costs ~90 s in file footers alone.
+- **The collection name is read off the asset path, not off the index's own `collection` column.**
+  Overture rewrote `collections.parquet` on 2026-09-22 and that column — until then the collection's
+  name — became an `INTEGER` that is null in all 987 rows, while `id` became the zero-padded part
+  number. `WHERE collection IN ('segment', 'land_use', 'building')` matched nothing, `ov_files` came
+  back null, and every panel died on `IO Error: No files found that match the pattern ""`.
+  `regexp_extract(assets.aws.alternate.s3.href, 'type=([^/]*)/', 1)` takes the same name off
+  `theme=transportation/type=segment/…` and does not care which way that column goes next.
 - **The map query names `$calles` in a comment.** That is what makes Grafana wait for the table
   before running the query.
 
@@ -158,6 +165,12 @@ of `stac.overturemaps.org` answered **429 to every request from one IP**, even a
 existed in memory: the three variables that each read `collections.parquet` failed together, and
 the `CREATE`s behind them failed on an empty file list. A freshly restarted Grafana on a throttled
 IP would show an empty map. The server logged no 429 in the previous 72 hours.
+
+**It throttles fast.** Measured from the server on 2026-09-22: five reads of `collections.parquet`
+in a couple of minutes were enough, and the sixth got 429. That is a handful of dashboard loads.
+`catalog.json` kept answering 200 throughout, as before. `http_get('…/collections.parquet')` from
+the `http_client` extension reports the status instead of raising, which is the cheap way to ask
+whether an IP is still throttled — one request, no range reads.
 
 What changed because of it: the index is now read **once per load, never in parallel**. `ov_files`
 returns every file the dashboard needs as one plain string,
