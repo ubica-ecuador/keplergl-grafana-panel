@@ -1087,7 +1087,7 @@ export function refreshDatasets(store: Store, dispatch: Dispatch, datasets: Pane
 }
 
 /** The dataset ids kepler is currently holding. */
-function readDatasetIds(store: Store): string[] {
+export function readDatasetIds(store: Store): string[] {
   return Object.keys(getVisState(store)?.datasets ?? {});
 }
 
@@ -1317,7 +1317,7 @@ interface VisStateLike {
     dataId?: string[] | string;
   }>;
   /** Filters parked by a dataset replace, waiting to be merged back — in their saved form. */
-  filterToBeMerged?: Array<{ id?: string }>;
+  filterToBeMerged?: Array<{ id?: string; name?: string[] | string; dataId?: string[] | string }>;
   datasets: Record<
     string,
     {
@@ -1390,11 +1390,23 @@ export interface KeplerFilter {
   name?: string[] | string;
   type?: string;
   value?: unknown;
+  dataId?: string[] | string;
 }
 
 /** The map's current filters, for driving dashboard variables. */
 export function readFilters(store: Store): KeplerFilter[] {
   return getVisState(store)?.filters ?? [];
+}
+
+/**
+ * The filters kepler has set aside, in their saved form.
+ *
+ * Replacing a dataset, as every refresh of the panel's queries does, takes its
+ * filters off the map and parks them here until the new rows land. A filter
+ * kepler failed to validate is parked here as well, and stays.
+ */
+export function readParkedFilters(store: Store): KeplerFilter[] {
+  return getVisState(store)?.filterToBeMerged ?? [];
 }
 
 /**

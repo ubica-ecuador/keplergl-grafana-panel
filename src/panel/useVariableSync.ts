@@ -2,10 +2,19 @@ import { useEffect, useRef } from 'react';
 import { locationService } from '@grafana/runtime';
 import type { Store } from 'redux';
 
-import { applyFieldFilter, applyRangeFilter, readFilters, readSyncSlices, removeFieldFilter } from './keplerAdapter';
+import {
+  applyFieldFilter,
+  applyRangeFilter,
+  readDatasetIds,
+  readFilters,
+  readParkedFilters,
+  readSyncSlices,
+  removeFieldFilter,
+} from './keplerAdapter';
 import { SliceWatcher } from './sliceWatcher';
 import {
   decideFieldSync,
+  fieldsAwaitingRows,
   isVariableFilter,
   normalizeFilterKey,
   partitionMappings,
@@ -125,6 +134,9 @@ export function useVariableSync({ store, isReady, mappings }: Params): void {
       }
     }
     const desiredByField = variableFilterValues(variableValues, scalarMaps);
+    // A refresh takes a dataset's filters off the map until the new rows land.
+    // Neither side has moved for those fields; see `fieldsAwaitingRows`.
+    const awaiting = fieldsAwaitingRows(readParkedFilters(store), readDatasetIds(store));
 
     const filterValueByField: Record<string, unknown> = {};
     const rangeValueByField: Record<string, unknown> = {};
@@ -145,6 +157,9 @@ export function useVariableSync({ store, isReady, mappings }: Params): void {
 
     const variableWrites: Record<string, unknown> = {};
     for (const { field, variable } of scalarMaps) {
+      if (awaiting.has(field)) {
+        continue;
+      }
       const filterValue = filterValueByField[field];
       const desired = desiredByField[field]; // string[] | null (from the variable)
       const action = decideFieldSync({ filterValue, desired, lastSynced: lastSynced.current[field] });
@@ -182,6 +197,9 @@ export function useVariableSync({ store, isReady, mappings }: Params): void {
     const rangeKeys: Record<string, string> = {};
     for (const mapping of rangeMaps) {
       const { field } = mapping;
+      if (awaiting.has(field)) {
+        continue;
+      }
       const pair = rangeFilterPair(rangeValueByField[field]);
       const desiredPair = readRangeFromVariables(variableValues, mapping);
       const desired = desiredPair ? desiredPair.map(String) : null;
