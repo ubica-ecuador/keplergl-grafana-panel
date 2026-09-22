@@ -1,13 +1,4 @@
-import {
-  arrowGlyph,
-  ATLAS_COLUMNS,
-  CELL,
-  drawGlyph,
-  Glyph,
-  IconFrame,
-  paintAtlas,
-  Painter,
-} from './vectorFieldGlyphs';
+import { arrowGlyph, ATLAS_COLUMNS, CELL, drawGlyph, Glyph, IconFrame, paintAtlas, Painter } from './vectorFieldGlyphs';
 import keplerIcons from '../icons/svg-icons.json';
 import maki from '../icons/maki-paths.json';
 
@@ -23,25 +14,38 @@ import maki from '../icons/maki-paths.json';
 
 const MID = CELL / 2;
 
+/** One outline of a path glyph, and the rule that fills it. */
+export interface GlyphPath {
+  d: string;
+  /** Filled `evenodd` rather than `nonzero`: for an icon that cuts its holes that way. */
+  evenOdd?: boolean;
+}
+
 /**
- * A glyph whose outline is an SVG path.
+ * A glyph whose outline is SVG path data.
  *
- * Maki's icons have curves, which `Shape` cannot express, so the path travels
- * as the string it came as and is painted with `Path2D`. `box` is the side of
- * the coordinate system that path is drawn in, so the painter can scale it into
- * the atlas cell.
+ * The icon libraries draw with curves, which `Shape` cannot express, so the
+ * paths travel as the strings they came as and are painted with `Path2D`.
+ * `box` is the side of the square the paths are drawn in, so the painter can
+ * scale it into the atlas cell. `offset` moves them inside that square, so an
+ * icon cropped to less than a square is centred.
+ *
+ * Several paths, each filled on its own: if two overlapping outlines of
+ * opposite winding share one `Path2D`, they cancel where they overlap, and a
+ * hole opens in the middle of the icon.
  */
 export interface PathGlyph {
   key: string;
   anchor: [number, number];
-  path: string;
   box: number;
+  offset: [number, number];
+  paths: GlyphPath[];
 }
 
 export type AnyGlyph = Glyph | PathGlyph;
 
 export function isPathGlyph(glyph: AnyGlyph): glyph is PathGlyph {
-  return typeof (glyph as PathGlyph).path === 'string';
+  return Array.isArray((glyph as PathGlyph).paths);
 }
 
 /**
@@ -56,7 +60,7 @@ export interface SymbolPainter extends Painter {
   restore(): void;
   translate(x: number, y: number): void;
   scale(x: number, y: number): void;
-  fill(path?: Path2D): void;
+  fill(path?: Path2D, rule?: CanvasFillRule): void;
 }
 
 /** One icon of kepler's own library: a flat, triangulated outline. */
@@ -108,24 +112,58 @@ export function ownGlyphs(): Glyph[] {
     {
       key: 'square',
       anchor: [MID, MID],
-      shapes: [{ kind: 'polygon', points: [[22, 22], [74, 22], [74, 74], [22, 74]] }],
+      shapes: [
+        {
+          kind: 'polygon',
+          points: [
+            [22, 22],
+            [74, 22],
+            [74, 74],
+            [22, 74],
+          ],
+        },
+      ],
     },
     {
       key: 'triangle',
       anchor: [MID, MID],
-      shapes: [{ kind: 'polygon', points: [[MID, 18], [76, 74], [20, 74]] }],
+      shapes: [
+        {
+          kind: 'polygon',
+          points: [
+            [MID, 18],
+            [76, 74],
+            [20, 74],
+          ],
+        },
+      ],
     },
     {
       key: 'chevron',
       anchor: [MID, MID],
-      shapes: [{ kind: 'line', points: [[24, 62], [MID, 30], [72, 62]] }],
+      shapes: [
+        {
+          kind: 'line',
+          points: [
+            [24, 62],
+            [MID, 30],
+            [72, 62],
+          ],
+        },
+      ],
     },
     {
       key: 'pin',
       // Driven into the ground at the bottom of the cell, like a barb's station.
       anchor: [MID, 92],
       shapes: [
-        { kind: 'line', points: [[MID, 92], [MID, 44]] },
+        {
+          kind: 'line',
+          points: [
+            [MID, 92],
+            [MID, 44],
+          ],
+        },
         { kind: 'circle', centre: [MID, 30], radius: 16 },
       ],
     },
@@ -133,20 +171,33 @@ export function ownGlyphs(): Glyph[] {
       key: 'cross',
       anchor: [MID, MID],
       shapes: [
-        { kind: 'line', points: [[26, 26], [70, 70]] },
-        { kind: 'line', points: [[70, 26], [26, 70]] },
+        {
+          kind: 'line',
+          points: [
+            [26, 26],
+            [70, 70],
+          ],
+        },
+        {
+          kind: 'line',
+          points: [
+            [70, 26],
+            [26, 70],
+          ],
+        },
       ],
     },
   ];
 }
 
-/** Maki's icons as glyphs, drawn in the 15-unit box Maki designs in. */
+/** Maki's icons as glyphs: one path each, in the 15-unit box Maki designs in. */
 export function makiGlyphs(paths: Record<string, string>): PathGlyph[] {
-  return Object.entries(paths).map(([key, path]) => ({
+  return Object.entries(paths).map(([key, d]) => ({
     key,
     anchor: [MID, MID] as [number, number],
-    path,
     box: 15,
+    offset: [0, 0] as [number, number],
+    paths: [{ d }],
   }));
 }
 
@@ -243,7 +294,10 @@ export function paintGlyphs(
       symbolCtx.save();
       symbolCtx.translate(x, y);
       symbolCtx.scale(CELL / anyGlyph.box, CELL / anyGlyph.box);
-      symbolCtx.fill(new Path2D(anyGlyph.path));
+      symbolCtx.translate(anyGlyph.offset[0], anyGlyph.offset[1]);
+      for (const path of anyGlyph.paths) {
+        symbolCtx.fill(new Path2D(path.d), path.evenOdd ? 'evenodd' : 'nonzero');
+      }
       symbolCtx.restore();
     } else {
       drawGlyph(anyGlyph, symbolCtx, x, y);

@@ -5,6 +5,7 @@ import {
   meshGlyphs,
   ownGlyphs,
   paintGlyphs,
+  PathGlyph,
   resolveSymbol,
   symbolCatalogue,
   symbolNames,
@@ -45,7 +46,17 @@ describe('meshGlyphs', () => {
   it('turns a triangulated mesh into polygons of the glyph cell', () => {
     // A single triangle spanning the whole normalised box.
     const glyphs = meshGlyphs([
-      { id: 'tri', mesh: { positions: [[-1, -1, 0], [1, -1, 0], [0, 1, 0]], cells: [[0, 1, 2]] } },
+      {
+        id: 'tri',
+        mesh: {
+          positions: [
+            [-1, -1, 0],
+            [1, -1, 0],
+            [0, 1, 0],
+          ],
+          cells: [[0, 1, 2]],
+        },
+      },
     ]);
 
     expect(glyphs).toHaveLength(1);
@@ -56,13 +67,27 @@ describe('meshGlyphs', () => {
     // icon layer negates y to draw them in its y-up world.
     expect(glyphs[0].shapes[0]).toEqual({
       kind: 'polygon',
-      points: [[0, 0], [96, 0], [48, 96]],
+      points: [
+        [0, 0],
+        [96, 0],
+        [48, 96],
+      ],
     });
   });
 
   it('anchors a mesh glyph at the centre of its cell', () => {
     const glyphs = meshGlyphs([
-      { id: 'tri', mesh: { positions: [[-1, -1, 0], [1, -1, 0], [0, 1, 0]], cells: [[0, 1, 2]] } },
+      {
+        id: 'tri',
+        mesh: {
+          positions: [
+            [-1, -1, 0],
+            [1, -1, 0],
+            [0, 1, 0],
+          ],
+          cells: [[0, 1, 2]],
+        },
+      },
     ]);
 
     expect(glyphs[0].anchor).toEqual([48, 48]);
@@ -81,15 +106,23 @@ describe('meshGlyphs', () => {
 });
 
 describe('makiGlyphs', () => {
-  it('carries the path as a string, because curves do not fit the shape model', () => {
+  it('carries the path as data, because curves do not fit the shape model', () => {
     const glyphs = makiGlyphs({ airport: 'M15,6.8L8.5,7.5z' });
 
     expect(glyphs).toHaveLength(1);
     expect(isPathGlyph(glyphs[0])).toBe(true);
-    expect(glyphs[0].path).toBe('M15,6.8L8.5,7.5z');
-    // Maki draws in a 15x15 box; the atlas cell is 96.
-    expect(glyphs[0].box).toBe(15);
-    expect(glyphs[0].anchor).toEqual([48, 48]);
+    // Maki draws one path in a 15x15 box, flush with its corner; the atlas cell is 96.
+    expect(glyphs[0]).toEqual({
+      key: 'airport',
+      anchor: [48, 48],
+      box: 15,
+      offset: [0, 0],
+      paths: [{ d: 'M15,6.8L8.5,7.5z' }],
+    });
+  });
+
+  it('tells a path glyph from a shape glyph', () => {
+    expect(isPathGlyph(ownGlyphs()[0])).toBe(false);
   });
 
   it('reads the vendored library, transport included', () => {
@@ -99,7 +132,8 @@ describe('makiGlyphs', () => {
     expect(glyphs.length).toBe(215);
     expect(names).toEqual(expect.arrayContaining(['airport', 'heliport', 'bus', 'rail', 'ferry', 'harbor', 'bicycle']));
     for (const glyph of glyphs) {
-      expect(glyph.path.length).toBeGreaterThan(0);
+      expect(glyph.paths).toHaveLength(1);
+      expect(glyph.paths[0].d.length).toBeGreaterThan(0);
     }
   });
 
@@ -108,7 +142,7 @@ describe('makiGlyphs', () => {
     const invalidPaths = [];
 
     for (const glyph of glyphs) {
-      const path = glyph.path;
+      const path = glyph.paths[0].d;
       // Every SVG path must start with a moveto command (M or m)
       if (!path.match(/^[Mm]/)) {
         invalidPaths.push(`${glyph.key}: does not start with M or m`);
@@ -231,5 +265,45 @@ describe('paintGlyphs', () => {
     paintGlyphs([symbolCatalogue().get('airport')!], ctx);
 
     expect(calls).toEqual(expect.arrayContaining(['save', 'translate', 'scale', 'restore']));
+  });
+
+  it('fills each path of a glyph on its own, with its own rule, in the glyph box', () => {
+    const calls: unknown[][] = [];
+    const ctx = {
+      ...painter().ctx,
+      save: () => calls.push(['save']),
+      restore: () => calls.push(['restore']),
+      translate: (x: number, y: number) => calls.push(['translate', x, y]),
+      scale: (x: number, y: number) => calls.push(['scale', x, y]),
+      fill: (path?: unknown, rule?: string) => calls.push(['fill', (path as { d?: string } | undefined)?.d, rule]),
+    };
+    const one: PathGlyph = { key: 'one', anchor: [48, 48], box: 15, offset: [0, 0], paths: [{ d: 'M0 0H15V15Z' }] };
+    // Two outlines that overlap: joined in one Path2D, opposite windings would
+    // cancel where they meet, so each is filled on its own.
+    const two: PathGlyph = {
+      key: 'two',
+      anchor: [48, 48],
+      box: 50,
+      offset: [3, 4],
+      paths: [{ d: 'M0 0H40V40H0Z' }, { d: 'M10 10H30V30H10Z', evenOdd: true }],
+    };
+
+    paintGlyphs([one, two], ctx);
+
+    expect(calls).toEqual([
+      ['save'],
+      ['translate', 0, 0],
+      ['scale', 96 / 15, 96 / 15],
+      ['translate', 0, 0],
+      ['fill', 'M0 0H15V15Z', 'nonzero'],
+      ['restore'],
+      ['save'],
+      ['translate', 96, 0],
+      ['scale', 96 / 50, 96 / 50],
+      ['translate', 3, 4],
+      ['fill', 'M0 0H40V40H0Z', 'nonzero'],
+      ['fill', 'M10 10H30V30H10Z', 'evenodd'],
+      ['restore'],
+    ]);
   });
 });
