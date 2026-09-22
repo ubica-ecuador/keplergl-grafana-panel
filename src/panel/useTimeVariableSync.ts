@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { locationService } from '@grafana/runtime';
 import type { Store } from 'redux';
 
+import { subscribeActivity } from './duckdbWasmActivity';
 import {
   ensureTimeFilter,
   isTimeFilterAnimating,
@@ -10,7 +11,6 @@ import {
   readTimeDomain,
   readTimeRange,
 } from './keplerAdapter';
-import { subscribeActivity } from './duckdbWasmActivity';
 import { PublishGate } from './publishGate';
 import { SliceWatcher } from './sliceWatcher';
 import { timeChannel } from './timeChannel';
@@ -128,14 +128,28 @@ export function useTimeVariableSync({
   const lastPublishAt = useRef<number | null>(null);
   /** Holds a playback publish until the panels answering the previous one are done; see PublishGate. */
   const gate = useRef(new PublishGate());
-  /** True while the pending publish waits on the gate rather than on the interval. */
-  const heldByGate = useRef(false);
+  /** True while the pending publish sits in publish()'s playback hold rather than on the debounce. */
+  const held = useRef(false);
+
+  /**
+   * How long a playback step must still wait before it may leave: until a full
+   * interval has passed since the last write, and until the gate opens. 0 once
+   * both have.
+   *
+   * The debounce alone cannot keep the interval: its rest delay fires whenever
+   * two frames are further apart than it, which a starved main thread makes the
+   * rule. Measured under software GL, writes 610 ms apart at a 1500 ms interval.
+   */
+  const playbackWait = useRef(() => {
+    const sinceLast = lastPublishAt.current === null ? Number.POSITIVE_INFINITY : Date.now() - lastPublishAt.current;
+    return Math.max(gate.current.waitMs(performance.now()), publishIntervalRef.current - sinceLast);
+  });
 
   const publish = useRef(() => {
     publishTimer.current = null;
     const since = pendingSince.current;
     pendingSince.current = null;
-    heldByGate.current = false;
+    held.current = false;
     const pending = pendingPublish.current;
     pendingPublish.current = null;
     if (!pending) {
@@ -153,19 +167,21 @@ export function useTimeVariableSync({
       return;
     }
 
-    // While playing, a step also waits for the panels answering the previous
-    // one, when a datasource on the page says when they are done. Only the
-    // newest window is kept meanwhile; schedulePublish leaves the timer alone.
-    // Look again at least every rest delay, not only when the gate would
-    // open: a peer's stop is heard by nobody here, so this timer is what
-    // notices the clock has stopped and lets the final window leave.
+    // While playing, a step waits a full interval after the last write, and
+    // for the panels answering the previous one when a datasource on the page
+    // says when they are done. Only the newest window is kept meanwhile;
+    // schedulePublish leaves the timer alone. Look again at least every rest
+    // delay, not only when the wait would be over: a peer's stop is heard by
+    // nobody here, so this timer is what notices the clock has stopped and
+    // lets the final window leave — with no datasource, as on a server one,
+    // the interval is the only thing holding the step.
     const playing = clockRunning.current();
     if (playing) {
-      const wait = gate.current.waitMs(performance.now());
+      const wait = playbackWait.current();
       if (wait > 0) {
         pendingPublish.current = pending;
         pendingSince.current = since;
-        heldByGate.current = true;
+        held.current = true;
         publishTimer.current = setTimeout(() => publish.current(), Math.min(wait, PUBLISH_DELAY_MS));
         return;
       }
@@ -194,17 +210,17 @@ export function useTimeVariableSync({
 
   const schedulePublish = useRef((window: TimeRangeMs | null, domain: TimeRangeMs | null) => {
     pendingPublish.current = { window, domain };
-    // Held by the gate, and still playing: keep only the newest window. The
-    // gate's own timer, or the datasource settling, publishes it. Once the
+    // Held in publish(), and still playing: keep only the newest window. The
+    // hold's own timer, or the datasource settling, publishes it. Once the
     // clock has stopped the hold no longer applies, so the held step falls
     // through to the ordinary debounce below and the final window leaves as it
     // always did. That covers a local stop and a hand taking over, which both
     // reach this store. A peer's stop does not: publish() catches that one when
     // its timer looks again.
-    if (heldByGate.current && clockRunning.current()) {
+    if (held.current && clockRunning.current()) {
       return;
     }
-    heldByGate.current = false;
+    held.current = false;
     const now = Date.now();
     if (pendingSince.current === null) {
       pendingSince.current = now;
@@ -220,20 +236,16 @@ export function useTimeVariableSync({
     // keeps the default cap it has always had with this option on, so one that
     // never rests still writes every 1.5 s: a low interval would otherwise turn
     // its debounce into a throttle, one write per interval mid-drag.
-    const pacedPlayback = whilePlayingRef.current && clockRunning.current();
+    //
+    // The timer never waits longer than the rest delay, even while playing: a
+    // step that fires before a full interval since the last write waits out
+    // the rest in publish()'s hold, which keeps looking at the clock.
     const cap = !whilePlayingRef.current
       ? Number.POSITIVE_INFINITY
-      : pacedPlayback
+      : clockRunning.current()
         ? publishIntervalRef.current
         : DEFAULT_PUBLISH_INTERVAL_MS;
-    let delay = nextPublishDelay(now, pendingSince.current, PUBLISH_DELAY_MS, cap);
-    // The rest delay still fires whenever two frames are further apart than it,
-    // which a starved main thread makes the rule: measured under software GL,
-    // writes 610 ms apart at a 1500 ms interval. So while the clock runs, the
-    // interval is also measured from the last write, whatever the frames do.
-    if (pacedPlayback && lastPublishAt.current !== null) {
-      delay = Math.max(delay, publishIntervalRef.current - (now - lastPublishAt.current));
-    }
+    const delay = nextPublishDelay(now, pendingSince.current, PUBLISH_DELAY_MS, cap);
     publishTimer.current = setTimeout(() => publish.current(), delay);
   });
 
@@ -244,7 +256,7 @@ export function useTimeVariableSync({
     }
     pendingPublish.current = null;
     pendingSince.current = null;
-    heldByGate.current = false;
+    held.current = false;
   });
 
   const reconcile = useRef(() => {
@@ -335,10 +347,11 @@ export function useTimeVariableSync({
     // Dashboard → map: react to variable changes, which land in the URL.
     const unlisten = locationService.getHistory().listen(schedule.current);
     // The DuckDB-WASM datasource, if it is on the page, says when the panels
-    // it answers are done. A step held for them goes as soon as they are.
+    // it answers are done. A step held for them goes as soon as they are, and
+    // the interval since the last write is up.
     const unsubscribeActivity = subscribeActivity((signal) => {
       gate.current.signal(signal);
-      if (heldByGate.current && gate.current.waitMs(performance.now()) === 0) {
+      if (held.current && playbackWait.current() === 0) {
         if (publishTimer.current !== null) {
           clearTimeout(publishTimer.current);
         }

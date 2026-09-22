@@ -143,6 +143,17 @@ async function frames(store: FakeStore, ms: number, moving: boolean, frameMs = F
   }
 }
 
+/** Plays on, a frame at a time, until the map writes its window again. */
+async function untilNextWrite(store: FakeStore): Promise<void> {
+  const before = mockWrites.length;
+  for (let elapsed = 0; mockWrites.length === before; elapsed += FRAME_MS) {
+    if (elapsed > 10_000) {
+      throw new Error('no write in 10 s of playback');
+    }
+    await frames(store, FRAME_MS, true);
+  }
+}
+
 function writesSince(start: number) {
   return mockWrites.filter((write) => write.at >= start);
 }
@@ -234,6 +245,24 @@ describe('useTimeVariableSync, with publishing while playing on', () => {
       }
     });
 
+    // The follower hears nothing when the peer stops, and with no datasource no
+    // busy ever holds it: only its own timer can notice the clock has stopped.
+    it("writes the final window within the rest delay of a peer's stop between two writes", async () => {
+      const store = await playing({ interval: DEFAULT_PUBLISH_INTERVAL_MS, peer: true });
+      await untilNextWrite(store);
+      const lastWrite = mockWrites[mockWrites.length - 1].at;
+      await frames(store, 200 - (performance.now() - lastWrite), true);
+
+      mockPeers.playing = false;
+      const stoppedAt = performance.now();
+      await frames(store, DEFAULT_PUBLISH_INTERVAL_MS, false);
+
+      const finals = writesSince(stoppedAt);
+      expect(finals).toHaveLength(1);
+      expect(finals[0].from).toBe(mockMap.window.from);
+      expect(finals[0].at - stoppedAt).toBeLessThanOrEqual(300);
+    });
+
     it('writes once every interval at the minimum', async () => {
       const store = await playing({ interval: 250 });
       const start = performance.now();
@@ -296,6 +325,25 @@ describe('useTimeVariableSync, with publishing while playing on', () => {
       await frames(store, 1000, true);
 
       expect(mockWrites).toHaveLength(held);
+    });
+
+    // Slow frames leave each step waiting out the interval in the hold, where a
+    // settle can arrive: it opens the gate, but the interval is not up yet.
+    it('keeps writes a full interval apart under slow frames when the panels settle early', async () => {
+      const store = await playing({ interval: DEFAULT_PUBLISH_INTERVAL_MS });
+      mockOnWrite.push(() => {
+        setTimeout(() => announce('busy'), 20);
+        setTimeout(() => announce('settled'), 1000);
+      });
+      const start = performance.now();
+      await frames(store, 12_000, true, SLOW_FRAME_MS);
+
+      const gaps = gapsSince(start);
+      expect(gaps.length).toBeGreaterThanOrEqual(5);
+      for (const gap of gaps) {
+        expect(gap).toBeGreaterThanOrEqual(DEFAULT_PUBLISH_INTERVAL_MS);
+        expect(gap).toBeLessThanOrEqual(DEFAULT_PUBLISH_INTERVAL_MS + SLOW_FRAME_MS);
+      }
     });
 
     it('writes the final window within the rest delay of a local stop while held', async () => {

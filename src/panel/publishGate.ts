@@ -22,7 +22,7 @@ export const GATE_HOLD_MS = 5000;
 
 export interface GateSignal {
   state: 'busy' | 'settled';
-  /** performance.now() when the datasource changed state. */
+  /** Main-thread performance.now() when the datasource changed state. */
   at: number;
 }
 
