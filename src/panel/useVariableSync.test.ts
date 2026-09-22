@@ -39,6 +39,12 @@ function makeStore(filters: unknown[]) {
       state = { keplerGl: {} };
       subscribers.forEach((fn) => fn());
     },
+    /** Replaces parts of the vis state, as a kepler action would, and notifies. */
+    setVisState: (patch: Record<string, unknown>) => {
+      const entry = state.keplerGl.grafana as { visState: Record<string, unknown> };
+      state = { keplerGl: { grafana: { ...entry, visState: { ...entry.visState, ...patch } } } };
+      subscribers.forEach((fn) => fn());
+    },
   };
 }
 
@@ -113,5 +119,98 @@ describe('useVariableSync', () => {
     jest.advanceTimersByTime(500);
 
     expect(partial).toHaveBeenCalledWith({ 'var-minval': '', 'var-maxval': '' }, true);
+  });
+});
+
+/**
+ * The refresh hazard. Replacing a dataset — every refresh of the panel's
+ * queries — takes its filters off the map and parks them in `filterToBeMerged`
+ * until the new rows land. Read in that window, a mapped field has no filter,
+ * and that used to be taken for the user clearing it: the variable was reset to
+ * All, and put back a moment later when the filter returned. When the map's own
+ * queries read that variable, each of those writes refreshed the map again, and
+ * the variable flipped for ever (measured on trimet-live and gtfs-rt-mbta).
+ */
+describe('useVariableSync across a refresh', () => {
+  const ROUTE_MAPPING = [{ field: 'route', variable: 'route' }];
+  const routeFilter = {
+    id: 'f1',
+    type: 'multiSelect',
+    name: ['route'],
+    dataId: ['grafana-A'],
+    value: ['MAX Blue Line'],
+  };
+  const vehicles = { 'grafana-A': { id: 'grafana-A', fields: [{ name: 'route' }, { name: 'value' }] } };
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    partial.mockClear();
+    listeners.length = 0;
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  async function settle() {
+    await flushMicrotasks();
+    jest.advanceTimersByTime(500);
+  }
+
+  it('leaves a scalar variable alone while its filter waits for the new rows', async () => {
+    search = new URLSearchParams('var-route=MAX Blue Line');
+    const store = makeStore([routeFilter]);
+    store.setVisState({ datasets: vehicles, filterToBeMerged: [] });
+    renderHook(() => useVariableSync({ store: store as never, isReady: true, mappings: ROUTE_MAPPING }));
+    await settle();
+    expect(partial).not.toHaveBeenCalled();
+
+    store.setVisState({ filters: [], datasets: {}, filterToBeMerged: [routeFilter] });
+    await settle();
+    store.setVisState({ filters: [routeFilter], datasets: vehicles, filterToBeMerged: [] });
+    await settle();
+
+    expect(partial).not.toHaveBeenCalled();
+    expect(store.dispatch).not.toHaveBeenCalled();
+  });
+
+  it('leaves a range pair alone while its filter waits for the new rows', async () => {
+    search = new URLSearchParams('var-minval=0&var-maxval=100');
+    const range = { id: 'f2', type: 'range', name: ['value'], dataId: ['grafana-A'], value: [0, 100] };
+    const store = makeStore([range]);
+    store.setVisState({ datasets: vehicles, filterToBeMerged: [] });
+    renderHook(() => useVariableSync({ store: store as never, isReady: true, mappings: RANGE_MAPPING }));
+    await settle();
+
+    store.setVisState({ filters: [], datasets: {}, filterToBeMerged: [range] });
+    await settle();
+
+    expect(partial).not.toHaveBeenCalled();
+  });
+
+  it('still publishes All when the filter is removed from the map', async () => {
+    search = new URLSearchParams('var-route=MAX Blue Line');
+    const store = makeStore([routeFilter]);
+    store.setVisState({ datasets: vehicles, filterToBeMerged: [] });
+    renderHook(() => useVariableSync({ store: store as never, isReady: true, mappings: ROUTE_MAPPING }));
+    await settle();
+
+    store.setVisState({ filters: [] });
+    await settle();
+
+    expect(partial).toHaveBeenCalledWith({ 'var-route': '$__all' }, true);
+  });
+
+  it('does not let a filter kepler could not merge block its field for good', async () => {
+    // kepler also parks a filter it failed to validate — on a dataset that is
+    // loaded, and there it stays. That is no refresh in progress: the variable
+    // must still drive the map.
+    search = new URLSearchParams('var-route=MAX Blue Line');
+    const store = makeStore([]);
+    store.setVisState({ datasets: vehicles, filterToBeMerged: [{ ...routeFilter, value: ['old'] }] });
+    renderHook(() => useVariableSync({ store: store as never, isReady: true, mappings: ROUTE_MAPPING }));
+    await settle();
+
+    expect(store.dispatch).toHaveBeenCalled();
   });
 });

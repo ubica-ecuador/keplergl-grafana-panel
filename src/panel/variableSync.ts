@@ -112,6 +112,36 @@ interface FilterLike {
   name?: string[] | string;
   type?: string;
   value?: unknown;
+  dataId?: string[] | string;
+}
+
+/**
+ * The fields whose filter is off the map only while its dataset is replaced.
+ *
+ * A refresh parks a dataset's filters in `filterToBeMerged` until the new rows
+ * land. In that window a mapped field has no filter, and read as a clearing
+ * that reset the variable to All, then back when the filter returned. Where
+ * the map's own queries read the variable, each write refreshed the map again
+ * and the variable flipped for ever. Neither side has changed, so the field
+ * sits out the reconcile until its filter is back.
+ *
+ * Only a filter parked for a dataset that is not loaded counts. kepler also
+ * parks a filter it failed to validate, against a dataset that is loaded, and
+ * leaves it there; counting that one would take its field out of the sync for
+ * good.
+ */
+export function fieldsAwaitingRows(parked: FilterLike[], loadedDatasetIds: string[]): Set<string> {
+  const loaded = new Set(loadedDatasetIds);
+  const fields = new Set<string>();
+  for (const filter of parked) {
+    const dataIds = Array.isArray(filter.dataId) ? filter.dataId : filter.dataId ? [filter.dataId] : [];
+    if (dataIds.length === 0 || dataIds.every((id) => loaded.has(id))) {
+      continue;
+    }
+    const names = Array.isArray(filter.name) ? filter.name : filter.name ? [filter.name] : [];
+    names.forEach((name) => fields.add(name));
+  }
+  return fields;
 }
 
 /**
