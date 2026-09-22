@@ -191,9 +191,12 @@ describe('vendoredGlyphs', () => {
   it('reads Temaki whole, in the boxes it draws in, keeping icons of several paths whole', () => {
     const glyphs = vendoredGlyphs(TEMAKI_ICONS, (name) => TEMAKI_PREFIX + name);
 
-    expect(glyphs).toHaveLength(557);
+    // 557 in the npm package, minus `crossing_markings-zebra_bicolour`: its
+    // stripes alternate solid and 30% opacity, which the glyph model cannot
+    // carry, and `crossing_markings-zebra` draws the same crossing without it.
+    expect(glyphs).toHaveLength(556);
     expect(new Set(glyphs.map((glyph) => glyph.box))).toEqual(new Set([15, 48, 50, 100]));
-    expect(glyphs.filter((glyph) => glyph.paths.length > 1)).toHaveLength(117);
+    expect(glyphs.filter((glyph) => glyph.paths.length > 1)).toHaveLength(116);
     for (const glyph of glyphs) {
       expect(glyph.key.startsWith('temaki:')).toBe(true);
       for (const path of glyph.paths) {
@@ -259,14 +262,14 @@ describe('symbolNames', () => {
       .filter((name) => !own.includes(name))
       .sort();
 
-    expect(names).toHaveLength(7 + 210 + 557 + 272);
+    expect(names).toHaveLength(7 + 210 + 556 + 272);
     expect(new Set(names).size).toBe(names.length);
     expect(names.slice(0, 7)).toEqual(['arrow', 'circle', 'square', 'triangle', 'chevron', 'pin', 'cross']);
     expect(names.slice(7, 217)).toEqual(makiOnly);
-    const temaki = names.slice(217, 774);
+    const temaki = names.slice(217, 773);
     expect(temaki.every((name) => name.startsWith('temaki:'))).toBe(true);
     expect(temaki).toEqual([...temaki].sort());
-    const ocha = names.slice(774);
+    const ocha = names.slice(773);
     expect(ocha.every((name) => name.startsWith('ocha:'))).toBe(true);
     expect(ocha).toEqual([...ocha].sort());
   });

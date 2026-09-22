@@ -145,9 +145,11 @@ served as files. The symbol and markers layers offer them as shapes:
   8.2.0 (CC0-1.0, Mapbox). Written by `scripts/vendor-maki.mjs`; nothing else of the package is
   shipped. CC0 asks for no attribution — the entry is here so the origin of the shapes is on
   record.
-- `src/icons/temaki-paths.json` — the SVG paths of the 557 icons of Temaki,
+- `src/icons/temaki-paths.json` — the SVG paths of 556 of the 557 icons of Temaki,
   `@rapideditor/temaki` 5.13.0 (CC0-1.0, the Temaki contributors), offered as `temaki:<name>`.
-  Written by `scripts/vendor-temaki.mjs`; nothing else of the package is shipped.
+  Written by `scripts/vendor-temaki.mjs`; nothing else of the package is shipped. One icon,
+  `crossing_markings-zebra_bicolour`, is left out because its stripes' translucency has no
+  equivalent in this plugin's flat-fill glyph model.
 - `src/icons/ocha-paths.json` — 272 of the OCHA Humanitarian Icons v2 (CC0-1.0, United Nations
   Office for the Coordination of Humanitarian Affairs), from
   https://github.com/UN-OCHA/humanitarian-icons at commit `f7613d5`, offered as `ocha:<name>`.

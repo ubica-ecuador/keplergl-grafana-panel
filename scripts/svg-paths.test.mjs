@@ -108,6 +108,21 @@ describe('readTemakiSvg', () => {
     assert.throws(() => readTemakiSvg('<svg viewBox="0 0 15 15"><path fill="#ff0000" d="M0 0Z"/></svg>'), /fill/);
     assert.throws(() => readTemakiSvg('<svg><path d="M0 0Z"/></svg>'), /viewBox/);
   });
+
+  test('refuses a path attribute it does not carry, allowlisted rather than blocklisted', () => {
+    // `crossing_markings-zebra_bicolour` in Temaki 5.13.0 puts `fill-opacity`
+    // on 3 of its 7 stripes; dropping it silently would draw the stripes
+    // touching, as a solid block. A reader that only blocks known-bad
+    // attributes would let this one through unnoticed.
+    assert.throws(
+      () => readTemakiSvg('<svg viewBox="0 0 15 15"><path d="M0 0Z" fill-opacity="0.3"/></svg>'),
+      /Unexpected attribute "fill-opacity"/
+    );
+    assert.throws(
+      () => readTemakiSvg('<svg viewBox="0 0 15 15"><path d="M0 0Z" class="cls-1"/></svg>'),
+      /Unexpected attribute "class"/
+    );
+  });
 });
 
 describe('readOchaSvg', () => {
@@ -142,6 +157,24 @@ describe('readOchaSvg', () => {
     assert.throws(() => readOchaSvg(svg.replace('.cls-1{fill:#000000;}', '.cls-1{stroke:#000000;}')), /stroke/);
     assert.throws(() => readOchaSvg(svg.replace('<g>', '<g><image href="x.png"/>')), /Unsupported/);
     assert.throws(() => readOchaSvg(svg.replace('<g>', '<g transform="translate(1 1)">')), /Unsupported/);
+  });
+
+  test('refuses opacity, clip-path or mask on a shape, on a <g>, or declared in the stylesheet', () => {
+    assert.throws(
+      () =>
+        readOchaSvg(
+          svg.replace(
+            '<path class="cls-1" d="M1.23456 2L3 4Z"/>',
+            '<path class="cls-1" d="M1.23456 2L3 4Z" opacity="0.5"/>'
+          )
+        ),
+      /Unexpected opacity on <path>/
+    );
+    assert.throws(() => readOchaSvg(svg.replace('<g>', '<g clip-path="url(#c)">')), /Unexpected clip-path on <g>/);
+    assert.throws(
+      () => readOchaSvg(svg.replace('.cls-1{fill:#000000;}', '.cls-1{fill:#000000;fill-opacity:0.3;}')),
+      /Unexpected fill-opacity/
+    );
   });
 });
 

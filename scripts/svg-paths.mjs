@@ -129,6 +129,14 @@ const NEVER =
   /<(use|image|text|line|polyline|ellipse|linearGradient|radialGradient|mask|clipPath|pattern)\b|\stransform\s*=/;
 
 /**
+ * Attributes and CSS properties `readOchaSvg` refuses wherever they appear:
+ * each hides part of a shape in a way `PathGlyph`'s plain, opaque fill cannot
+ * carry, so a shape drawn with one of these would come out solid where the
+ * source meant it translucent, clipped or masked.
+ */
+const UNSUPPORTED_ATTRS = ['opacity', 'fill-opacity', 'clip-path', 'mask'];
+
+/**
  * One of Temaki's icons: `<path>` elements only, filled with the colour the
  * map gives them.
  *
@@ -143,8 +151,20 @@ export function readTemakiSvg(svg) {
   }
   const paths = [...svg.matchAll(/<path\b[^>]*>/g)].map(([tag]) => {
     const attrs = attributes(tag);
-    if (attrs.fill !== undefined && !BLACK.test(attrs.fill)) {
-      throw new Error(`Unexpected fill "${attrs.fill}"`);
+    // Allowlisted, not blocklisted: an attribute this reader has never seen —
+    // `fill-opacity`, `class`, `id`… — throws rather than being silently
+    // carried past a glyph model that has nowhere to put it.
+    for (const name of Object.keys(attrs)) {
+      if (name === 'd') {
+        continue;
+      }
+      if (name === 'fill') {
+        if (!BLACK.test(attrs.fill)) {
+          throw new Error(`Unexpected fill "${attrs.fill}"`);
+        }
+        continue;
+      }
+      throw new Error(`Unexpected attribute "${name}" on <path>`);
     }
     if (!attrs.d) {
       throw new Error(`A <path> without d: ${tag}`);
@@ -176,6 +196,9 @@ function evenOddClasses(svg) {
       if (property === 'stroke' || (property === 'stroke-width' && !/^0(px)?$/.test(value))) {
         throw new Error(`Unexpected ${property} "${value}"`);
       }
+      if (property === 'opacity' || property === 'fill-opacity') {
+        throw new Error(`Unexpected ${property} "${value}" in <style>`);
+      }
       if (property === 'fill-rule' && value === 'evenodd') {
         for (const selector of selectors.split(',')) {
           classes.add(selector.trim().replace(/^\./, ''));
@@ -200,11 +223,28 @@ export function readOchaSvg(svg) {
   if (NEVER.test(body)) {
     throw new Error('Unsupported element or transform');
   }
+  // `<g>` is otherwise allowed (icons group their shapes), but not carrying
+  // one of these: `NEVER` above only catches a transform, and a group's own
+  // opacity, clip or mask attribute would hide part of the icon just as
+  // invisibly as one on a shape itself.
+  for (const [tag] of body.matchAll(/<g\b[^>]*>/g)) {
+    const attrs = attributes(tag);
+    for (const name of UNSUPPORTED_ATTRS) {
+      if (attrs[name] !== undefined) {
+        throw new Error(`Unexpected ${name} on <g>`);
+      }
+    }
+  }
   const paths = [];
   for (const [tag, name] of body.matchAll(/<(path|circle|rect|polygon)\b[^>]*>/g)) {
     const attrs = attributes(tag);
     if (attrs.style !== undefined || (attrs.fill !== undefined && !BLACK.test(attrs.fill))) {
       throw new Error(`Unexpected inline style or fill: ${tag}`);
+    }
+    for (const unsupported of UNSUPPORTED_ATTRS) {
+      if (attrs[unsupported] !== undefined) {
+        throw new Error(`Unexpected ${unsupported} on <${name}>`);
+      }
     }
     const number = (key, fallback) => {
       const value = attrs[key] === undefined ? fallback : Number(attrs[key]);

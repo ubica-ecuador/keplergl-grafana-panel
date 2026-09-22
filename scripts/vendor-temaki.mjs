@@ -26,6 +26,19 @@ import { readTemakiSvg } from './svg-paths.mjs';
 const packageDir = process.argv[2];
 const OUT = join('src', 'icons', 'temaki-paths.json');
 
+/**
+ * Icons `readTemakiSvg` refuses on purpose, named explicitly rather than
+ * caught by a blanket try/catch: an icon that fails for an unforeseen reason
+ * must still stop the run.
+ *
+ * `crossing_markings-zebra_bicolour`'s seven stripes alternate solid and 30%
+ * opacity (`fill-opacity`), which `PathGlyph`'s flat fill cannot carry;
+ * dropping the opacity would draw the stripes touching, as a solid block.
+ * `crossing_markings-zebra` draws the same crossing without the translucency,
+ * so this one icon is left out rather than drawn wrong.
+ */
+const SKIPPED = new Set(['crossing_markings-zebra_bicolour']);
+
 if (!packageDir || !existsSync(join(packageDir, 'icons')) || !existsSync(join(packageDir, 'data', 'icons.json'))) {
   console.error(`Error: no Temaki package at ${packageDir ?? '(no argument)'}`);
   console.error('Pass the unpacked npm package: the directory that holds icons/ and data/icons.json.');
@@ -39,6 +52,10 @@ const icons = {};
 
 for (const file of files) {
   const name = file.replace(/\.svg$/, '');
+  if (SKIPPED.has(name)) {
+    console.log(`Skipped ${file}: translucent stripes the glyph model cannot draw`);
+    continue;
+  }
   const groups = metadata[name]?.groups;
   if (!Array.isArray(groups)) {
     throw new Error(`${file}: data/icons.json gives "${name}" no groups`);
