@@ -13,27 +13,41 @@ hosted service rendering your map.
 **📖 [Full documentation](https://ubica-ecuador.github.io/keplergl-grafana-panel/)** — guides,
 tutorials, a layer gallery and a complete option reference.
 
-> **Status: v1.0.** The first release submitted to the Grafana plugin catalog. Pinned to a kepler.gl
+> **Status: v1.0**, the first release for the Grafana plugin catalog. Pinned to a kepler.gl
 > pre-release because the Flow layer exists nowhere else — see [Compatibility](https://ubica-ecuador.github.io/keplergl-grafana-panel/reference/compatibility.html).
 
 ## What it does today
 
 - **Any data source.** Each query becomes a kepler dataset, so a single panel can overlay several.
-- **Column autodetection**, overridable per query — lat/lng, time, trip id, geometry, H3 and
-  origin/destination pairs.
+- **Column autodetection**, overridable per query — lat/lng, time, trip id, geometry, H3,
+  origin/destination pairs, bearing and magnitude.
 - **Geometry from any spatial source** — GeoJSON, WKT, or raw WKB/EWKB hex, so a plain
   `SELECT geom` from PostGIS works with no `ST_AsGeoJSON`.
 - **Automatic trip animation** — a query with a trip id and a time becomes an animated kepler Trip
   layer with a playback timeline, no manual layer setup.
 - **Origin-destination flow layers**, automatic — an OD query becomes an animated flow map.
-- **Animated wind and current fields** — a grid of velocities becomes a Flow field layer that traces
-  streamlines through it, following the view so its density and line length hold steady as you zoom.
-  Density, trail, cycle and smoothing are set on the layer itself. Several levels can be stacked in
-  one map.
+- **Symbols turned to a bearing** — a position and a heading become one mark per row: a fleet, a set
+  of vessels, a network of stations. Over a thousand shapes from Maki, Temaki and the UN OCHA
+  humanitarian icons, picked by category, with outline, shadow, labels and thinning — or a picture
+  per row instead of a shape.
+- **Animated wind and current fields, three ways** — a grid of velocities becomes **Streamlines**
+  that trace particles through it, following the view so their density and line length hold steady
+  as you zoom; a **Vector field** of arrows or meteorological wind barbs over the same grid; or
+  either of them traced from the gradient of a single column of values. The streamlines run on a
+  clock of their own, walk a whole forecast with the dashboard's timeline, and lie on the terrain
+  where the altitude varies.
+- **Cloud-native imagery** — a query that returns the address of a COG, a PMTiles archive, a Zarr
+  store, a WMS or an ArcGIS Image Service draws it, and the dashboard clock walks the series without
+  re-running the query. Band combinations and false colour come from the scene's STAC item.
+- **Draggable markers** bound to dashboard variables, for the origin and destination of an
+  isochrone or the point a radius is measured from.
 - **Dashboard time range synced with the map** — one-way, both ways, or published to variables so
-  the map keeps its whole dataset while the slider drives the other panels.
+  the map keeps its whole dataset while the slider drives the other panels, paced so playback does
+  not outrun the panels answering it.
 - **Cross-filtering, both ways** — a filter set on the map drives a dashboard variable, and changing
-  that variable filters the map. Clicks, the viewport and drawn areas publish too.
+  that variable filters the map. Clicks, the viewport and drawn areas publish too, a click can be
+  made to confirm from the popup first, and whatever is selected is ringed on the map — on a shared
+  link as well.
 - **Your layer configuration survives a refresh.** Data is swapped underneath the layers rather than
   the datasets being torn down and rebuilt.
 - **Saved map configuration** stored with the dashboard, and configs pasted from kepler.gl,

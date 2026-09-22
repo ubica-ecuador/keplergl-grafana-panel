@@ -59,12 +59,14 @@ Only a change of endpoint or of rendering rule rebuilds.
 Left out, the service draws with the renderer its author published — which for a thematic service is
 the palette they chose, and the reason this path needs no colour settings at all.
 
-::: warning The layer panel is bare, for now
+::: tip The layer panel offers opacity, and that is all
 kepler builds a layer's settings from a method named after its type and adds none for a type a plugin
-contributes, so the panel shows the layer and its data source and nothing else — no opacity slider.
-The same is true of the Zarr layer and the flow field. The layer does register an opacity setting for
-a configurator to read; injecting one would fix all of them at once, and is not done yet. The eye
-still switches the layer off.
+contributes, so without help the panel would show the layer, its data source and nothing else. The
+plugin injects its own configurator, and for this layer it carries **opacity** — how strongly the
+service's picture sits over the base map.
+
+There is nothing else to offer: the colours were chosen by the service's own renderer before the
+image was sent. The Zarr and painted-COG layers are in the same position and get the same panel.
 :::
 
 ### Walking the years with the map's clock

@@ -383,7 +383,7 @@ temperature, rain — rather than the wind itself.
 Two things this ran into, both worth knowing anywhere:
 
 - **The hour is a selector here, not a time role.** `zarr_time_label` is read only from a query that
-  has a `time` column, and a flow field deliberately has none. Pinned in `zarr_sel` alongside the
+  has a `time` column, and a velocity grid deliberately has none. Pinned in `zarr_sel` alongside the
   run, it reaches the tiles; given as a time role it silently does not.
 - **A named ramp is opaque end to end.** Cloud cover is mostly zero, and every named ramp paints
   those zeros as a solid sheet over the basemap and the arrows both. Alpha can only come from the

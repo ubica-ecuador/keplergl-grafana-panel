@@ -41,12 +41,16 @@
         "path": "img/screenshot-flow-field.png"
       },
       {
-        "name": "Global seismicity, read as remote GeoParquet by DuckDB",
-        "path": "img/screenshot-quakes.png"
+        "name": "A live transit fleet, each vehicle a symbol turned to its heading and coloured by punctuality",
+        "path": "img/screenshot-transit.png"
       },
       {
-        "name": "Origin-destination flows built from query rows",
+        "name": "Origin-destination flows built from query rows: taxi trips of the last ten minutes, in three dimensions",
         "path": "img/screenshot-flows.png"
+      },
+      {
+        "name": "Global seismicity read as remote GeoParquet by DuckDB, with the time filter and its playback",
+        "path": "img/screenshot-quakes.png"
       }
     ],
     "version": "%VERSION%",

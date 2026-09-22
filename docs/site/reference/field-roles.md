@@ -3,8 +3,8 @@
 A **role** is the part a column plays. Roles are detected from the column's name — case-insensitively
 and **exactly** — except for time, which is detected from its type.
 
-There are **twenty-one** roles. The Field mapping editor exposes **twelve** of them; the other nine
-are autodetect-only and are marked below.
+There are **thirty-five** roles. The Field mapping editor exposes **fourteen** of them; the other
+twenty-one are autodetect-only and are marked below.
 
 ## The full table
 
@@ -21,7 +21,9 @@ are autodetect-only and are marked below.
 | Origin lng      | ✅     | `origin_lon`, `origin_lng`, `origin_long`, `origin_longitude`, `from_lon`, `from_lng`, `start_lon`, `start_lng`, `source_lon`, `source_lng`, `pickup_lon`, `pickup_lng`, `lng0`, `lon0`                         | `lng0`      |
 | Destination lat | ✅     | `dest_lat`, `dest_latitude`, `destination_lat`, `to_lat`, `end_lat`, `target_lat`, `dropoff_lat`, `lat1`                                                                                                        | `lat1`      |
 | Destination lng | ✅     | `dest_lon`, `dest_lng`, `dest_long`, `dest_longitude`, `destination_lon`, `destination_lng`, `to_lon`, `to_lng`, `end_lon`, `end_lng`, `target_lon`, `target_lng`, `dropoff_lon`, `dropoff_lng`, `lng1`, `lon1` | `lng1`      |
-| Count           | ✅     | `count`, `trips`, `magnitude`, `weight`, `flow`, `total`, `volume`                                                                                                                                              | `count`     |
+| Count           | ✅     | `count`, `trips`, `weight`, `flow`, `total`, `volume`                                                                                                                                                           | `count`     |
+| Rotation        | ✅     | `bearing`, `heading`, `course`, `cog`, `track`, `azimuth`, `orientation`                                                                                                                                        | not renamed |
+| Magnitude       | ✅     | `magnitude`, `intensity`, `amplitude`                                                                                                                                                                           | not renamed |
 | Origin H3       | ❌     | `origin_h3`, `source_h3`, `from_h3`, `h3_0`                                                                                                                                                                     | `source_h3` |
 | Destination H3  | ❌     | `dest_h3`, `target_h3`, `to_h3`, `h3_1`                                                                                                                                                                         | `target_h3` |
 | U component     | ❌     | `u`, `u10`, `u_wind`, `wind_u`, `ugrd`, `u_component`                                                                                                                                                           | not renamed |
@@ -29,6 +31,7 @@ are autodetect-only and are marked below.
 | Speed           | ❌     | `wind_speed`, `windspeed`, `wind_speed_10m`, `speed`, `ws`                                                                                                                                                      | not renamed |
 | Direction       | ❌     | `wind_direction`, `winddirection`, `wind_direction_10m`, `direction`, `wind_dir`, `wd`                                                                                                                          | not renamed |
 | Raster URL      | ❌     | `raster_url`, `cog_url`, `cog`, `asset_href`, `href`                                                                                                                                                            | not renamed |
+| Raster STAC item | ❌    | `raster_item_url`, `stac_item_url`, `item_url`                                                                                                                                                                  | not renamed |
 | WMS URL         | ❌     | `wms_url`, `wms`, `service_url`                                                                                                                                                                                 | not renamed |
 | WMS layer       | ❌     | `wms_layer`, `layer`, `layer_name`                                                                                                                                                                              | not renamed |
 | Esri service    | ❌     | `esri_url`, `image_service_url`, `imageserver_url`                                                                                                                              | not renamed |
@@ -44,19 +47,19 @@ are autodetect-only and are marked below.
 | Zarr range      | ❌     | `zarr_rescale`, `zarr_range`                                                                                                                                                                                    | not renamed |
 
 ::: warning Some roles cannot be mapped by hand
-The editor offers the twelve roles a table of rows needs. The other twenty — `originH3`, `destH3`,
-`u`, `v`, `speed`, `direction`, and every `raster*`, `wms*`, `esri*` and `zarr*` role — are
-detected but have no entry in it. If your columns are named something the lists do not cover, **alias them
-in the query**:
+The editor offers the fourteen roles a table of rows needs. The other twenty-one — `originH3`,
+`destH3`, `u`, `v`, `speed`, `direction`, and every `raster*`, `wms*`, `esri*` and `zarr*` role —
+are detected but have no entry in it. If your columns are named something the lists do not cover,
+**alias them in the query**:
 
 ```sql
 SELECT h3_pickup AS origin_h3, h3_drop AS dest_h3, COUNT(*) AS trips
 FROM journeys GROUP BY 1, 2;
 ```
 
-The four velocity roles are never renamed, because the flow field layer is pointed at whatever the
+The four velocity roles are never renamed, because the Streamlines layer is pointed at whatever the
 query called them — and once the layer exists, they can be re-pointed from its own **Columns**
-section. The flow field's third spelling, [the gradient of a
+section. Streamlines' third spelling, [the gradient of a
 value](../guide/data/velocity-fields#the-gradient-of-a-value), has no role at all and is not
 detected: any numeric column could be a scalar field, so that one is chosen on the layer or not at
 all. The raster and WMS roles are not renamed either, for a different reason: each becomes a
@@ -136,12 +139,30 @@ Some roles mean nothing on their own:
 | Flow, coordinates | all four of origin/destination lat/lng                  |
 | Flow, H3          | both origin and destination H3                          |
 | Velocity          | `u` **and** `v`, **or** `speed` **and** `direction`     |
+| Symbols           | latitude **and** longitude **and** a numeric bearing    |
 
 When a flow query carries both an H3 pair and a coordinate pair, **H3 wins** — a hexagon flow is the
 more specific description.
 
 A velocity query additionally requires **no trip id**: a GPS trace carrying a `speed` column is a
-trajectory, not a field.
+trajectory, not a field. So does a symbol query, for the same reason — a trajectory is a path, not a
+scattering of marks.
+
+## Rotation and magnitude are not the wind roles
+
+`rotation` and `magnitude` name *anything* that points and anything that measures: a vehicle, a
+vessel, an aircraft. `direction` and `speed` name a **wind**, and carry the meteorological
+convention with them — a direction of 90° is a wind *from* the east. A wind direction also builds
+symbols, read that way round; a `bearing` or a `heading` is read as the course the thing is on. See
+[Symbols](../guide/data/symbols#which-way-the-bearing-is-read).
+
+Two details are worth knowing:
+
+- **A bearing must be numeric to count.** `track`, `course`, `heading` and `cog` are as likely to
+  name a label or a URL as a number of degrees, so a non-numeric one is set aside rather than used.
+- **`cog` is the one name two roles share on purpose** — course over ground, and cloud-optimised
+  GeoTIFF. The two readings exclude each other by type: the raster reader ignores values that are
+  not strings, and a symbol layer is built only from a numeric bearing.
 
 ## Columns without a role
 
