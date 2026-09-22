@@ -10,11 +10,11 @@ hosted service rendering your map.
 
 **🌍 [Live demos](https://grafana.ubica.ec/dashboards)** — dashboards running in a public Grafana. No account and nothing to install: open one and pan, filter and play it yourself.
 
-**📖 [Full documentation](https://ubica-ecuador.github.io/keplergl-grafana-panel/)** — guides,
+**📖 [Full documentation](https://docs.ubica.dev/)** — guides,
 tutorials, a layer gallery and a complete option reference.
 
 > **Status: v1.0**, the first release for the Grafana plugin catalog. Pinned to a kepler.gl
-> pre-release because the Flow layer exists nowhere else — see [Compatibility](https://ubica-ecuador.github.io/keplergl-grafana-panel/reference/compatibility.html).
+> pre-release because the Flow layer exists nowhere else — see [Compatibility](https://docs.ubica.dev/reference/compatibility.html).
 
 ## What it does today
 
@@ -109,7 +109,7 @@ below can be checked against the running thing.
 
 **[Open the live demos →](https://grafana.ubica.ec/dashboards)** — these six and a dozen more, from
 Zarr, COG, STAC and PMTiles imagery to wind fields and transit isochrones. How each one was built is in the
-[documentation](https://ubica-ecuador.github.io/keplergl-grafana-panel/).
+[documentation](https://docs.ubica.dev/).
 
 ## Installing
 
@@ -139,7 +139,7 @@ allow_loading_unsigned_plugins = ubica-keplergl-panel
 
 Then restart Grafana. That setting stops being necessary once the catalog listing is live. Full
 instructions, including Docker and a hardened Grafana, are in the
-[install guide](https://ubica-ecuador.github.io/keplergl-grafana-panel/guide/install.html).
+[install guide](https://docs.ubica.dev/guide/install.html).
 
 ### Hardened Grafana
 
@@ -182,28 +182,28 @@ recognise and you map it by hand under **Field mapping**, per query.
 Layer and map styling lives in kepler's store, so capture it with
 **Map configuration → Save current map** before reloading the page.
 
-The [quickstart](https://ubica-ecuador.github.io/keplergl-grafana-panel/guide/quickstart.html) walks
+The [quickstart](https://docs.ubica.dev/guide/quickstart.html) walks
 through it properly, and
-[tutorial 1](https://ubica-ecuador.github.io/keplergl-grafana-panel/tutorials/first-map.html) builds a
+[tutorial 1](https://docs.ubica.dev/tutorials/first-map.html) builds a
 live map of global seismicity from a public feed.
 
 ## Documentation
 
-| Section                                                                                                                    | Covers                                                                                       |
-| -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| [Getting data in](https://ubica-ecuador.github.io/keplergl-grafana-panel/guide/data/how-a-query-becomes-a-map.html)        | How a query becomes a map, points, geometry, trajectories, flows, H3 and S2, velocity fields |
-| [The map](https://ubica-ecuador.github.io/keplergl-grafana-panel/guide/map/basemaps-and-relief.html)                       | Base maps and relief, theme, saving and importing a configuration                            |
-| [Using kepler's own panel](https://ubica-ecuador.github.io/keplergl-grafana-panel/guide/kepler/layers-and-attributes.html) | Layers, colour, filters, interactions, playback, effects — and what differs here             |
-| [Dashboard integration](https://ubica-ecuador.github.io/keplergl-grafana-panel/guide/dashboard/time-range-sync.html)       | Time sync, cross-filtering, publishing the viewport and drawn areas                          |
-| [Data source recipes](https://ubica-ecuador.github.io/keplergl-grafana-panel/guide/sources/postgis.html)                   | PostGIS, DuckDB, Infinity, and any other SQL source                                          |
-| [Layer gallery](https://ubica-ecuador.github.io/keplergl-grafana-panel/layers/)                                            | Every layer type the panel can build, with the query behind it                               |
-| [Tutorials](https://ubica-ecuador.github.io/keplergl-grafana-panel/tutorials/)                                             | Six end-to-end walkthroughs against public data                                              |
-| [Reference](https://ubica-ecuador.github.io/keplergl-grafana-panel/reference/panel-options.html)                           | Panel options, field roles, variable formats, troubleshooting, compatibility                 |
+| Section                                                                                    | Covers                                                                                       |
+| ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| [Getting data in](https://docs.ubica.dev/guide/data/how-a-query-becomes-a-map.html)        | How a query becomes a map, points, geometry, trajectories, flows, H3 and S2, velocity fields |
+| [The map](https://docs.ubica.dev/guide/map/basemaps-and-relief.html)                       | Base maps and relief, theme, saving and importing a configuration                            |
+| [Using kepler's own panel](https://docs.ubica.dev/guide/kepler/layers-and-attributes.html) | Layers, colour, filters, interactions, playback, effects — and what differs here             |
+| [Dashboard integration](https://docs.ubica.dev/guide/dashboard/time-range-sync.html)       | Time sync, cross-filtering, publishing the viewport and drawn areas                          |
+| [Data source recipes](https://docs.ubica.dev/guide/sources/postgis.html)                   | PostGIS, DuckDB, Infinity, and any other SQL source                                          |
+| [Layer gallery](https://docs.ubica.dev/layers/)                                            | Every layer type the panel can build, with the query behind it                               |
+| [Tutorials](https://docs.ubica.dev/tutorials/)                                             | Six end-to-end walkthroughs against public data                                              |
+| [Reference](https://docs.ubica.dev/reference/panel-options.html)                           | Panel options, field roles, variable formats, troubleshooting, compatibility                 |
 
 Two pages are worth singling out.
-[Differences from stock kepler.gl](https://ubica-ecuador.github.io/keplergl-grafana-panel/reference/differences-from-kepler.html)
+[Differences from stock kepler.gl](https://docs.ubica.dev/reference/differences-from-kepler.html)
 lists everything this panel changes about kepler, and
-[Under the hood](https://ubica-ecuador.github.io/keplergl-grafana-panel/reference/under-the-hood.html)
+[Under the hood](https://docs.ubica.dev/reference/under-the-hood.html)
 maps each kepler layer to the deck.gl layer that actually draws it.
 
 ## Development
@@ -241,7 +241,7 @@ npm --prefix docs/site install
 npm run docs:dev
 ```
 
-The [contributing guide](https://ubica-ecuador.github.io/keplergl-grafana-panel/contributing.html)
+The [contributing guide](https://docs.ubica.dev/contributing.html)
 covers the three benches, the provisioned dashboards, the browser verification scripts and how the
 documentation screenshots are regenerated.
 
@@ -250,7 +250,7 @@ documentation screenshots are regenerated.
 The plugin is free, and every feature is in this repository. For organisations that depend on it,
 [UBICA](https://ubica.dev) offers support for production use, sponsored features, dashboard
 implementation and training — see
-[Support and services](https://ubica-ecuador.github.io/keplergl-grafana-panel/support.html).
+[Support and services](https://docs.ubica.dev/support.html).
 Bugs and questions are welcome as [GitHub issues](https://github.com/ubica-ecuador/keplergl-grafana-panel/issues)
 either way.
 

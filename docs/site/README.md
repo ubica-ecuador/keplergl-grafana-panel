@@ -33,17 +33,21 @@ the web root and every link would otherwise 404 against the deployed prefix. It 
 `dist` built for the **root** path — run `npm run docs:build` again before serving it locally. CI is
 unaffected: the workflow always builds fresh with the repository's own base.
 
-## The base path
+## The domain and the base path
 
-A project Pages site is served from `/<repo>/`, so every asset URL carries that prefix.
-`.vitepress/config.ts` reads it from `DOCS_BASE`, defaulting to `/kepler-grafana/`, and the
-workflow passes the repository's actual name. Renaming the repository therefore cannot silently
-break every image on the site.
+The site is published at **`docs.ubica.dev`**, its own domain, declared in `public/CNAME` — the
+file lands at the root of the built output, which is where GitHub Pages looks for it. The domain
+is also set in Settings → Pages, and DNS carries a `CNAME` record from `docs` to
+`ubica-ecuador.github.io`. Owning the domain means the published URLs survive a rename of the
+repository or a move to another organisation: only the DNS record would change.
 
-To check a build under a different prefix:
+Because the site is served from the root of that domain, asset URLs carry no prefix.
+`.vitepress/config.ts` reads the prefix from `DOCS_BASE`, defaulting to `/`, and the workflow
+passes it explicitly. A project Pages site _without_ a custom domain is served from `/<repo>/`
+instead, which is what GitHub's default domain still redirects from:
 
 ```bash
-DOCS_BASE=/some-other-name/ npm run docs:build
+DOCS_BASE=/keplergl-grafana-panel/ npm run docs:build
 ```
 
 ## Screenshots
