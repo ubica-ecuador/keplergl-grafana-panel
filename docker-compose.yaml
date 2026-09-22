@@ -267,7 +267,16 @@ services:
     container_name: 'ubica-keplergl-panel-sources-data'
     volumes:
       - ./testdata:/usr/share/nginx/html:ro
-      - ./docker/sources-data.nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # A template, not conf.d: the image fills in the environment below at
+      # startup and writes the result to conf.d/default.conf.
+      - ./docker/sources-data.nginx.conf:/etc/nginx/templates/default.conf.template:ro
+    environment:
+      # TriMet's AppID, from .env. Unset, the container still starts and every
+      # other feed works; only trimet-live gets TriMet's refusal.
+      TRIMET_APP_ID: ${TRIMET_APP_ID:-}
+      # Only these are substituted. Everything else in the file that looks like
+      # a variable — $uri, $args, $1 — is nginx's own and must reach it intact.
+      NGINX_ENVSUBST_FILTER: '^TRIMET_'
 
   # Grafana 13 — the other end of the range declared in src/plugin.json, on
   # port 3003.

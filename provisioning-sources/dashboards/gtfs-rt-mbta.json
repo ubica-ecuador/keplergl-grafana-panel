@@ -240,7 +240,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Each point is a vehicle from the latest vehicle positions feed. Green: reported 30 s ago or less; amber: up to 90 s; red: longer — a vehicle the system believes is in service but that stopped reporting. Click a vehicle to see its next stops in the table on the right. Picking a row in the bunched buses table zooms the map to that pair and marks it with two rings that follow those buses on every refresh.",
+      "description": "Each bus icon is a vehicle from the latest vehicle positions feed, turned to the heading it reports (one that reports none stands upright). Green: reported 30 s ago or less; amber: up to 90 s; red: longer — a vehicle the system believes is in service but that stopped reporting. Click a vehicle to see its next stops in the table on the right. Picking a row in the bunched buses table zooms the map to that pair and marks it with two rings that follow those buses on every refresh.",
       "gridPos": {
         "h": 18,
         "w": 15,
@@ -430,10 +430,10 @@
                   }
                 }
               },
-              "layerBlending": "additive",
+              "layerBlending": "normal",
               "layerOrder": [
                 "par",
-                "u7fz9xk",
+                "vehicles",
                 "znsv9u7c"
               ],
               "layers": [
@@ -473,61 +473,28 @@
                   }
                 },
                 {
+                  "id": "vehicles",
+                  "type": "symbol",
                   "config": {
+                    "dataId": "grafana-A",
+                    "label": "Vehicles · heading and freshness",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "isVisible": true,
                     "color": [
                       23,
                       184,
                       190
                     ],
-                    "columnMode": "points",
-                    "columns": {
-                      "lat": "latitude",
-                      "lng": "longitude"
-                    },
-                    "dataId": "grafana-A",
-                    "hidden": false,
-                    "highlightColor": [
-                      252,
-                      242,
-                      26,
-                      255
-                    ],
-                    "isVisible": true,
-                    "label": "Vehicles · position freshness",
-                    "textLabel": [
-                      {
-                        "alignment": "center",
-                        "anchor": "start",
-                        "background": false,
-                        "backgroundColor": [
-                          0,
-                          0,
-                          200,
-                          255
-                        ],
-                        "color": [
-                          255,
-                          255,
-                          255
-                        ],
-                        "offset": [
-                          0,
-                          0
-                        ],
-                        "outlineColor": [
-                          255,
-                          0,
-                          0,
-                          255
-                        ],
-                        "outlineWidth": 0,
-                        "size": 18,
-                        "weight": 400
-                      }
-                    ],
                     "visConfig": {
-                      "allowHover": true,
-                      "billboard": false,
+                      "symbol": "bus",
+                      "directionConvention": "towards",
+                      "fixedAngle": true,
+                      "angleDegrees": 0,
+                      "symbolSize": 22,
+                      "opacity": 1,
                       "colorRange": {
                         "category": "Custom",
                         "colorMap": [
@@ -552,43 +519,28 @@
                         "name": "Freshness",
                         "type": "custom"
                       },
-                      "filled": true,
-                      "fixedRadius": false,
-                      "opacity": 1,
-                      "outline": false,
-                      "radius": 18.5,
-                      "radiusRange": [
-                        0,
-                        50
+                      "outline": true,
+                      "outlineColor": [
+                        13,
+                        17,
+                        23
                       ],
-                      "showHighlightColor": true,
-                      "showNeighborOnHover": false,
-                      "strokeColorRange": {
-                        "category": "Uber",
-                        "colors": [
-                          "#4C0035",
-                          "#880030",
-                          "#B72F15",
-                          "#D6610A",
-                          "#EF9100",
-                          "#FFC300"
-                        ],
-                        "name": "Global Warming",
-                        "type": "sequential"
-                      },
-                      "thickness": 2
+                      "outlineThickness": 2
                     }
                   },
-                  "id": "u7fz9xk",
-                  "type": "point",
                   "visualChannels": {
+                    "angleField": {
+                      "name": "heading",
+                      "type": "real"
+                    },
+                    "angleScale": "linear",
                     "colorField": {
                       "name": "freshness",
                       "type": "string"
                     },
                     "colorScale": "customOrdinal",
-                    "sizeScale": "linear",
-                    "strokeColorScale": "quantile"
+                    "sizeField": null,
+                    "sizeScale": "linear"
                   }
                 },
                 {
@@ -732,7 +684,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- `vehicle`, not `vehicle_id`: the panel reads vehicle_id as a trajectory id\n-- and would try to draw trips. No time column either, so this stays a snapshot.\n-- Deliberately unfiltered: the map narrows itself through kepler filters bound\n-- to the mode/route/status/occupancy variables, so a selection redraws at once\n-- and widening it again needs no new query.\nWITH vp AS (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000))\nSELECT\n  e.vehicle.vehicle.id                AS vehicle,\n  e.vehicle.vehicle.label             AS unit,\n  e.vehicle.trip.route_id             AS route,\n  CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Subway'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Commuter rail'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END                              AS mode,\n  e.vehicle.position.latitude         AS latitude,\n  e.vehicle.position.longitude        AS longitude,\n  CASE e.vehicle.current_status\n    WHEN 'IN_TRANSIT_TO' THEN 'In transit'\n    WHEN 'STOPPED_AT'    THEN 'Stopped at stop'\n    WHEN 'INCOMING_AT'   THEN 'Arriving at stop'\n    ELSE 'No data'\n  END                            AS status,\n  CASE e.vehicle.occupancy_status\n    WHEN 'EMPTY'                      THEN 'Empty'\n    WHEN 'MANY_SEATS_AVAILABLE'       THEN 'Many seats'\n    WHEN 'FEW_SEATS_AVAILABLE'        THEN 'Few seats'\n    WHEN 'STANDING_ROOM_ONLY'         THEN 'Standing room only'\n    WHEN 'CRUSHED_STANDING_ROOM_ONLY' THEN 'Crushed'\n    WHEN 'FULL'                       THEN 'Full'\n    WHEN 'NOT_ACCEPTING_PASSENGERS'   THEN 'Not accepting passengers'\n    ELSE 'No data'\n  END                         AS occupancy,\n  (header.timestamp - e.vehicle.timestamp)::BIGINT AS age_s,\n  CASE\n    WHEN header.timestamp - e.vehicle.timestamp <= 30 THEN '≤ 30 s'\n    WHEN header.timestamp - e.vehicle.timestamp <= 90 THEN '30–90 s'\n    ELSE '> 90 s'\n  END AS freshness\nFROM vp\n",
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- `vehicle`, not `vehicle_id`: the panel reads vehicle_id as a trajectory id\n-- and would try to draw trips. No time column either, so this stays a snapshot.\n-- Deliberately unfiltered: the map narrows itself through kepler filters bound\n-- to the mode/route/status/occupancy variables, so a selection redraws at once\n-- and widening it again needs no new query.\nWITH vp AS (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000))\nSELECT\n  e.vehicle.vehicle.id                AS vehicle,\n  e.vehicle.vehicle.label             AS unit,\n  e.vehicle.trip.route_id             AS route,\n  CASE\n    WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Subway'\n    WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Commuter rail'\n    WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n    ELSE 'Bus'\n  END                              AS mode,\n  e.vehicle.position.bearing::DOUBLE  AS heading,\n  e.vehicle.position.latitude         AS latitude,\n  e.vehicle.position.longitude        AS longitude,\n  CASE e.vehicle.current_status\n    WHEN 'IN_TRANSIT_TO' THEN 'In transit'\n    WHEN 'STOPPED_AT'    THEN 'Stopped at stop'\n    WHEN 'INCOMING_AT'   THEN 'Arriving at stop'\n    ELSE 'No data'\n  END                            AS status,\n  CASE e.vehicle.occupancy_status\n    WHEN 'EMPTY'                      THEN 'Empty'\n    WHEN 'MANY_SEATS_AVAILABLE'       THEN 'Many seats'\n    WHEN 'FEW_SEATS_AVAILABLE'        THEN 'Few seats'\n    WHEN 'STANDING_ROOM_ONLY'         THEN 'Standing room only'\n    WHEN 'CRUSHED_STANDING_ROOM_ONLY' THEN 'Crushed'\n    WHEN 'FULL'                       THEN 'Full'\n    WHEN 'NOT_ACCEPTING_PASSENGERS'   THEN 'Not accepting passengers'\n    ELSE 'No data'\n  END                         AS occupancy,\n  (header.timestamp - e.vehicle.timestamp)::BIGINT AS age_s,\n  CASE\n    WHEN header.timestamp - e.vehicle.timestamp <= 30 THEN '≤ 30 s'\n    WHEN header.timestamp - e.vehicle.timestamp <= 90 THEN '30–90 s'\n    ELSE '> 90 s'\n  END AS freshness\nFROM vp\n",
           "refId": "A"
         },
         {
