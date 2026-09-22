@@ -333,7 +333,7 @@ Barbs south of the equator fly on the other side of the staff, as the WMO conven
 field over Ecuador draws both. Over a gradient there is no wind to count in knots, so the layer
 offers arrows only. Smoothing starts at 0 here: a symbol on a sample should show that sample. That
 is only true of a layer added fresh, though — kepler copies a knob to the new type when the name
-matches, so a layer switched from a flow field keeps its smoothing of 3, and switching it back
+matches, so a layer switched from Streamlines keeps its smoothing of 3, and switching it back
 brings that 0 along with it.
 
 ## Styling

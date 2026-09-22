@@ -88,6 +88,7 @@ export default defineConfig({
           { text: 'Trajectories', link: '/guide/data/trajectories' },
           { text: 'Origin–destination flows', link: '/guide/data/flows' },
           { text: 'H3 and S2', link: '/guide/data/h3-and-s2' },
+          { text: 'Symbols', link: '/guide/data/symbols' },
           { text: 'Velocity fields', link: '/guide/data/velocity-fields' },
           { text: 'Rasters', link: '/guide/data/rasters' },
           { text: 'WMS services', link: '/guide/data/wms' },
@@ -102,6 +103,7 @@ export default defineConfig({
         items: [
           { text: 'Base maps and relief', link: '/guide/map/basemaps-and-relief' },
           { text: 'Theme', link: '/guide/map/theme' },
+          { text: 'Markers', link: '/guide/map/markers' },
           { text: 'Map configuration', link: '/guide/map/map-configuration' },
         ],
       },
@@ -151,6 +153,7 @@ export default defineConfig({
           { text: 'Points and aggregation', link: '/layers/points-and-aggregation' },
           { text: 'Geometry and spatial indices', link: '/layers/geometry-and-indices' },
           { text: 'Origin–destination', link: '/layers/origin-destination' },
+          { text: 'Symbols and markers', link: '/layers/symbols-and-markers' },
           { text: 'Time', link: '/layers/time' },
           { text: 'Layers configured with a URL', link: '/layers/url-configured' },
         ],

@@ -89,6 +89,26 @@ const SHOTS = [
     animate: 6000,
   },
 
+  // The two layer types the panel adds that the gallery dashboard does not
+  // carry: they need columns the gallery's synthetic tables do not have, so
+  // each is photographed on the dashboard that already exercises it.
+  {
+    name: 'layer-symbol',
+    base: MAIN,
+    dashboard: '/d/c1d2e3f4-0000-4000-8000-000000000012/kepler-gl-symbols',
+    // The plain arrows: what the gallery documents is the layer you get without
+    // asking, not the one someone styled.
+    panel: 'panel-1',
+    wait: 10000,
+  },
+  {
+    name: 'layer-markers',
+    base: MAIN,
+    dashboard: '/d/markers/kepler-gl-e28094-draggable-markers',
+    panel: 'panel-1',
+    wait: 10000,
+  },
+
   // ---- Guide illustrations, from the other provisioned dashboards.
   {
     name: 'guide-trips',
@@ -110,6 +130,25 @@ const SHOTS = [
     base: MAIN,
     dashboard: '/d/c1d2e3f4-0000-4000-8000-000000000002/kepler-gl-flows',
     panel: 'panel-1',
+    wait: 10000,
+  },
+  {
+    name: 'guide-symbols',
+    base: MAIN,
+    dashboard: '/d/c1d2e3f4-0000-4000-8000-000000000012/kepler-gl-symbols',
+    // The styled panel: colour by speed, labels, outline and shadow, which is
+    // most of what the page goes on to explain.
+    panel: 'panel-3',
+    wait: 10000,
+  },
+  {
+    name: 'guide-markers',
+    base: MAIN,
+    dashboard: '/d/markers/kepler-gl-e28094-draggable-markers',
+    panel: 'panel-1',
+    // The markers are the subject, and kepler's layer panel is where they are
+    // added and bound to variables — a shot without it shows two dots.
+    hideSidePanel: false,
     wait: 10000,
   },
   {

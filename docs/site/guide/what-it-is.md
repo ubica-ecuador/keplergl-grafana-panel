@@ -10,8 +10,8 @@ prev: false
 
 A Grafana panel plugin that runs [kepler.gl](https://kepler.gl) inside the panel, fed by any
 Grafana data source. It is built for spatio-temporal data — points, trajectories,
-origin–destination flows, velocity fields — and it configures itself from the columns your query
-already returns.
+origin–destination flows, symbols turned to a bearing, velocity fields, cloud-native imagery on a
+clock — and it configures itself from the columns your query already returns.
 
 `kepler.gl` is the geospatial visualisation library Uber open-sourced and Foursquare now
 maintains. It renders with [deck.gl](https://deck.gl) on WebGL, which is what lets it draw
@@ -65,11 +65,12 @@ does not do.
 | Trajectory animation     | —             | Automatic Trip layer with a playback timeline         |
 | Origin–destination flows | —             | Automatic animated flow layers                        |
 | Velocity fields          | —             | Streamlines traced from a grid, re-traced as you zoom |
+| Symbols on a bearing     | —             | A mark per row from 1,000+ shapes, or a picture       |
 | Aggregation              | Heatmap       | Heatmap, grid, hexbin, cluster, H3, S2                |
 | Geometry input           | GeoJSON       | GeoJSON, WKT, raw WKB/EWKB                            |
 | Layer styling            | Panel options | kepler's full layer panel, saved with the dashboard   |
 | 3D                       | —             | Extrusion, tilt, and base maps with real elevation    |
-| In the catalog           | Built in      | Submitted, awaiting review — see [Install](./install) |
+| In the catalog           | Built in      | Not yet listed — see [Install](./install)             |
 
 Geomap is the lighter tool and it is already there. This one is what you want when the data is
 moving, when there is a lot of it, or when the styling has to go further than a panel option list.
@@ -83,7 +84,7 @@ and the two conventions worth knowing first.
 
 ## Status
 
-Version 1.0, submitted to the Grafana plugin catalog and awaiting review, and pinned to a kepler.gl
+Version 1.0, the first release for the Grafana plugin catalog, pinned to a kepler.gl
 pre-release because the Flow layer exists nowhere else. See
 [Compatibility](../reference/compatibility) for the supported Grafana versions and the catalog and
 signing status.

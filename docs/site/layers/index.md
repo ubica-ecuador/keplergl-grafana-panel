@@ -3,7 +3,9 @@
 Every layer type the panel can build from query rows, with the query that produces it. Thirteen of
 kepler's twenty-two registered layer types can be driven by data — and the panel registers layer
 types of its own, shown with amber icons in kepler's layer menu: among them
-[Streamlines](../guide/data/velocity-fields) for a grid of velocities, and a
+[Streamlines](../guide/data/velocity-fields) and a [vector field](../guide/data/velocity-fields#arrows-and-wind-barbs)
+for a grid of velocities, [Symbols](../guide/data/symbols) for anything with a bearing,
+[Markers](../guide/map/markers) for points you drag, and a
 [Zarr tileset](../guide/data/zarr) for a store of arrays.
 
 Two of kepler's own, `a5` and `geohash`, are grid-index layers like H3 and S2 but are not detected
@@ -33,6 +35,8 @@ adding any of them by hand, are on [Layers configured with a URL](./url-configur
   <a href="./origin-destination.html#line"><img src="/img/layer-line.jpg" alt="Line layer"><span>line</span></a>
   <a href="./origin-destination.html#flow"><img src="/img/layer-flow.jpg" alt="Flow layer"><span>flow</span></a>
   <a href="./time.html#trip"><img src="/img/layer-trip.jpg" alt="Trip layer"><span>trip</span></a>
+  <a href="./symbols-and-markers.html#symbol"><img src="/img/layer-symbol.jpg" alt="Symbols layer"><span>symbol</span></a>
+  <a href="./symbols-and-markers.html#markers"><img src="/img/layer-markers.jpg" alt="Markers layer"><span>markers</span></a>
 </div>
 
 <style scoped>
@@ -75,17 +79,21 @@ choosing the dataset and pointing the layer's columns at it.
 | flow                | origin and destination columns                             |
 | flowfield           | a position **and** a velocity, **and no trip id** — a layer type this plugin adds, named **Streamlines**. kepler's own Flow Field would be created for the same grid, and is removed. See [Velocity fields](../guide/data/velocity-fields). |
 | vectorfield         | never guessed — switch a Streamlines layer's type, or add it from **Add Layer**. Arrows and wind barbs over the same grid. See [Velocity fields](../guide/data/velocity-fields#arrows-and-wind-barbs). |
+| symbol              | a position **and** a numeric bearing, **and no trip id** — a layer type this plugin adds, named **Symbols**. The Point layer kepler would guess from the same coordinates is removed. See [Symbols](../guide/data/symbols). |
+| markers             | never guessed — add it from **Add Layer**. Draggable reference points bound to dashboard variables; it draws nothing from its dataset. See [Markers](../guide/map/markers). |
 
 See [How a query becomes a map](../guide/data/how-a-query-becomes-a-map).
 
 ## About these images
 
-They come from the plugin's own **layer gallery dashboard**, `provisioning/dashboards/layers.json`,
-which is provisioned into the dev Grafana and shows all thirteen on synthetic data around Cuenca,
-Ecuador. Bring it up with `npm run server` and open _Kepler.gl layer gallery_.
+Thirteen of them come from the plugin's own **layer gallery dashboard**,
+`provisioning/dashboards/layers.json`, which is provisioned into the dev Grafana and shows them on
+synthetic data around Cuenca, Ecuador. Bring it up with `npm run server` and open _Kepler.gl layer
+gallery_. The two the panel adds that the gallery does not carry — `symbol` and `markers` — are
+photographed on their own provisioned dashboards, `symbols.json` and `markers.json`.
 
 They are captured by `npm run docs:shots`, one panel at a time through Grafana's single-panel view —
-thirteen maps on one page would exceed the browser's WebGL context budget and black out the oldest.
+a dozen maps on one page would exceed the browser's WebGL context budget and black out the oldest.
 kepler's side panel and playback widget are hidden for the shot; they overlay the map rather than
 sitting beside it, so hiding them reveals the map underneath.
 

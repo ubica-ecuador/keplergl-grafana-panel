@@ -35,15 +35,16 @@ proof.
 ### Grafana Cloud
 
 A signed community plugin is installable on Grafana Cloud once it is published there. This plugin
-is submitted and awaiting review, so a Cloud install is not available yet. See below.
+is not in the catalog yet, so a Cloud install is not available. See below.
 
 ## Signing and the catalog
 
-The plugin is **submitted** to the
-[Grafana plugin catalog](https://grafana.com/grafana/plugins/ubica-keplergl-panel/) and is awaiting
-review — it is not signed yet. Once accepted it installs like any other catalog plugin, with no
+The plugin is **not yet listed** in the
+[Grafana plugin catalog](https://grafana.com/grafana/plugins/ubica-keplergl-panel/), and is
+therefore not signed: a plugin that has never been published cannot be, since the signature level is
+something the review grants. Once it is accepted it installs like any other catalog plugin, with no
 `allow_loading_unsigned_plugins` entry needed. See [Install](../guide/install) for both the intended
-catalog flow and the release-archive install that works while the review is pending.
+catalog flow and the release-archive install that works until then.
 
 ## Bundled libraries
 

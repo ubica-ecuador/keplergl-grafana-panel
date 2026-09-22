@@ -124,6 +124,44 @@ The four kinds are exclusive per mapping row, but a panel can have several rows.
 arrangement is a Click mapping for the entity, a Coordinates mapping for spatial queries, and a
 Filter mapping for a category — three rows, three variables, one map driving the whole dashboard.
 
+## Select from the popup
+
+On a map where selecting is cheap, a click that publishes straight away is exactly right. On a map
+where it reloads a tab, re-runs a heavy query or swaps a whole dashboard's worth of panels, it makes
+*looking* expensive — and a reader who cannot look without committing stops exploring.
+
+Turn on **Select from the popup**, under Cross-filtering, and the click is split in two: it opens
+kepler's popup with the entity's details and publishes nothing. The popup's **Select** button is what
+writes the variables, and **Clear** is what empties them.
+
+The option appears once the panel has a **Click** mapping, or a drawn-area variable with
+**Click to set the area** on — those are the channels a click would otherwise publish.
+
+::: tip It also tells you what is already selected
+The popup knows whether the entity showing is the one the variables already hold, so the button
+reads as a selection rather than as a suggestion.
+:::
+
+## Seeing what is selected
+
+Whatever the click channels have published is **ringed on the map in amber**: a ring around a
+selected point, an outline around a selected polygon or path. It needs no configuring — a panel with
+a click mapping has it.
+
+Three things about it are deliberate:
+
+- **It is read from the variables, not from kepler's clicked entity.** kepler forgets what was
+  clicked on every data refresh, and never knew it at all on a dashboard opened from a link. The
+  variables survive both, so the halo does too — which is what makes a shared link show *which*
+  entity the numbers beside the map are about.
+- **No click can land on it.** The rings are drawn above every layer so they are never buried, and
+  they are deaf to the pointer, so clicking a ringed feature still hits the feature.
+- **It follows the columns, not one mapping.** A panel that maps both a zone and a station rings the
+  selected station *and* every row of the selected zone — the union, which is what a reader expects
+  from two filters at once.
+
+In a split map it is drawn only in the pane where the layer it belongs to is visible.
+
 ## What else the map can publish
 
 The bounding box of the current view, and any polygon you draw on it — see

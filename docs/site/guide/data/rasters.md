@@ -76,6 +76,48 @@ Two more things about it:
 - It does nothing to a **PMTiles** archive, which has no ramp to set, nor to a raster the
   [tile server paints](#painted), which has its own palette.
 
+## Band combinations {#band-combinations}
+
+A satellite scene carries more bands than the three a true-colour picture uses, and the interesting
+ones are usually not visible. Burn scars show in shortwave infrared; vegetation shows in
+near-infrared; moisture shows in the ratio between the two.
+
+To get at them the panel needs to know where the scene's **STAC item** is, not just its composed
+image — the bands live in separate files the item points at. Return the item's URL beside the image:
+
+```sql
+SELECT assets ->> 'visual'   AS raster_url,
+       item_url              AS raster_item_url,
+       datetime              AS time
+FROM scenes
+ORDER BY datetime;
+```
+
+Then the **Raster bands** panel option chooses what is drawn:
+
+| Value                      | What it is                                                 |
+| -------------------------- | ---------------------------------------------------------- |
+| True colour _(default)_    | the composed image `raster_url` already names               |
+| `forestBurn`               | SWIR2 · NIR · blue — burn scars against healthy canopy      |
+| `infrared`                 | NIR · red · green — the classic false-colour infrared       |
+| `nbr`                      | Normalised Burn Ratio, burn severity                        |
+| `ndmi`                     | Normalised Difference Moisture Index                        |
+
+The two composites are built by the **tile server** in a single request — one image of about 116 KB,
+against the three `.npy` requests and ~768 KB kepler's own layer would spend fetching the same bands
+one by one. The two indices cannot take that road, so they are computed **in the browser** from two
+bands of the item, each with a diverging ramp of its own: red–yellow–green for burn severity,
+red–yellow–blue for moisture.
+
+The option interpolates a dashboard variable, so `$bands` in that box and a custom variable holding
+the five values turns the combination into a dropdown the reader can drive, with no query re-run and
+no second panel.
+
+::: tip Without the item, nothing breaks
+A query that returns only `raster_url` keeps drawing exactly as before. The option simply has
+nothing to work from, because the bands are not where it can reach them.
+:::
+
 ## A classified raster: let the server paint {#painted}
 
 Everything above assumes the colours are a **choice** — a ramp over measurements, yours to change.
@@ -111,11 +153,18 @@ still swaps the picture in place without rebuilding the layer.
 
 Leave it **off** for imagery. A true-colour scene wants its stretch decided where you can see it.
 
-### Open {#open}
+### What the panel offers {#open}
 
-kepler renders a layer's controls from `_render<Type>LayerConfig` on its configurator, and adds none
-for a plugin's own types — which is why this layer, the Zarr layer and the flow field all show a bare
-panel. Injecting a configurator would fix all of them at once, and is not done yet.
+kepler renders a layer's controls from `_render<Type>LayerConfig` on its configurator and ships none
+for a type a plugin contributes, so the panel would show the layer, its data source and nothing else
+— with every setting the layer registered sitting there unreachable. The plugin injects its own
+configurator to fix that for all of its types at once.
+
+For a painted raster what it offers is **opacity**, and that is the whole list on purpose: the
+colours were decided before the image was sent, by the palette inside the file. The ArcGIS Image
+Service and Zarr layers are in the same position and get the same panel. The layers that decide
+their own pixels — [Streamlines](./velocity-fields), the vector field,
+[Symbols](./symbols) — get full panels of their own.
 
 ::: tip One file, one footprint
 Classified rasters are often published cut into tiles of a grid — the land-cover collection above is

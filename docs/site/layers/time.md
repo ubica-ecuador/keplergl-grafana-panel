@@ -49,7 +49,7 @@ carrying only the path: far less data, nothing else survives.
 
 Backed by deck.gl's `TripsLayer`, plus `ScenegraphLayer` when a 3D model rides the head of the trip.
 
-## Velocity fields run on the same clock
+## Velocity fields run on a clock of their own
 
 ![Trajectories on the spike dashboard](/img/guide-trips.jpg)
 
@@ -57,11 +57,20 @@ A query returning a grid of wind or current vectors produces a **Streamlines** l
 streamlines through the field — the paths a massless particle would take — and animates a trail
 along each of them.
 
-So the playback on this page applies to a wind map too: the same clock, the same play button, the
-same blank map when it is paused. What differs is that the geometry is computed rather than queried,
-and re-computed whenever the map settles, so density and on-screen line length stay constant as you
-zoom — and that its trail, cycle and density are the layer's own settings rather than the Trip
-layer's.
+It does **not** use the playback on this page. The lines run on a clock of their own, so they keep
+moving while the dashboard's timeline sits still, and there is no blank map at the start of a window.
+They stop by themselves when the panel scrolls out of view or the tab goes to the background, they
+can be switched off with the layer's **Animate** knob, and they respect the operating system's
+_reduce motion_ setting.
+
+What the dashboard's clock does instead is **choose the hour**. A query carrying a whole forecast
+puts every hour on the map at once, and the layer draws the latest one the time filter leaves
+standing — so dragging the timeline walks the forecast rather than replaying one moment of it. Hours
+already traced are kept, so walking back and forth is free.
+
+Two other differences from a Trip layer: the geometry is computed rather than queried, and
+re-computed whenever the map settles, so density and on-screen line length stay constant as you
+zoom; and trail, cycle and density are the layer's own settings.
 
 See [Wind and other velocity fields](../guide/data/velocity-fields).
 

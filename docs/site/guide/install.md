@@ -72,7 +72,7 @@ services:
 ### Grafana Cloud
 
 A signed community plugin is installable on Grafana Cloud once it is published there. This plugin
-is awaiting review, so a Cloud install is not available yet.
+is not in the catalog yet, so a Cloud install is not available.
 
 ## Hardened Grafana
 

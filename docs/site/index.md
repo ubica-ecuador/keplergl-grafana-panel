@@ -24,7 +24,7 @@ hero:
 
 features:
   - title: Your query is the configuration
-    details: Name a column recognisably and the panel builds the layer. lat/lng, time, trip id, geometry, H3, origin–destination pairs and velocity components are all detected, and every one is overridable per query.
+    details: Name a column recognisably and the panel builds the layer. lat/lng, time, trip id, geometry, H3, origin–destination pairs, a bearing and velocity components are all detected, and every one is overridable per query.
     link: /guide/data/how-a-query-becomes-a-map
     linkText: How detection works
   - title: Geometry straight from the database
@@ -35,12 +35,16 @@ features:
     details: A query with a trip id and a time becomes an animated Trip layer. A flat origin–destination table becomes an animated flow map. Neither needs a layer configured by hand.
     link: /guide/data/trajectories
     linkText: Trajectories
+  - title: Anything with a bearing, drawn as itself
+    details: A position and a heading become one mark per row — a fleet, a set of vessels, a network of stations — from over a thousand bundled shapes, or a picture per row. A grid of velocities becomes animated streamlines, arrows or meteorological wind barbs instead.
+    link: /guide/data/symbols
+    linkText: Symbols
   - title: Satellite imagery, and its clock
     details: A query that returns a link to a COG draws it, one that names a WMS draws that, and a .pmtiles archive draws with no server at all. One row per date turns the map's time widget into the scene selector — dragging it changes the picture without re-running the query or moving the frame.
     link: /guide/data/imagery-over-time
     linkText: Imagery over time
   - title: Wired into the dashboard, both ways
-    details: The time picker drives the map's timeline and optionally the other way round. Map filters, clicks, the viewport and drawn areas all publish to dashboard variables, so the map filters every other panel.
+    details: The time picker drives the map's timeline and optionally the other way round. Map filters, clicks, the viewport and drawn areas all publish to dashboard variables, so the map filters every other panel — and whatever is selected is ringed on the map, on a shared link as well.
     link: /guide/dashboard/cross-filtering
     linkText: Cross-filtering
   - title: Base maps with no account
