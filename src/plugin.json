@@ -25,6 +25,10 @@
       {
         "name": "kepler.gl",
         "url": "https://kepler.gl"
+      },
+      {
+        "name": "sponsorship",
+        "url": "https://ubica-ecuador.github.io/keplergl-grafana-panel/support.html"
       }
     ],
     "screenshots": [
