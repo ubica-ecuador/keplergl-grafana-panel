@@ -1,0 +1,1838 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Live punctuality, service changes and alerts of Portland's TriMet, read by DuckDB from the TriMet Web Services API.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "liveNow": false,
+  "panels": [
+    {
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "content": "### TriMet\\* in real time — Portland, Oregon\nEvery vehicle TriMet is tracking right now, how late it runs, which trips skip stops and what riders are being warned about. Read live by DuckDB from the TriMet Web Services API on every refresh; nothing is stored, so there is no history. **On time** follows TriMet's own yardstick: from one minute early to five minutes late. Click a vehicle on the map, or a row of the delayed table, to see its next stops.\n\n<small>Unofficial dashboard, not endorsed by or affiliated with TriMet. \\*TriMet and TransitTracker are registered trademarks of TriMet. All rights reserved.</small>",
+        "mode": "markdown"
+      },
+      "title": "",
+      "type": "text"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "id": 20,
+      "panels": [],
+      "title": "Right now · live",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Vehicles reporting a position on a route, after the mode and route filters. On time: between 1 minute early and 5 minutes late, TriMet's definition. Stuck in traffic: buses reporting that they are not moving in congestion (an experimental TriMet field). Position age: 90 % of positions are younger than this.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "text",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "On time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 70
+                    },
+                    {
+                      "color": "green",
+                      "value": 85
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Median delay"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "m"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Position age (p90)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: s"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 19,
+        "x": 0,
+        "y": 5
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n-- TriMet through the sources-data proxy, which adds the AppID and asks for\n-- gzip -- 11 MB plain, 1 MB gzipped for the trip status -- and passes it\n-- through as it comes: hence compression = 'gzip'. See sources-data.nginx.conf.\n\nWITH veh AS (\n  SELECT v.vehicleID::VARCHAR AS vehicle,\n         v.routeNumber        AS num,\n         CASE v.routeSubType WHEN 'Light Rail' THEN 'MAX light rail' WHEN 'BRT' THEN 'FX bus rapid transit' WHEN 'Commuter Rail' THEN 'WES commuter rail' WHEN 'Streetcar' THEN 'Streetcar' WHEN 'Aerial Tram' THEN 'Aerial tram' ELSE 'Bus' END AS mode,\n         v.type,\n         v.tripID             AS trip,\n         v.signMessageLong    AS sign,\n         -- TriMet counts a late vehicle as negative; flipped so late is\n         -- positive, as in GTFS and in TriMet's own trip status feed.\n         -v.delay             AS delay_s,\n         v.loadPercentage     AS load_pct,\n         v.inCongestion       AS congestion,\n         v.nextLocID          AS next_loc,\n         v.latitude,\n         v.longitude,\n         (qt - v.time) / 1000.0 AS age_s\n  FROM (SELECT resultSet.queryTime AS qt, unnest(resultSet.vehicle) AS v\n        FROM read_json('http://sources-data/trimet/ws/v2/vehicles', compression = 'gzip', maximum_object_size = 50000000, columns = {resultSet: 'STRUCT(queryTime BIGINT, vehicle STRUCT(vehicleID BIGINT, routeNumber BIGINT, routeSubType VARCHAR, type VARCHAR, tripID VARCHAR, signMessageLong VARCHAR, delay BIGINT, loadPercentage BIGINT, inCongestion BOOLEAN, nextLocID BIGINT, latitude DOUBLE, longitude DOUBLE, time BIGINT)[])'}))\n),\nroutes AS (\n  SELECT r.route AS num, r.\"desc\" AS route, r.routeSubType AS subtype, r.routeSortOrder AS sort_order\n  FROM (SELECT unnest(resultSet.route) AS r\n        FROM read_json('http://sources-data/trimet/ws/V1/routeConfig?json=true', compression = 'gzip', maximum_object_size = 50000000))\n),\nv AS (\n  SELECT veh.*, coalesce(r.route, veh.num::VARCHAR) AS route\n  FROM veh LEFT JOIN routes r USING (num)\n  WHERE veh.mode IN ($mode)\n    AND ('__all__' IN ($route) OR coalesce(r.route, veh.num::VARCHAR) IN ($route))\n)\nSELECT count(*)                                                    AS \"Vehicles in service\",\n       100.0 * count(*) FILTER (WHERE delay_s BETWEEN -60 AND 300)\n             / nullif(count(*), 0)                                 AS \"On time\",\n       median(delay_s) / 60.0                                      AS \"Median delay\",\n       count(*) FILTER (WHERE delay_s > 300)                       AS \"More than 5 min late\",\n       count(*) FILTER (WHERE delay_s < -60)                       AS \"More than 1 min early\",\n       count(*) FILTER (WHERE congestion)                          AS \"Stuck in traffic\",\n       quantile_cont(age_s, 0.9)                                   AS \"Position age (p90)\"\nFROM v\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Service right now",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "description": "Trips running now or starting within the hour with at least one canceled stop — detours, closures, short turns. Counted from the service changes table below.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#d29922",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "displayName": "Trips with canceled stops",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 19,
+        "y": 5
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "count"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 8,
+          "refId": "A"
+        }
+      ],
+      "title": "Trips skipping stops",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "Canceled stops"
+              ]
+            }
+          }
+        }
+      ],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Each bus icon is a vehicle from TriMet's vehicle feed, turned to the heading it reports: blue runs more than a minute early, green on time, amber 5–10 minutes late, red later. Lines are the routes in their public colors, drawn stop to stop rather than along the street. Amber rings are stops named in a service alert, and the cyan ring the selected vehicle. Click a vehicle to see its next stops.",
+      "gridPos": {
+        "h": 18,
+        "w": 15,
+        "x": 0,
+        "y": 9
+      },
+      "id": 4,
+      "options": {
+        "basemap": "dark-matter",
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": false,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "isSplit": false,
+              "latitude": 45.505,
+              "longitude": -122.66,
+              "mapViewMode": "MODE_2D",
+              "pitch": 0,
+              "zoom": 10.2
+            },
+            "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
+              ],
+              "mapStyles": {},
+              "styleType": "dark-matter",
+              "topLayerGroups": {
+                "label": true,
+                "road": false
+              },
+              "visibleLayerGroups": {
+                "3d building": false,
+                "border": false,
+                "building": true,
+                "label": true,
+                "land": true,
+                "road": true,
+                "water": true
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "route"
+                      },
+                      {
+                        "name": "vehicle"
+                      },
+                      {
+                        "name": "sign"
+                      },
+                      {
+                        "name": "punctuality"
+                      },
+                      {
+                        "name": "delay_min"
+                      },
+                      {
+                        "name": "next_stop"
+                      },
+                      {
+                        "name": "load_pct"
+                      },
+                      {
+                        "name": "in_traffic"
+                      },
+                      {
+                        "name": "age_s"
+                      }
+                    ],
+                    "grafana-B": [
+                      {
+                        "name": "line"
+                      },
+                      {
+                        "name": "kind"
+                      }
+                    ],
+                    "grafana-C": [
+                      {
+                        "name": "stop"
+                      },
+                      {
+                        "name": "affects"
+                      },
+                      {
+                        "name": "alert"
+                      }
+                    ]
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "picked",
+                "vehicle-icons",
+                "vehicle-hit",
+                "alerts",
+                "lines"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "color": [
+                      0,
+                      229,
+                      255
+                    ],
+                    "columnMode": "points",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "dataId": "grafana-D",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Selected vehicle",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "allowHover": false,
+                      "filled": false,
+                      "opacity": 1,
+                      "outline": true,
+                      "radius": 70,
+                      "radiusRange": [
+                        0,
+                        50
+                      ],
+                      "strokeColor": [
+                        0,
+                        229,
+                        255
+                      ],
+                      "thickness": 3
+                    }
+                  },
+                  "id": "picked",
+                  "type": "point",
+                  "visualChannels": {
+                    "colorField": null,
+                    "sizeField": null,
+                    "strokeColorField": null
+                  }
+                },
+                {
+                  "config": {
+                    "color": [
+                      63,
+                      185,
+                      80
+                    ],
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "dataId": "grafana-A",
+                    "isVisible": true,
+                    "label": "Vehicles · heading and punctuality",
+                    "visConfig": {
+                      "angleDegrees": 0,
+                      "colorRange": {
+                        "category": "Custom",
+                        "colorMap": [
+                          [
+                            "Early > 1 min",
+                            "#58a6ff"
+                          ],
+                          [
+                            "On time",
+                            "#3fb950"
+                          ],
+                          [
+                            "Late 5–10 min",
+                            "#d29922"
+                          ],
+                          [
+                            "Late > 10 min",
+                            "#f85149"
+                          ]
+                        ],
+                        "colors": [
+                          "#58a6ff",
+                          "#3fb950",
+                          "#d29922",
+                          "#f85149"
+                        ],
+                        "name": "Punctuality",
+                        "type": "custom"
+                      },
+                      "directionConvention": "towards",
+                      "fixedAngle": true,
+                      "opacity": 1,
+                      "outline": true,
+                      "outlineColor": [
+                        13,
+                        17,
+                        23
+                      ],
+                      "outlineThickness": 2,
+                      "symbol": "bus",
+                      "symbolSize": 22
+                    }
+                  },
+                  "id": "vehicle-icons",
+                  "type": "symbol",
+                  "visualChannels": {
+                    "angleField": {
+                      "name": "heading",
+                      "type": "real"
+                    },
+                    "angleScale": "linear",
+                    "colorField": {
+                      "name": "punctuality",
+                      "type": "string"
+                    },
+                    "colorScale": "customOrdinal",
+                    "sizeField": null,
+                    "sizeScale": "linear"
+                  }
+                },
+                {
+                  "config": {
+                    "color": [
+                      63,
+                      185,
+                      80
+                    ],
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "dataId": "grafana-A",
+                    "isVisible": true,
+                    "label": "Vehicles · click target",
+                    "visConfig": {
+                      "angleDegrees": 0,
+                      "colorRange": {
+                        "category": "Custom",
+                        "colorMap": [
+                          [
+                            "Early > 1 min",
+                            "#58a6ff"
+                          ],
+                          [
+                            "On time",
+                            "#3fb950"
+                          ],
+                          [
+                            "Late 5–10 min",
+                            "#d29922"
+                          ],
+                          [
+                            "Late > 10 min",
+                            "#f85149"
+                          ]
+                        ],
+                        "colors": [
+                          "#58a6ff",
+                          "#3fb950",
+                          "#d29922",
+                          "#f85149"
+                        ],
+                        "name": "Punctuality",
+                        "type": "custom"
+                      },
+                      "fixedAngle": true,
+                      "opacity": 0.06,
+                      "symbol": "square",
+                      "symbolSize": 30
+                    }
+                  },
+                  "id": "vehicle-hit",
+                  "type": "symbol",
+                  "visualChannels": {
+                    "angleField": null,
+                    "angleScale": "linear",
+                    "colorField": {
+                      "name": "punctuality",
+                      "type": "string"
+                    },
+                    "colorScale": "customOrdinal",
+                    "sizeField": null,
+                    "sizeScale": "linear"
+                  }
+                },
+                {
+                  "config": {
+                    "color": [
+                      210,
+                      153,
+                      34
+                    ],
+                    "columnMode": "points",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "dataId": "grafana-C",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Stops named in a service alert",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "allowHover": true,
+                      "filled": false,
+                      "opacity": 1,
+                      "outline": true,
+                      "radius": 45,
+                      "radiusRange": [
+                        0,
+                        50
+                      ],
+                      "strokeColor": [
+                        210,
+                        153,
+                        34
+                      ],
+                      "thickness": 2
+                    }
+                  },
+                  "id": "alerts",
+                  "type": "point",
+                  "visualChannels": {
+                    "colorField": null,
+                    "sizeField": null,
+                    "strokeColorField": null
+                  }
+                },
+                {
+                  "config": {
+                    "color": [
+                      70,
+                      121,
+                      170
+                    ],
+                    "columnMode": "geojson",
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "dataId": "grafana-B",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Routes · stop to stop",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "allowHover": true,
+                      "enable3d": false,
+                      "filled": false,
+                      "opacity": 0.8,
+                      "sizeRange": [
+                        0.5,
+                        3.5
+                      ],
+                      "strokeColor": [
+                        70,
+                        121,
+                        170
+                      ],
+                      "strokeColorRange": {
+                        "category": "Custom",
+                        "colorMap": [
+                          [
+                            "#4679AA",
+                            "#4679AA"
+                          ],
+                          [
+                            "#1359AE",
+                            "#1359AE"
+                          ],
+                          [
+                            "#008342",
+                            "#008342"
+                          ],
+                          [
+                            "#D05F27",
+                            "#D05F27"
+                          ],
+                          [
+                            "#C41F3E",
+                            "#C41F3E"
+                          ],
+                          [
+                            "#FFC52F",
+                            "#FFC52F"
+                          ],
+                          [
+                            "#6E6E6E",
+                            "#6E6E6E"
+                          ],
+                          [
+                            "#72A130",
+                            "#72A130"
+                          ],
+                          [
+                            "#D91965",
+                            "#D91965"
+                          ],
+                          [
+                            "#4650BE",
+                            "#4650BE"
+                          ],
+                          [
+                            "#898E91",
+                            "#898E91"
+                          ],
+                          [
+                            "#61A60E",
+                            "#61A60E"
+                          ]
+                        ],
+                        "colors": [
+                          "#4679AA",
+                          "#1359AE",
+                          "#008342",
+                          "#D05F27",
+                          "#C41F3E",
+                          "#FFC52F",
+                          "#6E6E6E",
+                          "#72A130",
+                          "#D91965",
+                          "#4650BE",
+                          "#898E91",
+                          "#61A60E"
+                        ],
+                        "name": "Route colors",
+                        "type": "custom"
+                      },
+                      "strokeOpacity": 0.7,
+                      "stroked": true,
+                      "thickness": 1,
+                      "wireframe": false
+                    }
+                  },
+                  "id": "lines",
+                  "type": "geojson",
+                  "visualChannels": {
+                    "sizeField": {
+                      "name": "width",
+                      "type": "integer"
+                    },
+                    "sizeScale": "linear",
+                    "strokeColorField": {
+                      "name": "color",
+                      "type": "string"
+                    },
+                    "strokeColorScale": "customOrdinal"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "rasterColormap": "",
+        "rasterPainted": false,
+        "showSidePanel": false,
+        "timeSync": "off",
+        "tripLayerMode": "table",
+        "variableMappings": [
+          {
+            "field": "mode",
+            "variable": "mode"
+          },
+          {
+            "field": "route",
+            "variable": "route"
+          },
+          {
+            "field": "vehicle",
+            "source": "click",
+            "variable": "vehicle"
+          },
+          {
+            "field": "",
+            "source": "center",
+            "variable": "lat",
+            "variableTo": "lng",
+            "zoom": 14
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n-- TriMet through the sources-data proxy, which adds the AppID and asks for\n-- gzip -- 11 MB plain, 1 MB gzipped for the trip status -- and passes it\n-- through as it comes: hence compression = 'gzip'. See sources-data.nginx.conf.\n\n-- Deliberately unfiltered: the map narrows itself through kepler filters bound\n-- to the mode and route variables. `vehicle`, not `vehicle_id`: the panel\n-- reads vehicle_id as a trajectory id and would try to draw trips.\nWITH veh AS (\n  SELECT v.vehicleID::VARCHAR AS vehicle,\n         v.routeNumber        AS num,\n         CASE v.routeSubType WHEN 'Light Rail' THEN 'MAX light rail' WHEN 'BRT' THEN 'FX bus rapid transit' WHEN 'Commuter Rail' THEN 'WES commuter rail' WHEN 'Streetcar' THEN 'Streetcar' WHEN 'Aerial Tram' THEN 'Aerial tram' ELSE 'Bus' END AS mode,\n         v.type,\n         v.tripID             AS trip,\n         v.signMessageLong    AS sign,\n         -- TriMet counts a late vehicle as negative; flipped so late is\n         -- positive, as in GTFS and in TriMet's own trip status feed.\n         -v.delay             AS delay_s,\n         v.loadPercentage     AS load_pct,\n         v.inCongestion       AS congestion,\n         v.nextLocID          AS next_loc,\n         v.latitude,\n         v.longitude,\n         v.bearing::DOUBLE    AS heading,\n         (qt - v.time) / 1000.0 AS age_s\n  FROM (SELECT resultSet.queryTime AS qt, unnest(resultSet.vehicle) AS v\n        FROM read_json('http://sources-data/trimet/ws/v2/vehicles', compression = 'gzip', maximum_object_size = 50000000, columns = {resultSet: 'STRUCT(queryTime BIGINT, vehicle STRUCT(vehicleID BIGINT, routeNumber BIGINT, routeSubType VARCHAR, type VARCHAR, tripID VARCHAR, signMessageLong VARCHAR, delay BIGINT, loadPercentage BIGINT, inCongestion BOOLEAN, nextLocID BIGINT, latitude DOUBLE, longitude DOUBLE, bearing BIGINT, time BIGINT)[])'}))\n),\nrcs AS (\n  SELECT unnest(resultSet.route) AS r\n  FROM read_json('http://sources-data/trimet/ws/V1/routeConfig?json=true&dir=true&stops=true', compression = 'gzip', maximum_object_size = 50000000)\n),\nnames AS (\n  SELECT s.locid, any_value(s.\"desc\") AS name\n  FROM (SELECT unnest(d.stop) AS s FROM (SELECT unnest(r.dir) AS d FROM rcs))\n  GROUP BY 1\n),\nroutes AS (SELECT r.route AS num, r.\"desc\" AS route FROM rcs)\nSELECT veh.vehicle,\n       coalesce(ro.route, veh.num::VARCHAR) AS route,\n       veh.mode,\n       veh.sign,\n       round(veh.delay_s / 60.0, 1)         AS delay_min,\n       CASE WHEN delay_s < -60  THEN 'Early > 1 min'\n       WHEN delay_s <= 300 THEN 'On time'\n       WHEN delay_s <= 600 THEN 'Late 5–10 min'\n       ELSE 'Late > 10 min' END                        AS punctuality,\n       n.name                               AS next_stop,\n       veh.load_pct,\n       CASE WHEN veh.congestion THEN 'Yes' WHEN NOT veh.congestion THEN 'No' END AS in_traffic,\n       round(veh.age_s)::BIGINT             AS age_s,\n       veh.latitude,\n       veh.longitude,\n       veh.heading\nFROM veh\nLEFT JOIN routes ro USING (num)\nLEFT JOIN names n ON n.locid = veh.next_loc\n",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n-- TriMet through the sources-data proxy, which adds the AppID and asks for\n-- gzip -- 11 MB plain, 1 MB gzipped for the trip status -- and passes it\n-- through as it comes: hence compression = 'gzip'. See sources-data.nginx.conf.\n\n-- Drawn stop to stop from the route configuration, not along the street: the\n-- street geometry lives in the GTFS zip, and reading its shapes takes ~17 s.\nWITH rcs AS (\n  SELECT unnest(resultSet.route) AS r\n  FROM read_json('http://sources-data/trimet/ws/V1/routeConfig?json=true&dir=true&stops=true', compression = 'gzip', maximum_object_size = 50000000)\n),\ndirs AS (\n  SELECT r.\"desc\" AS name, r.routeSubType AS subtype, r.routeColor AS hex, unnest(r.dir) AS d FROM rcs\n),\nst AS (SELECT name, subtype, hex, d.dir AS dir, unnest(d.stop) AS s FROM dirs)\nSELECT name                                          AS line,\n       CASE subtype WHEN 'Light Rail' THEN 'MAX light rail' WHEN 'BRT' THEN 'FX bus rapid transit' WHEN 'Commuter Rail' THEN 'WES commuter rail' WHEN 'Streetcar' THEN 'Streetcar' WHEN 'Aerial Tram' THEN 'Aerial tram' ELSE 'Bus' END                        AS kind,\n       '#' || coalesce(hex, '4679AA')                AS color,\n       CASE WHEN subtype = 'Bus' THEN 1 WHEN subtype = 'BRT' THEN 2 ELSE 3 END AS width,\n       CAST(ST_AsGeoJSON(ST_MakeLine(list(ST_Point(s.lng, s.lat) ORDER BY s.seq))) AS VARCHAR) AS geojson\nFROM st\nWHERE CASE subtype WHEN 'Light Rail' THEN 'MAX light rail' WHEN 'BRT' THEN 'FX bus rapid transit' WHEN 'Commuter Rail' THEN 'WES commuter rail' WHEN 'Streetcar' THEN 'Streetcar' WHEN 'Aerial Tram' THEN 'Aerial tram' ELSE 'Bus' END IN ($mode)\n  AND ('__all__' IN ($route) OR name IN ($route))\nGROUP BY name, subtype, hex, dir\nHAVING count(*) > 1\n",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n-- TriMet through the sources-data proxy, which adds the AppID and asks for\n-- gzip -- 11 MB plain, 1 MB gzipped for the trip status -- and passes it\n-- through as it comes: hence compression = 'gzip'. See sources-data.nginx.conf.\n\nWITH al AS (\n  SELECT unnest(resultSet.alert) AS a\n  FROM read_json('http://sources-data/trimet/ws/v2/alerts', compression = 'gzip', maximum_object_size = 50000000, columns = {resultSet: 'STRUCT(alert STRUCT(id BIGINT, \"desc\" VARCHAR, begin BIGINT, system_wide_flag BOOLEAN, route STRUCT(route BIGINT, \"desc\" VARCHAR)[], location STRUCT(id BIGINT, \"desc\" VARCHAR, lat DOUBLE, lng DOUBLE)[])[])'})\n),\nloc AS (\n  SELECT a.\"desc\" AS alert,\n         list_transform(a.route, x -> x.\"desc\") AS route_list,\n         unnest(a.location) AS l\n  FROM al\n)\nSELECT alert, array_to_string(route_list, ', ') AS affects, l.\"desc\" AS stop, l.lat AS latitude, l.lng AS longitude\nFROM loc\n-- Filtered here, like the route lines: kepler binds a variable to one dataset\n-- only, the vehicles. Same rule as the alerts table.\nWHERE '__all__' IN ($route)\n   OR list_has_any(route_list, [$route])\n",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n-- TriMet through the sources-data proxy, which adds the AppID and asks for\n-- gzip -- 11 MB plain, 1 MB gzipped for the trip status -- and passes it\n-- through as it comes: hence compression = 'gzip'. See sources-data.nginx.conf.\n\n-- The vehicle picked on the map or in the delayed table, read live so the ring\n-- follows it on every refresh. Until then the read points at the small alerts\n-- feed, which has no vehicles under this schema.\nSELECT v.latitude, v.longitude, v.vehicleID::VARCHAR AS picked\nFROM (SELECT unnest(resultSet.vehicle) AS v\n      FROM read_json(CASE WHEN $vehicle = '' THEN 'http://sources-data/trimet/ws/v2/alerts' ELSE 'http://sources-data/trimet/ws/v2/vehicles' END,\n                     compression = 'gzip', maximum_object_size = 50000000, columns = {resultSet: 'STRUCT(queryTime BIGINT, vehicle STRUCT(vehicleID BIGINT, routeNumber BIGINT, routeSubType VARCHAR, type VARCHAR, tripID VARCHAR, signMessageLong VARCHAR, delay BIGINT, loadPercentage BIGINT, inCongestion BOOLEAN, nextLocID BIGINT, latitude DOUBLE, longitude DOUBLE, time BIGINT)[])'}))\nWHERE v.vehicleID::VARCHAR = $vehicle\n",
+          "refId": "D"
+        }
+      ],
+      "title": "Fleet now — colored by punctuality",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "The 25 vehicles furthest behind schedule. Click a row to find it on the map and list its next stops.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "links": [
+            {
+              "title": "Show on the map and list its next stops",
+              "url": "/d/trimet-live${__url.params:exclude:var-vehicle,var-lat,var-lng}&var-vehicle=${__data.fields.Vehicle}&var-lat=${__data.fields.center_lat}&var-lng=${__data.fields.center_lng}"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Late (min)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 5
+                    },
+                    {
+                      "color": "red",
+                      "value": 10
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Vehicle"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "center_lat"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "center_lng"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 9,
+        "x": 15,
+        "y": 9
+      },
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n-- TriMet through the sources-data proxy, which adds the AppID and asks for\n-- gzip -- 11 MB plain, 1 MB gzipped for the trip status -- and passes it\n-- through as it comes: hence compression = 'gzip'. See sources-data.nginx.conf.\n\nWITH veh AS (\n  SELECT v.vehicleID::VARCHAR AS vehicle,\n         v.routeNumber        AS num,\n         CASE v.routeSubType WHEN 'Light Rail' THEN 'MAX light rail' WHEN 'BRT' THEN 'FX bus rapid transit' WHEN 'Commuter Rail' THEN 'WES commuter rail' WHEN 'Streetcar' THEN 'Streetcar' WHEN 'Aerial Tram' THEN 'Aerial tram' ELSE 'Bus' END AS mode,\n         v.type,\n         v.tripID             AS trip,\n         v.signMessageLong    AS sign,\n         -- TriMet counts a late vehicle as negative; flipped so late is\n         -- positive, as in GTFS and in TriMet's own trip status feed.\n         -v.delay             AS delay_s,\n         v.loadPercentage     AS load_pct,\n         v.inCongestion       AS congestion,\n         v.nextLocID          AS next_loc,\n         v.latitude,\n         v.longitude,\n         (qt - v.time) / 1000.0 AS age_s\n  FROM (SELECT resultSet.queryTime AS qt, unnest(resultSet.vehicle) AS v\n        FROM read_json('http://sources-data/trimet/ws/v2/vehicles', compression = 'gzip', maximum_object_size = 50000000, columns = {resultSet: 'STRUCT(queryTime BIGINT, vehicle STRUCT(vehicleID BIGINT, routeNumber BIGINT, routeSubType VARCHAR, type VARCHAR, tripID VARCHAR, signMessageLong VARCHAR, delay BIGINT, loadPercentage BIGINT, inCongestion BOOLEAN, nextLocID BIGINT, latitude DOUBLE, longitude DOUBLE, time BIGINT)[])'}))\n),\nroutes AS (\n  SELECT r.route AS num, r.\"desc\" AS route, r.routeSubType AS subtype, r.routeSortOrder AS sort_order\n  FROM (SELECT unnest(resultSet.route) AS r\n        FROM read_json('http://sources-data/trimet/ws/V1/routeConfig?json=true', compression = 'gzip', maximum_object_size = 50000000))\n),\nv AS (\n  SELECT veh.*, coalesce(r.route, veh.num::VARCHAR) AS route\n  FROM veh LEFT JOIN routes r USING (num)\n  WHERE veh.mode IN ($mode)\n    AND ('__all__' IN ($route) OR coalesce(r.route, veh.num::VARCHAR) IN ($route))\n),\nrcs AS (\n  SELECT unnest(resultSet.route) AS r\n  FROM read_json('http://sources-data/trimet/ws/V1/routeConfig?json=true&dir=true&stops=true', compression = 'gzip', maximum_object_size = 50000000)\n),\nnames AS (\n  SELECT s.locid, any_value(s.\"desc\") AS name\n  FROM (SELECT unnest(d.stop) AS s FROM (SELECT unnest(r.dir) AS d FROM rcs))\n  GROUP BY 1\n)\nSELECT v.route                         AS \"Route\",\n       v.vehicle                       AS \"Vehicle\",\n       v.sign                          AS \"Headsign\",\n       round(v.delay_s / 60.0, 1)      AS \"Late (min)\",\n       coalesce(n.name, '')            AS \"Next stop\",\n       -- Text, not numbers: a data link interpolates the cell's formatted\n       -- value, and the table's automatic decimals would round the position.\n       printf('%.6f', v.latitude)      AS center_lat,\n       printf('%.6f', v.longitude)     AS center_lng\nFROM v LEFT JOIN names n ON n.locid = v.next_loc\nWHERE v.delay_s > 60\nORDER BY v.delay_s DESC\nLIMIT 25\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Most delayed vehicles now",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "From TriMet's trip status feed for the trip the selected vehicle is running. Late: minutes behind the scheduled arrival at that stop. Empty until a vehicle is picked.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "noValue": "Click a vehicle on the map",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Scheduled"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time:HH:mm"
+              },
+              {
+                "id": "custom.width",
+                "value": 85
+              },
+              {
+                "id": "noValue",
+                "value": "—"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Expected"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time:HH:mm"
+              },
+              {
+                "id": "custom.width",
+                "value": 85
+              },
+              {
+                "id": "noValue",
+                "value": "—"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Late (min)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "noValue",
+                "value": "—"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 5
+                    },
+                    {
+                      "color": "red",
+                      "value": 10
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Note"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 100
+              },
+              {
+                "id": "noValue",
+                "value": " "
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 9,
+        "x": 15,
+        "y": 18
+      },
+      "id": 6,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n-- TriMet through the sources-data proxy, which adds the AppID and asks for\n-- gzip -- 11 MB plain, 1 MB gzipped for the trip status -- and passes it\n-- through as it comes: hence compression = 'gzip'. See sources-data.nginx.conf.\n\n-- $vehicle is written by a click on the map or on the delayed table. Until\n-- then both reads point at the small alerts feed, whose JSON has neither\n-- vehicles nor trips under these schemas, so the 11 MB trip status is not\n-- fetched for nothing.\nWITH sel AS (\n  SELECT v.tripID AS trip\n  FROM (SELECT unnest(resultSet.vehicle) AS v\n        FROM read_json(CASE WHEN $vehicle = '' THEN 'http://sources-data/trimet/ws/v2/alerts' ELSE 'http://sources-data/trimet/ws/v2/vehicles' END,\n                       compression = 'gzip', maximum_object_size = 50000000, columns = {resultSet: 'STRUCT(queryTime BIGINT, vehicle STRUCT(vehicleID BIGINT, routeNumber BIGINT, routeSubType VARCHAR, type VARCHAR, tripID VARCHAR, signMessageLong VARCHAR, delay BIGINT, loadPercentage BIGINT, inCongestion BOOLEAN, nextLocID BIGINT, latitude DOUBLE, longitude DOUBLE, time BIGINT)[])'}))\n  WHERE v.vehicleID::VARCHAR = $vehicle\n),\nts AS MATERIALIZED (\n  SELECT resultSet AS rs\n  FROM read_json(CASE WHEN $vehicle = '' THEN 'http://sources-data/trimet/ws/v2/alerts' ELSE 'http://sources-data/trimet/ws/v2/tripStatus?showRoutes=false' END,\n                 compression = 'gzip', maximum_object_size = 100000000, columns = {resultSet: 'STRUCT(queryTime BIGINT, trip STRUCT(tripID VARCHAR, routeNumber VARCHAR, destination VARCHAR, extraTrip BOOLEAN, tripBeginTime BIGINT, tripEndTime BIGINT, stop STRUCT(locid BIGINT, stopSequence BIGINT, isPassed BOOLEAN, aimedArrival BIGINT, adjustedArrival BIGINT, arrivalDelay BIGINT, status VARCHAR)[])[], location STRUCT(id BIGINT, \"desc\" VARCHAR)[])'})\n),\nnames AS (\n  -- The stop list's key is `id`, not the `locid` TriMet documents.\n  SELECT l.id AS locid, any_value(l.\"desc\") AS name FROM (SELECT unnest(rs.location) AS l FROM ts) GROUP BY 1\n),\nst AS (\n  SELECT unnest(t.stop) AS s\n  FROM (SELECT unnest(rs.trip) AS t FROM ts)\n  WHERE t.tripID IN (SELECT trip FROM sel)\n)\nSELECT coalesce(n.name, s.locid::VARCHAR)       AS \"Stop\",\n       to_timestamp(s.aimedArrival / 1000)      AS \"Scheduled\",\n       to_timestamp(s.adjustedArrival / 1000)   AS \"Expected\",\n       round(s.arrivalDelay / 60.0, 1)          AS \"Late (min)\",\n       CASE s.status WHEN 'canceled' THEN 'Canceled'\n                     WHEN 'dropOffOnly' THEN 'Drop-off only'\n                     ELSE '' END                AS \"Note\"\nFROM st LEFT JOIN names n ON n.locid = s.locid\nWHERE NOT s.isPassed\nORDER BY s.stopSequence\nLIMIT 25\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Next stops of the selected vehicle",
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
+      "id": 21,
+      "panels": [],
+      "title": "Routes, service changes and alerts · live",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Per route, from the vehicles on it right now. On time: from 1 minute early to 5 minutes late.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "On time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 70
+                    },
+                    {
+                      "color": "green",
+                      "value": 85
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Vehicles"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 75
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Median late (min)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 130
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Worst (min)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 95
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mode"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
+      "id": 7,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n-- TriMet through the sources-data proxy, which adds the AppID and asks for\n-- gzip -- 11 MB plain, 1 MB gzipped for the trip status -- and passes it\n-- through as it comes: hence compression = 'gzip'. See sources-data.nginx.conf.\n\nWITH veh AS (\n  SELECT v.vehicleID::VARCHAR AS vehicle,\n         v.routeNumber        AS num,\n         CASE v.routeSubType WHEN 'Light Rail' THEN 'MAX light rail' WHEN 'BRT' THEN 'FX bus rapid transit' WHEN 'Commuter Rail' THEN 'WES commuter rail' WHEN 'Streetcar' THEN 'Streetcar' WHEN 'Aerial Tram' THEN 'Aerial tram' ELSE 'Bus' END AS mode,\n         v.type,\n         v.tripID             AS trip,\n         v.signMessageLong    AS sign,\n         -- TriMet counts a late vehicle as negative; flipped so late is\n         -- positive, as in GTFS and in TriMet's own trip status feed.\n         -v.delay             AS delay_s,\n         v.loadPercentage     AS load_pct,\n         v.inCongestion       AS congestion,\n         v.nextLocID          AS next_loc,\n         v.latitude,\n         v.longitude,\n         (qt - v.time) / 1000.0 AS age_s\n  FROM (SELECT resultSet.queryTime AS qt, unnest(resultSet.vehicle) AS v\n        FROM read_json('http://sources-data/trimet/ws/v2/vehicles', compression = 'gzip', maximum_object_size = 50000000, columns = {resultSet: 'STRUCT(queryTime BIGINT, vehicle STRUCT(vehicleID BIGINT, routeNumber BIGINT, routeSubType VARCHAR, type VARCHAR, tripID VARCHAR, signMessageLong VARCHAR, delay BIGINT, loadPercentage BIGINT, inCongestion BOOLEAN, nextLocID BIGINT, latitude DOUBLE, longitude DOUBLE, time BIGINT)[])'}))\n),\nroutes AS (\n  SELECT r.route AS num, r.\"desc\" AS route, r.routeSubType AS subtype, r.routeSortOrder AS sort_order\n  FROM (SELECT unnest(resultSet.route) AS r\n        FROM read_json('http://sources-data/trimet/ws/V1/routeConfig?json=true', compression = 'gzip', maximum_object_size = 50000000))\n),\nv AS (\n  SELECT veh.*, coalesce(r.route, veh.num::VARCHAR) AS route\n  FROM veh LEFT JOIN routes r USING (num)\n  WHERE veh.mode IN ($mode)\n    AND ('__all__' IN ($route) OR coalesce(r.route, veh.num::VARCHAR) IN ($route))\n)\nSELECT route                                                             AS \"Route\",\n       mode                                                              AS \"Mode\",\n       count(*)                                                          AS \"Vehicles\",\n       100.0 * count(*) FILTER (WHERE delay_s BETWEEN -60 AND 300) / count(*) AS \"On time\",\n       round(median(delay_s) / 60.0, 1)                                  AS \"Median late (min)\",\n       round(max(delay_s) / 60.0, 1)                                     AS \"Worst (min)\"\nFROM v\nGROUP BY route, mode\nORDER BY \"On time\", \"Median late (min)\" DESC\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Routes by punctuality — worst first",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Trips running now or starting within the hour that will not serve one or more of their stops, from TriMet's trip status feed. Canceled: every stop is skipped. Extra: a trip added outside the published schedule.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Starts"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time:HH:mm"
+              },
+              {
+                "id": "custom.width",
+                "value": 65
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Canceled stops"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 115
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Of"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 45
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Trip"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 75
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
+      "id": 8,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n-- TriMet through the sources-data proxy, which adds the AppID and asks for\n-- gzip -- 11 MB plain, 1 MB gzipped for the trip status -- and passes it\n-- through as it comes: hence compression = 'gzip'. See sources-data.nginx.conf.\n\nWITH ts AS MATERIALIZED (\n  SELECT resultSet AS rs\n  FROM read_json('http://sources-data/trimet/ws/v2/tripStatus?showRoutes=false', compression = 'gzip', maximum_object_size = 100000000, columns = {resultSet: 'STRUCT(queryTime BIGINT, trip STRUCT(tripID VARCHAR, routeNumber VARCHAR, destination VARCHAR, extraTrip BOOLEAN, tripBeginTime BIGINT, tripEndTime BIGINT, stop STRUCT(locid BIGINT, stopSequence BIGINT, isPassed BOOLEAN, aimedArrival BIGINT, adjustedArrival BIGINT, arrivalDelay BIGINT, status VARCHAR)[])[], location STRUCT(id BIGINT, \"desc\" VARCHAR)[])'})\n),\nnames AS (\n  -- The stop list's key is `id`, not the `locid` TriMet documents.\n  SELECT l.id AS locid, any_value(l.\"desc\") AS name FROM (SELECT unnest(rs.location) AS l FROM ts) GROUP BY 1\n),\nroutes AS (\n  SELECT r.route AS num, r.\"desc\" AS route, r.routeSubType AS subtype, r.routeSortOrder AS sort_order\n  FROM (SELECT unnest(resultSet.route) AS r\n        FROM read_json('http://sources-data/trimet/ws/V1/routeConfig?json=true', compression = 'gzip', maximum_object_size = 50000000))\n),\nx AS (\n  SELECT try_cast(t.routeNumber AS BIGINT)                  AS num,\n         t.destination,\n         t.tripBeginTime,\n         t.extraTrip,\n         list_filter(t.stop, s -> s.status = 'canceled')    AS canceled,\n         len(t.stop)                                        AS total\n  FROM (SELECT rs.queryTime AS qt, unnest(rs.trip) AS t FROM ts)\n  -- The feed also carries hundreds of trips that ended hours or months ago;\n  -- keep those starting within the hour and not scheduled to have ended more\n  -- than an hour ago (a late bus is still out there).\n  WHERE t.tripEndTime >= qt - 3600000 AND t.tripBeginTime <= qt + 3600000\n)\nSELECT coalesce(r.route, x.num::VARCHAR)          AS \"Route\",\n       x.destination                              AS \"To\",\n       to_timestamp(x.tripBeginTime / 1000)       AS \"Starts\",\n       len(x.canceled)                            AS \"Canceled stops\",\n       x.total                                    AS \"Of\",\n       coalesce(n.name, '')                       AS \"First canceled\",\n       CASE WHEN len(x.canceled) = x.total THEN 'Canceled'\n            WHEN x.extraTrip THEN 'Extra' ELSE '' END AS \"Trip\"\nFROM x\nLEFT JOIN routes r USING (num)\nLEFT JOIN names n ON n.locid = x.canceled[1].locid\nWHERE len(x.canceled) > 0\n  AND CASE r.subtype WHEN 'Light Rail' THEN 'MAX light rail' WHEN 'BRT' THEN 'FX bus rapid transit' WHEN 'Commuter Rail' THEN 'WES commuter rail' WHEN 'Streetcar' THEN 'Streetcar' WHEN 'Aerial Tram' THEN 'Aerial tram' ELSE 'Bus' END IN ($mode)\n  AND ('__all__' IN ($route) OR coalesce(r.route, x.num::VARCHAR) IN ($route))\nORDER BY x.tripBeginTime\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Service changes — trips skipping stops",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Alerts in effect now, newest first. Follows the route filter; system-wide alerts always show.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false,
+            "wrapText": true
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Routes"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 190
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Since"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time:MMM D"
+              },
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Stops"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 55
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 15,
+        "x": 0,
+        "y": 38
+      },
+      "id": 9,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n-- TriMet through the sources-data proxy, which adds the AppID and asks for\n-- gzip -- 11 MB plain, 1 MB gzipped for the trip status -- and passes it\n-- through as it comes: hence compression = 'gzip'. See sources-data.nginx.conf.\n\n-- Follows the route filter; system-wide alerts are always shown.\nWITH al AS (\n  SELECT unnest(resultSet.alert) AS a\n  FROM read_json('http://sources-data/trimet/ws/v2/alerts', compression = 'gzip', maximum_object_size = 50000000, columns = {resultSet: 'STRUCT(alert STRUCT(id BIGINT, \"desc\" VARCHAR, begin BIGINT, system_wide_flag BOOLEAN, route STRUCT(route BIGINT, \"desc\" VARCHAR)[], location STRUCT(id BIGINT, \"desc\" VARCHAR, lat DOUBLE, lng DOUBLE)[])[])'})\n)\nSELECT CASE WHEN a.system_wide_flag THEN 'System-wide'\n            ELSE array_to_string(list_sort(list_distinct(list_transform(a.route, x -> x.\"desc\"))), ', ')\n       END                               AS \"Routes\",\n       a.\"desc\"                          AS \"Alert\",\n       to_timestamp(a.begin / 1000)      AS \"Since\",\n       coalesce(len(a.location), 0)      AS \"Stops\"\nFROM al\nWHERE a.system_wide_flag\n   OR '__all__' IN ($route)\n   OR list_has_any(list_transform(a.route, x -> x.\"desc\"), [$route])\nORDER BY a.begin DESC\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Active service alerts",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Buses by the share of capacity they report being used (an experimental TriMet field; trains do not report it, and some buses do not either).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#58a6ff",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 9,
+        "x": 15,
+        "y": 38
+      },
+      "id": 10,
+      "options": {
+        "displayMode": "basic",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 10,
+        "minVizWidth": 8,
+        "namePlacement": "left",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^Buses$/",
+          "values": true
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n-- TriMet through the sources-data proxy, which adds the AppID and asks for\n-- gzip -- 11 MB plain, 1 MB gzipped for the trip status -- and passes it\n-- through as it comes: hence compression = 'gzip'. See sources-data.nginx.conf.\n\nWITH veh AS (\n  SELECT v.vehicleID::VARCHAR AS vehicle,\n         v.routeNumber        AS num,\n         CASE v.routeSubType WHEN 'Light Rail' THEN 'MAX light rail' WHEN 'BRT' THEN 'FX bus rapid transit' WHEN 'Commuter Rail' THEN 'WES commuter rail' WHEN 'Streetcar' THEN 'Streetcar' WHEN 'Aerial Tram' THEN 'Aerial tram' ELSE 'Bus' END AS mode,\n         v.type,\n         v.tripID             AS trip,\n         v.signMessageLong    AS sign,\n         -- TriMet counts a late vehicle as negative; flipped so late is\n         -- positive, as in GTFS and in TriMet's own trip status feed.\n         -v.delay             AS delay_s,\n         v.loadPercentage     AS load_pct,\n         v.inCongestion       AS congestion,\n         v.nextLocID          AS next_loc,\n         v.latitude,\n         v.longitude,\n         (qt - v.time) / 1000.0 AS age_s\n  FROM (SELECT resultSet.queryTime AS qt, unnest(resultSet.vehicle) AS v\n        FROM read_json('http://sources-data/trimet/ws/v2/vehicles', compression = 'gzip', maximum_object_size = 50000000, columns = {resultSet: 'STRUCT(queryTime BIGINT, vehicle STRUCT(vehicleID BIGINT, routeNumber BIGINT, routeSubType VARCHAR, type VARCHAR, tripID VARCHAR, signMessageLong VARCHAR, delay BIGINT, loadPercentage BIGINT, inCongestion BOOLEAN, nextLocID BIGINT, latitude DOUBLE, longitude DOUBLE, time BIGINT)[])'}))\n),\nroutes AS (\n  SELECT r.route AS num, r.\"desc\" AS route, r.routeSubType AS subtype, r.routeSortOrder AS sort_order\n  FROM (SELECT unnest(resultSet.route) AS r\n        FROM read_json('http://sources-data/trimet/ws/V1/routeConfig?json=true', compression = 'gzip', maximum_object_size = 50000000))\n),\nv AS (\n  SELECT veh.*, coalesce(r.route, veh.num::VARCHAR) AS route\n  FROM veh LEFT JOIN routes r USING (num)\n  WHERE veh.mode IN ($mode)\n    AND ('__all__' IN ($route) OR coalesce(r.route, veh.num::VARCHAR) IN ($route))\n)\nSELECT CASE WHEN load_pct IS NULL THEN 'Not reported'\n            WHEN load_pct < 25     THEN 'Under 25 %'\n            WHEN load_pct < 50     THEN '25–50 %'\n            WHEN load_pct < 70     THEN '50–70 %'\n            WHEN load_pct < 90     THEN '70–90 %'\n            ELSE '90 % or more' END      AS \"Load\",\n       count(*)                          AS \"Buses\"\nFROM v\nWHERE v.type = 'bus'\nGROUP BY 1\nORDER BY min(coalesce(load_pct, 1000))\n",
+          "refId": "A"
+        }
+      ],
+      "title": "How full the buses are",
+      "type": "bargauge"
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 42,
+  "tags": [
+    "transit",
+    "real-time",
+    "trimet",
+    "duckdb",
+    "kepler"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "description": "Streetcar and aerial tram have no vehicles in this feed; their routes still draw.",
+        "includeAll": true,
+        "label": "Mode",
+        "multi": true,
+        "name": "mode",
+        "query": "MAX light rail,FX bus rapid transit,Bus,WES commuter rail,Streetcar,Aerial tram",
+        "type": "custom"
+      },
+      {
+        "allValue": "'__all__'",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "motherduck-duckdb-datasource",
+          "uid": "duckdb"
+        },
+        "definition": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n-- TriMet through the sources-data proxy, which adds the AppID and asks for\n-- gzip -- 11 MB plain, 1 MB gzipped for the trip status -- and passes it\n-- through as it comes: hence compression = 'gzip'. See sources-data.nginx.conf.\n\n-- Variable query: Grafana does not quote variables here as it does in panel\n-- queries, so mode is spelled out with the sqlstring format.\nSELECT route FROM (\n  SELECT r.\"desc\" AS route, r.routeSortOrder AS sort_order, CASE r.routeSubType WHEN 'Light Rail' THEN 'MAX light rail' WHEN 'BRT' THEN 'FX bus rapid transit' WHEN 'Commuter Rail' THEN 'WES commuter rail' WHEN 'Streetcar' THEN 'Streetcar' WHEN 'Aerial Tram' THEN 'Aerial tram' ELSE 'Bus' END AS mode\n  FROM (SELECT unnest(resultSet.route) AS r\n        FROM read_json('http://sources-data/trimet/ws/V1/routeConfig?json=true', compression = 'gzip', maximum_object_size = 50000000))\n)\nWHERE mode IN (${mode:sqlstring})\nORDER BY sort_order\n",
+        "includeAll": true,
+        "label": "Route",
+        "multi": true,
+        "name": "route",
+        "query": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n-- TriMet through the sources-data proxy, which adds the AppID and asks for\n-- gzip -- 11 MB plain, 1 MB gzipped for the trip status -- and passes it\n-- through as it comes: hence compression = 'gzip'. See sources-data.nginx.conf.\n\n-- Variable query: Grafana does not quote variables here as it does in panel\n-- queries, so mode is spelled out with the sqlstring format.\nSELECT route FROM (\n  SELECT r.\"desc\" AS route, r.routeSortOrder AS sort_order, CASE r.routeSubType WHEN 'Light Rail' THEN 'MAX light rail' WHEN 'BRT' THEN 'FX bus rapid transit' WHEN 'Commuter Rail' THEN 'WES commuter rail' WHEN 'Streetcar' THEN 'Streetcar' WHEN 'Aerial Tram' THEN 'Aerial tram' ELSE 'Bus' END AS mode\n  FROM (SELECT unnest(resultSet.route) AS r\n        FROM read_json('http://sources-data/trimet/ws/V1/routeConfig?json=true', compression = 'gzip', maximum_object_size = 50000000))\n)\nWHERE mode IN (${mode:sqlstring})\nORDER BY sort_order\n",
+        "refresh": 1,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "name": "vehicle",
+        "query": "",
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "name": "lat",
+        "query": "",
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "name": "lng",
+        "query": "",
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "America/Los_Angeles",
+  "title": "Real-time public transit — TriMet, Portland",
+  "uid": "trimet-live"
+}
