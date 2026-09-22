@@ -28,7 +28,7 @@ import {
   wrapTo,
 } from '@kepler.gl/actions';
 import { ALL_FIELD_TYPES, PMTilesType, REMOTE_TILE, RemoteTileFormat } from '@kepler.gl/constants';
-import { getApplicationConfig } from '@kepler.gl/utils';
+import { adjustValueToFilterDomain, getApplicationConfig } from '@kepler.gl/utils';
 import { processRowObject } from '@kepler.gl/processors';
 import KeplerGlSchema, { datasetSchema, VERSIONS, type SavedDatasetV1 } from '@kepler.gl/schemas';
 import type { ProtoDataset } from '@kepler.gl/types';
@@ -1132,11 +1132,17 @@ export function capturePlayingTimeFilter(store: Store, datasets: PanelDataset[])
  * auto-refresh.
  *
  * Watches the store until the filter is back under the same id and no longer
- * parked, then sends what a user would: the window, if kepler moved it, and a
- * press of play, if it came back paused. Nobody can pause it in between — the
- * time widget is not even mounted while its filter is parked. On a microtask,
- * like every store-driven reconcile here, so nothing is dispatched from inside
- * the dispatch that set it off.
+ * parked, then sends what a user would: the window, if kepler clamped it, and
+ * a press of play, if it came back paused. Nobody can pause it in between —
+ * the time widget is not even mounted while its filter is parked. On a
+ * microtask, like every store-driven reconcile here, so nothing is dispatched
+ * from inside the dispatch that set it off.
+ *
+ * Only a clamp is undone, and only while the window still has data under it.
+ * A refresh can move the domain away from the window altogether, and putting
+ * the window back there would play empty time until the animation crossed the
+ * gap. And a sync hook may have pushed a window of its own onto the filter
+ * before this looks; that one is kept. Either way the filter still plays on.
  *
  * Stops by itself once done, or after `giveUpMs` if the filter never comes
  * back. Returns a function that stops it sooner.
@@ -1161,8 +1167,12 @@ export function resumeTimeFilter(
       return;
     }
     stop();
-    const { value, isAnimating } = visState.filters[idx];
-    if (!isWindow(value) || value[0] !== playing.value[0] || value[1] !== playing.value[1]) {
+    const { value, domain, isAnimating } = visState.filters[idx];
+    if (
+      isWindow(value) &&
+      (value[0] !== playing.value[0] || value[1] !== playing.value[1]) &&
+      isClampOf(value, playing.value, domain)
+    ) {
       dispatch(wrapTo(KEPLER_INSTANCE_ID, setFilterAnimationTime(idx, 'value', playing.value)));
     }
     if (!isAnimating) {
@@ -1194,6 +1204,22 @@ export function resumeTimeFilter(
 
 function isWindow(value: unknown): value is [number, number] {
   return Array.isArray(value) && typeof value[0] === 'number' && typeof value[1] === 'number';
+}
+
+/**
+ * Whether `value` is what kepler makes of `window` when it merges the filter
+ * back onto `domain`, and `window` still overlaps that domain.
+ *
+ * kepler's clamp is `adjustValueToFilterDomain`, the call its own merge makes:
+ * each end outside the domain is replaced by that end of the domain. Anything
+ * else on the filter is someone else's window.
+ */
+function isClampOf(value: [number, number], window: [number, number], domain: unknown): boolean {
+  if (!isWindow(domain) || window[0] > domain[1] || window[1] < domain[0]) {
+    return false;
+  }
+  const clamped = adjustValueToFilterDomain(window, { domain, type: TIME_FILTER_TYPE });
+  return isWindow(clamped) && clamped[0] === value[0] && clamped[1] === value[1];
 }
 
 /**

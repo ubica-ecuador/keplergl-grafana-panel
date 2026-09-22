@@ -57,9 +57,9 @@ const NARROWED: [number, number] = [START + 2 * HOUR, START + 5 * HOUR];
 /** A window whose end runs past the domain's, as a playing window does near the end. */
 const STICKING_OUT: [number, number] = [START + 8 * HOUR, START + 14 * HOUR];
 
-/** One query's answer: hourly points, as Grafana hands them to the panel. */
-function answer(refId: string, shift = 0): PanelDataset {
-  const times = Array.from({ length: 12 }, (_, i) => START + i * HOUR);
+/** One query's answer: hourly points, as Grafana hands them to the panel, from `hoursLater` past START. */
+function answer(refId: string, shift = 0, hoursLater = 0): PanelDataset {
+  const times = Array.from({ length: 12 }, (_, i) => START + (hoursLater + i) * HOUR);
   const [dataset] = framesToDatasets([
     toDataFrame({
       refId,
@@ -125,6 +125,26 @@ function refresh(store: Store, datasets: PanelDataset[], giveUpMs?: number): () 
   return playing ? resumeTimeFilter(store, store.dispatch, playing, giveUpMs) : () => undefined;
 }
 
+/**
+ * A push of `window` onto the time filter as soon as the refresh gives it
+ * back: what the variables hook does in its toMap branch, or the time range
+ * hook, when either heard the store before the resume did. Queued on a
+ * microtask as they queue theirs, so it lands just before the resume looks.
+ */
+function pushOnceBack(store: Store, window: [number, number]): void {
+  let parked = false;
+  const unsubscribe = store.subscribe(() => {
+    if (visStateOf(store).filterToBeMerged?.length) {
+      parked = true;
+      return;
+    }
+    if (parked && timeFilter(store)) {
+      unsubscribe();
+      void Promise.resolve().then(() => pushTimeRange(store, store.dispatch, { from: window[0], to: window[1] }));
+    }
+  });
+}
+
 describe('a data refresh while the time filter plays', () => {
   beforeEach(() => {
     mockSearch = new URLSearchParams();
@@ -155,6 +175,36 @@ describe('a data refresh while the time filter plays', () => {
     await settle();
 
     expect(timeFilter(store)).toMatchObject({ id, isAnimating: true, value: STICKING_OUT });
+  });
+
+  // Before, the old window came back against the new domain: nothing under it
+  // until the animation had crossed the whole gap, some 40 s of empty map.
+  it('lets a window the new domain moved away from go, and keeps it playing', async () => {
+    const store = await mapWithTimeFilter([answer('A')], NARROWED);
+    const { id } = timeFilter(store)!;
+    play(store);
+
+    refresh(store, [answer('A', 0, 48)]);
+    await settle();
+
+    const moved: [number, number] = [START + 48 * HOUR, START + 59 * HOUR];
+    const { value } = timeFilter(store)!;
+    expect(timeFilter(store)).toMatchObject({ id, isAnimating: true });
+    expect(value[0]).toBeGreaterThanOrEqual(moved[0]);
+    expect(value[1]).toBeLessThanOrEqual(moved[1]);
+  });
+
+  it('keeps a window pushed onto the filter before the resume looks', async () => {
+    const store = await mapWithTimeFilter([answer('A')], STICKING_OUT);
+    const { id } = timeFilter(store)!;
+    play(store);
+    const pushed: [number, number] = [START + 3 * HOUR, START + 6 * HOUR];
+
+    pushOnceBack(store, pushed);
+    refresh(store, [answer('A', 0.01)]);
+    await settle();
+
+    expect(timeFilter(store)).toMatchObject({ id, isAnimating: true, value: pushed });
   });
 
   // The investigation's S5: the clamped window read as a local change and went
