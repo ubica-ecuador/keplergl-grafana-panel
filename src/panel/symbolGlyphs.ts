@@ -209,6 +209,11 @@ export const TEMAKI_PREFIX = 'temaki:';
 /** The prefix of OCHA's names in the catalogue: `ocha:flood`. */
 export const OCHA_PREFIX = 'ocha:';
 
+/** A Temaki icon's name in the catalogue, from its file name: `power_tower` → `temaki:power_tower`. */
+export function temakiKey(name: string): string {
+  return TEMAKI_PREFIX + name;
+}
+
 /**
  * An OCHA icon's name in the catalogue, from its file name: lower case, spaces
  * as hyphens (`Indigenous people` → `ocha:indigenous-people`).
@@ -260,7 +265,7 @@ export function symbolCatalogue(): Map<string, AnyGlyph> {
     for (const glyph of [
       ...meshGlyphs(keplerIcons.svgIcons as unknown as KeplerIcon[]),
       ...makiGlyphs(maki.paths),
-      ...vendoredGlyphs(TEMAKI_ICONS, (name) => TEMAKI_PREFIX + name),
+      ...vendoredGlyphs(TEMAKI_ICONS, temakiKey),
       ...vendoredGlyphs(OCHA_ICONS, ochaKey),
       ...ownGlyphs(),
     ]) {
@@ -295,9 +300,7 @@ export function symbolNames(): string[] {
       ...Object.keys(maki.paths)
         .filter((name) => !ours.has(name))
         .sort(),
-      ...Object.keys(TEMAKI_ICONS.icons)
-        .map((name) => TEMAKI_PREFIX + name)
-        .sort(),
+      ...Object.keys(TEMAKI_ICONS.icons).map(temakiKey).sort(),
       ...Object.keys(OCHA_ICONS.icons).map(ochaKey).sort(),
     ];
   }

@@ -14,6 +14,7 @@ import {
   SYMBOL_FALLBACK,
   TEMAKI_ICONS,
   TEMAKI_PREFIX,
+  temakiKey,
   vendoredGlyphs,
 } from './symbolGlyphs';
 import keplerIcons from '../icons/svg-icons.json';
@@ -216,6 +217,12 @@ describe('vendoredGlyphs', () => {
     }
     const evenOdd = glyphs.filter((glyph) => glyph.paths.some((path) => path.evenOdd)).map((glyph) => glyph.key);
     expect(evenOdd.sort()).toEqual(['ocha:mobile-clinic', 'ocha:water-trucking']);
+  });
+});
+
+describe('temakiKey', () => {
+  it('prefixes a Temaki file name with temaki:', () => {
+    expect(temakiKey('power_tower')).toBe('temaki:power_tower');
   });
 });
 
