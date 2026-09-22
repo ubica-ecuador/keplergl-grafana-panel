@@ -240,7 +240,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Each bus icon is a vehicle from the latest vehicle positions feed, turned to the heading it reports (one that reports none stands upright). Green: reported 30 s ago or less; amber: up to 90 s; red: longer — a vehicle the system believes is in service but that stopped reporting. Click a vehicle to see its next stops in the table on the right. Picking a row in the bunched buses table zooms the map to that pair and marks it with two rings that follow those buses on every refresh.",
+      "description": "Each bus icon is a vehicle from the latest vehicle positions feed, turned to the heading it reports (one that reports none stands upright). Green: reported 30 s ago or less; amber: up to 90 s; red: longer — a vehicle the system believes is in service but that stopped reporting. Click a vehicle to see its next stops in the table on the right. Picking a row in the bunched buses table zooms the map to that pair and marks it with two rings that follow those buses on every refresh. Moving arrows run from each vehicle to its next two stops, where the MBTA predicts it within five minutes.",
       "gridPos": {
         "h": 18,
         "w": 15,
@@ -360,28 +360,7 @@
                 "visible": true
               },
               "effects": [],
-              "filters": [
-                {
-                  "animationWindow": "free",
-                  "dataId": [
-                    "grafana-A"
-                  ],
-                  "enabled": true,
-                  "id": "lnj1fkzrm",
-                  "name": [
-                    "status"
-                  ],
-                  "plotType": {
-                    "type": "histogram"
-                  },
-                  "speed": 1,
-                  "type": "multiSelect",
-                  "value": [
-                    "Stopped at stop"
-                  ],
-                  "view": "side"
-                }
-              ],
+              "filters": [],
               "interactionConfig": {
                 "brush": {
                   "enabled": false,
@@ -426,6 +405,11 @@
                       {
                         "name": "route"
                       }
+                    ],
+                    "grafana-C": [
+                      {
+                        "name": "route"
+                      }
                     ]
                   }
                 }
@@ -434,6 +418,8 @@
               "layerOrder": [
                 "par",
                 "vehicles",
+                "vehicle-hit",
+                "next-stops",
                 "znsv9u7c"
               ],
               "layers": [
@@ -542,6 +528,63 @@
                     "sizeField": null,
                     "sizeScale": "linear"
                   }
+                },
+                {
+                  "config": {
+                    "color": [
+                      23,
+                      184,
+                      190
+                    ],
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "dataId": "grafana-A",
+                    "isVisible": true,
+                    "label": "Vehicles · click target",
+                    "visConfig": {
+                      "angleDegrees": 0,
+                      "fixedAngle": true,
+                      "opacity": 0.06,
+                      "symbol": "square",
+                      "symbolSize": 30
+                    }
+                  },
+                  "id": "vehicle-hit",
+                  "type": "symbol",
+                  "visualChannels": {
+                    "angleField": null,
+                    "angleScale": "linear",
+                    "colorField": null,
+                    "colorScale": "quantile",
+                    "sizeField": null,
+                    "sizeScale": "linear"
+                  }
+                },
+                {
+                  "config": {
+                    "columnMode": "LAT_LNG",
+                    "columns": {
+                      "count": "count",
+                      "lat0": "lat0",
+                      "lat1": "lat1",
+                      "lng0": "lng0",
+                      "lng1": "lng1"
+                    },
+                    "dataId": "grafana-C",
+                    "isVisible": true,
+                    "label": "Next two stops of each vehicle",
+                    "visConfig": {
+                      "flowClusteringEnabled": false,
+                      "flowFadeEnabled": true,
+                      "flowLinesRenderingMode": "animated-straight",
+                      "flowLocationTotalsEnabled": false
+                    }
+                  },
+                  "id": "next-stops",
+                  "type": "flow",
+                  "visualChannels": {}
                 },
                 {
                   "config": {
@@ -697,6 +740,17 @@
           "rawQuery": true,
           "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- The pair picked in the bunching table (variables parA and parB), read live\n-- so the rings follow both buses on every refresh. Empty until a row is\n-- clicked, which matches nothing.\nWITH vp AS (SELECT unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000))\nSELECT e.vehicle.vehicle.label       AS unit,\n       e.vehicle.trip.route_id       AS route,\n       e.vehicle.position.latitude   AS latitude,\n       e.vehicle.position.longitude  AS longitude\nFROM vp\nWHERE e.vehicle.vehicle.id IN ($parA, $parB)\n",
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "INSTALL httpfs; LOAD httpfs;\nSET force_download = true;\n\n-- Where each vehicle is headed: from where it is now to its next two stops,\n-- drawn as arrows. Only stops predicted within five minutes, where the\n-- prediction is freshest and the arrow stays close to its vehicle. One whose\n-- next stop is the first of its trip has not started it: it waits at the\n-- terminal or is on its way there, and a line to that stop would not be a\n-- route, so it gets no arrow. Filtered here with the same four variables the\n-- map binds to the vehicles: kepler binds a variable to one dataset only.\nWITH vp AS (SELECT header, unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/VehiclePositions_enhanced.json', maximum_object_size = 50000000)),\nveh AS MATERIALIZED (\n  SELECT header.timestamp          AS qt,\n         e.vehicle.vehicle.id      AS vehicle,\n         e.vehicle.trip.trip_id    AS trip,\n         e.vehicle.trip.route_id   AS route,\n         e.vehicle.position.latitude  AS lat,\n         e.vehicle.position.longitude AS lng\n  FROM vp\n  WHERE CASE\n          WHEN e.vehicle.trip.route_id IN ('Red', 'Orange', 'Blue', 'Mattapan') OR e.vehicle.trip.route_id LIKE 'Green-%' THEN 'Subway'\n          WHEN e.vehicle.trip.route_id LIKE 'CR-%'   THEN 'Commuter rail'\n          WHEN e.vehicle.trip.route_id LIKE 'Boat-%' THEN 'Ferry'\n          ELSE 'Bus'\n        END IN ($mode)\n    AND ('__all__' IN ($route) OR e.vehicle.trip.route_id IN ($route))\n    AND CASE e.vehicle.current_status\n          WHEN 'IN_TRANSIT_TO' THEN 'In transit'\n          WHEN 'STOPPED_AT'    THEN 'Stopped at stop'\n          WHEN 'INCOMING_AT'   THEN 'Arriving at stop'\n          ELSE 'No data'\n        END IN ($status)\n    AND CASE e.vehicle.occupancy_status\n          WHEN 'EMPTY'                      THEN 'Empty'\n          WHEN 'MANY_SEATS_AVAILABLE'       THEN 'Many seats'\n          WHEN 'FEW_SEATS_AVAILABLE'        THEN 'Few seats'\n          WHEN 'STANDING_ROOM_ONLY'         THEN 'Standing room only'\n          WHEN 'CRUSHED_STANDING_ROOM_ONLY' THEN 'Crushed'\n          WHEN 'FULL'                       THEN 'Full'\n          WHEN 'NOT_ACCEPTING_PASSENGERS'   THEN 'Not accepting passengers'\n          ELSE 'No data'\n        END IN ($occupancy)\n),\ntu AS (SELECT unnest(entity) AS e FROM read_json('http://sources-data/mbta/realtime/TripUpdates_enhanced.json', maximum_object_size = 50000000)),\nstops AS (\n  -- The archive keeps every version of a stop; the newest wins. Seven days\n  -- back picks the year so the first week of January still finds a file.\n  SELECT stop_id, arg_max(stop_lat, gtfs_active_date) AS lat, arg_max(stop_lon, gtfs_active_date) AS lng\n  FROM read_parquet('http://sources-data/mbta/lamp/gtfs_archive/' || strftime(current_date - 7, '%Y') || '/stops.parquet')\n  GROUP BY 1\n),\nahead AS (\n  SELECT v.vehicle, st.stop_sequence AS seq, st.stop_id AS stop\n  FROM (SELECT e, unnest(e.trip_update.stop_time_update) AS st FROM tu) x\n  JOIN veh v ON v.trip = x.e.trip_update.trip.trip_id\n  WHERE coalesce(st.schedule_relationship, 'SCHEDULED') <> 'SKIPPED'\n    AND coalesce(st.arrival.time, st.departure.time) > v.qt\n    AND coalesce(st.arrival.time, st.departure.time) <= v.qt + 300\n  QUALIFY row_number() OVER (PARTITION BY v.vehicle ORDER BY st.stop_sequence) <= 2\n),\nstarted AS (\n  SELECT vehicle FROM ahead GROUP BY vehicle HAVING min(seq) > 1\n),\npts AS (\n  SELECT vehicle, 0 AS seq, lat, lng FROM veh WHERE vehicle IN (SELECT vehicle FROM started)\n  UNION ALL\n  SELECT a.vehicle, a.seq, s.lat, s.lng\n  FROM ahead a JOIN stops s ON s.stop_id = a.stop\n  WHERE a.vehicle IN (SELECT vehicle FROM started)\n),\nhop AS (\n  SELECT vehicle, lat, lng, lead(lat) OVER w AS lat1, lead(lng) OVER w AS lng1\n  FROM pts WINDOW w AS (PARTITION BY vehicle ORDER BY seq)\n)\nSELECT h.lat  AS origin_lat,\n       h.lng  AS origin_lng,\n       h.lat1 AS dest_lat,\n       h.lng1 AS dest_lng,\n       count(*)::BIGINT   AS trips,\n       any_value(v.route) AS route\nFROM hop h JOIN veh v USING (vehicle)\nWHERE h.lat1 IS NOT NULL\nGROUP BY 1, 2, 3, 4\n",
+          "refId": "C"
         }
       ],
       "title": "Fleet now — colored by position freshness",
