@@ -92,6 +92,17 @@ describe('SymbolPicker', () => {
     expect(selector(container, 'Shape').querySelector('canvas')?.getAttribute('data-symbol')).toBe('directions');
   });
 
+  it('shows the arrow, not the unknown name, for a saved symbol this build cannot draw', () => {
+    const { container } = renderPicker('no-such-glyph');
+
+    // Not offered anywhere, so there is no category of its own to open on.
+    expect(selector(container, 'Category').textContent).toBe('All');
+    // The name and its preview must agree: the map draws the arrow for a name
+    // it does not have, so the picker shows the arrow too, not a name whose
+    // picture is really something else. `arrow` is the first option of All.
+    expect(selector(container, 'Shape').querySelector('canvas')?.getAttribute('data-symbol')).toBe('arrow');
+  });
+
   it('draws nothing for a layer that registers no symbol knob', () => {
     const { container } = render(
       <IntlProvider locale="en" messages={{ ...messages.en, ...SYMBOL_MESSAGES }}>

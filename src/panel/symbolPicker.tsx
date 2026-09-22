@@ -4,6 +4,7 @@ import { ItemSelector, PanelLabel, SidePanelSection } from '@kepler.gl/component
 
 import { SelectKnob, SelectKnobProps } from './selectKnob';
 import { categoryOf, symbolCategories, symbolsIn } from './symbolCategories';
+import { resolveSymbol } from './symbolGlyphs';
 import { SymbolOption } from './symbolOption';
 
 /**
@@ -18,7 +19,10 @@ import { SymbolOption } from './symbolOption';
  * category of the symbol in use and is not saved, and choosing one changes what
  * is listed, not what is drawn. Nothing moves it afterwards. A symbol changed
  * from elsewhere (an undo, a restored config) stays shown through `keepChosen`,
- * even when the category does not list it, so no effect has to chase it.
+ * even when the category does not list it, so no effect has to chase it — but
+ * only when it is a name this build can actually draw: `keepChosen` shows the
+ * value as itself, and a name `resolveSymbol` would fall back on would then
+ * read as one thing while the preview beside it drew another.
  */
 export function SymbolPicker({
   layer,
@@ -64,7 +68,7 @@ export function SymbolPicker({
         displayOption={(name) => name}
         searchable
         OptionComponent={SymbolOption}
-        keepChosen
+        keepChosen={typeof chosen === 'string' && resolveSymbol(chosen) === chosen}
       />
     </>
   );
