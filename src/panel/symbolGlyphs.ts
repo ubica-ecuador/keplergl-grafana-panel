@@ -1,6 +1,8 @@
 import { arrowGlyph, ATLAS_COLUMNS, CELL, drawGlyph, Glyph, IconFrame, paintAtlas, Painter } from './vectorFieldGlyphs';
 import keplerIcons from '../icons/svg-icons.json';
 import maki from '../icons/maki-paths.json';
+import temaki from '../icons/temaki-paths.json';
+import ocha from '../icons/ocha-paths.json';
 
 /**
  * The shapes this plugin draws itself, as geometry.
@@ -201,15 +203,56 @@ export function makiGlyphs(paths: Record<string, string>): PathGlyph[] {
   }));
 }
 
+/** The prefix of Temaki's names in the catalogue: `temaki:power_tower`. */
+export const TEMAKI_PREFIX = 'temaki:';
+
+/** The prefix of OCHA's names in the catalogue: `ocha:flood`. */
+export const OCHA_PREFIX = 'ocha:';
+
+/**
+ * An OCHA icon's name in the catalogue, from its file name: lower case, spaces
+ * as hyphens (`Indigenous people` → `ocha:indigenous-people`).
+ *
+ * `ochaSlug` in `scripts/svg-paths.mjs` applies the same rule, where the
+ * vendoring script uses it to refuse two files that would share a name.
+ * Change both or neither.
+ */
+export function ochaKey(name: string): string {
+  return OCHA_PREFIX + name.toLowerCase().replace(/\s+/g, '-');
+}
+
+/** An icon library as `scripts/vendor-temaki.mjs` and `scripts/vendor-ocha.mjs` write it. */
+export interface VendoredIcons {
+  source: string;
+  version: string;
+  license: string;
+  icons: Record<string, { box: number; offset: [number, number]; paths: GlyphPath[]; groups?: string[] }>;
+}
+
+export const TEMAKI_ICONS = temaki as unknown as VendoredIcons;
+export const OCHA_ICONS = ocha as unknown as VendoredIcons;
+
+/** A vendored library's icons as glyphs, each under the name `keyOf` gives it. */
+export function vendoredGlyphs(library: VendoredIcons, keyOf: (name: string) => string): PathGlyph[] {
+  return Object.entries(library.icons).map(([name, icon]) => ({
+    key: keyOf(name),
+    anchor: [MID, MID] as [number, number],
+    box: icon.box,
+    offset: icon.offset,
+    paths: icon.paths,
+  }));
+}
+
 let catalogue: Map<string, AnyGlyph> | null = null;
 
 /**
  * Every glyph this build can draw, by name.
  *
- * Three sources, one namespace: our own shapes, kepler's 162 meshes and Maki's
- * 215 paths. Ours are inserted last so a name we promise in the panel — the
- * basic shapes — is the one the panel draws, whatever the libraries also call
- * `circle`.
+ * Five sources, one namespace: our own shapes, kepler's 162 meshes, Maki's 215
+ * paths, and Temaki's and OCHA's icons under their prefixes (`temaki:`,
+ * `ocha:`), which no other name can collide with. Ours are inserted last so a
+ * name we promise in the panel — the basic shapes — is the one the panel
+ * draws, whatever the libraries also call `circle`.
  */
 export function symbolCatalogue(): Map<string, AnyGlyph> {
   if (!catalogue) {
@@ -217,6 +260,8 @@ export function symbolCatalogue(): Map<string, AnyGlyph> {
     for (const glyph of [
       ...meshGlyphs(keplerIcons.svgIcons as unknown as KeplerIcon[]),
       ...makiGlyphs(maki.paths),
+      ...vendoredGlyphs(TEMAKI_ICONS, (name) => TEMAKI_PREFIX + name),
+      ...vendoredGlyphs(OCHA_ICONS, ochaKey),
       ...ownGlyphs(),
     ]) {
       catalogue.set(glyph.key, glyph);
@@ -228,17 +273,33 @@ export function symbolCatalogue(): Map<string, AnyGlyph> {
 let names: string[] | null = null;
 
 /**
- * The names the panel offers, in catalogue order.
+ * The names the panel offers: our shapes in their own order, then Maki,
+ * Temaki and OCHA, each alphabetical.
+ *
+ * Not every name the catalogue has. The 151 that only kepler brings are its
+ * interface icons (`android`, `bold`, `hipchat`…). They are left out of the
+ * list but stay in the catalogue, so a dashboard that already draws one keeps
+ * drawing it.
  *
  * A function, not a constant: a top-level `const` here ran at import time,
- * which meant every panel render built the whole catalogue — including
- * triangulating kepler's 162 meshes into polygons — whether or not a symbol
- * layer was ever added. `symbolCatalogue()` is already memoized, so caching
- * here only avoids re-spreading its keys into a fresh array on every call.
+ * which built the list on every panel render whether or not a symbol layer
+ * was ever added. Cached, so a getter built on it hands kepler the same array
+ * on every read.
  */
 export function symbolNames(): string[] {
   if (!names) {
-    names = [...symbolCatalogue().keys()];
+    const own = ownGlyphs().map((glyph) => glyph.key);
+    const ours = new Set(own);
+    names = [
+      ...own,
+      ...Object.keys(maki.paths)
+        .filter((name) => !ours.has(name))
+        .sort(),
+      ...Object.keys(TEMAKI_ICONS.icons)
+        .map((name) => TEMAKI_PREFIX + name)
+        .sort(),
+      ...Object.keys(OCHA_ICONS.icons).map(ochaKey).sort(),
+    ];
   }
   return names;
 }
@@ -276,8 +337,8 @@ export function glyphsFor(names: string[]): AnyGlyph[] {
 /**
  * Paints the glyphs given — and only those — returning deck's icon mapping.
  *
- * Only those is the whole point: the full catalogue is nearly four hundred
- * glyphs, which at one 96 px cell each is a texture of some 14 MB. A layer
+ * Only those is the whole point: the full catalogue is some twelve hundred
+ * glyphs, which at one 96 px cell each is a texture of over 40 MB. A layer
  * draws one symbol at a time.
  */
 export function paintGlyphs(

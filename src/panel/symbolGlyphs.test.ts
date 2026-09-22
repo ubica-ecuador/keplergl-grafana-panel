@@ -3,6 +3,8 @@ import {
   isPathGlyph,
   makiGlyphs,
   meshGlyphs,
+  OCHA_ICONS,
+  ochaKey,
   ownGlyphs,
   paintGlyphs,
   PathGlyph,
@@ -10,6 +12,9 @@ import {
   symbolCatalogue,
   symbolNames,
   SYMBOL_FALLBACK,
+  TEMAKI_ICONS,
+  TEMAKI_PREFIX,
+  vendoredGlyphs,
 } from './symbolGlyphs';
 import keplerIcons from '../icons/svg-icons.json';
 import maki from '../icons/maki-paths.json';
@@ -159,14 +164,77 @@ describe('makiGlyphs', () => {
   });
 });
 
+describe('vendoredGlyphs', () => {
+  it('keys each icon by the name given and keeps its box, offset and every path', () => {
+    const [glyph] = vendoredGlyphs(
+      {
+        source: 'test',
+        version: '1',
+        license: 'CC0-1.0',
+        icons: {
+          latrine: { box: 48, offset: [13, 0], paths: [{ d: 'M0 0H1Z' }, { d: 'M2 2H3Z', evenOdd: true }] },
+        },
+      },
+      (name) => `temaki:${name}`
+    );
+
+    expect(glyph).toEqual({
+      key: 'temaki:latrine',
+      anchor: [48, 48],
+      box: 48,
+      offset: [13, 0],
+      paths: [{ d: 'M0 0H1Z' }, { d: 'M2 2H3Z', evenOdd: true }],
+    });
+    expect(isPathGlyph(glyph)).toBe(true);
+  });
+
+  it('reads Temaki whole, in the boxes it draws in, keeping icons of several paths whole', () => {
+    const glyphs = vendoredGlyphs(TEMAKI_ICONS, (name) => TEMAKI_PREFIX + name);
+
+    expect(glyphs).toHaveLength(557);
+    expect(new Set(glyphs.map((glyph) => glyph.box))).toEqual(new Set([15, 48, 50, 100]));
+    expect(glyphs.filter((glyph) => glyph.paths.length > 1)).toHaveLength(117);
+    for (const glyph of glyphs) {
+      expect(glyph.key.startsWith('temaki:')).toBe(true);
+      for (const path of glyph.paths) {
+        expect(path.d).toMatch(/^[Mm]/);
+      }
+    }
+  });
+
+  it('reads OCHA under lower-case slugs, with its two even-odd icons', () => {
+    const glyphs = vendoredGlyphs(OCHA_ICONS, ochaKey);
+
+    expect(glyphs).toHaveLength(272);
+    for (const glyph of glyphs) {
+      expect(glyph.key).toMatch(/^ocha:[a-z0-9-]+$/);
+      expect(glyph.box).toBeGreaterThan(0);
+      expect(glyph.paths.length).toBeGreaterThan(0);
+    }
+    const evenOdd = glyphs.filter((glyph) => glyph.paths.some((path) => path.evenOdd)).map((glyph) => glyph.key);
+    expect(evenOdd.sort()).toEqual(['ocha:mobile-clinic', 'ocha:water-trucking']);
+  });
+});
+
+describe('ochaKey', () => {
+  it('lower-cases an OCHA file name and turns its spaces into hyphens', () => {
+    // The same rule as `ochaSlug` in scripts/svg-paths.mjs.
+    expect(ochaKey('Indigenous people')).toBe('ocha:indigenous-people');
+    expect(ochaKey('Flood')).toBe('ocha:flood');
+  });
+});
+
 describe('symbolCatalogue', () => {
-  it('merges the three sources under unique names', () => {
+  it('merges the five sources, the vendored ones under their prefixes', () => {
     const catalogue = symbolCatalogue();
 
     expect(catalogue.get('chevron')).toBeDefined(); // ours
     expect(catalogue.get('directions')).toBeDefined(); // kepler
     expect(catalogue.get('airport')).toBeDefined(); // maki
-    expect(symbolNames().length).toBe(catalogue.size);
+    expect(catalogue.get('temaki:power_tower')).toBeDefined();
+    expect(catalogue.get('ocha:flood')).toBeDefined();
+    // Everything offered, plus kepler's 151 interface icons.
+    expect(catalogue.size).toBe(symbolNames().length + 151);
   });
 
   it('lets our own shapes win a name collision, so the basic shapes stay predictable', () => {
@@ -178,10 +246,51 @@ describe('symbolCatalogue', () => {
 });
 
 describe('symbolNames', () => {
-  it('caches the list rather than re-spreading the catalogue on every call', () => {
+  it('caches the list rather than rebuilding it on every call', () => {
     // Same array instance back, not just equal contents: this is what makes
     // a getter built on top of it cheap after the first read.
     expect(symbolNames()).toBe(symbolNames());
+  });
+
+  it('offers our shapes first, then Maki, Temaki and OCHA, each in alphabetical order', () => {
+    const names = symbolNames();
+    const own = ownGlyphs().map((glyph) => glyph.key);
+    const makiOnly = Object.keys(maki.paths)
+      .filter((name) => !own.includes(name))
+      .sort();
+
+    expect(names).toHaveLength(7 + 210 + 557 + 272);
+    expect(new Set(names).size).toBe(names.length);
+    expect(names.slice(0, 7)).toEqual(['arrow', 'circle', 'square', 'triangle', 'chevron', 'pin', 'cross']);
+    expect(names.slice(7, 217)).toEqual(makiOnly);
+    const temaki = names.slice(217, 774);
+    expect(temaki.every((name) => name.startsWith('temaki:'))).toBe(true);
+    expect(temaki).toEqual([...temaki].sort());
+    const ocha = names.slice(774);
+    expect(ocha.every((name) => name.startsWith('ocha:'))).toBe(true);
+    expect(ocha).toEqual([...ocha].sort());
+  });
+
+  it('leaves out the names only kepler has, which still draw', () => {
+    const own = new Set(ownGlyphs().map((glyph) => glyph.key));
+    const keplerOnly = (keplerIcons.svgIcons as Array<{ id: string }>)
+      .map((icon) => icon.id)
+      .filter((id) => !(id in maki.paths) && !own.has(id));
+    const offered = new Set(symbolNames());
+
+    expect(keplerOnly).toHaveLength(151);
+    expect(keplerOnly.filter((id) => offered.has(id))).toEqual([]);
+    // Hidden, not deleted: a dashboard that draws one keeps drawing it.
+    expect(resolveSymbol('directions')).toBe('directions');
+    expect(glyphsFor(['directions']).map((glyph) => glyph.key)).toEqual(['directions']);
+  });
+
+  it('still draws every name the repository’s dashboards save', () => {
+    for (const name of ['arrow', 'marker', 'bus']) {
+      expect(resolveSymbol(name)).toBe(name);
+    }
+    expect(resolveSymbol('temaki:power_tower')).toBe('temaki:power_tower');
+    expect(resolveSymbol('ocha:flood')).toBe('ocha:flood');
   });
 });
 
