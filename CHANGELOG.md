@@ -4,6 +4,12 @@
 for it to be a change against — the entry below lists what the plugin **does**, not what changed to
 get it there. From 1.0.0 onwards, each release documents what changed since the one before it.
 
+## Unreleased
+
+- Maps with many rows draw sooner: a geometry column now reaches kepler as a geometry object rather
+  than a JSON string it had to parse back, which cut about a third of the conversion for points and
+  close to half for polygons.
+
 ## 1.0.0 (2026-09-22)
 
 Interactive kepler.gl maps inside Grafana dashboards, fed by any Grafana data source: points,
