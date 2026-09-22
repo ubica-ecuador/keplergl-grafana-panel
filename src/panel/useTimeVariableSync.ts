@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { locationService } from '@grafana/runtime';
 import type { Store } from 'redux';
 
+import { subscribeActivity } from './duckdbWasmActivity';
 import {
   ensureTimeFilter,
   isTimeFilterAnimating,
@@ -10,10 +11,12 @@ import {
   readTimeDomain,
   readTimeRange,
 } from './keplerAdapter';
+import { PublishGate } from './publishGate';
 import { SliceWatcher } from './sliceWatcher';
 import { timeChannel } from './timeChannel';
 import type { TimeRangeMs } from './timeSync';
 import {
+  DEFAULT_PUBLISH_INTERVAL_MS,
   decideTimeSync,
   nextPublishDelay,
   readWindowFromVariables,
@@ -34,9 +37,11 @@ interface Params {
    *
    * Off, a play is silent and the window reaches the dashboard once it stops —
    * the animation keeps every frame to itself. On, it publishes throughout, at
-   * most every `MAX_PUBLISH_WAIT_MS`.
+   * most every `publishIntervalMs`.
    */
   whilePlaying: boolean;
+  /** The least time between two publishes while playing, in ms. */
+  publishIntervalMs: number;
   /**
    * Whether this map follows the dashboard's shared clock.
    *
@@ -58,24 +63,6 @@ interface Params {
  * direct manipulation.
  */
 const PUBLISH_DELAY_MS = 300;
-
-/**
- * The longest a moving window may go unpublished, when publishing during
- * playback is turned on.
- *
- * Playback moves the filter about once a frame, so the delay above never
- * elapses and on its own would hold every update back until the animation
- * stopped. This cap makes the same timer fire mid-run, turning playback into a
- * dashboard that follows along instead of one that jumps at the end.
- *
- * The figure is a query budget, not a frame rate: each publish rewrites the URL
- * and re-runs every panel that reads the variables. Around a second and a half
- * reads as live while leaving a comfortable margin over the ~0.3 s an aggregate
- * over this data takes to come back. It does not buy smooth playback — the
- * propagation costs the animation frames either way, which is why the whole
- * behaviour is opt-in.
- */
-const MAX_PUBLISH_WAIT_MS = 1500;
 
 /**
  * Publishes the map's time window as a pair of dashboard variables, both ways.
@@ -100,18 +87,28 @@ const MAX_PUBLISH_WAIT_MS = 1500;
  * kepler's reducer; and read variables from the URL rather than the template
  * service, whose resolved values lag our own writes.
  */
-export function useTimeVariableSync({ store, isReady, enabled, mapping, whilePlaying, peerSync }: Params): void {
+export function useTimeVariableSync({
+  store,
+  isReady,
+  enabled,
+  mapping,
+  whilePlaying,
+  publishIntervalMs,
+  peerSync,
+}: Params): void {
   /** The window both sides last agreed on — the echo cutter. */
   const lastKey = useRef<string | undefined>(undefined);
 
   const mappingRef = useRef(mapping);
   const whilePlayingRef = useRef(whilePlaying);
   const peerSyncRef = useRef(peerSync);
+  const publishIntervalRef = useRef(publishIntervalMs);
   // Updated in an effect, not during render: reconcile only runs on a microtask.
   useEffect(() => {
     mappingRef.current = mapping;
     whilePlayingRef.current = whilePlaying;
     peerSyncRef.current = peerSync;
+    publishIntervalRef.current = publishIntervalMs;
   });
 
   /**
@@ -127,10 +124,32 @@ export function useTimeVariableSync({ store, isReady, enabled, mapping, whilePla
   const pendingPublish = useRef<{ window: TimeRangeMs | null; domain: TimeRangeMs | null } | null>(null);
   /** When the run of changes now waiting to be published began. */
   const pendingSince = useRef<number | null>(null);
+  /** When the window was last written, on the same clock as `pendingSince`. */
+  const lastPublishAt = useRef<number | null>(null);
+  /** Holds a playback publish until the panels answering the previous one are done; see PublishGate. */
+  const gate = useRef(new PublishGate());
+  /** True while the pending publish sits in publish()'s playback hold rather than on the debounce. */
+  const held = useRef(false);
+
+  /**
+   * How long a playback step must still wait before it may leave: until a full
+   * interval has passed since the last write, and until the gate opens. 0 once
+   * both have.
+   *
+   * The debounce alone cannot keep the interval: its rest delay fires whenever
+   * two frames are further apart than it, which a starved main thread makes the
+   * rule. Measured under software GL, writes 610 ms apart at a 1500 ms interval.
+   */
+  const playbackWait = useRef(() => {
+    const sinceLast = lastPublishAt.current === null ? Number.POSITIVE_INFINITY : Date.now() - lastPublishAt.current;
+    return Math.max(gate.current.waitMs(performance.now()), publishIntervalRef.current - sinceLast);
+  });
 
   const publish = useRef(() => {
     publishTimer.current = null;
+    const since = pendingSince.current;
     pendingSince.current = null;
+    held.current = false;
     const pending = pendingPublish.current;
     pendingPublish.current = null;
     if (!pending) {
@@ -148,6 +167,26 @@ export function useTimeVariableSync({ store, isReady, enabled, mapping, whilePla
       return;
     }
 
+    // While playing, a step waits a full interval after the last write, and
+    // for the panels answering the previous one when a datasource on the page
+    // says when they are done. Only the newest window is kept meanwhile;
+    // schedulePublish leaves the timer alone. Look again at least every rest
+    // delay, not only when the wait would be over: a peer's stop is heard by
+    // nobody here, so this timer is what notices the clock has stopped and
+    // lets the final window leave — with no datasource, as on a server one,
+    // the interval is the only thing holding the step.
+    const playing = clockRunning.current();
+    if (playing) {
+      const wait = playbackWait.current();
+      if (wait > 0) {
+        pendingPublish.current = pending;
+        pendingSince.current = since;
+        held.current = true;
+        publishTimer.current = setTimeout(() => publish.current(), Math.min(wait, PUBLISH_DELAY_MS));
+        return;
+      }
+    }
+
     const writes = timeVariableWrites(pending.window, pending.domain, mappingRef.current);
     if (Object.keys(writes).length === 0) {
       return;
@@ -157,12 +196,31 @@ export function useTimeVariableSync({ store, isReady, enabled, mapping, whilePla
     for (const [variable, value] of Object.entries(writes)) {
       partial[`var-${variable}`] = value;
     }
+    // Stamped and recorded before the write: the panels it sets off may say
+    // they are busy before partial() returns, and that busy is this step's.
+    if (playing) {
+      gate.current.published(performance.now());
+    } else {
+      gate.current.reset();
+    }
+    lastPublishAt.current = Date.now();
     locationService.partial(partial, true);
     lastKey.current = windowKey(pending.window ?? pending.domain);
   });
 
   const schedulePublish = useRef((window: TimeRangeMs | null, domain: TimeRangeMs | null) => {
     pendingPublish.current = { window, domain };
+    // Held in publish(), and still playing: keep only the newest window. The
+    // hold's own timer, or the datasource settling, publishes it. Once the
+    // clock has stopped the hold no longer applies, so the held step falls
+    // through to the ordinary debounce below and the final window leaves as it
+    // always did. That covers a local stop and a hand taking over, which both
+    // reach this store. A peer's stop does not: publish() catches that one when
+    // its timer looks again.
+    if (held.current && clockRunning.current()) {
+      return;
+    }
+    held.current = false;
     const now = Date.now();
     if (pendingSince.current === null) {
       pendingSince.current = now;
@@ -173,7 +231,20 @@ export function useTimeVariableSync({ store, isReady, enabled, mapping, whilePla
     // Rearming on every change is what collapses a drag into one write; the cap
     // is what stops playback from rearming it forever. Without the cap this is
     // the plain trailing debounce a drag has always had.
-    const cap = whilePlayingRef.current ? MAX_PUBLISH_WAIT_MS : Number.POSITIVE_INFINITY;
+    //
+    // The interval is a playback pace, so only a running clock gets it. A drag
+    // keeps the default cap it has always had with this option on, so one that
+    // never rests still writes every 1.5 s: a low interval would otherwise turn
+    // its debounce into a throttle, one write per interval mid-drag.
+    //
+    // The timer never waits longer than the rest delay, even while playing: a
+    // step that fires before a full interval since the last write waits out
+    // the rest in publish()'s hold, which keeps looking at the clock.
+    const cap = !whilePlayingRef.current
+      ? Number.POSITIVE_INFINITY
+      : clockRunning.current()
+        ? publishIntervalRef.current
+        : DEFAULT_PUBLISH_INTERVAL_MS;
     const delay = nextPublishDelay(now, pendingSince.current, PUBLISH_DELAY_MS, cap);
     publishTimer.current = setTimeout(() => publish.current(), delay);
   });
@@ -185,6 +256,7 @@ export function useTimeVariableSync({ store, isReady, enabled, mapping, whilePla
     }
     pendingPublish.current = null;
     pendingSince.current = null;
+    held.current = false;
   });
 
   const reconcile = useRef(() => {
@@ -274,9 +346,22 @@ export function useTimeVariableSync({ store, isReady, enabled, mapping, whilePla
     const unsubscribeStore = store.subscribe(onStoreChange.current);
     // Dashboard → map: react to variable changes, which land in the URL.
     const unlisten = locationService.getHistory().listen(schedule.current);
+    // The DuckDB-WASM datasource, if it is on the page, says when the panels
+    // it answers are done. A step held for them goes as soon as they are, and
+    // the interval since the last write is up.
+    const unsubscribeActivity = subscribeActivity((signal) => {
+      gate.current.signal(signal);
+      if (held.current && playbackWait.current() === 0) {
+        if (publishTimer.current !== null) {
+          clearTimeout(publishTimer.current);
+        }
+        publishTimer.current = setTimeout(() => publish.current(), 0);
+      }
+    });
     return () => {
       unsubscribeStore();
       unlisten();
+      unsubscribeActivity();
       cancel();
     };
   }, [isReady, enabled, mapping.from, mapping.to, store]);

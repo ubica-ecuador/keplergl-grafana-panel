@@ -4,6 +4,16 @@
 for it to be a change against — the entry below lists what the plugin **does**, not what changed to
 get it there. From 1.0.0 onwards, each release documents what changed since the one before it.
 
+## Unreleased
+
+- **Minimum interval while playing** (`publishIntervalMs`): the least time between two writes of
+  the time window during playback, 1500 ms by default as before, 250 ms and up.
+- During playback, the map waits for the panels answering the previous window before writing the
+  next, when a datasource on the page announces its activity (`ubica-duckdbwasm-activity` on
+  Grafana's event bus). Without one, nothing changes.
+- Playing the time slider no longer stops when the map's own queries are answered (a variable
+  change, Refresh, auto-refresh).
+
 ## 1.0.0 (2026-09-05)
 
 Interactive kepler.gl maps inside Grafana dashboards, fed by any Grafana data source: points,

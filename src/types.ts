@@ -158,6 +158,15 @@ export interface KeplerPanelOptions {
   publishWhilePlaying?: boolean;
 
   /**
+   * The least time between two publishes while playing, in ms. Defaults to 1500,
+   * the pace playback always had; the editor allows 250 and up. With a
+   * datasource that announces when its panels have answered (the DuckDB-WASM
+   * one), a publish also waits for them, so the real pace is the slower of the
+   * two.
+   */
+  publishIntervalMs?: number;
+
+  /**
    * Shares the map's clock — time filter and trip playhead — with the other
    * maps on the dashboard that also have this on, in the browser and without
    * moving the dashboard time range. Off by default: it couples panels, which

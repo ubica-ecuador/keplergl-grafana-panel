@@ -1,0 +1,81 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "grafana-testdata-datasource", "uid": "trlxrdZVk" },
+      "gridPos": { "h": 17, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "timeSync": "variables",
+        "timeVariables": { "from": "mapFrom", "to": "mapTo" },
+        "showSidePanel": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-testdata-datasource", "uid": "trlxrdZVk" },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"time\",\"type\":\"time\"},{\"name\":\"latitude\",\"type\":\"number\"},{\"name\":\"longitude\",\"type\":\"number\"},{\"name\":\"value\",\"type\":\"number\"},{\"name\":\"radius\",\"type\":\"string\"}]},\"data\":{\"values\":[[1753254000000,1753254600000,1753255200000,1753255800000,1753256400000,1753257000000,1753257600000,1753258200000,1753258800000,1753259400000,1753260000000,1753260600000,1753261200000,1753261800000,1753262400000,1753263000000,1753263600000,1753264200000,1753264800000,1753265400000,1753266000000,1753266600000,1753267200000,1753267800000],[-2.9,-2.896,-2.892,-2.888,-2.884,-2.88,-2.9,-2.896,-2.892,-2.888,-2.884,-2.88,-2.9,-2.896,-2.892,-2.888,-2.884,-2.88,-2.9,-2.896,-2.892,-2.888,-2.884,-2.88],[-79.02,-79.02,-79.02,-79.02,-79.02,-79.02,-79.015,-79.015,-79.015,-79.015,-79.015,-79.015,-79.01,-79.01,-79.01,-79.01,-79.01,-79.01,-79.005,-79.005,-79.005,-79.005,-79.005,-79.005],[10,17,24,31,38,45,12,19,26,33,40,47,14,21,28,35,42,49,16,23,30,37,44,11],[\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\",\"$radius\"]]}}]"
+        }
+      ],
+      "title": "Kepler.gl — plays through its own refresh",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 17 },
+      "id": 2,
+      "options": {
+        "mode": "markdown",
+        "content": "### Playing through a refresh\n\nThe map's query reads `$radius`, so changing it re-runs the query, and so does **Refresh**. Each answer replaces the rows behind the time filter.\n\nOpen the Filters tab and press play on the time filter, then change **Radius** or press **Refresh** while it plays. The play button must stay active and the window must keep moving from where it was."
+      },
+      "title": "What to check",
+      "type": "text"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "current": { "text": "5", "value": "5" },
+        "hide": 0,
+        "label": "Radius",
+        "name": "radius",
+        "options": [{ "selected": true, "text": "5", "value": "5" }],
+        "query": "5",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": { "text": "", "value": "" },
+        "hide": 0,
+        "label": "Map from",
+        "name": "mapFrom",
+        "options": [],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": { "text": "", "value": "" },
+        "hide": 0,
+        "label": "Map to",
+        "name": "mapTo",
+        "options": [],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": { "from": "2025-07-23T07:00:00.000Z", "to": "2025-07-23T11:00:00.000Z" },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Kepler.gl — playing through a refresh",
+  "uid": "playrefresh",
+  "version": 1,
+  "weekStart": ""
+}

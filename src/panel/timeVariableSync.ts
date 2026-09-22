@@ -218,3 +218,32 @@ export function windowKey(range: TimeRangeMs | null): string {
 export function nextPublishDelay(now: number, pendingSince: number, rest: number, cap: number): number {
   return Math.max(0, Math.min(rest, cap - (now - pendingSince)));
 }
+
+/**
+ * The least time between two publishes while playing, when the panel does not
+ * set one.
+ *
+ * Playback moves the filter about once a frame, so the 300 ms rest a drag
+ * waits for never comes, and on its own would hold every update back until the
+ * animation stopped. This interval makes the same timer fire mid-run, turning
+ * playback into a dashboard that follows along instead of one that jumps at
+ * the end.
+ *
+ * It is a query budget, not a frame rate: each publish rewrites the URL and
+ * re-runs every panel that reads the variables. A second and a half reads as
+ * live while leaving a comfortable margin over the ~0.3 s an aggregate takes on
+ * a server datasource. It does not buy smooth playback, because the propagation
+ * costs the animation frames either way; that is why the behaviour is opt-in.
+ */
+export const DEFAULT_PUBLISH_INTERVAL_MS = 1500;
+
+/** The floor the editor allows. Faster than this, a step's panels rarely finish before the next one. */
+export const MIN_PUBLISH_INTERVAL_MS = 250;
+
+/** The `publishIntervalMs` option as the map uses it: defaulted, whole, and never below the floor. */
+export function publishIntervalOf(option: number | undefined): number {
+  if (option === undefined || !Number.isFinite(option)) {
+    return DEFAULT_PUBLISH_INTERVAL_MS;
+  }
+  return Math.max(MIN_PUBLISH_INTERVAL_MS, Math.round(option));
+}

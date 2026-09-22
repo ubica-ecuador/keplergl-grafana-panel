@@ -7,6 +7,9 @@ import {
   readWindowFromVariables,
   timeVariableWrites,
   windowKey,
+  DEFAULT_PUBLISH_INTERVAL_MS,
+  MIN_PUBLISH_INTERVAL_MS,
+  publishIntervalOf,
 } from './timeVariableSync';
 
 const mapping = { from: 'mapFrom', to: 'mapTo' };
@@ -199,5 +202,25 @@ describe('opensToDomain', () => {
   it('never opens twice, whatever the variables say', () => {
     expect(opensToDomain(true, null)).toBe(false);
     expect(opensToDomain(true, { from: 1000, to: 2000 })).toBe(false);
+  });
+});
+
+describe('publishIntervalOf', () => {
+  it('keeps the pace playback always had when the option is unset', () => {
+    expect(DEFAULT_PUBLISH_INTERVAL_MS).toBe(1500);
+    expect(publishIntervalOf(undefined)).toBe(1500);
+  });
+
+  it('never goes below the minimum', () => {
+    expect(MIN_PUBLISH_INTERVAL_MS).toBe(250);
+    expect(publishIntervalOf(10)).toBe(250);
+  });
+
+  it('rounds to whole milliseconds', () => {
+    expect(publishIntervalOf(500.4)).toBe(500);
+  });
+
+  it('falls back to the default on a value that is not a number', () => {
+    expect(publishIntervalOf(Number.NaN)).toBe(1500);
   });
 });

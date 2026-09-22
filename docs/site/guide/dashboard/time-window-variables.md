@@ -76,6 +76,19 @@ the case it is for.
 
 Left off, you get smooth playback and the numbers update once, when you stop.
 
+### How often
+
+**Minimum interval while playing** sets the least time between two writes: 1500 ms by default, 250 ms
+at the least. Lower means the numbers follow the map more closely, and more queries. Keep it above
+what the panels reading the window take to answer, or each write cancels the answers to the one
+before.
+
+With a datasource that announces its activity on Grafana's event bus (the
+`ubica-duckdbwasm-activity` event), each write also waits for the panels answering the previous one,
+for up to five seconds, so the pace becomes whichever is slower, the interval or the panels. The
+DuckDB-WASM datasource from the Grafana Geospatial Stack does this. With any other datasource the
+interval is the whole story.
+
 ## Why not just move the dashboard range
 
 Because moving the range re-runs the map's own query, and the rows that fall outside the new window

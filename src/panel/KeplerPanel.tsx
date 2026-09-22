@@ -17,6 +17,7 @@ import { DEFAULT_CLICK_AREA_METRES } from './clickArea';
 import { LazyKeplerMap } from './LazyKeplerMap';
 import { useInterpolatedOption } from './useInterpolatedOption';
 import { useStableValue } from './useStableValue';
+import { publishIntervalOf } from './timeVariableSync';
 import type { VariableMapping } from './variableSync';
 
 interface Props extends PanelProps<KeplerPanelOptions> {}
@@ -185,6 +186,7 @@ export function KeplerPanel({
         viewportVariables={viewportVariables}
         timeVariables={options.timeVariables}
         publishWhilePlaying={options.publishWhilePlaying ?? false}
+        publishIntervalMs={publishIntervalOf(options.publishIntervalMs)}
         peerTimeSync={options.peerTimeSync ?? false}
       />
     </div>
