@@ -101,8 +101,12 @@ it becomes noise.
 
 A symbol per row, turned and sized by columns. Its **Draw** selector picks what each symbol is:
 
-- **A shape**: one of the plugin's own shapes, kepler's icons or the Maki set, coloured by the
-  layer. It can be outlined, shadowed and lightened towards its tail.
+- **A shape**: one of about a thousand map symbols — the plugin's own shapes, Maki, Temaki and the
+  UN OCHA humanitarian icons (named `temaki:…` and `ocha:…`) — coloured by the layer. The
+  **Category** selector above it narrows the list to one theme (hazards, weather, transport, power
+  and utilities…), and typing searches within it. The shape can be outlined, shadowed and
+  lightened towards its tail. kepler's own interface icons are no longer listed; a dashboard that
+  already uses one keeps drawing it.
 - **A picture**: an image of your own, drawn in its own colours. Paste a URL, or upload a PNG, JPEG,
   SVG, WebP or GIF of up to 75 KB, which is kept inside the dashboard. To give each row its own
   picture, bind a column of URLs as the layer's **picture URL** column; a row with an empty value

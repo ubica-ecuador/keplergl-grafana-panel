@@ -2,8 +2,7 @@ import React from 'react';
 import { Button, Input, LayerConfigGroup, PanelLabel, VisConfigSlider } from '@kepler.gl/components';
 
 import { MarkerSpec, newMarker, readMarkers } from './markers';
-import { SelectKnob } from './selectKnob';
-import { SymbolOption } from './symbolOption';
+import { SymbolPicker } from './symbolPicker';
 
 /**
  * The layer panel for the markers layer: one row per marker — label, colour
@@ -104,18 +103,9 @@ export function MarkersLayerConfig({ layer, visConfiguratorProps }: MarkersLayer
       </LayerConfigGroup>
 
       <LayerConfigGroup label={'markers.group.display'} collapsible>
-        {/* The symbol layer's picker: several hundred glyphs, searched rather
-            than scrolled, each drawn beside its name. */}
-        {settings.symbol ? (
-          <SelectKnob
-            layer={layer}
-            visConfiguratorProps={visConfiguratorProps}
-            property="symbol"
-            displayOption={(name) => name}
-            searchable
-            OptionComponent={SymbolOption}
-          />
-        ) : null}
+        {/* The symbol layer's picker: a category, then its symbols, each
+            drawn beside its name. */}
+        {settings.symbol ? <SymbolPicker layer={layer} visConfiguratorProps={visConfiguratorProps} /> : null}
         {settings.angleDegrees && layer.config.visConfig.symbol !== 'circle' ? (
           <VisConfigSlider {...settings.angleDegrees} {...visConfiguratorProps} />
         ) : null}
