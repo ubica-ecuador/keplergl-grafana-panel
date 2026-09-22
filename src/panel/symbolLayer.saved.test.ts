@@ -167,4 +167,17 @@ describe('the provisioned symbol panels, restored from their saved config', () =
     const symbols = deckLayers.find((deckLayer) => deckLayer.id === 'standing-stations-symbol')!.props;
     expect(symbols.getIcon(symbols.data[0])).toBe('directions');
   });
+
+  it.each([
+    [6, 'temaki-stations-symbol', 'temaki:power_tower'],
+    [7, 'ocha-stations-symbol', 'ocha:flood'],
+  ])('draws panel %i with its vendored icon', async (panelId, deckId, symbol) => {
+    const { layer, deckLayers } = await restore(panelId);
+
+    expect(layer.config.visConfig.symbol).toBe(symbol);
+    const symbols = deckLayers.find((deckLayer) => deckLayer.id === deckId)!.props;
+    expect(symbols.data).toHaveLength(8);
+    expect(symbols.getIcon(symbols.data[0])).toBe(symbol);
+    expect(symbols.getAngle(symbols.data[0])).toBe(0);
+  });
 });

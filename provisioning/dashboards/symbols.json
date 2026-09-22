@@ -424,6 +424,200 @@
       ],
       "title": "Stations with pictures",
       "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 100
+      },
+      "id": 6,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "basemap": "positron",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "visState": {
+              "layers": [
+                {
+                  "id": "temaki-stations",
+                  "type": "symbol",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Temaki stations",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "symbol": "temaki:power_tower",
+                      "fixedAngle": true,
+                      "angleDegrees": 0,
+                      "sizeRange": [
+                        24,
+                        48
+                      ],
+                      "outline": true,
+                      "outlineColor": [
+                        255,
+                        255,
+                        255
+                      ],
+                      "outlineThickness": 2
+                    }
+                  },
+                  "visualChannels": {
+                    "angleField": null,
+                    "angleScale": "linear",
+                    "sizeField": {
+                      "name": "wind_speed",
+                      "type": "real"
+                    },
+                    "sizeScale": "sqrt",
+                    "colorField": {
+                      "name": "wind_speed",
+                      "type": "real"
+                    },
+                    "colorScale": "quantize"
+                  }
+                }
+              ],
+              "filters": [],
+              "interactionConfig": {},
+              "splitMaps": []
+            },
+            "mapState": {
+              "latitude": -1.6,
+              "longitude": -79.3,
+              "zoom": 6.4,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "mapStyle": {
+              "styleType": "positron"
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\": {\"fields\": [{\"name\": \"name\", \"type\": \"string\"}, {\"name\": \"latitude\", \"type\": \"number\"}, {\"name\": \"longitude\", \"type\": \"number\"}, {\"name\": \"wind_speed\", \"type\": \"number\"}, {\"name\": \"wind_direction\", \"type\": \"number\"}]}, \"data\": {\"values\": [[\"Cuenca\", \"Quito\", \"Guayaquil\", \"Loja\", \"Manta\", \"Esmeraldas\", \"Ambato\", \"Machala\"], [-2.9, -0.19, -2.17, -3.99, -0.95, 0.96, -1.24, -3.26], [-79.0, -78.48, -79.92, -79.2, -80.71, -79.65, -78.62, -79.96], [3.1, 5.4, 7.2, 2.8, 6.5, 4.1, 3.9, 5.8], [90, 180, 270, 45, 135, 225, 315, 20]]}}]"
+        }
+      ],
+      "title": "Stations as a Temaki icon",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 120
+      },
+      "id": 7,
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "basemap": "positron",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "visState": {
+              "layers": [
+                {
+                  "id": "ocha-stations",
+                  "type": "symbol",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "OCHA stations",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "symbol": "ocha:flood",
+                      "fixedAngle": true,
+                      "angleDegrees": 0,
+                      "sizeRange": [
+                        24,
+                        48
+                      ],
+                      "outline": true,
+                      "outlineColor": [
+                        255,
+                        255,
+                        255
+                      ],
+                      "outlineThickness": 2
+                    }
+                  },
+                  "visualChannels": {
+                    "angleField": null,
+                    "angleScale": "linear",
+                    "sizeField": {
+                      "name": "wind_speed",
+                      "type": "real"
+                    },
+                    "sizeScale": "sqrt",
+                    "colorField": {
+                      "name": "wind_speed",
+                      "type": "real"
+                    },
+                    "colorScale": "quantize"
+                  }
+                }
+              ],
+              "filters": [],
+              "interactionConfig": {},
+              "splitMaps": []
+            },
+            "mapState": {
+              "latitude": -1.6,
+              "longitude": -79.3,
+              "zoom": 6.4,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "mapStyle": {
+              "styleType": "positron"
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\": {\"fields\": [{\"name\": \"name\", \"type\": \"string\"}, {\"name\": \"latitude\", \"type\": \"number\"}, {\"name\": \"longitude\", \"type\": \"number\"}, {\"name\": \"wind_speed\", \"type\": \"number\"}, {\"name\": \"wind_direction\", \"type\": \"number\"}]}, \"data\": {\"values\": [[\"Cuenca\", \"Quito\", \"Guayaquil\", \"Loja\", \"Manta\", \"Esmeraldas\", \"Ambato\", \"Machala\"], [-2.9, -0.19, -2.17, -3.99, -0.95, 0.96, -1.24, -3.26], [-79.0, -78.48, -79.92, -79.2, -80.71, -79.65, -78.62, -79.96], [3.1, 5.4, 7.2, 2.8, 6.5, 4.1, 3.9, 5.8], [90, 180, 270, 45, 135, 225, 315, 20]]}}]"
+        }
+      ],
+      "title": "Stations as an OCHA icon",
+      "type": "ubica-keplergl-panel"
     }
   ],
   "refresh": "",

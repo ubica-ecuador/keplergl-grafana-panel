@@ -148,3 +148,49 @@ test('switching the symbol in the layer panel keeps the markers drawn and dragga
   await expect.poll(() => urlVariable(page, 'lat'), { timeout: 10_000 }).not.toBe('-2.897');
   await expect(page.getByText('An error in deck.gl')).toHaveCount(0);
 });
+
+test('picks a marker symbol by category, and the markers draw with it', async ({
+  gotoDashboardPage,
+  readProvisionedDashboard,
+  page,
+}) => {
+  test.slow();
+  const map = await gotoMarkers(gotoDashboardPage, readProvisionedDashboard, page);
+  const panel = page.getByTestId('data-testid Panel header Markers');
+
+  await panel
+    .locator('.layer-panel')
+    .filter({ has: page.locator('input[value="References"]') })
+    .locator('.layer__enable-config')
+    .first()
+    .click();
+
+  const selector = (label: string) =>
+    panel
+      .locator('label.side-panel-panel__label', { hasText: new RegExp(`^${label}$`) })
+      .first()
+      .locator('xpath=following::div[contains(@class,"item-selector__dropdown")][1]');
+
+  // The markers draw circles, one of the shapes.
+  await expect(selector('Category')).toContainText('Shapes');
+  await selector('Category').click();
+  // The option lists are portaled out of the panel.
+  await page
+    .locator('.list__item')
+    .filter({ hasText: /^Emergency & health$/ })
+    .first()
+    .click();
+  await selector('Symbol').click();
+  await page.keyboard.type('fire_hydrant');
+  await page
+    .locator('.list__item')
+    .filter({ hasText: /^temaki:fire_hydrant$/ })
+    .first()
+    .click();
+  await settle(page);
+
+  await expect.poll(async () => (await readMarkers(map)).symbol, { timeout: 10_000 }).toBe('temaki:fire_hydrant');
+  await expect(selector('Symbol')).toContainText('temaki:fire_hydrant');
+  await expect(page.getByText('An error in deck.gl')).toHaveCount(0);
+  expect((await readMarkers(map)).markers).toHaveLength(2);
+});
