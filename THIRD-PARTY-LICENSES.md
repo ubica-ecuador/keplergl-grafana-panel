@@ -148,6 +148,16 @@ served as files. The symbol and markers layers offer them as shapes:
 - `src/icons/temaki-paths.json` — the SVG paths of the 557 icons of Temaki,
   `@rapideditor/temaki` 5.13.0 (CC0-1.0, the Temaki contributors), offered as `temaki:<name>`.
   Written by `scripts/vendor-temaki.mjs`; nothing else of the package is shipped.
+- `src/icons/ocha-paths.json` — 272 of the OCHA Humanitarian Icons v2 (CC0-1.0, United Nations
+  Office for the Coordination of Humanitarian Affairs), from
+  https://github.com/UN-OCHA/humanitarian-icons at commit `f7613d5`, offered as `ocha:<name>`.
+  Written by `scripts/vendor-ocha.mjs`, which turns each icon's circles, rectangles and polygons
+  into paths and rounds them to two decimals; the icons meant for office documents rather than maps
+  are left out. OCHA asks to be credited where feasible, and this entry is that credit. As OCHA's
+  own notice says, the icons do not imply endorsement by the United Nations.
+
+`src/icons/symbol-categories.json`, which sorts all of them into the picker's categories, is this
+project's own.
 
 ## Sample data
 
