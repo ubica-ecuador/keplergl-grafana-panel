@@ -8,6 +8,7 @@
  * The symbol selector is deliberately absent from this catalogue: its options
  * are the glyph names, several hundred of them, and a name like `airport` is
  * already the word a person wants to read.
+ * So are the picker's category names, which come from symbol-categories.json.
  */
 export const SYMBOL_MESSAGES: Record<string, string> = {
   'layer.type.symbol': 'Symbols',
@@ -17,6 +18,7 @@ export const SYMBOL_MESSAGES: Record<string, string> = {
   'symbol.group.size': 'Size',
 
   'symbol.symbol': 'Shape',
+  'symbol.category': 'Category',
   'symbol.directionConvention': 'Direction is',
   'symbol.directionConvention.from': 'Where it comes from',
   'symbol.directionConvention.towards': 'Where it goes',

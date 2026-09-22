@@ -46,6 +46,13 @@ export interface SelectKnobProps {
     displayOption: (option: string) => string;
     disabled?: boolean;
   }) => ReactElement;
+  /**
+   * Shows the value in use even when `options` leaves it out, instead of the
+   * first option. For the symbol picker, whose options are one category's: the
+   * symbol the map draws may be in another category, or be one of kepler's
+   * icons the picker no longer lists, and any other name would misreport it.
+   */
+  keepChosen?: boolean;
 }
 
 export function SelectKnob({
@@ -56,6 +63,7 @@ export function SelectKnob({
   displayOption,
   searchable = false,
   OptionComponent,
+  keepChosen = false,
 }: SelectKnobProps) {
   const intl = useIntl();
   const setting = layer.visConfigSettings[property] as
@@ -74,7 +82,7 @@ export function SelectKnob({
     <SidePanelSection>
       <PanelLabel>{intl.formatMessage({ id: label })}</PanelLabel>
       <ItemSelector
-        selectedItems={chosen && choices.includes(chosen) ? chosen : choices[0]}
+        selectedItems={chosen && (keepChosen || choices.includes(chosen)) ? chosen : choices[0]}
         options={choices}
         multiSelect={false}
         searchable={searchable}
