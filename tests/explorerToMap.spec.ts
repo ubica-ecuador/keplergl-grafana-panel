@@ -27,7 +27,16 @@ test('an explorer result lands on the map and survives a refresh', async ({ goto
   });
   await expect.poll(() => readDatasetIds(map), { timeout: 60_000 }).toEqual(['explore-first-ten', 'grafana-A']);
 
+  // window.__duckdbwasm.stats.queries is Chaski's own panel-answer counter
+  // (its own e2e reads it the same way): waiting for it to grow proves the
+  // refresh actually re-ran the panel's query, rather than trusting a sleep.
+  const queriesBefore = await page.evaluate(() => (window as any).__duckdbwasm.stats.queries.length);
   await page.getByTestId('data-testid RefreshPicker run button').click();
-  await page.waitForTimeout(2_000);
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__duckdbwasm.stats.queries.length), { timeout: 60_000 })
+    .toBeGreaterThan(queriesBefore);
+
+  // The query answered, but kepler still has to apply the refreshed rows.
+  await expect.poll(() => readDatasetIds(map), { timeout: 60_000 }).toContain('grafana-A');
   expect(await readDatasetIds(map)).toEqual(['explore-first-ten', 'grafana-A']);
 });
