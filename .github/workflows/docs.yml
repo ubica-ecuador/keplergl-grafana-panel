@@ -50,9 +50,9 @@ jobs:
         run: npm run build
         working-directory: docs/site
         env:
-          # The site has its own domain, docs.ubica.dev, declared in
-          # public/CNAME, so it is served from the root and asset URLs carry no
-          # prefix. Without a custom domain a project Pages site lives under
+          # The site has its own domain, docs.ubica.dev, configured in
+          # Settings -> Pages, so it is served from the root and asset URLs
+          # carry no prefix. Without one, a project Pages site lives under
           # /<repo>/ and this would have to be /${{ github.event.repository.name }}/.
           DOCS_BASE: /
 

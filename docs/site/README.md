@@ -35,11 +35,17 @@ unaffected: the workflow always builds fresh with the repository's own base.
 
 ## The domain and the base path
 
-The site is published at **`docs.ubica.dev`**, its own domain, declared in `public/CNAME` — the
-file lands at the root of the built output, which is where GitHub Pages looks for it. The domain
-is also set in Settings → Pages, and DNS carries a `CNAME` record from `docs` to
-`ubica-ecuador.github.io`. Owning the domain means the published URLs survive a rename of the
-repository or a move to another organisation: only the DNS record would change.
+The site is published at **`docs.ubica.dev`**, its own domain. Two things make that work, and
+**a `CNAME` file in the built output is not one of them** — GitHub's documentation is explicit
+that when a site is published from an Actions workflow, as this one is, "any existing CNAME file
+is ignored and is not required":
+
+- The domain is set in **Settings → Pages**, which is the only place it lives.
+- DNS carries a `CNAME` record from `docs` to `ubica-ecuador.github.io`.
+
+Owning the domain means the published URLs survive a rename of the repository or a move to
+another organisation: only the DNS record would change. GitHub redirects the default
+`ubica-ecuador.github.io/keplergl-grafana-panel/` here with a 301.
 
 Because the site is served from the root of that domain, asset URLs carry no prefix.
 `.vitepress/config.ts` reads the prefix from `DOCS_BASE`, defaulting to `/`, and the workflow

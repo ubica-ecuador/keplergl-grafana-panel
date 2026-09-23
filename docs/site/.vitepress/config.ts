@@ -17,8 +17,8 @@ export const VERSIONS = {
 };
 
 /**
- * The site is served at the root of its own domain, `docs.ubica.dev`, declared
- * in `public/CNAME`. It stays configurable because a project Pages site without
+ * The site is served at the root of its own domain, `docs.ubica.dev`, set in
+ * Settings → Pages. It stays configurable because a project Pages site without
  * a custom domain lives under `/<repo>/`, and every asset URL then carries that
  * prefix: `DOCS_BASE=/keplergl-grafana-panel/` builds that variant, which is
  * what the default domain still serves through GitHub's redirect.
