@@ -6,6 +6,9 @@ get it there. From 1.0.0 onwards, each release documents what changed since the 
 
 ## Unreleased
 
+- On a Grafana with the Chaski datasource, the SQLRooms explorer can send a query's result to the map
+  (`ubica-explorer-to-map`). It shows as a dataset of its own for the session, up to 200 000 rows,
+  and is not saved with the dashboard.
 - Maps with many rows draw sooner: a geometry column now reaches kepler as a geometry object rather
   than a JSON string it had to parse back, which cut about a third of the conversion for points and
   close to half for polygons.
