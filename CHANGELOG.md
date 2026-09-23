@@ -4,16 +4,7 @@
 for it to be a change against — the entry below lists what the plugin **does**, not what changed to
 get it there. From 1.0.0 onwards, each release documents what changed since the one before it.
 
-## Unreleased
-
-- On a Grafana with the Chaski datasource, the SQLRooms explorer can send a query's result to the map
-  (`ubica-explorer-to-map`). It shows as a dataset of its own for the session, up to 200 000 rows,
-  and is not saved with the dashboard.
-- Maps with many rows draw sooner: a geometry column now reaches kepler as a geometry object rather
-  than a JSON string it had to parse back, which cut about a third of the conversion for points and
-  close to half for polygons.
-
-## 1.0.0 (2026-09-22)
+## 1.0.0 (2026-09-23)
 
 Interactive kepler.gl maps inside Grafana dashboards, fed by any Grafana data source: points,
 trajectories, origin-destination flows, symbols turned to a bearing, and animated velocity fields
@@ -42,7 +33,9 @@ Any Grafana data source works — the panel reads data frames, not a specific pr
   pairs, bearing and magnitude, overridable per query under **Field mapping** — including switching
   a detected role off, which is how a trajectory table is drawn as loose points instead of trips.
 - Geometry from GeoJSON, WKT, or raw WKB/EWKB hex, so a plain `SELECT geom` from PostGIS renders
-  with no `ST_AsGeoJSON` wrapped around it.
+  with no `ST_AsGeoJSON` wrapped around it. Whatever the format, the column reaches kepler as a
+  geometry object rather than a JSON string it would have to parse back, which keeps maps with many
+  rows quick to draw.
 - H3 indices and S2 tokens both render without coordinates — the grid cell's own identifier is the
   geometry. H3 also drives origin-destination flows, as a pair of hexagons instead of two
   coordinate pairs.
@@ -201,6 +194,9 @@ PMTiles, Zarr, WMS, and ArcGIS Image Services.**
   map's own queries are answered — a variable change, a Refresh, an auto-refresh.
 - Maps on a dashboard can **share a clock** with each other — time filter and trip playhead alike —
   over an in-browser channel, with no dashboard variable and no query re-run.
+- **Explorer results on the map.** On a Grafana with the Chaski datasource, the SQLRooms explorer can
+  send a query's result to the map (`ubica-explorer-to-map`). It shows as a dataset of its own for
+  the session, up to 200 000 rows, and is not saved with the dashboard.
 
 ### Cross-filtering
 
