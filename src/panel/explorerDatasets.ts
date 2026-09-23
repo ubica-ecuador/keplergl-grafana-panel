@@ -53,12 +53,31 @@ export function explorerDatasetId(label: string): string {
   return `${PREFIX}${slug || 'result'}`;
 }
 
+/** The datasets kepler currently holds on its own instance, by id. */
+function heldDatasets(store: Store): Record<string, { label?: unknown } | undefined> {
+  const state = store.getState() as {
+    keplerGl?: Record<
+      string,
+      { visState?: { datasets?: Record<string, { label?: unknown } | undefined> } } | undefined
+    >;
+  };
+  return state.keplerGl?.[KEPLER_INSTANCE_ID]?.visState?.datasets ?? {};
+}
+
 /** The dataset object kepler currently holds for `id` on its own instance, or undefined. */
 function datasetRef(store: Store, id: string): unknown {
-  const state = store.getState() as {
-    keplerGl?: Record<string, { visState?: { datasets?: Record<string, unknown> } } | undefined>;
-  };
-  return state.keplerGl?.[KEPLER_INSTANCE_ID]?.visState?.datasets?.[id];
+  return heldDatasets(store)[id];
+}
+
+/** The explorer datasets kepler holds, as id → the label kepler shows for it. */
+function explorerLabels(store: Store): Map<string, string> {
+  const labels = new Map<string, string>();
+  for (const [id, dataset] of Object.entries(heldDatasets(store))) {
+    if (id.startsWith(PREFIX) && typeof dataset?.label === 'string') {
+      labels.set(id, dataset.label);
+    }
+  }
+  return labels;
 }
 
 /**
@@ -91,9 +110,12 @@ function waitUntil(store: Store, holds: () => boolean, timeoutMs: number, onTime
 /**
  * Puts an explorer result on the map for this session. `add` never touches a
  * dataset already there: a second result under the same label gets `-2`,
- * `-3`… `replace` swaps the rows of the label's dataset through kepler's own
- * replaceDataInMap, which keeps its layers, or creates it if the map has
- * none.
+ * `-3`… `replace` swaps the rows of the explorer dataset whose kepler label
+ * is exactly `label` through kepler's own replaceDataInMap, which keeps its
+ * layers, or creates it if the map has none. A new dataset whose slug id
+ * another label already holds gets `-2`, `-3`… too, so labels that slug
+ * alike ("Hot spots" and "hot-spots", or "東京" and "大阪") never overwrite
+ * each other.
  *
  * Nothing here reaches mapConfig: a saved config keeps only URL-backed
  * datasets, so an explorer result is gone after a rebuild or a reload.
@@ -132,20 +154,27 @@ async function runApply(
   input: { label: string; rows: KeplerRow[]; mode: 'add' | 'replace' },
   timeoutMs: number
 ): Promise<string> {
-  const held = new Set(readDatasetIds(store));
+  const heldIds = new Set(readDatasetIds(store));
+  const labels = explorerLabels(store);
+  const target = input.mode === 'replace' ? [...labels].find(([, held]) => held === input.label)?.[0] : undefined;
   const base = explorerDatasetId(input.label);
-  let id = base;
+  let id = target ?? base;
   let label = input.label;
-  if (input.mode === 'add') {
-    for (let n = 2; held.has(id); n++) {
+  if (target === undefined) {
+    // A replace only gets here when no explorer dataset has its label, so
+    // only the id can clash; an add also keeps its label from doubling one.
+    const heldLabels = new Set(labels.values());
+    for (let n = 2; heldIds.has(id) || heldLabels.has(label); n++) {
       id = `${base}-${n}`;
-      label = `${input.label} (${n})`;
+      if (input.mode === 'add') {
+        label = `${input.label} (${n})`;
+      }
     }
   }
   const dataset: PanelDataset = { id, label, rows: input.rows };
   const timedOut = () => new Error(`kepler never registered the explorer dataset "${input.label}" (id "${id}")`);
 
-  if (held.has(id)) {
+  if (target !== undefined) {
     const before = datasetRef(store, id);
     replaceDatasetData(dispatch, dataset);
     // `replaceDataInMap` removes the old entry synchronously and re-adds it

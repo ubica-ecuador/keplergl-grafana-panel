@@ -22,6 +22,8 @@ async function settle(): Promise<void> {
 const points = (n: number) => Array.from({ length: n }, (_, i) => ({ latitude: -2.9 + i * 0.001, longitude: -79, id: i }));
 const rowsIn = (store: Store, id: string): number =>
   (store.getState() as any).keplerGl[KEPLER_INSTANCE_ID].visState.datasets[id].dataContainer.numRows();
+const labelOf = (store: Store, id: string): string =>
+  (store.getState() as any).keplerGl[KEPLER_INSTANCE_ID].visState.datasets[id].label;
 
 /** A dispatch that simulates kepler refusing a dispatch: the action never reaches the store. */
 const droppedDispatch = ((action: unknown) => action) as unknown as Dispatch;
@@ -78,6 +80,35 @@ describe('applyExplorerDataset', () => {
     await applyExplorerDataset(store, store.dispatch, { label: 'Hot', rows: points(5), mode: 'replace' });
     expect(readDatasetIds(store)).toEqual(['explore-hot']);
     expect(rowsIn(store, 'explore-hot')).toBe(5);
+  });
+
+  it('replaces by the exact label, so two labels with the same slug never overwrite each other', async () => {
+    const replace = (label: string, n: number) =>
+      applyExplorerDataset(store, store.dispatch, { label, rows: points(n), mode: 'replace' });
+    expect(await replace('Hot spots', 3)).toBe('explore-hot-spots');
+    expect(await replace('hot-spots', 2)).toBe('explore-hot-spots-2');
+    expect(await replace('hot-spots', 5)).toBe('explore-hot-spots-2');
+    expect(readDatasetIds(store).sort()).toEqual(['explore-hot-spots', 'explore-hot-spots-2']);
+    expect(rowsIn(store, 'explore-hot-spots')).toBe(3);
+    expect(labelOf(store, 'explore-hot-spots')).toBe('Hot spots');
+    expect(rowsIn(store, 'explore-hot-spots-2')).toBe(5);
+    expect(labelOf(store, 'explore-hot-spots-2')).toBe('hot-spots');
+
+    expect(await replace('Hot spots', 7)).toBe('explore-hot-spots');
+    expect(rowsIn(store, 'explore-hot-spots')).toBe(7);
+    expect(rowsIn(store, 'explore-hot-spots-2')).toBe(5);
+  });
+
+  it('keeps apart labels that have no slug at all', async () => {
+    const replace = (label: string, n: number) =>
+      applyExplorerDataset(store, store.dispatch, { label, rows: points(n), mode: 'replace' });
+    expect(await replace('東京', 3)).toBe('explore-result');
+    expect(await replace('大阪', 2)).toBe('explore-result-2');
+    expect(await replace('東京', 4)).toBe('explore-result');
+    expect(rowsIn(store, 'explore-result')).toBe(4);
+    expect(labelOf(store, 'explore-result')).toBe('東京');
+    expect(rowsIn(store, 'explore-result-2')).toBe(2);
+    expect(labelOf(store, 'explore-result-2')).toBe('大阪');
   });
 
   it("survives a refresh of the panel's own query datasets", async () => {
