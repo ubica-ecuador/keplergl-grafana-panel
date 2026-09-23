@@ -1,0 +1,46 @@
+{
+  "uid": "kepler-explorer-map",
+  "title": "Kepler · explorer to map",
+  "schemaVersion": 41,
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "points",
+        "type": "query",
+        "hide": 2,
+        "skipUrlSync": true,
+        "refresh": 1,
+        "datasource": { "type": "ubica-chaski-datasource", "uid": "duckdbwasm" },
+        "query": {
+          "refId": "points",
+          "kind": "dataset",
+          "name": "points",
+          "source": {
+            "type": "sql",
+            "sql": "SELECT i AS id, -79.0 + i * 0.01 AS longitude, -2.9 + i * 0.005 AS latitude FROM range(50) t(i)"
+          }
+        },
+        "current": {},
+        "options": []
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "ubica-keplergl-panel",
+      "title": "Map",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 16 },
+      "datasource": { "type": "ubica-chaski-datasource", "uid": "duckdbwasm" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "ubica-chaski-datasource", "uid": "duckdbwasm" },
+          "rawSql": "SELECT id, latitude, longitude FROM $points"
+        }
+      ],
+      "options": {}
+    }
+  ]
+}

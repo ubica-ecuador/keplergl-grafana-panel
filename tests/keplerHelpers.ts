@@ -66,6 +66,23 @@ export async function readKepler(map: Locator): Promise<KeplerSummary> {
   });
 }
 
+/** The dataset ids the kepler instance under `map` holds now. */
+export async function readDatasetIds(map: Locator): Promise<string[]> {
+  return map.evaluate((node) => {
+    const key = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
+    let fiber = key ? (node as any)[key] : null;
+    while (fiber) {
+      const store = fiber.memoizedProps?.store;
+      if (store && typeof store.getState === 'function') {
+        const entry = Object.values(store.getState().keplerGl ?? {})[0] as any;
+        return Object.keys(entry?.visState?.datasets ?? {}).sort();
+      }
+      fiber = fiber.return;
+    }
+    throw new Error('kepler store not found from map node');
+  });
+}
+
 /** What the flow field spec asserts about a traced layer. */
 export interface FlowFieldSummary {
   /**

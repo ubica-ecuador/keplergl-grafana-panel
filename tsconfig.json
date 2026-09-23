@@ -5,6 +5,12 @@
     // @types/bson) that ship no index.d.ts. With the scaffold's typeRoots they
     // get loaded as implicit type libraries and typecheck fails. Listing the
     // globals we actually need keeps them out; explicit imports are unaffected.
-    "types": ["node", "jest"]
+    "types": ["node", "jest"],
+    // The scaffold's es2018 target rejects BigInt literal syntax (TS2737),
+    // which a test needs for an Arrow BigInt64Array. This only changes what
+    // `tsc --noEmit` accepts: actual output comes from webpack's swc-loader
+    // (its own target, es2015) and @swc/jest for tests, neither of which
+    // reads this field.
+    "target": "es2020"
   }
 }
