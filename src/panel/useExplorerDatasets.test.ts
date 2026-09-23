@@ -77,7 +77,7 @@ describe('showExplorerResult', () => {
     const id = await showExplorerResult(store, { sql: 'SELECT * FROM points', label: 'Pts', mode: 'add' }, win);
     await settle();
     expect(id).toBe('explore-pts');
-    expect(sent).toEqual(['SELECT * FROM (SELECT * FROM points) LIMIT 200001']);
+    expect(sent).toEqual(['SELECT * FROM (\nSELECT * FROM points\n) LIMIT 200001']);
     expect(readDatasetIds(store)).toEqual(['explore-pts']);
     expect(alerts).toEqual([]);
   });

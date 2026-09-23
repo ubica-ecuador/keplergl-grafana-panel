@@ -9,18 +9,29 @@ export const EXPLORER_ROW_CAP = 200_000;
 const quoteIdent = (name: string) => `"${name.replace(/"/g, '""')}"`;
 
 /**
+ * Semicolons ending the query, with whatever whitespace and comments follow
+ * them: a `;` inside the wrapper's parentheses is a syntax error. Every
+ * alternative can match a stretch of text in one way only, so a failed match
+ * cannot backtrack exponentially through a long `-- -----` rule.
+ */
+const TRAILING_SEMICOLONS = /;(?:[\s;]|--[^\n]*(?:\n|$)|\/\*(?:[^*]|\*(?!\/))*\*\/)*$/;
+
+/** `sql` in parentheses, on lines of its own, so a trailing `--` comment ends before the `)`. */
+const parenthesised = (sql: string) => `(\n${sql}\n)`;
+
+/**
  * The SQL the panel sends for an explorer request. A geometry column is turned
  * into WKB hex so it enters through the same decoder as a mapped geometry
  * column; the LIMIT asks for one row past the cap, which is how a result that
  * fills the cap is told apart from one that was cut.
  */
 export function explorerSql(request: { sql: string; geometryColumn?: string }, cap = EXPLORER_ROW_CAP): string {
-  const body = request.sql.trim().replace(/;+\s*$/, '').trim();
+  const body = request.sql.trim().replace(TRAILING_SEMICOLONS, '').trimEnd();
   const column = request.geometryColumn;
   const inner = column
-    ? `SELECT * REPLACE (ST_AsHEXWKB(${quoteIdent(column)}) AS ${quoteIdent(column)}) FROM (${body})`
+    ? `SELECT * REPLACE (ST_AsHEXWKB(${quoteIdent(column)}) AS ${quoteIdent(column)}) FROM ${parenthesised(body)}`
     : body;
-  return `SELECT * FROM (${inner}) LIMIT ${cap + 1}`;
+  return `SELECT * FROM ${parenthesised(inner)} LIMIT ${cap + 1}`;
 }
 
 type BigNum = Parameters<typeof util.bigNumToNumber>[0];

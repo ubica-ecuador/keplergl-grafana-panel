@@ -28,23 +28,63 @@ function decimals(unscaled: bigint[], scale: number, precision: number) {
 }
 
 describe('explorerSql', () => {
+  /** Each line holding a `--` comment is followed by one that closes a parenthesis, and LIMIT ends the query. */
+  function expectCommentsClosed(sql: string, cap: number) {
+    const lines = sql.split('\n');
+    lines.forEach((line, i) => {
+      if (line.includes('--')) {
+        expect(lines[i + 1]).toMatch(/^\)/);
+      }
+    });
+    expect(lines.at(-1)).toBe(`) LIMIT ${cap + 1}`);
+  }
+
   it('caps the rows, asking for one more to tell a full result from a cut one', () => {
     expect(explorerSql({ sql: 'SELECT * FROM datasets.points' }, 10)).toBe(
-      'SELECT * FROM (SELECT * FROM datasets.points) LIMIT 11'
+      'SELECT * FROM (\nSELECT * FROM datasets.points\n) LIMIT 11'
     );
   });
 
   it('turns the geometry column into WKB hex, quoting its name', () => {
     expect(explorerSql({ sql: 'SELECT id, geom FROM t', geometryColumn: 'geom' }, 10)).toBe(
-      'SELECT * FROM (SELECT * REPLACE (ST_AsHEXWKB("geom") AS "geom") FROM (SELECT id, geom FROM t)) LIMIT 11'
+      'SELECT * FROM (\nSELECT * REPLACE (ST_AsHEXWKB("geom") AS "geom") FROM (\nSELECT id, geom FROM t\n)\n) LIMIT 11'
     );
     expect(explorerSql({ sql: 'SELECT 1', geometryColumn: 'the "shape"' }, 1)).toContain(
       'ST_AsHEXWKB("the ""shape""")'
     );
   });
 
-  it('drops a trailing semicolon and whitespace before wrapping', () => {
-    expect(explorerSql({ sql: '  SELECT 1 ;  \n' }, 5)).toBe('SELECT * FROM (SELECT 1) LIMIT 6');
+  it('drops trailing semicolons and whitespace before wrapping', () => {
+    expect(explorerSql({ sql: '  SELECT 1 ;  \n' }, 5)).toBe('SELECT * FROM (\nSELECT 1\n) LIMIT 6');
+    expect(explorerSql({ sql: 'SELECT 1;;\n ;' }, 5)).toBe('SELECT * FROM (\nSELECT 1\n) LIMIT 6');
+  });
+
+  it('ends a trailing line comment before the parenthesis and the LIMIT', () => {
+    const sql = explorerSql({ sql: 'SELECT * FROM t -- note' }, 10);
+    expect(sql).toBe('SELECT * FROM (\nSELECT * FROM t -- note\n) LIMIT 11');
+    expectCommentsClosed(sql, 10);
+
+    const withGeometry = explorerSql({ sql: 'SELECT geom FROM t -- note', geometryColumn: 'geom' }, 10);
+    expect(withGeometry).toContain('SELECT geom FROM t -- note\n)');
+    expectCommentsClosed(withGeometry, 10);
+  });
+
+  it('drops a semicolon that has comments after it', () => {
+    expect(explorerSql({ sql: 'SELECT 1; -- x' }, 5)).toBe('SELECT * FROM (\nSELECT 1\n) LIMIT 6');
+    expect(explorerSql({ sql: 'SELECT 1; -- x; y\n-- z\n' }, 5)).toBe('SELECT * FROM (\nSELECT 1\n) LIMIT 6');
+    expect(explorerSql({ sql: 'SELECT 1; /* x; */ ' }, 5)).toBe('SELECT * FROM (\nSELECT 1\n) LIMIT 6');
+  });
+
+  it('leaves a semicolon alone when SQL follows it, and a comment that holds one', () => {
+    expect(explorerSql({ sql: "SELECT ';' AS s" }, 5)).toBe("SELECT * FROM (\nSELECT ';' AS s\n) LIMIT 6");
+    const sql = explorerSql({ sql: 'SELECT 1 -- a; b' }, 5);
+    expect(sql).toBe('SELECT * FROM (\nSELECT 1 -- a; b\n) LIMIT 6');
+    expectCommentsClosed(sql, 5);
+  });
+
+  it('gets through a long comment rule after a semicolon without backtracking', () => {
+    const rule = `-- ${'-'.repeat(60)}`;
+    expect(explorerSql({ sql: `SELECT 1; ${rule}\nFROM t` }, 5)).toContain(`${rule}\nFROM t\n)`);
   });
 
   it('defaults to the 200 000 row cap', () => {
