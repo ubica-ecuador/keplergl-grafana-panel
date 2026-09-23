@@ -9,27 +9,34 @@ import { readDatasetIds, replaceDatasetData, toKeplerDatasets } from './keplerAd
 const PREFIX = 'explore-';
 
 /**
- * Ids this module has dispatched an `updateVisData` create for, per store,
- * that kepler may not have registered yet.
- *
- * `updateVisData` only lands in `visState.datasets` once kepler's task
- * middleware settles it (see `settle()` in the tests) — dispatch and
- * registration are not the same tick. Two calls for the same label in one
- * tick would otherwise both read an empty `readDatasetIds(store)` and both
- * compute the same id, racing two creates for it. This set closes that gap:
- * an id lands here the moment a create for it is dispatched, and is pruned
- * once kepler actually holds it, so it never grows without bound.
+ * How long `applyExplorerDataset` waits for kepler to actually register a
+ * call's result before giving up. Overridable per call — see its last
+ * parameter — for a test that wants a short wait on a dispatch kepler never
+ * takes.
  */
-const pendingIds = new WeakMap<Store, Set<string>>();
+export const EXPLORER_APPLY_TIMEOUT_MS = 10_000;
 
-function pendingIdsFor(store: Store): Set<string> {
-  let ids = pendingIds.get(store);
-  if (!ids) {
-    ids = new Set();
-    pendingIds.set(store, ids);
-  }
-  return ids;
-}
+/**
+ * Serialises `applyExplorerDataset` calls per store: each call's promise, so
+ * the next call on the same store starts only once this one has settled —
+ * resolved or rejected.
+ *
+ * Both `updateVisData` and `replaceDataInMap` are asynchronous in kepler:
+ * `updateVisData` only lands an id in `visState.datasets` once its
+ * `Task.allSettled` create task resolves, and `replaceDataInMap` swaps a
+ * dataset's object identity through that same task pipeline
+ * (`updateVisDataUpdater`/`createNewDatasetSuccessUpdater` in
+ * `@kepler.gl/reducers`). Reading `readDatasetIds` right after dispatch, the
+ * way this module used to, races that: two calls in the same tick both see
+ * the state from before either dispatch and can collide on the same id, or a
+ * `replace` can land on an id kepler does not hold yet — `replaceDataInMap`
+ * is a synchronous no-op in that case, silently dropping the call. Chaining
+ * every call behind the last one's settlement closes both gaps without
+ * tracking ids by hand: by the time a call reads `readDatasetIds`, every
+ * earlier call on this store has already been dispatched **and** confirmed
+ * (or given up after `timeoutMs`).
+ */
+const callChains = new WeakMap<Store, Promise<void>>();
 
 /**
  * The kepler id of an explorer result. It can never be a query dataset's
@@ -46,51 +53,116 @@ export function explorerDatasetId(label: string): string {
   return `${PREFIX}${slug || 'result'}`;
 }
 
+/** The dataset object kepler currently holds for `id` on its own instance, or undefined. */
+function datasetRef(store: Store, id: string): unknown {
+  const state = store.getState() as {
+    keplerGl?: Record<string, { visState?: { datasets?: Record<string, unknown> } } | undefined>;
+  };
+  return state.keplerGl?.[KEPLER_INSTANCE_ID]?.visState?.datasets?.[id];
+}
+
+/**
+ * Resolves once `holds()` is true — checked immediately, then on every store
+ * change — or rejects with `onTimeout()` once `timeoutMs` passes first.
+ * Always unsubscribes before settling either way.
+ */
+function waitUntil(store: Store, holds: () => boolean, timeoutMs: number, onTimeout: () => Error): Promise<void> {
+  if (holds()) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    const stop = () => {
+      unsubscribe();
+      clearTimeout(timer);
+    };
+    const unsubscribe = store.subscribe(() => {
+      if (holds()) {
+        stop();
+        resolve();
+      }
+    });
+    const timer = setTimeout(() => {
+      stop();
+      reject(onTimeout());
+    }, timeoutMs);
+  });
+}
+
 /**
  * Puts an explorer result on the map for this session. `add` never touches a
- * dataset already there: a second result under the same label gets `-2`, `-3`…
- * `replace` swaps the rows of the label's dataset through kepler's own
- * replaceDataInMap, which keeps its layers, or creates it if the map has none.
+ * dataset already there: a second result under the same label gets `-2`,
+ * `-3`… `replace` swaps the rows of the label's dataset through kepler's own
+ * replaceDataInMap, which keeps its layers, or creates it if the map has
+ * none.
  *
  * Nothing here reaches mapConfig: a saved config keeps only URL-backed
  * datasets, so an explorer result is gone after a rebuild or a reload.
  *
- * An id counts as held — for `add`'s `-2`, `-3`… suffixing, and for
- * `replace`'s choice of path — the moment this function has dispatched a
- * create for it, not only once kepler has registered it; see `pendingIds`.
- * A `replace` that lands on a still-pending id goes through
- * `replaceDatasetData` regardless: `replaceDataInMap` is a synchronous no-op
- * when kepler does not yet hold the id, which only loses a same-tick second
- * `replace` of the same label — far cheaper than the alternative, a second
- * `updateVisData` racing the first create and leaving two datasets, and two
- * default layers, in flight for one id.
+ * Calls on the same store are serialised (see `callChains`), so the ids a
+ * call reads are never racing a create or replace still in flight from an
+ * earlier one. The returned promise itself settles only once kepler has
+ * taken the dispatch: it resolves with the id once kepler actually holds the
+ * result, or rejects after `timeoutMs` if it never does — a create kepler
+ * refused, most likely. Either way the next queued call still runs.
  */
 export function applyExplorerDataset(
   store: Store,
   dispatch: Dispatch,
-  input: { label: string; rows: KeplerRow[]; mode: 'add' | 'replace' }
-): string {
-  const known = new Set(readDatasetIds(store));
-  const pending = pendingIdsFor(store);
-  for (const id of pending) {
-    if (known.has(id)) {
-      pending.delete(id);
-    }
-  }
-  const isHeld = (candidate: string) => known.has(candidate) || pending.has(candidate);
+  input: { label: string; rows: KeplerRow[]; mode: 'add' | 'replace' },
+  timeoutMs: number = EXPLORER_APPLY_TIMEOUT_MS
+): Promise<string> {
+  const previous = callChains.get(store) ?? Promise.resolve();
+  const result = previous.then(() => runApply(store, dispatch, input, timeoutMs));
+  // The next call must wait for this one regardless of outcome, but the
+  // chain itself must never reject — that would jump the rejection to
+  // whichever call reads it next instead of to this call's own caller.
+  callChains.set(
+    store,
+    result.then(
+      () => undefined,
+      () => undefined
+    )
+  );
+  return result;
+}
 
+async function runApply(
+  store: Store,
+  dispatch: Dispatch,
+  input: { label: string; rows: KeplerRow[]; mode: 'add' | 'replace' },
+  timeoutMs: number
+): Promise<string> {
+  const held = new Set(readDatasetIds(store));
   const base = explorerDatasetId(input.label);
   let id = base;
   let label = input.label;
   if (input.mode === 'add') {
-    for (let n = 2; isHeld(id); n++) {
+    for (let n = 2; held.has(id); n++) {
       id = `${base}-${n}`;
       label = `${input.label} (${n})`;
     }
   }
   const dataset: PanelDataset = { id, label, rows: input.rows };
-  if (isHeld(id)) {
+  const timedOut = () => new Error(`kepler never registered the explorer dataset "${input.label}" (id "${id}")`);
+
+  if (held.has(id)) {
+    const before = datasetRef(store, id);
     replaceDatasetData(dispatch, dataset);
+    // `replaceDataInMap` removes the old entry synchronously and re-adds it
+    // only once its own recreate task settles (`prepareStateForDatasetReplace`
+    // followed by the same async `updateVisData` path), so the id is briefly
+    // absent from `visState.datasets` in between. Waiting only for "changed
+    // from `before`" would catch that transient `undefined` and return before
+    // the new dataset actually landed — hence requiring it defined too.
+    await waitUntil(
+      store,
+      () => {
+        const current = datasetRef(store, id);
+        return current !== undefined && current !== before;
+      },
+      timeoutMs,
+      timedOut
+    );
   } else {
     dispatch(
       wrapTo(
@@ -98,7 +170,8 @@ export function applyExplorerDataset(
         updateVisData(toKeplerDatasets([dataset]), { keepExistingConfig: true, centerMap: false })
       ) as never
     );
-    pending.add(id);
+    await waitUntil(store, () => readDatasetIds(store).includes(id), timeoutMs, timedOut);
   }
+
   return id;
 }
