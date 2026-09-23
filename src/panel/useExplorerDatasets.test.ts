@@ -110,6 +110,26 @@ describe('showExplorerResult', () => {
     info.mockRestore();
   });
 
+  it('logs once for each reason there is no engine, not once overall', async () => {
+    const info = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    const request = { sql: 'SELECT 1', label: 'X', mode: 'add' } as const;
+    const windows = {
+      absent: {},
+      version: { __chaski: { apiVersion: 2, engine: () => undefined } },
+      'not-started': { __chaski: { apiVersion: 1, engine: () => undefined } },
+    };
+    for (const win of [...Object.values(windows), ...Object.values(windows)]) {
+      expect(await showExplorerResult(store, request, win)).toBeNull();
+    }
+    const logged = (reason: string) => info.mock.calls.filter(([line]) => String(line).endsWith(` ${reason}`)).length;
+    // Another test may have logged `absent` already; the other two are this test's own.
+    expect(logged('absent')).toBeLessThanOrEqual(1);
+    expect(logged('version')).toBe(1);
+    expect(logged('not-started')).toBe(1);
+    expect(alerts).toEqual([]);
+    info.mockRestore();
+  });
+
   it('shows an error and resolves null when kepler never takes the dataset', async () => {
     const { win } = chaskiWindow(3);
     const rejection = new Error('kepler never registered the explorer dataset "Pts" (id "explore-pts")');

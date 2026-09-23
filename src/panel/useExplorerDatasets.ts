@@ -8,15 +8,16 @@ import { EXPLORER_ROW_CAP, explorerSql, rowsFromTable } from '../data/explorerQu
 import { applyExplorerDataset } from './explorerDatasets';
 import { type ExplorerToMap, subscribeExplorerToMap } from './explorerToMap';
 
-let toldNoEngine = false;
+/** The reasons there was no engine that have been logged already: each is logged once. */
+const loggedNoEngine = new Set<string>();
 
 /**
  * Runs an explorer request on Chaski's engine and puts the result on the map.
  * Returns the dataset id, or null when nothing was shown: no engine (logged
- * once, since the explorer that sends these needs Chaski anyway), or any
- * failure on the way (the query, turning its result into rows, or kepler
- * never taking the dataset within `applyExplorerDataset`'s timeout), shown
- * to the user as one error with the map left as it was. Never rejects.
+ * once per reason, since the explorer that sends these needs Chaski anyway),
+ * or any failure on the way (the query, turning its result into rows, or
+ * kepler never taking the dataset within `applyExplorerDataset`'s timeout),
+ * shown to the user as one error with the map left as it was. Never rejects.
  */
 export async function showExplorerResult(
   store: Store,
@@ -26,8 +27,8 @@ export async function showExplorerResult(
   try {
     const result = await queryChaski(explorerSql(request), win);
     if (!result.ok) {
-      if (!toldNoEngine) {
-        toldNoEngine = true;
+      if (!loggedNoEngine.has(result.reason)) {
+        loggedNoEngine.add(result.reason);
         console.info(`kepler panel: explorer result ignored, Chaski engine ${result.reason}`);
       }
       return null;
