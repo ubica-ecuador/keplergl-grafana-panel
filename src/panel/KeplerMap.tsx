@@ -55,6 +55,7 @@ import { useWmsCalendar } from './useWmsCalendar';
 import { useWmsTimeline } from './useWmsTimeline';
 import { useEsriTimeline } from './useEsriTimeline';
 import { useZarrTimeline } from './useZarrTimeline';
+import { useExplorerDatasets } from './useExplorerDatasets';
 import { useViewportGuard } from './useViewportGuard';
 import { useLayerOrderGuard } from './useLayerOrderGuard';
 import { useSplitMapsGuard } from './useSplitMapsGuard';
@@ -147,6 +148,8 @@ export interface KeplerMapProps {
   publishIntervalMs: number;
   /** Whether this map shares its clock with the other maps on the dashboard. */
   peerTimeSync: boolean;
+  /** Grafana's id for this panel: explorer results addressed to another panel are ignored. */
+  panelId?: number;
 }
 
 /**
@@ -193,6 +196,7 @@ export function KeplerMap({
   publishWhilePlaying,
   publishIntervalMs,
   peerTimeSync,
+  panelId,
 }: KeplerMapProps) {
   const store = useMemo(() => createKeplerStore(), []);
   const [styleTarget, setStyleTarget] = useState<HTMLElement | null>(null);
@@ -369,6 +373,8 @@ export function KeplerMap({
   // each one answers to.
   useZarrTimeline({ store, isReady, layers: zarrLayers, timeVariables: clockVariables });
   useEsriTimeline({ store, isReady, layers: esriLayers, timeVariables: clockVariables });
+
+  useExplorerDatasets({ store, isReady, panelId });
 
   // A saved config that names a base map wins over the panel option — but only
   // if it names one. Anything this panel captures does, so those go on winning;

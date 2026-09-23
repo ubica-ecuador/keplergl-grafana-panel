@@ -41,6 +41,7 @@ export function KeplerPanel({
   replaceVariables,
   width,
   height,
+  id,
 }: Props) {
   const grafanaTheme = useTheme2();
 
@@ -188,6 +189,7 @@ export function KeplerPanel({
         publishWhilePlaying={options.publishWhilePlaying ?? false}
         publishIntervalMs={publishIntervalOf(options.publishIntervalMs)}
         peerTimeSync={options.peerTimeSync ?? false}
+        panelId={id}
       />
     </div>
   );
