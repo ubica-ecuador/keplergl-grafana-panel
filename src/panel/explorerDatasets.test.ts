@@ -48,6 +48,17 @@ describe('applyExplorerDataset', () => {
     expect(rowsIn(store, 'explore-hot-2')).toBe(2);
   });
 
+  it('keeps two same-tick adds of the same label apart, before kepler registers the first', async () => {
+    const first = applyExplorerDataset(store, store.dispatch, { label: 'Hot', rows: points(3), mode: 'add' });
+    const second = applyExplorerDataset(store, store.dispatch, { label: 'Hot', rows: points(2), mode: 'add' });
+    expect(first).toBe('explore-hot');
+    expect(second).toBe('explore-hot-2');
+    await settle();
+    expect(readDatasetIds(store).sort()).toEqual(['explore-hot', 'explore-hot-2']);
+    expect(rowsIn(store, 'explore-hot')).toBe(3);
+    expect(rowsIn(store, 'explore-hot-2')).toBe(2);
+  });
+
   it("replaces the rows of the label's dataset, and creates it when the map has none", async () => {
     applyExplorerDataset(store, store.dispatch, { label: 'Hot', rows: points(3), mode: 'replace' });
     await settle();
