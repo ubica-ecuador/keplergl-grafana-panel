@@ -40,6 +40,14 @@ async function settle(): Promise<void> {
   }
 }
 
+const pointsIPC = (rows: number) => {
+  const lat = Float64Array.from({ length: rows }, (_, i) => -2.9 + i * 0.001);
+  return tableToIPC(tableFromArrays({ latitude: lat, longitude: lat.map(() => -79) }), 'stream');
+};
+
+const rowsIn = (store: Store, id: string): number =>
+  (store.getState() as any).keplerGl[KEPLER_INSTANCE_ID].visState.datasets[id].dataContainer.numRows();
+
 /** A window whose Chaski answers every query with `rows` points, or fails with `error`. */
 function chaskiWindow(rows: number, error?: string) {
   const sent: string[] = [];
@@ -52,8 +60,7 @@ function chaskiWindow(rows: number, error?: string) {
           if (error) {
             throw new Error(error);
           }
-          const lat = Float64Array.from({ length: rows }, (_, i) => -2.9 + i * 0.001);
-          return tableToIPC(tableFromArrays({ latitude: lat, longitude: lat.map(() => -79) }), 'stream');
+          return pointsIPC(rows);
         },
       }),
     },
@@ -149,6 +156,52 @@ describe('showExplorerResult', () => {
     await settle();
     expect(readDatasetIds(store)).toEqual([]);
     expect(alerts).toEqual([{ type: 'error', payload: ['Map: could not show "Odd"', 'unreadable column'] }]);
+  });
+});
+
+describe('showExplorerResult on one map', () => {
+  it('shows results in the order they were sent, even when the first query is the slow one', async () => {
+    const steps: string[] = [];
+    // `slow` answers 3 rows after 100 ms, `fast` 5 rows at once.
+    const answers = { slow: { rows: 3, delayMs: 100 }, fast: { rows: 5, delayMs: 0 } };
+    const win = {
+      __chaski: {
+        apiVersion: 1,
+        engine: async () => ({
+          queryIPC: async (sql: string) => {
+            const name = sql.includes('slow') ? 'slow' : 'fast';
+            steps.push(`start ${name}`);
+            await new Promise((resolve) => setTimeout(resolve, answers[name].delayMs));
+            steps.push(`end ${name}`);
+            return pointsIPC(answers[name].rows);
+          },
+        }),
+      },
+    };
+    const apply = applyExplorerDataset as jest.Mock;
+    apply.mockClear();
+
+    const first = showExplorerResult(store, { sql: 'SELECT * FROM slow', label: 'Hot', mode: 'replace' }, win);
+    const second = showExplorerResult(store, { sql: 'SELECT * FROM fast', label: 'Hot', mode: 'replace' }, win);
+    expect(await first).toBe('explore-hot');
+    expect(await second).toBe('explore-hot');
+
+    expect(steps).toEqual(['start slow', 'end slow', 'start fast', 'end fast']);
+    expect(apply.mock.calls.map(([, , input]) => input.rows.length)).toEqual([3, 5]);
+    expect(readDatasetIds(store)).toEqual(['explore-hot']);
+    expect(rowsIn(store, 'explore-hot')).toBe(5);
+  });
+
+  it('runs the next request after one that failed', async () => {
+    const failing = showExplorerResult(
+      store,
+      { sql: 'SELECT nope', label: 'X', mode: 'add' },
+      chaskiWindow(0, 'Binder Error').win
+    );
+    const next = showExplorerResult(store, { sql: 'SELECT 1', label: 'Y', mode: 'add' }, chaskiWindow(2).win);
+    expect(await failing).toBeNull();
+    expect(await next).toBe('explore-y');
+    expect(alerts).toEqual([{ type: 'error', payload: ['Map: could not show "X"', 'Binder Error'] }]);
   });
 });
 

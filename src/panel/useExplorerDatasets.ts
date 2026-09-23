@@ -12,18 +12,36 @@ import { type ExplorerToMap, subscribeExplorerToMap } from './explorerToMap';
 const loggedNoEngine = new Set<string>();
 
 /**
+ * Serialises `showExplorerResult` per store, from the query through the
+ * apply: each request's promise, so the next request on the same store starts
+ * only once this one has settled. Queuing only the apply, as
+ * `applyExplorerDataset` does on its own, is not enough: every query would
+ * start at once, and a slow earlier one could land after, and overwrite, a
+ * later replace. The chain never rejects, so a failed request never holds up
+ * the next one.
+ */
+const requestChains = new WeakMap<Store, Promise<unknown>>();
+
+/**
  * Runs an explorer request on Chaski's engine and puts the result on the map.
+ * Requests on the same store run one at a time, in the order they were sent.
  * Returns the dataset id, or null when nothing was shown: no engine (logged
  * once per reason, since the explorer that sends these needs Chaski anyway),
  * or any failure on the way (the query, turning its result into rows, or
  * kepler never taking the dataset within `applyExplorerDataset`'s timeout),
  * shown to the user as one error with the map left as it was. Never rejects.
  */
-export async function showExplorerResult(
-  store: Store,
-  request: ExplorerToMap,
-  win: object = window
-): Promise<string | null> {
+export function showExplorerResult(store: Store, request: ExplorerToMap, win: object = window): Promise<string | null> {
+  const previous = requestChains.get(store) ?? Promise.resolve();
+  const result = previous.then(() => showNow(store, request, win));
+  requestChains.set(
+    store,
+    result.catch(() => undefined)
+  );
+  return result;
+}
+
+async function showNow(store: Store, request: ExplorerToMap, win: object): Promise<string | null> {
   try {
     const result = await queryChaski(explorerSql(request), win);
     if (!result.ok) {
