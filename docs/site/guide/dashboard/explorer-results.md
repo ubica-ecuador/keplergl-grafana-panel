@@ -11,9 +11,11 @@ This needs Chaski on the same Grafana. Where Chaski is not installed, the map ig
 - **A dataset named after the label** you gave the result, with default layers built from its
   columns: a geometry column, or latitude and longitude columns.
 - **Add or replace.** "Add" keeps earlier results, and a second one with the same label shows up as
-  "Label (2)". "Replace" swaps the rows of the dataset with that label and keeps its layers.
+  "Label (2)". "Replace" swaps the rows of the dataset with exactly that label and keeps its layers;
+  "Hot spots" and "hot spots" are two datasets. With no such dataset, it adds one.
 - **At most 200 000 rows.** A larger result shows its first 200 000, with a warning.
-- **One result at a time per map.** Results sent in quick succession land in order; one the map
+- **One result at a time per map.** Each result waits for the previous one on that map, query
+  included, so results sent in quick succession land in the order they were sent. One the map
   cannot take shows an error after 10 seconds.
 
 ## It lasts for the session
@@ -35,6 +37,7 @@ The request is the `ubica-explorer-to-map` event on Grafana's app event bus:
 { sql: string; label: string; geometryColumn?: string; mode: 'add' | 'replace'; panelId?: number }
 ```
 
-- **`sql`** runs on Chaski's engine on its panel path, so qualify names: `datasets.<name>` and `explore.<table>`; a bare `sample` won't resolve.
+- **`sql`** runs on Chaski's engine on its panel path, so qualify names: `datasets.<name>` and
+  `explore.<table>`; a bare `sample` won't resolve.
 - **`geometryColumn`** must be a DuckDB `GEOMETRY` column.
 - **Without `panelId`,** every kepler map on the dashboard takes the request.
