@@ -5,6 +5,7 @@ import { tableFromArrays, tableToIPC } from 'apache-arrow';
 import type { Store } from 'redux';
 
 import { KEPLER_INSTANCE_ID } from './constants';
+import { rowsFromTable } from '../data/explorerQuery';
 import { applyExplorerDataset } from './explorerDatasets';
 import { readDatasetIds } from './keplerAdapter';
 import { createKeplerStore } from './keplerStore';
@@ -22,6 +23,11 @@ jest.mock('@grafana/runtime', () => ({ getAppEvents: () => mockBus }));
 jest.mock('./explorerDatasets', () => {
   const actual = jest.requireActual('./explorerDatasets');
   return { ...actual, applyExplorerDataset: jest.fn(actual.applyExplorerDataset) };
+});
+// The same for the conversion, so one test can make it throw.
+jest.mock('../data/explorerQuery', () => {
+  const actual = jest.requireActual('../data/explorerQuery');
+  return { ...actual, rowsFromTable: jest.fn(actual.rowsFromTable) };
 });
 
 class ExplorerSideEvent extends BusEventWithPayload<unknown> {
@@ -112,6 +118,17 @@ describe('showExplorerResult', () => {
     await settle();
     expect(id).toBeNull();
     expect(alerts).toEqual([{ type: 'error', payload: ['Map: could not show "Pts"', rejection.message] }]);
+  });
+
+  it('shows an error and resolves null when the result cannot be turned into rows', async () => {
+    const { win } = chaskiWindow(3);
+    (rowsFromTable as jest.Mock).mockImplementationOnce(() => {
+      throw new Error('unreadable column');
+    });
+    expect(await showExplorerResult(store, { sql: 'SELECT 1', label: 'Odd', mode: 'add' }, win)).toBeNull();
+    await settle();
+    expect(readDatasetIds(store)).toEqual([]);
+    expect(alerts).toEqual([{ type: 'error', payload: ['Map: could not show "Odd"', 'unreadable column'] }]);
   });
 });
 
