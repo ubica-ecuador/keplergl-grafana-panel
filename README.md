@@ -125,20 +125,7 @@ grafana cli plugins install ubica-keplergl-panel
 
 or from **Administration → Plugins** inside Grafana. Then restart Grafana.
 
-**Installing while the catalog review is pending.** The plugin is submitted but not yet listed, so
-the command above and the in-app installer will both report "plugin not found." Until the listing
-goes live, download the release archive from
-[GitHub Releases](https://github.com/ubica-ecuador/keplergl-grafana-panel/releases) instead, unpack
-it into Grafana's plugin directory as a `ubica-keplergl-panel` folder, and allow it explicitly since
-it is unsigned until the review signs it:
-
-```ini
-[plugins]
-allow_loading_unsigned_plugins = ubica-keplergl-panel
-```
-
-Then restart Grafana. That setting stops being necessary once the catalog listing is live. Full
-instructions, including Docker and a hardened Grafana, are in the
+Full instructions, including Docker and a hardened Grafana, are in the
 [install guide](https://docs.ubica.dev/guide/install.html).
 
 ### Hardened Grafana
