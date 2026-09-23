@@ -2,7 +2,10 @@
   "uid": "falsecolour",
   "title": "Kepler.gl — false colour bands",
   "schemaVersion": 39,
-  "time": { "from": "now-30d", "to": "now" },
+  "time": {
+    "from": "2026-08-22T00:00:00.000Z",
+    "to": "2026-08-26T00:00:00.000Z"
+  },
   "templating": {
     "list": [
       {
