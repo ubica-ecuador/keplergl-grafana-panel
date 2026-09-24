@@ -1338,9 +1338,13 @@ interface VisStateLike {
       visConfig?: { useSTACSearching?: boolean; wmsLayer?: unknown; wmsTime?: unknown; zarrLabel?: unknown };
     };
     meta?: { bounds?: number[] };
-    /** Resolves a picked deck.gl object to its row — what the tooltip uses. */
+    /**
+     * Resolves a picked deck.gl object to its row — what the tooltip uses.
+     * kepler names the first parameter `object`; the plugin validator's
+     * semgrep cannot parse that name here and reports the scan incomplete.
+     */
     getHoverData?: (
-      object: unknown,
+      pickedObject: unknown,
       dataContainer: unknown,
       fields: Array<{ name: string }>,
       animationConfig: unknown,
