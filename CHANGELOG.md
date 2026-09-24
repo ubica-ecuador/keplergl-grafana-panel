@@ -1,8 +1,22 @@
 # Changelog
 
-1.0.0 is the first release published to the Grafana plugin catalog, so there is no earlier release
-for it to be a change against — the entry below lists what the plugin **does**, not what changed to
-get it there. From 1.0.0 onwards, each release documents what changed since the one before it.
+1.0.0 is the first release, so there is no earlier release for it to be a change against — its
+entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
+release documents what changed since the one before it.
+
+## 1.0.1 (2026-09-23)
+
+1.0.0 never reached the plugin catalog: its review turned it away because the panel loaded
+MapLibre's stylesheet into the whole Grafana page. This release fixes that, and nothing on the map
+looks or behaves differently.
+
+- MapLibre's stylesheet now applies only inside the map panel, so it no longer reaches anything
+  else on the page that uses MapLibre's class names. Every rule keeps the weight it had, which is
+  why the map itself is unchanged.
+- A self-hosted base map style whose path has no leading slash (`public/…`) now resolves against
+  the Grafana instance, sub-path included, instead of against the dashboard's address, which
+  pointed it at a page that does not exist. Paths starting with `/` and full URLs resolve as
+  before.
 
 ## 1.0.0 (2026-09-23)
 
