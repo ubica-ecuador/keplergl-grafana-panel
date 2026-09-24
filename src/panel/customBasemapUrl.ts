@@ -26,8 +26,9 @@ export type Interpolate = (value: string) => string;
  *
  * @param raw   the `customBasemapUrl` option, as authored
  * @param interpolate  Grafana's `replaceVariables`, or undefined to skip it
- * @param base  the page URL a relative value is resolved against; pass
- *              undefined (or run without a DOM) to leave relative values alone
+ * @param base  the URL a relative value is resolved against — the panel
+ *              passes the document's base URL; pass undefined (or run
+ *              without a DOM) to leave relative values alone
  */
 export function resolveCustomBasemapUrl(raw: string | undefined, interpolate?: Interpolate, base?: string): string {
   const authored = (raw ?? '').trim();

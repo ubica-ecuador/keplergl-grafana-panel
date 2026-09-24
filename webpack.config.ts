@@ -60,8 +60,32 @@ const resolvesToProprietaryMapboxGl = (context: string): boolean => {
   }
 };
 
+/*
+ * A stylesheet imported with `?raw` is wanted as its text, for emotion to
+ * scope (see src/panel/maplibreStyles.ts): the plugin catalog rejects CSS
+ * injected into Grafana's page as it is. The scaffold's `.css` rule tests the
+ * path alone, so it would still run style-loader on it — both injecting it
+ * and handing the importer a module instead of a string. webpack-merge can
+ * only append rules, so the scaffold's own rule is told to leave `?raw` alone
+ * here, before merging. Throws if the scaffold stops matching `.css` that way,
+ * rather than letting the build quietly inject the file again.
+ */
+const RAW_QUERY = /^\?raw$/;
+
+const leaveRawStylesheetsAlone = (baseConfig: Configuration): void => {
+  const cssRule = baseConfig.module?.rules?.find(
+    (rule): rule is webpack.RuleSetRule =>
+      Boolean(rule) && typeof rule === 'object' && rule.test instanceof RegExp && rule.test.source === '\\.css$'
+  );
+  if (!cssRule) {
+    throw new Error('webpack.config.ts: the scaffold has no /\\.css$/ rule to keep ?raw stylesheets away from');
+  }
+  cssRule.resourceQuery = { not: [RAW_QUERY] };
+};
+
 const config = async (env: Env): Promise<Configuration> => {
   const baseConfig = await grafanaConfig(env);
+  leaveRawStylesheetsAlone(baseConfig);
 
   return merge(baseConfig, {
     plugins: [
@@ -254,6 +278,12 @@ const config = async (env: Env): Promise<Configuration> => {
         {
           test: /\.m?js$/,
           resolve: { fullySpecified: false },
+        },
+        // The text of a `?raw` stylesheet; see `leaveRawStylesheetsAlone`.
+        {
+          test: /\.css$/,
+          resourceQuery: RAW_QUERY,
+          type: 'asset/source',
         },
       ],
     },

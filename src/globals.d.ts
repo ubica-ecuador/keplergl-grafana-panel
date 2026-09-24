@@ -7,11 +7,12 @@
 declare const __webpack_public_path__: string;
 
 /**
- * Side-effect imports of stylesheets, which webpack turns into injected CSS.
- *
- * The scaffold's `.config/types/bundler-rules.d.ts` declares the image and font
- * loaders' extensions but not this one. TypeScript 5 let the untyped import
- * pass; from TypeScript 6 a side-effect import with no declaration is an error
- * (TS2882), so the module has to be declared somewhere we own.
+ * A stylesheet imported as its text, for emotion to scope (see
+ * `panel/maplibreStyles.ts`). The root webpack config serves `?raw` as a
+ * string instead of handing it to the scaffold's style-loader, which would
+ * inject it into the page as it is.
  */
-declare module '*.css';
+declare module '*.css?raw' {
+  const text: string;
+  export default text;
+}
