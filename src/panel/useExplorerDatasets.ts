@@ -8,9 +8,6 @@ import { EXPLORER_ROW_CAP, explorerSql, rowsFromTable } from '../data/explorerQu
 import { applyExplorerDataset } from './explorerDatasets';
 import { type ExplorerToMap, subscribeExplorerToMap } from './explorerToMap';
 
-/** The reasons there was no engine that have been logged already: each is logged once. */
-const loggedNoEngine = new Set<string>();
-
 /**
  * Serialises `showExplorerResult` per store, from the query through the
  * apply: each request's promise, so the next request on the same store starts
@@ -25,9 +22,8 @@ const requestChains = new WeakMap<Store, Promise<unknown>>();
 /**
  * Runs an explorer request on Chaski's engine and puts the result on the map.
  * Requests on the same store run one at a time, in the order they were sent.
- * Returns the dataset id, or null when nothing was shown: no engine (logged
- * once per reason, since the explorer that sends these needs Chaski anyway),
- * or any failure on the way (the query, turning its result into rows, or
+ * Returns the dataset id, or null when nothing was shown: no engine (silently,
+ * since the explorer that sends these needs Chaski anyway), or any failure on the way (the query, turning its result into rows, or
  * kepler never taking the dataset within `applyExplorerDataset`'s timeout),
  * shown to the user as one error with the map left as it was. Never rejects.
  */
@@ -45,10 +41,6 @@ async function showNow(store: Store, request: ExplorerToMap, win: object): Promi
   try {
     const result = await queryChaski(explorerSql(request), win);
     if (!result.ok) {
-      if (!loggedNoEngine.has(result.reason)) {
-        loggedNoEngine.add(result.reason);
-        console.info(`kepler panel: explorer result ignored, Chaski engine ${result.reason}`);
-      }
       return null;
     }
     const { rows, truncated } = rowsFromTable(result.table, request.geometryColumn);

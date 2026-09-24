@@ -110,31 +110,23 @@ describe('showExplorerResult', () => {
   });
 
   it('does nothing, quietly for the user, without Chaski', async () => {
-    const info = jest.spyOn(console, 'info').mockImplementation(() => undefined);
     expect(await showExplorerResult(store, { sql: 'SELECT 1', label: 'X', mode: 'add' }, {})).toBeNull();
     expect(readDatasetIds(store)).toEqual([]);
     expect(alerts).toEqual([]);
-    info.mockRestore();
   });
 
-  it('logs once for each reason there is no engine, not once overall', async () => {
-    const info = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+  it('does nothing for every reason there is no engine, not only its absence', async () => {
     const request = { sql: 'SELECT 1', label: 'X', mode: 'add' } as const;
-    const windows = {
-      absent: {},
-      version: { __chaski: { apiVersion: 2, engine: () => undefined } },
-      'not-started': { __chaski: { apiVersion: 1, engine: () => undefined } },
-    };
-    for (const win of [...Object.values(windows), ...Object.values(windows)]) {
+    const windows = [
+      {},
+      { __chaski: { apiVersion: 2, engine: () => undefined } },
+      { __chaski: { apiVersion: 1, engine: () => undefined } },
+    ];
+    for (const win of windows) {
       expect(await showExplorerResult(store, request, win)).toBeNull();
     }
-    const logged = (reason: string) => info.mock.calls.filter(([line]) => String(line).endsWith(` ${reason}`)).length;
-    // Another test may have logged `absent` already; the other two are this test's own.
-    expect(logged('absent')).toBeLessThanOrEqual(1);
-    expect(logged('version')).toBe(1);
-    expect(logged('not-started')).toBe(1);
+    expect(readDatasetIds(store)).toEqual([]);
     expect(alerts).toEqual([]);
-    info.mockRestore();
   });
 
   it('shows an error and resolves null when kepler never takes the dataset', async () => {

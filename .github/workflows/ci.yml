@@ -147,19 +147,51 @@ jobs:
         env:
           ARCHIVE: ${{ steps.metadata.outputs.archive }}
 
+      # The catalog's review scans a clone of the tagged source, not the
+      # archive, and the validator only does so when it is handed the source.
+      # The tracked files alone, as a clone has them: the workspace also holds
+      # node_modules and the built plugin, which the review never sees.
+      - name: Export source as the catalog review sees it
+        id: source
+        run: |
+          mkdir -p "${RUNNER_TEMP}/source"
+          git archive HEAD | tar -x -C "${RUNNER_TEMP}/source"
+          echo "dir=${RUNNER_TEMP}/source" >> $GITHUB_OUTPUT
+
+      # The rules the review runs with semgrep over src/ (direct CSS imports,
+      # window.location, console logging, …). Blocking, unlike the full run
+      # below: an error here is one the catalog blocks the submission on, and
+      # 1.0.0 was turned away for one no check here had run. Only errors fail
+      # the step; the rules' warnings are printed and let through.
+      - name: Check code rules
+        run: |
+          docker run --pull=always \
+            -v $PWD/${ARCHIVE}:/archive.zip \
+            -v ${SOURCE}:/source_code \
+            grafana/plugin-validator-cli -analyzer=code-rules -sourceCodeUri file:///source_code /archive.zip
+        env:
+          ARCHIVE: ${{ steps.metadata.outputs.archive }}
+          SOURCE: ${{ steps.source.outputs.dir }}
+
       # The full validator is what the catalog runs at submission time. Kept
-      # separate from the blocking check above and allowed to fail, because it
+      # separate from the blocking checks above and allowed to fail, because it
       # also reports things that are only true until the plugin is published —
       # "unsigned plugin", an unregistered account prefix — which must not stop
-      # a build. Read its output before submitting.
+      # a build. Read its output before submitting. With the source it also
+      # runs osv-scanner over package-lock.json, whose high and critical
+      # advisories fail the release workflow's own validation. The config
+      # turns off gosec alone, which errs on a plugin with no Go; see the file.
       - name: Validate plugin (full, advisory)
         continue-on-error: true
         run: |
           docker run --pull=always \
             -v $PWD/${ARCHIVE}:/archive.zip \
-            grafana/plugin-validator-cli /archive.zip
+            -v ${SOURCE}:/source_code \
+            -v $PWD/.github/plugin-validator.yaml:/config.yaml \
+            grafana/plugin-validator-cli -config /config.yaml -sourceCodeUri file:///source_code /archive.zip
         env:
           ARCHIVE: ${{ steps.metadata.outputs.archive }}
+          SOURCE: ${{ steps.source.outputs.dir }}
 
       - name: Archive Build
         uses: actions/upload-artifact@v7

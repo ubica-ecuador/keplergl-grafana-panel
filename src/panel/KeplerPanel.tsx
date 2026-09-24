@@ -130,12 +130,16 @@ export function KeplerPanel({
   // A self-hosted style may name a dashboard variable and may be written
   // relative to the page; kepler can use neither as authored. See
   // `customBasemapUrl.ts` for what each of the two costs when it is skipped.
+  // Relative to the document's base, not the address bar: Grafana sets
+  // `<base href>` to its own root, sub-path included, so `public/…` finds
+  // Grafana's files wherever the dashboard sits, and `/…` means the same host
+  // either way.
   const customBasemapUrl = useMemo(
     () =>
       resolveCustomBasemapUrl(
         options.customBasemapUrl,
         replaceVariables,
-        typeof window === 'undefined' ? undefined : window.location.href
+        typeof document === 'undefined' ? undefined : document.baseURI
       ),
     [options.customBasemapUrl, replaceVariables]
   );

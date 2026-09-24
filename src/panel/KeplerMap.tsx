@@ -6,8 +6,7 @@ import { messages as keplerMessages } from '@kepler.gl/localization';
 
 import { keplerRecipes } from './keplerRecipes';
 import { withOwnLayerLabels } from './localeMessages';
-
-import 'maplibre-gl/dist/maplibre-gl.css';
+import { maplibreStyles } from './maplibreStyles';
 
 import type { PanelDataset } from '../data/framesToDatasets';
 import type { RasterDataset } from '../data/rasterDataset';
@@ -535,7 +534,11 @@ export function KeplerMap({
   });
 
   return (
-    <div ref={setStyleTarget} style={{ width, height, position: 'relative', overflow: 'hidden' }}>
+    <div
+      ref={setStyleTarget}
+      className={maplibreStyles}
+      style={{ width, height, position: 'relative', overflow: 'hidden' }}
+    >
       {styleTarget && (
         <StyleSheetManager target={styleTarget}>
           <Provider store={store}>

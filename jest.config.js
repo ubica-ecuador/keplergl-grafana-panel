@@ -40,5 +40,7 @@ module.exports = {
     '^parquet-wasm$': '<rootDir>/tests/mocks/parquet-wasm.js',
     // ESM-only .mjs decoder reached through kepler's @luma.gl/gltf; see the mock.
     '^meshoptimizer(/.*)?$': '<rootDir>/tests/mocks/meshoptimizer.js',
+    // A stylesheet imported as text; see the mock.
+    '\\.css\\?raw$': '<rootDir>/tests/mocks/raw-css.js',
   },
 };
