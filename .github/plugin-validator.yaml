@@ -1,0 +1,16 @@
+# Configuration for CI's full, advisory plugin-validator run (ci.yml). It is
+# the validator's built-in default — every analyzer on — with one exception:
+#
+# go-sec. This plugin has no Go backend, and on a source tree without Go
+# packages gosec exits 1 with an empty report, which the validator reports as
+# an error ("Scan incomplete: gosec returned an empty report"). Turn it back on
+# if a backend is ever added.
+#
+# This only shapes what CI prints: the catalog runs its own configuration at
+# submission, which no file here can change.
+global:
+  enabled: true
+
+analyzers:
+  go-sec:
+    enabled: false
