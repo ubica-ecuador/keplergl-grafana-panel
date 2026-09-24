@@ -93,9 +93,10 @@ services:
 
   # Same Grafana, strict Content-Security-Policy, on port 3001.
   #
-  # maplibre-gl@4 spawns its Web Workers from blob: URLs. A hardened Grafana
-  # sets `worker-src` and can block them, which would break the map for any
-  # locked-down install. Exit criterion 3 of the Phase 0 spike is verified here,
+  # MapLibre 6 starts its Web Worker from a file served with the plugin
+  # (`maplibre/maplibre-gl-worker.mjs`), where MapLibre 4 used a blob: URL. A
+  # hardened Grafana sets `worker-src` and can block it, which would break the
+  # map for any locked-down install. Exit criterion 3 of the Phase 0 spike is verified here,
   # not discovered in production.
   #
   # Deliberately NOT using `extends`: Compose appends to sequences when merging,

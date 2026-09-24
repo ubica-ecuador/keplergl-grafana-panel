@@ -138,6 +138,9 @@ under that directive:
 content_security_policy_template = """...connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com https://titiler.xyz ...;"""
 ```
 
+If your template also sets `worker-src`, it has to allow `'self'`: MapLibre's worker is a file served
+with the plugin, under `public/plugins/ubica-keplergl-panel/maplibre/`, not a `blob:` URL.
+
 Each host serves only what its name suggests: Carto the three default base maps, Esri the satellite
 and topographic ones, Mapterhorn the elevation tiles behind the two relief styles, and `titiler.xyz`
 the default raster tile server, described next. Leave out the ones you never use — or point

@@ -41,6 +41,9 @@ Any Grafana data source works — the panel reads data frames, not a specific pr
   coordinate pairs.
 - EPSG:4326 only. The panel renders WGS84 longitude/latitude degrees and does not reproject;
   project in the query if the source is not already in it.
+- kepler's own **Add Data** dialog does not read Excel workbooks. The library kepler reads them with
+  has security advisories and no fixed release, so it is left out, and an Excel file is refused with
+  a message to save the sheet as CSV.
 
 ### Layers the panel builds for you
 

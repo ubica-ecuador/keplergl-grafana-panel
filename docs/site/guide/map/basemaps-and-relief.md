@@ -52,8 +52,8 @@ This is a deck.gl property, not a bug in the styles — see
 [Under the hood](../../reference/under-the-hood).
 :::
 
-A second thing to know before leaning on it: kepler pins MapLibre 4, where panning a tilted terrain
-map can make the camera jitter
+A second thing to know before leaning on it: panning a tilted terrain map can make the camera jitter,
+an open kepler.gl issue
 ([keplergl/kepler.gl#3394](https://github.com/keplergl/kepler.gl/issues/3394)).
 
 ## Thumbnails

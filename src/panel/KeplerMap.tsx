@@ -19,6 +19,7 @@ import type { KeplerThemeOverride } from '../data/keplerTheme';
 import { KEPLER_INSTANCE_ID } from './constants';
 import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES } from './basemaps';
 import { configureKepler } from './keplerConfig';
+import { configureMaplibreWorker } from './maplibreWorker';
 import { createKeplerStore } from './keplerStore';
 import {
   captureMapConfig,
@@ -78,6 +79,7 @@ const NO_TIME_VARIABLES: TimeVariableMapping = { from: '', to: '' };
 // Must run before any kepler component mounts. Lives here rather than in
 // module.ts so it is part of the deferred chunk.
 configureKepler();
+configureMaplibreWorker();
 
 // Three repairs to the stock KeplerGl and one addition: a map control that
 // carries the effects button kepler ships but never mounts, a range brush that

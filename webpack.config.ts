@@ -95,6 +95,17 @@ const config = async (env: Env): Promise<Configuration> => {
            * do not.
            */
           { from: '../THIRD-PARTY-LICENSES.md', to: 'THIRD-PARTY-LICENSES.md' },
+          /*
+           * MapLibre 6's worker, served beside the plugin because the bundle
+           * cannot carry it: MapLibre starts it as a module worker from a URL
+           * of its own, and src/panel/maplibreWorker.ts supplies that URL. The
+           * worker imports `./maplibre-gl-shared.mjs`, so both files go, under
+           * their own names, into the same folder.
+           */
+          {
+            from: '../node_modules/maplibre-gl/dist/maplibre-gl-{worker,shared}.mjs',
+            to: 'maplibre/[name][ext]',
+          },
         ],
       }),
       /*

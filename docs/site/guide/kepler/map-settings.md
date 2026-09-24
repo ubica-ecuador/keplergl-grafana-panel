@@ -22,7 +22,7 @@ Two things to expect on a tilted map:
 
 - **Your data does not drape over the relief.** deck.gl draws at its own altitude. This is a deck.gl
   property, covered in [Under the hood](../../reference/under-the-hood).
-- **Panning a tilted terrain map can make the camera jitter**, because kepler pins MapLibre 4
+- **Panning a tilted terrain map can make the camera jitter**, an open kepler.gl issue
   ([keplergl/kepler.gl#3394](https://github.com/keplergl/kepler.gl/issues/3394)).
 
 ## Globe
