@@ -2165,6 +2165,29 @@ export function readLayerBoundsUnion(store: Store): MapBounds | null {
 }
 
 /**
+ * Tells kepler the map's size before a load frames the map around its data.
+ *
+ * kepler learns its size from a ResizeObserver on the map container, and until
+ * that answers its map state holds the 800 × 800 it starts with. A load that
+ * centres on its data fits the bounds to whatever size the state holds, so one
+ * that gets there first is framed for a map of the wrong shape, and the viewport
+ * guard refits it a moment later: the map moves after it appeared, and a map
+ * with viewport variables publishes both bboxes. MapLibre 6 made the observer
+ * answer later, which turned a rare race into the usual order. Dispatching the
+ * size the panel already knows is what the observer would do, only sooner.
+ */
+export function sizeMapForFit(store: Store, dispatch: Dispatch, width: number, height: number): void {
+  if (!(width > 0 && height > 0)) {
+    return;
+  }
+  const mapState = readMapState(store);
+  if (mapState?.width === width && mapState?.height === height) {
+    return;
+  }
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, updateMap({ width, height } as Parameters<typeof updateMap>[0], 0)));
+}
+
+/**
  * Puts a full saved viewport back on the map — latitude, longitude, zoom and
  * whatever bearing/pitch the config carried. The viewport guard's restore.
  */

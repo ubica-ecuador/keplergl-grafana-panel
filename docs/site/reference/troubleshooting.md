@@ -131,7 +131,7 @@ See [Interactions](../guide/kepler/interactions).
 
 ## The camera jitters on a tilted relief map
 
-A known MapLibre 4 issue, and kepler pins MapLibre 4 —
+An open kepler.gl issue,
 [keplergl/kepler.gl#3394](https://github.com/keplergl/kepler.gl/issues/3394). Nothing to configure;
 reduce the tilt or use a flat base map.
 

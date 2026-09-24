@@ -19,6 +19,7 @@ import type { KeplerThemeOverride } from '../data/keplerTheme';
 import { KEPLER_INSTANCE_ID } from './constants';
 import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES } from './basemaps';
 import { configureKepler } from './keplerConfig';
+import { configureMaplibreWorker } from './maplibreWorker';
 import { createKeplerStore } from './keplerStore';
 import {
   captureMapConfig,
@@ -37,6 +38,7 @@ import {
   resumeTimeFilter,
   setBasemap,
   setSidePanel,
+  sizeMapForFit,
 } from './keplerAdapter';
 import { decideLoadAction } from './loadDecision';
 import { useTimeRangeSync } from './useTimeRangeSync';
@@ -77,6 +79,7 @@ const NO_TIME_VARIABLES: TimeVariableMapping = { from: '', to: '' };
 // Must run before any kepler component mounts. Lives here rather than in
 // module.ts so it is part of the deferred chunk.
 configureKepler();
+configureMaplibreWorker();
 
 // Three repairs to the stock KeplerGl and one addition: a map control that
 // carries the effects button kepler ships but never mounts, a range brush that
@@ -240,6 +243,13 @@ export function KeplerMap({
   // `splitMapsGuard.ts`. Armed on every load and refresh below.
   const guardSplitMaps = useSplitMapsGuard({ store, mapConfig });
 
+  // The panel's size, for the load below to hand kepler before it frames the
+  // data. Read through a ref so that a resize does not re-run the load.
+  const mapSize = useRef({ width, height });
+  useEffect(() => {
+    mapSize.current = { width, height };
+  });
+
   useEffect(() => {
     // A saved tileset is content in its own right: a panel whose map is one
     // vector tile layer over a base map has no query rows at all, and waiting
@@ -299,6 +309,9 @@ export function KeplerMap({
       cancelTimeFilterResume();
       hasLoaded.current = true;
       appliedConfig.current = mapConfig;
+      // kepler frames a load without a saved viewport to the size its state
+      // holds, which is 800 × 800 until its own ResizeObserver answers.
+      sizeMapForFit(store, store.dispatch, mapSize.current.width, mapSize.current.height);
       loadDatasets(store.dispatch, datasets, {}, mapConfig);
       loadRasters(store.dispatch, rasters);
       loadWms(store.dispatch, wms);

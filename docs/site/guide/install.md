@@ -84,6 +84,9 @@ under `connect-src`.
 content_security_policy_template = """… connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com https://titiler.xyz …;"""
 ```
 
+If your template also sets `worker-src`, it has to allow `'self'`: MapLibre's worker is a file served
+with the plugin, under `public/plugins/ubica-keplergl-panel/maplibre/`, not a `blob:` URL.
+
 Each host serves only what its name suggests:
 
 | Host                        | What it serves                                       |

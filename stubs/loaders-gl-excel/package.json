@@ -1,0 +1,13 @@
+{
+  "name": "@loaders.gl/excel",
+  "version": "4.5.2-stub.0",
+  "description": "Stands in for @loaders.gl/excel so SheetJS (xlsx) stays out of the plugin; see index.js",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "index.js",
+  "module": "index.js",
+  "exports": {
+    ".": "./index.js"
+  }
+}
