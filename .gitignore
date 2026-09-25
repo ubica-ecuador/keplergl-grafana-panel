@@ -103,6 +103,9 @@ testdata/hydro/
 # And `make-taxidata.py`: a week of 2015 NYC taxi trips, 83 MB, mirrored from
 # QuestDB's public demo for the nyc-taxi-live dashboard.
 testdata/taxi/
+# And `make-accesibilidad.sh`: the 38 accessibility COGs of Cuenca, rewritten
+# from GeoTIFFs a study handed over as files — the recipe is all git can keep.
+testdata/accesibilidad-cuenca/
 
 # Where those two park the source archives they download, so a second run does
 # not fetch ~300 MB again. Not the repository-root `/.cache/` above, which is

@@ -1,0 +1,615 @@
+{
+  "uid": "accesibilidad-cuenca",
+  "title": "Accesibilidad dual a oportunidades urbanas — Cuenca",
+  "description": "Minutos hasta la oportunidad más cercana, una de 37 categorías a la vez, elegida en la lista desplegable.",
+  "tags": [
+    "kepler",
+    "raster",
+    "cuenca",
+    "accesibilidad"
+  ],
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "liveNow": false,
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 42,
+  "timezone": "browser",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "hidden": true
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "custom",
+        "name": "categoria",
+        "label": "Oportunidad",
+        "description": "La categoría de oportunidad urbana cuyo mapa de accesibilidad se muestra. Se puede escribir para buscar.",
+        "query": "Resultado agregado : resultado,Abastecimiento · Tienda de barrio / frutería : tienda-de-barrio-fruteria,Abastecimiento · Panadería : panaderia,Abastecimiento · Supermercado : supermercado,Abastecimiento · Mercado municipal : mercado-municipal,Salud y cuidado · Farmacia : farmacia,Salud y cuidado · Médico / dentista / terapia : medico-dentista-terapia,Salud y cuidado · Peluquería : peluqueria,Educación · Escuela : escuela,Educación · Refuerzo escolar : refuerzo-escolar,Educación · Academia de idiomas : academia-de-idiomas,Educación · Academia de música / arte : academia-de-musica-arte,Educación · Academia deportiva : academia-deportiva,Educación · Librería : libreria,Educación · Papelería : papeleria,Cultura · Biblioteca : biblioteca,Cultura · Museo : museo,Cultura · Galería de arte : galeria-de-arte,Cultura · Teatro : teatro,Cultura · Cine : cine,Cultura · Centro comunitario : centro-comunitario,Cultura · Iglesia / catequesis : iglesia-catequesis,Ocio · Restaurante : restaurante,Ocio · Heladería / cafetería : heladeria-cafeteria,Ocio · Patio de comidas : patio-de-comidas,Ocio · Centro comercial : centro-comercial,Ocio · Piscina : piscina,Ocio · Juegos bajo techo : juegos-bajo-techo,Ocio · Videojuegos : videojuegos,Ocio · Salón de fiestas : salon-de-fiestas,Espacio público · Río : rio,Espacio público · Espacio público abierto : espacio-publico,Espacio público · Zoológico : zoologico,Espacio público · Estadio : estadio,Movilidad · Parada de bus : parada-de-bus,Movilidad · Parada de tranvía : parada-de-tranvia,Movilidad · Ciclovía : ciclovia,Movilidad · Taller de bicicletas : taller-de-bicicletas",
+        "current": {
+          "text": "Salud y cuidado · Farmacia",
+          "value": "farmacia"
+        },
+        "options": [
+          {
+            "selected": false,
+            "text": "Resultado agregado",
+            "value": "resultado"
+          },
+          {
+            "selected": false,
+            "text": "Abastecimiento · Tienda de barrio / frutería",
+            "value": "tienda-de-barrio-fruteria"
+          },
+          {
+            "selected": false,
+            "text": "Abastecimiento · Panadería",
+            "value": "panaderia"
+          },
+          {
+            "selected": false,
+            "text": "Abastecimiento · Supermercado",
+            "value": "supermercado"
+          },
+          {
+            "selected": false,
+            "text": "Abastecimiento · Mercado municipal",
+            "value": "mercado-municipal"
+          },
+          {
+            "selected": true,
+            "text": "Salud y cuidado · Farmacia",
+            "value": "farmacia"
+          },
+          {
+            "selected": false,
+            "text": "Salud y cuidado · Médico / dentista / terapia",
+            "value": "medico-dentista-terapia"
+          },
+          {
+            "selected": false,
+            "text": "Salud y cuidado · Peluquería",
+            "value": "peluqueria"
+          },
+          {
+            "selected": false,
+            "text": "Educación · Escuela",
+            "value": "escuela"
+          },
+          {
+            "selected": false,
+            "text": "Educación · Refuerzo escolar",
+            "value": "refuerzo-escolar"
+          },
+          {
+            "selected": false,
+            "text": "Educación · Academia de idiomas",
+            "value": "academia-de-idiomas"
+          },
+          {
+            "selected": false,
+            "text": "Educación · Academia de música / arte",
+            "value": "academia-de-musica-arte"
+          },
+          {
+            "selected": false,
+            "text": "Educación · Academia deportiva",
+            "value": "academia-deportiva"
+          },
+          {
+            "selected": false,
+            "text": "Educación · Librería",
+            "value": "libreria"
+          },
+          {
+            "selected": false,
+            "text": "Educación · Papelería",
+            "value": "papeleria"
+          },
+          {
+            "selected": false,
+            "text": "Cultura · Biblioteca",
+            "value": "biblioteca"
+          },
+          {
+            "selected": false,
+            "text": "Cultura · Museo",
+            "value": "museo"
+          },
+          {
+            "selected": false,
+            "text": "Cultura · Galería de arte",
+            "value": "galeria-de-arte"
+          },
+          {
+            "selected": false,
+            "text": "Cultura · Teatro",
+            "value": "teatro"
+          },
+          {
+            "selected": false,
+            "text": "Cultura · Cine",
+            "value": "cine"
+          },
+          {
+            "selected": false,
+            "text": "Cultura · Centro comunitario",
+            "value": "centro-comunitario"
+          },
+          {
+            "selected": false,
+            "text": "Cultura · Iglesia / catequesis",
+            "value": "iglesia-catequesis"
+          },
+          {
+            "selected": false,
+            "text": "Ocio · Restaurante",
+            "value": "restaurante"
+          },
+          {
+            "selected": false,
+            "text": "Ocio · Heladería / cafetería",
+            "value": "heladeria-cafeteria"
+          },
+          {
+            "selected": false,
+            "text": "Ocio · Patio de comidas",
+            "value": "patio-de-comidas"
+          },
+          {
+            "selected": false,
+            "text": "Ocio · Centro comercial",
+            "value": "centro-comercial"
+          },
+          {
+            "selected": false,
+            "text": "Ocio · Piscina",
+            "value": "piscina"
+          },
+          {
+            "selected": false,
+            "text": "Ocio · Juegos bajo techo",
+            "value": "juegos-bajo-techo"
+          },
+          {
+            "selected": false,
+            "text": "Ocio · Videojuegos",
+            "value": "videojuegos"
+          },
+          {
+            "selected": false,
+            "text": "Ocio · Salón de fiestas",
+            "value": "salon-de-fiestas"
+          },
+          {
+            "selected": false,
+            "text": "Espacio público · Río",
+            "value": "rio"
+          },
+          {
+            "selected": false,
+            "text": "Espacio público · Espacio público abierto",
+            "value": "espacio-publico"
+          },
+          {
+            "selected": false,
+            "text": "Espacio público · Zoológico",
+            "value": "zoologico"
+          },
+          {
+            "selected": false,
+            "text": "Espacio público · Estadio",
+            "value": "estadio"
+          },
+          {
+            "selected": false,
+            "text": "Movilidad · Parada de bus",
+            "value": "parada-de-bus"
+          },
+          {
+            "selected": false,
+            "text": "Movilidad · Parada de tranvía",
+            "value": "parada-de-tranvia"
+          },
+          {
+            "selected": false,
+            "text": "Movilidad · Ciclovía",
+            "value": "ciclovia"
+          },
+          {
+            "selected": false,
+            "text": "Movilidad · Taller de bicicletas",
+            "value": "taller-de-bicicletas"
+          }
+        ],
+        "multi": false,
+        "includeAll": false,
+        "allowCustomValue": false,
+        "hide": 0,
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 2,
+      "type": "ubica-keplergl-panel",
+      "title": "Accesibilidad dual · ${categoria:text}",
+      "description": "Minutos hasta la oportunidad más cercana de la categoría elegida (P50). Amarillo claro = cerca; rojo oscuro = 120 min o más.",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "gridPos": {
+        "h": 22,
+        "w": 18,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Un COG por categoría, servido junto al tablero. TiTiler lo lee dentro de la red\n-- de Docker y el navegador solo recibe teselas. `$categoria` va sin comillas:\n-- este datasource ya las pone.\nSELECT 'http://sources-data/accesibilidad-cuenca/' || $categoria || '.tif' AS raster_url",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "basemap": "auto",
+        "followGrafanaTheme": true,
+        "showSidePanel": false,
+        "timeSync": "off",
+        "peerTimeSync": false,
+        "publishWhilePlaying": false,
+        "tripLayerMode": "table",
+        "flowRenderMode": "straight",
+        "rasterServerUrl": "https://titiler.ubica.ec",
+        "rasterPainted": false,
+        "rasterColormap": "ylorrd",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "pitch": 0,
+              "latitude": -2.8825,
+              "longitude": -78.9835,
+              "zoom": 11.8
+            },
+            "visState": {
+              "layerOrder": [
+                "accesibilidad"
+              ],
+              "layers": [
+                {
+                  "id": "accesibilidad",
+                  "type": "rasterTile",
+                  "config": {
+                    "dataId": "grafana-A-raster",
+                    "label": "Minutos a la oportunidad más cercana",
+                    "color": [
+                      119,
+                      110,
+                      87
+                    ],
+                    "columns": {},
+                    "isVisible": true,
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "visConfig": {
+                      "preset": "singleBand",
+                      "singleBandName": "b1",
+                      "colormapId": "ylorrd",
+                      "nonLinearRescaling": false,
+                      "linearRescalingFactor": [
+                        1,
+                        1.5
+                      ],
+                      "gammaContrastFactor": 1,
+                      "sigmoidalContrastFactor": 0,
+                      "sigmoidalBiasFactor": 0.5,
+                      "saturationValue": 1,
+                      "filterEnabled": false,
+                      "filterRange": [
+                        -1,
+                        1
+                      ],
+                      "opacity": 0.8,
+                      "dynamicColor": false,
+                      "useSTACSearching": false,
+                      "stacSearchProvider": "earth-search",
+                      "startDate": "2020-02-02",
+                      "endDate": "2020-03-02",
+                      "colorRange": {
+                        "name": "Global Warming",
+                        "type": "sequential",
+                        "category": "Uber",
+                        "colors": [
+                          "#4C0035",
+                          "#880030",
+                          "#B72F15",
+                          "#D6610A",
+                          "#EF9100",
+                          "#FFC300"
+                        ]
+                      },
+                      "enableTerrain": false,
+                      "enableTerrainTopView": false,
+                      "showTileBorders": false,
+                      "showTileDebugInfo": false,
+                      "zoomOffset": 0
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "${categoria:text}",
+      "description": "Mediana de minutos hasta la oportunidad más cercana, y qué parte del área queda a 15 minutos o menos, o sin acceso en dos horas. Porcentajes sobre el área de todo el ráster, que incluye zona rural.",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- La distribución de minutos del ráster elegido, medida por TiTiler.\n-- Porcentajes sobre el área de todo el ráster, que incluye zona rural.\nWITH s AS (\n  SELECT (http_get('http://titiler/cog/statistics?url=http://sources-data/accesibilidad-cuenca/' || $categoria || '.tif&histogram_bins=0,15,30,60,120,121')->>'body')::JSON -> 'b1' AS b\n), h AS (\n  SELECT (b->>'median')::DOUBLE AS mediana,\n         [(b->'histogram'->0->>i)::DOUBLE FOR i IN range(5)] AS c\n  FROM s\n)\nSELECT mediana AS \"Mediana\",\n       100 * c[1] / list_sum(c) AS \"A ≤15 min\",\n       100 * c[5] / list_sum(c) AS \"Sin acceso\"\nFROM h",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mediana"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "m"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "text",
+      "title": "Cómo leer el mapa",
+      "gridPos": {
+        "h": 16,
+        "w": 6,
+        "x": 18,
+        "y": 6
+      },
+      "options": {
+        "mode": "html",
+        "content": "<div style=\"font-size:13px;line-height:1.5\">\n<p style=\"margin:0 0 6px\"><b>Minutos hasta la oportunidad más cercana</b></p>\n<div style=\"height:14px;border-radius:3px;background:linear-gradient(to right,#ffffcc,#ffeda0,#fed976,#feb24c,#fd8d3c,#fc4e2a,#e31a1c,#bd0026,#800026)\"></div>\n<div style=\"display:flex;justify-content:space-between;font-size:12px;opacity:.85;margin-top:2px\">\n<span>0</span><span>30</span><span>60</span><span>90</span><span>120+</span>\n</div>\n<p style=\"margin:12px 0 0\">Cada píxel (≈76 m) dice cuánto se tarda desde ahí en llegar a la <b>oportunidad más cercana</b> de la categoría elegida: es la <i>accesibilidad dual</i>. Menos minutos, mejor servido.</p>\n<p style=\"margin:8px 0 0\">Tiempo de viaje en su <b>mediana (P50)</b>. El tope es 120 min: el rojo más oscuro quiere decir «no se llega en dos horas».</p>\n<p style=\"margin:8px 0 0\">Todas las categorías comparten la misma escala, así que un mismo color significa los mismos minutos en cualquiera de ellas.</p>\n<p style=\"margin:8px 0 0\">Los porcentajes (arriba y en el gráfico de abajo) son del <b>área</b> de todo el ráster, que incluye zona rural: sirven para comparar categorías entre sí, no son la población servida.</p>\n</div>",
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "barchart",
+      "title": "Las 37 oportunidades · parte del área según minutos a la más cercana",
+      "description": "Cada barra es una categoría y reparte el área de Cuenca por tramos de tiempo hasta su oportunidad más cercana. Ordenadas de mejor a peor servidas (más área a 15 minutos o menos). Porcentajes sobre el área de todo el ráster, que incluye zona rural: comparan categorías entre sí, no son la población servida.",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "gridPos": {
+        "h": 26,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Las 37 categorías a la vez: una petición de estadísticas a TiTiler por ráster.\n-- Ordenadas por la parte del área que queda a 15 minutos o menos.\nWITH cat(oportunidad, slug) AS (VALUES\n    ('Tienda de barrio / frutería', 'tienda-de-barrio-fruteria'),\n    ('Panadería', 'panaderia'),\n    ('Supermercado', 'supermercado'),\n    ('Mercado municipal', 'mercado-municipal'),\n    ('Farmacia', 'farmacia'),\n    ('Médico / dentista / terapia', 'medico-dentista-terapia'),\n    ('Peluquería', 'peluqueria'),\n    ('Escuela', 'escuela'),\n    ('Refuerzo escolar', 'refuerzo-escolar'),\n    ('Academia de idiomas', 'academia-de-idiomas'),\n    ('Academia de música / arte', 'academia-de-musica-arte'),\n    ('Academia deportiva', 'academia-deportiva'),\n    ('Librería', 'libreria'),\n    ('Papelería', 'papeleria'),\n    ('Biblioteca', 'biblioteca'),\n    ('Museo', 'museo'),\n    ('Galería de arte', 'galeria-de-arte'),\n    ('Teatro', 'teatro'),\n    ('Cine', 'cine'),\n    ('Centro comunitario', 'centro-comunitario'),\n    ('Iglesia / catequesis', 'iglesia-catequesis'),\n    ('Restaurante', 'restaurante'),\n    ('Heladería / cafetería', 'heladeria-cafeteria'),\n    ('Patio de comidas', 'patio-de-comidas'),\n    ('Centro comercial', 'centro-comercial'),\n    ('Piscina', 'piscina'),\n    ('Juegos bajo techo', 'juegos-bajo-techo'),\n    ('Videojuegos', 'videojuegos'),\n    ('Salón de fiestas', 'salon-de-fiestas'),\n    ('Río', 'rio'),\n    ('Espacio público abierto', 'espacio-publico'),\n    ('Zoológico', 'zoologico'),\n    ('Estadio', 'estadio'),\n    ('Parada de bus', 'parada-de-bus'),\n    ('Parada de tranvía', 'parada-de-tranvia'),\n    ('Ciclovía', 'ciclovia'),\n    ('Taller de bicicletas', 'taller-de-bicicletas')\n), s AS (\n  SELECT oportunidad, (http_get('http://titiler/cog/statistics?url=http://sources-data/accesibilidad-cuenca/' || slug || '.tif&histogram_bins=0,15,30,60,120,121')->>'body')::JSON -> 'b1' AS b FROM cat\n), h AS (\n  SELECT oportunidad, [(b->'histogram'->0->>i)::DOUBLE FOR i IN range(5)] AS c FROM s\n)\nSELECT oportunidad AS \"Oportunidad\",\n       100 * c[1] / list_sum(c) AS \"≤15 min\",\n       100 * c[2] / list_sum(c) AS \"15–30 min\",\n       100 * c[3] / list_sum(c) AS \"30–60 min\",\n       100 * c[4] / list_sum(c) AS \"60–120 min\",\n       100 * c[5] / list_sum(c) AS \"Sin acceso (120)\"\nFROM h\nORDER BY c[1] / list_sum(c) DESC",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "fillOpacity": 90,
+            "lineWidth": 0,
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisSoftMin": 0,
+            "axisSoftMax": 100
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "≤15 min"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#fff3b0"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "15–30 min"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#fed976"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "30–60 min"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#fd8d3c"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "60–120 min"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e31a1c"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sin acceso (120)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#800026"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "stacking": "normal",
+        "xField": "Oportunidad",
+        "showValue": "never",
+        "groupWidth": 0.8,
+        "barWidth": 0.9,
+        "barRadius": 0,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "fullHighlight": false,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    }
+  ]
+}
