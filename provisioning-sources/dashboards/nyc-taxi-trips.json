@@ -1,0 +1,622 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "liveNow": false,
+  "panels": [
+    {
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "# Lower Manhattan in motion\n\n996 yellow-cab trips replayed over the buildings of Lower Manhattan. Each trail is one taxi:\nthe bright head is where the cab is now, and the tail fades behind it. **Press play on the\nmap's clock**; drag with the right button to orbit.\n\nThe data is the example that ships with deck.gl ([visgl/deck.gl-data](https://github.com/visgl/deck.gl-data/tree/master/examples/trips)),\nread in place from GitHub on every load. Its timestamps count seconds from an unnamed start, so the\nclock runs from 00:00 to 00:41 and says nothing about the real hour. The sample was cut at the\n30-minute mark — 279 trips end within ten seconds of it — which is why the count below falls off a\ncliff there.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [],
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "gridPos": {
+        "h": 18,
+        "w": 16,
+        "x": 0,
+        "y": 4
+      },
+      "id": 3,
+      "options": {
+        "basemap": "dark-matter",
+        "clickArea": false,
+        "clickAreaSizeMetres": 6000,
+        "clickConfirm": false,
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": false,
+        "mapConfig": {
+          "config": {
+            "mapState": {
+              "bearing": 25,
+              "dragRotate": true,
+              "latitude": 40.712,
+              "longitude": -74.005,
+              "pitch": 55,
+              "zoom": 13.8
+            },
+            "mapStyle": {
+              "styleType": "dark-matter"
+            },
+            "uiState": {
+              "mapControls": {
+                "mapLegend": {
+                  "active": true
+                }
+              }
+            },
+            "visState": {
+              "animationConfig": {
+                "currentTime": 1767226440000,
+                "speed": 0.25
+              },
+              "effects": [
+                {
+                  "id": "light",
+                  "isEnabled": true,
+                  "parameters": {
+                    "ambientLightColor": [
+                      190,
+                      210,
+                      255
+                    ],
+                    "ambientLightIntensity": 0.35,
+                    "shadowColor": [
+                      0,
+                      0,
+                      0
+                    ],
+                    "shadowIntensity": 0.45,
+                    "sunLightColor": [
+                      255,
+                      236,
+                      214
+                    ],
+                    "sunLightIntensity": 1.4,
+                    "timeMode": "pick",
+                    "timestamp": 1782073800000
+                  },
+                  "type": "lightAndShadow"
+                }
+              ],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "vendor"
+                      },
+                      {
+                        "name": "trip_min"
+                      },
+                      {
+                        "name": "trip_km"
+                      }
+                    ],
+                    "grafana-B": [
+                      {
+                        "name": "height_m"
+                      }
+                    ]
+                  }
+                }
+              },
+              "layerOrder": [
+                "trips",
+                "trips-glow",
+                "buildings"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "color": [
+                      255,
+                      176,
+                      59
+                    ],
+                    "columnMode": "table",
+                    "columns": {
+                      "id": "trip_id",
+                      "lat": "latitude",
+                      "lng": "longitude",
+                      "timestamp": "time"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "isVisible": true,
+                    "label": "Taxi trips",
+                    "visConfig": {
+                      "allowHover": true,
+                      "billboard": false,
+                      "colorRange": {
+                        "category": "Custom",
+                        "colorMap": [
+                          [
+                            "Vendor 0",
+                            "#ffb03b"
+                          ],
+                          [
+                            "Vendor 1",
+                            "#38d6ff"
+                          ]
+                        ],
+                        "colors": [
+                          "#ffb03b",
+                          "#38d6ff"
+                        ],
+                        "name": "Vendors",
+                        "type": "custom"
+                      },
+                      "fadeTrail": true,
+                      "opacity": 0.95,
+                      "sizeRange": [
+                        0,
+                        10
+                      ],
+                      "thickness": 1.2,
+                      "trailLength": 180
+                    }
+                  },
+                  "id": "trips",
+                  "type": "trip",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "vendor",
+                      "type": "string"
+                    },
+                    "colorScale": "customOrdinal",
+                    "sizeScale": "linear"
+                  }
+                },
+                {
+                  "config": {
+                    "color": [
+                      255,
+                      176,
+                      59
+                    ],
+                    "columnMode": "table",
+                    "columns": {
+                      "id": "trip_id",
+                      "lat": "latitude",
+                      "lng": "longitude",
+                      "timestamp": "time"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": true,
+                    "isVisible": true,
+                    "label": "Glow",
+                    "visConfig": {
+                      "allowHover": false,
+                      "billboard": false,
+                      "colorRange": {
+                        "category": "Custom",
+                        "colorMap": [
+                          [
+                            "Vendor 0",
+                            "#ffb03b"
+                          ],
+                          [
+                            "Vendor 1",
+                            "#38d6ff"
+                          ]
+                        ],
+                        "colors": [
+                          "#ffb03b",
+                          "#38d6ff"
+                        ],
+                        "name": "Vendors",
+                        "type": "custom"
+                      },
+                      "fadeTrail": true,
+                      "opacity": 0.18,
+                      "sizeRange": [
+                        0,
+                        10
+                      ],
+                      "thickness": 6,
+                      "trailLength": 100
+                    }
+                  },
+                  "id": "trips-glow",
+                  "type": "trip",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "vendor",
+                      "type": "string"
+                    },
+                    "colorScale": "customOrdinal",
+                    "sizeScale": "linear"
+                  }
+                },
+                {
+                  "config": {
+                    "color": [
+                      44,
+                      54,
+                      72
+                    ],
+                    "columns": {
+                      "geojson": "_geojson"
+                    },
+                    "dataId": "grafana-B",
+                    "isVisible": true,
+                    "label": "Buildings",
+                    "visConfig": {
+                      "allowHover": false,
+                      "colorRange": {
+                        "category": "Custom",
+                        "colors": [
+                          "#1f2633",
+                          "#283243",
+                          "#334056",
+                          "#3f4f6a",
+                          "#4d6180"
+                        ],
+                        "name": "Night towers",
+                        "type": "custom"
+                      },
+                      "elevationScale": 1,
+                      "enable3d": true,
+                      "enableElevationZoomFactor": false,
+                      "filled": true,
+                      "heightRange": [
+                        0,
+                        541
+                      ],
+                      "opacity": 1,
+                      "stroked": false,
+                      "wireframe": false
+                    }
+                  },
+                  "id": "buildings",
+                  "type": "geojson",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "height_m",
+                      "type": "integer"
+                    },
+                    "colorScale": "quantile",
+                    "heightField": {
+                      "name": "height_m",
+                      "type": "integer"
+                    },
+                    "heightScale": "linear"
+                  }
+                }
+              ],
+              "splitMaps": []
+            }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": false,
+        "publishIntervalMs": 1500,
+        "publishWhilePlaying": false,
+        "rasterBands": "",
+        "rasterColormap": "",
+        "rasterPainted": false,
+        "showSidePanel": false,
+        "timeSync": "off",
+        "tripLayerMode": "table",
+        "variableMappings": []
+      },
+      "pluginVersion": "1.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "-- deck.gl's own trips example: 996 yellow-cab journeys in Lower Manhattan,\n-- read where it lives. Timestamps are seconds from an unnamed start; they are\n-- pinned here to midnight UTC on 1 January 2026, the zone kepler's clock\n-- shows, so it reads 00:00 to 00:41.\nWITH raw AS (\n  SELECT row_number() OVER () AS n, vendor, path, timestamps\n  FROM read_json('https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/trips/trips-v7.json',\n                 maximum_object_size = 100000000)\n  WHERE len(path) >= 2 AND len(path) = len(timestamps)\n),\npts AS (\n  SELECT n, vendor, timestamps[1] AS t_start, timestamps[-1] AS t_end,\n         unnest(path) AS p, unnest(timestamps) AS ts\n  FROM raw\n),\nlegs AS (\n  SELECT *,\n         -- Distance of each leg from the previous GPS point, for the per-trip total.\n         coalesce(ST_Distance_Sphere(ST_Point(p[2], p[1]),\n                  ST_Point(lag(p[2]) OVER w, lag(p[1]) OVER w)), 0) AS leg_m\n  FROM pts\n  WINDOW w AS (PARTITION BY n ORDER BY ts)\n)\nSELECT 'trip ' || n                                    AS trip_id,\n       'Vendor ' || vendor                             AS vendor,\n       to_timestamp(1767225600 + ts)                   AS time,\n       p[2]                                            AS latitude,\n       p[1]                                            AS longitude,\n       round(sum(leg_m) OVER (PARTITION BY n) / 1000, 2) AS trip_km,\n       round((t_end - t_start) / 60, 1)                AS trip_min\nFROM legs\nORDER BY n, ts",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "-- The footprints and heights that ship beside the trips in deck.gl's example.\n-- Each ring is a bare list of [lng, lat]; closed here so it reads as WKT.\nWITH raw AS (\n  SELECT height, CASE WHEN polygon[1] = polygon[-1] THEN polygon\n                      ELSE list_append(polygon, polygon[1]) END AS ring\n  FROM read_json('https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/trips/buildings.json',\n                 maximum_object_size = 100000000)\n  WHERE len(polygon) >= 3\n)\nSELECT height AS height_m,\n       'POLYGON((' || array_to_string(list_transform(ring, c -> c[1] || ' ' || c[2]), ', ') || '))' AS geom\nFROM raw",
+          "refId": "B"
+        }
+      ],
+      "title": "",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "text",
+            "mode": "fixed"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Most taxis at once"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#ffb03b",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 4
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "WITH raw AS (\n  SELECT row_number() OVER () AS n, path, timestamps, timestamps[1] AS t_start, timestamps[-1] AS t_end\n  FROM read_json('https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/trips/trips-v7.json',\n                 maximum_object_size = 100000000)\n  WHERE len(path) >= 2 AND len(path) = len(timestamps)\n),\npts AS (SELECT n, unnest(path) AS p, generate_subscripts(path, 1) AS i FROM raw),\nlegs AS (\n  SELECT coalesce(ST_Distance_Sphere(ST_Point(p[2], p[1]),\n                  ST_Point(lag(p[2]) OVER w, lag(p[1]) OVER w)), 0) AS leg_m\n  FROM pts WINDOW w AS (PARTITION BY n ORDER BY i)\n),\nclock AS (SELECT unnest(range(0, 2490, 10)) AS s)\nSELECT (SELECT count(*) FROM raw)                                   AS \"Trips\",\n       (SELECT sum(len(path))::BIGINT FROM raw)                     AS \"GPS points\",\n       (SELECT round(sum(leg_m) / 1000) FROM legs)                  AS \"Km driven\",\n       (SELECT round(median(t_end - t_start) / 60, 1) FROM raw)     AS \"Median trip, min\",\n       (SELECT max(c) FROM (SELECT count(*) AS c FROM clock JOIN raw ON s BETWEEN t_start AND t_end GROUP BY s)) AS \"Most taxis at once\"",
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "description": "Cabs mid-trip at each moment, counted every ten seconds.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "taxis",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 18,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Vendor 0"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#ffb03b",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Vendor 1"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#38d6ff",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawSql": "-- How many cabs are mid-trip at each moment, every ten seconds, by vendor.\nWITH raw AS (\n  SELECT vendor, timestamps[1] AS t_start, timestamps[-1] AS t_end\n  FROM read_json('https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/trips/trips-v7.json',\n                 maximum_object_size = 100000000)\n  WHERE len(path) >= 2 AND len(path) = len(timestamps)\n),\nclock AS (SELECT unnest(range(0, 2490, 10)) AS s)\nSELECT to_timestamp(1767225600 + s)              AS time,\n       count(*) FILTER (WHERE raw.vendor = 0)    AS \"Vendor 0\",\n       count(*) FILTER (WHERE raw.vendor = 1)    AS \"Vendor 1\"\nFROM clock LEFT JOIN raw ON s BETWEEN t_start AND t_end\nGROUP BY s\nORDER BY s",
+          "refId": "A"
+        }
+      ],
+      "title": "Taxis on the road",
+      "type": "timeseries"
+    }
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 42,
+  "tags": [
+    "kepler",
+    "trips",
+    "deck.gl"
+  ],
+  "time": {
+    "from": "2026-01-01T00:00:00.000Z",
+    "to": "2026-01-01T00:42:00.000Z"
+  },
+  "timepicker": {
+    "hidden": true,
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "utc",
+  "title": "Lower Manhattan in motion",
+  "uid": "nyc-taxi-trips"
+}
