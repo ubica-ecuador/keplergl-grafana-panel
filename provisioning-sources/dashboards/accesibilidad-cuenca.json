@@ -680,7 +680,14 @@
               }
             ]
           },
-          "unit": "percent"
+          "unit": "percent",
+          "links": [
+            {
+              "oneClick": true,
+              "title": "Ver esta categoría en el mapa",
+              "url": "d/accesibilidad-cuenca/cbb227e?var-categoria=${__data.fields.slug}&${area:queryparam}"
+            }
+          ]
         },
         "overrides": [
           {
@@ -757,6 +764,22 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "slug"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": true,
+                  "viz": true
+                }
+              }
+            ]
           }
         ]
       },
@@ -800,7 +823,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- Las 37 categorías a la vez, dentro de la misma zona que el resumen: una\n-- petición de estadísticas a TiTiler por ráster. Ordenadas por la parte de la\n-- zona que queda a 15 minutos o menos.\nWITH zona AS (\n  SELECT nullif($area, '') IS NOT NULL AS dibujada,\n         ST_GeomFromText(coalesce(nullif($area, ''), 'POLYGON((-79.0865 -2.9574, -78.8805 -2.9574, -78.8805 -2.8073, -79.0865 -2.8073, -79.0865 -2.9574))')) AS g\n), cat(oportunidad, slug) AS (VALUES\n    ('Tienda de barrio / frutería', 'tienda-de-barrio-fruteria'),\n    ('Panadería', 'panaderia'),\n    ('Supermercado', 'supermercado'),\n    ('Mercado municipal', 'mercado-municipal'),\n    ('Farmacia', 'farmacia'),\n    ('Médico / dentista / terapia', 'medico-dentista-terapia'),\n    ('Peluquería', 'peluqueria'),\n    ('Escuela', 'escuela'),\n    ('Refuerzo escolar', 'refuerzo-escolar'),\n    ('Academia de idiomas', 'academia-de-idiomas'),\n    ('Academia de música / arte', 'academia-de-musica-arte'),\n    ('Academia deportiva', 'academia-deportiva'),\n    ('Librería', 'libreria'),\n    ('Papelería', 'papeleria'),\n    ('Biblioteca', 'biblioteca'),\n    ('Museo', 'museo'),\n    ('Galería de arte', 'galeria-de-arte'),\n    ('Teatro', 'teatro'),\n    ('Cine', 'cine'),\n    ('Centro comunitario', 'centro-comunitario'),\n    ('Iglesia / catequesis', 'iglesia-catequesis'),\n    ('Restaurante', 'restaurante'),\n    ('Heladería / cafetería', 'heladeria-cafeteria'),\n    ('Patio de comidas', 'patio-de-comidas'),\n    ('Centro comercial', 'centro-comercial'),\n    ('Piscina', 'piscina'),\n    ('Juegos bajo techo', 'juegos-bajo-techo'),\n    ('Videojuegos', 'videojuegos'),\n    ('Salón de fiestas', 'salon-de-fiestas'),\n    ('Río', 'rio'),\n    ('Espacio público abierto', 'espacio-publico'),\n    ('Zoológico', 'zoologico'),\n    ('Estadio', 'estadio'),\n    ('Parada de bus', 'parada-de-bus'),\n    ('Parada de tranvía', 'parada-de-tranvia'),\n    ('Ciclovía', 'ciclovia'),\n    ('Taller de bicicletas', 'taller-de-bicicletas')\n), s AS (\n  SELECT oportunidad, http_post('http://titiler/cog/statistics?url=http://sources-data/accesibilidad-cuenca/' || slug || '.tif&histogram_bins=0,15,30,60,120,121', MAP {}, json_object('type', 'Feature', 'properties', json_object(), 'geometry', ST_AsGeoJSON(zona.g)::JSON)) AS r FROM cat, zona\n), st AS (\n  SELECT oportunidad, CASE WHEN (r->>'status') = '200' THEN (r->>'body')::JSON -> 'properties' -> 'statistics' -> 'b1'\n            ELSE error('TiTiler no pudo medir la zona (' || coalesce(r->>'status', '?') || '): ' || coalesce(nullif(r->>'body', ''), r->>'reason', '')) END AS b FROM s\n), h AS (\n  SELECT oportunidad, [(b->'histogram'->0->>i)::DOUBLE FOR i IN range(5)] AS c FROM st\n)\nSELECT oportunidad AS \"Oportunidad\",\n       100 * c[1] / nullif(list_sum(c), 0) AS \"≤15 min\",\n       100 * c[2] / nullif(list_sum(c), 0) AS \"15–30 min\",\n       100 * c[3] / nullif(list_sum(c), 0) AS \"30–60 min\",\n       100 * c[4] / nullif(list_sum(c), 0) AS \"60–120 min\",\n       100 * c[5] / nullif(list_sum(c), 0) AS \"Sin acceso (120)\"\nFROM h\nORDER BY c[1] / nullif(list_sum(c), 0) DESC NULLS LAST",
+          "rawSql": "-- Las 37 categorías a la vez, dentro de la misma zona que el resumen: una\n-- petición de estadísticas a TiTiler por ráster. Ordenadas por la parte de la\n-- zona que queda a 15 minutos o menos.\nWITH zona AS (\n  SELECT nullif($area, '') IS NOT NULL AS dibujada,\n         ST_GeomFromText(coalesce(nullif($area, ''), 'POLYGON((-79.0865 -2.9574, -78.8805 -2.9574, -78.8805 -2.8073, -79.0865 -2.8073, -79.0865 -2.9574))')) AS g\n), cat(oportunidad, slug) AS (VALUES\n    ('Tienda de barrio / frutería', 'tienda-de-barrio-fruteria'),\n    ('Panadería', 'panaderia'),\n    ('Supermercado', 'supermercado'),\n    ('Mercado municipal', 'mercado-municipal'),\n    ('Farmacia', 'farmacia'),\n    ('Médico / dentista / terapia', 'medico-dentista-terapia'),\n    ('Peluquería', 'peluqueria'),\n    ('Escuela', 'escuela'),\n    ('Refuerzo escolar', 'refuerzo-escolar'),\n    ('Academia de idiomas', 'academia-de-idiomas'),\n    ('Academia de música / arte', 'academia-de-musica-arte'),\n    ('Academia deportiva', 'academia-deportiva'),\n    ('Librería', 'libreria'),\n    ('Papelería', 'papeleria'),\n    ('Biblioteca', 'biblioteca'),\n    ('Museo', 'museo'),\n    ('Galería de arte', 'galeria-de-arte'),\n    ('Teatro', 'teatro'),\n    ('Cine', 'cine'),\n    ('Centro comunitario', 'centro-comunitario'),\n    ('Iglesia / catequesis', 'iglesia-catequesis'),\n    ('Restaurante', 'restaurante'),\n    ('Heladería / cafetería', 'heladeria-cafeteria'),\n    ('Patio de comidas', 'patio-de-comidas'),\n    ('Centro comercial', 'centro-comercial'),\n    ('Piscina', 'piscina'),\n    ('Juegos bajo techo', 'juegos-bajo-techo'),\n    ('Videojuegos', 'videojuegos'),\n    ('Salón de fiestas', 'salon-de-fiestas'),\n    ('Río', 'rio'),\n    ('Espacio público abierto', 'espacio-publico'),\n    ('Zoológico', 'zoologico'),\n    ('Estadio', 'estadio'),\n    ('Parada de bus', 'parada-de-bus'),\n    ('Parada de tranvía', 'parada-de-tranvia'),\n    ('Ciclovía', 'ciclovia'),\n    ('Taller de bicicletas', 'taller-de-bicicletas')\n), s AS (\n  SELECT oportunidad, slug, http_post('http://titiler/cog/statistics?url=http://sources-data/accesibilidad-cuenca/' || slug || '.tif&histogram_bins=0,15,30,60,120,121', MAP {}, json_object('type', 'Feature', 'properties', json_object(), 'geometry', ST_AsGeoJSON(zona.g)::JSON)) AS r FROM cat, zona\n), st AS (\n  SELECT oportunidad, slug, CASE WHEN (r->>'status') = '200' THEN (r->>'body')::JSON -> 'properties' -> 'statistics' -> 'b1'\n            ELSE error('TiTiler no pudo medir la zona (' || coalesce(r->>'status', '?') || '): ' || coalesce(nullif(r->>'body', ''), r->>'reason', '')) END AS b FROM s\n), h AS (\n  SELECT oportunidad, slug, [(b->'histogram'->0->>i)::DOUBLE FOR i IN range(5)] AS c FROM st\n)\nSELECT oportunidad AS \"Oportunidad\",\n       100 * c[1] / nullif(list_sum(c), 0) AS \"≤15 min\",\n       100 * c[2] / nullif(list_sum(c), 0) AS \"15–30 min\",\n       100 * c[3] / nullif(list_sum(c), 0) AS \"30–60 min\",\n       100 * c[4] / nullif(list_sum(c), 0) AS \"60–120 min\",\n       100 * c[5] / nullif(list_sum(c), 0) AS \"Sin acceso (120)\",\n       -- Not drawn: it is what a click on a bar puts in the dropdown.\n       slug\nFROM h\nORDER BY c[1] / nullif(list_sum(c), 0) DESC NULLS LAST",
           "refId": "A"
         }
       ],
