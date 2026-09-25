@@ -53,6 +53,8 @@ function announce(state: 'busy' | 'settled'): void {
 
 /** About one animation frame. */
 const FRAME_MS = 16;
+/** A frame on a starved main thread: longer than the 300 ms rest a moved-by-hand playhead waits for. */
+const SLOW_FRAME_MS = 400;
 /** One frame of playback moves the playhead this much. */
 const STEP_MS = 1000;
 
@@ -88,9 +90,9 @@ function mount(variable = 'playhead', interval = 250) {
 }
 
 /** Lets `ms` go by a frame at a time, moving the playhead a step each frame when `moving`. */
-async function frames(store: FakeStore, ms: number, moving: boolean): Promise<void> {
-  for (let elapsed = 0; elapsed < ms; elapsed += FRAME_MS) {
-    await jest.advanceTimersByTimeAsync(FRAME_MS);
+async function frames(store: FakeStore, ms: number, moving: boolean, frameMs = FRAME_MS): Promise<void> {
+  for (let elapsed = 0; elapsed < ms; elapsed += frameMs) {
+    await jest.advanceTimersByTimeAsync(frameMs);
     if (moving && mockMap.time !== null) {
       mockMap.time += STEP_MS;
       store.touch();
@@ -156,6 +158,30 @@ describe('usePlayheadVariableSync', () => {
     for (const gap of gaps) {
       expect(gap).toBeGreaterThanOrEqual(250);
       expect(gap).toBeLessThanOrEqual(250 + FRAME_MS);
+    }
+  });
+
+  // 250 happens to equal PublishGate's own grace period, so a pacing bug that
+  // drops the configured interval and falls back to the gate's grace alone
+  // reads as correct there. A different interval isolates it — but only under
+  // slow frames: at a smooth 16 ms per frame, the debounce that rearms on
+  // every touch already lands the write at the interval boundary on its own,
+  // so a bug confined to the hold check inside flush() (playbackWait) never
+  // gets a chance to matter. Slower than the 300 ms rest, as
+  // `useTimeVariableSync`'s equivalent test is, so the debounce fires early
+  // and only that hold check keeps the pace to the interval.
+  it('while playing, paces writes to the configured interval under slow frames, not the gate grace', async () => {
+    const { store } = mount('playhead', 1000);
+    await frames(store, 500, false);
+    mockMap.animating = true;
+    store.touch();
+    const start = performance.now();
+    await frames(store, 6000, true, SLOW_FRAME_MS);
+    const gaps = gapsSince(start);
+    expect(gaps.length).toBeGreaterThanOrEqual(4);
+    for (const gap of gaps) {
+      expect(gap).toBeGreaterThanOrEqual(1000);
+      expect(gap).toBeLessThanOrEqual(1000 + SLOW_FRAME_MS);
     }
   });
 
@@ -227,22 +253,64 @@ describe('usePlayheadVariableSync', () => {
     expect(mockWrites.length).toBe(before);
   });
 
-  it('writes nothing while the data is being replaced mid-play, and carries on after', async () => {
+  // On load, or the moment kepler drops every animatable layer while rebuilding
+  // a dataset's domain, `readAnimationTime` returns null outright (covered
+  // separately above, on load). This is the same null, met mid-play: nothing
+  // may be scheduled from it — in particular never a fabricated instant such
+  // as 0 — and once a real instant returns, writing carries on from it.
+  it('writes nothing while the domain has no playhead mid-play, and carries on once it returns', async () => {
     const { store } = mount('playhead', 250);
     await frames(store, 500, false);
     mockMap.animating = true;
     store.touch();
     await frames(store, 1000, true);
+    // Let whatever the interval left in flight actually leave, so the count
+    // sampled below is not the tail end of ordinary playback pacing.
+    await frames(store, 800, false);
     const saved = mockMap.time;
+
     mockMap.time = null;
     store.touch();
     const before = mockWrites.length;
     await frames(store, 1000, false);
-    expect(mockWrites.slice(before).every((w) => typeof w.value === 'string' && w.value !== '')).toBe(true);
-    mockMap.time = (saved ?? 0) + 60_000;
+    expect(mockWrites.length).toBe(before);
+
+    const recovered = (saved ?? 0) + 60_000;
+    mockMap.time = recovered;
     store.touch();
     await frames(store, 1000, true);
     expect(mockWrites.length).toBeGreaterThan(before);
+    expect(Date.parse(mockWrites[mockWrites.length - 1].value)).toBeGreaterThanOrEqual(recovered);
+  });
+
+  // kepler's own replace path (`updateAnimationDomain` in
+  // vis-state-updaters.js) is not the null case above: it keeps `currentTime`
+  // exactly where it was and only clears `isAnimating`. That is indistinguishable
+  // from an ordinary stop, and must be handled the same way — the kept instant,
+  // once, immediately — with playback picking back up at the interval pace
+  // once the layer is animatable again.
+  it('when a replace keeps the time and only clears isAnimating, writes that instant once and resumes after', async () => {
+    const { store } = mount('playhead', 250);
+    await frames(store, 500, false);
+    mockMap.animating = true;
+    store.touch();
+    await frames(store, 1000, true);
+    // One more advance that nothing has published yet, so the kept instant is
+    // provably a fresh value rather than a coincidence with the last write.
+    mockMap.time = (mockMap.time as number) + STEP_MS;
+    const kept = mockMap.time as number;
+    mockMap.animating = false;
+    store.touch();
+    const before = mockWrites.length;
+    await jest.advanceTimersByTimeAsync(0);
+    expect(mockWrites.length).toBe(before + 1);
+    expect(mockWrites[mockWrites.length - 1].value).toBe(formatTimeValue(kept));
+
+    mockMap.animating = true;
+    store.touch();
+    const start = performance.now();
+    await frames(store, 2000, true);
+    expect(gapsSince(start).length).toBeGreaterThanOrEqual(3);
   });
 
   it('stops writing to a variable the option no longer names', async () => {
