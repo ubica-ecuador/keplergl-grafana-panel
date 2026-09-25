@@ -39,7 +39,8 @@
       "options": {
         "playheadVariable": "playhead",
         "publishIntervalMs": 250,
-        "showSidePanel": true
+        "showSidePanel": true,
+        "timeSync": "off"
       },
       "targets": [
         {

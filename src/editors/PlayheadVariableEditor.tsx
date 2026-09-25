@@ -28,8 +28,9 @@ export function PlayheadVariableEditor({ value, onChange }: Props) {
       ) : (
         <Text variant="bodySmall" color="secondary">
           The instant the trips are playing, as UTC ISO 8601, so other panels can query{' '}
-          <code>{`WHERE $${name}::TIMESTAMPTZ BETWEEN trip_start AND trip_end`}</code>. Set it on one map only: a
-          map following another&apos;s clock writes it too.
+          <code>{`WHERE NULLIF('$${name}', '')::timestamptz BETWEEN trip_start AND trip_end`}</code>, which matches
+          nothing while the variable is empty. Drop the quotes on data sources that add their own, such as DuckDB. Set
+          it on one map only: a map following another&apos;s clock writes it too.
         </Text>
       )}
 

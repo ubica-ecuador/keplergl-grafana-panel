@@ -71,17 +71,6 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       defaultValue: false,
       showIf: (config) => config.timeSync === 'variables',
     })
-    .addNumberInput({
-      path: 'publishIntervalMs',
-      name: 'Minimum interval while playing (ms)',
-      description:
-        'Least time between two updates of the variables during playback: the time window\'s, and the trip playhead\'s. With a datasource that reports when its panels have answered, each update also waits for those panels, for up to five seconds.',
-      category: ['Map'],
-      defaultValue: DEFAULT_PUBLISH_INTERVAL_MS,
-      settings: { min: MIN_PUBLISH_INTERVAL_MS, integer: true },
-      showIf: (config) =>
-        Boolean(config.playheadVariable) || (config.timeSync === 'variables' && Boolean(config.publishWhilePlaying)),
-    })
     .addCustomEditor({
       id: 'playheadVariable',
       path: 'playheadVariable',
@@ -90,6 +79,17 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
         "Write the trip animation's current instant to a dashboard variable, so other panels can follow it. Works with any time range sync.",
       category: ['Map'],
       editor: PlayheadVariableEditor,
+    })
+    .addNumberInput({
+      path: 'publishIntervalMs',
+      name: 'Minimum interval while playing (ms)',
+      description:
+        "Least time between two updates of the variables during playback: the time window's, and the trip playhead's. With a datasource that reports when its panels have answered, each update also waits for those panels, for up to five seconds.",
+      category: ['Map'],
+      defaultValue: DEFAULT_PUBLISH_INTERVAL_MS,
+      settings: { min: MIN_PUBLISH_INTERVAL_MS, integer: true },
+      showIf: (config) =>
+        Boolean(config.playheadVariable) || (config.timeSync === 'variables' && Boolean(config.publishWhilePlaying)),
     })
     .addBooleanSwitch({
       path: 'peerTimeSync',
