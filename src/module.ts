@@ -10,6 +10,7 @@ import { TimeVariableEditor } from './editors/TimeVariableEditor';
 import { AreaVariableEditor } from './editors/AreaVariableEditor';
 import { DEFAULT_CLICK_AREA_METRES } from './panel/clickArea';
 import { ViewportVariablesEditor } from './editors/ViewportVariablesEditor';
+import { PlayheadVariableEditor } from './editors/PlayheadVariableEditor';
 import { DEFAULT_RASTER_SERVER_URL } from './panel/constants';
 import { DEFAULT_PUBLISH_INTERVAL_MS, MIN_PUBLISH_INTERVAL_MS } from './panel/timeVariableSync';
 
@@ -74,11 +75,21 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       path: 'publishIntervalMs',
       name: 'Minimum interval while playing (ms)',
       description:
-        'Least time between two updates of the variables during playback. With a datasource that reports when its panels have answered, each update also waits for those panels, for up to five seconds.',
+        'Least time between two updates of the variables during playback: the time window\'s, and the trip playhead\'s. With a datasource that reports when its panels have answered, each update also waits for those panels, for up to five seconds.',
       category: ['Map'],
       defaultValue: DEFAULT_PUBLISH_INTERVAL_MS,
       settings: { min: MIN_PUBLISH_INTERVAL_MS, integer: true },
-      showIf: (config) => config.timeSync === 'variables' && Boolean(config.publishWhilePlaying),
+      showIf: (config) =>
+        Boolean(config.playheadVariable) || (config.timeSync === 'variables' && Boolean(config.publishWhilePlaying)),
+    })
+    .addCustomEditor({
+      id: 'playheadVariable',
+      path: 'playheadVariable',
+      name: 'Playhead variable',
+      description:
+        "Write the trip animation's current instant to a dashboard variable, so other panels can follow it. Works with any time range sync.",
+      category: ['Map'],
+      editor: PlayheadVariableEditor,
     })
     .addBooleanSwitch({
       path: 'peerTimeSync',

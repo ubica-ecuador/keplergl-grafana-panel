@@ -68,6 +68,7 @@ import { useMarkerSync } from './useMarkerSync';
 import { scopeLabelClicks } from './scopedLabelClicks';
 import { useClickArea } from './useClickArea';
 import { useTimeVariableSync } from './useTimeVariableSync';
+import { usePlayheadVariableSync } from './usePlayheadVariableSync';
 import type { TimeRangeMs, TimeSyncMode } from './timeSync';
 import type { TimeVariableMapping } from './timeVariableSync';
 import type { VariableMapping } from './variableSync';
@@ -150,6 +151,8 @@ export interface KeplerMapProps {
   publishIntervalMs: number;
   /** Whether this map shares its clock with the other maps on the dashboard. */
   peerTimeSync: boolean;
+  /** Variable the trip playhead is written to; empty for none. */
+  playheadVariable: string;
   /** Grafana's id for this panel: explorer results addressed to another panel are ignored. */
   panelId?: number;
 }
@@ -198,6 +201,7 @@ export function KeplerMap({
   publishWhilePlaying,
   publishIntervalMs,
   peerTimeSync,
+  playheadVariable,
   panelId,
 }: KeplerMapProps) {
   const store = useMemo(() => createKeplerStore(), []);
@@ -532,6 +536,10 @@ export function KeplerMap({
     publishIntervalMs,
     peerSync: peerTimeSync,
   });
+
+  // The Trip layer's clock, for every other panel. Independent of `timeSync`,
+  // which couples the time filter's window.
+  usePlayheadVariableSync({ store, isReady, variable: playheadVariable, publishIntervalMs });
 
   return (
     <div

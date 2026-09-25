@@ -174,6 +174,14 @@ export interface KeplerPanelOptions {
    */
   peerTimeSync?: boolean;
 
+  /**
+   * The dashboard variable the trip animation's playhead is written to, as UTC
+   * ISO 8601; empty for none. One way, map to variable, at the pace of
+   * `publishIntervalMs` while playing. Independent of `timeSync`: that option
+   * couples the time filter's window, this the Trip layer's clock.
+   */
+  playheadVariable?: string;
+
   /** How auto-created flow layers draw their lines. Defaults to `straight`. */
   flowRenderMode?: FlowRenderMode;
 

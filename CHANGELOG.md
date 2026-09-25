@@ -4,6 +4,14 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## Unreleased
+
+- **Playhead variable**: a new Map option writes the trip animation's current instant to a dashboard
+  variable, as UTC ISO 8601 — once on load, during playback at the *Minimum interval while playing*,
+  and where it stops — so a chart can draw a bar at the moment the map is playing, or a SQL panel can
+  count what is on the road right then. It is independent of *Time range sync*. The interval option
+  now also shows when this one is set.
+
 ## 1.0.1 (2026-09-23)
 
 1.0.0 never reached the plugin catalog: its review turned it away because the panel loaded

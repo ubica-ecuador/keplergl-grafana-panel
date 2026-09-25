@@ -193,6 +193,7 @@ export function KeplerPanel({
         publishWhilePlaying={options.publishWhilePlaying ?? false}
         publishIntervalMs={publishIntervalOf(options.publishIntervalMs)}
         peerTimeSync={options.peerTimeSync ?? false}
+        playheadVariable={options.playheadVariable ?? ''}
         panelId={id}
       />
     </div>
