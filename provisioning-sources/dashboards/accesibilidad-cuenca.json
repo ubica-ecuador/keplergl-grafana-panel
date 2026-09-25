@@ -248,6 +248,19 @@
         "allowCustomValue": false,
         "hide": 0,
         "skipUrlSync": false
+      },
+      {
+        "type": "textbox",
+        "name": "area",
+        "label": "Área dibujada (WKT)",
+        "hide": 2,
+        "description": "La publica el mapa al dibujar un rectángulo o un polígono; vacía, se mide todo el ráster.",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "skipUrlSync": false
       }
     ]
   },
@@ -262,7 +275,7 @@
         "uid": "duckdb"
       },
       "gridPos": {
-        "h": 22,
+        "h": 24,
         "w": 18,
         "x": 0,
         "y": 0
@@ -292,6 +305,7 @@
         "rasterServerUrl": "https://titiler.ubica.ec",
         "rasterPainted": false,
         "rasterColormap": "ylorrd",
+        "areaVariable": "area",
         "mapConfig": {
           "version": "v1",
           "config": {
@@ -383,13 +397,13 @@
       "id": 4,
       "type": "stat",
       "title": "${categoria:text}",
-      "description": "Mediana de minutos hasta la oportunidad más cercana, y qué parte del área queda a 15 minutos o menos, o sin acceso en dos horas. Porcentajes sobre el área de todo el ráster, que incluye zona rural.",
+      "description": "La zona consultada —el área dibujada en el mapa, o todo el ráster si no hay dibujo—, su superficie y la mediana de minutos hasta la oportunidad más cercana dentro de ella.",
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
       "gridPos": {
-        "h": 6,
+        "h": 4,
         "w": 6,
         "x": 18,
         "y": 0
@@ -403,18 +417,31 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- La distribución de minutos del ráster elegido, medida por TiTiler.\n-- Porcentajes sobre el área de todo el ráster, que incluye zona rural.\nWITH s AS (\n  SELECT (http_get('http://titiler/cog/statistics?url=http://sources-data/accesibilidad-cuenca/' || $categoria || '.tif&histogram_bins=0,15,30,60,120,121')->>'body')::JSON -> 'b1' AS b\n), h AS (\n  SELECT (b->>'median')::DOUBLE AS mediana,\n         [(b->'histogram'->0->>i)::DOUBLE FOR i IN range(5)] AS c\n  FROM s\n)\nSELECT mediana AS \"Mediana\",\n       100 * c[1] / list_sum(c) AS \"A ≤15 min\",\n       100 * c[5] / list_sum(c) AS \"Sin acceso\"\nFROM h",
+          "rawSql": "-- La distribución de minutos del ráster elegido dentro de la zona consultada,\n-- medida por TiTiler: el área dibujada en el mapa, o todo el ráster.\nWITH zona AS (\n  SELECT nullif($area, '') IS NOT NULL AS dibujada,\n         ST_GeomFromText(coalesce(nullif($area, ''), 'POLYGON((-79.0865 -2.9574, -78.8805 -2.9574, -78.8805 -2.8073, -79.0865 -2.8073, -79.0865 -2.9574))')) AS g\n), s AS (\n  SELECT dibujada, g, http_post('http://titiler/cog/statistics?url=http://sources-data/accesibilidad-cuenca/' || $categoria || '.tif&histogram_bins=0,15,30,60,120,121', MAP {}, json_object('type', 'Feature', 'properties', json_object(), 'geometry', ST_AsGeoJSON(zona.g)::JSON)) AS r FROM zona\n), st AS (\n  SELECT dibujada, g, CASE WHEN (r->>'status') = '200' THEN (r->>'body')::JSON -> 'properties' -> 'statistics' -> 'b1'\n            ELSE error('TiTiler no pudo medir la zona (' || coalesce(r->>'status', '?') || '): ' || coalesce(nullif(r->>'body', ''), r->>'reason', '')) END AS b FROM s\n), h AS (\n  SELECT dibujada, ST_Area_Spheroid(ST_FlipCoordinates(g)) / 1e6 AS km2,\n         (b->>'median')::DOUBLE AS mediana, [(b->'histogram'->0->>i)::DOUBLE FOR i IN range(5)] AS c\n  FROM st\n)\nSELECT CASE WHEN dibujada THEN 'Área dibujada' ELSE 'Todo el ráster' END AS \"Zona\",\n       km2 AS \"Superficie\",\n       mediana AS \"Mediana\",\n       100 * c[1] / nullif(list_sum(c), 0) AS \"≤15 min\",\n       100 * c[2] / nullif(list_sum(c), 0) AS \"15–30 min\",\n       100 * c[3] / nullif(list_sum(c), 0) AS \"30–60 min\",\n       100 * c[4] / nullif(list_sum(c), 0) AS \"60–120 min\",\n       100 * c[5] / nullif(list_sum(c), 0) AS \"Sin acceso (120)\"\nFROM h",
           "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "Zona",
+                "Superficie",
+                "Mediana"
+              ]
+            }
+          }
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "percent",
-          "decimals": 0,
           "color": {
             "mode": "fixed",
             "fixedColor": "text"
-          }
+          },
+          "noValue": "—"
         },
         "overrides": [
           {
@@ -426,6 +453,26 @@
               {
                 "id": "unit",
                 "value": "m"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Superficie"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: km²"
+              },
+              {
+                "id": "decimals",
+                "value": 1
               }
             ]
           }
@@ -439,6 +486,160 @@
         "textMode": "value_and_name",
         "wideLayout": true,
         "showPercentChange": false,
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "bargauge",
+      "title": "Parte de la zona por minutos",
+      "description": "Qué parte de la zona consultada queda en cada tramo de tiempo hasta la oportunidad más cercana. Los colores son los del mapa.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 18,
+        "y": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "panelId": 4,
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "≤15 min",
+                "15–30 min",
+                "30–60 min",
+                "60–120 min",
+                "Sin acceso (120)"
+              ]
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "min": 0,
+          "max": 100,
+          "noValue": "—",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "≤15 min"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#fff3b0"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "15–30 min"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#fed976"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "30–60 min"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#fd8d3c"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "60–120 min"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e31a1c"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sin acceso (120)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#800026"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "valueMode": "text",
+        "namePlacement": "left",
+        "showUnfilled": true,
+        "sizing": "auto",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "maxVizHeight": 300,
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -453,14 +654,14 @@
       "type": "text",
       "title": "Cómo leer el mapa",
       "gridPos": {
-        "h": 16,
+        "h": 13,
         "w": 6,
         "x": 18,
-        "y": 6
+        "y": 11
       },
       "options": {
         "mode": "html",
-        "content": "<div style=\"font-size:13px;line-height:1.5\">\n<p style=\"margin:0 0 6px\"><b>Minutos hasta la oportunidad más cercana</b></p>\n<div style=\"height:14px;border-radius:3px;background:linear-gradient(to right,#ffffcc,#ffeda0,#fed976,#feb24c,#fd8d3c,#fc4e2a,#e31a1c,#bd0026,#800026)\"></div>\n<div style=\"display:flex;justify-content:space-between;font-size:12px;opacity:.85;margin-top:2px\">\n<span>0</span><span>30</span><span>60</span><span>90</span><span>120+</span>\n</div>\n<p style=\"margin:12px 0 0\">Cada píxel (≈76 m) dice cuánto se tarda desde ahí en llegar a la <b>oportunidad más cercana</b> de la categoría elegida: es la <i>accesibilidad dual</i>. Menos minutos, mejor servido.</p>\n<p style=\"margin:8px 0 0\">Tiempo de viaje en su <b>mediana (P50)</b>. El tope es 120 min: el rojo más oscuro quiere decir «no se llega en dos horas».</p>\n<p style=\"margin:8px 0 0\">Todas las categorías comparten la misma escala, así que un mismo color significa los mismos minutos en cualquiera de ellas.</p>\n<p style=\"margin:8px 0 0\">Los porcentajes (arriba y en el gráfico de abajo) son del <b>área</b> de todo el ráster, que incluye zona rural: sirven para comparar categorías entre sí, no son la población servida.</p>\n</div>",
+        "content": "<div style=\"font-size:13px;line-height:1.5\">\n<p style=\"margin:0 0 6px\"><b>Minutos hasta la oportunidad más cercana</b></p>\n<div style=\"height:14px;border-radius:3px;background:linear-gradient(to right,#ffffcc,#ffeda0,#fed976,#feb24c,#fd8d3c,#fc4e2a,#e31a1c,#bd0026,#800026)\"></div>\n<div style=\"display:flex;justify-content:space-between;font-size:12px;opacity:.85;margin-top:2px\">\n<span>0</span><span>30</span><span>60</span><span>90</span><span>120+</span>\n</div>\n<p style=\"margin:12px 0 0\">Cada píxel (≈76 m) dice cuánto se tarda desde ahí hasta la <b>oportunidad más cercana</b> de la categoría: la <i>accesibilidad dual</i>. Tiempo en su mediana (P50); el tope es 120 min, «no se llega en dos horas». La escala es la misma en todas las categorías.</p>\n<p style=\"margin:8px 0 0\"><b>Medir una zona:</b> en el mapa, herramienta de dibujo → <i>Rectangle</i> (o <i>Polygon</i>) y dibuja. El resumen y el ranking pasan a medir solo dentro. Para volver a todo el ráster: clic derecho sobre la figura → <i>Delete</i>.</p>\n<p style=\"margin:8px 0 0\">Los porcentajes son de <b>área</b>, no de población; sin dibujo incluyen la zona rural.</p>\n</div>",
         "code": {
           "language": "plaintext",
           "showLineNumbers": false,
@@ -471,8 +672,8 @@
     {
       "id": 5,
       "type": "barchart",
-      "title": "Las 37 oportunidades · parte del área según minutos a la más cercana",
-      "description": "Cada barra es una categoría y reparte el área de Cuenca por tramos de tiempo hasta su oportunidad más cercana. Ordenadas de mejor a peor servidas (más área a 15 minutos o menos). Porcentajes sobre el área de todo el ráster, que incluye zona rural: comparan categorías entre sí, no son la población servida.",
+      "title": "Las 37 oportunidades · parte de la zona según minutos a la más cercana",
+      "description": "Cada barra es una categoría y reparte la zona consultada —el área dibujada en el mapa, o todo el ráster— por tramos de tiempo hasta su oportunidad más cercana. Ordenadas de mejor a peor servidas (más área a 15 minutos o menos). Son área, no población servida.",
       "datasource": {
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
@@ -481,7 +682,7 @@
         "h": 26,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 24
       },
       "targets": [
         {
@@ -492,7 +693,7 @@
           "editorMode": "code",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- Las 37 categorías a la vez: una petición de estadísticas a TiTiler por ráster.\n-- Ordenadas por la parte del área que queda a 15 minutos o menos.\nWITH cat(oportunidad, slug) AS (VALUES\n    ('Tienda de barrio / frutería', 'tienda-de-barrio-fruteria'),\n    ('Panadería', 'panaderia'),\n    ('Supermercado', 'supermercado'),\n    ('Mercado municipal', 'mercado-municipal'),\n    ('Farmacia', 'farmacia'),\n    ('Médico / dentista / terapia', 'medico-dentista-terapia'),\n    ('Peluquería', 'peluqueria'),\n    ('Escuela', 'escuela'),\n    ('Refuerzo escolar', 'refuerzo-escolar'),\n    ('Academia de idiomas', 'academia-de-idiomas'),\n    ('Academia de música / arte', 'academia-de-musica-arte'),\n    ('Academia deportiva', 'academia-deportiva'),\n    ('Librería', 'libreria'),\n    ('Papelería', 'papeleria'),\n    ('Biblioteca', 'biblioteca'),\n    ('Museo', 'museo'),\n    ('Galería de arte', 'galeria-de-arte'),\n    ('Teatro', 'teatro'),\n    ('Cine', 'cine'),\n    ('Centro comunitario', 'centro-comunitario'),\n    ('Iglesia / catequesis', 'iglesia-catequesis'),\n    ('Restaurante', 'restaurante'),\n    ('Heladería / cafetería', 'heladeria-cafeteria'),\n    ('Patio de comidas', 'patio-de-comidas'),\n    ('Centro comercial', 'centro-comercial'),\n    ('Piscina', 'piscina'),\n    ('Juegos bajo techo', 'juegos-bajo-techo'),\n    ('Videojuegos', 'videojuegos'),\n    ('Salón de fiestas', 'salon-de-fiestas'),\n    ('Río', 'rio'),\n    ('Espacio público abierto', 'espacio-publico'),\n    ('Zoológico', 'zoologico'),\n    ('Estadio', 'estadio'),\n    ('Parada de bus', 'parada-de-bus'),\n    ('Parada de tranvía', 'parada-de-tranvia'),\n    ('Ciclovía', 'ciclovia'),\n    ('Taller de bicicletas', 'taller-de-bicicletas')\n), s AS (\n  SELECT oportunidad, (http_get('http://titiler/cog/statistics?url=http://sources-data/accesibilidad-cuenca/' || slug || '.tif&histogram_bins=0,15,30,60,120,121')->>'body')::JSON -> 'b1' AS b FROM cat\n), h AS (\n  SELECT oportunidad, [(b->'histogram'->0->>i)::DOUBLE FOR i IN range(5)] AS c FROM s\n)\nSELECT oportunidad AS \"Oportunidad\",\n       100 * c[1] / list_sum(c) AS \"≤15 min\",\n       100 * c[2] / list_sum(c) AS \"15–30 min\",\n       100 * c[3] / list_sum(c) AS \"30–60 min\",\n       100 * c[4] / list_sum(c) AS \"60–120 min\",\n       100 * c[5] / list_sum(c) AS \"Sin acceso (120)\"\nFROM h\nORDER BY c[1] / list_sum(c) DESC",
+          "rawSql": "-- Las 37 categorías a la vez, dentro de la misma zona que el resumen: una\n-- petición de estadísticas a TiTiler por ráster. Ordenadas por la parte de la\n-- zona que queda a 15 minutos o menos.\nWITH zona AS (\n  SELECT nullif($area, '') IS NOT NULL AS dibujada,\n         ST_GeomFromText(coalesce(nullif($area, ''), 'POLYGON((-79.0865 -2.9574, -78.8805 -2.9574, -78.8805 -2.8073, -79.0865 -2.8073, -79.0865 -2.9574))')) AS g\n), cat(oportunidad, slug) AS (VALUES\n    ('Tienda de barrio / frutería', 'tienda-de-barrio-fruteria'),\n    ('Panadería', 'panaderia'),\n    ('Supermercado', 'supermercado'),\n    ('Mercado municipal', 'mercado-municipal'),\n    ('Farmacia', 'farmacia'),\n    ('Médico / dentista / terapia', 'medico-dentista-terapia'),\n    ('Peluquería', 'peluqueria'),\n    ('Escuela', 'escuela'),\n    ('Refuerzo escolar', 'refuerzo-escolar'),\n    ('Academia de idiomas', 'academia-de-idiomas'),\n    ('Academia de música / arte', 'academia-de-musica-arte'),\n    ('Academia deportiva', 'academia-deportiva'),\n    ('Librería', 'libreria'),\n    ('Papelería', 'papeleria'),\n    ('Biblioteca', 'biblioteca'),\n    ('Museo', 'museo'),\n    ('Galería de arte', 'galeria-de-arte'),\n    ('Teatro', 'teatro'),\n    ('Cine', 'cine'),\n    ('Centro comunitario', 'centro-comunitario'),\n    ('Iglesia / catequesis', 'iglesia-catequesis'),\n    ('Restaurante', 'restaurante'),\n    ('Heladería / cafetería', 'heladeria-cafeteria'),\n    ('Patio de comidas', 'patio-de-comidas'),\n    ('Centro comercial', 'centro-comercial'),\n    ('Piscina', 'piscina'),\n    ('Juegos bajo techo', 'juegos-bajo-techo'),\n    ('Videojuegos', 'videojuegos'),\n    ('Salón de fiestas', 'salon-de-fiestas'),\n    ('Río', 'rio'),\n    ('Espacio público abierto', 'espacio-publico'),\n    ('Zoológico', 'zoologico'),\n    ('Estadio', 'estadio'),\n    ('Parada de bus', 'parada-de-bus'),\n    ('Parada de tranvía', 'parada-de-tranvia'),\n    ('Ciclovía', 'ciclovia'),\n    ('Taller de bicicletas', 'taller-de-bicicletas')\n), s AS (\n  SELECT oportunidad, http_post('http://titiler/cog/statistics?url=http://sources-data/accesibilidad-cuenca/' || slug || '.tif&histogram_bins=0,15,30,60,120,121', MAP {}, json_object('type', 'Feature', 'properties', json_object(), 'geometry', ST_AsGeoJSON(zona.g)::JSON)) AS r FROM cat, zona\n), st AS (\n  SELECT oportunidad, CASE WHEN (r->>'status') = '200' THEN (r->>'body')::JSON -> 'properties' -> 'statistics' -> 'b1'\n            ELSE error('TiTiler no pudo medir la zona (' || coalesce(r->>'status', '?') || '): ' || coalesce(nullif(r->>'body', ''), r->>'reason', '')) END AS b FROM s\n), h AS (\n  SELECT oportunidad, [(b->'histogram'->0->>i)::DOUBLE FOR i IN range(5)] AS c FROM st\n)\nSELECT oportunidad AS \"Oportunidad\",\n       100 * c[1] / nullif(list_sum(c), 0) AS \"≤15 min\",\n       100 * c[2] / nullif(list_sum(c), 0) AS \"15–30 min\",\n       100 * c[3] / nullif(list_sum(c), 0) AS \"30–60 min\",\n       100 * c[4] / nullif(list_sum(c), 0) AS \"60–120 min\",\n       100 * c[5] / nullif(list_sum(c), 0) AS \"Sin acceso (120)\"\nFROM h\nORDER BY c[1] / nullif(list_sum(c), 0) DESC NULLS LAST",
           "refId": "A"
         }
       ],
