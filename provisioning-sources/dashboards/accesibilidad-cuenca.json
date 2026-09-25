@@ -685,7 +685,7 @@
             {
               "oneClick": true,
               "title": "Ver esta categoría en el mapa",
-              "url": "d/accesibilidad-cuenca/cbb227e?var-categoria=${__data.fields.slug}&${area:queryparam}"
+              "url": "d/accesibilidad-cuenca/cbb227e${__url.params:exclude:var-categoria}&var-categoria=${__data.fields.slug}"
             }
           ]
         },
