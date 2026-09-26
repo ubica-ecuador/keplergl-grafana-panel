@@ -294,3 +294,51 @@ jobs:
       #     name: ${{ matrix.GRAFANA_IMAGE.NAME }}-v${{ matrix.GRAFANA_IMAGE.VERSION }}-${{github.run_id}}-server-log
       #     path: grafana-server.log
       #     retention-days: 5
+
+  # Every push to main, published as the pre-release `edge`: for installs that
+  # run main between releases (Pacha's KEPLER_PANEL_CHANNEL=edge). A job of its
+  # own because it writes to releases: the build runs npm, and third-party
+  # code, with a read-only token; this runs only jq, zip and gh.
+  edge:
+    name: Publish main as the edge pre-release
+    needs: build
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    # Two pushes in a row publish one after the other, never interleaved.
+    concurrency:
+      group: edge
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      PLUGIN_ID: ${{ needs.build.outputs.plugin-id }}
+      VERSION: ${{ needs.build.outputs.plugin-version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/package-edge.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Download plugin
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.build.outputs.plugin-id }}-${{ needs.build.outputs.plugin-version }}
+          path: ${{ needs.build.outputs.plugin-id }}
+
+      - name: Package edge
+        run: echo "EDGE_VERSION=$(scripts/package-edge.sh)" >> "$GITHUB_ENV"
+
+      # The tag moves with main; the assets are replaced in place, so their
+      # URLs never change.
+      - name: Publish
+        run: |
+          if ! gh release view edge > /dev/null 2>&1; then
+            gh release create edge --prerelease --target "$GITHUB_SHA" --title edge --notes "First publish; the notes are replaced below."
+          fi
+          gh api -X PATCH "repos/${GH_REPO}/git/refs/tags/edge" -f sha="$GITHUB_SHA" -F force=true > /dev/null
+          gh release upload edge "${PLUGIN_ID}-edge.zip" "${PLUGIN_ID}-edge.zip.sha256" --clobber
+          gh release edit edge --prerelease --notes "main at ${GITHUB_SHA}, published $(date -u +%Y-%m-%dT%H:%MZ) as ${EDGE_VERSION}. Replaced on every push to main: not a release. Anything that has to stay put pins a v* release."
