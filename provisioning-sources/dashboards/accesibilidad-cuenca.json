@@ -26,7 +26,7 @@
         "type": "motherduck-duckdb-datasource",
         "uid": "duckdb"
       },
-      "description": "Minutos hasta la oportunidad más cercana de la categoría elegida (P50). Amarillo claro = cerca; azul oscuro = 120 min o más.",
+      "description": "Minutos hasta la oportunidad más cercana de la categoría elegida (P50). Azul oscuro = cerca; amarillo claro = 120 min o más, sin acceso.",
       "gridPos": {
         "h": 17,
         "w": 18,
@@ -259,8 +259,8 @@
                       ],
                       "gammaContrastFactor": 1,
                       "linearRescalingFactor": [
-                        1,
-                        1.5
+                        -1,
+                        -1.5
                       ],
                       "nonLinearRescaling": false,
                       "opacity": 0.8,
@@ -479,7 +479,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "#f5fbc4",
+                  "fixedColor": "#162876",
                   "mode": "fixed"
                 }
               }
@@ -494,7 +494,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "#d9f0b2",
+                  "fixedColor": "#23499e",
                   "mode": "fixed"
                 }
               }
@@ -509,7 +509,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "#7eccbb",
+                  "fixedColor": "#1d91c0",
                   "mode": "fixed"
                 }
               }
@@ -524,7 +524,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "#215ea8",
+                  "fixedColor": "#c6e8b4",
                   "mode": "fixed"
                 }
               }
@@ -539,7 +539,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "#081d58",
+                  "fixedColor": "#ffffd9",
                   "mode": "fixed"
                 }
               }
@@ -622,7 +622,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "<div style=\"font-size:13px;line-height:1.5\">\n<p style=\"margin:0 0 6px\"><b>Minutos hasta la oportunidad más cercana</b></p>\n<div style=\"height:14px;border-radius:3px;background:linear-gradient(to right,#ffffd9,#ecf7b1,#c6e8b4,#7eccbb,#40b5c3,#1d91c0,#215ea8,#243494,#081d58)\"></div>\n<div style=\"display:flex;justify-content:space-between;font-size:12px;opacity:.85;margin-top:2px\">\n<span>0</span><span>30</span><span>60</span><span>90</span><span>120+</span>\n</div>\n<p style=\"margin:12px 0 0\">Cada píxel (≈76 m) dice cuánto se tarda desde ahí hasta la <b>oportunidad más cercana</b> de la categoría: la <i>accesibilidad dual</i>. Tiempo en su mediana (P50); el tope es 120 min, «no se llega en dos horas». La escala es la misma en todas las categorías.</p>\n<p style=\"margin:8px 0 0\"><b>Medir una zona:</b> en el mapa, herramienta de dibujo → <i>Rectangle</i> (o <i>Polygon</i>) y dibuja. El resumen y el ranking pasan a medir solo dentro. Para volver a todo el ráster: clic derecho sobre la figura → <i>Delete</i>.</p>\n<p style=\"margin:8px 0 0\">Los porcentajes son de <b>área</b>, no de población; sin dibujo incluyen la zona rural.</p>\n</div>",
+        "content": "<div style=\"font-size:13px;line-height:1.5\">\n<p style=\"margin:0 0 6px\"><b>Minutos hasta la oportunidad más cercana</b></p>\n<div style=\"height:14px;border-radius:3px;background:linear-gradient(to right,#081d58,#243494,#215ea8,#1d91c0,#40b5c3,#7eccbb,#c6e8b4,#ecf7b1,#ffffd9)\"></div>\n<div style=\"display:flex;justify-content:space-between;font-size:12px;opacity:.85;margin-top:2px\">\n<span>0</span><span>30</span><span>60</span><span>90</span><span>120+</span>\n</div>\n<p style=\"margin:12px 0 0\">Cada píxel (≈76 m) dice cuánto se tarda desde ahí hasta la <b>oportunidad más cercana</b> de la categoría: la <i>accesibilidad dual</i>. Tiempo en su mediana (P50); el tope es 120 min, «no se llega en dos horas». La escala es la misma en todas las categorías.</p>\n<p style=\"margin:8px 0 0\"><b>Medir una zona:</b> en el mapa, herramienta de dibujo → <i>Rectangle</i> (o <i>Polygon</i>) y dibuja. El resumen y el ranking pasan a medir solo dentro. Para volver a todo el ráster: clic derecho sobre la figura → <i>Delete</i>.</p>\n<p style=\"margin:8px 0 0\">Los porcentajes son de <b>área</b>, no de población; sin dibujo incluyen la zona rural.</p>\n</div>",
         "mode": "html"
       },
       "pluginVersion": "13.2.1",
@@ -699,7 +699,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "#f5fbc4",
+                  "fixedColor": "#162876",
                   "mode": "fixed"
                 }
               }
@@ -714,7 +714,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "#d9f0b2",
+                  "fixedColor": "#23499e",
                   "mode": "fixed"
                 }
               }
@@ -729,7 +729,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "#7eccbb",
+                  "fixedColor": "#1d91c0",
                   "mode": "fixed"
                 }
               }
@@ -744,7 +744,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "#215ea8",
+                  "fixedColor": "#c6e8b4",
                   "mode": "fixed"
                 }
               }
@@ -759,7 +759,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "#081d58",
+                  "fixedColor": "#ffffd9",
                   "mode": "fixed"
                 }
               }
