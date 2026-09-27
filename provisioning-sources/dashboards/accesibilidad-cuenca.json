@@ -180,9 +180,41 @@
               },
               "layerBlending": "normal",
               "layerOrder": [
+                "punto",
                 "accesibilidad"
               ],
               "layers": [
+                {
+                  "id": "punto",
+                  "type": "markers",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Punto",
+                    "columns": {},
+                    "isVisible": true,
+                    "visConfig": {
+                      "markerRadius": 10,
+                      "markers": [
+                        {
+                          "id": "m1",
+                          "label": "Punto",
+                          "color": [
+                            230,
+                            57,
+                            70
+                          ],
+                          "latVariable": "lat",
+                          "lngVariable": "lng",
+                          "position": [
+                            -79.004,
+                            -2.897
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "visualChannels": {}
+                },
                 {
                   "config": {
                     "color": [
@@ -622,7 +654,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "<div style=\"font-size:13px;line-height:1.5\">\n<p style=\"margin:0 0 6px\"><b>Minutos hasta la oportunidad más cercana</b></p>\n<div style=\"height:14px;border-radius:3px;background:linear-gradient(to right,#081d58,#243494,#215ea8,#1d91c0,#40b5c3,#7eccbb,#c6e8b4,#ecf7b1,#ffffd9)\"></div>\n<div style=\"display:flex;justify-content:space-between;font-size:12px;opacity:.85;margin-top:2px\">\n<span>0</span><span>30</span><span>60</span><span>90</span><span>120+</span>\n</div>\n<p style=\"margin:12px 0 0\">Cada píxel (≈76 m) dice cuánto se tarda desde ahí hasta la <b>oportunidad más cercana</b> de la categoría: la <i>accesibilidad dual</i>. Tiempo en su mediana (P50); el tope es 120 min, «no se llega en dos horas». La escala es la misma en todas las categorías.</p>\n<p style=\"margin:8px 0 0\"><b>Medir una zona:</b> en el mapa, herramienta de dibujo → <i>Rectangle</i> (o <i>Polygon</i>) y dibuja. El resumen y el ranking pasan a medir solo dentro. Para volver a todo el ráster: clic derecho sobre la figura → <i>Delete</i>.</p>\n<p style=\"margin:8px 0 0\">Los porcentajes son de <b>área</b>, no de población; sin dibujo incluyen la zona rural.</p>\n</div>",
+        "content": "<div style=\"font-size:13px;line-height:1.5\">\n<p style=\"margin:0 0 6px\"><b>Minutos hasta la oportunidad más cercana</b></p>\n<div style=\"height:14px;border-radius:3px;background:linear-gradient(to right,#081d58,#243494,#215ea8,#1d91c0,#40b5c3,#7eccbb,#c6e8b4,#ecf7b1,#ffffd9)\"></div>\n<div style=\"display:flex;justify-content:space-between;font-size:12px;opacity:.85;margin-top:2px\">\n<span>0</span><span>30</span><span>60</span><span>90</span><span>120+</span>\n</div>\n<p style=\"margin:12px 0 0\">Cada píxel (≈76 m) dice cuánto se tarda desde ahí hasta la <b>oportunidad más cercana</b> de la categoría: la <i>accesibilidad dual</i>. Tiempo en su mediana (P50); el tope es 120 min, «no se llega en dos horas». La escala es la misma en todas las categorías.</p>\n<p style=\"margin:8px 0 0\"><b>Medir una zona:</b> en el mapa, herramienta de dibujo → <i>Rectangle</i> (o <i>Polygon</i>) y dibuja. El resumen y el ranking pasan a medir solo dentro. Para volver a todo el ráster: clic derecho sobre la figura → <i>Delete</i>.</p>\n<p style=\"margin:8px 0 0\"><b>Desde un punto:</b> arrastra el marcador rojo «Punto» del mapa; el panel <i>Desde el punto</i> da los minutos desde ahí a cada categoría.</p>\n<p style=\"margin:8px 0 0\">Los porcentajes son de <b>área</b>, no de población; sin dibujo incluyen la zona rural.</p>\n</div>",
         "mode": "html"
       },
       "pluginVersion": "13.2.1",
@@ -785,7 +817,7 @@
       },
       "gridPos": {
         "h": 26,
-        "w": 24,
+        "w": 14,
         "x": 0,
         "y": 17
       },
@@ -829,6 +861,140 @@
       ],
       "title": "Las 37 oportunidades · parte de la zona según minutos a la más cercana",
       "type": "barchart"
+    },
+    {
+      "id": 7,
+      "type": "barchart",
+      "title": "Desde el punto · minutos a cada oportunidad",
+      "description": "Arrastra el marcador «Punto» del mapa: cada barra son los minutos desde ese lugar hasta la oportunidad más cercana de cada categoría (P50), de más cerca a más lejos. 120 = sin acceso en dos horas. Un clic en una barra elige esa categoría.",
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "gridPos": {
+        "h": 26,
+        "w": 10,
+        "x": 14,
+        "y": 17
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "editorMode": "code",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Minutos desde el punto del marcador hasta cada una de las 37 categorías: el\n-- valor de ese píxel en cada ráster, pedido a TiTiler (/cog/point). `$lat` y\n-- `$lng` los publica el marcador «Punto» al soltarlo; este datasource ya los\n-- entrecomilla. Un punto fuera del ráster no tiene valor: sin filas, el panel\n-- muestra su aviso (noValue) en vez de un gráfico vacío.\nWITH cat(oportunidad, slug) AS (VALUES\n    ('Tienda de barrio / frutería', 'tienda-de-barrio-fruteria'),\n    ('Panadería', 'panaderia'),\n    ('Supermercado', 'supermercado'),\n    ('Mercado municipal', 'mercado-municipal'),\n    ('Farmacia', 'farmacia'),\n    ('Médico / dentista / terapia', 'medico-dentista-terapia'),\n    ('Peluquería', 'peluqueria'),\n    ('Escuela', 'escuela'),\n    ('Refuerzo escolar', 'refuerzo-escolar'),\n    ('Academia de idiomas', 'academia-de-idiomas'),\n    ('Academia de música / arte', 'academia-de-musica-arte'),\n    ('Academia deportiva', 'academia-deportiva'),\n    ('Librería', 'libreria'),\n    ('Papelería', 'papeleria'),\n    ('Biblioteca', 'biblioteca'),\n    ('Museo', 'museo'),\n    ('Galería de arte', 'galeria-de-arte'),\n    ('Teatro', 'teatro'),\n    ('Cine', 'cine'),\n    ('Centro comunitario', 'centro-comunitario'),\n    ('Iglesia / catequesis', 'iglesia-catequesis'),\n    ('Restaurante', 'restaurante'),\n    ('Heladería / cafetería', 'heladeria-cafeteria'),\n    ('Patio de comidas', 'patio-de-comidas'),\n    ('Centro comercial', 'centro-comercial'),\n    ('Piscina', 'piscina'),\n    ('Juegos bajo techo', 'juegos-bajo-techo'),\n    ('Videojuegos', 'videojuegos'),\n    ('Salón de fiestas', 'salon-de-fiestas'),\n    ('Río', 'rio'),\n    ('Espacio público abierto', 'espacio-publico'),\n    ('Zoológico', 'zoologico'),\n    ('Estadio', 'estadio'),\n    ('Parada de bus', 'parada-de-bus'),\n    ('Parada de tranvía', 'parada-de-tranvia'),\n    ('Ciclovía', 'ciclovia'),\n    ('Taller de bicicletas', 'taller-de-bicicletas')\n), s AS (\n  SELECT oportunidad, slug,\n         http_get('http://titiler/cog/point/' || $lng || ',' || $lat\n                  || '?url=http://sources-data/accesibilidad-cuenca/' || $version || '/' || slug || '.tif') AS r\n  FROM cat\n)\nSELECT oportunidad AS \"Oportunidad\",\n       CASE WHEN (r->>'status') = '200' THEN ((r->>'body')::JSON -> 'values' ->> 0)::DOUBLE END AS \"Minutos\",\n       -- Not drawn: it is what a click on a bar puts in the dropdown.\n       slug\nFROM s\nWHERE (r->>'status') = '200'\nORDER BY 2, 1",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: min",
+          "decimals": 0,
+          "min": 0,
+          "max": 140,
+          "noValue": "El punto está fuera del ráster: arrastra el marcador «Punto» sobre Cuenca.",
+          "links": [
+            {
+              "oneClick": true,
+              "title": "Ver esta categoría en el mapa",
+              "url": "d/accesibilidad-cuenca/cbb227e${__url.params:exclude:var-categoria}&var-categoria=${__data.fields.slug}"
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#162876",
+                "value": null
+              },
+              {
+                "color": "#23499e",
+                "value": 15
+              },
+              {
+                "color": "#1d91c0",
+                "value": 30
+              },
+              {
+                "color": "#c6e8b4",
+                "value": 60
+              },
+              {
+                "color": "#ffffd9",
+                "value": 120
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "120": {
+                  "text": "sin acceso",
+                  "index": 0
+                }
+              }
+            }
+          ],
+          "custom": {
+            "fillOpacity": 90,
+            "lineWidth": 0,
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisSoftMin": 0,
+            "axisSoftMax": 140
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "slug"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": true,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "Oportunidad",
+        "stacking": "none",
+        "showValue": "always",
+        "groupWidth": 0.8,
+        "barWidth": 0.9,
+        "barRadius": 0,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "fullHighlight": false,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "text": {
+          "valueSize": 11
+        }
+      }
     }
   ],
   "preload": false,
@@ -1078,6 +1244,46 @@
             "value": "v2"
           }
         ]
+      },
+      {
+        "type": "textbox",
+        "name": "lat",
+        "label": "Punto · latitud",
+        "hide": 2,
+        "description": "La publica el marcador «Punto» del mapa al soltarlo. Por defecto, el Parque Calderón.",
+        "query": "-2.897",
+        "current": {
+          "text": "-2.897",
+          "value": "-2.897"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "-2.897",
+            "value": "-2.897"
+          }
+        ],
+        "skipUrlSync": false
+      },
+      {
+        "type": "textbox",
+        "name": "lng",
+        "label": "Punto · longitud",
+        "hide": 2,
+        "description": "La publica el marcador «Punto» del mapa al soltarlo. Por defecto, el Parque Calderón.",
+        "query": "-79.004",
+        "current": {
+          "text": "-79.004",
+          "value": "-79.004"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "-79.004",
+            "value": "-79.004"
+          }
+        ],
+        "skipUrlSync": false
       }
     ]
   },
