@@ -492,14 +492,16 @@ describe('altitudeAware', () => {
   });
 
   it('hands on a tile just loaded in the metres deck draws with, and has deck build it again', () => {
-    // A tile 28 km across drawn in a sphere's metres is drawn ~150 m off near
+    // A tile 28 km across drawn in a sphere's metres is drawn ~140 m off near
     // the equator (tile3dDeckMetres.ts). A sublayer deck already built for the
     // tile, from before it loaded again, is built again with the new matrix.
     const Aware = altitudeAware(FakeDeckLayer as never) as never as new (
       props: Record<string, unknown>
     ) => FakeDeckLayer & { _onTileLoad(tile: unknown): void };
     const layer = new Aware({ groundTileset: true, altitudeOffset: 0 });
-    const layerMap: Record<string, { needsUpdate?: boolean }> = { far: { needsUpdate: false } };
+    const layerMap: Record<string, { layer?: unknown; needsUpdate?: boolean }> = {
+      far: { layer: { id: 'far-sublayer' }, needsUpdate: false },
+    };
     layer.state = { ...layer.state, layerMap };
     // loaders.gl's numbers for a tile whose origin is on the equator at 0°: east is y, north is z, up is x.
     const cartographicModelMatrix = FakeMatrix.identity();
@@ -530,6 +532,36 @@ describe('altitudeAware', () => {
     layerMap.far.needsUpdate = false;
     layer._onTileLoad(tile);
     expect(layerMap.far.needsUpdate).toBe(false);
+  });
+
+  it('leaves alone an entry deck keeps for a tile it has not built a sublayer for', () => {
+    // After an unload deck keeps `{ tile }` for the tile, and builds its
+    // sublayer when it next draws it: asking for it again would build it twice.
+    const Aware = altitudeAware(FakeDeckLayer as never) as never as new (
+      props: Record<string, unknown>
+    ) => FakeDeckLayer & { _onTileLoad(tile: unknown): void };
+    const layer = new Aware({ groundTileset: true, altitudeOffset: 0 });
+    const entry: { tile: unknown; needsUpdate?: boolean } = { tile: null };
+    layer.state = { ...layer.state, layerMap: { far: entry } };
+    const cartographicModelMatrix = FakeMatrix.identity();
+    cartographicModelMatrix[12] = 27_947;
+    const content = {
+      cartesianOrigin: [6_378_137, 0, 0],
+      cartesianModelMatrix: [0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 6_378_137, 27_947, 0, 1],
+      cartographicOrigin: [0, 0, 0],
+      cartographicModelMatrix,
+      modelMatrix: cartographicModelMatrix as unknown,
+    };
+    const tile = {
+      id: 'far',
+      tileset: { modelMatrix: FakeMatrix.identity() },
+      computedTransform: FakeMatrix.identity(),
+      content,
+    };
+
+    layer._onTileLoad(tile);
+    expect(content.modelMatrix).not.toBe(cartographicModelMatrix);
+    expect(entry.needsUpdate).toBeUndefined();
   });
 
   it('drops a searched ground over the sea once the tree says nothing is there', () => {

@@ -24,7 +24,7 @@
  * the equator and ~111.7 km × cos φ near the poles. What lies far from its
  * tile's origin is drawn up to that many parts in a thousand of the distance
  * off. Cesium OSM Buildings keeps large buildings in coarse tiles, and Cuenca's
- * stadium, 28 km north of the origin of its tile, was drawn ~150 m south of the
+ * stadium, 28 km north of the origin of its tile, was drawn ~140 m south of the
  * stadium on the basemap.
  *
  * The fix is to hand deck the offsets in its own metres: east ones times its
@@ -40,9 +40,11 @@
  *   leaves the parallel as it goes east, and deck holds the Mercator's scale of
  *   the origin's latitude all the way north. Nothing on the equator, ~3 m for
  *   the stadium, ~60 m at 45° for a point 28 km north or south of its origin.
- *   Towards the equator from its origin, the old error in the scale had
- *   happened to cancel part of it: there, at 45°, such a point is now drawn
- *   ~15 m further off than it was, where one the other way is ~15 m closer.
+ *   On one side of the origin the old error in the scale had happened to
+ *   cancel part of it, and a point there is now drawn further off than it
+ *   was: towards the equator below ~48°, towards the pole above it — for 28 km,
+ *   ~39 m further at 40° and ~56 m at 60°. The worst anywhere round the origin
+ *   always drops: at 40° from ~90 m to ~52 m, at 60° from ~163 m to ~106 m.
  * - **Up, distance² / 2R**: the ground curves away below the tangent plane,
  *   and deck draws its metres up from a flat map: a building 30 km from its
  *   origin is drawn ~70 m lower than one on the same ground at the origin.

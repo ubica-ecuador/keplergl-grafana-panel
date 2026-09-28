@@ -89,8 +89,11 @@ interface DeckTile3DLayerLike {
     tileset3d?: TilesetLike | null;
     activeViewports?: Record<string, unknown>;
     lastUpdatedViewports?: Record<string, unknown> | null;
-    /** deck's, one entry per tile it has built a sublayer for; `needsUpdate` has it built again. */
-    layerMap?: Record<string, { needsUpdate?: boolean }>;
+    /**
+     * deck's, one entry per tile it has drawn, holding the sublayer it built for
+     * it once it has; `needsUpdate` has that sublayer built again.
+     */
+    layerMap?: Record<string, { layer?: unknown; needsUpdate?: boolean }>;
     /** deck's, bumped each time a traversal completes. */
     frameNumber?: number;
     /**
@@ -241,14 +244,16 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
      * in deck's metres too.
      *
      * Should deck already have built a sublayer for the tile, it builds it
-     * again only when told to.
+     * again only when told to. An entry with no sublayer yet — deck keeps
+     * `{ tile }` after an unload — is left alone: deck builds that one when it
+     * next draws the tile, and told to as well would build it twice.
      */
     _onTileLoad(tile: unknown): void {
       const loaded = tile as TileLike | null;
       const caughtUp = catchUpTile(loaded);
       const fitted = fitToDeck(loaded?.content);
       const cached = typeof loaded?.id === 'string' ? this.state?.layerMap?.[loaded.id] : undefined;
-      if ((caughtUp || fitted) && cached) {
+      if ((caughtUp || fitted) && cached?.layer) {
         cached.needsUpdate = true;
       }
       super._onTileLoad?.(tile);

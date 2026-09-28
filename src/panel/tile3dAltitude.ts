@@ -43,7 +43,11 @@ export interface TileContentLike {
   cartesianModelMatrix?: ArrayLike<number> | null;
   /** `cartesianOrigin` as `[longitude, latitude, height]`: the origin deck draws round. */
   cartographicOrigin?: ArrayLike<number> | null;
-  /** The tile's geometry to metres east, north and up of `cartographicOrigin`. */
+  /**
+   * The tile's geometry to metres east, north and up of `cartographicOrigin`:
+   * for 3D Tiles, once loaded, in the metres deck draws with (`fitToDeck`); for
+   * I3S, which draws with its own, the ground's.
+   */
   cartographicModelMatrix?: ArrayLike<number> | null;
   /** loaders.gl's alias of `cartographicModelMatrix`, which is what deck reads; I3S sets one of its own. */
   modelMatrix?: unknown;
