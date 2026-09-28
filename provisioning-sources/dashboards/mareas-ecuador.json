@@ -37,7 +37,7 @@
       "type": "text",
       "options": {
         "mode": "markdown",
-        "content": "## Qué estás viendo\n\nLa red de **mareógrafos del INOCAR**, al minuto, en las últimas 24 horas, leída en vivo y sin clave.\n\n- **El color** de cada puerto es su **anomalía**: la altura del mar menos la media de sus 24 horas. Cada mareógrafo mide contra su propio cero (Río Guayas ronda los 4 m, Puerto Atún 1,3 m), así que la anomalía es lo que se compara entre puertos. Se ve la lectura más reciente.\n- **Pasa el ratón** por un puerto: el tooltip dibuja su curva de 24 horas.\n- **Haz clic** en uno y pasa el ratón por otro: salen las dos curvas, una junto a otra (modo comparar).\n- **La gráfica fijada** a la derecha junta las siete curvas: el desfase entre ellas es la onda de marea recorriendo la costa.\n- **Para ver viajar la marea**, estrecha el pincel del tiempo, abajo, y pulsa play.\n\nFuente: [INOCAR, mareógrafos](https://www.inocar.mil.ec/mareas/). Puná publica su serie pero no figura en el catálogo de estaciones, así que no tiene posición y queda fuera.\n"
+        "content": "## Qué estás viendo\n\nLa red de **mareógrafos del INOCAR**, al minuto, en las últimas 24 horas, leída en vivo y sin clave.\n\n- **El color** de cada puerto es la altura **sobre su propia bajamar**: la altura del mar menos la más baja de sus últimas 24 horas. Cada mareógrafo mide contra su propio cero (Río Guayas ronda los 4 m, Puerto Atún 1,3 m), así que la altura sobre su propia bajamar es lo que se compara entre puertos. Se ve la lectura más reciente.\n- **Pasa el ratón** por un puerto: el tooltip dibuja su curva de 24 horas.\n- **Haz clic** en uno y pasa el ratón por otro: salen las dos curvas, una junto a otra (modo comparar).\n- **La cuadrícula fijada** a la derecha junta los siete puertos, cada tres horas: se ve la marea subir y bajar a lo largo del día en toda la costa.\n- **Para ver viajar la marea**, estrecha el pincel del tiempo, abajo, y pulsa play.\n\nFuente: [INOCAR, mareógrafos](https://www.inocar.mil.ec/mareas/). Puná publica su serie pero no figura en el catálogo de estaciones, así que no tiene posición y queda fuera.\n"
       }
     },
     {
@@ -52,7 +52,7 @@
         "y": 0
       },
       "id": 2,
-      "title": "Mareógrafos — anomalía de la marea",
+      "title": "Mareógrafos — altura sobre la bajamar",
       "type": "ubica-keplergl-panel",
       "options": {
         "showSidePanel": false,
@@ -88,24 +88,24 @@
                       "strokeOpacity": 0.8,
                       "filled": true,
                       "colorRange": {
-                        "name": "Marea (BrBG)",
-                        "type": "diverging",
+                        "name": "Marea (Blues)",
+                        "type": "sequential",
                         "category": "Custom",
                         "colors": [
-                          "#8c510a",
-                          "#d8b365",
-                          "#f6e8c3",
-                          "#f5f5f5",
-                          "#c7eae5",
-                          "#5ab4ac",
-                          "#01665e"
+                          "#eff3ff",
+                          "#c6dbef",
+                          "#9ecae1",
+                          "#6baed6",
+                          "#4292c6",
+                          "#2171b5",
+                          "#084594"
                         ]
                       }
                     }
                   },
                   "visualChannels": {
                     "colorField": {
-                      "name": "anomalia",
+                      "name": "sobre_bajamar",
                       "type": "real"
                     },
                     "colorScale": "quantize"
@@ -149,14 +149,14 @@
                       },
                       {
                         "name": "time",
-                        "format": null
+                        "format": "L LT"
                       },
                       {
                         "name": "altura",
                         "format": null
                       },
                       {
-                        "name": "anomalia",
+                        "name": "sobre_bajamar",
                         "format": null
                       }
                     ]
@@ -166,7 +166,7 @@
               "charts": [
                 {
                   "id": "marea",
-                  "title": "Marea en el puerto (anomalía, m)",
+                  "title": "Marea en el puerto (sobre la bajamar, m)",
                   "type": "layerChart",
                   "dataId": "grafana-A",
                   "applyFilters": false,
@@ -194,11 +194,11 @@
                   },
                   "yAxis": {
                     "field": {
-                      "name": "anomalia",
+                      "name": "sobre_bajamar",
                       "type": "real"
                     },
                     "aggregation": "average",
-                    "title": "anomalia"
+                    "title": "sobre_bajamar"
                   },
                   "chartDisplay": {
                     "idField": "estacion",
@@ -208,33 +208,23 @@
                 },
                 {
                   "id": "costa",
-                  "title": "Las siete curvas (anomalía, m)",
-                  "type": "lineChart",
+                  "title": "La marea por puerto, cada tres horas (sobre la bajamar, m)",
+                  "type": "heatmapChart",
                   "dataId": "grafana-A",
                   "applyFilters": false,
                   "pinned": true,
                   "display": {
                     "isConfigActive": false
                   },
-                  "chartDisplay": {},
                   "xAxis": {
                     "field": {
-                      "name": "time",
-                      "type": "timestamp"
+                      "name": "tramo",
+                      "type": "string"
                     },
-                    "aggregation": "timeBin",
-                    "title": "time",
-                    "interval": "hour"
+                    "aggregation": "uniqueBin",
+                    "title": "tramo"
                   },
                   "yAxis": {
-                    "field": {
-                      "name": "anomalia",
-                      "type": "real"
-                    },
-                    "aggregation": "average",
-                    "title": "anomalia"
-                  },
-                  "groupBy": {
                     "field": {
                       "name": "estacion",
                       "type": "string"
@@ -242,7 +232,31 @@
                     "aggregation": "uniqueBin",
                     "title": "estacion"
                   },
-                  "numGroups": 0
+                  "value": {
+                    "field": {
+                      "name": "sobre_bajamar",
+                      "type": "real"
+                    },
+                    "aggregation": "average",
+                    "title": "sobre_bajamar"
+                  },
+                  "numGroups": 10,
+                  "chartDisplay": {
+                    "colorRange": {
+                      "name": "Marea (Blues)",
+                      "type": "sequential",
+                      "category": "Custom",
+                      "colors": [
+                        "#eff3ff",
+                        "#c6dbef",
+                        "#9ecae1",
+                        "#6baed6",
+                        "#4292c6",
+                        "#2171b5",
+                        "#084594"
+                      ]
+                    }
+                  }
                 }
               ],
               "splitMaps": []
@@ -267,7 +281,7 @@
           "refId": "A",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- Mareografos del INOCAR: la red nacional, al minuto, ultimas 24 h.\n--\n-- El catalogo de estaciones da nombre y posicion; cada serie llega como\n-- {inicio: ms, datos_alturas: [...]} SIN horas: el punto i es `inicio` + i\n-- minutos. `inicio` es UTC. Puna (id 10) publica serie pero no esta en el\n-- catalogo, asi que no tiene posicion y queda fuera.\n--\n-- Cada mareografo mide contra su propio cero (Rio Guayas ronda 4 m, Puerto Atun\n-- 1,3 m): la anomalia -- altura menos la media de las 24 h de ese puerto -- es lo\n-- que se puede comparar entre puertos.\nWITH estaciones AS (\n  SELECT f.properties.id_estacion::INTEGER AS id,\n         f.properties.estacion           AS estacion,\n         f.properties.latitud::DOUBLE    AS latitude,\n         f.properties.longitud::DOUBLE   AS longitude\n  FROM (SELECT unnest(features) AS f\n        FROM read_json('https://www.inocar.mil.ec/mareas/estaciones_monitoreo.php', format = 'auto'))\n),\nseries AS (\n  SELECT regexp_extract(filename, 'id_est=([0-9]+)', 1)::INTEGER AS id,\n         inicio::BIGINT AS inicio,\n         datos_alturas\n  FROM read_json([\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=1',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=5',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=7',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=8',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=9',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=11',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=12'\n    ], format = 'auto', filename = true)\n),\npuntos AS (\n  SELECT s.id,\n         to_timestamp(s.inicio / 1000) + to_minutes(i - 1) AS time,\n         s.datos_alturas[i]::DOUBLE AS altura\n  FROM series s, range(1, len(s.datos_alturas) + 1) AS r(i)\n)\n-- Ordenado por hora: en cada puerto el punto que queda ENCIMA (el que se ve y el\n-- que coge el tooltip) es la lectura mas reciente.\nSELECT e.estacion,\n       e.latitude,\n       e.longitude,\n       p.time,\n       p.altura,\n       p.altura - avg(p.altura) OVER (PARTITION BY p.id) AS anomalia\nFROM puntos p\nJOIN estaciones e USING (id)\nWHERE p.altura IS NOT NULL\nORDER BY e.estacion, p.time\n"
+          "rawSql": "-- Mareografos del INOCAR: la red nacional, al minuto, ultimas 24 h.\n--\n-- El catalogo de estaciones da nombre y posicion; cada serie llega como\n-- {inicio: ms, datos_alturas: [...]} SIN horas: el punto i es `inicio` + i\n-- minutos. `inicio` es UTC. Puna (id 10) publica serie pero no esta en el\n-- catalogo, asi que no tiene posicion y queda fuera.\n--\n-- Cada mareografo mide contra su propio cero (Rio Guayas ronda 4 m, Puerto Atun\n-- 1,3 m): sobre_bajamar -- la altura menos el MINIMO de las 24 h de ese puerto --\n-- quita ese cero propio y es lo que se puede comparar entre puertos. A diferencia\n-- de una anomalia (altura menos la MEDIA), sobre_bajamar nunca es negativo, que es\n-- lo que necesita el heatmap de kepler: su heatColor() trata cualquier valor <= 0\n-- como si no hubiera dato y no lo pinta.\nWITH estaciones AS (\n  SELECT f.properties.id_estacion::INTEGER AS id,\n         f.properties.estacion           AS estacion,\n         f.properties.latitud::DOUBLE    AS latitude,\n         f.properties.longitud::DOUBLE   AS longitude\n  FROM (SELECT unnest(features) AS f\n        FROM read_json('https://www.inocar.mil.ec/mareas/estaciones_monitoreo.php', format = 'auto'))\n),\nseries AS (\n  SELECT regexp_extract(filename, 'id_est=([0-9]+)', 1)::INTEGER AS id,\n         inicio::BIGINT AS inicio,\n         datos_alturas\n  FROM read_json([\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=1',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=5',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=7',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=8',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=9',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=11',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=12'\n    ], format = 'auto', filename = true)\n),\npuntos AS (\n  SELECT s.id,\n         to_timestamp(s.inicio / 1000) + to_minutes(i - 1) AS time,\n         s.datos_alturas[i]::DOUBLE AS altura\n  FROM series s, range(1, len(s.datos_alturas) + 1) AS r(i)\n)\n-- Ordenado por hora: en cada puerto el punto que queda ENCIMA (el que se ve y el\n-- que coge el tooltip) es la lectura mas reciente.\nSELECT e.estacion,\n       e.latitude,\n       e.longitude,\n       p.time,\n       p.altura,\n       p.altura - min(p.altura) OVER (PARTITION BY p.id) AS sobre_bajamar,\n       -- Tramo de 3 horas, como texto que ordena cronologicamente (relleno de\n       -- ceros): agrupa el heatmap fijado por bloques de 3 h en vez de una\n       -- curva por puerto, que kepler no sabe dibujar (ver commit de fix).\n       strftime(time_bucket(INTERVAL 3 HOUR, p.time), '%m-%d %H:00') AS tramo\nFROM puntos p\nJOIN estaciones e USING (id)\nWHERE p.altura IS NOT NULL\nORDER BY e.estacion, p.time\n"
         }
       ]
     }
