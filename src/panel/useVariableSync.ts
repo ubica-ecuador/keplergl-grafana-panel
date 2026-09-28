@@ -5,6 +5,7 @@ import type { Store } from 'redux';
 import {
   applyFieldFilter,
   applyRangeFilter,
+  readChartFilters,
   readDatasetIds,
   readFilters,
   readParkedFilters,
@@ -13,6 +14,7 @@ import {
 } from './keplerAdapter';
 import { SliceWatcher } from './sliceWatcher';
 import {
+  chartVariableValues,
   decideFieldSync,
   fieldsAwaitingRows,
   isVariableFilter,
@@ -66,6 +68,12 @@ const RANGE_PUBLISH_DELAY_MS = 300;
  */
 export function useVariableSync({ store, isReady, mappings }: Params): void {
   const lastSynced = useRef<Record<string, string>>({});
+  /**
+   * What each `chart` mapping's variable last saw the chart hold, by variable.
+   * The first pass only records it: a dashboard opened with the variable in
+   * its URL keeps that value until the chart itself changes.
+   */
+  const lastChart = useRef<Record<string, string>>({});
   /**
    * False while this panel is live; true from the moment it tears down.
    *
@@ -124,7 +132,7 @@ export function useVariableSync({ store, isReady, mappings }: Params): void {
     // Click mappings belong to `useClickSync` — one-way, publish-on-click.
     // Reconciling them here would have the variable write a filter back onto
     // the map, a direction no click mapping asked for.
-    const { scalar: scalarMaps, range: rangeMaps } = partitionMappings(maps);
+    const { scalar: scalarMaps, range: rangeMaps, chart: chartMaps } = partitionMappings(maps);
 
     const variableValues: Record<string, unknown> = {};
     for (const { variable, variableTo } of maps) {
@@ -229,6 +237,21 @@ export function useVariableSync({ store, isReady, mappings }: Params): void {
 
       if (applied) {
         lastSynced.current[field] = normalizeFilterKey(action.values);
+      }
+    }
+
+    // Chart mappings: one way, from a chart's cross-filter to the variable.
+    // Nothing is ever written back onto the map, and only a change in what the
+    // chart holds publishes — the variable's own value is not compared.
+    const chartValues = chartVariableValues(readChartFilters(store), chartMaps);
+    for (const [variable, values] of Object.entries(chartValues)) {
+      const key = normalizeFilterKey(values);
+      const last = lastChart.current[variable];
+      lastChart.current[variable] = key;
+      if (last !== undefined && last !== key) {
+        // Empty rather than `$__all`, as a click deselect writes: a textbox
+        // variable would otherwise hold the literal and break the SQL guard.
+        variableWrites[`var-${variable}`] = values ?? '';
       }
     }
 

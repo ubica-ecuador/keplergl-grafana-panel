@@ -1,4 +1,4 @@
-import { chartFilterIds, withoutChartFilters } from './chartFilters';
+import { chartFilterIds, onlyChartFilters, withoutChartFilters } from './chartFilters';
 
 /**
  * A chart's cross-filter is an ordinary kepler filter. kepler names it after
@@ -29,5 +29,18 @@ describe('withoutChartFilters', () => {
   it('hands the same list back when no chart owns anything', () => {
     const filters = [own, chart];
     expect(withoutChartFilters(filters, new Set())).toBe(filters);
+  });
+});
+
+describe('onlyChartFilters', () => {
+  it('keeps just the filters a chart owns, in order', () => {
+    const own = { id: 'sitio' };
+    const x = { id: 'bars-x' };
+    const y = { id: 'bars-y' };
+    expect(onlyChartFilters([x, own, y], new Set(['bars', 'bars-x', 'bars-y']))).toEqual([x, y]);
+  });
+
+  it('keeps nothing when no chart owns anything', () => {
+    expect(onlyChartFilters([{ id: 'sitio' }], new Set())).toEqual([]);
   });
 });

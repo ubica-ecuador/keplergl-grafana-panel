@@ -19,12 +19,16 @@ import { KeplerPanelOptions } from '../types';
 
 type Props = StandardEditorProps<VariableMapping[] | undefined, unknown, KeplerPanelOptions>;
 
-/** How a mapping row is driven: a filter, a click's entity or place, or the pair read back. */
-const SOURCE_OPTIONS: Array<ComboboxOption<'filter' | 'click' | 'coordinate' | 'center'>> = [
+/**
+ * How a mapping row is driven: a filter, a click's entity or place, the pair
+ * read back, or a chart's cross-filter.
+ */
+const SOURCE_OPTIONS: Array<ComboboxOption<'filter' | 'click' | 'coordinate' | 'center' | 'chart'>> = [
   { label: 'Filter', value: 'filter' },
   { label: 'Click', value: 'click' },
   { label: 'Coordinates', value: 'coordinate' },
   { label: 'Center', value: 'center' },
+  { label: 'Chart cross-filter', value: 'chart' },
 ];
 
 /**
@@ -98,7 +102,10 @@ export function VariableSyncEditor({ value, onChange, context }: Props) {
             />
           </InlineField>
           {mapping.source !== 'coordinate' && mapping.source !== 'center' && (
-            <InlineField label={mapping.source === 'click' ? 'Column' : 'Filter'} labelWidth={8}>
+            <InlineField
+              label={mapping.source === 'click' || mapping.source === 'chart' ? 'Column' : 'Filter'}
+              labelWidth={8}
+            >
               <Combobox
                 options={columns}
                 value={mapping.field || null}
@@ -134,7 +141,7 @@ export function VariableSyncEditor({ value, onChange, context }: Props) {
               />
             </InlineField>
           )}
-          {mapping.source !== 'click' && (
+          {mapping.source !== 'click' && mapping.source !== 'chart' && (
             <InlineField
               label={mapping.source === 'coordinate' || mapping.source === 'center' ? 'Lng' : 'Max'}
               labelWidth={6}

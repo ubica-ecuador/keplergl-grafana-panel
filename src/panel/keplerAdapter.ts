@@ -77,7 +77,7 @@ import { holdTilesetFraming } from './tile3dFraming';
 import { VECTOR_FIELD_TYPE } from './vectorFieldLayer';
 import { SYMBOL_TYPE } from './symbolLayer';
 import { foldSavedSplitMaps } from './splitMapsNormalise';
-import { chartFilterIds, withoutChartFilters, type ChartLike } from './chartFilters';
+import { chartFilterIds, onlyChartFilters, withoutChartFilters, type ChartLike } from './chartFilters';
 
 /**
  * The ONLY module that talks to the kepler.gl API.
@@ -1451,6 +1451,15 @@ export interface KeplerFilter {
 export function readFilters(store: Store): KeplerFilter[] {
   const visState = getVisState(store);
   return visState ? ownFilters(visState) : [];
+}
+
+/**
+ * The filters kepler's charts own: what `chart` variable mappings publish, and
+ * nothing else reads. See `chartFilters.ts`.
+ */
+export function readChartFilters(store: Store): KeplerFilter[] {
+  const visState = getVisState(store);
+  return visState ? onlyChartFilters(visState.filters, chartOwnedFilterIds(visState)) : [];
 }
 
 /**

@@ -47,3 +47,12 @@ export function withoutChartFilters<F extends { id?: string }>(
   }
   return filters.filter((filter) => !(filter.id && chartIds.has(filter.id)));
 }
+
+/**
+ * Only the filters in `chartIds`: what a `chart` variable mapping reads. Those
+ * mappings are the one opt-in way for a chart's cross-filter to reach the
+ * dashboard, by the author's choice, mapping by mapping.
+ */
+export function onlyChartFilters<F extends { id?: string }>(filters: readonly F[], chartIds: ReadonlySet<string>): F[] {
+  return filters.filter((filter) => Boolean(filter.id && chartIds.has(filter.id)));
+}
