@@ -4,6 +4,7 @@ import {
   isRangeMapping,
   isVariableFilter,
   normalizeFilterKey,
+  chartVariableValues,
   partitionMappings,
   rangeFilterPair,
   rangeVariableWrites,
@@ -334,12 +335,14 @@ describe('partitionMappings', () => {
     const click = { field: 'vehicle_id', variable: 'vehicle', source: 'click' as const };
     const coordinate = { field: '', variable: 'lat', variableTo: 'lng', source: 'coordinate' as const };
     const center = { field: '', variable: 'lat', variableTo: 'lng', source: 'center' as const };
-    expect(partitionMappings([scalar, range, click, coordinate, center])).toEqual({
+    const chart = { field: 'estacion', variable: 'estacion', source: 'chart' as const };
+    expect(partitionMappings([scalar, range, click, coordinate, center, chart])).toEqual({
       scalar: [scalar],
       range: [range],
       click: [click],
       coordinate: [coordinate],
       center: [center],
+      chart: [chart],
     });
   });
 
@@ -354,6 +357,7 @@ describe('partitionMappings', () => {
       click: [mapping],
       coordinate: [],
       center: [],
+      chart: [],
     });
   });
 
@@ -367,6 +371,7 @@ describe('partitionMappings', () => {
       click: [],
       coordinate: [mapping],
       center: [],
+      chart: [],
     });
   });
 
@@ -380,11 +385,47 @@ describe('partitionMappings', () => {
       click: [],
       coordinate: [],
       center: [mapping],
+      chart: [],
     });
   });
 
   it('reads an absent source as filter-driven', () => {
     const mapping = { field: 'category', variable: 'cat', source: 'filter' as const };
     expect(partitionMappings([mapping]).scalar).toEqual([mapping]);
+  });
+});
+
+/**
+ * A `chart` mapping publishes what a chart's cross-filter holds on its field:
+ * a click on a heatmap cell becomes the dashboard's station and time bucket.
+ * The filters handed in are the chart-owned ones only (`readChartFilters`).
+ */
+describe('chartVariableValues', () => {
+  const byStation = { field: 'estacion', variable: 'estacion', source: 'chart' as const };
+  const byBucket = { field: 'tramo', variable: 'tramo', source: 'chart' as const };
+
+  it('reads each mapped field from the chart filter on it', () => {
+    const filters = [
+      { type: 'multiSelect', name: ['tramo'], value: ['26-09-28 12h'] },
+      { type: 'multiSelect', name: ['estacion'], value: ['Esmeraldas'] },
+    ];
+    expect(chartVariableValues(filters, [byStation, byBucket])).toEqual({
+      estacion: ['Esmeraldas'],
+      tramo: ['26-09-28 12h'],
+    });
+  });
+
+  it('reads no value where the chart holds no filter on the field', () => {
+    expect(chartVariableValues([], [byStation])).toEqual({ estacion: null });
+  });
+
+  it('reads no value from an emptied filter', () => {
+    const filters = [{ type: 'multiSelect', name: ['estacion'], value: [] }];
+    expect(chartVariableValues(filters, [byStation])).toEqual({ estacion: null });
+  });
+
+  it('leaves out mappings that are not driven by a chart', () => {
+    const filters = [{ type: 'multiSelect', name: ['estacion'], value: ['Esmeraldas'] }];
+    expect(chartVariableValues(filters, [{ field: 'estacion', variable: 'estacion' }])).toEqual({});
   });
 });

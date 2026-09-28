@@ -14,6 +14,7 @@ There are four kinds of mapping, and they behave quite differently.
 | **Click**       | map → variable  | the clicked entity's value of a column            |
 | **Coordinates** | map → variables | the clicked place, as a lat/lng pair              |
 | **Center**      | variables → map | nothing; it _reads_ a pair and moves the viewport |
+| **Chart**       | map → variable  | what a chart's cross-filter holds on a column     |
 
 ## Why variables and not Grafana's own cross-filtering
 
@@ -118,9 +119,21 @@ Clicking a row flies the map to that feature. A pair of text boxes works the sam
 Two behaviours keep it sane: the map's **own** clicks are recognised and never re-centre it, and on
 load the saved viewport wins — the pair moves the map only when someone changes it.
 
+## Chart — a chart's cross-filter
+
+Switch a mapping's source to **Chart cross-filter** and pick a column: when a chart in kepler's
+[charts panel](../kepler/charts) cross-filters that column, the variable receives the value. A
+heatmap filters two columns at once, so two rows — one per axis — turn a click on a cell into two
+variables: on the tide gauges dashboard, the port and the three-hour block, which a time series
+under the map then draws minute by minute.
+
+It works one way only. The variable never writes a filter back onto the map, clicking the cell
+again empties the variable, and a dashboard opened with the variable already in its URL keeps it
+until a chart changes. A **Filter** mapping on the same column still ignores chart filters.
+
 ## Combining them
 
-The four kinds are exclusive per mapping row, but a panel can have several rows. A common
+The five kinds are exclusive per mapping row, but a panel can have several rows. A common
 arrangement is a Click mapping for the entity, a Coordinates mapping for spatial queries, and a
 Filter mapping for a category — three rows, three variables, one map driving the whole dashboard.
 

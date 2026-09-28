@@ -214,3 +214,93 @@ describe('useVariableSync across a refresh', () => {
     expect(store.dispatch).toHaveBeenCalled();
   });
 });
+
+/**
+ * `chart` mappings: a chart's cross-filter drives the variable, one way. The
+ * store's `charts` name which filters a chart owns; kepler's heatmap names its
+ * two `<filterId>-x` and `-y`.
+ */
+describe('useVariableSync with chart mappings', () => {
+  const CHART_MAPPINGS = [
+    { field: 'estacion', variable: 'estacion', source: 'chart' as const },
+    { field: 'tramo', variable: 'tramo', source: 'chart' as const },
+  ];
+  const heatmap = { id: 'costa', crossFilter: { enabled: true, filterId: 'hm' } };
+  const cell = [
+    { id: 'hm-x', type: 'multiSelect', name: ['tramo'], dataId: ['grafana-A'], value: ['26-09-28 12h'] },
+    { id: 'hm-y', type: 'multiSelect', name: ['estacion'], dataId: ['grafana-A'], value: ['Esmeraldas'] },
+  ];
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    partial.mockClear();
+    listeners.length = 0;
+    search = new URLSearchParams();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  async function settle() {
+    await flushMicrotasks();
+    jest.advanceTimersByTime(500);
+  }
+
+  it('publishes the cell a click on the heatmap selects', async () => {
+    const store = makeStore([]);
+    store.setVisState({ charts: [heatmap] });
+    renderHook(() => useVariableSync({ store: store as never, isReady: true, mappings: CHART_MAPPINGS }));
+    await settle();
+    expect(partial).not.toHaveBeenCalled();
+
+    store.setVisState({ filters: cell });
+    await settle();
+
+    expect(partial).toHaveBeenLastCalledWith({ 'var-estacion': ['Esmeraldas'], 'var-tramo': ['26-09-28 12h'] }, true);
+  });
+
+  it('empties the variables when the cell is clicked off', async () => {
+    const store = makeStore([]);
+    store.setVisState({ charts: [heatmap], filters: cell });
+    renderHook(() => useVariableSync({ store: store as never, isReady: true, mappings: CHART_MAPPINGS }));
+    await settle();
+
+    store.setVisState({ filters: [] });
+    await settle();
+
+    expect(partial).toHaveBeenLastCalledWith({ 'var-estacion': '', 'var-tramo': '' }, true);
+  });
+
+  it('leaves a variable the URL arrived with alone until the chart moves', async () => {
+    search = new URLSearchParams('var-estacion=Esmeraldas');
+    const store = makeStore([]);
+    store.setVisState({ charts: [heatmap] });
+    renderHook(() => useVariableSync({ store: store as never, isReady: true, mappings: CHART_MAPPINGS }));
+    await settle();
+
+    expect(partial).not.toHaveBeenCalled();
+  });
+
+  it('never writes a filter onto the map from the variable', async () => {
+    search = new URLSearchParams('var-estacion=Esmeraldas');
+    const store = makeStore([]);
+    store.setVisState({ charts: [heatmap], datasets: { 'grafana-A': { fields: [{ name: 'estacion' }] } } });
+    renderHook(() => useVariableSync({ store: store as never, isReady: true, mappings: CHART_MAPPINGS }));
+    await settle();
+
+    expect(store.dispatch).not.toHaveBeenCalled();
+  });
+
+  it('ignores a filter of the map’s own on the same field', async () => {
+    const store = makeStore([]);
+    store.setVisState({ charts: [heatmap] });
+    renderHook(() => useVariableSync({ store: store as never, isReady: true, mappings: CHART_MAPPINGS }));
+    await settle();
+
+    store.setVisState({ filters: [{ id: 'own', type: 'multiSelect', name: ['estacion'], value: ['Puná'] }] });
+    await settle();
+
+    expect(partial).not.toHaveBeenCalled();
+  });
+});

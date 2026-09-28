@@ -65,8 +65,8 @@ data explorer and an AI assistant; neither is included here.
 Effect thumbnails are vendored along with the icons, so the picker needs no outbound request.
 
 A chart's cross-filters are ordinary kepler filters, but the panel's variable and time syncs leave
-them out: they narrow the map and its charts and never reach the dashboard. See
-[Charts](../guide/kepler/charts).
+them out: they narrow the map and its charts and reach the dashboard only through a mapping whose
+source is **Chart cross-filter**. See [Charts](../guide/kepler/charts).
 
 ## A saved compare mode is kept
 

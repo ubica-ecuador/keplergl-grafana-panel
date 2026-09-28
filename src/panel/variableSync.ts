@@ -30,9 +30,13 @@ export interface VariableMapping {
    * (see `coordinateSync.ts`), so `field` means nothing to it. `center` is
    * the same pair read the other way: when the variables change from outside
    * — a table's data link, a textbox — the map centres on them
-   * (`centerSync.ts`); `field` means nothing to it either.
+   * (`centerSync.ts`); `field` means nothing to it either. `chart` publishes
+   * what a chart's cross-filter holds on `field` — clicking a heatmap cell
+   * sets the station and the time bucket — one way only. It is the opt-in
+   * exception to the rule that a chart's filters stay in the map; a `filter`
+   * mapping still never sees them (`chartFilters.ts`).
    */
-  source?: 'filter' | 'click' | 'coordinate' | 'center';
+  source?: 'filter' | 'click' | 'coordinate' | 'center' | 'chart';
 
   /**
    * For a `center` mapping only: the zoom level to jump to when centring.
@@ -70,6 +74,11 @@ export function isCenterMapping(mapping: VariableMapping): boolean {
   return mapping.source === 'center';
 }
 
+/** Whether a mapping publishes a chart's cross-filter. */
+export function isChartMapping(mapping: VariableMapping): boolean {
+  return mapping.source === 'chart';
+}
+
 /**
  * The mappings, split by the state that drives each: `scalar` and `range`
  * mirror a kepler filter both ways, `click` publishes the clicked entity one
@@ -86,25 +95,29 @@ export function partitionMappings(mappings: VariableMapping[]): {
   click: VariableMapping[];
   coordinate: VariableMapping[];
   center: VariableMapping[];
+  chart: VariableMapping[];
 } {
   const scalar: VariableMapping[] = [];
   const range: VariableMapping[] = [];
   const click: VariableMapping[] = [];
   const coordinate: VariableMapping[] = [];
   const center: VariableMapping[] = [];
+  const chart: VariableMapping[] = [];
   for (const mapping of mappings) {
-    (isCenterMapping(mapping)
-      ? center
-      : isCoordinateMapping(mapping)
-        ? coordinate
-        : isClickMapping(mapping)
-          ? click
-          : isRangeMapping(mapping)
-            ? range
-            : scalar
+    (isChartMapping(mapping)
+      ? chart
+      : isCenterMapping(mapping)
+        ? center
+        : isCoordinateMapping(mapping)
+          ? coordinate
+          : isClickMapping(mapping)
+            ? click
+            : isRangeMapping(mapping)
+              ? range
+              : scalar
     ).push(mapping);
   }
-  return { scalar, range, click, coordinate, center };
+  return { scalar, range, click, coordinate, center, chart };
 }
 
 /** The little kepler filter shape this reads. */
@@ -181,6 +194,28 @@ export function filterVariableValues(filters: FilterLike[], mappings: VariableMa
     if (filter && hasValue(filter.value)) {
       values[variable] = filter.value;
     }
+  }
+  return values;
+}
+
+/**
+ * What each `chart` mapping's variable should hold: the values of the chart
+ * filter on its field, or null where no chart filters it. Handed only the
+ * chart-owned filters (`readChartFilters`), so a filter of the map's own on
+ * the same field never counts.
+ */
+export function chartVariableValues(
+  filters: FilterLike[],
+  mappings: VariableMapping[]
+): Record<string, string[] | null> {
+  const values: Record<string, string[] | null> = {};
+  for (const mapping of mappings) {
+    if (!isChartMapping(mapping)) {
+      continue;
+    }
+    const filter = filters.find((f) => matchesField(f, mapping.field) && VARIABLE_FILTER_TYPES.has(f.type ?? ''));
+    const selected = filter ? toStringValues(filter.value) : [];
+    values[mapping.variable] = selected.length ? selected : null;
   }
   return values;
 }
