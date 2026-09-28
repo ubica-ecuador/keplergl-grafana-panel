@@ -105,31 +105,16 @@ async function hover(page: Page, map: Locator, point: { x: number; y: number }):
   await expect.poll(async () => (await readCharts(map)).hovered, { timeout: 10_000 }).toBe(true);
 }
 
-/**
- * The fixture's `interactionConfig.tooltip.compareMode: true` never reaches
- * the running map: kepler's own `mergeInteractions` (vis-state-merger.js,
- * the path `addDataToMap` walks) rebuilds the tooltip's `config` as
- * `{fieldsToShow}` only, dropping `compareMode`/`compareType` from the saved
- * config and leaving the reducer's defaults (`compareMode: false`) in place —
- * confirmed live: `interactionConfig.tooltip` reads `compareMode: false`
- * right after load even though the fixture sets it `true`. Kepler's own
- * "Compare Mode" side-panel switch fixes this the same way: it dispatches
- * `INTERACTION_CONFIG_CHANGE` with a full tooltip descriptor. Do that here.
- */
-async function enableCompareMode(map: Locator): Promise<void> {
-  await map.evaluate((node) => {
+/** Reads `interactionConfig.tooltip.config.compareMode` straight off the store. */
+async function tooltipCompareMode(map: Locator): Promise<boolean> {
+  return map.evaluate((node) => {
     const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
     let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
     while (fiber) {
       const store = fiber.memoizedProps && fiber.memoizedProps.store;
       if (store && typeof store.getState === 'function') {
         const visState = (Object.values(store.getState().keplerGl ?? {})[0] as any)?.visState;
-        const tooltip = visState?.interactionConfig?.tooltip;
-        store.dispatch({
-          type: '@@kepler.gl/INTERACTION_CONFIG_CHANGE',
-          config: { ...tooltip, config: { ...tooltip.config, compareMode: true, compareType: 'absolute' } },
-        });
-        return;
+        return Boolean(visState?.interactionConfig?.tooltip?.config?.compareMode);
       }
       fiber = fiber.return;
     }
@@ -185,8 +170,10 @@ test('compare mode: pinned and hovered sites each draw their series, and only th
   const map = await gotoChartsPanel(gotoDashboardPage, readProvisionedDashboard, page);
   const { north, south } = await sitePoints(map);
 
-  await enableCompareMode(map);
-  await settle(page);
+  // The fixture's `interactionConfig.tooltip.compareMode: true` — this is the
+  // product fix under test, not test setup: see `savedTooltipCompare` and
+  // `loadDatasets` in `keplerAdapter.ts`.
+  expect(await tooltipCompareMode(map)).toBe(true);
 
   await page.mouse.click(north.x, north.y);
   await settle(page);

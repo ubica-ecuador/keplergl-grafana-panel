@@ -26,11 +26,11 @@ import {
   updateVisData,
   wrapTo,
 } from '@kepler.gl/actions';
-import { ALL_FIELD_TYPES, PMTilesType, REMOTE_TILE, RemoteTileFormat } from '@kepler.gl/constants';
+import { ALL_FIELD_TYPES, COMPARE_TYPES, PMTilesType, REMOTE_TILE, RemoteTileFormat } from '@kepler.gl/constants';
 import { adjustValueToFilterDomain, getApplicationConfig } from '@kepler.gl/utils';
 import { processRowObject } from '@kepler.gl/processors';
 import KeplerGlSchema, { datasetSchema, VERSIONS, type SavedDatasetV1 } from '@kepler.gl/schemas';
-import type { ProtoDataset } from '@kepler.gl/types';
+import type { ParsedConfig, ProtoDataset } from '@kepler.gl/types';
 import type { Dispatch, Store } from 'redux';
 
 import { FieldType } from '@grafana/data';
@@ -178,6 +178,59 @@ export function loadDatasets(
       })
     )
   );
+
+  // Puts compareMode/compareType back on the store before kepler's own async
+  // merge (mergeInteractions, run once the payload above's datasets settle)
+  // reads the *current* config and keeps whatever it finds there — see
+  // `savedTooltipCompare` for why that merge drops them from the saved config
+  // on its own.
+  const compare = savedTooltipCompare(config);
+  if (compare) {
+    const savedTooltip = config?.visState?.interactionConfig?.tooltip;
+    dispatch(
+      wrapTo(
+        KEPLER_INSTANCE_ID,
+        interactionConfigChange({
+          id: 'tooltip',
+          label: 'interactions.tooltip',
+          enabled: savedTooltip?.enabled ?? true,
+          config: {
+            fieldsToShow: savedTooltip?.fieldsToShow ?? {},
+            compareMode: compare.compareMode,
+            compareType: compare.compareType ?? COMPARE_TYPES.ABSOLUTE,
+          },
+        } as Parameters<typeof interactionConfigChange>[0])
+      )
+    );
+  }
+}
+
+/**
+ * The saved config's own tooltip compare setting, when it states one.
+ *
+ * Upstream cause: kepler.gl 3.3.0-alpha.15's `mergeInteractions`
+ * (`@kepler.gl/reducers`, `vis-state-merger.ts` ~474 — the merge
+ * `addDataToMap` runs once a saved config's datasets have settled) rebuilds
+ * the tooltip's `config` as `{fieldsToShow}` only, so `compareMode` and
+ * `compareType` never reach the store through that merge alone — even though
+ * kepler's own "Save current map" writes them (`InteractionSchemaV1.save`
+ * spreads the whole tooltip config). `KeplerGlSchema.parseSavedConfig` keeps
+ * them, though: `InteractionSchemaV1.load` is a plain `cloneDeep`, so they
+ * land flat on `interactionConfig.tooltip`, beside `fieldsToShow` — which is
+ * what this reads. Delete this once kepler's own merge keeps the saved
+ * tooltip config.
+ */
+export function savedTooltipCompare(
+  config: ParsedConfig | null
+): { compareMode: boolean; compareType?: string } | null {
+  const tooltip = config?.visState?.interactionConfig?.tooltip;
+  if (typeof tooltip?.compareMode !== 'boolean') {
+    return null;
+  }
+  return {
+    compareMode: tooltip.compareMode,
+    ...(typeof tooltip.compareType === 'string' ? { compareType: tooltip.compareType } : {}),
+  };
 }
 
 /** kepler's `DatasetType.VECTOR_TILE`, the one type that needs the filter hint. */
