@@ -50,7 +50,7 @@ async function crossFilterStore() {
   const [dataset] = framesToDatasets([rawFrame(dashboard.panels[0].targets[0].rawFrameContent)]);
   const store = createKeplerStore();
   store.dispatch(registerEntry({ id: KEPLER_INSTANCE_ID }) as never);
-  loadDatasets(store.dispatch, [dataset]);
+  loadDatasets(store, store.dispatch, [dataset]);
   await settle();
   return store;
 }
@@ -113,7 +113,7 @@ describe('haloInputFrom', () => {
     const [dataset] = framesToDatasets([rawFrame(panel.targets[0].rawFrameContent)]);
     const store = createKeplerStore();
     store.dispatch(registerEntry({ id: KEPLER_INSTANCE_ID }) as never);
-    loadDatasets(store.dispatch, [dataset]);
+    loadDatasets(store, store.dispatch, [dataset]);
     await settle();
     pushTimeRange(store, store.dispatch, { from: Date.parse(dashboard.time.from), to: Date.parse(dashboard.time.to) });
     await settle();

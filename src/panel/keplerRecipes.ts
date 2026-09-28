@@ -1,5 +1,5 @@
 import { replaceAnimationController } from './animationSweepFix';
-import { replaceMapControl } from './effectsMapControl';
+import { replaceMapControl } from './mapControl';
 import { replaceLayerConfigurator } from './flowFieldConfigurator';
 import { replaceMapContainer } from './haloMapContainer';
 import { replaceLayerPanelHeader } from './layerPanelHeader';

@@ -41,3 +41,11 @@ describe('configureKepler — the JSON editors', () => {
     expect(config.enableEffectJsonEditor).toBe(true);
   });
 });
+
+describe('configureKepler — the charts panel', () => {
+  beforeAll(() => configureKepler());
+
+  it('keeps it on, whatever kepler’s default becomes', () => {
+    expect(getApplicationConfig().enableChartsPanel).toBe(true);
+  });
+});

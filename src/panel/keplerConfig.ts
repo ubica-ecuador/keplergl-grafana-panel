@@ -42,6 +42,10 @@ export function configureKepler(): void {
     // rather than the 3.2.6 stable. Stated explicitly so a change in the
     // upstream default cannot silently remove it.
     enableFlowLayer: true,
+    // kepler's charts panel, tooltip charts included. On by default upstream;
+    // stated for the same reason as the Flow layer, since `mapControl.tsx` is
+    // built around it.
+    enableChartsPanel: true,
     // deck.gl's map controller stops at 60 degrees, which is short of the
     // near-ground view a 3D tileset is worth looking at: the scene this was
     // measured against sits at 69.5. kepler documents this as the way to raise

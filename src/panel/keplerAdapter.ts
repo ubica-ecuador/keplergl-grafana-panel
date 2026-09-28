@@ -26,11 +26,11 @@ import {
   updateVisData,
   wrapTo,
 } from '@kepler.gl/actions';
-import { ALL_FIELD_TYPES, PMTilesType, REMOTE_TILE, RemoteTileFormat } from '@kepler.gl/constants';
+import { ALL_FIELD_TYPES, COMPARE_TYPES, PMTilesType, REMOTE_TILE, RemoteTileFormat } from '@kepler.gl/constants';
 import { adjustValueToFilterDomain, getApplicationConfig } from '@kepler.gl/utils';
 import { processRowObject } from '@kepler.gl/processors';
 import KeplerGlSchema, { datasetSchema, VERSIONS, type SavedDatasetV1 } from '@kepler.gl/schemas';
-import type { ProtoDataset } from '@kepler.gl/types';
+import type { ParsedConfig, ProtoDataset } from '@kepler.gl/types';
 import type { Dispatch, Store } from 'redux';
 
 import { FieldType } from '@grafana/data';
@@ -77,6 +77,7 @@ import { holdTilesetFraming } from './tile3dFraming';
 import { VECTOR_FIELD_TYPE } from './vectorFieldLayer';
 import { SYMBOL_TYPE } from './symbolLayer';
 import { foldSavedSplitMaps } from './splitMapsNormalise';
+import { chartFilterIds, withoutChartFilters, type ChartLike } from './chartFilters';
 
 /**
  * The ONLY module that talks to the kepler.gl API.
@@ -152,6 +153,7 @@ function standInValue(type: FieldType): unknown {
  * settles as rejected, costing a kepler error notification and nothing else.
  */
 export function loadDatasets(
+  store: Store,
   dispatch: Dispatch,
   datasets: PanelDataset[],
   options: { centerMap?: boolean } = {},
@@ -177,6 +179,65 @@ export function loadDatasets(
       })
     )
   );
+
+  // A saved compare mode goes back on the store here, after both of kepler's
+  // own steps inside `addDataToMap` above: its reset of the tooltip to the
+  // default, then the synchronous merge of the saved config, which keeps only
+  // `fieldsToShow` — for datasets already there, none on a first load. The
+  // async merge that runs once the payload's datasets settle then finds
+  // compareMode/compareType in the live config and keeps them; see
+  // `savedTooltipCompare`. Only `true` is worth a dispatch: `false` is kepler's
+  // default, and every map saved from kepler states it.
+  const compare = savedTooltipCompare(config);
+  const liveTooltip = getVisState(store)?.interactionConfig?.tooltip;
+  if (compare?.compareMode && liveTooltip) {
+    // The live item, not the saved one: a saved `fieldsToShow` entry for a
+    // dataset that never loads would stay in the store for good (the async
+    // merge spreads the current `fieldsToShow` first) and crash kepler's
+    // Interactions -> Tooltip, which reads `datasets[dataId].fields`.
+    dispatch(
+      wrapTo(
+        KEPLER_INSTANCE_ID,
+        interactionConfigChange({
+          ...liveTooltip,
+          config: {
+            ...liveTooltip.config,
+            compareMode: true,
+            compareType: compare.compareType ?? COMPARE_TYPES.ABSOLUTE,
+          },
+        } as Parameters<typeof interactionConfigChange>[0])
+      )
+    );
+  }
+}
+
+/**
+ * The saved config's own tooltip compare setting, when it states one.
+ *
+ * Upstream cause: kepler.gl 3.3.0-alpha.15's `mergeInteractions`
+ * (`@kepler.gl/reducers`, `vis-state-merger.ts` ~474 — which `addDataToMap`
+ * runs twice: synchronously, inside `receiveMapConfigUpdater` right after it
+ * resets the config, and again once the saved config's datasets have settled)
+ * rebuilds the tooltip's `config` as `{fieldsToShow}` only, so `compareMode` and
+ * `compareType` never reach the store through that merge alone — even though
+ * kepler's own "Save current map" writes them (`InteractionSchemaV1.save`
+ * spreads the whole tooltip config). `KeplerGlSchema.parseSavedConfig` keeps
+ * them, though: `InteractionSchemaV1.load` is a plain `cloneDeep`, so they
+ * land flat on `interactionConfig.tooltip`, beside `fieldsToShow` — which is
+ * what this reads. Delete this once kepler's own merge keeps the saved
+ * tooltip config.
+ */
+export function savedTooltipCompare(
+  config: ParsedConfig | null
+): { compareMode: boolean; compareType?: string } | null {
+  const tooltip = config?.visState?.interactionConfig?.tooltip;
+  if (typeof tooltip?.compareMode !== 'boolean') {
+    return null;
+  }
+  return {
+    compareMode: tooltip.compareMode,
+    ...(typeof tooltip.compareType === 'string' ? { compareType: tooltip.compareType } : {}),
+  };
 }
 
 /** kepler's `DatasetType.VECTOR_TILE`, the one type that needs the filter hint. */
@@ -1107,7 +1168,7 @@ const RESUME_GIVE_UP_MS = 5_000;
  */
 export function capturePlayingTimeFilter(store: Store, datasets: PanelDataset[]): PlayingTimeFilter | null {
   const visState = getVisState(store);
-  const filter = visState?.filters.find((f) => f.type === TIME_FILTER_TYPE);
+  const filter = visState ? ownFilters(visState).find((f) => f.type === TIME_FILTER_TYPE) : undefined;
   if (!visState || !filter?.isAnimating || !isWindow(filter.value)) {
     return null;
   }
@@ -1299,6 +1360,10 @@ interface VisStateLike {
   }>;
   /** Filters parked by a dataset replace, waiting to be merged back — in their saved form. */
   filterToBeMerged?: Array<{ id?: string; name?: string[] | string; dataId?: string[] | string }>;
+  /** kepler's charts; a chart's cross-filters live among `filters`. See `chartFilters.ts`. */
+  charts?: ChartLike[];
+  /** Charts parked by a dataset replace, waiting to be merged back. */
+  chartsToBeMerged?: ChartLike[];
   datasets: Record<
     string,
     {
@@ -1364,9 +1429,13 @@ interface VisStateLike {
   mousePos?: {
     pinned?: { coordinate?: unknown } | null;
   };
-  /** kepler's per-interaction switches; `coordinate` is the one the pin needs. */
+  /**
+   * kepler's per-interaction switches; `coordinate` is the one the pin needs,
+   * `tooltip` the one a saved compare mode is put back on.
+   */
   interactionConfig?: {
     coordinate?: { enabled?: boolean };
+    tooltip?: { id: string; enabled?: boolean; config?: Record<string, unknown> };
   };
 }
 
@@ -1380,7 +1449,8 @@ export interface KeplerFilter {
 
 /** The map's current filters, for driving dashboard variables. */
 export function readFilters(store: Store): KeplerFilter[] {
-  return getVisState(store)?.filters ?? [];
+  const visState = getVisState(store);
+  return visState ? ownFilters(visState) : [];
 }
 
 /**
@@ -1391,7 +1461,8 @@ export function readFilters(store: Store): KeplerFilter[] {
  * kepler failed to validate is parked here as well, and stays.
  */
 export function readParkedFilters(store: Store): KeplerFilter[] {
-  return getVisState(store)?.filterToBeMerged ?? [];
+  const visState = getVisState(store);
+  return visState ? withoutChartFilters(visState.filterToBeMerged ?? [], chartOwnedFilterIds(visState)) : [];
 }
 
 /**
@@ -1867,7 +1938,7 @@ function applyFilterValue(store: Store, dispatch: Dispatch, field: string, value
     return false;
   }
 
-  const existing = visState.filters.find((f) => filterHasField(f, field));
+  const existing = ownFilters(visState).find((f) => filterHasField(f, field));
   if (existing) {
     dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(existing.id, undefined, undefined, value)));
     return true;
@@ -1885,8 +1956,14 @@ function applyFilterValue(store: Store, dispatch: Dispatch, field: string, value
 
 /** Removes the filter on `field`, if any — clears a variable-driven selection. */
 export function removeFieldFilter(store: Store, dispatch: Dispatch, field: string): void {
-  const filters = getVisState(store)?.filters ?? [];
-  const idx = filters.findIndex((f) => filterHasField(f, field));
+  const visState = getVisState(store);
+  if (!visState) {
+    return;
+  }
+  // The index kepler's removeFilter takes is the filter's place in the whole
+  // list, chart-owned filters included.
+  const target = ownFilters(visState).find((f) => filterHasField(f, field));
+  const idx = target ? visState.filters.indexOf(target) : -1;
   if (idx >= 0) {
     dispatch(wrapTo(KEPLER_INSTANCE_ID, removeFilter(idx)));
   }
@@ -1898,6 +1975,20 @@ export type MapBounds = [number, number, number, number];
 function getVisState(store: Store): VisStateLike | null {
   const state = store.getState() as { keplerGl?: Record<string, { visState?: VisStateLike }> };
   return state.keplerGl?.[KEPLER_INSTANCE_ID]?.visState ?? null;
+}
+
+/** The ids of the filters kepler's charts own, parked charts included. */
+function chartOwnedFilterIds(visState: VisStateLike): Set<string> {
+  return chartFilterIds([...(visState.charts ?? []), ...(visState.chartsToBeMerged ?? [])]);
+}
+
+/**
+ * kepler's filters minus the ones a chart owns: what every sync here reads.
+ * A chart's cross-filter narrows the map and its charts only; see
+ * `chartFilters.ts` for why a sync must never see it.
+ */
+function ownFilters(visState: VisStateLike): VisStateLike['filters'] {
+  return withoutChartFilters(visState.filters, chartOwnedFilterIds(visState));
 }
 
 /**
@@ -1920,13 +2011,13 @@ export function readBasemapId(store: Store): string | null {
 /** The map's current time-filter window, or null if it has no time filter. */
 export function readTimeRange(store: Store): TimeRangeMs | null {
   const visState = getVisState(store);
-  return visState ? readTimeFilterValue(visState.filters) : null;
+  return visState ? readTimeFilterValue(ownFilters(visState)) : null;
 }
 
 /** The full time extent of the data behind the map's time filter. */
 export function readTimeDomain(store: Store): TimeRangeMs | null {
   const visState = getVisState(store);
-  return visState ? readTimeFilterDomain(visState.filters) : null;
+  return visState ? readTimeFilterDomain(ownFilters(visState)) : null;
 }
 
 /**
@@ -1941,7 +2032,8 @@ export function readTimeDomain(store: Store): TimeRangeMs | null {
  * frames, so it is the user's call rather than the code's.
  */
 export function isTimeFilterAnimating(store: Store): boolean {
-  return Boolean(getVisState(store)?.filters.find((f) => f.type === TIME_FILTER_TYPE)?.isAnimating);
+  const visState = getVisState(store);
+  return Boolean(visState && ownFilters(visState).find((f) => f.type === TIME_FILTER_TYPE)?.isAnimating);
 }
 
 /**
@@ -1961,7 +2053,7 @@ export function ensureTimeFilter(store: Store, dispatch: Dispatch): boolean {
   if (!visState) {
     return false;
   }
-  if (visState.filters.some((f) => f.type === TIME_FILTER_TYPE)) {
+  if (ownFilters(visState).some((f) => f.type === TIME_FILTER_TYPE)) {
     return true;
   }
 
@@ -2039,7 +2131,7 @@ export function pushTimeRange(store: Store, dispatch: Dispatch, range: TimeRange
 
   const value: [number, number] = [range.from, range.to];
 
-  const existing = visState.filters.find((f) => f.type === TIME_FILTER_TYPE);
+  const existing = ownFilters(visState).find((f) => f.type === TIME_FILTER_TYPE);
   if (existing) {
     dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(existing.id, undefined, undefined, value)));
     return true;

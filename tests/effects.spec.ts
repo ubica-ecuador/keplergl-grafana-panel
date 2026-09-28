@@ -3,7 +3,7 @@ import { Locator, Page } from '@playwright/test';
 
 /**
  * The effects button is host-app wiring, not stock kepler: the panel replaces
- * kepler's MapControlFactory to add it (see src/panel/effectsMapControl.tsx).
+ * kepler's MapControlFactory to add it (see src/panel/mapControl.tsx).
  * These tests pin the two halves of that wiring — the button reaching the
  * toolbar, and the EffectManager panel actually mounting when toggled — plus
  * the vendored thumbnails and config persistence it depends on.

@@ -95,7 +95,7 @@ function timeFilterIndex(store: Store): number {
 async function mapWithTimeFilter(datasets: PanelDataset[], value: [number, number]): Promise<Store> {
   const store = createKeplerStore();
   store.dispatch(registerEntry({ id: KEPLER_INSTANCE_ID }) as never);
-  loadDatasets(store.dispatch, datasets);
+  loadDatasets(store, store.dispatch, datasets);
   await settle();
   expect(ensureTimeFilter(store, store.dispatch)).toBe(true);
   await settle();
@@ -269,7 +269,7 @@ describe('a data refresh while the time filter plays', () => {
     const { id } = timeFilter(store)!;
     const stop = refresh(store, [answer('A', 0.01)]);
     stop();
-    loadDatasets(store.dispatch, [answer('A', 0.02)]);
+    loadDatasets(store, store.dispatch, [answer('A', 0.02)]);
     await settle();
 
     expect(timeFilter(store)).toMatchObject({ id, isAnimating: false });

@@ -119,6 +119,7 @@ export default defineConfig({
           { text: 'Map settings', link: '/guide/kepler/map-settings' },
           { text: 'Time playback', link: '/guide/kepler/time-playback' },
           { text: 'Effects', link: '/guide/kepler/effects' },
+          { text: 'Charts', link: '/guide/kepler/charts' },
         ],
       },
       {

@@ -284,7 +284,7 @@ describe('loadDatasets — a split saved while kepler doubled its panes', () => 
     };
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-    loadDatasets(dispatch, [], {}, savedConfig as never);
+    loadDatasets({ getState: () => ({}) } as never, dispatch, [], {}, savedConfig as never);
 
     const [action] = dispatch.mock.calls[0];
     expect(action.payload.payload.config.visState.splitMaps).toEqual(sides);
