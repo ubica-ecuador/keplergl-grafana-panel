@@ -268,7 +268,7 @@ function compositeRaster(bands: { assets: string[]; rescale: string[] }): Raster
 }
 
 describe('loadDatasets — a split saved while kepler doubled its panes', () => {
-  // kepler.gl 3.3.0-alpha.13 merges split maps by index, so the saved list is
+  // kepler.gl 3.3.0-alpha.15 merges split maps by index, so the saved list is
   // loaded as it is: a Save made during the doubling would bring back every
   // pane it wrote. Only the two kepler draws may reach it.
   it('hands kepler the first two panes of a saved split', () => {

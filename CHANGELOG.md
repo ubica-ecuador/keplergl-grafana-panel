@@ -14,6 +14,14 @@ release documents what changed since the one before it.
 - **Markers stay on top**: a markers layer is now drawn above every other layer, whatever its place
   in the layer panel, and above the base map's roads and labels when the base map is set to draw
   those over the data. Until now such a base map covered the markers. Dragging them works as before.
+- **kepler.gl 3.3.0-alpha.15**: the layer, filter and effect cards in the side panel gain kepler's
+  `{ }` button, which opens that item's settings as JSON to edit in place. The time widget does not
+  get the one kepler puts there too: it is on the map for every viewer and what is typed into it is
+  lost on the next refresh. A time zone or time format chosen for the trip animation is now kept
+  when the map is saved; it used to come back as UTC. Three fixes this panel had been carrying for
+  the layer order after a refresh, the Flow layer's arrows after a refresh and the time slider drawn
+  under its own histogram now come from kepler itself, sent upstream from this project; nothing on
+  the map changes with them.
 
 ## 1.0.1 (2026-09-23)
 

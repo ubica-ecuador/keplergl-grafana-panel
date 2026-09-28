@@ -48,12 +48,12 @@ catalog flow and the release-archive install that works until then.
 
 ## Bundled libraries
 
-| Library        | Version                  |
-| -------------- | ------------------------ |
-| kepler.gl      | **3.3.0-alpha.13**       |
-| deck.gl        | **9.3.11**               |
-| MapLibre GL JS | **4** (pinned by kepler) |
-| React          | 18.3.1                   |
+| Library        | Version                        |
+| -------------- | ------------------------------ |
+| kepler.gl      | **3.3.0-alpha.15**             |
+| deck.gl        | **9.3.11**                     |
+| MapLibre GL JS | **6.11.1** (kepler asks for 4) |
+| React          | 18.3.1                         |
 
 ### Why a kepler pre-release
 

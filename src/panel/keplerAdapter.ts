@@ -13,7 +13,6 @@ import {
   removeDataset,
   removeFilter,
   removeLayer,
-  reorderLayer,
   setFeatures,
   setFilterAnimationTime,
   toggleFilterAnimation,
@@ -38,7 +37,6 @@ import { FieldType } from '@grafana/data';
 
 import type { PanelDataset } from '../data/framesToDatasets';
 import type { KeplerColumn } from '../data/toKeplerDataset';
-import type { LayerOrderEntry } from './layerOrderGuard';
 import type { LiveLayer, SavedSplitPane } from './splitMapsGuard';
 import type { ClickedPosition, Figure, PolygonGeometry } from './clickArea';
 import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
@@ -83,7 +81,7 @@ import { foldSavedSplitMaps } from './splitMapsNormalise';
 /**
  * The ONLY module that talks to the kepler.gl API.
  *
- * kepler.gl is pinned to a pre-release (3.3.0-alpha.13) because the Flow layer
+ * kepler.gl is pinned to a pre-release (3.3.0-alpha.15) because the Flow layer
  * exists nowhere else. Funnelling every kepler call through here means the
  * alpha -> stable upgrade touches one file instead of the whole tree.
  */
@@ -1258,23 +1256,6 @@ export function replaceDatasetData(dispatch: Dispatch, dataset: PanelDataset): v
       })
     )
   );
-}
-
-/**
- * kepler's layer order, and how many saved layers are still parked waiting to
- * be merged into it. Null before the instance has registered.
- */
-export function readLayerOrder(store: Store): { layerOrder: LayerOrderEntry[]; pending: number } | null {
-  const visState = getVisState(store) as { layerOrder?: LayerOrderEntry[]; layerToBeMerged?: unknown[] } | null;
-  if (!visState) {
-    return null;
-  }
-  return { layerOrder: visState.layerOrder ?? [], pending: visState.layerToBeMerged?.length ?? 0 };
-}
-
-/** Puts the layers back in `order`, topmost first. */
-export function restoreLayerOrder(dispatch: Dispatch, order: string[]): void {
-  dispatch(wrapTo(KEPLER_INSTANCE_ID, reorderLayer(order)));
 }
 
 /**

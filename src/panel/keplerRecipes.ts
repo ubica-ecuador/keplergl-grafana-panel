@@ -3,7 +3,6 @@ import { replaceMapControl } from './effectsMapControl';
 import { replaceLayerConfigurator } from './flowFieldConfigurator';
 import { replaceMapContainer } from './haloMapContainer';
 import { replaceLayerPanelHeader } from './layerPanelHeader';
-import { replaceRangeBrush } from './rangeBrushFix';
 import { replaceMapPopoverContent } from './selectPopover';
 
 /**
@@ -22,10 +21,10 @@ import { replaceMapPopoverContent } from './selectPopover';
  * go already injected from $r, injecting UL after $r will override it
  * ```
  *
- * The map control and the layer configurator both pull the range brush in
- * transitively, so the brush has to come **after** them. Listed before, its
- * repair never happens and the time slider is buried under its own histogram
- * again — which is exactly what adding the layer configurator did.
+ * This bit once already: the map control and the layer configurator both pull
+ * the range brush in transitively, and a brush repair this list carried until
+ * kepler.gl 3.3.0-alpha.15 stopped happening the day the layer configurator
+ * was added ahead of it.
  *
  * The rule to follow when adding one: smallest dependency tree last. There is
  * no runtime symptom to catch this, so `keplerRecipes.test.ts` resolves the
@@ -44,7 +43,6 @@ export function keplerRecipes(): Array<[unknown, unknown]> {
     replaceAnimationController(),
     replaceLayerConfigurator(),
     replaceLayerPanelHeader(),
-    replaceRangeBrush(),
     replaceMapPopoverContent(),
   ] as Array<[unknown, unknown]>;
 }

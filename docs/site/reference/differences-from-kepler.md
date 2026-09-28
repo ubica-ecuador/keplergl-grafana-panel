@@ -6,8 +6,8 @@ kepler's own documentation cannot cover.
 
 ## At startup
 
-The panel calls kepler's official embedding hook once, before any component mounts, with three
-settings:
+The panel calls kepler's official embedding hook once, before any component mounts. Among the
+settings it passes:
 
 ### The Flow layer is enabled explicitly
 
@@ -15,7 +15,7 @@ settings:
 enableFlowLayer: true
 ```
 
-The Flow layer is why this plugin pins **kepler.gl 3.3.0-alpha.13** rather than the 3.2.6 stable
+The Flow layer is why this plugin pins **kepler.gl 3.3.0-alpha.15** rather than the 3.2.6 stable
 release: it exists nowhere else. Stating it explicitly rather than relying on the upstream default
 means a change in that default cannot silently remove the feature the plugin is partly built around.
 
@@ -42,6 +42,17 @@ showReleaseBanner: false
 ```
 
 A "new release" notice has no place inside a dashboard panel.
+
+### No JSON editor on the time widget
+
+```
+enableAnimationJsonEditor: false
+```
+
+Since 3.3.0-alpha.14 kepler puts a `{ }` JSON editor on the time widget. That widget sits on the map
+for everyone who opens the dashboard, side panel or not, and whatever is typed into it is gone on the
+next refresh, so the panel leaves it out. The `{ }` editors on the layer, filter and effect cards in
+the side panel are kepler's and stay.
 
 ## The map control
 
@@ -158,7 +169,7 @@ re-runs.
 ## Where upstream documentation is behind this plugin
 
 kepler.gl's public documentation describes the **3.2 stable line**. This plugin bundles
-**3.3.0-alpha.13**. Two consequences when you follow an outbound link:
+**3.3.0-alpha.15**. Two consequences when you follow an outbound link:
 
 - Upstream lists **fifteen** layer types. The bundled pre-release registers **twenty-two** — the Flow
   layer and the Flow Field among them, neither of which upstream documents at all.
