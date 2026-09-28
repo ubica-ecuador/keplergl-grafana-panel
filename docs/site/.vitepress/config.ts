@@ -129,6 +129,7 @@ export default defineConfig({
           { text: 'Time range sync', link: '/guide/dashboard/time-range-sync' },
           { text: 'Time window variables', link: '/guide/dashboard/time-window-variables' },
           { text: 'Peer time sync', link: '/guide/dashboard/peer-time-sync' },
+          { text: 'Temporal cursor', link: '/guide/dashboard/temporal-cursor' },
           { text: 'Cross-filtering', link: '/guide/dashboard/cross-filtering' },
           { text: 'Publishing viewport and areas', link: '/guide/dashboard/publishing' },
           { text: 'Explorer results on the map', link: '/guide/dashboard/explorer-results' },

@@ -6,6 +6,12 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Temporal cursor**: the map joins Grafana's shared cursor. Hovering a Time series graph draws an
+  amber marker where each vehicle was at that instant, on Point layers and on Trip layers in both
+  table and timestamped GeoJSON form, and the same instant as a line on the map's time bar. With
+  *Map hover drives graphs* on, hovering a Point sample or the time bar moves the graphs' crosshair
+  instead. Off by default; nothing is queried while hovering. A new *GPS truck track* dashboard on
+  the development benches shows it on a real road with a synthetic truck.
 - **Playhead variable**: a new Map option writes the trip animation's current instant to a dashboard
   variable, as UTC ISO 8601 — once on load, during playback at the *Minimum interval while playing*,
   and where it stops — so a chart can draw a bar at the moment the map is playing, or a SQL panel can
