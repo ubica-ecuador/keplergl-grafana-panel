@@ -11,8 +11,7 @@ the toolbar: its stock map control never mounts it, and nothing in the core moun
 panel. Both are wired by the **host application**, which is what kepler's own demo app does.
 
 This plugin is that host, so it replaces kepler's map control with one that adds the effects button
-and hosts the manager beside the toolbar. That is the single component the plugin swaps out; the
-rest of kepler's UI is untouched. See
+and hosts the manager beside the toolbar — and does the same for [charts](./charts). See
 [Differences from stock kepler.gl](../../reference/differences-from-kepler).
 
 Two things from the demo app are deliberately _not_ included: the SQL data explorer and the AI

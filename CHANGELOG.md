@@ -38,6 +38,14 @@ release documents what changed since the one before it.
   - Adding a tileset that spans the whole world no longer throws the map out to the whole planet.
   - A tileset with no transform of its own is put on the ground along its own vertical, where it
     was moved along the Earth's axis: near the equator that slid it sideways instead of down.
+- **Charts**: kepler's charts panel gets its button in the map control — big numbers, bars, lines,
+  heatmaps and pivot tables over the map's data, saved with the map. Its **tooltip charts** plot an
+  entity's own history in its popup: hover a station and see its day. With kepler's tooltip compare
+  mode, pinning one entity and hovering another shows both charts side by side, and only the pinned
+  popup offers **Select**. A chart's cross-filters narrow the map and its charts but never move a
+  dashboard variable or the time range. A saved compare mode now survives loading the map, which
+  kepler itself drops. The sources bench gains `mareas-ecuador`, INOCAR's tide gauges live, with
+  tooltip charts and a pinned heatmap.
 
 ## 1.0.1 (2026-09-23)
 

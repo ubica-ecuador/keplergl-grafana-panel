@@ -1,8 +1,8 @@
 # Differences from stock kepler.gl
 
-The panel embeds the real kepler.gl and swaps out exactly **one** component. Everything else you see
-is upstream. This page is the complete list of what is different, and why — it is the content
-kepler's own documentation cannot cover.
+The panel embeds the real kepler.gl and replaces a handful of its components, each for a reason
+given below. Everything else you see is upstream. This page is the complete list of what is
+different, and why — it is the content kepler's own documentation cannot cover.
 
 ## At startup
 
@@ -56,15 +56,25 @@ the side panel are kepler's and stay.
 
 ## The map control
 
-kepler ships the entire effects feature but its stock map control never mounts the button, and
-nothing in the core mounts the manager panel — both are wired by the host application. The panel
-replaces `MapControlFactory` with one that adds the effects button and hosts the manager beside the
-toolbar.
-
-That is the **only** component injected. kepler's demo app also mounts a SQL data explorer and an AI
-assistant; neither is included here.
+kepler ships the entire effects feature and the entire charts panel, but its stock map control
+mounts neither button, and nothing in the core mounts either manager panel — both are wired by the
+host application. The panel replaces `MapControlFactory` with one that adds both buttons and hosts
+both managers beside the toolbar, as kepler's demo app does. kepler's demo app also mounts a SQL
+data explorer and an AI assistant; neither is included here.
 
 Effect thumbnails are vendored along with the icons, so the picker needs no outbound request.
+
+A chart's cross-filters are ordinary kepler filters, but the panel's variable and time syncs leave
+them out: they narrow the map and its charts and never reach the dashboard. See
+[Charts](../guide/kepler/charts).
+
+## A saved compare mode is kept
+
+kepler.gl 3.3.0-alpha.15's `mergeInteractions` keeps only `fieldsToShow` when it merges a saved
+config onto a freshly loaded map, so a saved tooltip `compareMode`/`compareType` never reaches the
+store through `addDataToMap` alone. The panel reads the saved value itself and dispatches it right
+after loading the map, before that merge runs. See
+[Charts](../guide/kepler/charts#comparing-two-entities).
 
 ## Base maps
 
