@@ -53,6 +53,12 @@ const SAMPLES = 33;
 const WGS84_A = 6378137;
 const WGS84_E2 = 6.69437999014e-3;
 
+/**
+ * WGS 84's largest radius of curvature, at the poles (a²/b), in metres: no arc
+ * of the ellipsoid bends more gently, so none bulges further from its chord.
+ */
+const FLATTEST = WGS84_A / Math.sqrt(1 - WGS84_E2);
+
 const wrappers = new WeakMap<object, LoaderLike>();
 const wrapped = new WeakSet<object>();
 
@@ -67,14 +73,28 @@ function ecef(longitude: number, latitude: number, height: number): [number, num
 }
 
 /**
+ * How far, in metres, the surface of a region can bulge past the grid of
+ * {@link SAMPLES} lines each way it is sampled at, in any direction: a metre
+ * more than the sag of an arc one grid step long, along each of the two.
+ */
+function bulgeOf(region: ArrayLike<number>): number {
+  const width = region[2] < region[0] ? region[2] + 2 * Math.PI - region[0] : region[2] - region[0];
+  const reach = FLATTEST + Math.max(region[5], 0);
+  const halfStep = (angle: number) => angle / (SAMPLES - 1) / 2;
+  return reach * (1 - Math.cos(halfStep(width)) + (1 - Math.cos(halfStep(region[3] - region[1])))) + 1;
+}
+
+/**
  * An ECEF box, axis-aligned, that holds all of a region at every height it
  * allows: `[centre(3), xHalfAxis(3), yHalfAxis(3), zHalfAxis(3)]`.
  *
- * Built from a grid over the region at its lowest and highest heights. The
- * surface bulges between grid lines by at most `r·(1 − cos(step/2))` along each
- * direction, so each half-axis is widened by that much and the box can only be
- * too big, never too small. A point between the two heights lies on the segment
- * between two grid points, which the box already holds.
+ * Built from a grid over the region at its lowest and highest heights. Between
+ * grid lines the surface bulges away from the chords by at most
+ * `ρ·(1 − cos(step/2))` along each direction, `ρ` being the ellipsoid's largest
+ * radius of curvature plus the height, so each half-axis is widened by that
+ * much and the box can only be too big, never too small. A point between the
+ * two heights lies on the segment between two grid points, which the box
+ * already holds.
  */
 export function enclosingBox(region: ArrayLike<number>): number[] {
   const west = region[0];
@@ -96,9 +116,7 @@ export function enclosingBox(region: ArrayLike<number>): number[] {
     }
   }
 
-  const reach = WGS84_A + Math.max(highest, 0);
-  const halfStep = (angle: number) => angle / (SAMPLES - 1) / 2;
-  const bulge = reach * (1 - Math.cos(halfStep(east - west)) + (1 - Math.cos(halfStep(north - south)))) + 1;
+  const bulge = bulgeOf(region);
 
   const centre = low.map((value, axis) => (value + high[axis]) / 2);
   const half = low.map((value, axis) => (high[axis] - value) / 2 + bulge);
@@ -114,10 +132,12 @@ function isWide(region: ArrayLike<number>): boolean {
  * A box along a small region's own east, north and up that holds all of it:
  * `[centre(3), eastHalfAxis(3), northHalfAxis(3), upHalfAxis(3)]`.
  *
- * Every half-axis errs on the large side: the east one at the region's widest
- * latitude, the north one with the ellipsoid's largest meridian radius, and
- * the up one reaching down by how far the ground curves away from the centre
- * at the region's corners.
+ * Built the way {@link enclosingBox} is, but along the axes at the region's
+ * centre: a grid over the region at its lowest and highest heights, each point
+ * measured along each axis, and each half-axis widened by the bulge between
+ * grid lines. Measured rather than worked out from the region's angles, which
+ * missed that along a parallel the surface drifts poleward of the centre's own
+ * east — 97 m across 0.9° at 45°N, in a region only a hundred metres tall.
  */
 function localBox(region: ArrayLike<number>): number[] {
   const west = region[0];
@@ -125,35 +145,38 @@ function localBox(region: ArrayLike<number>): number[] {
   const [south, north, lowest, highest] = [region[1], region[3], region[4], region[5]];
   const longitude = (west + east) / 2;
   const latitude = (south + north) / 2;
-  const halfLongitude = (east - west) / 2;
-  const halfLatitude = (north - south) / 2;
 
-  const reach = WGS84_A / (1 - WGS84_E2) + Math.max(highest, 0);
-  const widest = south <= 0 && north >= 0 ? 1 : Math.cos(Math.min(Math.abs(south), Math.abs(north)));
-  const halfEast = reach * widest * halfLongitude + 1;
-  const halfNorth = reach * halfLatitude + 1;
-  const corner = Math.hypot(halfLongitude * widest, halfLatitude);
-  const bottom = lowest - reach * (1 - Math.cos(corner));
-  const middle = (bottom + highest) / 2;
-  const halfUp = (highest - bottom) / 2 + 1;
+  const axes = [
+    [-Math.sin(longitude), Math.cos(longitude), 0],
+    [-Math.sin(latitude) * Math.cos(longitude), -Math.sin(latitude) * Math.sin(longitude), Math.cos(latitude)],
+    [Math.cos(latitude) * Math.cos(longitude), Math.cos(latitude) * Math.sin(longitude), Math.sin(latitude)],
+  ];
+  const origin = ecef(longitude, latitude, 0);
 
-  const eastAxis = [-Math.sin(longitude), Math.cos(longitude), 0];
-  const northAxis = [
-    -Math.sin(latitude) * Math.cos(longitude),
-    -Math.sin(latitude) * Math.sin(longitude),
-    Math.cos(latitude),
-  ];
-  const upAxis = [
-    Math.cos(latitude) * Math.cos(longitude),
-    Math.cos(latitude) * Math.sin(longitude),
-    Math.sin(latitude),
-  ];
-  return [
-    ...ecef(longitude, latitude, middle),
-    ...eastAxis.map((v) => v * halfEast),
-    ...northAxis.map((v) => v * halfNorth),
-    ...upAxis.map((v) => v * halfUp),
-  ];
+  const low = [Infinity, Infinity, Infinity];
+  const high = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < SAMPLES; i++) {
+    const lon = west + ((east - west) * i) / (SAMPLES - 1);
+    for (let j = 0; j < SAMPLES; j++) {
+      const lat = south + ((north - south) * j) / (SAMPLES - 1);
+      for (const height of [lowest, highest]) {
+        const point = ecef(lon, lat, height);
+        const offset = [point[0] - origin[0], point[1] - origin[1], point[2] - origin[2]];
+        axes.forEach((axis, a) => {
+          const along = offset[0] * axis[0] + offset[1] * axis[1] + offset[2] * axis[2];
+          low[a] = Math.min(low[a], along);
+          high[a] = Math.max(high[a], along);
+        });
+      }
+    }
+  }
+
+  const bulge = bulgeOf(region);
+  const centre = [0, 1, 2].map(
+    (k) => origin[k] + axes.reduce((sum, axis, a) => sum + axis[k] * ((low[a] + high[a]) / 2), 0)
+  );
+  const half = low.map((value, a) => (high[a] - value) / 2 + bulge);
+  return [...centre, ...axes.flatMap((axis, a) => axis.map((v) => v * half[a]))];
 }
 
 /** A box that holds a region: {@link enclosingBox} for a wide one, {@link localBox} under a degree. */
@@ -174,6 +197,11 @@ export function regionBox(region: ArrayLike<number>): number[] {
  * The region stays beside the box: the altitude code (`tile3dAltitude.ts`) reads
  * a region's own heights, which are exact. Not below a transform of the tile
  * tree's own, though: a box would be moved by it and a region never is.
+ *
+ * A nested tileset is parsed, and boxed, on its own, knowing nothing of the
+ * transforms above it in the tree that holds it: one nested below a
+ * transformed tile would get boxes it should not. Neither OSM Buildings nor
+ * Google nests one there.
  */
 function boxRegions(header: Record<string, any> | null | undefined, underTransform = false): void {
   if (!header || typeof header !== 'object') {
@@ -192,19 +220,19 @@ function boxRegions(header: Record<string, any> | null | undefined, underTransfo
   }
 }
 
-/** Gives a glTF with no meshes an empty list of them, processed or not. */
+/**
+ * Gives a glTF with no meshes, nodes or scenes empty lists of them, processed
+ * or not: luma.gl walks each without asking whether there is one.
+ */
 function fillMeshes(gltf: Record<string, any> | null | undefined): void {
   if (!gltf || typeof gltf !== 'object') {
     return;
   }
-  if (gltf.json && typeof gltf.json === 'object') {
-    if (!Array.isArray(gltf.json.meshes)) {
-      gltf.json.meshes = [];
+  const target = gltf.json && typeof gltf.json === 'object' ? gltf.json : gltf;
+  for (const key of ['meshes', 'nodes', 'scenes']) {
+    if (!Array.isArray(target[key])) {
+      target[key] = [];
     }
-    return;
-  }
-  if (!Array.isArray(gltf.meshes)) {
-    gltf.meshes = [];
   }
 }
 
@@ -218,18 +246,26 @@ function mend(parsed: any): any {
   return parsed;
 }
 
+/** Whether ion itself serves a URL: over https, from cesium.com or a host under it. */
 function servedByIon(url: string): boolean {
   try {
-    const host = new URL(url).hostname;
-    return host === 'cesium.com' || host.endsWith('.cesium.com');
+    const { protocol, hostname } = new URL(url);
+    return protocol === 'https:' && (hostname === 'cesium.com' || hostname.endsWith('.cesium.com'));
   } catch {
     return false;
   }
 }
 
-/** ion's description of an asset, with the URL deck reads, and ion's token only where ion serves it. */
+/**
+ * ion's description of an asset, with the URL deck reads, and ion's token only
+ * where ion serves it.
+ *
+ * The URL is read where loaders.gl reads it, `options.url` before `url`.
+ * The token is kept from the host ion names; loaders.gl still sends it with
+ * every tile of a tileset ion serves itself, which is ion's to receive.
+ */
 function followServedUrl(described: Record<string, any>): Record<string, any> {
-  const url = described?.url ?? described?.options?.url;
+  const url = described?.options?.url ?? described?.url;
   if (typeof url !== 'string' || !url) {
     return described;
   }

@@ -31,7 +31,10 @@ release documents what changed since the one before it.
     ground, and one whose regions reach round the world is no longer culled away altogether.
   - A tile with nothing to draw in it no longer switches the whole layer off.
   - A Cesium ion asset that ion serves from elsewhere is loaded from there, and the ion token is no
-    longer sent anywhere but to Cesium.
+    longer sent to the host ion names for it.
+  - Tiles already drawn now move with the tileset when the ground under the view or the *Height
+    adjustment* changes; until now they stayed where they were first drawn, for any 3D tileset.
+  - A *Height adjustment* of a few metres now moves a tileset that spans the whole world.
   - Adding a tileset that spans the whole world no longer throws the map out to the whole planet.
   - A tileset with no transform of its own is put on the ground along its own vertical, where it
     was moved along the Earth's axis: near the equator that slid it sideways instead of down.

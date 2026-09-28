@@ -116,6 +116,29 @@ describe('regionBox', () => {
     expect(up).toBeLessThan(65);
   });
 
+  it('holds every point of a thin region stretched along a parallel, wherever it lies', () => {
+    // Along a parallel the surface drifts poleward of the centre's own east:
+    // by 97 m across 0.9° at 45°N, which a north half-axis of the region's own
+    // height missed altogether.
+    const degrees = (value: number) => (value * Math.PI) / 180;
+    for (const latitude of [45, 60, -45]) {
+      const thin = [degrees(-0.45), degrees(latitude), degrees(0.45), degrees(latitude + 0.001), 0, 50];
+      const box = regionBox(thin);
+      const outside = pointsOf(thin, 20000).filter((point) => !insideOriented(box, point));
+      expect(outside).toEqual([]);
+      // And no looser than it has to be: 111 m of latitude plus the drift north, 50 m of heights plus the curve.
+      const [, northHalf, upHalf] = [0, 1, 2].map((i) => Math.hypot(...box.slice(3 + i * 3, 6 + i * 3)));
+      expect(northHalf).toBeLessThan(120);
+      expect(upHalf).toBeLessThan(100);
+    }
+  });
+
+  it('holds every point of a region under a degree reaching across the antimeridian', () => {
+    const fiji = [Math.PI - 0.005, -0.3, -Math.PI + 0.004, -0.296, -20, 1300];
+    const box = regionBox(fiji);
+    expect(pointsOf(fiji, 20000).every((point) => insideOriented(box, point))).toBe(true);
+  });
+
   it('boxes a wide region as a whole', () => {
     expect(regionBox(OSM_BUILDINGS_REGION)).toEqual(enclosingBox(OSM_BUILDINGS_REGION));
   });
@@ -224,6 +247,23 @@ describe('sturdyLoader', () => {
       expect(tile.gltf.json.meshes).toEqual([]);
     });
 
+    it('gives a glTF with no nodes or scenes empty lists of them as well', async () => {
+      const bare = { asset: { version: '2.0' } };
+      const processed = await sturdyLoader(fakeLoader('3d-tiles', () => ({ gltf: { ...bare } }))).parse(
+        new ArrayBuffer(0),
+        {},
+        {}
+      );
+      expect(processed.gltf).toEqual({ ...bare, meshes: [], nodes: [], scenes: [] });
+
+      const raw = await sturdyLoader(fakeLoader('3d-tiles', () => ({ gltf: { json: { ...bare } } }))).parse(
+        new ArrayBuffer(0),
+        {},
+        {}
+      );
+      expect(raw.gltf.json).toEqual({ ...bare, meshes: [], nodes: [], scenes: [] });
+    });
+
     it('leaves a glTF with meshes, and a tile with no glTF, as they were', async () => {
       const meshes = [{ primitives: [] }];
       const withMeshes = await sturdyLoader(fakeLoader('3d-tiles', () => ({ gltf: { ...emptyGltf(), meshes } }))).parse(
@@ -268,6 +308,35 @@ describe('sturdyLoader', () => {
       const ion = fakeLoader('cesium-ion', () => ({}), described);
       const preloaded = await sturdyLoader(ion).preload!('https://assets.ion.cesium.com/96188/tileset.json', {});
       expect(preloaded).toEqual(described);
+    });
+
+    it('reads the URL ion serves the asset from where loaders.gl does: under options first', async () => {
+      const ion = fakeLoader('cesium-ion', () => ({}), {
+        type: '3DTILES',
+        url: 'https://assets.ion.cesium.com/2275207/tileset.json',
+        options: { url: 'https://tile.googleapis.com/v1/3dtiles/root.json?key=k' },
+        headers: { Authorization: 'Bearer ion-token' },
+      });
+      const preloaded = await sturdyLoader(ion).preload!('https://assets.ion.cesium.com/2275207/tileset.json', {});
+      expect(preloaded.url).toBe('https://tile.googleapis.com/v1/3dtiles/root.json?key=k');
+      expect(preloaded.headers).toBeUndefined();
+    });
+
+    it('keeps the ion token from hosts that only look like ion’s, and from ion over plain http', async () => {
+      for (const url of [
+        'https://cesium.com.evil.com/tileset.json',
+        'https://evilcesium.com/tileset.json',
+        'http://assets.ion.cesium.com/96188/tileset.json',
+      ]) {
+        const ion = fakeLoader('cesium-ion', () => ({}), {
+          type: '3DTILES',
+          url,
+          headers: { Authorization: 'Bearer ion-token' },
+        });
+        const preloaded = await sturdyLoader(ion).preload!('https://assets.ion.cesium.com/96188/tileset.json', {});
+        expect(preloaded.url).toBe(url);
+        expect(preloaded.headers).toBeUndefined();
+      }
     });
 
     it('adds no preload to a loader that had none', () => {
