@@ -1,0 +1,227 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "links": [],
+  "schemaVersion": 39,
+  "tags": [],
+  "timezone": "utc",
+  "title": "Kepler.gl — charts",
+  "uid": "charts",
+  "version": 1,
+  "time": {
+    "from": "2026-09-01T00:00:00.000Z",
+    "to": "2026-09-01T06:00:00.000Z"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "site",
+        "type": "textbox",
+        "label": "Site",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "options": [],
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "title": "Kepler.gl — tooltip charts",
+      "type": "ubica-keplergl-panel",
+      "options": {
+        "showSidePanel": true,
+        "timeSync": "off",
+        "clickConfirm": true,
+        "variableMappings": [
+          {
+            "field": "site",
+            "variable": "site",
+            "source": "click"
+          }
+        ],
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "visState": {
+              "layers": [
+                {
+                  "id": "puntos",
+                  "type": "point",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Sites",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "radius": 24,
+                      "opacity": 0.9,
+                      "outline": false,
+                      "filled": true
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "value",
+                      "type": "real"
+                    },
+                    "colorScale": "quantize"
+                  }
+                }
+              ],
+              "filters": [],
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": true,
+                  "compareMode": true,
+                  "compareType": "absolute",
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "site",
+                        "format": null
+                      },
+                      {
+                        "name": "value",
+                        "format": null
+                      },
+                      {
+                        "name": "time",
+                        "format": null
+                      }
+                    ]
+                  }
+                }
+              },
+              "charts": [
+                {
+                  "id": "serie",
+                  "title": "Serie del sitio",
+                  "type": "layerChart",
+                  "dataId": "grafana-A",
+                  "applyFilters": false,
+                  "pinned": false,
+                  "display": {
+                    "isConfigActive": false
+                  },
+                  "layerId": "puntos",
+                  "layerChartType": "TIME_SERIES",
+                  "axis": {
+                    "field": {
+                      "name": "site",
+                      "type": "string"
+                    },
+                    "aggregation": "uniqueBin",
+                    "title": "site"
+                  },
+                  "xAxis": {
+                    "field": {
+                      "name": "time",
+                      "type": "timestamp"
+                    },
+                    "aggregation": "timeBin",
+                    "title": "time"
+                  },
+                  "yAxis": {
+                    "field": {
+                      "name": "value",
+                      "type": "real"
+                    },
+                    "aggregation": "average",
+                    "title": "value"
+                  },
+                  "chartDisplay": {
+                    "idField": "site",
+                    "numEntries": 5,
+                    "interval": "hour"
+                  }
+                },
+                {
+                  "id": "curvas",
+                  "title": "Todas las series",
+                  "type": "lineChart",
+                  "dataId": "grafana-A",
+                  "applyFilters": false,
+                  "pinned": true,
+                  "display": {
+                    "isConfigActive": false
+                  },
+                  "chartDisplay": {},
+                  "xAxis": {
+                    "field": {
+                      "name": "time",
+                      "type": "timestamp"
+                    },
+                    "aggregation": "timeBin",
+                    "title": "time",
+                    "interval": "hour"
+                  },
+                  "yAxis": {
+                    "field": {
+                      "name": "value",
+                      "type": "real"
+                    },
+                    "aggregation": "average",
+                    "title": "value"
+                  },
+                  "groupBy": {
+                    "field": {
+                      "name": "site",
+                      "type": "string"
+                    },
+                    "aggregation": "uniqueBin",
+                    "title": "site"
+                  },
+                  "numGroups": 0
+                }
+              ],
+              "splitMaps": []
+            },
+            "mapState": {
+              "latitude": -2.9,
+              "longitude": -79.0,
+              "zoom": 11,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "mapStyle": {
+              "styleType": "dark-matter"
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\": {\"fields\": [{\"name\": \"site\", \"type\": \"string\"}, {\"name\": \"latitude\", \"type\": \"number\"}, {\"name\": \"longitude\", \"type\": \"number\"}, {\"name\": \"time\", \"type\": \"time\"}, {\"name\": \"value\", \"type\": \"number\"}]}, \"data\": {\"values\": [[\"norte\", \"norte\", \"norte\", \"norte\", \"norte\", \"norte\", \"centro\", \"centro\", \"centro\", \"centro\", \"centro\", \"centro\", \"sur\", \"sur\", \"sur\", \"sur\", \"sur\", \"sur\"], [-2.84, -2.84, -2.84, -2.84, -2.84, -2.84, -2.9, -2.9, -2.9, -2.9, -2.9, -2.9, -2.96, -2.96, -2.96, -2.96, -2.96, -2.96], [-79.08, -79.08, -79.08, -79.08, -79.08, -79.08, -79.0, -79.0, -79.0, -79.0, -79.0, -79.0, -78.92, -78.92, -78.92, -78.92, -78.92, -78.92], [1788220800000, 1788224400000, 1788228000000, 1788231600000, 1788235200000, 1788238800000, 1788220800000, 1788224400000, 1788228000000, 1788231600000, 1788235200000, 1788238800000, 1788220800000, 1788224400000, 1788228000000, 1788231600000, 1788235200000, 1788238800000], [1.5, 2.5, 3.5, 2.5, 1.5, 0.5, 0.5, 1.5, 2.5, 3.5, 2.5, 1.5, 2.5, 1.5, 0.5, 1.5, 2.5, 3.5]]}}]"
+        }
+      ]
+    }
+  ]
+}
