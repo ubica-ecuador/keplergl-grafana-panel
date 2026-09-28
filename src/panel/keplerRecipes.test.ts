@@ -7,7 +7,10 @@ import {
   MapContainerFactory,
   MapControlFactory,
   MapPopoverContentFactory,
+  RangeSliderFactory,
 } from '@kepler.gl/components';
+
+import { TimelineSliderFactory } from './timeBarCursorSlider';
 
 import { keplerRecipes } from './keplerRecipes';
 
@@ -46,6 +49,8 @@ describe('the recipes the panel injects', () => {
     ['the layer panel header', LayerPanelHeaderFactory, 'LayerPanelHeaderWithOwnNames'],
     ['the popup content', MapPopoverContentFactory, 'ContentWithSelect'],
     ['the map container', MapContainerFactory, 'MapContainerWithHalo'],
+    ['the enlarged time bar', RangeSliderFactory, 'TimeBarCursorRangeSlider'],
+    ['the minified time bar', TimelineSliderFactory, 'TimeBarCursorTimelineSlider'],
   ])('still replaces %s when the whole list is provided', (_name, stock, expected) => {
     expect(nameOf(resolve().get(stock as never))).toBe(expected);
   });
