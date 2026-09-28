@@ -1,0 +1,578 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Tilesets shaped like Cesium OSM Buildings, Google Photorealistic 3D Tiles and an ion asset served from elsewhere, from a stubbed host, over Cuenca at 2 550 m.",
+  "editable": true,
+  "id": null,
+  "links": [],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 41,
+  "tags": ["ubica", "3d-tiles", "e2e"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "2026-09-01T00:00:00.000Z",
+    "to": "2026-09-02T00:00:00.000Z"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Kepler.gl — 3D Tiles round the whole world",
+  "uid": "tile3dGlobal",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "id": 1,
+      "type": "ubica-keplergl-panel",
+      "title": "A world of regions · like Cesium OSM Buildings",
+      "gridPos": {
+        "h": 14,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[]"
+        }
+      ],
+      "options": {
+        "basemap": "no_map",
+        "showSidePanel": false,
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "bearing": 20,
+              "dragRotate": true,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [40, 63, 93],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [4, 9, 17],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [114.75, 114.75, 114.75],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [9, 16, 29],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [17, 35, 48]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": -2.8975,
+              "longitude": -79.0045,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_3D",
+              "maxPitch": 85,
+              "pitch": 50,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 16
+            },
+            "mapStyle": {
+              "backgroundColor": [0, 0, 0],
+              "mapStyles": {},
+              "styleType": "no_map",
+              "threeDBuildingColor": [9.311499150948377, 9.311499150948377, 9.311499150948377],
+              "topLayerGroups": {},
+              "visibleLayerGroups": {}
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "3la57e1nb": []
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": ["agi-hq"],
+              "layers": [
+                {
+                  "config": {
+                    "color": [255, 255, 255],
+                    "columns": {},
+                    "dataId": "world-regions",
+                    "hidden": false,
+                    "highlightColor": [252, 242, 26, 255],
+                    "isVisible": true,
+                    "label": "A world of regions",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [0, 0, 200, 255],
+                        "color": [255, 255, 255],
+                        "offset": [0, 0],
+                        "outlineColor": [255, 0, 0, 255],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "opacity": 1,
+                      "pointSize": 2,
+                      "groundTileset": true,
+                      "altitudeOffset": 0
+                    }
+                  },
+                  "id": "world-regions-layer",
+                  "type": "tile3d",
+                  "visualChannels": {}
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "datasets": [
+            {
+              "version": "v1",
+              "data": {
+                "id": "world-regions",
+                "label": "A world of regions",
+                "type": "tile-3d",
+                "color": [0, 92, 255],
+                "allData": [],
+                "fields": [],
+                "disableDataOperation": true,
+                "metadata": {
+                  "tile3dUrl": "https://tiles3d.kepler-grafana.test/world-regions/tileset.json"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "ubica-keplergl-panel",
+      "title": "A world in one box · like Google Photorealistic 3D Tiles",
+      "gridPos": {
+        "h": 14,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[]"
+        }
+      ],
+      "options": {
+        "basemap": "no_map",
+        "showSidePanel": false,
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "bearing": 20,
+              "dragRotate": true,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [40, 63, 93],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [4, 9, 17],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [114.75, 114.75, 114.75],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [9, 16, 29],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [17, 35, 48]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": -2.8975,
+              "longitude": -79.0045,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_3D",
+              "maxPitch": 85,
+              "pitch": 50,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 16
+            },
+            "mapStyle": {
+              "backgroundColor": [0, 0, 0],
+              "mapStyles": {},
+              "styleType": "no_map",
+              "threeDBuildingColor": [9.311499150948377, 9.311499150948377, 9.311499150948377],
+              "topLayerGroups": {},
+              "visibleLayerGroups": {}
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "3la57e1nb": []
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": ["agi-hq"],
+              "layers": [
+                {
+                  "config": {
+                    "color": [255, 255, 255],
+                    "columns": {},
+                    "dataId": "world-box",
+                    "hidden": false,
+                    "highlightColor": [252, 242, 26, 255],
+                    "isVisible": true,
+                    "label": "A world in one box",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [0, 0, 200, 255],
+                        "color": [255, 255, 255],
+                        "offset": [0, 0],
+                        "outlineColor": [255, 0, 0, 255],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "opacity": 1,
+                      "pointSize": 2,
+                      "groundTileset": true,
+                      "altitudeOffset": 0
+                    }
+                  },
+                  "id": "world-box-layer",
+                  "type": "tile3d",
+                  "visualChannels": {}
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "datasets": [
+            {
+              "version": "v1",
+              "data": {
+                "id": "world-box",
+                "label": "A world in one box",
+                "type": "tile-3d",
+                "color": [0, 92, 255],
+                "allData": [],
+                "fields": [],
+                "disableDataOperation": true,
+                "metadata": {
+                  "tile3dUrl": "https://tiles3d.kepler-grafana.test/world-box/root.json"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "ubica-keplergl-panel",
+      "title": "An ion asset served from elsewhere · like Google through Cesium ion",
+      "gridPos": {
+        "h": 14,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[]"
+        }
+      ],
+      "options": {
+        "basemap": "no_map",
+        "showSidePanel": false,
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "bearing": 20,
+              "dragRotate": true,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [40, 63, 93],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [4, 9, 17],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [114.75, 114.75, 114.75],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [9, 16, 29],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [17, 35, 48]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": -2.8975,
+              "longitude": -79.0045,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_3D",
+              "maxPitch": 85,
+              "pitch": 50,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 16
+            },
+            "mapStyle": {
+              "backgroundColor": [0, 0, 0],
+              "mapStyles": {},
+              "styleType": "no_map",
+              "threeDBuildingColor": [9.311499150948377, 9.311499150948377, 9.311499150948377],
+              "topLayerGroups": {},
+              "visibleLayerGroups": {}
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "mapLegend": {
+                  "active": false
+                }
+              },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "annotations": [],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "3la57e1nb": []
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": ["agi-hq"],
+              "layers": [
+                {
+                  "config": {
+                    "color": [255, 255, 255],
+                    "columns": {},
+                    "dataId": "ion-external",
+                    "hidden": false,
+                    "highlightColor": [252, 242, 26, 255],
+                    "isVisible": true,
+                    "label": "An ion asset served from elsewhere",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [0, 0, 200, 255],
+                        "color": [255, 255, 255],
+                        "offset": [0, 0],
+                        "outlineColor": [255, 0, 0, 255],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "opacity": 1,
+                      "pointSize": 2,
+                      "groundTileset": true,
+                      "altitudeOffset": 0
+                    }
+                  },
+                  "id": "ion-external-layer",
+                  "type": "tile3d",
+                  "visualChannels": {}
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
+            }
+          },
+          "datasets": [
+            {
+              "version": "v1",
+              "data": {
+                "id": "ion-external",
+                "label": "An ion asset served from elsewhere",
+                "type": "tile-3d",
+                "color": [0, 92, 255],
+                "allData": [],
+                "fields": [],
+                "disableDataOperation": true,
+                "metadata": {
+                  "tile3dUrl": "https://assets.ion.cesium.com/424242/tileset.json",
+                  "tile3dAccessToken": "e2e-ion-token"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
