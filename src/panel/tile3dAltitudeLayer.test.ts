@@ -43,6 +43,25 @@ function osmBuildingsOverCuenca(isLoaded = true) {
   };
 }
 
+/**
+ * Cesium OSM Buildings before its western hemisphere has loaded: over Quito, or
+ * anywhere, only the world and a nested tileset still to come are known.
+ */
+function osmBuildingsBeforeWest(isLoaded: () => boolean = () => true) {
+  const world = { region: [-3.14159, -1.4712, 3.14154, 1.4503, -394, 5967] };
+  const west = {
+    header: { boundingVolume: { region: [-Math.PI, -1.47, 0, 1.45, -394, 5967] }, contentUrl: 'west.json' },
+    children: [],
+  };
+  return {
+    modelMatrix: FakeMatrix.identity(),
+    cartographicCenter: [0, 0, 0],
+    root: { header: { boundingVolume: world }, children: [] },
+    roots: { 'kepler-map': { header: { boundingVolume: world }, children: [west] } } as Record<string, unknown>,
+    isLoaded,
+  };
+}
+
 /** deck's viewport over a point, with the camera this many metres above the ground plane. */
 function viewportOver(longitude: number, latitude: number, cameraHeight: number) {
   // deck keeps the camera in its own units; three of them to the metre here, as a real one would not be one.
@@ -72,6 +91,7 @@ class FakeDeckLayer {
   state: Record<string, unknown> = { activeViewports: {}, lastUpdatedViewports: null };
   superCalls = 0;
   traversals: unknown[] = [];
+  loadedTiles: unknown[] = [];
 
   constructor(props: Record<string, unknown>) {
     this.props = props;
@@ -83,6 +103,10 @@ class FakeDeckLayer {
 
   _updateTileset(viewports: unknown): void {
     this.traversals.push(viewports);
+  }
+
+  _onTileLoad(tile: unknown): void {
+    this.loadedTiles.push(tile);
   }
 }
 
@@ -265,8 +289,8 @@ describe('altitudeAware', () => {
       props: Record<string, unknown>
     ) => FakeDeckLayer;
     const layer = new Aware({ groundTileset: true, altitudeOffset: 0 });
-    const ts = osmBuildingsOverCuenca();
-    // Quito: the tree knows nothing small there yet.
+    const ts = osmBuildingsBeforeWest();
+    // Quito: the tree knows nothing small there yet, and the west is still to load.
     layer.context = { viewport: viewportOver(-78.5, -0.2, 1700) };
     layer.state = { tileset3d: ts, activeViewports: { main: 'vp' }, lastUpdatedViewports: null, frameNumber: 1 };
     const up = upOver(-78.5, -0.2);
@@ -296,6 +320,165 @@ describe('altitudeAware', () => {
 
     layer.updateState({});
     upOver(-79.0, -2.894).forEach((value, axis) => expect(ts.modelMatrix[12 + axis]).toBeCloseTo(-100 * value, 6));
+  });
+
+  it('moves a tileset round the whole world for any change of the Height adjustment, however small', () => {
+    // The tolerance is for the ground under the view, which moves with every
+    // pan; the trim is what the user asked for.
+    const Aware = altitudeAware(FakeDeckLayer as never) as never as new (
+      props: Record<string, unknown>
+    ) => FakeDeckLayer;
+    const layer = new Aware({ groundTileset: true, altitudeOffset: 0 });
+    const ts = osmBuildingsOverCuenca();
+    layer.context = { viewport: viewportOver(-79.0, -2.894, 1700) };
+    layer.state = { tileset3d: ts, activeViewports: { main: 'vp' }, lastUpdatedViewports: null, frameNumber: 1 };
+    layer.updateState({});
+
+    layer.props = { groundTileset: true, altitudeOffset: 20 };
+    layer.updateState({});
+    const up = upOver(-79.0, -2.894);
+    up.forEach((value, axis) => expect(ts.modelMatrix[12 + axis]).toBeCloseTo((20 - 2490) * value, 6));
+    expect(layer.traversals).toHaveLength(2);
+  });
+
+  it('takes the next search step after enough traversals, or long enough, while tiles are still loading', () => {
+    // Under throttling something is always loading, and `isLoaded` never comes true.
+    const now = jest.spyOn(performance, 'now').mockReturnValue(0);
+    try {
+      const Aware = altitudeAware(FakeDeckLayer as never) as never as new (
+        props: Record<string, unknown>
+      ) => FakeDeckLayer;
+      const layer = new Aware({ groundTileset: true, altitudeOffset: 0 });
+      const ts = osmBuildingsBeforeWest(() => false);
+      layer.context = { viewport: viewportOver(-78.5, -0.2, 1700) };
+      layer.state = { tileset3d: ts, activeViewports: { main: 'vp' }, lastUpdatedViewports: null, frameNumber: 1 };
+      const up = upOver(-78.5, -0.2);
+
+      layer.updateState({});
+      expect(ts.modelMatrix[14]).toBe(0);
+
+      layer.state.frameNumber = 20;
+      layer.updateState({});
+      expect(ts.modelMatrix[14]).toBeCloseTo(-1500 * up[2], 6);
+
+      layer.state.frameNumber = 21;
+      now.mockReturnValue(2_000);
+      layer.updateState({});
+      expect(ts.modelMatrix[14]).toBeCloseTo(-1500 * up[2], 6);
+
+      now.mockReturnValue(3_000);
+      layer.updateState({});
+      expect(ts.modelMatrix[14]).toBeCloseTo(-3000 * up[2], 6);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it('does not search where the tree for the view has not been built yet', () => {
+    const Aware = altitudeAware(FakeDeckLayer as never) as never as new (
+      props: Record<string, unknown>
+    ) => FakeDeckLayer;
+    const layer = new Aware({ groundTileset: true, altitudeOffset: 0 });
+    const ts = osmBuildingsBeforeWest();
+    ts.roots = {};
+    layer.context = { viewport: viewportOver(-78.5, -0.2, 1700) };
+    layer.state = { tileset3d: ts, activeViewports: { main: 'vp' }, lastUpdatedViewports: null, frameNumber: 5 };
+
+    layer.updateState({});
+    expect(Array.from(ts.modelMatrix)).toEqual(Array.from(FakeMatrix.identity()));
+    expect(layer.traversals).toHaveLength(0);
+  });
+
+  it('does not search a wide tileset bounded by a sphere, or under a transform: it stays where it is', () => {
+    const Aware = altitudeAware(FakeDeckLayer as never) as never as new (
+      props: Record<string, unknown>
+    ) => FakeDeckLayer;
+    const sphere = osmBuildingsBeforeWest();
+    sphere.root = { header: { boundingVolume: { sphere: [0, 0, 0, 7_000_000] } as never }, children: [] };
+    const transformed = osmBuildingsBeforeWest();
+    (transformed.root as Record<string, unknown>).transform = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1000, 0, 0, 1];
+
+    for (const ts of [sphere, transformed]) {
+      const layer = new Aware({ groundTileset: true, altitudeOffset: 0 });
+      layer.context = { viewport: viewportOver(-78.5, -0.2, 1700) };
+      layer.state = { tileset3d: ts, activeViewports: { main: 'vp' }, lastUpdatedViewports: null, frameNumber: 5 };
+      layer.updateState({});
+      layer.state.frameNumber = 6;
+      layer.updateState({});
+      expect(Array.from(ts.modelMatrix)).toEqual(Array.from(FakeMatrix.identity()));
+      expect(layer.traversals).toHaveLength(0);
+    }
+  });
+
+  it('starts afresh when the tileset is replaced', () => {
+    // A new tileset (a new URL, or the same one reloaded) is somewhere else
+    // entirely: the old one's ground must not carry over to it.
+    const Aware = altitudeAware(FakeDeckLayer as never) as never as new (
+      props: Record<string, unknown>
+    ) => FakeDeckLayer;
+    const layer = new Aware({ groundTileset: true, altitudeOffset: 0 });
+    layer.context = { viewport: viewportOver(-79.0, -2.894, 1700) };
+    layer.state = {
+      tileset3d: osmBuildingsOverCuenca(),
+      activeViewports: { main: 'vp' },
+      lastUpdatedViewports: null,
+      frameNumber: 1,
+    };
+    layer.updateState({});
+    expect(layer.traversals).toHaveLength(1);
+
+    // Over the sea off Ecuador there is nothing under the view: the ground held is the new tileset's own, none.
+    const replaced = osmBuildingsOverCuenca();
+    layer.context = { viewport: viewportOver(-85, -2, 1700) };
+    layer.state.tileset3d = replaced;
+    layer.updateState({});
+    expect(Array.from(replaced.modelMatrix)).toEqual(Array.from(FakeMatrix.identity()));
+  });
+
+  it('has deck draw again every tile it had drawn, once the tileset has moved', () => {
+    // The tiles' drawing transforms have moved with the tileset, and deck only
+    // rebuilds a tile's sublayer when told to.
+    const Aware = altitudeAware(FakeDeckLayer as never) as never as new (
+      props: Record<string, unknown>
+    ) => FakeDeckLayer;
+    const layer = new Aware({ groundTileset: true, altitudeOffset: 0 });
+    const layerMap = { a: { needsUpdate: false }, b: {} as { needsUpdate?: boolean } };
+    layer.state = {
+      tileset3d: tileset(),
+      activeViewports: { main: 'vp' },
+      lastUpdatedViewports: null,
+      layerMap,
+    };
+    layer.updateState({});
+    expect(layerMap.a.needsUpdate).toBe(true);
+    expect(layerMap.b.needsUpdate).toBe(true);
+
+    layerMap.a.needsUpdate = false;
+    layer.updateState({});
+    expect(layerMap.a.needsUpdate).toBe(false);
+  });
+
+  it('moves a tile that loaded against where the tileset was before handing it on', () => {
+    const Aware = altitudeAware(FakeDeckLayer as never) as never as new (
+      props: Record<string, unknown>
+    ) => FakeDeckLayer & { _onTileLoad(tile: unknown): void };
+    const layer = new Aware({ groundTileset: true, altitudeOffset: 0 });
+    const moved = FakeMatrix.identity();
+    moved[14] = -300;
+    const content = {
+      cartesianOrigin: [6_378_137, 0, 0],
+      cartesianModelMatrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 6_378_137, 0, 0, 1],
+    };
+    const tile = {
+      tileset: { modelMatrix: moved },
+      transform: FakeMatrix.identity(),
+      computedTransform: FakeMatrix.identity(),
+      content,
+    };
+
+    layer._onTileLoad(tile);
+    expect(content.cartesianOrigin[2]).toBeCloseTo(-300, 9);
+    expect(layer.loadedTiles).toEqual([tile]);
   });
 
   it('survives an update before the tileset has loaded', () => {

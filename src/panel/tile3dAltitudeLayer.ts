@@ -31,11 +31,17 @@
 import {
   altitudeOffsetFor,
   applyAltitude,
+  catchUpTile,
   groundUnder,
+  groundsUnderView,
+  needsMove,
   nextGround,
+  searchSettled,
   spansTooWide,
   trimOf,
   upAt,
+  type Placement,
+  type TileLike,
   type TilesetLike,
 } from './tile3dAltitude';
 import { sturdyLoader } from './tile3dLoader';
@@ -81,20 +87,32 @@ interface DeckTile3DLayerLike {
     tileset3d?: TilesetLike | null;
     activeViewports?: Record<string, unknown>;
     lastUpdatedViewports?: Record<string, unknown> | null;
+    /** deck's, one entry per tile it has built a sublayer for; `needsUpdate` has it built again. */
+    layerMap?: Record<string, { needsUpdate?: boolean }>;
     /** deck's, bumped each time a traversal completes. */
     frameNumber?: number;
-    /** Ours: the ground a tileset round the whole world was last lowered by, and the frame of the last search step. */
+    /**
+     * Ours, for a tileset round the whole world: the tileset they describe, the
+     * ground last settled on, when the last search step was taken (deck's frame
+     * and the time), and where the tileset was last put.
+     */
+    groundOf?: TilesetLike | null;
     ground?: number | null;
     groundSearchFrame?: number | null;
+    groundSearchTime?: number | null;
+    placed?: Placement | null;
   } | null;
   updateState(params: unknown): void;
   _updateTileset?(viewports: Record<string, unknown> | null | undefined): void;
+  /** deck's, bound as the tileset's `onTileLoad` when the tileset is created. */
+  _onTileLoad?(tile: unknown): void;
 }
 
 /**
- * How far, in metres, the ground under the view must move before a tileset
- * round the whole world is lowered again: every move re-traverses the whole
- * tree, and panning a few blocks should not.
+ * How far, in metres, the ground under the view — or the turn of the vertical
+ * there — must move a tileset round the whole world before it is moved again:
+ * every move re-traverses the whole tree, and panning a few blocks should not.
+ * A change of the Height adjustment always moves it (`needsMove`).
  */
 const GROUND_TOLERANCE = 30;
 
@@ -180,11 +198,19 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
       if (!tileset) {
         return false;
       }
-      const moved = spansTooWide(tileset)
+      const moved = groundsUnderView(tileset)
         ? this.groundUnderView(tileset)
         : applyAltitude(tileset, altitudeOffsetFor(this.props, tileset));
       if (!moved) {
         return false;
+      }
+
+      // Every tile already loaded has been moved with the tileset
+      // (`applyAltitude`), but deck builds a tile's sublayer once and only
+      // builds it again when told to.
+      const layerMap = this.state?.layerMap;
+      for (const key in layerMap ?? {}) {
+        layerMap![key].needsUpdate = true;
       }
 
       // deck empties `activeViewports` as soon as it has traversed with them,
@@ -197,12 +223,21 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
     }
 
     /**
+     * A tile has loaded: put it where the tileset now is, in case it loaded
+     * against where the tileset was (`catchUpTile`), then on to deck.
+     */
+    _onTileLoad(tile: unknown): void {
+      catchUpTile(tile as TileLike);
+      super._onTileLoad?.(tile);
+    }
+
+    /**
      * Lowers a tileset round the whole world by the ground under the centre of
      * the view (`groundUnder`, `nextGround`), along the vertical there.
      *
-     * A search step waits for a traversal to complete after the last one: deck
-     * bumps `frameNumber` when it does, and until then `isLoaded` still
-     * describes the tiles from before the step.
+     * A search step waits for the last one to settle (`searchSettled`): deck
+     * bumps `frameNumber` each time a traversal completes, and until one has,
+     * `isLoaded` still describes the tiles from before the step.
      */
     groundUnderView(tileset: TilesetLike): boolean {
       const view = viewOf(this.context?.viewport);
@@ -210,21 +245,39 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
       if (!view || !state) {
         return false;
       }
+      const now = performance.now();
+      if (state.groundOf !== tileset) {
+        // A new tileset — another URL, or the same one loaded again — owes nothing to the last one's ground.
+        state.groundOf = tileset;
+        state.ground = null;
+        state.groundSearchFrame = null;
+        state.groundSearchTime = now;
+        state.placed = null;
+      }
       let ground = 0;
       if (this.props.groundTileset !== false) {
-        const settled = Boolean(tileset.isLoaded?.()) && state.frameNumber !== state.groundSearchFrame;
-        const sample = groundUnder(tileset, view.longitude, view.latitude, view.id);
-        const next = nextGround(sample, view, settled, state.ground ?? null);
+        const settled = searchSettled({
+          loaded: Boolean(tileset.isLoaded?.()),
+          frame: state.frameNumber,
+          stepFrame: state.groundSearchFrame,
+          now,
+          stepTime: state.groundSearchTime,
+        });
+        const reading = groundUnder(tileset, view.longitude, view.latitude, view.id);
+        const next = nextGround(reading, view, settled, state.ground ?? null);
         if (next.searched) {
-          state.groundSearchFrame = state.frameNumber;
+          state.groundSearchFrame = state.frameNumber ?? null;
+          state.groundSearchTime = now;
         }
         state.ground = next.ground;
         ground = next.ground;
       }
-      return applyAltitude(tileset, trimOf(this.props) - ground, {
-        up: upAt(view.longitude, view.latitude),
-        tolerance: GROUND_TOLERANCE,
-      });
+      const placement: Placement = { ground, trim: trimOf(this.props), up: upAt(view.longitude, view.latitude) };
+      if (!needsMove(state.placed ?? null, placement, GROUND_TOLERANCE)) {
+        return false;
+      }
+      state.placed = placement;
+      return applyAltitude(tileset, placement.trim - placement.ground, { up: placement.up });
     }
   }
 

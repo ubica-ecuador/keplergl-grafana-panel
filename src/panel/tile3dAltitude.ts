@@ -21,13 +21,33 @@
  * is the **parent transform of the root** (`@loaders.gl/tiles`,
  * `tile-3d.js`: `parentTransform = parent ? parent.computedTransform :
  * this.tileset.modelMatrix`), so it feeds the bounding volumes the culling
- * reads. One matrix fixes both.
+ * reads. One matrix fixes both — for the tiles still to load. Those already
+ * loaded were placed once, when they loaded, and are moved with it
+ * ({@link applyAltitude}).
  *
  * Everything here is arithmetic on plain numbers: the layer that calls it lives
  * in `tile3dAltitudeLayer.ts`.
  */
 
-/** A tile of a loaded `Tileset3D`, as far as the search for the ground reads it. */
+/**
+ * What loaders.gl works out for a tile once its content has loaded
+ * (`calculateTransformProps`, `@loaders.gl/tiles`), and deck draws it with for
+ * as long as it stays loaded.
+ */
+export interface TileContentLike {
+  /** The centre of the tile's bounding volume, in ECEF, when it loaded. */
+  cartesianOrigin?: ArrayLike<number> | null;
+  /** The tile's geometry to ECEF. */
+  cartesianModelMatrix?: ArrayLike<number> | null;
+  /** `cartesianOrigin` as `[longitude, latitude, height]`: the origin deck draws round. */
+  cartographicOrigin?: ArrayLike<number> | null;
+  /** The tile's geometry to metres east, north and up of `cartographicOrigin`. */
+  cartographicModelMatrix?: ArrayLike<number> | null;
+  /** loaders.gl's alias of `cartographicModelMatrix`, which is what deck reads; I3S sets one of its own. */
+  modelMatrix?: unknown;
+}
+
+/** A tile of a loaded `Tileset3D`, as far as this module reads it. */
 export interface TileLike {
   header?: {
     boundingVolume?: Record<string, ArrayLike<number>>;
@@ -38,6 +58,15 @@ export interface TileLike {
     contentUrl?: string | null;
   } | null;
   children?: readonly TileLike[] | null;
+  /** Null until the tile's content has loaded. */
+  content?: TileContentLike | null;
+  parent?: TileLike | null;
+  /** loaders.gl's: the tile's own transform, an identity when it declares none. */
+  transform?: ArrayLike<number> | null;
+  /** loaders.gl's: the tileset's model matrix times every transform down to this tile, as of the last traversal. */
+  computedTransform?: ArrayLike<number> | null;
+  /** The tileset the tile belongs to. */
+  tileset?: Pick<TilesetLike, 'modelMatrix'> | null;
 }
 
 /** The parts of a loaded `Tileset3D` this module reads. */
@@ -46,17 +75,22 @@ export interface TilesetLike {
   modelMatrix?: (ArrayLike<number> & { clone(): ArrayLike<number> }) | null;
   /** `[longitude, latitude, altitude]` of the root bounding volume's centre. */
   cartographicCenter?: ArrayLike<number> | null;
-  root?: (TileLike & { transform?: ArrayLike<number> | null }) | null;
+  root?: TileLike | null;
   /**
    * The trees Tileset3D actually traverses, one per viewport id. `root` is
    * built once and never traversed, so nothing below it ever loads.
    */
   roots?: Record<string, TileLike | null | undefined> | null;
+  /** Tileset3D's own: the tiles it last selected, the ones deck draws. */
+  tiles?: readonly TileLike[] | null;
   /** Tileset3D's own: nothing asked for is still loading. */
   isLoaded?(): boolean;
 }
 
 type Vec3 = [number, number, number];
+
+/** How close two offsets have to be to count as the same, in metres. */
+const EPSILON = 1e-6;
 
 /** Straight up, for a tileset that is not georeferenced onto the globe. */
 const STRAIGHT_UP: [number, number, number] = [0, 0, 1];
@@ -142,6 +176,30 @@ function halfExtent(boundingVolume: Record<string, ArrayLike<number>> | undefine
 export function spansTooWide(tileset: TilesetLike | null | undefined): boolean {
   const extent = halfExtent(tileset?.root?.header?.boundingVolume);
   return extent !== null && extent > MAX_GROUNDED_HALF_EXTENT;
+}
+
+/** Whether a tile carries a transform that moves what lies under it: loaders.gl's own identity does not count. */
+function hasOwnTransform(tile: TileLike | null | undefined): boolean {
+  return [tile?.transform, tile?.header?.transform, tile?.header?.transformMatrix].some(
+    (matrix) => Boolean(matrix) && !isIdentity(matrix!)
+  );
+}
+
+/**
+ * Whether the tileset is lowered by the ground under the centre of the view
+ * ({@link groundUnder}, {@link nextGround}) rather than by one base.
+ *
+ * It spans too wide for one base, and the ground under the view can be read
+ * off its tree: a root with no transform of its own, bounded by a region or a
+ * box — Google's globe and Cesium OSM Buildings. A wide root under a transform,
+ * or bounded by a sphere, cannot be read that way, and stays where it is.
+ */
+export function groundsUnderView(tileset: TilesetLike | null | undefined): boolean {
+  if (!spansTooWide(tileset) || hasOwnTransform(tileset?.root)) {
+    return false;
+  }
+  const volume = tileset?.root?.header?.boundingVolume;
+  return Boolean((volume?.region && volume.region.length >= 6) || (volume?.box && volume.box.length >= 12));
 }
 
 /**
@@ -257,6 +315,18 @@ export interface GroundSample {
   leaf: boolean;
 }
 
+/**
+ * What the tree says about the ground under a point: a sample, or why there is none.
+ *
+ * - `unreadable`: there is no tree to read yet, or its root cannot be read
+ *   (a transform of its own, or no region or box).
+ * - `missed`: no tile under the point could tell, now or later — OSM Buildings
+ *   over the sea, where there are no buildings to have tiles.
+ * - `coarse`: only tiles too big to tell hold the point, and more of the tree
+ *   is still to load under them. The one case a search can help.
+ */
+export type GroundReading = GroundSample | { none: 'unreadable' | 'missed' | 'coarse' };
+
 /** What one tile's volume says about the column, before the tree has had its say. */
 interface VolumeSample {
   height: number;
@@ -272,37 +342,73 @@ interface Column {
   along: Vec3;
 }
 
+/** A longitude in degrees, brought into [-180, 180): deck's can run past the antimeridian, a region's cannot. */
+function wrapLongitude(longitude: number): number {
+  return ((((longitude + 180) % 360) + 360) % 360) - 180;
+}
+
 function columnAt(longitude: number, latitude: number): Column {
-  const lon = (longitude * Math.PI) / 180;
+  const lon = (wrapLongitude(longitude) * Math.PI) / 180;
   const lat = (latitude * Math.PI) / 180;
   const bottom = ecef(lon, lat, COLUMN_BOTTOM);
   const top = ecef(lon, lat, COLUMN_TOP);
   return { longitude: lon, latitude: lat, bottom, along: [top[0] - bottom[0], top[1] - bottom[1], top[2] - bottom[2]] };
 }
 
+/**
+ * A box's three half-axes, with one of no length replaced by the unit normal of
+ * the other two: the box is then a slab of no thickness, which the column can
+ * still pass through. Null when two or more have no length.
+ */
+function boxAxes(box: ArrayLike<number>): Array<{ axis: Vec3; flat: boolean }> | null {
+  const axes: Vec3[] = [0, 1, 2].map((i) => [box[3 + i * 3], box[4 + i * 3], box[5 + i * 3]]);
+  const flat = axes.map((u) => !(u[0] * u[0] + u[1] * u[1] + u[2] * u[2] > 0));
+  const flatCount = flat.filter(Boolean).length;
+  if (flatCount === 0) {
+    return axes.map((axis) => ({ axis, flat: false }));
+  }
+  if (flatCount > 1) {
+    return null;
+  }
+  const index = flat.indexOf(true);
+  const [a, b] = axes.filter((_, i) => i !== index);
+  const normal: Vec3 = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const length = Math.hypot(...normal);
+  if (!(length > 0)) {
+    return null;
+  }
+  return axes.map((axis, i) =>
+    i === index
+      ? { axis: [normal[0] / length, normal[1] / length, normal[2] / length], flat: true }
+      : { axis, flat: false }
+  );
+}
+
 /** Where along the column, from 0 at its bottom to 1 at its top, it enters and leaves a box; null when it misses it. */
 function throughBox(column: Column, box: ArrayLike<number>): [number, number] | null {
+  const axes = boxAxes(box);
+  if (!axes) {
+    return null;
+  }
   let enter = 0;
   let leave = 1;
-  for (let axis = 0; axis < 3; axis++) {
-    const u = [box[3 + axis * 3], box[4 + axis * 3], box[5 + axis * 3]];
-    const length2 = u[0] * u[0] + u[1] * u[1] + u[2] * u[2];
-    if (!(length2 > 0)) {
-      return null;
-    }
-    // The column's position along this half-axis, in half-axis lengths: inside is [-1, 1].
+  for (const { axis: u, flat } of axes) {
+    // The column's position along this half-axis, in half-axis lengths: inside
+    // is [-1, 1]. Along a flat one, in metres from the slab: inside is 0.
+    const length2 = flat ? 1 : u[0] * u[0] + u[1] * u[1] + u[2] * u[2];
+    const reach = flat ? 0 : 1;
     const start =
       ((column.bottom[0] - box[0]) * u[0] + (column.bottom[1] - box[1]) * u[1] + (column.bottom[2] - box[2]) * u[2]) /
       length2;
     const rate = (column.along[0] * u[0] + column.along[1] * u[1] + column.along[2] * u[2]) / length2;
     if (Math.abs(rate) < 1e-15) {
-      if (Math.abs(start) > 1) {
+      if (Math.abs(start) > reach) {
         return null;
       }
       continue;
     }
-    const a = (-1 - start) / rate;
-    const b = (1 - start) / rate;
+    const a = (-reach - start) / rate;
+    const b = (reach - start) / rate;
     enter = Math.max(enter, Math.min(a, b));
     leave = Math.min(leave, Math.max(a, b));
   }
@@ -331,38 +437,68 @@ function sampleOf(column: Column, volume: Record<string, ArrayLike<number>> | un
   return null;
 }
 
+/** Whether a tile's content is a tileset of its own, whose tiles arrive only once it has loaded. */
+function isNestedTileset(tile: TileLike): boolean {
+  return /\.json(\?|#|$)/i.test(tile.header?.contentUrl ?? '');
+}
+
 /**
  * The ground under a point, from the deepest tile known to hold it and small
- * enough to tell; null when no such tile is known yet.
+ * enough to tell — the lowest, of two as deep — or why there is none
+ * ({@link GroundReading}).
+ *
+ * Every child the vertical passes through is looked under, not only the first:
+ * siblings may overlap, and the first can stop short while the next reaches
+ * the city.
  *
  * Read from the tree Tileset3D traverses for the viewport (`roots`), which is
  * the one that grows as tiles load; `root` only when no viewport id is given.
  *
- * Stops at a tile with a transform of its own: the heights of what lies below
- * it cannot be read without composing it, and neither Google's tree nor OSM
- * Buildings' has one.
+ * Does not look under a tile with a transform of its own: the heights of what
+ * lies below it cannot be read without composing it, and neither Google's
+ * tree nor OSM Buildings' has one.
  */
 export function groundUnder(
   tileset: Pick<TilesetLike, 'root' | 'roots'> | null | undefined,
   longitude: number,
   latitude: number,
   viewportId?: string
-): GroundSample | null {
+): GroundReading {
+  const root = viewportId === undefined ? tileset?.root : tileset?.roots?.[viewportId];
+  const volume = root?.header?.boundingVolume;
+  if (!root || hasOwnTransform(root) || !((volume?.region?.length ?? 0) >= 6 || (volume?.box?.length ?? 0) >= 12)) {
+    return { none: 'unreadable' };
+  }
+
   const column = columnAt(longitude, latitude);
-  let best: GroundSample | null = null;
-  let tile: TileLike | null | undefined = viewportId === undefined ? tileset?.root : tileset?.roots?.[viewportId];
-  while (tile && !(tile.header?.transform ?? tile.header?.transformMatrix)) {
+  let best: (GroundSample & { depth: number }) | null = null;
+  let moreToCome = false;
+  const stack: Array<{ tile: TileLike; depth: number }> = [{ tile: root, depth: 0 }];
+  while (stack.length > 0) {
+    const { tile, depth } = stack.pop()!;
     const sample = sampleOf(column, tile.header?.boundingVolume);
     if (!sample) {
-      break;
+      continue;
     }
-    const nestedTileset = /\.json(\?|#|$)/i.test(tile.header?.contentUrl ?? '');
+    const children = tile.children ?? [];
+    const nestedTileset = isNestedTileset(tile);
     if (sample.halfExtent <= MAX_SAMPLE_HALF_EXTENT) {
-      best = { height: sample.height, top: sample.top, leaf: !tile.children?.length && !nestedTileset };
+      if (!best || depth > best.depth || (depth === best.depth && sample.height < best.height)) {
+        best = { height: sample.height, top: sample.top, leaf: children.length === 0 && !nestedTileset, depth };
+      }
+    } else if (children.length === 0 && nestedTileset) {
+      moreToCome = true;
     }
-    tile = tile.children?.find((child) => sampleOf(column, child.header?.boundingVolume) !== null);
+    for (const child of children) {
+      if (!hasOwnTransform(child)) {
+        stack.push({ tile: child, depth: depth + 1 });
+      }
+    }
   }
-  return best;
+  if (best) {
+    return { height: best.height, top: best.top, leaf: best.leaf };
+  }
+  return { none: moreToCome ? 'coarse' : 'missed' };
 }
 
 /**
@@ -375,26 +511,31 @@ export function groundUnder(
  * it is a leaf, below which there is nothing more to find. From above
  * {@link SEARCH_CEILING} any sample will do: the whole mesh is below the camera.
  *
- * Otherwise the ground has to be searched for: over Cuenca the mesh sits above
- * a camera a kilometre and a half up, so the tiles that would say where the
- * ground is are never asked for. Once everything asked for has loaded, the
- * tileset is lowered another {@link SEARCH_STEP} and looked at again, until a
- * sample will do or the search reaches {@link SEARCH_CEILING}. While tiles are
- * still loading the last ground holds.
+ * Otherwise, when only tiles too big to tell are known there (or the one
+ * sample reaches above the camera), the ground has to be searched for: over
+ * Cuenca the mesh sits above a camera a kilometre and a half up, so the tiles
+ * that would say where the ground is are never asked for. Once the last step
+ * has {@link searchSettled settled}, the tileset is lowered another
+ * {@link SEARCH_STEP} and looked at again, until a sample will do or the search
+ * reaches {@link SEARCH_CEILING}. Until then the last ground holds.
  *
- * `previous` is the ground last applied, null before the first.
+ * Where the tree cannot be read yet, or has nothing under the point, a search
+ * would find nothing: the last ground holds, or none before the first.
+ *
+ * `previous` is the ground last settled on, null before the first.
  */
 export function nextGround(
-  sample: GroundSample | null,
+  reading: GroundReading,
   view: { cameraHeight: number },
   settled: boolean,
   previous: number | null
 ): { ground: number; searched: boolean } {
+  const sample = 'height' in reading ? reading : null;
   const highUp = !(view.cameraHeight < SEARCH_CEILING);
   if (sample && (sample.leaf || highUp || sample.top - sample.height < view.cameraHeight)) {
     return { ground: sample.height, searched: false };
   }
-  if (highUp) {
+  if (highUp || (!sample && 'none' in reading && reading.none !== 'coarse')) {
     return { ground: previous ?? 0, searched: false };
   }
   const known = Math.max(previous ?? -Infinity, sample?.height ?? -Infinity);
@@ -403,6 +544,70 @@ export function nextGround(
     return { ground: held, searched: false };
   }
   return { ground: Math.min(held + SEARCH_STEP, SEARCH_CEILING), searched: true };
+}
+
+/** Traversals after a search step past which it counts as settled, whatever is still loading. */
+const SETTLE_FRAMES = 20;
+
+/** Milliseconds after a search step past which it counts as settled, whatever is still loading. */
+const SETTLE_TIME = 3_000;
+
+/**
+ * Whether the last search step (or the start, before the first) has had its
+ * effect: at least one traversal has completed since, and either everything
+ * asked for has loaded, or {@link SETTLE_FRAMES} traversals or
+ * {@link SETTLE_TIME} have gone by.
+ *
+ * Loaded alone is not enough to wait for: with the network throttled, or a
+ * tileset as busy as Google's, something is always loading, and the search
+ * would never take its next step.
+ *
+ * `frame` is deck's count of completed traversals, `stepFrame` and `stepTime`
+ * those of the last step (or of the start); `now` is the time in the same
+ * milliseconds, passed in so that the tests can choose it.
+ */
+export function searchSettled(state: {
+  loaded: boolean;
+  frame: number | null | undefined;
+  stepFrame: number | null | undefined;
+  now: number;
+  stepTime: number | null | undefined;
+}): boolean {
+  const { loaded, frame, stepFrame, now, stepTime } = state;
+  if (typeof frame !== 'number' || frame === stepFrame) {
+    return false;
+  }
+  if (loaded || frame - (stepFrame ?? 0) >= SETTLE_FRAMES) {
+    return true;
+  }
+  return typeof stepTime === 'number' && now - stepTime >= SETTLE_TIME;
+}
+
+/** Where a tileset round the whole world was, or is to be, put: the ground, the trim and the vertical. */
+export interface Placement {
+  ground: number;
+  trim: number;
+  up: Vec3;
+}
+
+/**
+ * Whether a tileset round the whole world has to be moved from where it was
+ * last put to where it now belongs.
+ *
+ * The `tolerance`, in metres, applies to the ground and to the turn of the
+ * vertical only: each moves with every pan, a few metres at a time, and every
+ * move re-traverses the whole tree. The trim is what the user asked for, and
+ * any change to it moves the tileset.
+ */
+export function needsMove(applied: Placement | null, next: Placement, tolerance: number): boolean {
+  if (!applied || Math.abs(next.trim - applied.trim) > EPSILON) {
+    return true;
+  }
+  if (Math.abs(next.ground - applied.ground) >= tolerance) {
+    return true;
+  }
+  const turn = Math.hypot(next.up[0] - applied.up[0], next.up[1] - applied.up[1], next.up[2] - applied.up[2]);
+  return Math.abs(next.trim - next.ground) * turn >= tolerance;
 }
 
 /** The half-height of a bounding volume, in metres, or 0 when it has none. */
@@ -487,7 +692,8 @@ export function trimOf(visConfig: AltitudeVisConfig): number {
  * A tileset that {@link spansTooWide spans too wide} has no one base and no one
  * "up", so this leaves it where it is. The layer grounds such a tileset at the
  * centre of the view instead ({@link groundUnder}, {@link nextGround}), where
- * it knows the view.
+ * it knows the view — when its tree can be read there ({@link groundsUnderView});
+ * otherwise it stays where it is.
  */
 export function altitudeOffsetFor(visConfig: AltitudeVisConfig, tileset: TilesetLike | null | undefined): number {
   if (spansTooWide(tileset)) {
@@ -501,11 +707,205 @@ export function altitudeOffsetFor(visConfig: AltitudeVisConfig, tileset: Tileset
   return base === null ? trim : trim - base;
 }
 
-/** How close two offsets have to be to count as the same, in metres. */
-const EPSILON = 1e-6;
+/*
+ * Tiles already loaded, moved with the tileset.
+ *
+ * loaders.gl works out how to draw a tile once, when its content loads
+ * (`calculateTransformProps`, `@loaders.gl/tiles`): an origin, and matrices from
+ * the tile's geometry to ECEF and to metres round that origin. deck's
+ * `Tile3DLayer` draws every sublayer with them for as long as the tile stays
+ * loaded. Moving the tileset afterwards moved the bounding volumes the
+ * traversal culls against, and left the drawn geometry where it had been: over
+ * Cuenca, 2 400 m above a street-level camera. So every loaded tile is moved by
+ * the same step as the tileset, to the numbers loaders.gl would have given it
+ * had it loaded where the tileset now is. Worked out again here rather than by
+ * calling loaders.gl's own: that one also folds the glTF's root node into the
+ * matrices, once, and running it twice would fold it in twice.
+ */
+
+/** WGS 84's polar radius, in metres. */
+const POLAR_RADIUS = EARTH_RADIUS * Math.sqrt(1 - WGS84_E2);
 
 /**
- * Writes the offset into the tileset's model matrix.
+ * ECEF to `[longitude, latitude, height]`, in degrees and metres: math.gl's
+ * `cartesianToCartographic`, which is what loaders.gl gives deck.
+ */
+function cartographicOf(point: ArrayLike<number>): Vec3 {
+  const [x, y, z] = [point[0], point[1], point[2]];
+  const p = Math.hypot(x, y);
+  let latitude = Math.atan2(z, p * (1 - WGS84_E2));
+  let height = 0;
+  for (let i = 0; i < 8; i++) {
+    const n = EARTH_RADIUS / Math.sqrt(1 - WGS84_E2 * Math.sin(latitude) ** 2);
+    height =
+      Math.abs(Math.cos(latitude)) > 1e-6
+        ? p / Math.cos(latitude) - n
+        : Math.abs(z) / Math.abs(Math.sin(latitude)) - n * (1 - WGS84_E2);
+    latitude = Math.atan2(z, p * (1 - (WGS84_E2 * n) / (n + height)));
+  }
+  return [(Math.atan2(y, x) * 180) / Math.PI, (latitude * 180) / Math.PI, height];
+}
+
+/**
+ * The east, north and up axes at a point in ECEF, as math.gl's
+ * `eastNorthUpToFixedFrame` builds them for loaders.gl: up is the ellipsoid's
+ * normal scaled from the point itself, and a point on the axis gets fixed ones.
+ */
+function eastNorthUp(point: ArrayLike<number>): [Vec3, Vec3, Vec3] {
+  const [x, y, z] = [point[0], point[1], point[2]];
+  if (Math.abs(x) < 1e-14 && Math.abs(y) < 1e-14) {
+    const sign = Math.sign(z) || 1;
+    return [
+      [0, 1, 0],
+      [-sign, 0, 0],
+      [0, 0, sign],
+    ];
+  }
+  const normal: Vec3 = [x / EARTH_RADIUS ** 2, y / EARTH_RADIUS ** 2, z / POLAR_RADIUS ** 2];
+  const n = Math.hypot(...normal);
+  const up: Vec3 = [normal[0] / n, normal[1] / n, normal[2] / n];
+  const e = Math.hypot(x, y);
+  const east: Vec3 = [-y / e, x / e, 0];
+  const north: Vec3 = [
+    up[1] * east[2] - up[2] * east[1],
+    up[2] * east[0] - up[0] * east[2],
+    up[0] * east[1] - up[1] * east[0],
+  ];
+  return [east, north, up];
+}
+
+/**
+ * A copy of a math.gl vector or matrix, of the same kind, holding new values.
+ *
+ * A copy rather than the same one written over: deck compares a sublayer's
+ * `modelMatrix` and `coordinateOrigin` with the last ones, and one written in
+ * place compares equal to itself.
+ */
+function copyWith<T>(source: T, values: readonly number[]): T {
+  const cloneable = source as unknown as { clone?: () => unknown } | null | undefined;
+  const copy = (typeof cloneable?.clone === 'function' ? cloneable.clone() : [...values]) as number[];
+  values.forEach((value, i) => (copy[i] = value));
+  return copy as unknown as T;
+}
+
+/**
+ * Moves one loaded tile's content by `delta` (ECEF, metres): the origin, and
+ * both matrices, as loaders.gl would have worked them out with the tileset
+ * already there. Returns whether there was anything to move.
+ */
+export function shiftContent(content: TileContentLike | null | undefined, delta: ArrayLike<number>): boolean {
+  const origin = content?.cartesianOrigin;
+  const cartesian = content?.cartesianModelMatrix;
+  if (!content || !origin || origin.length < 3 || !cartesian || cartesian.length < 16) {
+    return false;
+  }
+
+  const movedOrigin: Vec3 = [origin[0] + delta[0], origin[1] + delta[1], origin[2] + delta[2]];
+  // Translated by delta, on the left: what the tileset's own move does to every transform below it.
+  const moved = Array.from({ length: 16 }, (_, i) => cartesian[i]);
+  for (let column = 0; column < 4; column++) {
+    for (let row = 0; row < 3; row++) {
+      moved[column * 4 + row] += delta[row] * cartesian[column * 4 + 3];
+    }
+  }
+  // The same, seen from the east, north and up of the new origin: the inverse
+  // of that frame, which is its transpose and the origin taken off.
+  const axes = eastNorthUp(movedOrigin);
+  const local = new Array<number>(16);
+  for (let column = 0; column < 4; column++) {
+    const c = [moved[column * 4], moved[column * 4 + 1], moved[column * 4 + 2]];
+    const w = moved[column * 4 + 3];
+    axes.forEach((axis, row) => {
+      local[column * 4 + row] =
+        axis[0] * (c[0] - w * movedOrigin[0]) +
+        axis[1] * (c[1] - w * movedOrigin[1]) +
+        axis[2] * (c[2] - w * movedOrigin[2]);
+    });
+    local[column * 4 + 3] = w;
+  }
+
+  const oldLocal = content.cartographicModelMatrix;
+  const newLocal = copyWith(oldLocal ?? cartesian, local);
+  if (oldLocal && content.modelMatrix === oldLocal) {
+    content.modelMatrix = newLocal;
+  }
+  content.cartographicModelMatrix = newLocal;
+  content.cartesianModelMatrix = copyWith(cartesian, moved);
+  content.cartesianOrigin = copyWith(origin, movedOrigin);
+  content.cartographicOrigin = copyWith(content.cartographicOrigin ?? origin, cartographicOf(movedOrigin));
+  return true;
+}
+
+/** Every tile the tileset keeps — the tree for each viewport, the first one, and the ones last selected — once each. */
+function everyTile(tileset: TilesetLike): Set<TileLike> {
+  const found = new Set<TileLike>();
+  const stack: TileLike[] = [];
+  const add = (tile: TileLike | null | undefined) => {
+    if (tile && typeof tile === 'object' && !found.has(tile)) {
+      found.add(tile);
+      stack.push(tile);
+    }
+  };
+  Object.values(tileset.roots ?? {}).forEach(add);
+  add(tileset.root);
+  (tileset.tiles ?? []).forEach(add);
+  while (stack.length > 0) {
+    (stack.pop()!.children ?? []).forEach(add);
+  }
+  return found;
+}
+
+/** Column-major 4×4 product. */
+function multiply(a: ArrayLike<number>, b: ArrayLike<number>): number[] {
+  const out = new Array<number>(16);
+  for (let column = 0; column < 4; column++) {
+    for (let row = 0; row < 4; row++) {
+      let sum = 0;
+      for (let k = 0; k < 4; k++) {
+        sum += a[k * 4 + row] * b[column * 4 + k];
+      }
+      out[column * 4 + row] = sum;
+    }
+  }
+  return out;
+}
+
+/**
+ * Moves a tile that has just loaded to where the tileset is now, when it
+ * loaded against where the tileset was.
+ *
+ * A tile still loading when the tileset moved, and not traversed since, keeps
+ * the transform of before the move, and loaders.gl works out how to draw it
+ * from that one. Only the tileset's translation ever changes, so the tile is
+ * behind by exactly the difference between that transform and the one it would
+ * have now — the tileset's model matrix times every transform down to it.
+ */
+export function catchUpTile(tile: TileLike | null | undefined): boolean {
+  const model = tile?.tileset?.modelMatrix;
+  const computed = tile?.computedTransform;
+  if (!tile || !model || model.length < 16 || !computed || computed.length < 16) {
+    return false;
+  }
+  const chain: TileLike[] = [];
+  for (let ancestor: TileLike | null | undefined = tile; ancestor; ancestor = ancestor.parent) {
+    chain.unshift(ancestor);
+  }
+  let expected: ArrayLike<number> = model;
+  for (const link of chain) {
+    if (link.transform && link.transform.length >= 16 && !isIdentity(link.transform)) {
+      expected = multiply(expected, link.transform);
+    }
+  }
+  const delta = [expected[12] - computed[12], expected[13] - computed[13], expected[14] - computed[14]];
+  if (Math.hypot(delta[0], delta[1], delta[2]) < EPSILON) {
+    return false;
+  }
+  return shiftContent(tile.content, delta);
+}
+
+/**
+ * Writes the offset into the tileset's model matrix, and moves every tile
+ * already loaded by the same step (see above).
  *
  * The translation is **replaced, never added to**: `renderLayer` runs on every
  * store change and its own output comes back as input, so accumulating would
@@ -517,23 +917,22 @@ const EPSILON = 1e-6;
  * half, and it already runs on every camera change.
  *
  * `up` defaults to {@link tilesetUp}; a tileset round the whole world is given
- * the vertical at the centre of the view instead ({@link upAt}), with a
- * `tolerance` in metres under which a move is not worth a traversal.
+ * the vertical at the centre of the view instead ({@link upAt}).
  */
 export function applyAltitude(
   tileset: TilesetLike | null | undefined,
   offset: number,
-  options: { up?: Vec3; tolerance?: number } = {}
+  options: { up?: Vec3 } = {}
 ): boolean {
   const matrix = tileset?.modelMatrix;
-  if (!matrix || typeof matrix.clone !== 'function' || !Number.isFinite(offset)) {
+  if (!tileset || !matrix || typeof matrix.clone !== 'function' || !Number.isFinite(offset)) {
     return false;
   }
 
   const up = options.up ?? tilesetUp(tileset);
   const wanted = [up[0] * offset, up[1] * offset, up[2] * offset];
-  const distance = Math.hypot(wanted[0] - matrix[12], wanted[1] - matrix[13], wanted[2] - matrix[14]);
-  if (distance < Math.max(options.tolerance ?? 0, EPSILON)) {
+  const delta = [wanted[0] - matrix[12], wanted[1] - matrix[13], wanted[2] - matrix[14]];
+  if (Math.hypot(delta[0], delta[1], delta[2]) < EPSILON) {
     return false;
   }
 
@@ -544,7 +943,10 @@ export function applyAltitude(
   writable[12] = wanted[0];
   writable[13] = wanted[1];
   writable[14] = wanted[2];
+  tileset.modelMatrix = next;
 
-  (tileset as { modelMatrix?: unknown }).modelMatrix = next;
+  for (const tile of everyTile(tileset)) {
+    shiftContent(tile.content, delta);
+  }
   return true;
 }

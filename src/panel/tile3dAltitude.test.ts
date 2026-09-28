@@ -1,10 +1,20 @@
+import { Ellipsoid } from '@math.gl/geospatial';
+import { Matrix4, Vector3 } from '@math.gl/core';
+
 import {
   altitudeOffsetFor,
   applyAltitude,
   baseAltitude,
+  catchUpTile,
+  type TileContentLike,
+  type TileLike,
   groundUnder,
+  groundsUnderView,
   localUp,
+  needsMove,
   nextGround,
+  searchSettled,
+  shiftContent,
   spansTooWide,
   tilesetUp,
   upAt,
@@ -116,6 +126,43 @@ describe('spansTooWide', () => {
   });
 });
 
+describe('groundsUnderView', () => {
+  it('holds for a world of regions or a world in one box, with no transform of its own', () => {
+    expect(groundsUnderView(untransformed({ region: OSM_BUILDINGS_REGION }, [0, 0, 0]))).toBe(true);
+    expect(groundsUnderView(untransformed({ box: GOOGLE_ROOT_BOX }, [0, 0, EARTH_CENTRE_ALTITUDE]))).toBe(true);
+  });
+
+  it('does not hold for a tileset that fits one ground height', () => {
+    expect(groundsUnderView(tileset())).toBe(false);
+    expect(groundsUnderView(untransformed({ region: CUENCA_REGION }, [-79.0, -2.9, 2550]))).toBe(false);
+    expect(groundsUnderView(null)).toBe(false);
+  });
+
+  it('does not hold for a wide root that is transformed, or bounded by a sphere', () => {
+    // The column under the view cannot be read through a transform, and a
+    // sphere says nothing about where the ground is: such a tileset stays where
+    // it is rather than being searched.
+    const transformed = tileset({
+      root: { transform: AGI_TRANSFORM, header: { boundingVolume: { box: GOOGLE_ROOT_BOX } } },
+    });
+    const declared = untransformed({ region: OSM_BUILDINGS_REGION }, [0, 0, 0]);
+    (declared.root.header as Record<string, unknown>).transform = AGI_TRANSFORM;
+    const sphere = untransformed({ sphere: [0, 0, 0, 7_000_000] }, [0, 0, EARTH_CENTRE_ALTITUDE]);
+
+    expect(spansTooWide(transformed)).toBe(true);
+    expect(groundsUnderView(transformed)).toBe(false);
+    expect(groundsUnderView(declared)).toBe(false);
+    expect(spansTooWide(sphere)).toBe(true);
+    expect(groundsUnderView(sphere)).toBe(false);
+  });
+
+  it('takes an identity transform for no transform at all, as loaders.gl hands one to every tile', () => {
+    const identity = untransformed({ box: GOOGLE_ROOT_BOX }, [0, 0, EARTH_CENTRE_ALTITUDE]);
+    (identity.root as { transform: unknown }).transform = FakeMatrix.identity();
+    expect(groundsUnderView(identity)).toBe(true);
+  });
+});
+
 describe('upAt', () => {
   it('is the ellipsoid’s normal at a longitude and latitude in degrees', () => {
     const expected = normalAt((CUENCA.longitude * Math.PI) / 180, (CUENCA.latitude * Math.PI) / 180);
@@ -199,9 +246,9 @@ describe('groundUnder', () => {
   it('reads the ground under a point off the deepest box that holds it', () => {
     // The column enters the city's tile at its bottom, 150 m below its centre, and leaves it 150 m above.
     const sample = groundUnder({ root: googleOverCuenca() }, CUENCA.longitude, CUENCA.latitude);
-    expect(sample?.height).toBeCloseTo(2400, 0);
-    expect(sample?.top).toBeCloseTo(2700, 0);
-    expect(sample?.leaf).toBe(true);
+    expect('height' in sample && sample.height).toBeCloseTo(2400, 0);
+    expect('top' in sample && sample.top).toBeCloseTo(2700, 0);
+    expect('leaf' in sample && sample.leaf).toBe(true);
   });
 
   it('reads it off the deepest region that holds it', () => {
@@ -211,13 +258,57 @@ describe('groundUnder', () => {
     expect(sample).toEqual({ height: 2490, top: 2610, leaf: true });
   });
 
+  it('reads a longitude past the antimeridian as the same place', () => {
+    const cuenca = tile({ region: CUENCA_REGION });
+    const west = tile({ region: [-Math.PI, -1.47, 0, 1.45, -394, 5967] }, [cuenca]);
+    const world = { root: tile({ region: OSM_BUILDINGS_REGION }, [west]) };
+    expect(groundUnder(world, -79.0 + 360, -2.89)).toEqual({ height: 2490, top: 2610, leaf: true });
+    expect(groundUnder(world, -79.0 - 720, -2.89)).toEqual({ height: 2490, top: 2610, leaf: true });
+  });
+
+  it('looks under every child the column passes through, not only the first', () => {
+    // Siblings may overlap: the first to hold the column can be a coarse one
+    // that stops there, while the next reaches down to the city.
+    const coarse = tile({ box: boxAround(CUENCA.longitude, CUENCA.latitude, 3000, 20_000, 1200) });
+    const city = tile({ box: boxAround(CUENCA.longitude, CUENCA.latitude, 2550, 400, 150) });
+    const valley = tile({ box: boxAround(CUENCA.longitude, CUENCA.latitude, 3000, 20_000, 1200) }, [city]);
+    const sample = groundUnder(
+      { root: tile({ box: GOOGLE_ROOT_BOX }, [coarse, valley]) },
+      CUENCA.longitude,
+      CUENCA.latitude
+    );
+    expect('height' in sample && sample.height).toBeCloseTo(2400, 0);
+  });
+
+  it('takes the lowest of two samples as deep as each other', () => {
+    const high = tile({ box: boxAround(CUENCA.longitude, CUENCA.latitude, 2650, 400, 150) });
+    const low = tile({ box: boxAround(CUENCA.longitude, CUENCA.latitude, 2550, 400, 150) });
+    const sample = groundUnder(
+      { root: tile({ box: GOOGLE_ROOT_BOX }, [high, low]) },
+      CUENCA.longitude,
+      CUENCA.latitude
+    );
+    expect('height' in sample && sample.height).toBeCloseTo(2400, 0);
+  });
+
+  it('reads a box with no thickness as a slab rather than missing it', () => {
+    const slab = boxAround(CUENCA.longitude, CUENCA.latitude, 2500, 400, 0);
+    const sample = groundUnder(
+      { root: tile({ box: GOOGLE_ROOT_BOX }, [tile({ box: slab })]) },
+      CUENCA.longitude,
+      CUENCA.latitude
+    );
+    expect('height' in sample && sample.height).toBeCloseTo(2500, 3);
+    expect('top' in sample && sample.top).toBeCloseTo(2500, 3);
+  });
+
   it('does not count as a leaf a tile whose content is a tileset still to load', () => {
     const nested = {
       header: { boundingVolume: { region: CUENCA_REGION }, contentUrl: 'blocks/7-71-66.json' },
       children: [],
     };
     const sample = groundUnder({ root: tile({ region: OSM_BUILDINGS_REGION }, [nested as Tile]) }, -79.0, -2.89);
-    expect(sample?.leaf).toBe(false);
+    expect('leaf' in sample && sample.leaf).toBe(false);
   });
 
   it('reads the tree deck traverses for the view, not the tileset’s first one', () => {
@@ -225,31 +316,48 @@ describe('groundUnder', () => {
     // traverses `root`, which stays as it was built: nothing below it loads.
     const coarse = tile({ box: GOOGLE_ROOT_BOX }, [tile({ box: GOOGLE_ROOT_BOX })]);
     const tileset = { root: coarse, roots: { 'kepler-map': googleOverCuenca() } };
-    expect(groundUnder(tileset, CUENCA.longitude, CUENCA.latitude, 'kepler-map')?.height).toBeCloseTo(2400, 0);
-    expect(groundUnder(tileset, CUENCA.longitude, CUENCA.latitude, 'another-map')).toBeNull();
+    const sample = groundUnder(tileset, CUENCA.longitude, CUENCA.latitude, 'kepler-map');
+    expect('height' in sample && sample.height).toBeCloseTo(2400, 0);
+    // No tree for that view yet: nothing can be read, which is not the same as nothing being there.
+    expect(groundUnder(tileset, CUENCA.longitude, CUENCA.latitude, 'another-map')).toEqual({ none: 'unreadable' });
   });
 
-  it('takes nothing from a tile too big to say where the ground is', () => {
+  it('says so when only tiles too big to tell hold the column, and more of the tree is still to load', () => {
     // Google's root holds the whole planet: the column is inside it from top to bottom.
-    const onlyCoarse = tile({ box: GOOGLE_ROOT_BOX }, [tile({ box: GOOGLE_ROOT_BOX })]);
-    expect(groundUnder({ root: onlyCoarse }, CUENCA.longitude, CUENCA.latitude)).toBeNull();
+    const nested = { header: { boundingVolume: { box: GOOGLE_ROOT_BOX }, contentUrl: 'subtree.json' }, children: [] };
+    const onlyCoarse = tile({ box: GOOGLE_ROOT_BOX }, [nested as Tile]);
+    expect(groundUnder({ root: onlyCoarse }, CUENCA.longitude, CUENCA.latitude)).toEqual({ none: 'coarse' });
   });
 
-  it('stops at a transform, which it cannot read heights through', () => {
+  it('says nothing is there where the tree has no tile under the column, as OSM Buildings over the sea', () => {
+    const cuenca = tile({ region: CUENCA_REGION });
+    const west = tile({ region: [-Math.PI, -1.47, 0, 1.45, -394, 5967] }, [cuenca]);
+    const world = { root: tile({ region: OSM_BUILDINGS_REGION }, [west]) };
+    // The Pacific off Ecuador: inside the world and the west, under none of their tiles.
+    expect(groundUnder(world, -85, -2)).toEqual({ none: 'missed' });
+    // A big tile with nothing more to come holds nothing more to find either.
+    expect(groundUnder({ root: tile({ box: GOOGLE_ROOT_BOX }) }, 10, 45)).toEqual({ none: 'missed' });
+    expect(groundUnder({ root: googleOverCuenca() }, 10, 45)).toEqual({ none: 'missed' });
+  });
+
+  it('does not read through a transform', () => {
     const moved = tile({ box: GOOGLE_ROOT_BOX }, [tile({ region: CUENCA_REGION }, [], AGI_TRANSFORM)]);
-    expect(groundUnder({ root: moved }, -79.0, -2.89)).toBeNull();
+    expect('height' in groundUnder({ root: moved }, -79.0, -2.89)).toBe(false);
+    expect(groundUnder({ root: tile({ region: CUENCA_REGION }, [], AGI_TRANSFORM) }, -79.0, -2.89)).toEqual({
+      none: 'unreadable',
+    });
   });
 
-  it('is null away from every tile, and without a tree', () => {
-    expect(groundUnder({ root: googleOverCuenca() }, 10, 45)).toBeNull();
-    expect(groundUnder({ root: null }, 10, 45)).toBeNull();
-    expect(groundUnder(null, 10, 45)).toBeNull();
+  it('cannot read a missing tree', () => {
+    expect(groundUnder({ root: null }, 10, 45)).toEqual({ none: 'unreadable' });
+    expect(groundUnder(null, 10, 45)).toEqual({ none: 'unreadable' });
   });
 });
 
 describe('nextGround', () => {
   const street = { cameraHeight: 1700 };
   const region = { cameraHeight: 400_000 };
+  const coarse = { none: 'coarse' } as const;
 
   it('takes a sample whose tile, lowered by it, ends below the camera: what lies in it can load', () => {
     expect(nextGround({ height: 2400, top: 2700, leaf: false }, street, true, 0)).toEqual({
@@ -272,19 +380,19 @@ describe('nextGround', () => {
       ground: 1800,
       searched: false,
     });
-    expect(nextGround(null, region, true, 1800)).toEqual({ ground: 1800, searched: false });
+    expect(nextGround(coarse, region, true, 1800)).toEqual({ ground: 1800, searched: false });
   });
 
   it('holds while tiles are still loading', () => {
-    expect(nextGround(null, street, false, 1500)).toEqual({ ground: 1500, searched: false });
-    expect(nextGround(null, street, false, null)).toEqual({ ground: 0, searched: false });
+    expect(nextGround(coarse, street, false, 1500)).toEqual({ ground: 1500, searched: false });
+    expect(nextGround(coarse, street, false, null)).toEqual({ ground: 0, searched: false });
   });
 
-  it('searches downwards once everything asked for has loaded and the ground is still unknown', () => {
+  it('searches downwards once everything asked for has loaded and only tiles too big to tell are known', () => {
     // Close up over Cuenca the mesh sits above the camera, so the tiles that
     // would say where the ground is are never asked for: lower it, and look again.
-    expect(nextGround(null, street, true, null)).toEqual({ ground: 1500, searched: true });
-    expect(nextGround(null, street, true, 1500)).toEqual({ ground: 3000, searched: true });
+    expect(nextGround(coarse, street, true, null)).toEqual({ ground: 1500, searched: true });
+    expect(nextGround(coarse, street, true, 1500)).toEqual({ ground: 3000, searched: true });
     // A tile from the valley floor to the peaks still reaches above the camera once lowered by its floor.
     expect(nextGround({ height: 2100, top: 4400, leaf: false }, street, true, 1500)).toEqual({
       ground: 3600,
@@ -292,9 +400,64 @@ describe('nextGround', () => {
     });
   });
 
+  it('does not search where nothing can be read, or where nothing is there', () => {
+    // No tree for the view yet, or OSM Buildings over the sea: lowering the
+    // tileset would find nothing, and would sink the coast's buildings.
+    expect(nextGround({ none: 'unreadable' }, street, true, null)).toEqual({ ground: 0, searched: false });
+    expect(nextGround({ none: 'unreadable' }, street, true, 2400)).toEqual({ ground: 2400, searched: false });
+    expect(nextGround({ none: 'missed' }, street, true, null)).toEqual({ ground: 0, searched: false });
+    expect(nextGround({ none: 'missed' }, street, true, 2400)).toEqual({ ground: 2400, searched: false });
+  });
+
   it('never searches past the highest ground there is', () => {
-    expect(nextGround(null, street, true, 8500)).toEqual({ ground: 9000, searched: true });
-    expect(nextGround(null, street, true, 9000)).toEqual({ ground: 9000, searched: false });
+    expect(nextGround(coarse, street, true, 8500)).toEqual({ ground: 9000, searched: true });
+    expect(nextGround(coarse, street, true, 9000)).toEqual({ ground: 9000, searched: false });
+  });
+});
+
+describe('searchSettled', () => {
+  it('waits for a traversal after the last step', () => {
+    expect(searchSettled({ loaded: true, frame: undefined, stepFrame: null, now: 0, stepTime: null })).toBe(false);
+    expect(searchSettled({ loaded: true, frame: 4, stepFrame: 4, now: 60_000, stepTime: 0 })).toBe(false);
+  });
+
+  it('is settled once everything asked for has loaded', () => {
+    expect(searchSettled({ loaded: true, frame: 1, stepFrame: null, now: 0, stepTime: null })).toBe(true);
+    expect(searchSettled({ loaded: true, frame: 5, stepFrame: 4, now: 10, stepTime: 0 })).toBe(true);
+  });
+
+  it('is settled after enough traversals, or long enough, even while tiles still load', () => {
+    // Under throttling something is always loading, and `isLoaded` never comes true.
+    expect(searchSettled({ loaded: false, frame: 5, stepFrame: 4, now: 100, stepTime: 0 })).toBe(false);
+    expect(searchSettled({ loaded: false, frame: 24, stepFrame: 4, now: 100, stepTime: 0 })).toBe(true);
+    expect(searchSettled({ loaded: false, frame: 5, stepFrame: 4, now: 3_000, stepTime: 0 })).toBe(true);
+    expect(searchSettled({ loaded: false, frame: 20, stepFrame: null, now: 0, stepTime: null })).toBe(true);
+  });
+});
+
+describe('needsMove', () => {
+  const up = upAt(CUENCA.longitude, CUENCA.latitude);
+
+  it('moves the first time', () => {
+    expect(needsMove(null, { ground: 0, trim: 0, up }, 30)).toBe(true);
+  });
+
+  it('leaves a small change of ground undone: every move re-traverses the whole tree', () => {
+    expect(needsMove({ ground: 2400, trim: 0, up }, { ground: 2420, trim: 0, up }, 30)).toBe(false);
+    expect(needsMove({ ground: 2400, trim: 0, up }, { ground: 2430, trim: 0, up }, 30)).toBe(true);
+  });
+
+  it('moves for any change of the trim, however small', () => {
+    // A Height adjustment of 20 m is what the user asked for: it is not noise.
+    expect(needsMove({ ground: 2400, trim: 0, up }, { ground: 2400, trim: 20, up }, 30)).toBe(true);
+    expect(needsMove({ ground: 2400, trim: 0, up }, { ground: 2410, trim: 1, up }, 30)).toBe(true);
+  });
+
+  it('moves when the vertical has turned far enough to shift the tileset by more than the tolerance', () => {
+    const nearby = upAt(CUENCA.longitude + 0.01, CUENCA.latitude);
+    const farther = upAt(CUENCA.longitude + 1, CUENCA.latitude);
+    expect(needsMove({ ground: 2400, trim: 0, up }, { ground: 2400, trim: 0, up: nearby }, 30)).toBe(false);
+    expect(needsMove({ ground: 2400, trim: 0, up }, { ground: 2400, trim: 0, up: farther }, 30)).toBe(true);
   });
 });
 
@@ -404,10 +567,11 @@ describe('altitudeOffsetFor', () => {
     expect(altitudeOffsetFor({ altitudeOffset: -300 }, unknown)).toBe(-300);
   });
 
-  it('moves a tileset spread too wide nowhere, whatever the knobs say', () => {
+  it('gives a tileset spread too wide no offset of its own, whatever the knobs say', () => {
     // No single "up" serves the whole world: a trim along any one direction
     // slides the far side of the globe sideways, and a trim along the Earth's
-    // axis slides the equator north.
+    // axis slides the equator north. The layer lowers such a tileset by the
+    // ground under the view instead, with the trim along the vertical there.
     const google = untransformed({ box: GOOGLE_ROOT_BOX }, [0, 0, EARTH_CENTRE_ALTITUDE]);
     expect(altitudeOffsetFor({}, google)).toBe(0);
     expect(altitudeOffsetFor({ altitudeOffset: -2550 }, google)).toBe(0);
@@ -440,18 +604,15 @@ describe('applyAltitude', () => {
     normalAt(lon, lat).forEach((value, axis) => expect(ts.modelMatrix[12 + axis]).toBeCloseTo(-2490 * value, 6));
   });
 
-  it('writes along the up it is given, and leaves a move smaller than the tolerance undone', () => {
+  it('writes along the up it is given', () => {
     // A tileset round the whole world is lowered along the vertical at the
-    // centre of the view, and only re-lowered when that moves it by more than a
-    // few tens of metres: every move re-traverses the whole tree.
+    // centre of the view; whether a move is worth a traversal is `needsMove`'s call.
     const ts = untransformed({ box: GOOGLE_ROOT_BOX }, [0, 0, EARTH_CENTRE_ALTITUDE]);
     const up = upAt(CUENCA.longitude, CUENCA.latitude);
-    expect(applyAltitude(ts, -2400, { up, tolerance: 30 })).toBe(true);
+    expect(applyAltitude(ts, -2400, { up })).toBe(true);
     up.forEach((value, axis) => expect(ts.modelMatrix[12 + axis]).toBeCloseTo(-2400 * value, 6));
-
-    expect(applyAltitude(ts, -2420, { up, tolerance: 30 })).toBe(false);
-    expect(ts.modelMatrix[14]).toBeCloseTo(-2400 * up[2], 6);
-    expect(applyAltitude(ts, -2460, { up, tolerance: 30 })).toBe(true);
+    expect(applyAltitude(ts, -2420, { up })).toBe(true);
+    up.forEach((value, axis) => expect(ts.modelMatrix[12 + axis]).toBeCloseTo(-2420 * value, 6));
   });
 
   it('replaces its own translation rather than accumulating it', () => {
@@ -479,5 +640,193 @@ describe('applyAltitude', () => {
     const ts = tileset();
     expect(applyAltitude(ts, Number.NaN)).toBe(false);
     expect(ts.modelMatrix[14]).toBe(0);
+  });
+});
+
+/**
+ * A tile's content as loaders.gl leaves it once loaded, for a tile whose
+ * bounding volume is centred at `centre` and whose geometry is drawn by
+ * `model` (`calculateTransformProps`, @loaders.gl/tiles).
+ *
+ * Built with math.gl on purpose: these are the numbers deck draws with, and
+ * the point of the tests below is that a shifted tile ends up with exactly the
+ * numbers loaders.gl would have given it had it loaded where it now is.
+ */
+function loadedContent(centre: number[], model: number[]) {
+  const cartesianOrigin = new Vector3(centre);
+  const cartesianModelMatrix = new Matrix4(model);
+  const cartographicOrigin = Ellipsoid.WGS84.cartesianToCartographic(cartesianOrigin, new Vector3());
+  const cartographicModelMatrix = Ellipsoid.WGS84.eastNorthUpToFixedFrame(cartesianOrigin)
+    .invert()
+    .multiplyRight(cartesianModelMatrix);
+  return {
+    cartesianOrigin,
+    cartesianModelMatrix,
+    cartographicOrigin,
+    cartographicModelMatrix,
+    // loaders.gl's deprecated alias, which is the one deck actually reads.
+    modelMatrix: cartographicModelMatrix,
+  };
+}
+
+/** A city tile over Cuenca: centred 2 550 m up, glTF turned from Y up to Z up as loaders.gl does. */
+function cuencaContent() {
+  const centre = ecef((CUENCA.longitude * Math.PI) / 180, (CUENCA.latitude * Math.PI) / 180, 2550);
+  const model = new Matrix4().translate(centre).rotateX(Math.PI / 2);
+  return loadedContent(centre, Array.from(model));
+}
+
+function expectCloseTo(actual: ArrayLike<number>, expected: ArrayLike<number>, digits: number) {
+  expect(actual.length).toBe(expected.length);
+  Array.from(expected).forEach((value, i) => expect(actual[i]).toBeCloseTo(value, digits));
+}
+
+describe('shiftContent', () => {
+  const down = upAt(CUENCA.longitude, CUENCA.latitude).map((v) => v * -2400) as [number, number, number];
+
+  it('moves a loaded tile to where it would have loaded had the tileset already been moved', () => {
+    const content = cuencaContent();
+    const centre = Array.from(content.cartesianOrigin);
+    const model = Array.from(content.cartesianModelMatrix);
+
+    expect(shiftContent(content, down)).toBe(true);
+
+    const moved = [0, 1, 2].map((axis) => centre[axis] + down[axis]);
+    const expected = loadedContent(moved, Array.from(new Matrix4().translate(down).multiplyRight(new Matrix4(model))));
+    expectCloseTo(content.cartesianOrigin, expected.cartesianOrigin, 6);
+    expectCloseTo(content.cartesianModelMatrix, expected.cartesianModelMatrix, 6);
+    expectCloseTo(content.cartographicOrigin.slice(0, 2), expected.cartographicOrigin.slice(0, 2), 10);
+    expect(content.cartographicOrigin[2]).toBeCloseTo(expected.cartographicOrigin[2], 4);
+    expect(content.cartographicOrigin[2]).toBeCloseTo(150, 4);
+    expectCloseTo(content.cartographicModelMatrix, expected.cartographicModelMatrix, 6);
+  });
+
+  it('hands deck new values in new objects of the same kind, and keeps the alias it reads', () => {
+    // deck compares a sublayer's modelMatrix and coordinateOrigin with the last
+    // ones: written in place, they would compare equal to themselves.
+    const content = cuencaContent();
+    const before = { ...content };
+    shiftContent(content, down);
+
+    expect(content.cartesianOrigin).not.toBe(before.cartesianOrigin);
+    expect(content.cartographicOrigin).not.toBe(before.cartographicOrigin);
+    expect(content.cartographicModelMatrix).not.toBe(before.cartographicModelMatrix);
+    expect(content.cartesianModelMatrix).toBeInstanceOf(Matrix4);
+    expect(content.cartographicModelMatrix).toBeInstanceOf(Matrix4);
+    expect(content.cartographicOrigin).toBeInstanceOf(Vector3);
+    expect(content.modelMatrix).toBe(content.cartographicModelMatrix);
+    expect(before.cartesianOrigin[0]).not.toBeCloseTo(content.cartesianOrigin[0], 3);
+  });
+
+  it('leaves a model matrix of the content’s own alone', () => {
+    // I3S sets its own, which is not the cartographic one.
+    const content = { ...cuencaContent(), modelMatrix: new Matrix4() };
+    shiftContent(content, down);
+    expect(Array.from(content.modelMatrix)).toEqual(Array.from(new Matrix4()));
+  });
+
+  it('does nothing to a tile whose content has not been placed', () => {
+    expect(shiftContent({}, down)).toBe(false);
+    expect(shiftContent(null, down)).toBe(false);
+  });
+});
+
+/** A loaded Tile3D, as far as moving it reads it. */
+function loadedTile(content: TileContentLike | null, children: TileLike[] = []): TileLike {
+  return { header: { boundingVolume: {} }, content, children };
+}
+
+describe('applyAltitude, with tiles already loaded', () => {
+  it('moves every loaded tile of every tree the tileset keeps, once each', () => {
+    // loaders.gl works out a tile's drawing transform once, when its content
+    // loads, and deck draws with it for ever: lowering the tileset afterwards
+    // moved the volumes the traversal culls against and left the drawn
+    // geometry where it had been.
+    const up = upAt(CUENCA.longitude, CUENCA.latitude);
+    const [first, second, third] = [cuencaContent(), cuencaContent(), cuencaContent()];
+    const start = Array.from(first.cartesianOrigin);
+    const shared = loadedTile(first);
+    const unloaded = loadedTile(null);
+    const ts = {
+      ...untransformed({ box: GOOGLE_ROOT_BOX }, [0, 0, EARTH_CENTRE_ALTITUDE]),
+      roots: {
+        'kepler-map': loadedTile(null, [shared, unloaded]),
+        'another-map': loadedTile(null, [loadedTile(second, [loadedTile(third)])]),
+      },
+      // Tileset3D's `tiles`: the same tile objects again, which must not move twice.
+      tiles: [shared],
+    };
+
+    expect(applyAltitude(ts, -2400, { up })).toBe(true);
+    [first, second, third].forEach((content) =>
+      [0, 1, 2].forEach((axis) => expect(content.cartesianOrigin[axis]).toBeCloseTo(start[axis] - 2400 * up[axis], 6))
+    );
+    expect(unloaded.content).toBeNull();
+
+    // By the change only: the translation is replaced, and so is what the tiles carry.
+    expect(applyAltitude(ts, -2500, { up })).toBe(true);
+    [0, 1, 2].forEach((axis) => expect(first.cartesianOrigin[axis]).toBeCloseTo(start[axis] - 2500 * up[axis], 6));
+    expect(first.cartographicOrigin[2]).toBeCloseTo(50, 3);
+  });
+
+  it('moves the loaded tiles of a tileset grounded the ordinary way too', () => {
+    const content = cuencaContent();
+    const start = Array.from(content.cartesianOrigin);
+    const ts = { ...tileset(), roots: { 'kepler-map': loadedTile(content) } };
+    applyAltitude(ts, -300);
+    const up = localUp(AGI_TRANSFORM);
+    [0, 1, 2].forEach((axis) => expect(content.cartesianOrigin[axis]).toBeCloseTo(start[axis] - 300 * up[axis], 6));
+  });
+
+  it('moves nothing when the tileset does not move', () => {
+    const content = cuencaContent();
+    const ts = { ...tileset(), roots: { 'kepler-map': loadedTile(content) } };
+    applyAltitude(ts, -300);
+    const placed = content.cartesianOrigin;
+    expect(applyAltitude(ts, -300)).toBe(false);
+    expect(content.cartesianOrigin).toBe(placed);
+  });
+});
+
+describe('catchUpTile', () => {
+  /** A tile under a parent with a transform of its own, whose transforms were worked out under `model`. */
+  function tileUnder(model: Matrix4, content: Record<string, unknown>) {
+    const parentTransform = new Matrix4().translate([10, 20, 30]).rotateZ(0.3);
+    const ownTransform = new Matrix4().translate([1, 2, 3]);
+    const parent = { transform: parentTransform, computedTransform: model.clone().multiplyRight(parentTransform) };
+    return {
+      parent,
+      transform: ownTransform,
+      computedTransform: parent.computedTransform.clone().multiplyRight(ownTransform),
+      content,
+      header: {},
+    };
+  }
+
+  it('moves a tile that loaded against where the tileset was, by how far it has moved since', () => {
+    // A tile still loading when the tileset moved, and not traversed since,
+    // loads with the transform worked out before the move.
+    const down = upAt(CUENCA.longitude, CUENCA.latitude).map((v) => v * -2400);
+    const content = cuencaContent();
+    const start = Array.from(content.cartesianOrigin);
+    const loaded = tileUnder(new Matrix4(), content);
+    const tile = { ...loaded, tileset: { modelMatrix: new Matrix4().translate(down) } };
+
+    expect(catchUpTile(tile)).toBe(true);
+    [0, 1, 2].forEach((axis) => expect(content.cartesianOrigin[axis]).toBeCloseTo(start[axis] + down[axis], 6));
+  });
+
+  it('leaves a tile that loaded where the tileset is', () => {
+    const model = new Matrix4().translate([100, -200, 300]);
+    const content = cuencaContent();
+    const placed = content.cartesianOrigin;
+    const tile = { ...tileUnder(model, content), tileset: { modelMatrix: model } };
+    expect(catchUpTile(tile)).toBe(false);
+    expect(content.cartesianOrigin).toBe(placed);
+  });
+
+  it('survives a tile it cannot read', () => {
+    expect(catchUpTile(null)).toBe(false);
+    expect(catchUpTile({ content: cuencaContent() })).toBe(false);
   });
 });
