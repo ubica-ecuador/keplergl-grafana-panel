@@ -45,10 +45,11 @@ panel more height.
 
 ## Cross-filters stay in the map
 
-Clicking a bar or a point of a chart filters the map and the other charts. It does not reach the
-dashboard: those filters never drive a dashboard variable or the dashboard's time range, even when
-they filter a column the panel maps to one. To drive the dashboard, map the column in the panel's
-variable options and filter it from kepler's own filter panel.
+Clicking a bar or a point of a chart filters the map and the other charts. By default it does not
+reach the dashboard: those filters never drive the dashboard's time range, and a **Filter**
+mapping ignores them even when they filter the column it maps. To send a chart's selection to the
+dashboard, add a mapping with the source **Chart cross-filter** for that column; see
+[Cross-filtering](../dashboard/cross-filtering).
 
 ## Limits of this kepler version
 

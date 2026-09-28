@@ -42,10 +42,14 @@ release documents what changed since the one before it.
   heatmaps and pivot tables over the map's data, saved with the map. Its **tooltip charts** plot an
   entity's own history in its popup: hover a station and see its day. With kepler's tooltip compare
   mode, pinning one entity and hovering another shows both charts side by side, and only the pinned
-  popup offers **Select**. A chart's cross-filters narrow the map and its charts but never move a
-  dashboard variable or the time range. A saved compare mode now survives loading the map, which
-  kepler itself drops. The sources bench gains `mareas-ecuador`, INOCAR's tide gauges live, with
-  tooltip charts and a pinned heatmap.
+  popup offers **Select**. A chart's cross-filters narrow the map and its charts, and reach a
+  dashboard variable only through a mapping that asks for them. A saved compare mode now survives
+  loading the map, which kepler itself drops. The sources bench gains `mareas-ecuador`, INOCAR's
+  tide gauges live, with tooltip charts and a pinned heatmap.
+- **A chart's selection can drive the dashboard**: a variable mapping with the new source **Chart
+  cross-filter** publishes what a chart in kepler's charts panel filters on a column, one way. On
+  `mareas-ecuador`, a click on a heatmap cell sets the port and the three-hour block, and a time
+  series under the map draws that port's tide minute by minute.
 
 ## 1.0.1 (2026-09-23)
 

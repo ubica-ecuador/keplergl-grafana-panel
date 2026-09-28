@@ -1,45 +1,25 @@
 {
   "annotations": {
-    "list": []
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
   },
   "editable": true,
-  "links": [],
-  "schemaVersion": 39,
-  "tags": [
-    "kepler",
-    "inocar",
-    "mareas",
-    "ecuador",
-    "charts"
-  ],
-  "timezone": "browser",
-  "title": "Mareas en la costa del Ecuador — INOCAR",
-  "uid": "mareas-ecuador",
-  "version": 1,
-  "time": {
-    "from": "now-24h",
-    "to": "now"
-  },
-  "refresh": "5m",
-  "templating": {
-    "list": []
-  },
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "liveNow": false,
   "panels": [
-    {
-      "gridPos": {
-        "h": 20,
-        "w": 7,
-        "x": 17,
-        "y": 0
-      },
-      "id": 1,
-      "title": "Qué estás viendo",
-      "type": "text",
-      "options": {
-        "mode": "markdown",
-        "content": "## Qué estás viendo\n\nLa red de **mareógrafos del INOCAR**, al minuto, en las últimas 24 horas, leída en vivo y sin clave.\n\n- **El color** de cada puerto es la altura **sobre su propia bajamar**: la altura del mar menos la más baja de sus últimas 24 horas. Cada mareógrafo mide contra su propio cero (Río Guayas ronda los 4 m, Puerto Atún 1,3 m), así que la altura sobre su propia bajamar es lo que se compara entre puertos. Se ve la lectura más reciente.\n- **Pasa el ratón** por un puerto: el tooltip dibuja su curva de 24 horas.\n- **Haz clic** en uno y pasa el ratón por otro: salen las dos curvas, una junto a otra (modo comparar).\n- **La cuadrícula fijada** a la derecha junta los siete puertos, cada tres horas, en **hora de Ecuador** (`26-09-28 15h` es el tramo que empieza a las 15:00 del 28 de septiembre de 2026): se ve la marea subir y bajar a lo largo del día en toda la costa. Muestra los diez últimos tramos, el que está en curso incluido.\n- **Para ver viajar la marea**, estrecha el pincel del tiempo, abajo, y pulsa play.\n\nFuente: [INOCAR, mareógrafos](https://www.inocar.mil.ec/mareas/). Puná publica su serie pero no figura en el catálogo de estaciones, así que no tiene posición y queda fuera.\n"
-      }
-    },
     {
       "datasource": {
         "type": "motherduck-duckdb-datasource",
@@ -52,199 +32,163 @@
         "y": 0
       },
       "id": 2,
-      "title": "Mareógrafos — altura sobre la bajamar",
-      "type": "ubica-keplergl-panel",
       "options": {
-        "showSidePanel": false,
-        "followGrafanaTheme": true,
         "basemap": "auto",
-        "timeSync": "off",
+        "clickArea": false,
+        "clickAreaSizeMetres": 6000,
+        "clickConfirm": false,
+        "flowRenderMode": "straight",
+        "followGrafanaTheme": true,
         "mapConfig": {
-          "version": "v1",
           "config": {
-            "visState": {
-              "layers": [
-                {
-                  "id": "mareografos",
-                  "type": "point",
-                  "config": {
-                    "dataId": "grafana-A",
-                    "label": "Mareógrafos",
-                    "columns": {
-                      "lat": "latitude",
-                      "lng": "longitude"
-                    },
-                    "isVisible": true,
-                    "visConfig": {
-                      "radius": 14,
-                      "opacity": 0.95,
-                      "outline": true,
-                      "thickness": 1,
-                      "strokeColor": [
-                        12,
-                        16,
-                        20
-                      ],
-                      "strokeOpacity": 0.8,
-                      "filled": true,
-                      "colorRange": {
-                        "name": "Marea (Blues)",
-                        "type": "sequential",
-                        "category": "Custom",
-                        "colors": [
-                          "#eff3ff",
-                          "#c6dbef",
-                          "#9ecae1",
-                          "#6baed6",
-                          "#4292c6",
-                          "#2171b5",
-                          "#084594"
-                        ]
-                      }
-                    }
-                  },
-                  "visualChannels": {
-                    "colorField": {
-                      "name": "sobre_bajamar",
-                      "type": "real"
-                    },
-                    "colorScale": "quantize"
-                  }
-                }
+            "mapState": {
+              "bearing": 0,
+              "dragRotate": false,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [
+                    40,
+                    63,
+                    93
+                  ],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [
+                    4,
+                    9,
+                    17
+                  ],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [
+                    114.75,
+                    114.75,
+                    114.75
+                  ],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [
+                    9,
+                    16,
+                    29
+                  ],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [
+                    17,
+                    35,
+                    48
+                  ]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": -1.4097935326912285,
+              "longitude": -78.93380154087653,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_2D",
+              "maxPitch": 85,
+              "pitch": 0,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 6.1
+            },
+            "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
               ],
-              "filters": [
-                {
-                  "dataId": [
-                    "grafana-A"
-                  ],
-                  "name": [
-                    "time"
-                  ],
-                  "id": "reloj",
-                  "type": "timeRange",
-                  "value": [
-                    1000000000000,
-                    1000000000001
-                  ],
-                  "plotType": {
-                    "type": "histogram"
-                  },
-                  "animationWindow": "free",
-                  "yAxis": null,
-                  "view": "minified",
-                  "speed": 1,
-                  "enabled": true
-                }
+              "mapStyles": {},
+              "styleType": "dark-matter",
+              "threeDBuildingColor": [
+                15.035172933000911,
+                15.035172933000911,
+                15.035172933000911
               ],
-              "interactionConfig": {
-                "tooltip": {
-                  "enabled": true,
-                  "compareMode": true,
-                  "compareType": "absolute",
-                  "fieldsToShow": {
-                    "grafana-A": [
-                      {
-                        "name": "estacion",
-                        "format": null
-                      },
-                      {
-                        "name": "time",
-                        "format": "L LT"
-                      },
-                      {
-                        "name": "altura",
-                        "format": null
-                      },
-                      {
-                        "name": "sobre_bajamar",
-                        "format": null
-                      }
-                    ]
-                  }
+              "topLayerGroups": {},
+              "visibleLayerGroups": {
+                "3d building": false,
+                "border": false,
+                "building": true,
+                "label": true,
+                "land": true,
+                "road": true,
+                "water": true
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "chart": {
+                  "active": false
+                },
+                "mapLegend": {
+                  "active": false
                 }
               },
+              "theme": "dark"
+            },
+            "visState": {
+              "animationConfig": {
+                "speed": 1
+              },
+              "annotations": [],
               "charts": [
                 {
-                  "id": "marea",
-                  "title": "Marea en el puerto (sobre la bajamar, m)",
-                  "type": "layerChart",
-                  "dataId": "grafana-A",
                   "applyFilters": false,
-                  "pinned": false,
-                  "display": {
-                    "isConfigActive": false
-                  },
-                  "layerId": "mareografos",
-                  "layerChartType": "TIME_SERIES",
                   "axis": {
+                    "aggregation": "uniqueBin",
                     "field": {
                       "name": "estacion",
                       "type": "string"
                     },
-                    "aggregation": "uniqueBin",
                     "title": "estacion"
                   },
+                  "chartDisplay": {
+                    "idField": "estacion",
+                    "interval": "hour",
+                    "numEntries": 7
+                  },
+                  "dataId": "grafana-A",
+                  "display": {
+                    "isConfigActive": false
+                  },
+                  "id": "marea",
+                  "layerChartType": "TIME_SERIES",
+                  "layerId": "mareografos",
+                  "pinned": false,
+                  "title": "Marea en el puerto (sobre la bajamar, m)",
+                  "type": "layerChart",
                   "xAxis": {
+                    "aggregation": "timeBin",
                     "field": {
                       "name": "time",
                       "type": "timestamp"
                     },
-                    "aggregation": "timeBin",
                     "title": "time"
                   },
                   "yAxis": {
+                    "aggregation": "average",
                     "field": {
                       "name": "sobre_bajamar",
                       "type": "real"
                     },
-                    "aggregation": "average",
                     "title": "sobre_bajamar"
-                  },
-                  "chartDisplay": {
-                    "idField": "estacion",
-                    "numEntries": 7,
-                    "interval": "hour"
                   }
                 },
                 {
-                  "id": "costa",
-                  "title": "La marea por puerto, cada tres horas, hora de Ecuador (sobre la bajamar, m)",
-                  "type": "heatmapChart",
-                  "dataId": "grafana-A",
-                  "applyFilters": false,
-                  "pinned": true,
-                  "display": {
-                    "isConfigActive": false
-                  },
-                  "xAxis": {
-                    "field": {
-                      "name": "tramo",
-                      "type": "string"
-                    },
-                    "aggregation": "uniqueBin",
-                    "title": "tramo (hora de Ecuador)"
-                  },
-                  "yAxis": {
-                    "field": {
-                      "name": "estacion",
-                      "type": "string"
-                    },
-                    "aggregation": "uniqueBin",
-                    "title": "estacion"
-                  },
-                  "value": {
-                    "field": {
-                      "name": "sobre_bajamar",
-                      "type": "real"
-                    },
-                    "aggregation": "average",
-                    "title": "sobre_bajamar"
-                  },
-                  "numGroups": 10,
+                  "applyFilters": true,
                   "chartDisplay": {
                     "colorRange": {
-                      "name": "Marea (Blues)",
-                      "type": "sequential",
                       "category": "Custom",
                       "colors": [
                         "#eff3ff",
@@ -254,24 +198,328 @@
                         "#4292c6",
                         "#2171b5",
                         "#084594"
-                      ]
+                      ],
+                      "name": "Marea (Blues)",
+                      "type": "sequential"
                     }
+                  },
+                  "crossFilter": {
+                    "enabled": true,
+                    "fieldNames": {
+                      "x": "tramo",
+                      "y": "estacion"
+                    },
+                    "filterId": "chart-costa-70ygzynib",
+                    "value": {}
+                  },
+                  "dataId": "grafana-A",
+                  "display": {
+                    "isConfigActive": false
+                  },
+                  "id": "costa",
+                  "numGroups": 10,
+                  "pinned": true,
+                  "title": "La marea por puerto, cada tres horas, hora de Ecuador (sobre la bajamar, m)",
+                  "type": "heatmapChart",
+                  "value": {
+                    "aggregation": "average",
+                    "field": {
+                      "name": "sobre_bajamar",
+                      "type": "real"
+                    },
+                    "title": "sobre_bajamar"
+                  },
+                  "xAxis": {
+                    "aggregation": "uniqueBin",
+                    "field": {
+                      "name": "tramo",
+                      "type": "string"
+                    },
+                    "title": "tramo (hora de Ecuador)"
+                  },
+                  "yAxis": {
+                    "aggregation": "uniqueBin",
+                    "field": {
+                      "name": "estacion",
+                      "type": "string"
+                    },
+                    "title": "estacion"
                   }
                 }
               ],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
+              "filters": [
+                {
+                  "animationWindow": "free",
+                  "dataId": [
+                    "grafana-A"
+                  ],
+                  "enabled": true,
+                  "id": "reloj",
+                  "name": [
+                    "time"
+                  ],
+                  "plotType": {
+                    "aggregation": "average",
+                    "defaultTimeFormat": "L  LT",
+                    "interval": "15-minute",
+                    "type": "histogram"
+                  },
+                  "speed": 1,
+                  "type": "timeRange",
+                  "value": [
+                    1790592652000,
+                    1790625840000
+                  ],
+                  "view": "enlarged"
+                }
+              ],
+              "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
+                "tooltip": {
+                  "compareMode": true,
+                  "compareType": "absolute",
+                  "enabled": true,
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "estacion"
+                      },
+                      {
+                        "format": "L LT",
+                        "name": "time"
+                      },
+                      {
+                        "name": "altura"
+                      },
+                      {
+                        "name": "sobre_bajamar"
+                      }
+                    ]
+                  }
+                }
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "mareografos"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "color": [
+                      137,
+                      218,
+                      193
+                    ],
+                    "columnMode": "points",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "Mareógrafos",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "collisionEnabled": true,
+                        "color": [
+                          166,
+                          218,
+                          236
+                        ],
+                        "field": {
+                          "name": "altura",
+                          "type": "real"
+                        },
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          77,
+                          77,
+                          77,
+                          255
+                        ],
+                        "outlineWidth": 0.23,
+                        "size": 25,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "allowHover": true,
+                      "billboard": false,
+                      "colorRange": {
+                        "category": "Custom",
+                        "colors": [
+                          "#eff3ff",
+                          "#c6dbef",
+                          "#9ecae1",
+                          "#6baed6",
+                          "#4292c6",
+                          "#2171b5",
+                          "#084594"
+                        ],
+                        "name": "Marea (Blues)",
+                        "type": "sequential"
+                      },
+                      "filled": true,
+                      "fixedRadius": false,
+                      "opacity": 0.95,
+                      "outline": true,
+                      "radius": 68.6,
+                      "radiusRange": [
+                        0,
+                        50
+                      ],
+                      "showHighlightColor": true,
+                      "showNeighborOnHover": false,
+                      "strokeColor": [
+                        12,
+                        16,
+                        20
+                      ],
+                      "strokeColorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#4C0035",
+                          "#880030",
+                          "#B72F15",
+                          "#D6610A",
+                          "#EF9100",
+                          "#FFC300"
+                        ],
+                        "name": "Global Warming",
+                        "type": "sequential"
+                      },
+                      "thickness": 1
+                    }
+                  },
+                  "id": "mareografos",
+                  "type": "point",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "sobre_bajamar",
+                      "type": "real"
+                    },
+                    "colorScale": "quantize",
+                    "sizeScale": "linear",
+                    "strokeColorScale": "quantile"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
               "splitMaps": []
-            },
-            "mapState": {
-              "latitude": -1.0,
-              "longitude": -80.0,
-              "zoom": 6.1,
-              "bearing": 0,
-              "pitch": 0,
-              "dragRotate": false
             }
+          },
+          "version": "v1"
+        },
+        "peerTimeSync": false,
+        "publishIntervalMs": 1500,
+        "publishWhilePlaying": false,
+        "rasterBands": "",
+        "rasterColormap": "",
+        "rasterPainted": false,
+        "saveRequest": 1,
+        "showSidePanel": false,
+        "timeSync": "off",
+        "tripLayerMode": "table",
+        "variableMappings": [
+          {
+            "field": "estacion",
+            "variable": "estacion",
+            "source": "chart"
+          },
+          {
+            "field": "tramo",
+            "variable": "tramo",
+            "source": "chart"
           }
-        }
+        ]
       },
+      "pluginVersion": "1.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Mareografos del INOCAR: la red nacional, al minuto, ultimas 24 h.\n--\n-- El catalogo de estaciones da nombre y posicion; cada serie llega como\n-- {inicio: ms, datos_alturas: [...]} SIN horas: el punto i es `inicio` + i\n-- minutos. `inicio` es UTC. Puna (id 10) publica serie pero no esta en el\n-- catalogo, asi que no tiene posicion y queda fuera.\n--\n-- Cada mareografo mide contra su propio cero (Rio Guayas ronda 4 m, Puerto Atun\n-- 1,3 m): sobre_bajamar -- la altura menos el MINIMO de las 24 h de ese puerto --\n-- quita ese cero propio y es lo que se puede comparar entre puertos. A diferencia\n-- de una anomalia (altura menos la MEDIA), sobre_bajamar nunca es negativo, que es\n-- lo que necesita el heatmap de kepler: su heatColor() trata cualquier valor <= 0\n-- como si no hubiera dato y no lo pinta.\nWITH estaciones AS (\n  SELECT f.properties.id_estacion::INTEGER AS id,\n         f.properties.estacion           AS estacion,\n         f.properties.latitud::DOUBLE    AS latitude,\n         f.properties.longitud::DOUBLE   AS longitude\n  FROM (SELECT unnest(features) AS f\n        FROM read_json('https://www.inocar.mil.ec/mareas/estaciones_monitoreo.php', format = 'auto'))\n),\nseries AS (\n  SELECT regexp_extract(filename, 'id_est=([0-9]+)', 1)::INTEGER AS id,\n         inicio::BIGINT AS inicio,\n         datos_alturas\n  FROM read_json([\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=1',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=5',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=7',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=8',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=9',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=11',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=12'\n    ], format = 'auto', filename = true)\n),\npuntos AS (\n  SELECT s.id,\n         to_timestamp(s.inicio / 1000) + to_minutes(i - 1) AS time,\n         s.datos_alturas[i]::DOUBLE AS altura\n  FROM series s, range(1, len(s.datos_alturas) + 1) AS r(i)\n),\n-- El tramo de 3 h (en hora de Ecuador) de la lectura mas reciente de toda la red.\nultimo AS (\n  SELECT time_bucket(INTERVAL 3 HOUR, max(time) AT TIME ZONE 'America/Guayaquil') AS tramo\n  FROM puntos\n  WHERE altura IS NOT NULL\n)\n-- Ordenado por hora: en cada puerto el punto que queda ENCIMA (el que se ve y el\n-- que coge el tooltip) es la lectura mas reciente.\nSELECT e.estacion,\n       e.latitude,\n       e.longitude,\n       p.time,\n       p.altura,\n       round(p.altura - min(p.altura) OVER (PARTITION BY p.id), 3) AS sobre_bajamar,\n       -- Tramo de 3 horas en hora de Ecuador, como texto que ordena\n       -- cronologicamente (ano primero, relleno de ceros): agrupa el heatmap\n       -- fijado por bloques de 3 h en vez de una curva por puerto, que kepler no\n       -- sabe dibujar. El heatmap guarda como mucho 10 columnas -- las 10 con mas\n       -- filas -- y cada puerto trae su propio `inicio` (Puerto Atun va unas 5 h\n       -- por detras), asi que solo llevan tramo los 10 ultimos, contados desde la\n       -- lectura mas reciente: el resto queda en NULL, que kepler no agrupa, y el\n       -- tramo en curso nunca se cae. Doce caracteres como mucho: kepler recorta\n       -- ahi la cabecera.\n       CASE WHEN p.time AT TIME ZONE 'America/Guayaquil' >= u.tramo - INTERVAL 27 HOUR\n            THEN strftime(time_bucket(INTERVAL 3 HOUR, p.time AT TIME ZONE 'America/Guayaquil'), '%y-%m-%d %Hh')\n       END AS tramo\nFROM puntos p\nJOIN estaciones e USING (id)\nCROSS JOIN ultimo u\nWHERE p.altura IS NOT NULL\nORDER BY e.estacion, p.time\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Mareógrafos — altura sobre la bajamar",
+      "type": "ubica-keplergl-panel"
+    },
+    {
+      "gridPos": {
+        "h": 20,
+        "w": 7,
+        "x": 17,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "## Qué estás viendo\n\nLa red de **mareógrafos del INOCAR**, al minuto, en las últimas 24 horas, leída en vivo y sin clave.\n\n- **El color** de cada puerto es la altura **sobre su propia bajamar**: la altura del mar menos la más baja de sus últimas 24 horas. Cada mareógrafo mide contra su propio cero (Río Guayas ronda los 4 m, Puerto Atún 1,3 m), así que la altura sobre su propia bajamar es lo que se compara entre puertos. Se ve la lectura más reciente.\n- **Pasa el ratón** por un puerto: el tooltip dibuja su curva de 24 horas.\n- **Haz clic** en uno y pasa el ratón por otro: salen las dos curvas, una junto a otra (modo comparar).\n- **La cuadrícula fijada** a la derecha junta los siete puertos, cada tres horas, en **hora de Ecuador** (`26-09-28 15h` es el tramo que empieza a las 15:00 del 28 de septiembre de 2026): se ve la marea subir y bajar a lo largo del día en toda la costa. Muestra los diez últimos tramos, el que está en curso incluido.\n- **Pulsa una celda de la cuadrícula**: el panel de abajo muestra la altura minuto a minuto de ese puerto en esas tres horas. Vuelve a pulsarla para ver los siete puertos.\n- **Para ver viajar la marea**, estrecha el pincel del tiempo, abajo, y pulsa play.\n\nFuente: [INOCAR, mareógrafos](https://www.inocar.mil.ec/mareas/). Puná publica su serie pero no figura en el catálogo de estaciones, así que no tiene posición y queda fuera.\n",
+        "mode": "markdown"
+      },
+      "pluginVersion": "13.2.1",
+      "targets": [],
+      "title": "Qué estás viendo",
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
+      "id": 3,
+      "title": "Altura al minuto — ${estacion:text} ${tramo:text}",
+      "description": "Pulsa una celda del heatmap del mapa: aquí sale la altura minuto a minuto de ese puerto en esas tres horas.",
+      "type": "timeseries",
       "targets": [
         {
           "datasource": {
@@ -281,9 +529,109 @@
           "refId": "A",
           "format": 1,
           "rawQuery": true,
-          "rawSql": "-- Mareografos del INOCAR: la red nacional, al minuto, ultimas 24 h.\n--\n-- El catalogo de estaciones da nombre y posicion; cada serie llega como\n-- {inicio: ms, datos_alturas: [...]} SIN horas: el punto i es `inicio` + i\n-- minutos. `inicio` es UTC. Puna (id 10) publica serie pero no esta en el\n-- catalogo, asi que no tiene posicion y queda fuera.\n--\n-- Cada mareografo mide contra su propio cero (Rio Guayas ronda 4 m, Puerto Atun\n-- 1,3 m): sobre_bajamar -- la altura menos el MINIMO de las 24 h de ese puerto --\n-- quita ese cero propio y es lo que se puede comparar entre puertos. A diferencia\n-- de una anomalia (altura menos la MEDIA), sobre_bajamar nunca es negativo, que es\n-- lo que necesita el heatmap de kepler: su heatColor() trata cualquier valor <= 0\n-- como si no hubiera dato y no lo pinta.\nWITH estaciones AS (\n  SELECT f.properties.id_estacion::INTEGER AS id,\n         f.properties.estacion           AS estacion,\n         f.properties.latitud::DOUBLE    AS latitude,\n         f.properties.longitud::DOUBLE   AS longitude\n  FROM (SELECT unnest(features) AS f\n        FROM read_json('https://www.inocar.mil.ec/mareas/estaciones_monitoreo.php', format = 'auto'))\n),\nseries AS (\n  SELECT regexp_extract(filename, 'id_est=([0-9]+)', 1)::INTEGER AS id,\n         inicio::BIGINT AS inicio,\n         datos_alturas\n  FROM read_json([\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=1',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=5',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=7',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=8',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=9',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=11',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=12'\n    ], format = 'auto', filename = true)\n),\npuntos AS (\n  SELECT s.id,\n         to_timestamp(s.inicio / 1000) + to_minutes(i - 1) AS time,\n         s.datos_alturas[i]::DOUBLE AS altura\n  FROM series s, range(1, len(s.datos_alturas) + 1) AS r(i)\n),\n-- El tramo de 3 h (en hora de Ecuador) de la lectura mas reciente de toda la red.\nultimo AS (\n  SELECT time_bucket(INTERVAL 3 HOUR, max(time) AT TIME ZONE 'America/Guayaquil') AS tramo\n  FROM puntos\n  WHERE altura IS NOT NULL\n)\n-- Ordenado por hora: en cada puerto el punto que queda ENCIMA (el que se ve y el\n-- que coge el tooltip) es la lectura mas reciente.\nSELECT e.estacion,\n       e.latitude,\n       e.longitude,\n       p.time,\n       p.altura,\n       round(p.altura - min(p.altura) OVER (PARTITION BY p.id), 3) AS sobre_bajamar,\n       -- Tramo de 3 horas en hora de Ecuador, como texto que ordena\n       -- cronologicamente (ano primero, relleno de ceros): agrupa el heatmap\n       -- fijado por bloques de 3 h en vez de una curva por puerto, que kepler no\n       -- sabe dibujar. El heatmap guarda como mucho 10 columnas -- las 10 con mas\n       -- filas -- y cada puerto trae su propio `inicio` (Puerto Atun va unas 5 h\n       -- por detras), asi que solo llevan tramo los 10 ultimos, contados desde la\n       -- lectura mas reciente: el resto queda en NULL, que kepler no agrupa, y el\n       -- tramo en curso nunca se cae. Doce caracteres como mucho: kepler recorta\n       -- ahi la cabecera.\n       CASE WHEN p.time AT TIME ZONE 'America/Guayaquil' >= u.tramo - INTERVAL 27 HOUR\n            THEN strftime(time_bucket(INTERVAL 3 HOUR, p.time AT TIME ZONE 'America/Guayaquil'), '%y-%m-%d %Hh')\n       END AS tramo\nFROM puntos p\nJOIN estaciones e USING (id)\nCROSS JOIN ultimo u\nWHERE p.altura IS NOT NULL\nORDER BY e.estacion, p.time\n"
+          "rawSql": "-- La altura al minuto del puerto y el tramo que marca la celda del heatmap.\n-- $estacion y $tramo los escribe el mapa al pulsar una celda (mapeo \"Chart\n-- cross-filter\"). Sin tramo, las 24 h del puerto; sin nada, los siete puertos.\n-- El datasource entrecomilla las variables solo: van a pelo, y vacias quedan ''.\nWITH estaciones AS (\n  SELECT f.properties.id_estacion::INTEGER AS id,\n         f.properties.estacion           AS estacion,\n         f.properties.latitud::DOUBLE    AS latitude,\n         f.properties.longitud::DOUBLE   AS longitude\n  FROM (SELECT unnest(features) AS f\n        FROM read_json('https://www.inocar.mil.ec/mareas/estaciones_monitoreo.php', format = 'auto'))\n),\nseries AS (\n  SELECT regexp_extract(filename, 'id_est=([0-9]+)', 1)::INTEGER AS id,\n         inicio::BIGINT AS inicio,\n         datos_alturas\n  FROM read_json([\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=1',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=5',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=7',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=8',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=9',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=11',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=12'\n    ], format = 'auto', filename = true)\n),\npuntos AS (\n  SELECT s.id,\n         to_timestamp(s.inicio / 1000) + to_minutes(i - 1) AS time,\n         s.datos_alturas[i]::DOUBLE AS altura\n  FROM series s, range(1, len(s.datos_alturas) + 1) AS r(i)\n),\n-- El tramo de 3 h (en hora de Ecuador) de la lectura mas reciente de toda la red.\nultimo AS (\n  SELECT time_bucket(INTERVAL 3 HOUR, max(time) AT TIME ZONE 'America/Guayaquil') AS tramo\n  FROM puntos\n  WHERE altura IS NOT NULL\n)\nSELECT p.time,\n       e.estacion,\n       p.altura\nFROM puntos p\nJOIN estaciones e USING (id)\nWHERE p.altura IS NOT NULL\n  AND ($estacion = '' OR e.estacion = $estacion)\n  AND ($tramo = '' OR strftime(time_bucket(INTERVAL 3 HOUR, p.time AT TIME ZONE 'America/Guayaquil'), '%y-%m-%d %Hh') = $tramo)\nORDER BY e.estacion, p.time\n"
         }
-      ]
+      ],
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "estacion"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "lengthm",
+          "decimals": 2,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never"
+          },
+          "displayName": "${__field.labels.estacion}"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
     }
-  ]
+  ],
+  "preload": false,
+  "refresh": "5m",
+  "schemaVersion": 42,
+  "tags": [
+    "kepler",
+    "inocar",
+    "mareas",
+    "ecuador",
+    "charts"
+  ],
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "browser",
+  "title": "Mareas en la costa del Ecuador — INOCAR",
+  "uid": "mareas-ecuador",
+  "version": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "estacion",
+        "type": "textbox",
+        "label": "Estación",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "options": [],
+        "skipUrlSync": false
+      },
+      {
+        "name": "tramo",
+        "type": "textbox",
+        "label": "Tramo (3 h, hora de Ecuador)",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0,
+        "options": [],
+        "skipUrlSync": false
+      }
+    ]
+  }
 }

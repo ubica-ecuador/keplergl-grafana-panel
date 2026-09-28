@@ -56,7 +56,7 @@ live in their own panels inside the map, beside their colour — see
 | `field`      | the column the mapping is about; meaningless for `coordinate` and `center`       |
 | `variable`   | the variable that receives the value — or the **latitude** for a coordinate pair |
 | `variableTo` | the upper bound of a numeric range — or the **longitude** for a coordinate pair  |
-| `source`     | `filter` (default), `click`, `coordinate`, `center`                              |
+| `source`     | `filter` (default), `click`, `coordinate`, `center`, `chart`                     |
 | `zoom`       | for `center` only: the zoom to jump to. Absent, the map keeps its zoom           |
 
 A mapping with both `variable` and `variableTo` and no `source` is a **range** mapping: the numeric
