@@ -7,7 +7,9 @@ import type { Page } from '@playwright/test';
  * - `world-regions/`: Cesium OSM Buildings' shape. A region round the whole
  *   world, whose first tile is a b3dm with a glTF that has no meshes, then a
  *   nested tileset for the western hemisphere, then a few blocks of Cuenca at
- *   2 490 m.
+ *   2 490 m — and, beside them, a coarse tile whose one building lies far from
+ *   its centre, the way OSM Buildings keeps Cuenca's stadium (see
+ *   {@link FAR_BUILDING}).
  * - `world-box/`: Google Photorealistic 3D Tiles' shape. A cube centred on the
  *   centre of the Earth, then a small box over Cuenca.
  * - An ion asset (424242) whose endpoint answers with a URL elsewhere, the way
@@ -30,6 +32,16 @@ const WEST = [-Math.PI, WORLD[1], 0, WORLD[3], -165, WORLD[5]];
 
 /** The blocks' lowest point, which the ground under the view should come to. */
 export const CITY_REGION_GROUND = 2490;
+
+/**
+ * A building far from the centre of the tile it comes in, the way Cesium OSM
+ * Buildings keeps large buildings in coarse tiles (ADD refinement): Cuenca's
+ * stadium lies 9.9 km east and 27.9 km north of the centre of its tile. Here the
+ * building is Parque Calderón, 2 500 m up, and the tile a region round Cuenca
+ * centred that far south-west of it; the b3dm places its one triangle there
+ * with `RTC_CENTER`, so it lies ~29 km from the origin deck draws the tile round.
+ */
+export const FAR_BUILDING = { east: 9_900, north: 27_900, height: 2_500 };
 
 /** The height at which the vertical under the view enters the box world's city tile. */
 export const CITY_BOX_GROUND = 2400;
@@ -56,6 +68,25 @@ function ecef(longitude: number, latitude: number, height: number): number[] {
     (n + height) * Math.cos(latitude) * Math.cos(longitude),
     (n + height) * Math.cos(latitude) * Math.sin(longitude),
     (n * (1 - e2) + height) * Math.sin(latitude),
+  ];
+}
+
+/** Metres per degree of latitude near the equator, and of longitude on it: near enough to lay out a region. */
+const METRES_PER_DEGREE_NORTH = 110_576;
+const METRES_PER_DEGREE_EAST = 111_320;
+
+/** The region of the tile {@link FAR_BUILDING} comes in: centred that far south-west of it, and reaching past it. */
+function farRegion(): number[] {
+  const { longitude, latitude } = CUENCA;
+  const centreLatitude = latitude - FAR_BUILDING.north / METRES_PER_DEGREE_NORTH;
+  const centreLongitude = longitude - FAR_BUILDING.east / (METRES_PER_DEGREE_EAST * Math.cos(radians(latitude)));
+  return [
+    radians(centreLongitude - 0.1),
+    radians(centreLatitude - 0.26),
+    radians(centreLongitude + 0.1),
+    radians(centreLatitude + 0.26),
+    CITY_REGION_GROUND,
+    2610,
   ];
 }
 
@@ -118,10 +149,13 @@ function emptyGlb(): Buffer {
   return glb({ asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{}] });
 }
 
-/** A batched 3D model wrapping a glb, with an empty batch. */
-function b3dm(content: Buffer): Buffer {
+/**
+ * A batched 3D model wrapping a glb, with an empty batch; `rtcCenter` places
+ * the glb's origin in ECEF, as ion's tiler does.
+ */
+function b3dm(content: Buffer, rtcCenter?: number[]): Buffer {
   // The glb has to start on an 8-byte boundary: the 28-byte header plus this JSON.
-  let featureTable = Buffer.from(JSON.stringify({ BATCH_LENGTH: 0 }));
+  let featureTable = Buffer.from(JSON.stringify({ BATCH_LENGTH: 0, ...(rtcCenter ? { RTC_CENTER: rtcCenter } : {}) }));
   featureTable = Buffer.concat([featureTable, Buffer.alloc((8 - ((28 + featureTable.length) % 8)) % 8, 0x20)]);
   const header = Buffer.alloc(28);
   header.write('b3dm', 0, 'ascii');
@@ -154,6 +188,7 @@ const REGION_WEST = {
     refine: 'ADD',
     children: [
       { boundingVolume: { region: cityRegion() }, geometricError: 0, refine: 'ADD', content: { uri: 'city.b3dm' } },
+      { boundingVolume: { region: farRegion() }, geometricError: 0, refine: 'ADD', content: { uri: 'far.b3dm' } },
     ],
   },
 };
@@ -194,6 +229,10 @@ export async function routeTiles3d(page: Page): Promise<Tiles3dRequest[]> {
     '/world-regions/west.json': () => ({ body: JSON.stringify(REGION_WEST), contentType: 'application/json' }),
     '/world-regions/root.b3dm': () => ({ body: b3dm(emptyGlb()), contentType: 'application/octet-stream' }),
     '/world-regions/city.b3dm': () => ({ body: b3dm(triangleGlb()), contentType: 'application/octet-stream' }),
+    '/world-regions/far.b3dm': () => ({
+      body: b3dm(triangleGlb(), ecef(radians(CUENCA.longitude), radians(CUENCA.latitude), FAR_BUILDING.height)),
+      contentType: 'application/octet-stream',
+    }),
     '/world-box/root.json': () => ({ body: JSON.stringify(BOX_WORLD), contentType: 'application/json' }),
     '/world-box/city.glb': () => ({ body: triangleGlb(), contentType: 'model/gltf-binary' }),
     '/elsewhere/root.json': () => ({ body: JSON.stringify(BOX_WORLD), contentType: 'application/json' }),

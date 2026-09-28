@@ -32,6 +32,7 @@ import {
   altitudeOffsetFor,
   applyAltitude,
   catchUpTile,
+  fitToDeck,
   groundUnder,
   groundsUnderView,
   needsMove,
@@ -230,10 +231,26 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
 
     /**
      * A tile has loaded: put it where the tileset now is, in case it loaded
-     * against where the tileset was (`catchUpTile`), then on to deck.
+     * against where the tileset was (`catchUpTile`), and in the metres deck
+     * draws with (`fitToDeck`), then on to deck.
+     *
+     * Every way a tile's content gets its matrices comes through here: loaders.gl
+     * works them out as the content loads — the first time, again after the
+     * tile was unloaded, for each viewport's tree — and calls this straight
+     * after. Moving the tileset later works them out afresh (`shiftContent`),
+     * in deck's metres too.
+     *
+     * Should deck already have built a sublayer for the tile, it builds it
+     * again only when told to.
      */
     _onTileLoad(tile: unknown): void {
-      catchUpTile(tile as TileLike);
+      const loaded = tile as TileLike | null;
+      const caughtUp = catchUpTile(loaded);
+      const fitted = fitToDeck(loaded?.content);
+      const cached = typeof loaded?.id === 'string' ? this.state?.layerMap?.[loaded.id] : undefined;
+      if ((caughtUp || fitted) && cached) {
+        cached.needsUpdate = true;
+      }
       super._onTileLoad?.(tile);
     }
 

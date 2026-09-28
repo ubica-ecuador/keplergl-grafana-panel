@@ -491,6 +491,47 @@ describe('altitudeAware', () => {
     expect(layer.loadedTiles).toEqual([tile]);
   });
 
+  it('hands on a tile just loaded in the metres deck draws with, and has deck build it again', () => {
+    // A tile 28 km across drawn in a sphere's metres is drawn ~150 m off near
+    // the equator (tile3dDeckMetres.ts). A sublayer deck already built for the
+    // tile, from before it loaded again, is built again with the new matrix.
+    const Aware = altitudeAware(FakeDeckLayer as never) as never as new (
+      props: Record<string, unknown>
+    ) => FakeDeckLayer & { _onTileLoad(tile: unknown): void };
+    const layer = new Aware({ groundTileset: true, altitudeOffset: 0 });
+    const layerMap: Record<string, { needsUpdate?: boolean }> = { far: { needsUpdate: false } };
+    layer.state = { ...layer.state, layerMap };
+    // loaders.gl's numbers for a tile whose origin is on the equator at 0°: east is y, north is z, up is x.
+    const cartographicModelMatrix = FakeMatrix.identity();
+    cartographicModelMatrix[12] = 27_947;
+    const content = {
+      cartesianOrigin: [6_378_137, 0, 0],
+      cartesianModelMatrix: [0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 6_378_137, 27_947, 0, 1],
+      cartographicOrigin: [0, 0, 0],
+      cartographicModelMatrix,
+      modelMatrix: cartographicModelMatrix as unknown,
+    };
+    const tile = {
+      id: 'far',
+      tileset: { modelMatrix: FakeMatrix.identity() },
+      computedTransform: FakeMatrix.identity(),
+      content,
+    };
+
+    layer._onTileLoad(tile);
+    expect(content.modelMatrix).not.toBe(cartographicModelMatrix);
+    expect(content.modelMatrix).toBe(content.cartographicModelMatrix);
+    // 27 947 m east on the ground are ~27 915 of deck's.
+    expect((content.modelMatrix as number[])[12]).toBeCloseTo((27_947 * 40.03e6) / (2 * Math.PI) / 6_378_137, 6);
+    expect(layerMap.far.needsUpdate).toBe(true);
+    expect(layer.loadedTiles).toEqual([tile]);
+
+    // Loaded again with nothing new, nothing to build again.
+    layerMap.far.needsUpdate = false;
+    layer._onTileLoad(tile);
+    expect(layerMap.far.needsUpdate).toBe(false);
+  });
+
   it('drops a searched ground over the sea once the tree says nothing is there', () => {
     // Before the western hemisphere loads, the sea off Ecuador lies under a
     // tile too big to tell, and the search lowers the tileset. Once it has

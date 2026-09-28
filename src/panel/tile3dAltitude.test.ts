@@ -1,11 +1,13 @@
 import { Ellipsoid } from '@math.gl/geospatial';
 import { Matrix4, Vector3 } from '@math.gl/core';
 
+import { deckMetreScale, inDeckMetres } from './tile3dDeckMetres';
 import {
   altitudeOffsetFor,
   applyAltitude,
   baseAltitude,
   catchUpTile,
+  fitToDeck,
   type TileContentLike,
   type TileLike,
   groundUnder,
@@ -723,7 +725,13 @@ describe('shiftContent', () => {
     expectCloseTo(content.cartographicOrigin.slice(0, 2), expected.cartographicOrigin.slice(0, 2), 10);
     expect(content.cartographicOrigin[2]).toBeCloseTo(expected.cartographicOrigin[2], 4);
     expect(content.cartographicOrigin[2]).toBeCloseTo(150, 4);
-    expectCloseTo(content.cartographicModelMatrix, expected.cartographicModelMatrix, 6);
+    // In the metres deck draws with (tile3dDeckMetres.ts).
+    const scale = deckMetreScale(expected.cartographicOrigin)!;
+    expectCloseTo(
+      content.cartographicModelMatrix,
+      inDeckMetres(Array.from(expected.cartographicModelMatrix), scale),
+      6
+    );
   });
 
   it('hands deck new values in new objects of the same kind, and keeps the alias it reads', () => {
@@ -744,15 +752,89 @@ describe('shiftContent', () => {
   });
 
   it('leaves a model matrix of the content’s own alone', () => {
-    // I3S sets its own, which is not the cartographic one.
+    // I3S sets its own, which is not the cartographic one; nor is the cartographic one drawn, so it stays in plain metres.
     const content = { ...cuencaContent(), modelMatrix: new Matrix4() };
     shiftContent(content, down);
     expect(Array.from(content.modelMatrix)).toEqual(Array.from(new Matrix4()));
+    const moved = Array.from(content.cartesianOrigin);
+    const expected = loadedContent(moved, Array.from(content.cartesianModelMatrix));
+    expectCloseTo(content.cartographicModelMatrix, expected.cartographicModelMatrix, 6);
   });
 
   it('does nothing to a tile whose content has not been placed', () => {
     expect(shiftContent({}, down)).toBe(false);
     expect(shiftContent(null, down)).toBe(false);
+  });
+});
+
+describe('fitToDeck', () => {
+  it('puts a tile just loaded in the metres deck draws with, in a new matrix deck reads', () => {
+    // deck compares a sublayer's modelMatrix by identity.
+    const content = cuencaContent();
+    const loaded = content.cartographicModelMatrix;
+    expect(fitToDeck(content)).toBe(true);
+    expect(content.cartographicModelMatrix).not.toBe(loaded);
+    expect(content.cartographicModelMatrix).toBeInstanceOf(Matrix4);
+    expect(content.modelMatrix).toBe(content.cartographicModelMatrix);
+    expectCloseTo(
+      content.cartographicModelMatrix,
+      inDeckMetres(Array.from(loaded), deckMetreScale(content.cartographicOrigin)!),
+      6
+    );
+  });
+
+  it('keeps the glTF root node loaders.gl folded into the matrices', () => {
+    // `calculateTransformProps` folds a root node far from the origin into both
+    // matrices, once, and sets the node to identity: the fit starts from the
+    // ECEF one, which carries it, rather than folding it in again.
+    const centre = ecef((CUENCA.longitude * Math.PI) / 180, (CUENCA.latitude * Math.PI) / 180, 2550);
+    const rootNode = new Matrix4().translate([0, 150_000, 0]).rotateY(0.2);
+    const content = loadedContent(centre, Array.from(new Matrix4().translate(centre).multiplyRight(rootNode)));
+    const loaded = Array.from(content.cartographicModelMatrix);
+    fitToDeck(content);
+    expectCloseTo(
+      content.cartographicModelMatrix,
+      inDeckMetres(loaded, deckMetreScale(content.cartographicOrigin)!),
+      6
+    );
+  });
+
+  it('fits once, however often it is asked, and after a move', () => {
+    const content = cuencaContent();
+    fitToDeck(content);
+    const fitted = content.cartographicModelMatrix;
+    expect(fitToDeck(content)).toBe(false);
+    expect(content.cartographicModelMatrix).toBe(fitted);
+
+    const down = upAt(CUENCA.longitude, CUENCA.latitude).map((v) => v * -2400);
+    shiftContent(content, down);
+    const shifted = content.cartographicModelMatrix;
+    expect(fitToDeck(content)).toBe(false);
+    expect(content.cartographicModelMatrix).toBe(shifted);
+
+    // And back up again, it is where it was fitted first.
+    shiftContent(
+      content,
+      down.map((v) => -v)
+    );
+    expectCloseTo(content.cartographicModelMatrix, fitted, 6);
+  });
+
+  it('leaves a model matrix of the content’s own alone', () => {
+    // I3S draws with its own, not with the cartographic one.
+    const own = new Matrix4();
+    const content = { ...cuencaContent(), modelMatrix: own };
+    const loaded = content.cartographicModelMatrix;
+    expect(fitToDeck(content)).toBe(false);
+    expect(content.modelMatrix).toBe(own);
+    expect(content.cartographicModelMatrix).toBe(loaded);
+  });
+
+  it('does nothing to a tile whose content has not been placed', () => {
+    expect(fitToDeck(null)).toBe(false);
+    expect(fitToDeck({})).toBe(false);
+    const { cartographicOrigin: _unused, ...withoutOrigin } = cuencaContent();
+    expect(fitToDeck(withoutOrigin)).toBe(false);
   });
 });
 

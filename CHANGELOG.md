@@ -38,6 +38,9 @@ release documents what changed since the one before it.
   - Adding a tileset that spans the whole world no longer throws the map out to the whole planet.
   - A tileset with no transform of its own is put on the ground along its own vertical, where it
     was moved along the Earth's axis: near the equator that slid it sideways instead of down.
+  - Large buildings of Cesium OSM Buildings, and anything else far from the centre of its tile, are
+    now drawn where they stand. They were drawn up to a few hundred metres off, most of all near the
+    equator: over Cuenca the stadium sat some 150 m south of itself on the base map.
 - **Charts**: kepler's charts panel gets its button in the map control — big numbers, bars, lines,
   heatmaps and pivot tables over the map's data, saved with the map. Its **tooltip charts** plot an
   entity's own history in its popup: hover a station and see its day. With kepler's tooltip compare

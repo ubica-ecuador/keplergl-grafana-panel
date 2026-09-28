@@ -1,10 +1,13 @@
 import { test, expect } from '@grafana/plugin-e2e';
 import type { Locator } from '@playwright/test';
+import { Ellipsoid } from '@math.gl/geospatial';
+import { addMetersToLngLat } from '@math.gl/web-mercator';
 
 import {
   CITY_BOX_GROUND,
   CITY_REGION_GROUND,
   ELSEWHERE_URL,
+  FAR_BUILDING,
   ION_ASSET,
   ION_TOKEN,
   routeTiles3d,
@@ -20,9 +23,11 @@ import {
  * - Google's globe was "grounded" by a base 7 600 km underground and shoved
  *   out of view;
  * - an ion asset served from elsewhere was asked of ion, and refused;
- * - and a tileset round the whole world, left at its real altitude, sat above a
+ * - a tileset round the whole world, left at its real altitude, sat above a
  *   street-level camera over Cuenca: it is now lowered by the ground under the
- *   centre of the view.
+ *   centre of the view;
+ * - and a building far from the centre of its tile, like Cuenca's stadium in
+ *   OSM Buildings, was drawn well over a hundred metres south of where it is.
  */
 
 test.use({ viewport: { width: 1920, height: 1080 } });
@@ -227,6 +232,71 @@ async function setHeightAdjustment(map: Locator, metres: number): Promise<void> 
   }, metres);
 }
 
+/**
+ * Where deck draws the one triangle of the far tile (`FAR_BUILDING`), and where
+ * it really is: the origin its sublayer draws round and the offset in metres its
+ * `modelMatrix` gives the triangle's first corner, and that corner in ECEF
+ * through the content's own matrix. Null until deck has built that sublayer.
+ */
+async function farBuilding(map: Locator): Promise<{ origin: number[]; offset: number[]; ecef: number[] } | null> {
+  return map.evaluate((node) => {
+    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
+    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
+    let deck: any = null;
+    while (fiber) {
+      const instance = fiber.stateNode;
+      if (instance && instance._deck && instance._deck.layerManager) {
+        deck = instance._deck;
+        break;
+      }
+      fiber = fiber.return;
+    }
+    if (!deck) {
+      throw new Error('deck.gl instance not found from map node');
+    }
+    const layer = deck.layerManager.getLayers().find((candidate: any) => candidate.state?.tileset3d);
+    const tiles: any[] = layer?.state?.tileset3d?.tiles ?? [];
+    const tile = tiles.find((candidate) => /far\.b3dm/.test(String(candidate.contentUrl ?? '')));
+    const sublayer = tile && layer.state.layerMap?.[tile.id]?.layer;
+    if (!sublayer || !tile.content?.cartesianModelMatrix) {
+      return null;
+    }
+    // The corner at the glTF's own origin: each matrix's translation.
+    const { coordinateOrigin, modelMatrix } = sublayer.props;
+    const cartesian = tile.content.cartesianModelMatrix;
+    return {
+      origin: Array.from(coordinateOrigin as ArrayLike<number>),
+      offset: [modelMatrix[12], modelMatrix[13], modelMatrix[14]],
+      ecef: [cartesian[12], cartesian[13], cartesian[14]],
+    };
+  });
+}
+
+/**
+ * How far, in metres over the ground, deck draws a point from where it is.
+ *
+ * deck draws a tile's sublayer with `METER_OFFSETS` round its origin, turning
+ * metres into longitude and latitude with the spherical model of
+ * `@math.gl/web-mercator` — `addMetersToLngLat` is the same arithmetic as its
+ * shader's `project_offset_`.
+ */
+function drawnOffBy({ origin, offset, ecef }: { origin: number[]; offset: number[]; ecef: number[] }): {
+  metres: number;
+  fromOrigin: number;
+} {
+  const [drawnLongitude, drawnLatitude] = addMetersToLngLat(origin, offset);
+  const [longitude, latitude] = Ellipsoid.WGS84.cartesianToCartographic(ecef, [0, 0, 0]);
+  const phi = (latitude * Math.PI) / 180;
+  const e2 = 6.69437999014e-3;
+  const w = Math.sqrt(1 - e2 * Math.sin(phi) ** 2);
+  const perDegreeNorth = ((6378137 * (1 - e2)) / w ** 3) * (Math.PI / 180);
+  const perDegreeEast = (6378137 / w) * Math.cos(phi) * (Math.PI / 180);
+  return {
+    metres: Math.hypot((drawnLongitude - longitude) * perDegreeEast, (drawnLatitude - latitude) * perDegreeNorth),
+    fromOrigin: Math.hypot(offset[0], offset[1]),
+  };
+}
+
 test('a world of regions with an empty first tile draws, lowered by the ground under the view', async ({
   page,
   gotoDashboardPage,
@@ -255,6 +325,15 @@ test('a world of regions with an empty first tile draws, lowered by the ground u
     expect(tile.drift, tile.url).toBeLessThan(1);
   }
   await expectSublayersFollow(map);
+
+  // A building far from the centre of its tile is drawn where it is. deck's
+  // metres are a sphere's, a few parts in a thousand off the ellipsoid's:
+  // ~29 km from the origin that was ~140 m south, over Cuenca.
+  await expect.poll(() => farBuilding(map), { timeout: 30_000 }).not.toBeNull();
+  const far = drawnOffBy((await farBuilding(map))!);
+  expect(far.fromOrigin).toBeGreaterThan(Math.hypot(FAR_BUILDING.east, FAR_BUILDING.north) - 1_000);
+  expect(far.metres).toBeLessThan(5);
+
   // The empty first tile no longer switches the layer off.
   await expect(panel.getByText(/An error in deck\.gl/)).toHaveCount(0);
 });

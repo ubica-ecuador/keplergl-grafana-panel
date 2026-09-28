@@ -29,6 +29,8 @@
  * in `tile3dAltitudeLayer.ts`.
  */
 
+import { deckMetreScale, inDeckMetres } from './tile3dDeckMetres';
+
 /**
  * What loaders.gl works out for a tile once its content has loaded
  * (`calculateTransformProps`, `@loaders.gl/tiles`), and deck draws it with for
@@ -49,6 +51,8 @@ export interface TileContentLike {
 
 /** A tile of a loaded `Tileset3D`, as far as this module reads it. */
 export interface TileLike {
+  /** deck keeps the tile's sublayer under it. */
+  id?: string;
   header?: {
     boundingVolume?: Record<string, ArrayLike<number>>;
     /** Declared by the tileset: loaders.gl's own `Tile3D.transform` is an identity when there is none. */
@@ -799,9 +803,56 @@ function copyWith<T>(source: T, values: readonly number[]): T {
 }
 
 /**
+ * A matrix to ECEF, seen from the east, north and up of a point on the globe:
+ * the inverse of that frame, which is its transpose and the point taken off,
+ * applied after it — what loaders.gl makes of `cartesianModelMatrix` for its
+ * `cartographicModelMatrix`.
+ */
+function seenFrom(origin: ArrayLike<number>, cartesian: ArrayLike<number>): number[] {
+  const axes = eastNorthUp(origin);
+  const local = new Array<number>(16);
+  for (let column = 0; column < 4; column++) {
+    const c = [cartesian[column * 4], cartesian[column * 4 + 1], cartesian[column * 4 + 2]];
+    const w = cartesian[column * 4 + 3];
+    axes.forEach((axis, row) => {
+      local[column * 4 + row] =
+        axis[0] * (c[0] - w * origin[0]) + axis[1] * (c[1] - w * origin[1]) + axis[2] * (c[2] - w * origin[2]);
+    });
+    local[column * 4 + 3] = w;
+  }
+  return local;
+}
+
+/**
+ * The matrix deck is to draw a tile's content with: its geometry to metres
+ * east, north and up of its origin, in the metres deck counts
+ * (`tile3dDeckMetres.ts`). Worked out afresh from the ECEF matrix every time,
+ * so that fitting a tile again, or after a move, cannot scale it twice.
+ */
+function drawingMatrix(
+  cartesian: ArrayLike<number>,
+  cartesianOrigin: ArrayLike<number>,
+  cartographicOrigin: ArrayLike<number>
+): number[] {
+  const local = seenFrom(cartesianOrigin, cartesian);
+  const scale = deckMetreScale(cartographicOrigin);
+  return scale ? inDeckMetres(local, scale) : local;
+}
+
+/**
+ * Whether deck draws the content with its cartographic matrix: loaders.gl makes
+ * `modelMatrix` that very object for 3D Tiles. I3S sets one of its own, and is
+ * left alone.
+ */
+function drawsCartographic(content: TileContentLike): boolean {
+  return Boolean(content.cartographicModelMatrix) && content.modelMatrix === content.cartographicModelMatrix;
+}
+
+/**
  * Moves one loaded tile's content by `delta` (ECEF, metres): the origin, and
  * both matrices, as loaders.gl would have worked them out with the tileset
- * already there. Returns whether there was anything to move.
+ * already there — and the one deck draws, in deck's metres ({@link fitToDeck}).
+ * Returns whether there was anything to move.
  */
 export function shiftContent(content: TileContentLike | null | undefined, delta: ArrayLike<number>): boolean {
   const origin = content?.cartesianOrigin;
@@ -811,6 +862,7 @@ export function shiftContent(content: TileContentLike | null | undefined, delta:
   }
 
   const movedOrigin: Vec3 = [origin[0] + delta[0], origin[1] + delta[1], origin[2] + delta[2]];
+  const movedCartographic = cartographicOf(movedOrigin);
   // Translated by delta, on the left: what the tileset's own move does to every transform below it.
   const moved = Array.from({ length: 16 }, (_, i) => cartesian[i]);
   for (let column = 0; column < 4; column++) {
@@ -818,31 +870,59 @@ export function shiftContent(content: TileContentLike | null | undefined, delta:
       moved[column * 4 + row] += delta[row] * cartesian[column * 4 + 3];
     }
   }
-  // The same, seen from the east, north and up of the new origin: the inverse
-  // of that frame, which is its transpose and the origin taken off.
-  const axes = eastNorthUp(movedOrigin);
-  const local = new Array<number>(16);
-  for (let column = 0; column < 4; column++) {
-    const c = [moved[column * 4], moved[column * 4 + 1], moved[column * 4 + 2]];
-    const w = moved[column * 4 + 3];
-    axes.forEach((axis, row) => {
-      local[column * 4 + row] =
-        axis[0] * (c[0] - w * movedOrigin[0]) +
-        axis[1] * (c[1] - w * movedOrigin[1]) +
-        axis[2] * (c[2] - w * movedOrigin[2]);
-    });
-    local[column * 4 + 3] = w;
-  }
+  // The same, seen from the east, north and up of the new origin.
+  const drawn = drawsCartographic(content);
+  const local = drawn ? drawingMatrix(moved, movedOrigin, movedCartographic) : seenFrom(movedOrigin, moved);
 
   const oldLocal = content.cartographicModelMatrix;
   const newLocal = copyWith(oldLocal ?? cartesian, local);
-  if (oldLocal && content.modelMatrix === oldLocal) {
+  if (drawn) {
     content.modelMatrix = newLocal;
   }
   content.cartographicModelMatrix = newLocal;
   content.cartesianModelMatrix = copyWith(cartesian, moved);
   content.cartesianOrigin = copyWith(origin, movedOrigin);
-  content.cartographicOrigin = copyWith(content.cartographicOrigin ?? origin, cartographicOf(movedOrigin));
+  content.cartographicOrigin = copyWith(content.cartographicOrigin ?? origin, movedCartographic);
+  return true;
+}
+
+/**
+ * Puts a loaded tile's drawing matrix in the metres deck counts
+ * (`tile3dDeckMetres.ts`), so that what lies far from the tile's origin is
+ * drawn where it is. Returns whether it changed, in which case the matrix is a
+ * new one: deck compares a sublayer's `modelMatrix` by identity.
+ *
+ * Only for content deck draws with its cartographic matrix — 3D Tiles; I3S
+ * keeps its own. Worked out from the ECEF matrix, which already carries the
+ * glTF root node loaders.gl folded in (`calculateTransformProps`) and never
+ * the scale, so a tile fitted twice, or moved ({@link shiftContent}) and
+ * fitted again, comes out the same.
+ */
+export function fitToDeck(content: TileContentLike | null | undefined): boolean {
+  const origin = content?.cartesianOrigin;
+  const cartesian = content?.cartesianModelMatrix;
+  const cartographic = content?.cartographicOrigin;
+  const current = content?.cartographicModelMatrix;
+  if (
+    !content ||
+    !origin ||
+    origin.length < 3 ||
+    !cartesian ||
+    cartesian.length < 16 ||
+    !cartographic ||
+    !current ||
+    current.length < 16 ||
+    !drawsCartographic(content)
+  ) {
+    return false;
+  }
+  const fitted = drawingMatrix(cartesian, origin, cartographic);
+  if (fitted.every((value, i) => value === current[i])) {
+    return false;
+  }
+  const next = copyWith(current, fitted);
+  content.cartographicModelMatrix = next;
+  content.modelMatrix = next;
   return true;
 }
 
