@@ -148,14 +148,14 @@ test('the pinned chart is on the map, and the charts button opens the panel with
 
   // Pinned: drawn with the panel closed, and read-only, with no header to add charts from.
   await expect(panel.locator('.chart-manager')).toBeVisible();
-  await expect(panel.getByText('Todas las series')).toBeVisible();
+  await expect(panel.getByText('All series')).toBeVisible();
   await expect(panel.locator('.chart-panel-header')).toHaveCount(0);
 
   await panel.locator('button.toggle-chart-panel').click();
   await expect(panel.locator('.chart-panel-header')).toBeVisible();
   // Open, each chart's title is an editable input (readOnly turns off), not
   // plain text: getByText would not see it. Match the control's value.
-  await expect(panel.locator('input[value="Serie del sitio"]')).toBeVisible();
+  await expect(panel.locator('input[value="Site series"]')).toBeVisible();
 });
 
 test('hovering a site draws its whole series in the popup', async ({
@@ -165,14 +165,14 @@ test('hovering a site draws its whole series in the popup', async ({
 }) => {
   test.slow();
   const map = await gotoChartsPanel(gotoDashboardPage, readProvisionedDashboard, page);
-  const { norte } = await sitePoints(map);
-  expect(norte).toBeDefined();
+  const { north } = await sitePoints(map);
+  expect(north).toBeDefined();
 
-  await hover(page, map, norte);
+  await hover(page, map, north);
 
   const chart = page.locator('.map-popover__layer-chart');
   await expect(chart).toHaveCount(1, { timeout: 10_000 });
-  await expect(chart).toContainText('Serie del sitio');
+  await expect(chart).toContainText('Site series');
   await expect(chart.locator('svg').first()).toBeVisible();
 });
 
@@ -183,17 +183,17 @@ test('compare mode: pinned and hovered sites each draw their series, and only th
 }) => {
   test.slow();
   const map = await gotoChartsPanel(gotoDashboardPage, readProvisionedDashboard, page);
-  const { norte, sur } = await sitePoints(map);
+  const { north, south } = await sitePoints(map);
 
   await enableCompareMode(map);
   await settle(page);
 
-  await page.mouse.click(norte.x, norte.y);
+  await page.mouse.click(north.x, north.y);
   await settle(page);
   // The button exists only while kepler holds a clicked entity: proof the click landed.
   await expect(page.locator('.panel-select-entity')).toHaveCount(1, { timeout: 10_000 });
 
-  await hover(page, map, sur);
+  await hover(page, map, south);
 
   await expect(page.locator('.map-popover__layer-chart')).toHaveCount(2, { timeout: 10_000 });
   await expect(page.locator('.panel-select-entity')).toHaveCount(1);
@@ -214,8 +214,8 @@ test('the charts come back after a refresh, the tooltip chart included', async (
   await settle(page);
 
   await expect.poll(async () => (await readCharts(map)).charts, { timeout: 30_000 }).toEqual(['curvas', 'serie']);
-  const { centro } = await sitePoints(map);
-  await hover(page, map, centro);
+  const { centre } = await sitePoints(map);
+  await hover(page, map, centre);
   await expect(page.locator('.map-popover__layer-chart svg').first()).toBeVisible({ timeout: 10_000 });
 });
 
