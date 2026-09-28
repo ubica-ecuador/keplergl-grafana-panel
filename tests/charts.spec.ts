@@ -133,7 +133,7 @@ test('the pinned chart is on the map, and the charts button opens the panel with
 
   // Pinned: drawn with the panel closed, and read-only, with no header to add charts from.
   await expect(panel.locator('.chart-manager')).toBeVisible();
-  await expect(panel.getByText('All series')).toBeVisible();
+  await expect(panel.getByText('Sum over sites')).toBeVisible();
   await expect(panel.locator('.chart-panel-header')).toHaveCount(0);
 
   await panel.locator('button.toggle-chart-panel').click();

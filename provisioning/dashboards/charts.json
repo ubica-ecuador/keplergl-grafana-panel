@@ -158,7 +158,7 @@
                 },
                 {
                   "id": "curvas",
-                  "title": "All series",
+                  "title": "Sum over sites",
                   "type": "lineChart",
                   "dataId": "grafana-A",
                   "applyFilters": false,
