@@ -7,7 +7,6 @@ import {
   MapContainerFactory,
   MapControlFactory,
   MapPopoverContentFactory,
-  RangeBrushFactory,
 } from '@kepler.gl/components';
 
 import { keplerRecipes } from './keplerRecipes';
@@ -20,11 +19,12 @@ import { keplerRecipes } from './keplerRecipes';
  * `provideRecipesToInjector` re-registers each replacement's dependency tree as
  * kepler's own — so a recipe listed after another whose factory it depends on
  * silently undoes it. Nothing throws and nothing renders differently until
- * someone notices the repair stopped happening: the time slider buried under
- * its own histogram, the effects button gone.
+ * someone notices the repair stopped happening: the effects button gone, the
+ * popup without its Select button.
  *
- * That is not hypothetical. Adding the layer configurator put the range brush
- * back to kepler's, and the buried slider came back with it.
+ * That is not hypothetical. Adding the layer configurator once put a range
+ * brush this list used to replace back to kepler's, and the time slider it
+ * repaired was buried under its own histogram again.
  *
  * Deliberately reads `keplerRecipes()` rather than listing the recipes again: a
  * copy would have gone on passing while the panel broke.
@@ -44,7 +44,6 @@ describe('the recipes the panel injects', () => {
     ['the animation controller', AnimationControllerFactory, 'SweepingAnimationController'],
     ['the layer configurator', LayerConfiguratorFactory, 'LayerConfiguratorWithFlowField'],
     ['the layer panel header', LayerPanelHeaderFactory, 'LayerPanelHeaderWithOwnNames'],
-    ['the range brush', RangeBrushFactory, 'BrushOnTop'],
     ['the popup content', MapPopoverContentFactory, 'ContentWithSelect'],
     ['the map container', MapContainerFactory, 'MapContainerWithHalo'],
   ])('still replaces %s when the whole list is provided', (_name, stock, expected) => {

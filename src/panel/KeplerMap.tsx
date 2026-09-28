@@ -58,7 +58,6 @@ import { useEsriTimeline } from './useEsriTimeline';
 import { useZarrTimeline } from './useZarrTimeline';
 import { useExplorerDatasets } from './useExplorerDatasets';
 import { useViewportGuard } from './useViewportGuard';
-import { useLayerOrderGuard } from './useLayerOrderGuard';
 import { useSplitMapsGuard } from './useSplitMapsGuard';
 import { savedViewportOf } from './viewportGuard';
 import { useViewportSync } from './useViewportSync';
@@ -229,8 +228,6 @@ export function KeplerMap({
   // dates came from.
   const wms = useWmsCalendar(wmsLayers);
 
-  const captureLayerOrder = useLayerOrderGuard(store);
-
   // A refresh that catches the time filter playing hands it back paused; the
   // resume puts it back into play — see `resumeTimeFilter`. Held so that a
   // rebuild or an unmount can call it off.
@@ -324,12 +321,8 @@ export function KeplerMap({
       // view state echo can overwrite it — so arm the guard that defends it.
       setGuardArm((n) => n + 1);
     } else {
-      // Before any dataset is replaced: kepler parks the layers of each one and
-      // merges them back, and with two or more queries it can merge them back
-      // reversed. The guard remembers the order and puts it back.
-      captureLayerOrder();
-      // Before as well, for the same reason: kepler parks the time filter too,
-      // and it comes back paused.
+      // Before any dataset is replaced: kepler parks the time filter along with
+      // the dataset's layers, and it comes back paused.
       const playing = capturePlayingTimeFilter(store, datasets);
       refreshDatasets(store, store.dispatch, datasets);
       // Only when this refresh caught it playing. An answer landing while the
@@ -365,7 +358,6 @@ export function KeplerMap({
     esriLayers,
     mapConfig,
     store,
-    captureLayerOrder,
     guardSplitMaps,
     cancelTimeFilterResume,
   ]);

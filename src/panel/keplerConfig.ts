@@ -38,7 +38,7 @@ export function configureKepler(): void {
     rasterServerUrls: [DEFAULT_RASTER_SERVER_URL],
     // A "new release" banner has no place inside a dashboard panel.
     showReleaseBanner: false,
-    // The Flow layer is the reason this plugin pins kepler.gl 3.3.0-alpha.13
+    // The Flow layer is the reason this plugin pins kepler.gl 3.3.0-alpha.15
     // rather than the 3.2.6 stable. Stated explicitly so a change in the
     // upstream default cannot silently remove it.
     enableFlowLayer: true,
@@ -50,6 +50,12 @@ export function configureKepler(): void {
     // pitch; this only widens how far the user may tilt. Measured: without it
     // a pitch set programmatically snaps back to 60 on the first drag.
     maxPitch: 85,
+    // kepler 3.3.0-alpha.14 added a `{ }` JSON editor to the time widget, on
+    // by default. That widget is on the map for every viewer, side panel or
+    // not, and whatever is typed into it is gone on the next refresh. The
+    // editors on the layer, filter and effect cards stay: the side panel is
+    // where a map is edited already.
+    enableAnimationJsonEditor: false,
   });
 
   // The flow field is a layer kepler does not ship, so its words are in no
