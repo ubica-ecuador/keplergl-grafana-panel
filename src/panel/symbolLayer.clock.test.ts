@@ -63,7 +63,7 @@ describe('symbol layer under the dashboard clock', () => {
     const [dataset] = framesToDatasets([rawFrame(panel.targets[0].rawFrameContent)]);
     const store = createKeplerStore();
     store.dispatch(registerEntry({ id: KEPLER_INSTANCE_ID }) as never);
-    loadDatasets(store.dispatch, [dataset]);
+    loadDatasets(store, store.dispatch, [dataset]);
     await settle();
     addAutoLayer(store, store.dispatch, dataset.symbolLayer!, dataset.id);
     expect(

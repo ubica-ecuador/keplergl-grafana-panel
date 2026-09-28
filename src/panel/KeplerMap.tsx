@@ -312,7 +312,7 @@ export function KeplerMap({
       // kepler frames a load without a saved viewport to the size its state
       // holds, which is 800 × 800 until its own ResizeObserver answers.
       sizeMapForFit(store, store.dispatch, mapSize.current.width, mapSize.current.height);
-      loadDatasets(store.dispatch, datasets, {}, mapConfig);
+      loadDatasets(store, store.dispatch, datasets, {}, mapConfig);
       loadRasters(store.dispatch, rasters);
       loadWms(store.dispatch, wms);
       loadZarr(store.dispatch, zarrLayers);

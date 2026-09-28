@@ -1,5 +1,6 @@
 import KeplerGlSchema from '@kepler.gl/schemas';
 
+import { KEPLER_INSTANCE_ID } from './constants';
 import { loadDatasets, savedTooltipCompare } from './keplerAdapter';
 
 /**
@@ -51,17 +52,35 @@ describe('savedTooltipCompare', () => {
   });
 });
 
+/**
+ * A store holding the tooltip item `addDataToMap` leaves behind on a first
+ * load: kepler's reset default, whose `fieldsToShow` only names datasets that
+ * merged synchronously — none here, since no dataset has settled yet.
+ */
+function storeWithTooltip(tooltip: Record<string, unknown>) {
+  return {
+    getState: () => ({ keplerGl: { [KEPLER_INSTANCE_ID]: { visState: { interactionConfig: { tooltip } } } } }),
+  };
+}
+
+const LIVE_TOOLTIP = {
+  id: 'tooltip',
+  label: 'interactions.tooltip',
+  enabled: true,
+  config: { fieldsToShow: {}, compareMode: false, compareType: 'absolute' },
+};
+
 describe('loadDatasets — a saved compare mode survives the load', () => {
   it('dispatches INTERACTION_CONFIG_CHANGE with the saved compareMode, after addDataToMap', () => {
     const dispatch = jest.fn();
     const config = savedConfig({
       enabled: true,
       compareMode: true,
-      compareType: 'absolute',
+      compareType: 'relative',
       fieldsToShow: FIELDS_TO_SHOW,
     });
 
-    loadDatasets(dispatch, [], {}, config as never);
+    loadDatasets(storeWithTooltip(LIVE_TOOLTIP) as never, dispatch, [], {}, config as never);
 
     expect(dispatch).toHaveBeenCalledTimes(2);
     const [addDataToMapCall, interactionCall] = dispatch.mock.calls;
@@ -70,21 +89,48 @@ describe('loadDatasets — a saved compare mode survives the load', () => {
       type: '@@kepler.gl/INTERACTION_CONFIG_CHANGE',
       config: {
         id: 'tooltip',
+        label: 'interactions.tooltip',
         enabled: true,
-        config: {
-          fieldsToShow: FIELDS_TO_SHOW,
-          compareMode: true,
-          compareType: 'absolute',
-        },
+        config: { compareMode: true, compareType: 'relative' },
       },
     });
+  });
+
+  it('builds the item from the live tooltip, never carrying a saved fieldsToShow for a dataset that never loads', () => {
+    // The saved `fieldsToShow` names `grafana-A`, which never loads. Were it
+    // carried into the store, kepler's later merge would keep it for good and
+    // Interactions -> Tooltip would read `datasets['grafana-A'].fields`.
+    const dispatch = jest.fn();
+    const live = {
+      ...LIVE_TOOLTIP,
+      config: { ...LIVE_TOOLTIP.config, fieldsToShow: { 'grafana-B': [{ name: 'depth', format: null }] } },
+    };
+    const config = savedConfig({ enabled: true, compareMode: true, fieldsToShow: FIELDS_TO_SHOW });
+
+    loadDatasets(storeWithTooltip(live) as never, dispatch, [], {}, config as never);
+
+    const item = dispatch.mock.calls[1][0].payload.config;
+    expect(item.config.fieldsToShow).not.toHaveProperty('grafana-A');
+    expect(item.config.fieldsToShow).toEqual({ 'grafana-B': [{ name: 'depth', format: null }] });
+    expect(item.config.compareType).toBe('absolute');
+  });
+
+  it("dispatches nothing extra for a saved compareMode: false, kepler's own default", () => {
+    // kepler's "Save current map" always writes `compareMode`, so `false` is
+    // what nearly every saved map carries.
+    const dispatch = jest.fn();
+    const config = savedConfig({ enabled: true, compareMode: false, fieldsToShow: FIELDS_TO_SHOW });
+
+    loadDatasets(storeWithTooltip(LIVE_TOOLTIP) as never, dispatch, [], {}, config as never);
+
+    expect(dispatch).toHaveBeenCalledTimes(1);
   });
 
   it('dispatches nothing extra for a saved config without compareMode', () => {
     const dispatch = jest.fn();
     const config = savedConfig({ enabled: true, fieldsToShow: FIELDS_TO_SHOW });
 
-    loadDatasets(dispatch, [], {}, config as never);
+    loadDatasets(storeWithTooltip(LIVE_TOOLTIP) as never, dispatch, [], {}, config as never);
 
     expect(dispatch).toHaveBeenCalledTimes(1);
   });
@@ -92,7 +138,7 @@ describe('loadDatasets — a saved compare mode survives the load', () => {
   it('dispatches nothing extra with no saved config at all', () => {
     const dispatch = jest.fn();
 
-    loadDatasets(dispatch, [], {});
+    loadDatasets(storeWithTooltip(LIVE_TOOLTIP) as never, dispatch, [], {});
 
     expect(dispatch).toHaveBeenCalledTimes(1);
   });

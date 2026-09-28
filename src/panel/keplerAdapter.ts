@@ -153,6 +153,7 @@ function standInValue(type: FieldType): unknown {
  * settles as rejected, costing a kepler error notification and nothing else.
  */
 export function loadDatasets(
+  store: Store,
   dispatch: Dispatch,
   datasets: PanelDataset[],
   options: { centerMap?: boolean } = {},
@@ -179,24 +180,29 @@ export function loadDatasets(
     )
   );
 
-  // Puts compareMode/compareType back on the store before kepler's own async
-  // merge (mergeInteractions, run once the payload above's datasets settle)
-  // reads the *current* config and keeps whatever it finds there — see
-  // `savedTooltipCompare` for why that merge drops them from the saved config
-  // on its own.
+  // A saved compare mode goes back on the store here, after both of kepler's
+  // own steps inside `addDataToMap` above: its reset of the tooltip to the
+  // default, then the synchronous merge of the saved config, which keeps only
+  // `fieldsToShow` — for datasets already there, none on a first load. The
+  // async merge that runs once the payload's datasets settle then finds
+  // compareMode/compareType in the live config and keeps them; see
+  // `savedTooltipCompare`. Only `true` is worth a dispatch: `false` is kepler's
+  // default, and every map saved from kepler states it.
   const compare = savedTooltipCompare(config);
-  if (compare) {
-    const savedTooltip = config?.visState?.interactionConfig?.tooltip;
+  const liveTooltip = getVisState(store)?.interactionConfig?.tooltip;
+  if (compare?.compareMode && liveTooltip) {
+    // The live item, not the saved one: a saved `fieldsToShow` entry for a
+    // dataset that never loads would stay in the store for good (the async
+    // merge spreads the current `fieldsToShow` first) and crash kepler's
+    // Interactions -> Tooltip, which reads `datasets[dataId].fields`.
     dispatch(
       wrapTo(
         KEPLER_INSTANCE_ID,
         interactionConfigChange({
-          id: 'tooltip',
-          label: 'interactions.tooltip',
-          enabled: savedTooltip?.enabled ?? true,
+          ...liveTooltip,
           config: {
-            fieldsToShow: savedTooltip?.fieldsToShow ?? {},
-            compareMode: compare.compareMode,
+            ...liveTooltip.config,
+            compareMode: true,
             compareType: compare.compareType ?? COMPARE_TYPES.ABSOLUTE,
           },
         } as Parameters<typeof interactionConfigChange>[0])
@@ -209,9 +215,10 @@ export function loadDatasets(
  * The saved config's own tooltip compare setting, when it states one.
  *
  * Upstream cause: kepler.gl 3.3.0-alpha.15's `mergeInteractions`
- * (`@kepler.gl/reducers`, `vis-state-merger.ts` ~474 — the merge
- * `addDataToMap` runs once a saved config's datasets have settled) rebuilds
- * the tooltip's `config` as `{fieldsToShow}` only, so `compareMode` and
+ * (`@kepler.gl/reducers`, `vis-state-merger.ts` ~474 — which `addDataToMap`
+ * runs twice: synchronously, inside `receiveMapConfigUpdater` right after it
+ * resets the config, and again once the saved config's datasets have settled)
+ * rebuilds the tooltip's `config` as `{fieldsToShow}` only, so `compareMode` and
  * `compareType` never reach the store through that merge alone — even though
  * kepler's own "Save current map" writes them (`InteractionSchemaV1.save`
  * spreads the whole tooltip config). `KeplerGlSchema.parseSavedConfig` keeps
@@ -1422,9 +1429,13 @@ interface VisStateLike {
   mousePos?: {
     pinned?: { coordinate?: unknown } | null;
   };
-  /** kepler's per-interaction switches; `coordinate` is the one the pin needs. */
+  /**
+   * kepler's per-interaction switches; `coordinate` is the one the pin needs,
+   * `tooltip` the one a saved compare mode is put back on.
+   */
   interactionConfig?: {
     coordinate?: { enabled?: boolean };
+    tooltip?: { id: string; enabled?: boolean; config?: Record<string, unknown> };
   };
 }
 

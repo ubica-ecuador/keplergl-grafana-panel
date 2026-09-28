@@ -52,7 +52,7 @@ describe('sizeMapForFit', () => {
   it('frames the first load for the panel, the zoom the guard would refit to', async () => {
     const store = freshStore();
     sizeMapForFit(store, store.dispatch, WIDTH, HEIGHT);
-    loadDatasets(store.dispatch, datasets(), { centerMap: true });
+    loadDatasets(store, store.dispatch, datasets(), { centerMap: true });
     await settle();
     const loaded = readMapState(store)!;
 
@@ -69,7 +69,7 @@ describe('sizeMapForFit', () => {
 
   it('is what the unsized load gets wrong', async () => {
     const store = freshStore();
-    loadDatasets(store.dispatch, datasets(), { centerMap: true });
+    loadDatasets(store, store.dispatch, datasets(), { centerMap: true });
     await settle();
     const loaded = readMapState(store)!;
 

@@ -71,7 +71,7 @@ async function restore(panelId: number, edit: (visConfig: Record<string, unknown
   const [dataset] = framesToDatasets([rawFrame(panel.targets[0].rawFrameContent)]);
   const store = createKeplerStore();
   store.dispatch(registerEntry({ id: KEPLER_INSTANCE_ID }) as never);
-  loadDatasets(store.dispatch, [dataset]);
+  loadDatasets(store, store.dispatch, [dataset]);
   await settle();
 
   const visState = (store.getState() as any).keplerGl[KEPLER_INSTANCE_ID].visState;
@@ -146,7 +146,8 @@ describe('the provisioned symbol panels, restored from their saved config', () =
       expect(deckLayers.map((deckLayer) => deckLayer.id)).toEqual(['picture-stations-picture-symbol']);
       const symbols = deckLayers[0].props;
       expect(symbols.data).toHaveLength(4);
-      const idOf = (index: number) => symbols.getIcon(symbols.data.find((row: { index: number }) => row.index === index)).id;
+      const idOf = (index: number) =>
+        symbols.getIcon(symbols.data.find((row: { index: number }) => row.index === index)).id;
       expect(idOf(0)).toBe(pictureKey('/public/plugins/ubica-keplergl-panel/img/logo-small.svg', 'bottom'));
       expect(idOf(2)).toBe(pictureKey(layer.config.visConfig.pictureUrl, 'bottom'));
       expect(symbols.loadOptions.core.fetch).toEqual(expect.any(Function));
