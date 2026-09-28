@@ -1,3 +1,4 @@
+import { markerDragFor } from './markerDrag';
 import { markerBounds, readMarkers } from './markers';
 import { shownInPane } from './paneVisibility';
 import { resolveSymbol, symbolNames } from './symbolGlyphs';
@@ -155,6 +156,7 @@ export function makeMarkersLayer<C extends Constructor<object>>(
               : resolveSymbol(visConfig.symbol),
           angleDegrees: Number.isFinite(angle) ? angle : 0,
           visible: this.config.isVisible !== false && shownInPane(opts),
+          drag: markerDragFor(this),
         }),
       ];
     }
