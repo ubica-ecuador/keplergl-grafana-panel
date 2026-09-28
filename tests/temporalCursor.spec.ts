@@ -156,7 +156,8 @@ test('the time bar draws a graph’s cursor and publishes its hovered time back'
     .toBeLessThan(3);
   await expect.poll(async () => (await cursor(map))?.length).toBe(1);
 
-  await page.mouse.move(barBox.x + barBox.width / 2, barBox.y - 200);
+  // Off every panel's plot: over the map the track itself would publish its own time.
+  await page.mouse.move(plotBox.x, plotBox.y - 30);
   await expect(line).toBeHidden();
   await expect.poll(() => cursor(map)).toEqual([]);
   expect(queries).toBe(0);

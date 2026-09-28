@@ -70,3 +70,23 @@ it('two map publishers do not bounce events or clear each other', () => {
   a.dispose();
   b.dispose();
 });
+
+it('takes a graph’s synchronous echo for an echo, and still clears on leave', () => {
+  const bus = new EventBusSrv();
+  let clears = 0;
+  // What a Time series does with a hover it receives: snap to a sample and republish, inside the publish.
+  bus.getStream(DataHoverEvent).subscribe((e) => {
+    if (!e.tags?.has('uplot')) {
+      bus.publish(
+        new DataHoverEvent({ point: { time: Math.floor(e.payload.point.time! / 1000) * 1000 } }).setTags(['uplot'])
+      );
+    }
+  });
+  bus.getStream(DataHoverClearEvent).subscribe(() => clears++);
+  const publisher = new MapHoverPublisher(bus, 'map-a');
+  publisher.move(1500);
+  jest.advanceTimersByTime(20);
+  publisher.move(null);
+  expect(clears).toBe(1);
+  publisher.dispose();
+});

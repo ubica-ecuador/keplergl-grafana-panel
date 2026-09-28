@@ -1,10 +1,17 @@
 import { DataHoverClearEvent, DataHoverEvent, type EventBus } from '@grafana/data';
 
-/** Spike: publish only pointer-derived times. Received events are never forwarded. */
+/** Publishes only pointer-derived times from the map. Received events are never forwarded. */
 export class MapHoverPublisher {
   private frame: number | null = null;
   private ownsCursor = false;
   private lastTime: number | null = null;
+  /**
+   * A Time series answers a hover it receives by snapping its cursor to the
+   * nearest sample and publishing that, tagged "uplot", synchronously inside our
+   * own publish. That echo is not another panel taking over: taken as one, the
+   * cursor was never cleared when the pointer left.
+   */
+  private publishing = false;
   private readonly subscriptions;
 
   constructor(
@@ -12,7 +19,7 @@ export class MapHoverPublisher {
     private tag: string
   ) {
     const release = (event: DataHoverEvent | DataHoverClearEvent) => {
-      if (!event.tags?.has(this.tag)) {
+      if (!this.publishing && !event.tags?.has(this.tag)) {
         // Another panel has taken over. Do not clear its cursor on our next leave/unmount.
         this.cancel();
         this.ownsCursor = false;
@@ -38,7 +45,7 @@ export class MapHoverPublisher {
       if (this.ownsCursor) {
         this.ownsCursor = false;
         this.lastTime = null;
-        this.bus.publish(new DataHoverClearEvent().setTags([this.tag]));
+        this.emit(new DataHoverClearEvent().setTags([this.tag]));
       }
       return;
     }
@@ -50,8 +57,17 @@ export class MapHoverPublisher {
       this.ownsCursor = true;
       this.lastTime = time;
       // Do not tag this as "uplot": Time series ignores that tag to avoid chart echoes.
-      this.bus.publish(new DataHoverEvent({ point: { time } }).setTags([this.tag]));
+      this.emit(new DataHoverEvent({ point: { time } }).setTags([this.tag]));
     });
+  }
+
+  private emit(event: DataHoverEvent | DataHoverClearEvent) {
+    this.publishing = true;
+    try {
+      this.bus.publish(event);
+    } finally {
+      this.publishing = false;
+    }
   }
 
   dispose() {
