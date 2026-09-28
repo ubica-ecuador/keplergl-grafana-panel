@@ -1,0 +1,275 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "links": [],
+  "schemaVersion": 39,
+  "tags": [
+    "kepler",
+    "inocar",
+    "mareas",
+    "ecuador",
+    "charts"
+  ],
+  "timezone": "browser",
+  "title": "Mareas en la costa del Ecuador — INOCAR",
+  "uid": "mareas-ecuador",
+  "version": 1,
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "refresh": "5m",
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "gridPos": {
+        "h": 20,
+        "w": 7,
+        "x": 17,
+        "y": 0
+      },
+      "id": 1,
+      "title": "Qué estás viendo",
+      "type": "text",
+      "options": {
+        "mode": "markdown",
+        "content": "## Qué estás viendo\n\nLa red de **mareógrafos del INOCAR**, al minuto, en las últimas 24 horas, leída en vivo y sin clave.\n\n- **El color** de cada puerto es su **anomalía**: la altura del mar menos la media de sus 24 horas. Cada mareógrafo mide contra su propio cero (Río Guayas ronda los 4 m, Puerto Atún 1,3 m), así que la anomalía es lo que se compara entre puertos. Se ve la lectura más reciente.\n- **Pasa el ratón** por un puerto: el tooltip dibuja su curva de 24 horas.\n- **Haz clic** en uno y pasa el ratón por otro: salen las dos curvas, una junto a otra (modo comparar).\n- **La gráfica fijada** a la derecha junta las siete curvas: el desfase entre ellas es la onda de marea recorriendo la costa.\n- **Para ver viajar la marea**, estrecha el pincel del tiempo, abajo, y pulsa play.\n\nFuente: [INOCAR, mareógrafos](https://www.inocar.mil.ec/mareas/). Puná publica su serie pero no figura en el catálogo de estaciones, así que no tiene posición y queda fuera.\n"
+      }
+    },
+    {
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 17,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "title": "Mareógrafos — anomalía de la marea",
+      "type": "ubica-keplergl-panel",
+      "options": {
+        "showSidePanel": false,
+        "followGrafanaTheme": true,
+        "basemap": "auto",
+        "timeSync": "off",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "visState": {
+              "layers": [
+                {
+                  "id": "mareografos",
+                  "type": "point",
+                  "config": {
+                    "dataId": "grafana-A",
+                    "label": "Mareógrafos",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "isVisible": true,
+                    "visConfig": {
+                      "radius": 14,
+                      "opacity": 0.95,
+                      "outline": true,
+                      "thickness": 1,
+                      "strokeColor": [
+                        12,
+                        16,
+                        20
+                      ],
+                      "strokeOpacity": 0.8,
+                      "filled": true,
+                      "colorRange": {
+                        "name": "Marea (BrBG)",
+                        "type": "diverging",
+                        "category": "Custom",
+                        "colors": [
+                          "#8c510a",
+                          "#d8b365",
+                          "#f6e8c3",
+                          "#f5f5f5",
+                          "#c7eae5",
+                          "#5ab4ac",
+                          "#01665e"
+                        ]
+                      }
+                    }
+                  },
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "anomalia",
+                      "type": "real"
+                    },
+                    "colorScale": "quantize"
+                  }
+                }
+              ],
+              "filters": [
+                {
+                  "dataId": [
+                    "grafana-A"
+                  ],
+                  "name": [
+                    "time"
+                  ],
+                  "id": "reloj",
+                  "type": "timeRange",
+                  "value": [
+                    1000000000000,
+                    1000000000001
+                  ],
+                  "plotType": {
+                    "type": "histogram"
+                  },
+                  "animationWindow": "free",
+                  "yAxis": null,
+                  "view": "minified",
+                  "speed": 1,
+                  "enabled": true
+                }
+              ],
+              "interactionConfig": {
+                "tooltip": {
+                  "enabled": true,
+                  "compareMode": true,
+                  "compareType": "absolute",
+                  "fieldsToShow": {
+                    "grafana-A": [
+                      {
+                        "name": "estacion",
+                        "format": null
+                      },
+                      {
+                        "name": "time",
+                        "format": null
+                      },
+                      {
+                        "name": "altura",
+                        "format": null
+                      },
+                      {
+                        "name": "anomalia",
+                        "format": null
+                      }
+                    ]
+                  }
+                }
+              },
+              "charts": [
+                {
+                  "id": "marea",
+                  "title": "Marea en el puerto (anomalía, m)",
+                  "type": "layerChart",
+                  "dataId": "grafana-A",
+                  "applyFilters": false,
+                  "pinned": false,
+                  "display": {
+                    "isConfigActive": false
+                  },
+                  "layerId": "mareografos",
+                  "layerChartType": "TIME_SERIES",
+                  "axis": {
+                    "field": {
+                      "name": "estacion",
+                      "type": "string"
+                    },
+                    "aggregation": "uniqueBin",
+                    "title": "estacion"
+                  },
+                  "xAxis": {
+                    "field": {
+                      "name": "time",
+                      "type": "timestamp"
+                    },
+                    "aggregation": "timeBin",
+                    "title": "time"
+                  },
+                  "yAxis": {
+                    "field": {
+                      "name": "anomalia",
+                      "type": "real"
+                    },
+                    "aggregation": "average",
+                    "title": "anomalia"
+                  },
+                  "chartDisplay": {
+                    "idField": "estacion",
+                    "numEntries": 7,
+                    "interval": "hour"
+                  }
+                },
+                {
+                  "id": "costa",
+                  "title": "Las siete curvas (anomalía, m)",
+                  "type": "lineChart",
+                  "dataId": "grafana-A",
+                  "applyFilters": false,
+                  "pinned": true,
+                  "display": {
+                    "isConfigActive": false
+                  },
+                  "chartDisplay": {},
+                  "xAxis": {
+                    "field": {
+                      "name": "time",
+                      "type": "timestamp"
+                    },
+                    "aggregation": "timeBin",
+                    "title": "time",
+                    "interval": "hour"
+                  },
+                  "yAxis": {
+                    "field": {
+                      "name": "anomalia",
+                      "type": "real"
+                    },
+                    "aggregation": "average",
+                    "title": "anomalia"
+                  },
+                  "groupBy": {
+                    "field": {
+                      "name": "estacion",
+                      "type": "string"
+                    },
+                    "aggregation": "uniqueBin",
+                    "title": "estacion"
+                  },
+                  "numGroups": 0
+                }
+              ],
+              "splitMaps": []
+            },
+            "mapState": {
+              "latitude": -1.0,
+              "longitude": -80.0,
+              "zoom": 6.1,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          },
+          "refId": "A",
+          "format": 1,
+          "rawQuery": true,
+          "rawSql": "-- Mareografos del INOCAR: la red nacional, al minuto, ultimas 24 h.\n--\n-- El catalogo de estaciones da nombre y posicion; cada serie llega como\n-- {inicio: ms, datos_alturas: [...]} SIN horas: el punto i es `inicio` + i\n-- minutos. `inicio` es UTC. Puna (id 10) publica serie pero no esta en el\n-- catalogo, asi que no tiene posicion y queda fuera.\n--\n-- Cada mareografo mide contra su propio cero (Rio Guayas ronda 4 m, Puerto Atun\n-- 1,3 m): la anomalia -- altura menos la media de las 24 h de ese puerto -- es lo\n-- que se puede comparar entre puertos.\nWITH estaciones AS (\n  SELECT f.properties.id_estacion::INTEGER AS id,\n         f.properties.estacion           AS estacion,\n         f.properties.latitud::DOUBLE    AS latitude,\n         f.properties.longitud::DOUBLE   AS longitude\n  FROM (SELECT unnest(features) AS f\n        FROM read_json('https://www.inocar.mil.ec/mareas/estaciones_monitoreo.php', format = 'auto'))\n),\nseries AS (\n  SELECT regexp_extract(filename, 'id_est=([0-9]+)', 1)::INTEGER AS id,\n         inicio::BIGINT AS inicio,\n         datos_alturas\n  FROM read_json([\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=1',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=5',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=7',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=8',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=9',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=11',\n      'https://www.inocar.mil.ec/mareas/grasp/mareas_auto_data_tiempo.php?id_est=12'\n    ], format = 'auto', filename = true)\n),\npuntos AS (\n  SELECT s.id,\n         to_timestamp(s.inicio / 1000) + to_minutes(i - 1) AS time,\n         s.datos_alturas[i]::DOUBLE AS altura\n  FROM series s, range(1, len(s.datos_alturas) + 1) AS r(i)\n)\n-- Ordenado por hora: en cada puerto el punto que queda ENCIMA (el que se ve y el\n-- que coge el tooltip) es la lectura mas reciente.\nSELECT e.estacion,\n       e.latitude,\n       e.longitude,\n       p.time,\n       p.altura,\n       p.altura - avg(p.altura) OVER (PARTITION BY p.id) AS anomalia\nFROM puntos p\nJOIN estaciones e USING (id)\nWHERE p.altura IS NOT NULL\nORDER BY e.estacion, p.time\n"
+        }
+      ]
+    }
+  ]
+}
