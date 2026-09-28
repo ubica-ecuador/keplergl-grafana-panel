@@ -31,7 +31,7 @@ const StyledMapControlPanel = styled.div`
   position: relative;
 `;
 
-/* Column that hosts the EffectManager beside the button toolbar.
+/* Column that hosts the ChartManager and the EffectManager beside the button toolbar.
    pointer-events is disabled on the container and restored on children so the
    empty space above/below the panel keeps working as map surface. */
 const StyledMapControlContextPanel = styled.div`
