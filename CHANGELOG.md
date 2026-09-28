@@ -22,6 +22,19 @@ release documents what changed since the one before it.
   the layer order after a refresh, the Flow layer's arrows after a refresh and the time slider drawn
   under its own histogram now come from kepler itself, sent upstream from this project; nothing on
   the map changes with them.
+- **3D Tiles round the whole world**: Cesium OSM Buildings, Google Photorealistic 3D Tiles and
+  Google's tiles served through Cesium ion now draw; until now each of them drew nothing. A tileset
+  that spans the whole world is lowered by the ground under the centre of the view, along the
+  vertical there, and again as the view moves, so a city at 2 550 m shows at street level as well
+  as one by the sea. *Sit on the ground* and *Height adjustment* apply to it that way.
+  - A tileset described by regions is no longer culled where it stood before being put on the
+    ground, and one whose regions reach round the world is no longer culled away altogether.
+  - A tile with nothing to draw in it no longer switches the whole layer off.
+  - A Cesium ion asset that ion serves from elsewhere is loaded from there, and the ion token is no
+    longer sent anywhere but to Cesium.
+  - Adding a tileset that spans the whole world no longer throws the map out to the whole planet.
+  - A tileset with no transform of its own is put on the ground along its own vertical, where it
+    was moved along the Earth's axis: near the equator that slid it sideways instead of down.
 
 ## 1.0.1 (2026-09-23)
 

@@ -28,7 +28,17 @@
  * which deck calls again both when a prop changes and when the tileset lands.
  */
 
-import { altitudeOffsetFor, applyAltitude, type TilesetLike } from './tile3dAltitude';
+import {
+  altitudeOffsetFor,
+  applyAltitude,
+  groundUnder,
+  nextGround,
+  spansTooWide,
+  trimOf,
+  upAt,
+  type TilesetLike,
+} from './tile3dAltitude';
+import { sturdyLoader } from './tile3dLoader';
 
 /** The knobs, in the shape `registerVisConfig` takes. */
 export const TILE3D_ALTITUDE_VIS_CONFIGS = {
@@ -53,16 +63,59 @@ export const TILE3D_ALTITUDE_VIS_CONFIGS = {
   },
 } as const;
 
+/** deck's viewport, as far as grounding a tileset round the whole world reads it. */
+interface ViewportLike {
+  /** Tileset3D keeps the tree it traverses for each viewport under this id. */
+  id?: string;
+  longitude?: number;
+  latitude?: number;
+  cameraPosition?: ArrayLike<number>;
+  distanceScales?: { unitsPerMeter?: ArrayLike<number> };
+}
+
 /** What the deck subclass needs of the class it extends. */
 interface DeckTile3DLayerLike {
   props: Record<string, unknown>;
+  context?: { viewport?: ViewportLike } | null;
   state?: {
     tileset3d?: TilesetLike | null;
     activeViewports?: Record<string, unknown>;
     lastUpdatedViewports?: Record<string, unknown> | null;
+    /** deck's, bumped each time a traversal completes. */
+    frameNumber?: number;
+    /** Ours: the ground a tileset round the whole world was last lowered by, and the frame of the last search step. */
+    ground?: number | null;
+    groundSearchFrame?: number | null;
   } | null;
   updateState(params: unknown): void;
   _updateTileset?(viewports: Record<string, unknown> | null | undefined): void;
+}
+
+/**
+ * How far, in metres, the ground under the view must move before a tileset
+ * round the whole world is lowered again: every move re-traverses the whole
+ * tree, and panning a few blocks should not.
+ */
+const GROUND_TOLERANCE = 30;
+
+/** Where the view looks and how high the camera is above the ground plane, or null while deck has no viewport. */
+function viewOf(
+  viewport: ViewportLike | null | undefined
+): { id: string; longitude: number; latitude: number; cameraHeight: number } | null {
+  const unitsPerMetre = viewport?.distanceScales?.unitsPerMeter?.[2];
+  const cameraZ = viewport?.cameraPosition?.[2];
+  const { id, longitude, latitude } = viewport ?? {};
+  if (
+    typeof id !== 'string' ||
+    typeof longitude !== 'number' ||
+    typeof latitude !== 'number' ||
+    typeof cameraZ !== 'number' ||
+    typeof unitsPerMetre !== 'number' ||
+    !(unitsPerMetre > 0)
+  ) {
+    return null;
+  }
+  return { id, longitude, latitude, cameraHeight: cameraZ / unitsPerMetre };
 }
 
 // The usual mixin constructor type. `any[]` rather than `unknown[]` on purpose:
@@ -127,7 +180,10 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
       if (!tileset) {
         return false;
       }
-      if (!applyAltitude(tileset, altitudeOffsetFor(this.props, tileset))) {
+      const moved = spansTooWide(tileset)
+        ? this.groundUnderView(tileset)
+        : applyAltitude(tileset, altitudeOffsetFor(this.props, tileset));
+      if (!moved) {
         return false;
       }
 
@@ -138,6 +194,37 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
       const viewports = active && Object.keys(active).length > 0 ? active : this.state?.lastUpdatedViewports;
       this._updateTileset?.(viewports);
       return true;
+    }
+
+    /**
+     * Lowers a tileset round the whole world by the ground under the centre of
+     * the view (`groundUnder`, `nextGround`), along the vertical there.
+     *
+     * A search step waits for a traversal to complete after the last one: deck
+     * bumps `frameNumber` when it does, and until then `isLoaded` still
+     * describes the tiles from before the step.
+     */
+    groundUnderView(tileset: TilesetLike): boolean {
+      const view = viewOf(this.context?.viewport);
+      const state = this.state;
+      if (!view || !state) {
+        return false;
+      }
+      let ground = 0;
+      if (this.props.groundTileset !== false) {
+        const settled = Boolean(tileset.isLoaded?.()) && state.frameNumber !== state.groundSearchFrame;
+        const sample = groundUnder(tileset, view.longitude, view.latitude, view.id);
+        const next = nextGround(sample, view, settled, state.ground ?? null);
+        if (next.searched) {
+          state.groundSearchFrame = state.frameNumber;
+        }
+        state.ground = next.ground;
+        ground = next.ground;
+      }
+      return applyAltitude(tileset, trimOf(this.props) - ground, {
+        up: upAt(view.longitude, view.latitude),
+        tolerance: GROUND_TOLERANCE,
+      });
     }
   }
 
@@ -150,6 +237,10 @@ interface Tile3DLayerLike {
   config?: { visConfig?: Record<string, unknown> };
   registerVisConfig(configs: Record<string, unknown>): void;
   renderLayer(opts?: unknown): unknown[];
+  /** Private to kepler: it frames the map round the tileset only while this is false. */
+  _hasFittedBounds?: boolean;
+  /** kepler's own, an arrow defined in its constructor. */
+  _onTilesetLoad?: (tileset3d: TilesetLike) => void;
 }
 
 /** A deck layer, as far as the rebuild cares. */
@@ -164,12 +255,30 @@ function isDeckLayer(value: unknown): value is { props: Record<string, unknown>;
  * assembled again here, so the id, the loader, the access token, the tile
  * callbacks and whatever upstream adds later all keep working without this
  * module knowing about them — the same bargain `withWmsTime` strikes.
+ *
+ * Two more things ride on the same rebuild, because real tilesets needed them
+ * and this is where kepler's layer is in reach:
+ *
+ * - the loader is swapped for its mended self (`tile3dLoader.ts`), without
+ *   which Cesium OSM Buildings and Google's 3D Tiles through ion drew nothing;
+ * - a tileset that spans too wide (`spansTooWide`) does not frame the map:
+ *   kepler framed a map of one city out to the whole planet for OSM Buildings.
+ *   kepler already skips Google's for the same reason.
  */
 export function withTile3dAltitude<C extends Constructor<object>>(Tile3DLayer: C): C {
   class Tile3DLayerWithAltitude extends (Tile3DLayer as Constructor<Tile3DLayerLike>) {
     constructor(...args: any[]) {
       super(...args);
       this.registerVisConfig(TILE3D_ALTITUDE_VIS_CONFIGS as unknown as Record<string, unknown>);
+      const keplerOnTilesetLoad = this._onTilesetLoad;
+      if (typeof keplerOnTilesetLoad === 'function') {
+        this._onTilesetLoad = (tileset3d: TilesetLike) => {
+          if (spansTooWide(tileset3d)) {
+            this._hasFittedBounds = true;
+          }
+          keplerOnTilesetLoad(tileset3d);
+        };
+      }
     }
 
     renderLayer(opts?: unknown): unknown[] {
@@ -187,7 +296,8 @@ export function withTile3dAltitude<C extends Constructor<object>>(Tile3DLayer: C
           return layer;
         }
         const Aware = altitudeAware(layer.constructor as Constructor<DeckTile3DLayerLike>);
-        return new Aware({ ...layer.props, ...knobs });
+        const mended = 'loader' in layer.props ? { loader: sturdyLoader(layer.props.loader) } : {};
+        return new Aware({ ...layer.props, ...knobs, ...mended });
       });
     }
   }
