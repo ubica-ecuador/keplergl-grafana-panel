@@ -17,59 +17,51 @@ import { projectRows, settle } from './keplerHelpers';
 interface ChartState {
   charts: string[];
   hovered: boolean;
+  /** The `site` of the row under the pointer, read off the dataset kepler holds; null with nothing hovered. */
+  hoveredSite: string | null;
+  compareMode: boolean;
+  /** True once `grafana-A` is a different object from the one `mark` last remembered. */
+  datasetReplaced: boolean;
 }
 
-async function readCharts(map: Locator): Promise<ChartState> {
-  return map.evaluate((node) => {
+/**
+ * The one store read every test here uses. With `mark`, it also remembers the
+ * dataset object, so a later read can tell a refresh replaced it.
+ */
+async function readCharts(map: Locator, { mark = false } = {}): Promise<ChartState> {
+  return map.evaluate((node, remember) => {
     const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
     let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
     while (fiber) {
       const store = fiber.memoizedProps && fiber.memoizedProps.store;
       if (store && typeof store.getState === 'function') {
         const visState = (Object.values(store.getState().keplerGl ?? {})[0] as any)?.visState;
+        const dataset = visState?.datasets?.['grafana-A'];
+        const replaced = Boolean(dataset) && dataset !== (window as any).__chartsSpecDataset;
+        if (remember) {
+          (window as any).__chartsSpecDataset = dataset;
+        }
+        // kepler's own row lookup for a hover (`getHoverData`): the picked
+        // object's `index` is the dataset row.
+        const hover = visState?.hoverInfo;
+        const row = Number.isInteger(hover?.object?.index) ? hover.object.index : hover?.index;
+        const siteIdx = (dataset?.fields ?? []).findIndex((f: { name: string }) => f.name === 'site');
+        const hoveredSite =
+          hover?.picked && Number.isInteger(row) && row >= 0 && siteIdx >= 0
+            ? String(dataset.dataContainer.valueAt(row, siteIdx))
+            : null;
         return {
           charts: (visState?.charts ?? []).map((c: { id: string }) => c.id).sort(),
-          hovered: Boolean(visState?.hoverInfo?.picked),
+          hovered: Boolean(hover?.picked),
+          hoveredSite,
+          compareMode: Boolean(visState?.interactionConfig?.tooltip?.config?.compareMode),
+          datasetReplaced: replaced,
         };
       }
       fiber = fiber.return;
     }
     throw new Error('kepler store not found from map node');
-  });
-}
-
-/** Remembers the dataset object, so a later call can tell a refresh replaced it. */
-async function markDataset(map: Locator): Promise<void> {
-  await map.evaluate((node) => {
-    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
-    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
-    while (fiber) {
-      const store = fiber.memoizedProps && fiber.memoizedProps.store;
-      if (store && typeof store.getState === 'function') {
-        const visState = (Object.values(store.getState().keplerGl ?? {})[0] as any)?.visState;
-        (window as any).__chartsSpecDataset = visState?.datasets?.['grafana-A'];
-        return;
-      }
-      fiber = fiber.return;
-    }
-  });
-}
-
-async function datasetReplaced(map: Locator): Promise<boolean> {
-  return map.evaluate((node) => {
-    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
-    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
-    while (fiber) {
-      const store = fiber.memoizedProps && fiber.memoizedProps.store;
-      if (store && typeof store.getState === 'function') {
-        const visState = (Object.values(store.getState().keplerGl ?? {})[0] as any)?.visState;
-        const now = visState?.datasets?.['grafana-A'];
-        return Boolean(now) && now !== (window as any).__chartsSpecDataset;
-      }
-      fiber = fiber.return;
-    }
-    return false;
-  });
+  }, mark);
 }
 
 const PANEL = 'data-testid Panel header Kepler.gl — tooltip charts';
@@ -99,27 +91,15 @@ async function sitePoints(map: Locator): Promise<Record<string, { x: number; y: 
   return points;
 }
 
-async function hover(page: Page, map: Locator, point: { x: number; y: number }): Promise<void> {
+/**
+ * Moves the pointer onto a site and waits until kepler reports that very site
+ * hovered: `hoverInfo.picked` alone stays true from an earlier click or hover,
+ * which would let a hover that never landed pass.
+ */
+async function hover(page: Page, map: Locator, point: { x: number; y: number }, site: string): Promise<void> {
   await page.mouse.move(point.x + 3, point.y);
   await page.mouse.move(point.x, point.y);
-  await expect.poll(async () => (await readCharts(map)).hovered, { timeout: 10_000 }).toBe(true);
-}
-
-/** Reads `interactionConfig.tooltip.config.compareMode` straight off the store. */
-async function tooltipCompareMode(map: Locator): Promise<boolean> {
-  return map.evaluate((node) => {
-    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
-    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
-    while (fiber) {
-      const store = fiber.memoizedProps && fiber.memoizedProps.store;
-      if (store && typeof store.getState === 'function') {
-        const visState = (Object.values(store.getState().keplerGl ?? {})[0] as any)?.visState;
-        return Boolean(visState?.interactionConfig?.tooltip?.config?.compareMode);
-      }
-      fiber = fiber.return;
-    }
-    throw new Error('kepler store not found from map node');
-  });
+  await expect.poll(async () => (await readCharts(map)).hoveredSite, { timeout: 10_000 }).toBe(site);
 }
 
 test('the pinned chart is on the map, and the charts button opens the panel with both', async ({
@@ -153,7 +133,7 @@ test('hovering a site draws its whole series in the popup', async ({
   const { north } = await sitePoints(map);
   expect(north).toBeDefined();
 
-  await hover(page, map, north);
+  await hover(page, map, north, 'north');
 
   const chart = page.locator('.map-popover__layer-chart');
   await expect(chart).toHaveCount(1, { timeout: 10_000 });
@@ -173,14 +153,14 @@ test('compare mode: pinned and hovered sites each draw their series, and only th
   // The fixture's `interactionConfig.tooltip.compareMode: true` — this is the
   // product fix under test, not test setup: see `savedTooltipCompare` and
   // `loadDatasets` in `keplerAdapter.ts`.
-  expect(await tooltipCompareMode(map)).toBe(true);
+  expect((await readCharts(map)).compareMode).toBe(true);
 
   await page.mouse.click(north.x, north.y);
   await settle(page);
   // The button exists only while kepler holds a clicked entity: proof the click landed.
   await expect(page.locator('.panel-select-entity')).toHaveCount(1, { timeout: 10_000 });
 
-  await hover(page, map, south);
+  await hover(page, map, south, 'south');
 
   await expect(page.locator('.map-popover__layer-chart')).toHaveCount(2, { timeout: 10_000 });
   await expect(page.locator('.panel-select-entity')).toHaveCount(1);
@@ -193,16 +173,16 @@ test('the charts come back after a refresh, the tooltip chart included', async (
 }) => {
   test.slow();
   const map = await gotoChartsPanel(gotoDashboardPage, readProvisionedDashboard, page);
-  await markDataset(map);
+  await readCharts(map, { mark: true });
 
   await page.getByTestId('data-testid RefreshPicker run button').click();
   // Proof the refresh landed: kepler holds a new dataset object.
-  await expect.poll(() => datasetReplaced(map), { timeout: 30_000 }).toBe(true);
+  await expect.poll(async () => (await readCharts(map)).datasetReplaced, { timeout: 30_000 }).toBe(true);
   await settle(page);
 
   await expect.poll(async () => (await readCharts(map)).charts, { timeout: 30_000 }).toEqual(['curvas', 'serie']);
   const { centre } = await sitePoints(map);
-  await hover(page, map, centre);
+  await hover(page, map, centre, 'centre');
   await expect(page.locator('.map-popover__layer-chart svg').first()).toBeVisible({ timeout: 10_000 });
 });
 
