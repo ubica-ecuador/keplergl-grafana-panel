@@ -92,6 +92,8 @@ class FakeDeckLayer {
   superCalls = 0;
   traversals: unknown[] = [];
   loadedTiles: unknown[] = [];
+  updatesAsked = 0;
+  finalized = 0;
 
   constructor(props: Record<string, unknown>) {
     this.props = props;
@@ -107,6 +109,14 @@ class FakeDeckLayer {
 
   _onTileLoad(tile: unknown): void {
     this.loadedTiles.push(tile);
+  }
+
+  setNeedsUpdate(): void {
+    this.updatesAsked += 1;
+  }
+
+  finalizeState(_context: unknown): void {
+    this.finalized += 1;
   }
 }
 
@@ -479,6 +489,99 @@ describe('altitudeAware', () => {
     layer._onTileLoad(tile);
     expect(content.cartesianOrigin[2]).toBeCloseTo(-300, 9);
     expect(layer.loadedTiles).toEqual([tile]);
+  });
+
+  it('drops a searched ground over the sea once the tree says nothing is there', () => {
+    // Before the western hemisphere loads, the sea off Ecuador lies under a
+    // tile too big to tell, and the search lowers the tileset. Once it has
+    // loaded there are no buildings there: holding the searched ground would
+    // leave the coast's buildings that far underground.
+    const Aware = altitudeAware(FakeDeckLayer as never) as never as new (
+      props: Record<string, unknown>
+    ) => FakeDeckLayer;
+    const layer = new Aware({ groundTileset: true, altitudeOffset: 0 });
+    const ts = osmBuildingsBeforeWest();
+    layer.context = { viewport: viewportOver(-85, -2, 1700) };
+    layer.state = { tileset3d: ts, activeViewports: { main: 'vp' }, lastUpdatedViewports: null, frameNumber: 1 };
+    const up = upOver(-85, -2);
+
+    layer.updateState({});
+    expect(ts.modelMatrix[14]).toBeCloseTo(-1500 * up[2], 6);
+
+    // The west has loaded: its only buildings are Cuenca's.
+    const loaded = osmBuildingsOverCuenca();
+    ts.roots = loaded.roots;
+    layer.state.frameNumber = 2;
+    layer.updateState({});
+    expect(ts.modelMatrix[14]).toBeCloseTo(0, 6);
+    expect(layer.state.ground).toBe(0);
+    // The search starts afresh from here, should the view find a tile too big to tell again.
+    expect(layer.state.groundSearchFrame).toBe(2);
+  });
+
+  it('holds the last ground a tile told when the view moves out to sea', () => {
+    const Aware = altitudeAware(FakeDeckLayer as never) as never as new (
+      props: Record<string, unknown>
+    ) => FakeDeckLayer;
+    const layer = new Aware({ groundTileset: true, altitudeOffset: 0 });
+    const ts = osmBuildingsOverCuenca();
+    layer.context = { viewport: viewportOver(-79.0, -2.894, 1700) };
+    layer.state = { tileset3d: ts, activeViewports: { main: 'vp' }, lastUpdatedViewports: null, frameNumber: 1 };
+    layer.updateState({});
+
+    layer.context = { viewport: viewportOver(-85, -2, 1700) };
+    layer.state.frameNumber = 2;
+    layer.updateState({});
+    const up = upOver(-85, -2);
+    expect(ts.modelMatrix[14]).toBeCloseTo(-2490 * up[2], 6);
+  });
+
+  describe('once a search step has been taken', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    /** A layer that has just taken one search step over Quito, with tiles still loading. */
+    function searching() {
+      const Aware = altitudeAware(FakeDeckLayer as never) as never as new (
+        props: Record<string, unknown>
+      ) => FakeDeckLayer & { finalizeState(context: unknown): void };
+      const layer = new Aware({ groundTileset: true, altitudeOffset: 0 });
+      const ts = osmBuildingsBeforeWest(() => false);
+      layer.context = { viewport: viewportOver(-78.5, -0.2, 1700) };
+      layer.state = { tileset3d: ts, activeViewports: { main: 'vp' }, lastUpdatedViewports: null, frameNumber: 20 };
+      layer.updateState({});
+      expect(ts.modelMatrix[14]).not.toBe(0);
+      return layer;
+    }
+
+    it('asks deck for an update when the step is due to settle, whether or not anything else happens', () => {
+      // Nothing else may bring `updateState` round: a quiet map would wait for
+      // the user to move it before the search took its next step.
+      const layer = searching();
+      jest.advanceTimersByTime(2_999);
+      expect(layer.updatesAsked).toBe(0);
+      jest.advanceTimersByTime(1);
+      expect(layer.updatesAsked).toBe(1);
+    });
+
+    it('keeps one timer, not one per step', () => {
+      const layer = searching();
+      layer.state.frameNumber = 40;
+      layer.updateState({});
+      jest.advanceTimersByTime(10_000);
+      expect(layer.updatesAsked).toBe(1);
+    });
+
+    it('does not ask once the layer is finalized, or its tileset replaced', () => {
+      const finalized = searching();
+      finalized.finalizeState({});
+      expect(finalized.finalized).toBe(1);
+      const replaced = searching();
+      replaced.state.tileset3d = null;
+      jest.advanceTimersByTime(10_000);
+      expect(finalized.updatesAsked).toBe(0);
+      expect(replaced.updatesAsked).toBe(0);
+    });
   });
 
   it('survives an update before the tileset has loaded', () => {

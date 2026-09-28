@@ -37,6 +37,7 @@ import {
   needsMove,
   nextGround,
   searchSettled,
+  SETTLE_TIME,
   spansTooWide,
   trimOf,
   upAt,
@@ -93,19 +94,24 @@ interface DeckTile3DLayerLike {
     frameNumber?: number;
     /**
      * Ours, for a tileset round the whole world: the tileset they describe, the
-     * ground last settled on, when the last search step was taken (deck's frame
-     * and the time), and where the tileset was last put.
+     * ground last settled on and the last one a tile told, when the last search
+     * step was taken (deck's frame and the time), where the tileset was last
+     * put, and the timer that asks for an update once a step is due to settle.
      */
     groundOf?: TilesetLike | null;
     ground?: number | null;
+    sampledGround?: number | null;
     groundSearchFrame?: number | null;
     groundSearchTime?: number | null;
     placed?: Placement | null;
+    groundSettleTimer?: ReturnType<typeof setTimeout> | null;
   } | null;
   updateState(params: unknown): void;
   _updateTileset?(viewports: Record<string, unknown> | null | undefined): void;
   /** deck's, bound as the tileset's `onTileLoad` when the tileset is created. */
   _onTileLoad?(tile: unknown): void;
+  setNeedsUpdate?(): void;
+  finalizeState?(context: unknown): void;
 }
 
 /**
@@ -250,6 +256,7 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
         // A new tileset — another URL, or the same one loaded again — owes nothing to the last one's ground.
         state.groundOf = tileset;
         state.ground = null;
+        state.sampledGround = null;
         state.groundSearchFrame = null;
         state.groundSearchTime = now;
         state.placed = null;
@@ -264,10 +271,18 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
           stepTime: state.groundSearchTime,
         });
         const reading = groundUnder(tileset, view.longitude, view.latitude, view.id);
-        const next = nextGround(reading, view, settled, state.ground ?? null);
-        if (next.searched) {
+        const next = nextGround(reading, view, settled, state.ground ?? null, state.sampledGround ?? null);
+        if (next.searched || ('none' in reading && reading.none !== 'coarse')) {
+          // A step taken, or nothing there to search for: either way the next
+          // step, should one be needed, waits for this moment to settle.
           state.groundSearchFrame = state.frameNumber ?? null;
           state.groundSearchTime = now;
+        }
+        if (next.searched) {
+          this.askAgainOnceSettled(tileset);
+        }
+        if (next.sampled) {
+          state.sampledGround = next.ground;
         }
         state.ground = next.ground;
         ground = next.ground;
@@ -278,6 +293,40 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
       }
       state.placed = placement;
       return applyAltitude(tileset, placement.trim - placement.ground, { up: placement.up });
+    }
+
+    /**
+     * Asks deck for an update once a search step is due to settle by time
+     * (`searchSettled`): nothing else may bring `updateState` round on a quiet
+     * map, and the search would wait for the user to move it.
+     *
+     * One timer per layer, kept in its state, which deck hands from one
+     * instance of the layer to the next; it does nothing once the layer is
+     * finalized or its tileset replaced.
+     */
+    askAgainOnceSettled(tileset: TilesetLike): void {
+      const state = this.state;
+      if (!state) {
+        return;
+      }
+      if (state.groundSettleTimer) {
+        clearTimeout(state.groundSettleTimer);
+      }
+      state.groundSettleTimer = setTimeout(() => {
+        state.groundSettleTimer = null;
+        if (state.tileset3d === tileset) {
+          this.setNeedsUpdate?.();
+        }
+      }, SETTLE_TIME);
+    }
+
+    finalizeState(context: unknown): void {
+      const timer = this.state?.groundSettleTimer;
+      if (timer) {
+        clearTimeout(timer);
+        this.state!.groundSettleTimer = null;
+      }
+      super.finalizeState?.(context);
     }
   }
 

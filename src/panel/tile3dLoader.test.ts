@@ -247,21 +247,37 @@ describe('sturdyLoader', () => {
       expect(tile.gltf.json.meshes).toEqual([]);
     });
 
-    it('gives a glTF with no nodes or scenes empty lists of them as well', async () => {
+    it('gives a glTF with no nodes an empty list, and one with no scenes an empty scene to show', async () => {
+      // An empty list of scenes would leave deck's ScenegraphLayer with no
+      // scene to draw: the tile would never count as drawn, and loaders.gl
+      // would hold the tiles it replaces, traversing again for ever.
       const bare = { asset: { version: '2.0' } };
+      const filled = { ...bare, meshes: [], nodes: [], scenes: [{ nodes: [] }], scene: 0 };
       const processed = await sturdyLoader(fakeLoader('3d-tiles', () => ({ gltf: { ...bare } }))).parse(
         new ArrayBuffer(0),
         {},
         {}
       );
-      expect(processed.gltf).toEqual({ ...bare, meshes: [], nodes: [], scenes: [] });
+      expect(processed.gltf).toEqual(filled);
 
       const raw = await sturdyLoader(fakeLoader('3d-tiles', () => ({ gltf: { json: { ...bare } } }))).parse(
         new ArrayBuffer(0),
         {},
         {}
       );
-      expect(raw.gltf.json).toEqual({ ...bare, meshes: [], nodes: [], scenes: [] });
+      expect(raw.gltf.json).toEqual(filled);
+    });
+
+    it('keeps the scenes a glTF has, and the scene it names', async () => {
+      const scenes = [{ nodes: [0] }, { nodes: [1] }];
+      const gltf = { asset: { version: '2.0' }, nodes: [{}, {}], scenes, scene: 1 };
+      const parsed = await sturdyLoader(fakeLoader('3d-tiles', () => ({ gltf: { ...gltf } }))).parse(
+        new ArrayBuffer(0),
+        {},
+        {}
+      );
+      expect(parsed.gltf.scenes).toBe(scenes);
+      expect(parsed.gltf.scene).toBe(1);
     });
 
     it('leaves a glTF with meshes, and a tile with no glTF, as they were', async () => {

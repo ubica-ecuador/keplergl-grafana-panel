@@ -520,37 +520,47 @@ export function groundUnder(
  * reaches {@link SEARCH_CEILING}. Until then the last ground holds.
  *
  * Where the tree cannot be read yet, or has nothing under the point, a search
- * would find nothing: the last ground holds, or none before the first.
+ * would find nothing: the last ground a tile actually told holds, or none
+ * before the first. Not the last ground settled on, which may be a search's:
+ * OSM Buildings over the sea is searched while its western hemisphere is still
+ * to load, and once it has loaded there is nothing there — holding the
+ * searched ground would leave the coast's buildings that far underground.
  *
- * `previous` is the ground last settled on, null before the first.
+ * `previous` is the ground last settled on and `sampled` the last one taken
+ * from a sample, null before the first. `sampled` in the result says whether
+ * this one was.
  */
 export function nextGround(
   reading: GroundReading,
   view: { cameraHeight: number },
   settled: boolean,
-  previous: number | null
-): { ground: number; searched: boolean } {
+  previous: number | null,
+  sampled: number | null
+): { ground: number; searched: boolean; sampled: boolean } {
   const sample = 'height' in reading ? reading : null;
   const highUp = !(view.cameraHeight < SEARCH_CEILING);
   if (sample && (sample.leaf || highUp || sample.top - sample.height < view.cameraHeight)) {
-    return { ground: sample.height, searched: false };
+    return { ground: sample.height, searched: false, sampled: true };
   }
-  if (highUp || (!sample && 'none' in reading && reading.none !== 'coarse')) {
-    return { ground: previous ?? 0, searched: false };
+  if (!sample && 'none' in reading && reading.none !== 'coarse') {
+    return { ground: sampled ?? 0, searched: false, sampled: false };
+  }
+  if (highUp) {
+    return { ground: previous ?? 0, searched: false, sampled: false };
   }
   const known = Math.max(previous ?? -Infinity, sample?.height ?? -Infinity);
   const held = Number.isFinite(known) ? known : 0;
   if (!settled || held >= SEARCH_CEILING) {
-    return { ground: held, searched: false };
+    return { ground: held, searched: false, sampled: false };
   }
-  return { ground: Math.min(held + SEARCH_STEP, SEARCH_CEILING), searched: true };
+  return { ground: Math.min(held + SEARCH_STEP, SEARCH_CEILING), searched: true, sampled: false };
 }
 
 /** Traversals after a search step past which it counts as settled, whatever is still loading. */
 const SETTLE_FRAMES = 20;
 
 /** Milliseconds after a search step past which it counts as settled, whatever is still loading. */
-const SETTLE_TIME = 3_000;
+export const SETTLE_TIME = 3_000;
 
 /**
  * Whether the last search step (or the start, before the first) has had its

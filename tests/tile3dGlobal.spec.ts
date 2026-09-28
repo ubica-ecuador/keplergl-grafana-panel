@@ -97,6 +97,95 @@ async function drawnTiles(map: Locator): Promise<Array<{ url: string; height: nu
 }
 
 /**
+ * The tiles deck has built a sublayer for: the height of the origin their
+ * content says to draw round, and the one the sublayer actually draws round.
+ *
+ * Moving a loaded tile's content is half of it: deck builds a tile's sublayer
+ * once, and draws the old origin until told to build it again.
+ */
+async function sublayerOrigins(map: Locator): Promise<Array<{ url: string; content: number; drawn: number }>> {
+  return map.evaluate((node) => {
+    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
+    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
+    let deck: any = null;
+    while (fiber) {
+      const instance = fiber.stateNode;
+      if (instance && instance._deck && instance._deck.layerManager) {
+        deck = instance._deck;
+        break;
+      }
+      fiber = fiber.return;
+    }
+    if (!deck) {
+      throw new Error('deck.gl instance not found from map node');
+    }
+    const layer = deck.layerManager.getLayers().find((candidate: any) => candidate.state?.tileset3d);
+    const tiles: any[] = layer?.state?.tileset3d?.tiles ?? [];
+    const layerMap = layer?.state?.layerMap ?? {};
+    return tiles
+      .filter((tile) => tile.selected && tile.content?.cartographicOrigin && layerMap[tile.id]?.layer)
+      .map((tile) => ({
+        url: String(tile.contentUrl ?? tile.url ?? ''),
+        content: tile.content.cartographicOrigin[2],
+        drawn: layerMap[tile.id].layer.props.coordinateOrigin[2],
+      }));
+  });
+}
+
+/** Waits until deck draws every tile round the origin its content now says, and there is at least one. */
+async function expectSublayersFollow(map: Locator): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const origins = await sublayerOrigins(map);
+        return origins.length === 0
+          ? Infinity
+          : Math.max(...origins.map(({ content, drawn }) => Math.abs(content - drawn)));
+      },
+      { timeout: 30_000 }
+    )
+    .toBeLessThan(0.01);
+}
+
+/**
+ * Has the tree say the ground under the city is higher, as a deeper tile
+ * arriving would, and has deck update the layer — a change of ground with no
+ * change of props, which is what panning or a tile loading brings. deck
+ * rebuilds a tile's sublayer on a change of props by itself; on this, only if
+ * told to.
+ */
+async function raiseCityGround(map: Locator, metres: number): Promise<void> {
+  await map.evaluate((node, rise) => {
+    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
+    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
+    let deck: any = null;
+    while (fiber) {
+      const instance = fiber.stateNode;
+      if (instance && instance._deck && instance._deck.layerManager) {
+        deck = instance._deck;
+        break;
+      }
+      fiber = fiber.return;
+    }
+    if (!deck) {
+      throw new Error('deck.gl instance not found from map node');
+    }
+    const layer = deck.layerManager.getLayers().find((candidate: any) => candidate.state?.tileset3d);
+    const stack: any[] = Object.values(layer.state.tileset3d.roots ?? {});
+    while (stack.length > 0) {
+      const tile = stack.pop();
+      stack.push(...(tile.children ?? []));
+      const box = tile.header?.boundingVolume?.box;
+      if (box && /city\.glb/.test(String(tile.contentUrl ?? ''))) {
+        const length = Math.hypot(box[9], box[10], box[11]);
+        [0, 1, 2].forEach((axis) => (box[axis] += (box[9 + axis] / length) * rise));
+      }
+    }
+    layer.setNeedsUpdate();
+  }, metres);
+}
+
+/**
  * Sets the panel's 3D tile layer's Height adjustment, the way kepler's layer
  * panel does: through its store, with the action `wrapTo` builds (see
  * `narrowTimeFilterToMiddleHour` in flowfield.spec.ts).
@@ -165,6 +254,7 @@ test('a world of regions with an empty first tile draws, lowered by the ground u
     expect(tile.height, tile.url).toBeLessThan(400);
     expect(tile.drift, tile.url).toBeLessThan(1);
   }
+  await expectSublayersFollow(map);
   // The empty first tile no longer switches the layer off.
   await expect(panel.getByText(/An error in deck\.gl/)).toHaveCount(0);
 });
@@ -194,6 +284,7 @@ test('a world in one box centred on the Earth is lowered by the ground under the
     expect(tile.height, tile.url).toBeLessThan(400);
     expect(tile.drift, tile.url).toBeLessThan(1);
   }
+  await expectSublayersFollow(map);
 
   // Lifted by a Height adjustment once its tiles have loaded, the drawn tiles
   // go up with the tileset rather than staying where they were drawn first.
@@ -205,6 +296,14 @@ test('a world in one box centred on the Earth is lowered by the ground under the
     .toBeLessThan(1);
   const [after] = await drawnTiles(map);
   expect(after.height - before.height).toBeCloseTo(500, 0);
+  await expectSublayersFollow(map);
+
+  // And when the ground under the view changes with nothing else, the drawn
+  // tiles follow too.
+  await raiseCityGround(map, 300);
+  await expect.poll(() => tilesetShift(map), { timeout: 30_000 }).toBeGreaterThan(CITY_BOX_GROUND + 300 - 500 - 1);
+  expect(await tilesetShift(map)).toBeLessThan(CITY_BOX_GROUND + 300 - 500 + 1);
+  await expectSublayersFollow(map);
   await expect(panel.getByText(/An error in deck\.gl/)).toHaveCount(0);
 });
 

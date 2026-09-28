@@ -360,58 +360,83 @@ describe('nextGround', () => {
   const coarse = { none: 'coarse' } as const;
 
   it('takes a sample whose tile, lowered by it, ends below the camera: what lies in it can load', () => {
-    expect(nextGround({ height: 2400, top: 2700, leaf: false }, street, true, 0)).toEqual({
+    expect(nextGround({ height: 2400, top: 2700, leaf: false }, street, true, 0, null)).toEqual({
       ground: 2400,
       searched: false,
+      sampled: true,
     });
   });
 
   it('takes a leaf however tall it is: there is nothing further down to find', () => {
     // A camera 545 m up and a city tile 2 km across: searching on would only
     // have sunk the tileset to the ceiling.
-    expect(nextGround({ height: 2490, top: 4800, leaf: true }, { cameraHeight: 545 }, true, 0)).toEqual({
+    expect(nextGround({ height: 2490, top: 4800, leaf: true }, { cameraHeight: 545 }, true, 0, null)).toEqual({
       ground: 2490,
       searched: false,
+      sampled: true,
     });
   });
 
   it('takes a tall sample as it is from high up, where the whole mesh is below the camera anyway', () => {
-    expect(nextGround({ height: 1800, top: 4200, leaf: false }, region, true, 0)).toEqual({
+    expect(nextGround({ height: 1800, top: 4200, leaf: false }, region, true, 0, null)).toEqual({
       ground: 1800,
       searched: false,
+      sampled: true,
     });
-    expect(nextGround(coarse, region, true, 1800)).toEqual({ ground: 1800, searched: false });
+    expect(nextGround(coarse, region, true, 1800, 1800)).toEqual({ ground: 1800, searched: false, sampled: false });
   });
 
   it('holds while tiles are still loading', () => {
-    expect(nextGround(coarse, street, false, 1500)).toEqual({ ground: 1500, searched: false });
-    expect(nextGround(coarse, street, false, null)).toEqual({ ground: 0, searched: false });
+    expect(nextGround(coarse, street, false, 1500, null)).toEqual({ ground: 1500, searched: false, sampled: false });
+    expect(nextGround(coarse, street, false, null, null)).toEqual({ ground: 0, searched: false, sampled: false });
   });
 
   it('searches downwards once everything asked for has loaded and only tiles too big to tell are known', () => {
     // Close up over Cuenca the mesh sits above the camera, so the tiles that
     // would say where the ground is are never asked for: lower it, and look again.
-    expect(nextGround(coarse, street, true, null)).toEqual({ ground: 1500, searched: true });
-    expect(nextGround(coarse, street, true, 1500)).toEqual({ ground: 3000, searched: true });
+    expect(nextGround(coarse, street, true, null, null)).toEqual({ ground: 1500, searched: true, sampled: false });
+    expect(nextGround(coarse, street, true, 1500, null)).toEqual({ ground: 3000, searched: true, sampled: false });
     // A tile from the valley floor to the peaks still reaches above the camera once lowered by its floor.
-    expect(nextGround({ height: 2100, top: 4400, leaf: false }, street, true, 1500)).toEqual({
+    expect(nextGround({ height: 2100, top: 4400, leaf: false }, street, true, 1500, null)).toEqual({
       ground: 3600,
       searched: true,
+      sampled: false,
     });
   });
 
-  it('does not search where nothing can be read, or where nothing is there', () => {
+  it('does not search where nothing can be read, or where nothing is there, and holds the last ground sampled', () => {
     // No tree for the view yet, or OSM Buildings over the sea: lowering the
     // tileset would find nothing, and would sink the coast's buildings.
-    expect(nextGround({ none: 'unreadable' }, street, true, null)).toEqual({ ground: 0, searched: false });
-    expect(nextGround({ none: 'unreadable' }, street, true, 2400)).toEqual({ ground: 2400, searched: false });
-    expect(nextGround({ none: 'missed' }, street, true, null)).toEqual({ ground: 0, searched: false });
-    expect(nextGround({ none: 'missed' }, street, true, 2400)).toEqual({ ground: 2400, searched: false });
+    for (const none of ['unreadable', 'missed'] as const) {
+      expect(nextGround({ none }, street, true, null, null)).toEqual({ ground: 0, searched: false, sampled: false });
+      expect(nextGround({ none }, street, true, 2400, 2400)).toEqual({ ground: 2400, searched: false, sampled: false });
+      expect(nextGround({ none }, region, true, 2400, 2400)).toEqual({ ground: 2400, searched: false, sampled: false });
+    }
+  });
+
+  it('drops a searched ground once the reading turns to nothing there, as OSM Buildings over the sea', () => {
+    // Before the western hemisphere's own tileset loads, the sea off Ecuador is
+    // under a tile too big to tell, and the search lowers the tileset. Once it
+    // loads there is nothing there: holding the searched ground would leave the
+    // coast's buildings that far underground.
+    const searched = nextGround(coarse, street, true, null, null);
+    expect(searched).toEqual({ ground: 1500, searched: true, sampled: false });
+    expect(nextGround({ none: 'missed' }, street, true, searched.ground, null)).toEqual({
+      ground: 0,
+      searched: false,
+      sampled: false,
+    });
+    // Back to the last ground a tile actually told, when there was one.
+    expect(nextGround({ none: 'missed' }, street, true, 3000, 2400)).toEqual({
+      ground: 2400,
+      searched: false,
+      sampled: false,
+    });
   });
 
   it('never searches past the highest ground there is', () => {
-    expect(nextGround(coarse, street, true, 8500)).toEqual({ ground: 9000, searched: true });
-    expect(nextGround(coarse, street, true, 9000)).toEqual({ ground: 9000, searched: false });
+    expect(nextGround(coarse, street, true, 8500, null)).toEqual({ ground: 9000, searched: true, sampled: false });
+    expect(nextGround(coarse, street, true, 9000, null)).toEqual({ ground: 9000, searched: false, sampled: false });
   });
 });
 

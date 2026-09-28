@@ -221,18 +221,26 @@ function boxRegions(header: Record<string, any> | null | undefined, underTransfo
 }
 
 /**
- * Gives a glTF with no meshes, nodes or scenes empty lists of them, processed
- * or not: luma.gl walks each without asking whether there is one.
+ * Gives a glTF with no meshes or nodes empty lists of them, processed or not:
+ * luma.gl walks each without asking whether there is one.
+ *
+ * One with no scenes gets one empty scene, and names it: with an empty list,
+ * deck's ScenegraphLayer finds no scene to draw, never marks the tile drawn,
+ * and loaders.gl holds the tiles it replaces and traverses again for ever.
  */
 function fillMeshes(gltf: Record<string, any> | null | undefined): void {
   if (!gltf || typeof gltf !== 'object') {
     return;
   }
   const target = gltf.json && typeof gltf.json === 'object' ? gltf.json : gltf;
-  for (const key of ['meshes', 'nodes', 'scenes']) {
+  for (const key of ['meshes', 'nodes']) {
     if (!Array.isArray(target[key])) {
       target[key] = [];
     }
+  }
+  if (!Array.isArray(target.scenes)) {
+    target.scenes = [{ nodes: [] }];
+    target.scene = 0;
   }
 }
 
