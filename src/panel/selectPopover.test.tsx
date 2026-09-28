@@ -161,3 +161,33 @@ it('stays out of a panel that has no selection to make', () => {
 
   expect(screen.queryByRole('button')).not.toBeInTheDocument();
 });
+
+describe('in compare mode', () => {
+  // kepler hands the hover popup the pinned row as `primaryData`, to compare
+  // against; the pinned popup has none.
+  function mountWith(layerHoverProp: unknown) {
+    const Content = withSelectButton((_: { layerHoverProp?: unknown }) => <div>the entity&apos;s fields</div>);
+    return render(
+      <Provider store={makeStore(pinned) as never}>
+        <SelectContext.Provider value={api()}>
+          <Content layerHoverProp={layerHoverProp} />
+        </SelectContext.Provider>
+      </Provider>
+    );
+  }
+
+  it('keeps Select off the popup that follows the pointer', () => {
+    mountWith({ data: { _rowIndex: 4 }, primaryData: { _rowIndex: 0 } });
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('keeps it off even when the pointer is on the pinned entity itself', () => {
+    mountWith({ data: { _rowIndex: 0 }, primaryData: { _rowIndex: 0 } });
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('still offers it on the pinned popup', () => {
+    mountWith({ data: { _rowIndex: 0 } });
+    expect(screen.getByRole('button', { name: 'Select' })).toBeInTheDocument();
+  });
+});

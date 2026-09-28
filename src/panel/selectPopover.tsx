@@ -143,8 +143,14 @@ export function withSelectButton<P extends object>(Content: React.ComponentType<
     const api = useContext(SelectContext);
     const pinned = usePinned();
     // The hover popup selects nothing: hovering is not a gesture with intent,
-    // and the entity it shows is not the one the pinned popup holds.
-    const offer = Boolean(api?.armed) && pinned;
+    // and the entity it shows is not the one the pinned popup holds. Outside
+    // compare mode kepler shows no hover popup while one is pinned, so
+    // `pinned` is enough. In compare mode both show, and kepler marks the hover
+    // one by handing it the pinned row as `primaryData` to compare against.
+    const comparing = Boolean(
+      (props as { layerHoverProp?: { primaryData?: unknown } | null }).layerHoverProp?.primaryData
+    );
+    const offer = Boolean(api?.armed) && pinned && !comparing;
     const selected = offer && api ? api.isSelected() : false;
 
     return (
