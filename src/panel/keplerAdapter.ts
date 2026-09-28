@@ -77,6 +77,7 @@ import { holdTilesetFraming } from './tile3dFraming';
 import { VECTOR_FIELD_TYPE } from './vectorFieldLayer';
 import { SYMBOL_TYPE } from './symbolLayer';
 import { foldSavedSplitMaps } from './splitMapsNormalise';
+import { chartFilterIds, withoutChartFilters, type ChartLike } from './chartFilters';
 
 /**
  * The ONLY module that talks to the kepler.gl API.
@@ -1107,7 +1108,7 @@ const RESUME_GIVE_UP_MS = 5_000;
  */
 export function capturePlayingTimeFilter(store: Store, datasets: PanelDataset[]): PlayingTimeFilter | null {
   const visState = getVisState(store);
-  const filter = visState?.filters.find((f) => f.type === TIME_FILTER_TYPE);
+  const filter = visState ? ownFilters(visState).find((f) => f.type === TIME_FILTER_TYPE) : undefined;
   if (!visState || !filter?.isAnimating || !isWindow(filter.value)) {
     return null;
   }
@@ -1299,6 +1300,10 @@ interface VisStateLike {
   }>;
   /** Filters parked by a dataset replace, waiting to be merged back — in their saved form. */
   filterToBeMerged?: Array<{ id?: string; name?: string[] | string; dataId?: string[] | string }>;
+  /** kepler's charts; a chart's cross-filters live among `filters`. See `chartFilters.ts`. */
+  charts?: ChartLike[];
+  /** Charts parked by a dataset replace, waiting to be merged back. */
+  chartsToBeMerged?: ChartLike[];
   datasets: Record<
     string,
     {
@@ -1380,7 +1385,8 @@ export interface KeplerFilter {
 
 /** The map's current filters, for driving dashboard variables. */
 export function readFilters(store: Store): KeplerFilter[] {
-  return getVisState(store)?.filters ?? [];
+  const visState = getVisState(store);
+  return visState ? ownFilters(visState) : [];
 }
 
 /**
@@ -1391,7 +1397,8 @@ export function readFilters(store: Store): KeplerFilter[] {
  * kepler failed to validate is parked here as well, and stays.
  */
 export function readParkedFilters(store: Store): KeplerFilter[] {
-  return getVisState(store)?.filterToBeMerged ?? [];
+  const visState = getVisState(store);
+  return visState ? withoutChartFilters(visState.filterToBeMerged ?? [], chartOwnedFilterIds(visState)) : [];
 }
 
 /**
@@ -1867,7 +1874,7 @@ function applyFilterValue(store: Store, dispatch: Dispatch, field: string, value
     return false;
   }
 
-  const existing = visState.filters.find((f) => filterHasField(f, field));
+  const existing = ownFilters(visState).find((f) => filterHasField(f, field));
   if (existing) {
     dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(existing.id, undefined, undefined, value)));
     return true;
@@ -1885,8 +1892,14 @@ function applyFilterValue(store: Store, dispatch: Dispatch, field: string, value
 
 /** Removes the filter on `field`, if any — clears a variable-driven selection. */
 export function removeFieldFilter(store: Store, dispatch: Dispatch, field: string): void {
-  const filters = getVisState(store)?.filters ?? [];
-  const idx = filters.findIndex((f) => filterHasField(f, field));
+  const visState = getVisState(store);
+  if (!visState) {
+    return;
+  }
+  // The index kepler's removeFilter takes is the filter's place in the whole
+  // list, chart-owned filters included.
+  const target = ownFilters(visState).find((f) => filterHasField(f, field));
+  const idx = target ? visState.filters.indexOf(target) : -1;
   if (idx >= 0) {
     dispatch(wrapTo(KEPLER_INSTANCE_ID, removeFilter(idx)));
   }
@@ -1898,6 +1911,20 @@ export type MapBounds = [number, number, number, number];
 function getVisState(store: Store): VisStateLike | null {
   const state = store.getState() as { keplerGl?: Record<string, { visState?: VisStateLike }> };
   return state.keplerGl?.[KEPLER_INSTANCE_ID]?.visState ?? null;
+}
+
+/** The ids of the filters kepler's charts own, parked charts included. */
+function chartOwnedFilterIds(visState: VisStateLike): Set<string> {
+  return chartFilterIds([...(visState.charts ?? []), ...(visState.chartsToBeMerged ?? [])]);
+}
+
+/**
+ * kepler's filters minus the ones a chart owns: what every sync here reads.
+ * A chart's cross-filter narrows the map and its charts only; see
+ * `chartFilters.ts` for why a sync must never see it.
+ */
+function ownFilters(visState: VisStateLike): VisStateLike['filters'] {
+  return withoutChartFilters(visState.filters, chartOwnedFilterIds(visState));
 }
 
 /**
@@ -1920,13 +1947,13 @@ export function readBasemapId(store: Store): string | null {
 /** The map's current time-filter window, or null if it has no time filter. */
 export function readTimeRange(store: Store): TimeRangeMs | null {
   const visState = getVisState(store);
-  return visState ? readTimeFilterValue(visState.filters) : null;
+  return visState ? readTimeFilterValue(ownFilters(visState)) : null;
 }
 
 /** The full time extent of the data behind the map's time filter. */
 export function readTimeDomain(store: Store): TimeRangeMs | null {
   const visState = getVisState(store);
-  return visState ? readTimeFilterDomain(visState.filters) : null;
+  return visState ? readTimeFilterDomain(ownFilters(visState)) : null;
 }
 
 /**
@@ -1941,7 +1968,8 @@ export function readTimeDomain(store: Store): TimeRangeMs | null {
  * frames, so it is the user's call rather than the code's.
  */
 export function isTimeFilterAnimating(store: Store): boolean {
-  return Boolean(getVisState(store)?.filters.find((f) => f.type === TIME_FILTER_TYPE)?.isAnimating);
+  const visState = getVisState(store);
+  return Boolean(visState && ownFilters(visState).find((f) => f.type === TIME_FILTER_TYPE)?.isAnimating);
 }
 
 /**
@@ -1961,7 +1989,7 @@ export function ensureTimeFilter(store: Store, dispatch: Dispatch): boolean {
   if (!visState) {
     return false;
   }
-  if (visState.filters.some((f) => f.type === TIME_FILTER_TYPE)) {
+  if (ownFilters(visState).some((f) => f.type === TIME_FILTER_TYPE)) {
     return true;
   }
 
@@ -2039,7 +2067,7 @@ export function pushTimeRange(store: Store, dispatch: Dispatch, range: TimeRange
 
   const value: [number, number] = [range.from, range.to];
 
-  const existing = visState.filters.find((f) => f.type === TIME_FILTER_TYPE);
+  const existing = ownFilters(visState).find((f) => f.type === TIME_FILTER_TYPE);
   if (existing) {
     dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(existing.id, undefined, undefined, value)));
     return true;
