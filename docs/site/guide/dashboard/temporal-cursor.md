@@ -63,8 +63,8 @@ cursor is drawn on it as an amber line. With **Map hover drives graphs** on, hov
 publishes the time under the pointer. Dragging a handle publishes nothing: the pointer is moving the
 brush, not asking about a time.
 
-The minified bar sits between two dates, so in a narrow panel it has little room to hover. Give the
-map at least half of the dashboard's width.
+The minified bar sits between two dates, so in a narrow panel it has little room to hover. The
+enlarged one spans the widget and draws the data under it, which makes it the easier one to hover.
 
 ## What it does not do
 
@@ -81,7 +81,8 @@ on one 30-minute trip:
 
 - a real road from Hamburg to Reading, Pennsylvania (© OpenStreetMap contributors, ODbL, routed by
   OSRM), with synthetic speed and elevation;
-- the track coloured by speed on the same scale as the speed graph;
+- a 3D view of the track coloured by speed, and an enlarged time bar plotting the mean speed per
+  minute;
 - the map and the stats following the dashboard range;
 - the map's time brush shaded on both graphs, with
   [time window variables](./time-window-variables#shade-the-window-on-the-graphs).

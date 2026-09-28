@@ -28,6 +28,12 @@ data sources and the data is inlined either way:
   * provisioning-sources/dashboards/gps-truck-track.json — Infinity, for :3002
     and grafana.ubica.ec, which have no TestData.
 
+The map's look — 3D view, basemap, layer style, legend, time widget — is
+testdata/gps-truck/map-config.json: the panel's `mapConfig` as saved from the
+editor. To restyle the map, change it in Grafana, export the dashboard and
+replace that file with `options.mapConfig` of the map panel; this script only
+resets the time filter to the track's extent and the dashboard's time zone.
+
 Neither source filters by time, so the map and the stats cut the rows to the
 dashboard range with a `$__from`/`$__to` transformation — what `$__timeFilter`
 would do in a database query. The map's time brush goes to two hidden
@@ -44,6 +50,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ROUTE = ROOT / 'testdata' / 'gps-truck' / 'route.json'
+# The map as saved from the panel's editor, data-free. Replace it to restyle the map.
+MAP_CONFIG = ROOT / 'testdata' / 'gps-truck' / 'map-config.json'
 OSRM = (
     'https://router.project-osrm.org/route/v1/driving/-75.9816,40.5557;-75.9270,40.3357'
     '?overview=full&geometries=geojson&annotations=speed'
@@ -193,8 +201,6 @@ COLUMNS = ['time', 'latitude', 'longitude', 'speed_kmh', 'elevation_m', 'distanc
 TESTDATA = {'type': 'grafana-testdata-datasource', 'uid': 'trlxrdZVk'}
 INFINITY = {'type': 'yesoreyeram-infinity-datasource', 'uid': 'infinity'}
 DASHBOARD_DS = {'type': 'datasource', 'uid': '-- Dashboard --'}
-# The map's quantize ramp matches Grafana's continuous-GrYlRd on the speed graph.
-SPEED_COLORS = ['#1a9850', '#91cf60', '#fee08b', '#fc8d59', '#d73027']
 # Neither source filters by time: this is the `$__timeFilter` a database would apply.
 IN_RANGE = {
     'id': 'filterByValue',
@@ -305,12 +311,12 @@ def stat(pid, title, x, field, calc, unit, color, decimals=None):
     }
 
 
-def series(pid, title, y, field, unit, custom, color, extra=None):
+def series(pid, title, y, h, field, unit, custom, color, extra=None):
     return {
         'id': pid,
         'type': 'timeseries',
         'title': title,
-        'gridPos': {'h': 10, 'w': 12, 'x': 0, 'y': y},
+        'gridPos': {'h': h, 'w': 10, 'x': 0, 'y': y},
         'datasource': DASHBOARD_DS,
         'targets': [{'datasource': DASHBOARD_DS, 'refId': 'A', 'panelId': 1}],
         'transformations': [{'id': 'filterFieldsByName', 'options': {'include': {'names': ['time', field]}}}],
@@ -323,6 +329,16 @@ def series(pid, title, y, field, unit, custom, color, extra=None):
     }
 
 
+def map_config(t):
+    config = json.loads(MAP_CONFIG.read_text())
+    time_filter = config['config']['visState']['filters'][0]
+    # The window opens on the whole track, and the time bar reads the dashboard's
+    # time zone: a filter saved from the editor carries neither reliably.
+    time_filter['value'] = [t[0], t[-1]]
+    time_filter['timezone'] = 'America/New_York'
+    return config
+
+
 def dashboard(data, source):
     t = data['time']
     map_panel = {
@@ -331,8 +347,7 @@ def dashboard(data, source):
         'title': 'GPS position',
         'description': 'Route © OpenStreetMap contributors (ODbL), routed by OSRM; speed and elevation are '
         'synthetic. Hover a graph, the track or the time bar: the others follow.',
-        # Half the width: the minified time bar squeezes between two dates and needs room.
-        'gridPos': {'h': 20, 'w': 12, 'x': 12, 'y': 4},
+        'gridPos': {'h': 21, 'w': 14, 'x': 10, 'y': 4},
         'transformations': [IN_RANGE],
         'datasource': TESTDATA if source == 'testdata' else INFINITY,
         'targets': [map_target(data, source)],
@@ -343,80 +358,7 @@ def dashboard(data, source):
             'hoverSync': True,
             'hoverPublishSpike': True,
             'hoverMaxAgeSeconds': 10,
-            'mapConfig': {
-                'version': 'v1',
-                'config': {
-                    'visState': {
-                        'layers': [
-                            {
-                                'id': 'gps-track',
-                                'type': 'point',
-                                'config': {
-                                    'dataId': 'grafana-A',
-                                    'label': 'GPS track',
-                                    'columnMode': 'points',
-                                    'columns': {'lat': 'latitude', 'lng': 'longitude'},
-                                    'isVisible': True,
-                                    'visConfig': {
-                                        'radius': 3,
-                                        'fixedRadius': False,
-                                        'opacity': 0.9,
-                                        'outline': False,
-                                        'filled': True,
-                                        'colorRange': {
-                                            'name': 'Truck speed',
-                                            'type': 'sequential',
-                                            'category': 'Custom',
-                                            'colors': SPEED_COLORS,
-                                        },
-                                    },
-                                },
-                                'visualChannels': {
-                                    'colorField': {'name': 'speed_kmh', 'type': 'real'},
-                                    'colorScale': 'quantize',
-                                },
-                            }
-                        ],
-                        'filters': [
-                            {
-                                'dataId': ['grafana-A'],
-                                'id': 'gps-time',
-                                'name': ['time'],
-                                'type': 'timeRange',
-                                'value': [t[0], t[-1]],
-                                'enabled': True,
-                                'view': 'minified',
-                                'plotType': {'type': 'histogram'},
-                                'animationWindow': 'free',
-                                'speed': 1,
-                                'timezone': 'America/New_York',
-                            }
-                        ],
-                        'splitMaps': [],
-                        'interactionConfig': {
-                            'tooltip': {
-                                'enabled': True,
-                                'fieldsToShow': {
-                                    'grafana-A': [
-                                        {'name': 'speed_kmh', 'format': None},
-                                        {'name': 'elevation_m', 'format': None},
-                                        {'name': 'distance_km', 'format': None},
-                                    ]
-                                },
-                            }
-                        },
-                    },
-                    'mapState': {
-                        'latitude': 40.447,
-                        'longitude': -75.955,
-                        'zoom': 10.6,
-                        'bearing': 0,
-                        'pitch': 0,
-                        'dragRotate': False,
-                    },
-                    'mapStyle': {'styleType': 'grafana-topographic-terrain'},
-                },
-            },
+            'mapConfig': map_config(t),
         },
     }
     panels = [
@@ -430,6 +372,7 @@ def dashboard(data, source):
             2,
             'Speed (km/h)',
             4,
+            10,
             'speed_kmh',
             'velocitykmh',
             {'lineWidth': 2, 'fillOpacity': 20, 'gradientMode': 'scheme', 'showPoints': 'never'},
@@ -440,6 +383,7 @@ def dashboard(data, source):
             3,
             'Elevation (m)',
             14,
+            11,
             'elevation_m',
             'lengthm',
             {'lineWidth': 2, 'fillOpacity': 35, 'gradientMode': 'opacity', 'showPoints': 'never'},

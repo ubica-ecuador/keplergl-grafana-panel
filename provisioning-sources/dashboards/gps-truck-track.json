@@ -483,7 +483,7 @@
       "title": "Speed (km/h)",
       "gridPos": {
         "h": 10,
-        "w": 12,
+        "w": 10,
         "x": 0,
         "y": 4
       },
@@ -546,8 +546,8 @@
       "type": "timeseries",
       "title": "Elevation (m)",
       "gridPos": {
-        "h": 10,
-        "w": 12,
+        "h": 11,
+        "w": 10,
         "x": 0,
         "y": 14
       },
@@ -610,9 +610,9 @@
       "title": "GPS position",
       "description": "Route \u00a9 OpenStreetMap contributors (ODbL), routed by OSRM; speed and elevation are synthetic. Hover a graph, the track or the time bar: the others follow.",
       "gridPos": {
-        "h": 20,
-        "w": 12,
-        "x": 12,
+        "h": 21,
+        "w": 14,
+        "x": 10,
         "y": 4
       },
       "transformations": [
@@ -717,106 +717,316 @@
         "mapConfig": {
           "version": "v1",
           "config": {
+            "mapState": {
+              "bearing": 24,
+              "dragRotate": true,
+              "globe": {
+                "config": {
+                  "adminLines": true,
+                  "adminLinesColor": [
+                    40,
+                    63,
+                    93
+                  ],
+                  "atmosphere": true,
+                  "azimuth": false,
+                  "azimuthAngle": 45,
+                  "backgroundColor": [
+                    4,
+                    9,
+                    17
+                  ],
+                  "basemap": true,
+                  "hugeHalo": true,
+                  "hugeHaloOpacity": 0.2,
+                  "hugeHaloRadius": 3.5,
+                  "labels": false,
+                  "labelsColor": [
+                    114.75,
+                    114.75,
+                    114.75
+                  ],
+                  "stars": true,
+                  "surface": true,
+                  "surfaceColor": [
+                    9,
+                    16,
+                    29
+                  ],
+                  "terminator": true,
+                  "terminatorOpacity": 0.35,
+                  "water": true,
+                  "waterColor": [
+                    17,
+                    35,
+                    48
+                  ]
+                },
+                "enabled": false
+              },
+              "isSplit": false,
+              "isViewportSynced": true,
+              "isZoomLocked": false,
+              "latitude": 40.41636171352446,
+              "longitude": -75.95959742419991,
+              "mapSplitMode": "SINGLE_MAP",
+              "mapViewMode": "MODE_3D",
+              "maxPitch": 85,
+              "pitch": 50,
+              "splitMapViewports": [],
+              "swipeComparePercentage": 50,
+              "zoom": 11.309422056802463
+            },
+            "mapStyle": {
+              "backgroundColor": [
+                0,
+                0,
+                0
+              ],
+              "mapStyles": {},
+              "styleType": "dark-matter",
+              "threeDBuildingColor": [
+                15.035172933000911,
+                15.035172933000911,
+                15.035172933000911
+              ],
+              "topLayerGroups": {},
+              "visibleLayerGroups": {
+                "3d building": false,
+                "border": false,
+                "building": true,
+                "label": true,
+                "land": true,
+                "road": true,
+                "water": true
+              }
+            },
+            "uiState": {
+              "locale": "en",
+              "mapControls": {
+                "chart": {
+                  "active": false
+                },
+                "mapLegend": {
+                  "active": true
+                }
+              },
+              "theme": "dark"
+            },
             "visState": {
-              "layers": [
+              "animationConfig": {
+                "speed": 1
+              },
+              "annotations": [],
+              "charts": [
                 {
-                  "id": "gps-track",
-                  "type": "point",
-                  "config": {
-                    "dataId": "grafana-A",
-                    "label": "GPS track",
-                    "columnMode": "points",
-                    "columns": {
-                      "lat": "latitude",
-                      "lng": "longitude"
-                    },
-                    "isVisible": true,
-                    "visConfig": {
-                      "radius": 3,
-                      "fixedRadius": false,
-                      "opacity": 0.9,
-                      "outline": false,
-                      "filled": true,
-                      "colorRange": {
-                        "name": "Truck speed",
-                        "type": "sequential",
-                        "category": "Custom",
-                        "colors": [
-                          "#1a9850",
-                          "#91cf60",
-                          "#fee08b",
-                          "#fc8d59",
-                          "#d73027"
-                        ]
-                      }
-                    }
-                  },
-                  "visualChannels": {
-                    "colorField": {
+                  "applyFilters": true,
+                  "axis": {
+                    "aggregation": "maximum",
+                    "field": {
                       "name": "speed_kmh",
                       "type": "real"
                     },
-                    "colorScale": "quantize"
-                  }
+                    "title": "speed_kmh"
+                  },
+                  "chartDisplay": {
+                    "format": "DECIMAL_SHORT_COMMA",
+                    "showCaption": true
+                  },
+                  "dataId": "grafana-A",
+                  "display": {
+                    "isConfigActive": false
+                  },
+                  "id": "e3xzte",
+                  "pinned": false,
+                  "title": "max km/h",
+                  "type": "bigNumber"
                 }
               ],
+              "editor": {
+                "features": [],
+                "visible": true
+              },
+              "effects": [],
               "filters": [
                 {
+                  "animationWindow": "free",
                   "dataId": [
                     "grafana-A"
                   ],
-                  "id": "gps-time",
+                  "enabled": true,
+                  "id": "5f4ydce56",
                   "name": [
                     "time"
                   ],
+                  "plotType": {
+                    "aggregation": "average",
+                    "defaultTimeFormat": "L  LT",
+                    "interval": "1-minute",
+                    "type": "lineChart"
+                  },
+                  "speed": 1,
                   "type": "timeRange",
                   "value": [
                     1768313444000,
                     1768315255000
                   ],
-                  "enabled": true,
-                  "view": "minified",
-                  "plotType": {
-                    "type": "histogram"
+                  "view": "enlarged",
+                  "yAxis": {
+                    "name": "speed_kmh",
+                    "type": "real"
                   },
-                  "animationWindow": "free",
-                  "speed": 1,
                   "timezone": "America/New_York"
                 }
               ],
-              "splitMaps": [],
               "interactionConfig": {
+                "brush": {
+                  "enabled": false,
+                  "size": 0.5
+                },
+                "coordinate": {
+                  "enabled": false
+                },
+                "geocoder": {
+                  "enabled": false,
+                  "limitSearch": false
+                },
                 "tooltip": {
+                  "compareMode": false,
+                  "compareType": "absolute",
                   "enabled": true,
                   "fieldsToShow": {
                     "grafana-A": [
                       {
-                        "name": "speed_kmh",
-                        "format": null
+                        "name": "speed_kmh"
                       },
                       {
-                        "name": "elevation_m",
-                        "format": null
+                        "name": "elevation_m"
                       },
                       {
-                        "name": "distance_km",
-                        "format": null
+                        "name": "distance_km"
                       }
                     ]
                   }
                 }
-              }
-            },
-            "mapState": {
-              "latitude": 40.447,
-              "longitude": -75.955,
-              "zoom": 10.6,
-              "bearing": 0,
-              "pitch": 0,
-              "dragRotate": false
-            },
-            "mapStyle": {
-              "styleType": "grafana-topographic-terrain"
+              },
+              "layerBlending": "normal",
+              "layerOrder": [
+                "qhyb34"
+              ],
+              "layers": [
+                {
+                  "config": {
+                    "color": [
+                      77,
+                      193,
+                      156
+                    ],
+                    "columnMode": "points",
+                    "columns": {
+                      "lat": "latitude",
+                      "lng": "longitude"
+                    },
+                    "dataId": "grafana-A",
+                    "hidden": false,
+                    "highlightColor": [
+                      252,
+                      242,
+                      26,
+                      255
+                    ],
+                    "isVisible": true,
+                    "label": "gps",
+                    "textLabel": [
+                      {
+                        "alignment": "center",
+                        "anchor": "start",
+                        "background": false,
+                        "backgroundColor": [
+                          0,
+                          0,
+                          200,
+                          255
+                        ],
+                        "collisionEnabled": false,
+                        "color": [
+                          255,
+                          255,
+                          255
+                        ],
+                        "offset": [
+                          0,
+                          0
+                        ],
+                        "outlineColor": [
+                          255,
+                          0,
+                          0,
+                          255
+                        ],
+                        "outlineWidth": 0,
+                        "size": 18,
+                        "weight": 400
+                      }
+                    ],
+                    "visConfig": {
+                      "allowHover": true,
+                      "billboard": false,
+                      "colorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#7400B8",
+                          "#6055CC",
+                          "#3D82DC",
+                          "#4CA7DE",
+                          "#52CCE2",
+                          "#72EFDD"
+                        ],
+                        "name": "ViovetOcean",
+                        "type": "sequential"
+                      },
+                      "filled": true,
+                      "fixedRadius": false,
+                      "opacity": 0.8,
+                      "outline": false,
+                      "radius": 25.2,
+                      "radiusRange": [
+                        0,
+                        50
+                      ],
+                      "showHighlightColor": true,
+                      "showNeighborOnHover": false,
+                      "strokeColorRange": {
+                        "category": "Uber",
+                        "colors": [
+                          "#4C0035",
+                          "#880030",
+                          "#B72F15",
+                          "#D6610A",
+                          "#EF9100",
+                          "#FFC300"
+                        ],
+                        "name": "Global Warming",
+                        "type": "sequential"
+                      },
+                      "thickness": 2
+                    }
+                  },
+                  "id": "qhyb34",
+                  "type": "point",
+                  "visualChannels": {
+                    "colorField": {
+                      "name": "speed_kmh",
+                      "type": "real"
+                    },
+                    "colorScale": "quantile",
+                    "sizeScale": "linear",
+                    "strokeColorScale": "quantile"
+                  }
+                }
+              ],
+              "overlayBlending": "normal",
+              "splitMaps": []
             }
           }
         }

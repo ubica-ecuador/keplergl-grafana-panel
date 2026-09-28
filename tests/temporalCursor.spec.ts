@@ -110,31 +110,28 @@ test('Point hover drives the graph and other maps, then releases the cursor with
   expect(queries).toBe(0);
 });
 
-// The map's own time bar joins the shared cursor, both ways.
-test('the time bar publishes its hovered time and draws a graph’s cursor', async ({
+// The map's own time bar joins the shared cursor, both ways. A round trip, so
+// the test holds for either widget size: where a graph's cursor lands on the
+// bar is where hovering the bar must put the graph's cursor back.
+test('the time bar draws a graph’s cursor and publishes its hovered time back', async ({
   gotoDashboardPage,
   readProvisionedDashboard,
   page,
 }) => {
   test.setTimeout(120_000);
-  // Tall enough that the minified time bar at the foot of the map is on screen.
+  // Tall enough that the time widget at the foot of the map is on screen.
   await page.setViewportSize({ width: 1920, height: 1300 });
-  const fixture = await readProvisionedDashboard({ fileName: 'gpsTruckTrack.json' });
-  const range = { from: Date.parse(fixture.time.from), to: Date.parse(fixture.time.to) };
-  const mapPanel = fixture.panels.find((panel: { id: number }) => panel.id === 1);
-  const [first, last] = mapPanel.options.mapConfig.config.visState.filters[0].value as [number, number];
-  const dashboard = await gotoDashboardPage(fixture);
+  const dashboard = await gotoDashboardPage(await readProvisionedDashboard({ fileName: 'gpsTruckTrack.json' }));
   const panel = dashboard.getPanelByTitle('GPS position').locator;
   const map = panel.locator('.maplibregl-map').first();
   await expect(map).toBeVisible({ timeout: 60_000 });
-  const track = panel.locator('.animation-control__slider .kg-range-slider').first();
-  await expect(track).toBeVisible({ timeout: 60_000 });
   const line = panel.locator('.panel-time-bar-cursor').first();
+  await expect(line).toBeAttached({ timeout: 60_000 });
+  const bar = line.locator('..');
   const plot = dashboard.getPanelByTitle('Speed (km/h)').locator.locator('.u-over');
   const crosshair = dashboard.getPanelByTitle('Speed (km/h)').locator.locator('.u-cursor-x');
   await expect(plot).toBeVisible();
   const plotBox = (await plot.boundingBox())!;
-  const bar = (await track.boundingBox())!;
   let queries = 0;
   page.on('request', (request) => {
     if (request.url().includes('/api/ds/query')) {
@@ -142,29 +139,24 @@ test('the time bar publishes its hovered time and draws a graph’s cursor', asy
     }
   });
 
-  // Bar → graph and map: halfway along the bar is halfway through the data.
-  await page.mouse.move(bar.x + bar.width / 2, bar.y + bar.height / 2);
-  const middle = (first + last) / 2;
-  const expectedX = plotBox.x + (plotBox.width * (middle - range.from)) / (range.to - range.from);
+  // Graph → bar and map.
+  const graphX = plotBox.x + plotBox.width / 4;
+  await page.mouse.move(graphX, plotBox.y + plotBox.height / 2);
+  await expect(line).toBeVisible();
+  await expect.poll(async () => (await cursor(map))?.length).toBe(1);
+  const lineBox = (await line.boundingBox())!;
+  const barBox = (await bar.boundingBox())!;
+
+  // Bar → graph: hovering the bar at the line puts the graph's cursor back where it was.
+  await page.mouse.move(lineBox.x + lineBox.width / 2, barBox.y + barBox.height / 2);
   await expect
-    .poll(async () => Math.abs((await crosshair.evaluate((el) => el.getBoundingClientRect().left)) - expectedX), {
+    .poll(async () => Math.abs((await crosshair.evaluate((el) => el.getBoundingClientRect().left)) - graphX), {
       timeout: 30_000,
     })
     .toBeLessThan(3);
   await expect.poll(async () => (await cursor(map))?.length).toBe(1);
 
-  // Graph → bar: a quarter of the way along the graph lands where that time sits on the bar.
-  await page.mouse.move(plotBox.x + plotBox.width / 4, plotBox.y + plotBox.height / 2);
-  const hovered = range.from + (range.to - range.from) / 4;
-  const barX = bar.x + (bar.width * (hovered - first)) / (last - first);
-  await expect
-    .poll(async () => {
-      const box = await line.boundingBox();
-      return box ? Math.abs(box.x + box.width / 2 - barX) : Infinity;
-    })
-    .toBeLessThan(3);
-
-  await page.mouse.move(plotBox.x, plotBox.y - 30);
+  await page.mouse.move(barBox.x + barBox.width / 2, barBox.y - 200);
   await expect(line).toBeHidden();
   await expect.poll(() => cursor(map)).toEqual([]);
   expect(queries).toBe(0);
