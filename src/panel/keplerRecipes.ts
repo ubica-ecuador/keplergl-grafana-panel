@@ -4,6 +4,7 @@ import { replaceLayerConfigurator } from './flowFieldConfigurator';
 import { replaceMapContainer } from './haloMapContainer';
 import { replaceLayerPanelHeader } from './layerPanelHeader';
 import { replaceMapPopoverContent } from './selectPopover';
+import { replaceRangeSlider, replaceTimelineSlider } from './timeBarCursorSlider';
 
 /**
  * The component replacements the panel hands `injectComponents`, in the order
@@ -44,5 +45,8 @@ export function keplerRecipes(): Array<[unknown, unknown]> {
     replaceLayerConfigurator(),
     replaceLayerPanelHeader(),
     replaceMapPopoverContent(),
+    // The smallest trees here (the time bars of the two widget sizes), so last.
+    replaceRangeSlider(),
+    replaceTimelineSlider(),
   ] as Array<[unknown, unknown]>;
 }

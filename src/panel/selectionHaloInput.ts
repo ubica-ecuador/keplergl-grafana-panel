@@ -27,7 +27,7 @@ export interface VisStateLike {
   datasets?: Record<
     string,
     {
-      fields: Array<{ name: string }>;
+      fields: Array<{ name: string; format?: string }>;
       dataContainer: { numRows: () => number; valueAt: (row: number, column: number) => unknown };
       /** Bumped by kepler when rows change inside the same container. */
       dataRevision?: number;
@@ -119,7 +119,7 @@ const POLYGON = 'polygon';
  * that layer. Only the selected rows are ever asked, so this costs a handful of
  * calls per repaint.
  */
-function rowPassesFor(visState: VisStateLike): HaloInput['rowPasses'] {
+export function rowPassesFor(visState: VisStateLike): HaloInput['rowPasses'] {
   type Predicate = (context: { index: number; dataContainer: unknown }) => boolean;
   const perDataset = new Map<string, Predicate[]>();
   const perLayer = new Map<string, Predicate[]>();

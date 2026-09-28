@@ -76,3 +76,9 @@ None of these four modes talks to the _other maps_ on the dashboard except throu
 range. If what you want is two maps animating together, see
 [Peer time sync](./peer-time-sync) — it passes the clock between panels in the browser and asks the
 database nothing.
+
+## Following a graph's cursor instead
+
+Time range sync moves windows. To follow a single instant — the map showing where a vehicle was at
+the time under a graph's crosshair, and the other way round — see
+[Temporal cursor](./temporal-cursor). It works with any of the four modes above.

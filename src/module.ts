@@ -4,6 +4,7 @@ import { KeplerPanelOptions } from './types';
 import { KeplerPanel } from './panel/KeplerPanel';
 import { SaveMapConfigEditor } from './editors/SaveMapConfigEditor';
 import { MapConfigEditor } from './editors/MapConfigEditor';
+import { HoverLayerEditor } from './editors/HoverLayerEditor';
 import { FieldMappingEditor } from './editors/FieldMappingEditor';
 import { VariableSyncEditor } from './editors/VariableSyncEditor';
 import { TimeVariableEditor } from './editors/TimeVariableEditor';
@@ -98,6 +99,40 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
         "Share this map's time filter and trip playhead with the other maps on the dashboard that have this on. Runs in the browser, so animating one map moves the rest without re-running any query.",
       category: ['Map'],
       defaultValue: false,
+    })
+    .addBooleanSwitch({
+      path: 'hoverSync',
+      name: 'Show position on graph hover',
+      description:
+        'Follow the shared cursor of Grafana graphs. Enable Shared crosshair or Shared tooltip in dashboard settings.',
+      category: ['Temporal cursor'],
+      defaultValue: false,
+    })
+    .addBooleanSwitch({
+      path: 'hoverPublishSpike',
+      name: 'Map hover drives graphs (experimental)',
+      description:
+        'Hovering a Point layer’s sample or the map’s time bar moves the graphs’ shared cursor. Trip paths are not supported in this direction yet.',
+      category: ['Temporal cursor'],
+      defaultValue: false,
+      showIf: (config) => Boolean(config.hoverSync),
+    })
+    .addCustomEditor({
+      id: 'hoverLayerId',
+      path: 'hoverLayerId',
+      name: 'Layer',
+      category: ['Temporal cursor'],
+      editor: HoverLayerEditor,
+      showIf: (config) => Boolean(config.hoverSync),
+    })
+    .addNumberInput({
+      path: 'hoverMaxAgeSeconds',
+      name: 'Maximum sample age (seconds)',
+      description: 'Hide positions older than this. A cursor also disappears outside its trip’s time span.',
+      category: ['Temporal cursor'],
+      defaultValue: 60,
+      settings: { min: 0 },
+      showIf: (config) => Boolean(config.hoverSync),
     })
     .addSelect({
       path: 'tripLayerMode',

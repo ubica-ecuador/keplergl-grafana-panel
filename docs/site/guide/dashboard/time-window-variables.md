@@ -64,6 +64,34 @@ WHERE ('$mapFrom' = '' OR ts >= '$mapFrom'::timestamptz)
   AND ('$mapTo'   = '' OR ts <  '$mapTo'::timestamptz)
 ```
 
+## Shade the window on the graphs
+
+An annotation turns the two variables into a region on the Time series graphs, so the window the map
+keeps is visible next to the whole series. Add an annotation query to the dashboard that returns one
+row with `time` and `timeEnd`, and limit it to the graphs under **Filter by → Panels**.
+
+With the **Infinity** data source, inline JSON:
+
+```json
+[{ "time": "${mapFrom}", "timeEnd": "${mapTo}", "text": "Map time brush" }]
+```
+
+with the columns `time` and `timeEnd` typed as **Timestamp**. With **TestData**, the _CSV Content_
+scenario:
+
+```
+time,timeEnd,text
+${mapFrom},${mapTo},Map time brush
+```
+
+Before the first brush the map publishes its data's whole extent, so the region starts out covering
+the whole track.
+
+::: tip Not for transformations
+The variables are ISO strings. Grafana's _Filter data by values_ transformation compares a time
+field with a number, so `${mapFrom}` there filters every row out. Filter in the query instead.
+:::
+
 ## Update variables while playing
 
 Off by default. When on, the window is written **as the animation runs** rather than only when it
