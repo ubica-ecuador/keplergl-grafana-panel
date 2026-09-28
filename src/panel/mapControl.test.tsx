@@ -75,12 +75,13 @@ describe('replaceMapControl', () => {
 
 /**
  * Stands in for kepler's chart manager, which needs a live store. It shows the
- * one prop the control decides: whether the manager opens as the editor
- * (`panelActive`) or only draws the pinned charts.
+ * two props the control decides: whether the manager opens as the editor
+ * (`panelActive`) or only draws the pinned charts, and whether the map is being
+ * exported (`isExport`).
  */
 function StubChartManagerFactory() {
-  const StubChartManager = ({ panelActive }: { panelActive?: boolean }) => (
-    <div data-testid="chart-manager" data-panel-active={String(panelActive)} />
+  const StubChartManager = ({ panelActive, isExport }: { panelActive?: boolean; isExport?: boolean }) => (
+    <div data-testid="chart-manager" data-panel-active={String(panelActive)} data-is-export={String(isExport)} />
   );
   return StubChartManager;
 }
@@ -89,9 +90,11 @@ StubChartManagerFactory.deps = [] as unknown as typeof ChartManagerFactory.deps;
 const chartProps = ({
   active = false,
   charts = [] as Array<{ id: string; pinned?: boolean }>,
-}: { active?: boolean; charts?: Array<{ id: string; pinned?: boolean }> } = {}) => ({
+  isExport = false,
+}: { active?: boolean; charts?: Array<{ id: string; pinned?: boolean }>; isExport?: boolean } = {}) => ({
   mapControls: { effect: { show: true, active: false }, chart: { show: true, active } },
   charts,
+  isExport,
   onToggleMapControl: jest.fn(),
   top: 0,
 });
@@ -120,6 +123,19 @@ describe('replaceMapControl — charts', () => {
     const view = renderControl(withStubManager(), chartProps({ charts: [{ id: 'c1', pinned: true }] }));
 
     expect(view.getByTestId('chart-manager').dataset.panelActive).toBe('false');
+    expect(view.getByTestId('chart-manager').dataset.isExport).toBe('false');
+  });
+
+  it('leaves a pinned chart out of an exported map, as kepler’s demo does', () => {
+    const view = renderControl(withStubManager(), chartProps({ charts: [{ id: 'c1', pinned: true }], isExport: true }));
+
+    expect(view.queryByTestId('chart-manager')).toBeNull();
+  });
+
+  it('tells the chart manager the map is being exported', () => {
+    const view = renderControl(withStubManager(), chartProps({ active: true, isExport: true }));
+
+    expect(view.getByTestId('chart-manager').dataset.isExport).toBe('true');
   });
 
   it('counts a chart saved before `pinned` existed as pinned, as kepler’s loader does', () => {

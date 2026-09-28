@@ -86,14 +86,15 @@ function CustomMapControlFactory(
   // The factories' d.ts types the inner components (props with intl and vis
   // state), but at runtime the injector hands over each one already wrapped in
   // withState / injectIntl, reading the store for itself. The effect manager
-  // mounts with no props; the chart manager takes only `panelActive`.
+  // mounts with no props; the chart manager takes `panelActive` and `isExport`.
   const MountedEffectManager = EffectManager as unknown as React.FC;
-  const MountedChartManager = ChartManager as unknown as React.FC<{ panelActive?: boolean }>;
+  const MountedChartManager = ChartManager as unknown as React.FC<{ panelActive?: boolean; isExport?: boolean }>;
 
   const CustomMapControl: React.FC<React.ComponentProps<typeof MapControl>> = (props) => {
     // Read per render, as the demo does: the switch is kepler's application
     // config, and the tests flip it.
     const chartsEnabled = Boolean(getApplicationConfig().enableChartsPanel);
+    const isExport = Boolean(props.isExport);
     const actionComponents = [
       ...(MapControl.defaultActionComponents ?? []),
       ...(chartsEnabled ? [ChartControl] : []),
@@ -103,8 +104,9 @@ function CustomMapControlFactory(
     const chartPanelActive = chartsEnabled && Boolean(props.mapControls?.chart?.active);
     // A pinned chart stays on the map with the panel closed, like a pinned
     // legend. `pinned` undefined counts as pinned: kepler's loader reads older
-    // saved maps that way (`pinned: chart.pinned !== false`).
-    const hasPinnedCharts = chartsEnabled && (props.charts ?? []).some((chart) => chart.pinned !== false);
+    // saved maps that way (`pinned: chart.pinned !== false`). An exported map
+    // leaves them out, as the demo does.
+    const hasPinnedCharts = !isExport && chartsEnabled && (props.charts ?? []).some((chart) => chart.pinned !== false);
     const showCharts = chartPanelActive || hasPinnedCharts;
 
     return (
@@ -114,7 +116,7 @@ function CustomMapControlFactory(
           <MapControl {...props} top={0} actionComponents={actionComponents} />
         </StyledMapControlPanel>
         <StyledMapControlContextPanel>
-          {showCharts ? <MountedChartManager panelActive={chartPanelActive} /> : null}
+          {showCharts ? <MountedChartManager panelActive={chartPanelActive} isExport={isExport} /> : null}
           {showEffects ? <MountedEffectManager /> : null}
         </StyledMapControlContextPanel>
       </StyledMapControlOverlay>
