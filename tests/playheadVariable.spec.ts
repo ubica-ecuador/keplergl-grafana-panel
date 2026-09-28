@@ -38,6 +38,9 @@ test('the map writes its trip playhead on load, while playing, and where it stop
   page,
 }) => {
   test.slow();
+  // Tall enough for the text panel under the map: Grafana does not mount a
+  // panel until it is in view, and at 720 px 13.0 left it unmounted.
+  await page.setViewportSize({ width: 1400, height: 1200 });
   const dashboard = await readProvisionedDashboard({ fileName: 'playhead.json' });
   await gotoDashboardPage(dashboard);
 
