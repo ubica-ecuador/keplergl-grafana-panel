@@ -23,9 +23,10 @@ That is what turns a map of stations into a map of time series. With one row per
 minute and the station name as the id field, hovering a station draws its whole day, whatever the
 time filter shows.
 
-A tooltip chart needs a layer whose hover points at a row of data: points, polygons, lines, hexagons
-built from rows, trips and the plugin's symbol layer do. Markers, raster and tile layers, and the
-flow fields do not, so they cannot carry one.
+A tooltip chart needs a layer whose hover points at a row of data: points, polygons, lines, H3
+hexagons, trips and the plugin's symbol layer do. kepler's aggregation layers (**Hexbin**, **Grid**
+and **Cluster**) do not: a hover there points at a bin of many rows, not at one. Nor do markers,
+raster and tile layers, or the flow fields, so none of them can carry one.
 
 ## Comparing two entities
 
@@ -53,10 +54,13 @@ variable options and filter it from kepler's own filter panel.
 
 - A **Line** chart draws a single series: a group-by adds the groups up into one line instead of
   drawing one line per group. To compare groups over time, use a **Heatmap** with time buckets on
-  one axis and the groups on the other.
+  one axis and the groups on the other. Keep the buckets to ten or fewer, or the heatmap drops
+  some (see below): over 24 hours, three-hour buckets make eight or nine.
 - A **Heatmap** leaves any cell with a value of zero or below blank. Plot a quantity that stays
   positive — a height above its own minimum, not an anomaly around a mean.
-- A heatmap axis shows at most ten groups.
+- A heatmap axis shows at most ten groups: the ten with the most rows, in alphabetical order. A
+  time bucket with fewer rows than the others, such as the current one still filling, is the first
+  to go; label buckets so that they sort in time order, year first.
 
 ## Cost
 
