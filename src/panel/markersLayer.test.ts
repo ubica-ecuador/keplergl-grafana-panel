@@ -1,3 +1,4 @@
+import { MarkerDrag } from './markerDrag';
 import { makeMarkersLayer, MARKERS_TYPE } from './markersLayer';
 
 /** A stand-in for kepler's base Layer, with only what the subclass touches. */
@@ -96,6 +97,20 @@ describe('markers layer', () => {
     layer.config.visConfig.angleDegrees = 'north';
     layer.renderLayer();
     expect(built.map((props) => props.angleDegrees)).toEqual([90, 0]);
+  });
+
+  it('hands every deck copy of the layer one drag, and another layer a drag of its own', () => {
+    // The copy drawn above the basemap's roads has to follow a drag handled by
+    // the copy below it: they meet in the drag object, not in deck state.
+    const layer = withMarkers(new MarkersLayer());
+    const another = withMarkers(new MarkersLayer());
+    layer.renderLayer();
+    layer.renderLayer({ visible: true });
+    another.renderLayer();
+
+    expect(built[0].drag).toBeInstanceOf(MarkerDrag);
+    expect(built[1].drag).toBe(built[0].drag);
+    expect(built[2].drag).not.toBe(built[0].drag);
   });
 
   it('turns itself off with the eye button', () => {

@@ -41,6 +41,11 @@ else: a text box, another panel's data link, a link someone shared with you. The
 the layer is only the last one seen, and it is what a marker falls back to when its variables hold
 nothing.
 
+**Markers are always on top.** They are drawn above every other layer, whatever their place in
+kepler's layer panel, and above the base map's roads and labels when the base map is set to draw
+those over the data. A handle you cannot see is a handle you cannot grab. On a Mapbox base map they
+stay above the other layers but under its roads and labels.
+
 **A marker dropped where it was picked up writes nothing.** The comparison is numeric, so no query
 re-runs because a value came back as `-79.0` instead of `-79`.
 

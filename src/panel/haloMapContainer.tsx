@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { MapContainerFactory } from '@kepler.gl/components';
 
+import { withMarkersOnTop } from './markersOnTop';
 import { selectionHalo, type HaloRing, type Selection } from './selectionHalo';
 import { haloDeckLayers, haloOutlines } from './selectionHaloDeckLayers';
 import { haloInputFrom, type VisStateLike } from './selectionHaloInput';
@@ -98,10 +99,20 @@ export function withSelectionHalo<P extends MapContainerProps>(MapContainer: Rea
   return MapContainerWithHalo;
 }
 
+/**
+ * kepler's `MapContainer` with what the panel draws on it: the selection halo,
+ * then the markers above everything (`markersOnTop.tsx`). The halo's wrapper is
+ * the outer one, so its layers are already in the list when the markers are
+ * moved to the end of it.
+ */
+export function withPanelLayers(MapContainer: React.ComponentType<MapContainerProps>): React.FC<MapContainerProps> {
+  return withSelectionHalo(withMarkersOnTop(MapContainer));
+}
+
 CustomMapContainerFactory.deps = MapContainerFactory.deps;
 
 function CustomMapContainerFactory(...deps: Parameters<Factory>) {
-  return withSelectionHalo(
+  return withPanelLayers(
     MapContainerFactory(...deps) as unknown as React.ComponentType<MapContainerProps>
   ) as unknown as ReturnType<Factory>;
 }

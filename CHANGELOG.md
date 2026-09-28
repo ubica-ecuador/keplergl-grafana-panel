@@ -11,6 +11,9 @@ release documents what changed since the one before it.
   and where it stops — so a chart can draw a bar at the moment the map is playing, or a SQL panel can
   count what is on the road right then. It is independent of *Time range sync*. The interval option
   now also shows when this one is set.
+- **Markers stay on top**: a markers layer is now drawn above every other layer, whatever its place
+  in the layer panel, and above the base map's roads and labels when the base map is set to draw
+  those over the data. Until now such a base map covered the markers. Dragging them works as before.
 
 ## 1.0.1 (2026-09-23)
 

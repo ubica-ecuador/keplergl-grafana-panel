@@ -1,6 +1,7 @@
 import { CompositeLayer, Layer } from '@deck.gl/core';
 import { ScatterplotLayer, TextLayer } from '@deck.gl/layers';
 
+import { MarkerDrag } from './markerDrag';
 import type { LngLat, MarkerSpec } from './markers';
 import { buildSymbolDeckLayer } from './symbolDeckLayer';
 import { deckAngle } from './symbolLayer';
@@ -20,6 +21,13 @@ import { deckAngle } from './symbolLayer';
  * class shared by every panel on the page, so it has no way to reach the panel
  * it is drawn in. The event bubbles from the canvas up to the panel's own
  * element, where `useMarkerSync` listens — each panel hears only its own drops.
+ *
+ * **Why the drag is not in this layer's state.** Over a basemap that keeps its
+ * roads above the data, the layer is drawn a second time above them
+ * (`markersOnTop.tsx`), in a deck that takes no pointer events. This copy, the
+ * one in kepler's deck, is still the one grabbed; the one above only draws. Both
+ * read the marker's position mid-drag from the `MarkerDrag` of their kepler
+ * layer, and each redraws when it changes.
  */
 
 export const MARKER_DROP_EVENT = 'kepler-grafana:marker-drop';
@@ -42,6 +50,10 @@ interface Props {
   /** Clockwise degrees an icon is turned by; the circle ignores it. */
   angleDegrees: number;
   visible: boolean;
+  /** Shared by every copy of the kepler layer; see `markerDrag.ts`. */
+  drag: MarkerDrag | null;
+  /** False in the copy drawn above the basemap: it neither listens to the pointer nor picks. */
+  interactive: boolean;
 }
 
 /** What mjolnir.js hands an event-manager handler, narrowed to what is used. */
@@ -56,15 +68,21 @@ interface GestureEvent {
 }
 
 interface State extends Record<string, unknown> {
+  /** Bound once and carried from layer to layer: what the event manager and the drag know this copy by. */
   handler: (event: GestureEvent) => void;
-  /** The marker under the pointer while a drag is in progress. */
-  dragging: { id: string; position: LngLat; grab: [number, number] } | null;
+  /** Redraws the current layer when the drag moves, whichever copy moved it. */
+  redraw: () => void;
+  unsubscribe: () => void;
+  /** Stands in for a missing `drag` prop, so a lone layer still drags. */
+  ownDrag: MarkerDrag;
   /**
-   * Where a marker was dropped, held until new props arrive — otherwise it
-   * snaps back to its old spot for the frames between release and the panel
-   * writing the new position into the layer.
+   * Where on the marker this copy grabbed it, in pixels from its anchor, so it
+   * follows the pointer from there instead of jumping its anchor under it.
+   * Null unless the gesture in progress is this copy's.
    */
-  dropped: { id: string; position: LngLat } | null;
+  grab: [number, number] | null;
+  /** The drag's moved marker when last heard: changing it is what makes deck draw again. */
+  moved: unknown;
 }
 
 const GESTURES = ['panstart', 'panmove', 'panend'];
@@ -91,6 +109,8 @@ export class DraggableMarkersLayer extends CompositeLayer<Props> {
     radiusPx: 10,
     symbol: 'circle',
     angleDegrees: 0,
+    drag: null,
+    interactive: true,
   };
 
   declare state: State;
@@ -99,12 +119,25 @@ export class DraggableMarkersLayer extends CompositeLayer<Props> {
     return this.context as unknown as DeckContext;
   }
 
+  private get drag(): MarkerDrag {
+    return this.props.drag ?? this.state.ownDrag;
+  }
+
   initializeState(): void {
     // Bound once to whichever instance is current: deck builds a new layer per
     // render and moves the state across, and the listener must follow — the
     // same forwarding editable-layers does.
-    const handler = (event: GestureEvent) => (this.getCurrentLayer() as DraggableMarkersLayer | null)?.onGesture(event);
-    this.setState({ handler, dragging: null, dropped: null });
+    const current = () => this.getCurrentLayer() as DraggableMarkersLayer | null;
+    const handler = (event: GestureEvent) => current()?.onGesture(event);
+    const redraw = () => {
+      const layer = current();
+      layer?.setState({ moved: layer.drag.moved() });
+    };
+    this.setState({ handler, redraw, ownDrag: new MarkerDrag(), grab: null, moved: null });
+    this.setState({ unsubscribe: this.drag.subscribe(redraw) });
+    if (!this.props.interactive) {
+      return;
+    }
     const events = this.deckContext.deck?.eventManager;
     for (const type of GESTURES) {
       events?.on(type, handler, { priority: PRIORITY });
@@ -112,6 +145,7 @@ export class DraggableMarkersLayer extends CompositeLayer<Props> {
   }
 
   finalizeState(): void {
+    this.state.unsubscribe();
     const events = this.deckContext.deck?.eventManager;
     for (const type of GESTURES) {
       events?.off(type, this.state.handler);
@@ -119,13 +153,17 @@ export class DraggableMarkersLayer extends CompositeLayer<Props> {
   }
 
   updateState({ props, oldProps }: { props: Props; oldProps: Partial<Props> }): void {
-    if (props.markers !== oldProps.markers && this.state.dropped) {
-      this.setState({ dropped: null });
+    if (props.drag !== oldProps.drag) {
+      this.state.unsubscribe();
+      this.setState({ unsubscribe: this.drag.subscribe(this.state.redraw) });
+    }
+    if (props.markers !== oldProps.markers) {
+      this.drag.markersChanged();
     }
   }
 
   onGesture(event: GestureEvent): void {
-    const { dragging } = this.state;
+    const { grab, handler } = this.state;
     if (event.type === 'panstart') {
       if (!this.props.visible) {
         return;
@@ -148,27 +186,36 @@ export class DraggableMarkersLayer extends CompositeLayer<Props> {
         return;
       }
       event.stopImmediatePropagation();
-      // Where on the marker it was grabbed, in pixels from its anchor, so it
-      // follows the pointer from there instead of jumping its anchor under it.
       const [ax, ay] = this.deckContext.viewport.project(marker.position);
-      this.setState({ dragging: { id: marker.id, position: marker.position, grab: [x - ax, y - ay] } });
+      this.setState({ grab: [x - ax, y - ay] });
+      this.drag.start(handler, marker.id, marker.position);
       return;
     }
 
-    if (!dragging) {
+    if (!grab) {
       return;
     }
-    event.stopImmediatePropagation();
-    const position = this.pointerLngLat(event, dragging.grab) ?? dragging.position;
+    const position = this.pointerLngLat(event, grab);
 
     if (event.type === 'panmove') {
-      this.setState({ dragging: { ...dragging, position } });
+      if (this.drag.move(handler, position)) {
+        event.stopImmediatePropagation();
+      }
       return;
     }
 
     // panend
-    this.setState({ dragging: null, dropped: { id: dragging.id, position } });
-    const detail: MarkerDropDetail = { layerId: this.props.keplerLayerId, markerId: dragging.id, position };
+    this.setState({ grab: null });
+    const dropped = this.drag.drop(handler, position);
+    if (!dropped) {
+      return;
+    }
+    event.stopImmediatePropagation();
+    const detail: MarkerDropDetail = {
+      layerId: this.props.keplerLayerId,
+      markerId: dropped.id,
+      position: dropped.position,
+    };
     event.srcEvent?.target?.dispatchEvent(new CustomEvent(MARKER_DROP_EVENT, { detail, bubbles: true }));
   }
 
@@ -177,19 +224,11 @@ export class DraggableMarkersLayer extends CompositeLayer<Props> {
     return Number.isFinite(lng) && Number.isFinite(lat) ? [lng, lat] : null;
   }
 
-  /** The markers as drawn: the one being dragged, or just dropped, where the pointer left it. */
-  private drawnMarkers(): MarkerSpec[] {
-    const moved = this.state.dragging ?? this.state.dropped;
-    return this.props.markers
-      .map((marker) => (moved && marker.id === moved.id ? { ...marker, position: moved.position } : marker))
-      .filter((marker) => marker.position !== null);
-  }
-
   renderLayers() {
-    const data = this.drawnMarkers();
-    const moved = this.state.dragging ?? this.state.dropped;
+    const data = this.drag.drawn(this.props.markers);
+    const moved = this.drag.moved();
     const trigger = [moved?.id, moved?.position?.[0], moved?.position?.[1]];
-    const { radiusPx } = this.props;
+    const { radiusPx, interactive } = this.props;
 
     const getPosition = (marker: MarkerSpec) => marker.position as LngLat;
     const getColor = (marker: MarkerSpec) => [...marker.color, 255];
@@ -201,7 +240,7 @@ export class DraggableMarkersLayer extends CompositeLayer<Props> {
             this.getSubLayerProps({
               id: 'handles-circle',
               data,
-              pickable: true,
+              pickable: interactive,
               radiusUnits: 'pixels',
               getRadius: radiusPx,
               stroked: true,
@@ -224,7 +263,7 @@ export class DraggableMarkersLayer extends CompositeLayer<Props> {
               // "Cannot read properties of undefined (reading 'isLoaded')".
               id: 'handles-icon',
               data,
-              pickable: true,
+              pickable: interactive,
               symbols: [this.props.symbol],
               getIcon: () => this.props.symbol,
               billboard: true,
