@@ -34,6 +34,7 @@ const EMPTY_MAPPINGS: VariableMapping[] = [];
  */
 export function KeplerPanel({
   options,
+  eventBus,
   onOptionsChange,
   data,
   timeRange,
@@ -194,6 +195,11 @@ export function KeplerPanel({
         publishIntervalMs={publishIntervalOf(options.publishIntervalMs)}
         peerTimeSync={options.peerTimeSync ?? false}
         playheadVariable={options.playheadVariable ?? ''}
+        eventBus={eventBus}
+        hoverSync={options.hoverSync}
+        hoverPublishSpike={options.hoverPublishSpike}
+        hoverLayerId={options.hoverLayerId}
+        hoverMaxAgeSeconds={options.hoverMaxAgeSeconds}
         panelId={id}
       />
     </div>

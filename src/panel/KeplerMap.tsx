@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Provider } from 'react-redux';
 import { StyleSheetManager } from 'styled-components';
+import type { EventBus } from '@grafana/data';
 import { injectComponents } from '@kepler.gl/components';
 import { messages as keplerMessages } from '@kepler.gl/localization';
 
@@ -48,6 +49,7 @@ import { useVariableSync } from './useVariableSync';
 import { useClickSync } from './useClickSync';
 import { offersSelection, selectApi, SelectContext } from './selectPopover';
 import { HaloContext } from './haloMapContainer';
+import { TemporalCursorContext } from './temporalCursorMapContainer';
 import { useSelectionValues } from './useSelectionValues';
 import { useCoordinateSync } from './useCoordinateSync';
 import { useCenterSync } from './useCenterSync';
@@ -95,6 +97,11 @@ const KeplerGl = injectComponents(keplerRecipes() as unknown as never[]);
 const localeMessages = withOwnLayerLabels(keplerMessages as unknown as Record<string, Record<string, string>>);
 
 export interface KeplerMapProps {
+  eventBus?: EventBus;
+  hoverSync?: boolean;
+  hoverPublishSpike?: boolean;
+  hoverLayerId?: string;
+  hoverMaxAgeSeconds?: number;
   width: number;
   height: number;
   datasets: PanelDataset[];
@@ -173,6 +180,11 @@ export interface KeplerMapProps {
  *    component may be rendered below this point.
  */
 export function KeplerMap({
+  eventBus,
+  hoverSync,
+  hoverPublishSpike,
+  hoverLayerId,
+  hoverMaxAgeSeconds,
   width,
   height,
   datasets,
@@ -203,6 +215,16 @@ export function KeplerMap({
   playheadVariable,
   panelId,
 }: KeplerMapProps) {
+  const temporalCursor = useMemo(
+    () => ({
+      eventBus,
+      enabled: hoverSync,
+      publishMapHover: hoverPublishSpike,
+      layerId: hoverLayerId,
+      maxAgeSeconds: hoverMaxAgeSeconds,
+    }),
+    [eventBus, hoverSync, hoverPublishSpike, hoverLayerId, hoverMaxAgeSeconds]
+  );
   const store = useMemo(() => createKeplerStore(), []);
   const [styleTarget, setStyleTarget] = useState<HTMLElement | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -544,33 +566,35 @@ export function KeplerMap({
           <Provider store={store}>
             {/* Both reach components kepler renders deep inside KeplerGl: the
                 popup through a floating portal, the map containers per side. */}
-            <HaloContext.Provider value={haloSelection}>
-              <SelectContext.Provider value={selection}>
-                <KeplerGl
-                  id={KEPLER_INSTANCE_ID}
-                  width={width}
-                  height={height}
-                  /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
+            <TemporalCursorContext.Provider value={temporalCursor}>
+              <HaloContext.Provider value={haloSelection}>
+                <SelectContext.Provider value={selection}>
+                  <KeplerGl
+                    id={KEPLER_INSTANCE_ID}
+                    width={width}
+                    height={height}
+                    /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
                      required by the type but unused unless a Mapbox style is picked. */
-                  mapboxApiAccessToken=""
-                  /* `appName` is deliberately left at kepler's own default: the
+                    mapboxApiAccessToken=""
+                    /* `appName` is deliberately left at kepler's own default: the
                      side panel names the library the map comes from, and calling
                      it "Grafana" claimed credit for someone else's work. */
-                  theme={theme}
-                  /* kepler ships translations for its own layer types only, so the
+                    theme={theme}
+                    /* kepler ships translations for its own layer types only, so the
                      four this plugin adds showed as `Layer.Type.Esriimage` and the
                      like wherever a layer is named. */
-                  localeMessages={localeMessages}
-                  mapStyles={mapStyles}
-                  /* Drops kepler's own list, which is half Mapbox styles that
+                    localeMessages={localeMessages}
+                    mapStyles={mapStyles}
+                    /* Drops kepler's own list, which is half Mapbox styles that
                      cannot load without an account — see REPLACES_DEFAULT_MAP_STYLES. */
-                  mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
-                  /* kepler renders one commit late and silently discards actions
+                    mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
+                    /* kepler renders one commit late and silently discards actions
                      addressed to an instance that has not registered yet. */
-                  onKeplerGlInitialized={() => setIsReady(true)}
-                />
-              </SelectContext.Provider>
-            </HaloContext.Provider>
+                    onKeplerGlInitialized={() => setIsReady(true)}
+                  />
+                </SelectContext.Provider>
+              </HaloContext.Provider>
+            </TemporalCursorContext.Provider>
           </Provider>
         </StyleSheetManager>
       )}

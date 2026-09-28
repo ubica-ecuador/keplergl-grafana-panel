@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { MapContainerFactory } from '@kepler.gl/components';
 
+import { withTemporalCursor } from './temporalCursorMapContainer';
 import { withMarkersOnTop } from './markersOnTop';
 import { selectionHalo, type HaloRing, type Selection } from './selectionHalo';
 import { haloDeckLayers, haloOutlines } from './selectionHaloDeckLayers';
@@ -106,7 +107,7 @@ export function withSelectionHalo<P extends MapContainerProps>(MapContainer: Rea
  * moved to the end of it.
  */
 export function withPanelLayers(MapContainer: React.ComponentType<MapContainerProps>): React.FC<MapContainerProps> {
-  return withSelectionHalo(withMarkersOnTop(MapContainer));
+  return withSelectionHalo(withTemporalCursor(withMarkersOnTop(MapContainer)));
 }
 
 CustomMapContainerFactory.deps = MapContainerFactory.deps;

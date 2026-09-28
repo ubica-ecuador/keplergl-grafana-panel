@@ -174,6 +174,15 @@ export interface KeplerPanelOptions {
    */
   peerTimeSync?: boolean;
 
+  /** Show GPS positions at the time under a Grafana graph's shared cursor. */
+  hoverSync?: boolean;
+  /** Experimental reverse cursor: Point layer hover publishes to Grafana graphs. */
+  hoverPublishSpike?: boolean;
+  /** Saved kepler layer id; empty follows every compatible visible layer. */
+  hoverLayerId?: string;
+  /** Hide the cursor when the previous GPS sample is older than this. */
+  hoverMaxAgeSeconds?: number;
+
   /**
    * The dashboard variable the trip animation's playhead is written to, as UTC
    * ISO 8601; empty for none. One way, map to variable, at the pace of
