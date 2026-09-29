@@ -48,11 +48,16 @@ release documents what changed since the one before it.
     now drawn where they stand, within a few metres, near the equator: over Cuenca the stadium sat
     some 140 m south of itself on the base map. Elsewhere the worst error is roughly halved; a few
     tens of metres can remain far from a tile's centre at mid and high latitudes.
-  - The buildings of Cesium OSM Buildings, and of any tileset that keeps its buildings the same way,
-    now each sit on the map, on the hills too: lowered by the ground under the view, those on higher
-    ground floated above the map, by hundreds of metres round Cuenca. *Height adjustment* lifts them
-    all together, and with *Sit on the ground* off they stand at their real altitude. Google's 3D
-    Tiles, whose mesh is the ground itself, keep following the ground under the view.
+  - The buildings of Cesium OSM Buildings, and of any worldwide tileset that keeps its buildings the
+    same way, now each sit on the map, on the hills too: lowered by the ground under the view, those
+    on higher ground floated above the map, by hundreds of metres round Cuenca. *Height adjustment*
+    lifts them all together, and with *Sit on the ground* off they stand at their real altitude.
+    Google's 3D Tiles, whose mesh is the ground itself, keep following the ground under the view, and
+    a smaller tileset of buildings — a city model, a BIM model — is still lowered as a whole by its
+    base. Each building part is placed by its own lowest point, so a part that starts above the
+    ground — an overhang, a skybridge, the upper section of a tower — may land at the ground with the
+    parts below it. Buildings far from the centre of the coarse tile they come in stay hidden below
+    the map rather than being drawn out of place.
 - **Charts**: kepler's charts panel gets its button in the map control — big numbers, bars, lines,
   heatmaps and pivot tables over the map's data, saved with the map. Its **tooltip charts** plot an
   entity's own history in its popup: hover a station and see its day. With kepler's tooltip compare

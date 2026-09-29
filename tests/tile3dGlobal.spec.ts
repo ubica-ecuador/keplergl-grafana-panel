@@ -7,6 +7,7 @@ import {
   CITY_BOX_GROUND,
   CITY_REGION_GROUND,
   ELSEWHERE_URL,
+  buildingsPositions,
   FAR_BUILDING,
   HILL_BUILDINGS,
   ION_ASSET,
@@ -201,7 +202,12 @@ async function raiseCityGround(map: Locator, metres: number): Promise<void> {
  * `narrowTimeFilterToMiddleHour` in flowfield.spec.ts).
  */
 async function setHeightAdjustment(map: Locator, metres: number): Promise<void> {
-  await map.evaluate((node, altitudeOffset) => {
+  await setVisConfig(map, { altitudeOffset: metres });
+}
+
+/** Sets knobs of the panel's 3D tile layer through kepler's store, as {@link setHeightAdjustment} does. */
+async function setVisConfig(map: Locator, visConfig: Record<string, unknown>): Promise<void> {
+  await map.evaluate((node, newVisConfig) => {
     const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
     let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
     let store: any = null;
@@ -227,14 +233,14 @@ async function setHeightAdjustment(map: Locator, metres: number): Promise<void> 
     const action = {
       type: '@@kepler.gl/LAYER_VIS_CONFIG_CHANGE',
       oldLayer: layer,
-      newVisConfig: { altitudeOffset },
+      newVisConfig,
     };
     store.dispatch({
       type: action.type,
       payload: { ...action, meta: { _id_: instanceId } },
       meta: { _forward_: '@redux-forward/FORWARD', _addr_: `@@KG_${instanceId.toUpperCase()}` },
     });
-  }, metres);
+  }, visConfig);
 }
 
 /**
@@ -283,8 +289,14 @@ async function farBuilding(map: Locator): Promise<{ origin: number[]; offset: nu
  * sublayer deck built for the tile — the glTF it was handed, the node's matrix,
  * its `modelMatrix` and the height of its `coordinateOrigin`. Null until deck
  * has built that sublayer for a tile it draws.
+ *
+ * `current` says whether the sublayer was built from the glTF the tile's
+ * content holds now: the layer moves positions by rewriting the accessors,
+ * which the glTF deck was handed shares, so a sublayer deck never built again
+ * would read as moved while the GPU still draws the old geometry. `seen` says
+ * whether that glTF was one {@link blocksGltf} marked.
  */
-async function buildingBases(map: Locator): Promise<number[] | null> {
+async function buildingBases(map: Locator): Promise<{ bases: number[]; current: boolean; seen: boolean } | null> {
   return map.evaluate((node) => {
     const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
     let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
@@ -310,13 +322,14 @@ async function buildingBases(map: Locator): Promise<number[] | null> {
       return null;
     }
     const { modelMatrix, coordinateOrigin, scenegraph } = sublayer.props;
+    const seen = Boolean((window as any).__e2eSeenGltf?.has(scenegraph));
     const multiply = (a: ArrayLike<number>, b: ArrayLike<number>) =>
       Array.from({ length: 16 }, (_, i) => {
         const [column, row] = [Math.floor(i / 4), i % 4];
         return [0, 1, 2, 3].reduce((sum, k) => sum + a[k * 4 + row] * b[column * 4 + k], 0);
       });
     const bases: number[] = [];
-    // The fixture's nodes carry no translation, rotation or scale: a matrix is all there is to follow.
+    // The fixture's node carries a matrix, and no translation, rotation or scale.
     const visit = (gltfNode: any, parent: ArrayLike<number>) => {
       const world = gltfNode.matrix ? multiply(parent, gltfNode.matrix) : parent;
       const m = multiply(modelMatrix, world);
@@ -337,8 +350,44 @@ async function buildingBases(map: Locator): Promise<number[] | null> {
     for (const root of scenegraph.scenes[0].nodes) {
       visit(root, identity);
     }
-    return bases;
+    return { bases, current: scenegraph === tile.content.gltf, seen };
   });
+}
+
+/**
+ * The positions the tile of buildings' content holds, drawn or not — with
+ * *Sit on the ground* off the tile stands 2 500 m up and is culled — and
+ * whether its glTF is one marked before; `mark` marks the one it holds now.
+ */
+async function blocksGltf(map: Locator, mark = false): Promise<{ positions: number[]; seen: boolean } | null> {
+  return map.evaluate((node, markIt) => {
+    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
+    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
+    let deck: any = null;
+    while (fiber) {
+      const instance = fiber.stateNode;
+      if (instance && instance._deck && instance._deck.layerManager) {
+        deck = instance._deck;
+        break;
+      }
+      fiber = fiber.return;
+    }
+    if (!deck) {
+      throw new Error('deck.gl instance not found from map node');
+    }
+    const layer = deck.layerManager.getLayers().find((candidate: any) => candidate.state?.tileset3d);
+    const tiles: any[] = layer?.state?.tileset3d?.tiles ?? [];
+    const gltf = tiles.find((candidate) => /blocks\.b3dm/.test(String(candidate.contentUrl ?? '')))?.content?.gltf;
+    if (!gltf) {
+      return null;
+    }
+    const marks: WeakSet<object> = ((window as any).__e2eSeenGltf ??= new WeakSet());
+    const seen = marks.has(gltf);
+    if (markIt) {
+      marks.add(gltf);
+    }
+    return { positions: Array.from(gltf.scenes[0].nodes[0].mesh.primitives[0].attributes.POSITION.value), seen };
+  }, mark);
 }
 
 /**
@@ -498,16 +547,36 @@ test('a tileset of batched buildings draws each building on the map, on the hill
     .toContain('/world-buildings/blocks.b3dm');
   // Lowered by the ground under the view, 2 490 m, the building on the hill
   // was drawn 210 m above the map. Each building now has its lowest vertex on it.
+  const onTheMap = async (fresh: boolean) => {
+    const drawn = await buildingBases(map);
+    return drawn?.current && drawn.bases.length === HILL_BUILDINGS.length && (!fresh || !drawn.seen)
+      ? Math.max(...drawn.bases.map((base) => Math.abs(base)))
+      : Infinity;
+  };
+  await expect.poll(() => onTheMap(false), { timeout: 30_000 }).toBeLessThan(1);
+  // Put there each on its own: the tileset itself is no longer lowered.
+  expect(await tilesetShift(map)).toBeLessThan(1);
+
+  // Sit on the ground off: every building back exactly as it loaded, in a new
+  // glTF so that deck builds it again, and the tileset at its real altitude.
+  await blocksGltf(map, true);
+  await setVisConfig(map, { groundTileset: false });
+  const loaded = buildingsPositions();
   await expect
     .poll(
       async () => {
-        const bases = await buildingBases(map);
-        return bases?.length === HILL_BUILDINGS.length ? Math.max(...bases.map((base) => Math.abs(base))) : Infinity;
+        const held = await blocksGltf(map);
+        return Boolean(held && !held.seen && held.positions.every((value, i) => value === loaded[i]));
       },
       { timeout: 30_000 }
     )
-    .toBeLessThan(1);
-  // Put there each on its own: the tileset itself is no longer lowered.
+    .toBe(true);
+  expect((await blocksGltf(map))!.positions).toHaveLength(loaded.length);
   expect(await tilesetShift(map)).toBeLessThan(1);
+
+  // And on again: each building back on the map, drawn from a glTF built again.
+  await blocksGltf(map, true);
+  await setVisConfig(map, { groundTileset: true });
+  await expect.poll(() => onTheMap(true), { timeout: 30_000 }).toBeLessThan(1);
   await expect(panel.getByText(/An error in deck\.gl/)).toHaveCount(0);
 });

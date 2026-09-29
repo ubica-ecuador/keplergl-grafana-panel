@@ -178,11 +178,62 @@ function buildingsCentre(): number[] {
 }
 
 /**
- * The buildings as ion's tiler writes them: one glb, Y up round `RTC_CENTER`,
- * one box of 20 m by 20 m per building, each vertex tagged with its
- * building's `_BATCHID`.
+ * The translation of the buildings' one glTF node, in the glTF's Y-up metres:
+ * a node matrix the layer has to follow, as luma.gl does, to find where each
+ * building is drawn. Small enough that loaders.gl leaves it on the node.
+ */
+const BUILDINGS_NODE_TRANSLATION = [12, 3, -7];
+
+/**
+ * The buildings' positions as their glb holds them, and loaders.gl hands them
+ * over: floats, in the glTF's Y-up metres, under the node's translation.
+ */
+export function buildingsPositions(): number[] {
+  return Array.from(new Float32Array(buildingsLayout().positions));
+}
+
+/**
+ * The buildings as ion's tiler writes them: one glb, Y up round `RTC_CENTER`
+ * and under a node matrix, one box of 20 m by 20 m per building, each vertex
+ * tagged with its building's `_BATCHID`.
  */
 function buildingsGlb(): Buffer {
+  const { positions, ids, indices } = buildingsLayout();
+  const count = positions.length / 3;
+  const positionBytes = Buffer.alloc(positions.length * 4);
+  positions.forEach((value, i) => positionBytes.writeFloatLE(value, i * 4));
+  const idBytes = Buffer.alloc(ids.length * 4);
+  ids.forEach((value, i) => idBytes.writeFloatLE(value, i * 4));
+  const indexBytes = Buffer.alloc(indices.length * 2);
+  indices.forEach((value, i) => indexBytes.writeUInt16LE(value, i * 2));
+  const low = [0, 1, 2].map((axis) => Math.min(...positions.filter((_, i) => i % 3 === axis)));
+  const high = [0, 1, 2].map((axis) => Math.max(...positions.filter((_, i) => i % 3 === axis)));
+  const [tx, ty, tz] = BUILDINGS_NODE_TRANSLATION;
+  return glb(
+    {
+      asset: { version: '2.0' },
+      scene: 0,
+      scenes: [{ nodes: [0] }],
+      nodes: [{ mesh: 0, matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tx, ty, tz, 1] }],
+      meshes: [{ primitives: [{ attributes: { POSITION: 0, _BATCHID: 1 }, indices: 2 }] }],
+      accessors: [
+        { bufferView: 0, componentType: 5126, count, type: 'VEC3', min: low, max: high },
+        { bufferView: 1, componentType: 5126, count, type: 'SCALAR' },
+        { bufferView: 2, componentType: 5123, count: indices.length, type: 'SCALAR' },
+      ],
+      bufferViews: [
+        { buffer: 0, byteOffset: 0, byteLength: positionBytes.length },
+        { buffer: 0, byteOffset: positionBytes.length, byteLength: idBytes.length },
+        { buffer: 0, byteOffset: positionBytes.length + idBytes.length, byteLength: indexBytes.length },
+      ],
+      buffers: [{ byteLength: positionBytes.length + idBytes.length + indexBytes.length }],
+    },
+    Buffer.concat([positionBytes, idBytes, indexBytes])
+  );
+}
+
+/** The buildings' corners in the glb's own frame, their batch ids, and the triangles of their faces. */
+function buildingsLayout(): { positions: number[]; ids: number[]; indices: number[] } {
   const centre = buildingsCentre();
   const positions: number[] = [];
   const ids: number[] = [];
@@ -209,44 +260,16 @@ function buildingsGlb(): Buffer {
         const longitude = CUENCA.longitude + (east + e) / (METRES_PER_DEGREE_EAST * Math.cos(radians(CUENCA.latitude)));
         const corner = ecef(radians(longitude), radians(latitude), base + up);
         const [x, y, z] = [0, 1, 2].map((axis) => corner[axis] - centre[axis]);
-        // ECEF offset to glTF's Y up: loaders.gl turns it back with a quarter turn about x.
-        positions.push(x, z, -y);
+        // ECEF offset to glTF's Y up — loaders.gl turns it back with a quarter
+        // turn about x — less the node's translation, which luma.gl adds back.
+        const [tx, ty, tz] = BUILDINGS_NODE_TRANSLATION;
+        positions.push(x - tx, z - ty, -y - tz);
         ids.push(id);
       }
     }
     faces.flat().forEach((index) => indices.push(first + index));
   });
-
-  const positionBytes = Buffer.alloc(positions.length * 4);
-  positions.forEach((value, i) => positionBytes.writeFloatLE(value, i * 4));
-  const idBytes = Buffer.alloc(ids.length * 4);
-  ids.forEach((value, i) => idBytes.writeFloatLE(value, i * 4));
-  const indexBytes = Buffer.alloc(indices.length * 2);
-  indices.forEach((value, i) => indexBytes.writeUInt16LE(value, i * 2));
-  const count = positions.length / 3;
-  const low = [0, 1, 2].map((axis) => Math.min(...positions.filter((_, i) => i % 3 === axis)));
-  const high = [0, 1, 2].map((axis) => Math.max(...positions.filter((_, i) => i % 3 === axis)));
-  return glb(
-    {
-      asset: { version: '2.0' },
-      scene: 0,
-      scenes: [{ nodes: [0] }],
-      nodes: [{ mesh: 0 }],
-      meshes: [{ primitives: [{ attributes: { POSITION: 0, _BATCHID: 1 }, indices: 2 }] }],
-      accessors: [
-        { bufferView: 0, componentType: 5126, count, type: 'VEC3', min: low, max: high },
-        { bufferView: 1, componentType: 5126, count, type: 'SCALAR' },
-        { bufferView: 2, componentType: 5123, count: indices.length, type: 'SCALAR' },
-      ],
-      bufferViews: [
-        { buffer: 0, byteOffset: 0, byteLength: positionBytes.length },
-        { buffer: 0, byteOffset: positionBytes.length, byteLength: idBytes.length },
-        { buffer: 0, byteOffset: positionBytes.length + idBytes.length, byteLength: indexBytes.length },
-      ],
-      buffers: [{ byteLength: positionBytes.length + idBytes.length + indexBytes.length }],
-    },
-    Buffer.concat([positionBytes, idBytes, indexBytes])
-  );
+  return { positions, ids, indices };
 }
 
 /** A valid glTF with nothing to draw: no `meshes` at all, like OSM Buildings' `root.b3dm`. */
