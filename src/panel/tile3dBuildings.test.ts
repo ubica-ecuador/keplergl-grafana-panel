@@ -68,7 +68,7 @@ type Accessor = Record<string, any>;
  */
 function batchedContent(
   buildings: Building[],
-  options: { batchLength?: number; idName?: string; type?: string; quantized?: boolean } = {}
+  options: { batchLength?: number; idName?: string; type?: string; quantized?: boolean; inBuffer?: boolean } = {}
 ) {
   const centre = ecef(radians(CUENCA.longitude), radians(CUENCA.latitude), 2600);
   const cartesian = new Matrix4().translate(centre).rotateX(Math.PI / 2);
@@ -104,6 +104,13 @@ function batchedContent(
       normalized: true,
       count: positions.length / 3,
     };
+  }
+  if (options.inBuffer) {
+    // As loaders.gl leaves it: the values copied out of the glb's binary, which the buffer view keeps.
+    const arrayBuffer = new ArrayBuffer(16 + positions.length * 4);
+    new Float32Array(arrayBuffer, 16).set(positions);
+    POSITION.bufferView = { byteOffset: 8, buffer: { arrayBuffer, byteOffset: 8 } };
+    POSITION.byteOffset = 0;
   }
   const attributes: Record<string, Accessor> = { POSITION };
   if (options.idName !== '') {
@@ -153,19 +160,20 @@ function nodeMatrix(node: Record<string, any>): Matrix4 {
  * height of its vertices, in metres above the map — the content's drawing
  * matrix times the node's, and the height of the origin deck draws round.
  */
-function drawnHeights(content: Record<string, any>): Map<number, { base: number; top: number }> {
+function drawnHeights(content: Record<string, any>, only?: number): Map<number, { base: number; top: number }> {
   const heights = new Map<number, { base: number; top: number }>();
   const drawing = new Matrix4(content.modelMatrix);
   const visit = (node: Record<string, any>, parent: Matrix4) => {
     const world = parent.clone().multiplyRight(nodeMatrix(node));
     for (const primitive of node.mesh?.primitives ?? []) {
-      const { POSITION, _BATCHID } = primitive.attributes;
+      const { POSITION, _BATCHID, _FEATURE_ID_0, BATCHID } = primitive.attributes;
+      const ids = (_BATCHID ?? _FEATURE_ID_0 ?? BATCHID)?.value;
       const dequantize = (value: number) => (POSITION.normalized ? Math.max(value / 32767, -1) : value);
       const matrix = drawing.clone().multiplyRight(world);
       for (let i = 0; i < POSITION.value.length / 3; i++) {
         const p = [0, 1, 2].map((axis) => dequantize(POSITION.value[i * 3 + axis]));
         const z = matrix.transform(p)[2] + content.cartographicOrigin[2];
-        const id = _BATCHID.value[i];
+        const id = ids ? ids[i] : 0;
         const known = heights.get(id) ?? { base: Infinity, top: -Infinity };
         heights.set(id, { base: Math.min(known.base, z), top: Math.max(known.top, z) });
       }
@@ -174,7 +182,9 @@ function drawnHeights(content: Record<string, any>): Map<number, { base: number;
       visit(child, world);
     }
   };
-  content.gltf.scenes[0].nodes.forEach((node: Record<string, any>) => visit(node, new Matrix4()));
+  content.gltf.scenes[0].nodes.forEach(
+    (node: Record<string, any>, k: number) => (only === undefined || only === k) && visit(node, new Matrix4())
+  );
   return heights;
 }
 
@@ -286,16 +296,67 @@ describe('flattenBuildings', () => {
     });
   });
 
-  it('leaves alone a content that is not buildings', () => {
-    for (const content of [
-      batchedContent([CENTRE, HILL], { type: 'glTF', idName: '' }),
-      batchedContent([CENTRE, HILL], { batchLength: 1 }),
-    ]) {
-      const positions = positionsOf(content).value;
-      const gltf = content.gltf;
-      expect(flattenBuildings(content)).toBe(false);
-      expect(positionsOf(content).value).toBe(positions);
-      expect(content.gltf).toBe(gltf);
+  it('puts a content of one feature, or with no feature ids, on the map as one, once its tileset is buildings', () => {
+    // hasBuildings tells the tileset apart; every content of it is then put on the map.
+    const single = batchedContent([HILL], { batchLength: 1 });
+    expect(flattenBuildings(single)).toBe(true);
+    expect(drawnHeights(single).get(0)!.base).toBeCloseTo(0, 1);
+
+    const unbatched = batchedContent([CENTRE, HILL], { type: 'glTF', idName: '' });
+    expect(flattenBuildings(unbatched)).toBe(true);
+    const [only] = [...drawnHeights(unbatched).values()];
+    expect(only.base).toBeCloseTo(0, 1);
+  });
+
+  it('leaves alone instanced models and point clouds', () => {
+    const instanced = { ...batchedContent([CENTRE, HILL]), type: 'i3dm', instances: [{}] };
+    const positions = positionsOf(instanced).value;
+    expect(flattenBuildings(instanced)).toBe(false);
+    expect(positionsOf(instanced).value).toBe(positions);
+    expect(flattenBuildings({ type: 'pnts', attributes: {} } as never)).toBe(false);
+  });
+
+  it('leaves a building far from the tile’s origin buried rather than misplaced', () => {
+    // OSM Buildings' coarse tiles hold buildings 60 km from their centre and
+    // more: there the tangent plane has left the ground, and one put on the map
+    // stood tilted and far off.
+    const near: Building = { east: 7_000, north: 7_000, base: 2600, height: 20 };
+    const far: Building = { east: 70_000, north: 70_000, base: 2600, height: 20 };
+    const content = batchedContent([near, far]);
+    const before = drawnHeights(content);
+
+    expect(flattenBuildings(content)).toBe(true);
+
+    const after = drawnHeights(content);
+    expect(after.get(0)!.base).toBeCloseTo(0, 1);
+    expect(after.get(1)!.base).toBe(before.get(1)!.base);
+    expect(after.get(1)!.top).toBe(before.get(1)!.top);
+  });
+
+  it('gives positions drawn by two nodes with different matrices a copy for each, and moves each by its own', () => {
+    const content = batchedContent([CENTRE, HILL]);
+    const [first] = content.gltf.nodes;
+    const second = { mesh: first.mesh, translation: [300, 40, -200] };
+    content.gltf.nodes.push(second);
+    content.gltf.scenes[0].nodes.push(second);
+    content.gltf.meshes = [first.mesh];
+    const loaded = positionsOf(content).value;
+
+    expect(flattenBuildings(content)).toBe(true);
+
+    for (const node of [0, 1]) {
+      const heights = drawnHeights(content, node);
+      expect(heights.get(0)!.base).toBeCloseTo(0, 1);
+      expect(heights.get(1)!.base).toBeCloseTo(0, 1);
+    }
+    expect(second.mesh).not.toBe(first.mesh);
+    // luma.gl finds a node's mesh by id among the glTF's meshes.
+    expect(content.gltf.meshes).toContain(second.mesh);
+    expect(second.mesh.id).not.toBe(first.mesh.id);
+
+    restoreBuildings(content);
+    for (const node of [first, second]) {
+      expect(Array.from(node.mesh.primitives[0].attributes.POSITION.value)).toEqual(Array.from(loaded));
     }
   });
 });
@@ -318,6 +379,29 @@ describe('restoreBuildings', () => {
       expect(content.gltf).not.toBe(flattenedGltf);
       expect(restoreBuildings(content)).toBe(false);
     }
+  });
+
+  it('reads the positions again from the buffer view rather than keeping a copy, when it holds them', () => {
+    const content = batchedContent([CENTRE, HILL], { inBuffer: true });
+    const loaded = positionsOf(content).value;
+    const values = Array.from(loaded as ArrayLike<number>);
+    flattenBuildings(content);
+
+    restoreBuildings(content);
+
+    const restored = positionsOf(content).value;
+    expect(restored).not.toBe(loaded);
+    expect(restored).toBeInstanceOf(Float32Array);
+    expect(Array.from(restored)).toEqual(values);
+  });
+
+  it('keeps a copy when the buffer view does not hold what was loaded, as for a sparse accessor', () => {
+    const content = batchedContent([CENTRE, HILL], { inBuffer: true });
+    const loaded = positionsOf(content).value as Float32Array;
+    loaded[0] += 1;
+    flattenBuildings(content);
+    restoreBuildings(content);
+    expect(positionsOf(content).value).toBe(loaded);
   });
 
   it('can flatten them again after', () => {

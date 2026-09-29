@@ -1,8 +1,9 @@
 import { Ellipsoid } from '@math.gl/geospatial';
 import { Matrix4, Vector3 } from '@math.gl/core';
 
-import { fitToDeck, shiftContent } from './tile3dAltitude';
+import { fitToDeck, setScaleHeightOffset, shiftContent } from './tile3dAltitude';
 import { TILE3D_ALTITUDE_VIS_CONFIGS, altitudeAware, withTile3dAltitude } from './tile3dAltitudeLayer';
+import { flattenedDrop } from './tile3dBuildings';
 import { sturdyLoader } from './tile3dLoader';
 
 /** math.gl's `Matrix4` as far as this code cares: an array with a `clone`. */
@@ -867,6 +868,63 @@ describe('altitudeAware, with a tileset of batched buildings', () => {
     const nested = { hasTilesetContent: true, tileset: ts, header: { boundingVolume: {} }, children: [child] };
     layer._onTileLoad(nested);
     expect(child.header.boundingVolume).toHaveProperty('box');
+  });
+
+  it('forgets the ground the search last settled on once the tileset is buildings', () => {
+    const { layer, tile } = loadedOverCuenca();
+    expect(layer.state.ground).toBeCloseTo(2490, 3);
+    layer._onTileLoad(tile);
+    layer.updateState({});
+    expect(layer.state.ground).toBeNull();
+  });
+
+  it('works out deck’s metres for a tile loading in a flattened volume from where its geometry stands', () => {
+    // loaders.gl puts a tile's origin at the centre of its volume: lowered,
+    // ~2 500 m below the buildings, where deck's scale is a few parts in ten
+    // thousand off — and off from that of a tile loaded before.
+    const { layer, ts, tile } = loadedOverCuenca();
+    layer._onTileLoad(tile);
+    layer.updateState({});
+    const blocks = (ts.roots['kepler-map'] as any).children[0].children[0];
+    const later = { id: 'later', tileset: ts, computedTransform: ts.modelMatrix.clone(), header: blocks.header };
+    const drop = flattenedDrop(later);
+    expect(drop).toBeGreaterThan(2400);
+    expect(drop).toBeLessThan(2600);
+
+    const content = buildingsContent();
+    const reference = buildingsContent();
+    setScaleHeightOffset(reference, drop);
+    fitToDeck(reference);
+    layer._onTileLoad({ ...later, content });
+    Array.from(reference.modelMatrix as ArrayLike<number>).forEach((value, i) =>
+      expect((content.modelMatrix as ArrayLike<number>)[i]).toBeCloseTo(value, 9)
+    );
+  });
+
+  it('lowers a small tileset of buildings as a whole, by its base, and leaves each building as it is', () => {
+    // A city in LOD2 or a BIM model: one ground holds it, and its parts are not
+    // a terrain model's buildings to be taken apart.
+    const layer = new (Aware())({ groundTileset: true, altitudeOffset: 0 });
+    const ts = tileset() as ReturnType<typeof tileset> & { tiles?: unknown[] };
+    layer.state = { tileset3d: ts, activeViewports: { main: 'vp' }, lastUpdatedViewports: null };
+    layer.updateState({});
+    const content = buildingsContent([0, 0, -300]);
+    const positions = content.gltf.scenes[0].nodes[0].mesh.primitives[0].attributes.POSITION.value;
+    const tile = {
+      id: 'block',
+      tileset: ts,
+      computedTransform: ts.modelMatrix.clone(),
+      content,
+      header: { boundingVolume: {} },
+    };
+    ts.tiles = [tile];
+
+    layer._onTileLoad(tile);
+    layer.updateState({});
+
+    expect(ts.modelMatrix[14]).toBeCloseTo(-300, 9);
+    expect(content.gltf.scenes[0].nodes[0].mesh.primitives[0].attributes.POSITION.value).toBe(positions);
+    expect(tile.header.boundingVolume).not.toHaveProperty('box');
   });
 
   it('keeps lowering a mesh with no feature ids, like Google’s, by the ground under the view', () => {

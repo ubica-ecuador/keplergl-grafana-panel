@@ -828,6 +828,24 @@ function seenFrom(origin: ArrayLike<number>, cartesian: ArrayLike<number>): numb
 }
 
 /**
+ * Per content, metres to add to its origin's height when working out deck's
+ * metres ({@link setScaleHeightOffset}).
+ */
+const scaleHeightOffsets = new WeakMap<object, number>();
+
+/**
+ * Has deck's metres for a content worked out as if its origin stood `metres`
+ * higher. loaders.gl puts a tile's origin at the centre of its bounding
+ * volume; a tile that loads while its volume is lowered for flattened
+ * buildings (`tile3dBuildings.ts`) gets an origin that far below its
+ * geometry, where the scale is a few parts in ten thousand off — ~10 m at
+ * 28 km from the origin — and would differ from that of a tile loaded before.
+ */
+export function setScaleHeightOffset(content: TileContentLike, metres: number): void {
+  scaleHeightOffsets.set(content, metres);
+}
+
+/**
  * The matrix deck is to draw a tile's content with: its geometry to metres
  * east, north and up of its origin, in the metres deck counts
  * (`tile3dDeckMetres.ts`). Worked out afresh from the ECEF matrix every time,
@@ -836,10 +854,14 @@ function seenFrom(origin: ArrayLike<number>, cartesian: ArrayLike<number>): numb
 function drawingMatrix(
   cartesian: ArrayLike<number>,
   cartesianOrigin: ArrayLike<number>,
-  cartographicOrigin: ArrayLike<number>
+  cartographicOrigin: ArrayLike<number>,
+  content: TileContentLike
 ): number[] {
   const local = seenFrom(cartesianOrigin, cartesian);
-  const scale = deckMetreScale(cartographicOrigin);
+  const offset = scaleHeightOffsets.get(content) ?? 0;
+  const scale = deckMetreScale(
+    offset === 0 ? cartographicOrigin : [cartographicOrigin[0], cartographicOrigin[1], cartographicOrigin[2] + offset]
+  );
   return scale ? inDeckMetres(local, scale) : local;
 }
 
@@ -876,7 +898,7 @@ export function shiftContent(content: TileContentLike | null | undefined, delta:
   }
   // The same, seen from the east, north and up of the new origin.
   const drawn = drawsCartographic(content);
-  const local = drawn ? drawingMatrix(moved, movedOrigin, movedCartographic) : seenFrom(movedOrigin, moved);
+  const local = drawn ? drawingMatrix(moved, movedOrigin, movedCartographic, content) : seenFrom(movedOrigin, moved);
 
   const oldLocal = content.cartographicModelMatrix;
   const newLocal = copyWith(oldLocal ?? cartesian, local);
@@ -920,7 +942,7 @@ export function fitToDeck(content: TileContentLike | null | undefined): boolean 
   ) {
     return false;
   }
-  const fitted = drawingMatrix(cartesian, origin, cartographic);
+  const fitted = drawingMatrix(cartesian, origin, cartographic, content);
   if (fitted.every((value, i) => value === current[i])) {
     return false;
   }

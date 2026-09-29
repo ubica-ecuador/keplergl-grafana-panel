@@ -27,11 +27,14 @@
  * So the knobs travel as deck props and the work happens in `updateState`,
  * which deck calls again both when a prop changes and when the tileset lands.
  *
- * **A tileset of buildings** — Cesium OSM Buildings, and anything batched the
- * same way — is told apart as its first tile of them loads
- * (`tile3dBuildings.ts`). From then on each building is put on the map on its
- * own, and the tileset is no longer lowered by any one ground: *Sit on the
- * ground* means that, and *Height adjustment* lifts them all together.
+ * **A tileset of buildings round the whole world** — Cesium OSM Buildings,
+ * and anything batched the same way — is told apart as its first tile of them
+ * loads (`tile3dBuildings.ts`). From then on each building is put on the map
+ * on its own, and the tileset is no longer lowered by the ground under the
+ * view: *Sit on the ground* means that, and *Height adjustment* lifts them all
+ * together. A smaller tileset of buildings — a city in LOD2, a BIM model — is
+ * lowered as a whole by its base, like any other: one ground holds it, and its
+ * parts are not the buildings of a terrain model to be taken apart.
  */
 
 import {
@@ -45,6 +48,7 @@ import {
   needsMove,
   nextGround,
   searchSettled,
+  setScaleHeightOffset,
   SETTLE_TIME,
   spansTooWide,
   trimOf,
@@ -55,6 +59,7 @@ import {
 } from './tile3dAltitude';
 import {
   flattenBuildings,
+  flattenedDrop,
   hasBuildings,
   liftOf,
   restoreBuildings,
@@ -231,15 +236,11 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
       if (!tileset) {
         return false;
       }
-      const buildings = this.state?.buildingsOf === tileset;
-      const reshaped = buildings && this.sitBuildings(tileset);
-      let moved: boolean;
-      if (groundsUnderView(tileset)) {
-        moved = this.groundUnderView(tileset);
-      } else {
-        // Buildings each on their own ground: the tileset goes where the trim says, and no lower.
-        moved = applyAltitude(tileset, buildings ? trimOf(this.props) : altitudeOffsetFor(this.props, tileset));
-      }
+      // Only a tileset round the whole world has its buildings put on the map one by one.
+      const reshaped = this.state?.buildingsOf === tileset && groundsUnderView(tileset) && this.sitBuildings(tileset);
+      const moved = groundsUnderView(tileset)
+        ? this.groundUnderView(tileset)
+        : applyAltitude(tileset, altitudeOffsetFor(this.props, tileset));
       if (!moved && !reshaped) {
         return false;
       }
@@ -279,6 +280,12 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
      */
     _onTileLoad(tile: unknown): void {
       const loaded = tile as TileLike | null;
+      // Before anything works out deck's metres for it: its origin may sit in a flattened volume.
+      const drop =
+        this.state?.flattenedOf && this.state.flattenedOf === this.state.tileset3d ? flattenedDrop(loaded) : 0;
+      if (drop !== 0 && loaded?.content) {
+        setScaleHeightOffset(loaded.content, drop);
+      }
       const caughtUp = catchUpTile(loaded);
       const fitted = fitToDeck(loaded?.content);
       const flattened = this.sitLoadedBuildings(loaded);
@@ -411,6 +418,10 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
         }
         state.ground = next.ground;
         ground = next.ground;
+      } else if (state.buildingsOf === tileset) {
+        // Buildings each on their own ground: what the search last settled on no longer means anything.
+        state.ground = null;
+        state.sampledGround = null;
       }
       const placement: Placement = { ground, trim: trimOf(this.props), up: upAt(view.longitude, view.latitude) };
       if (!needsMove(state.placed ?? null, placement, GROUND_TOLERANCE)) {
