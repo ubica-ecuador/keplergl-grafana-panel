@@ -8,6 +8,7 @@ import {
   CITY_REGION_GROUND,
   ELSEWHERE_URL,
   FAR_BUILDING,
+  HILL_BUILDINGS,
   ION_ASSET,
   ION_TOKEN,
   routeTiles3d,
@@ -26,8 +27,11 @@ import {
  * - a tileset round the whole world, left at its real altitude, sat above a
  *   street-level camera over Cuenca: it is now lowered by the ground under the
  *   centre of the view;
- * - and a building far from the centre of its tile, like Cuenca's stadium in
- *   OSM Buildings, was drawn well over a hundred metres south of where it is.
+ * - a building far from the centre of its tile, like Cuenca's stadium in
+ *   OSM Buildings, was drawn well over a hundred metres south of where it is;
+ * - and OSM Buildings' buildings, each placed at the altitude of the terrain
+ *   under it, were lowered by one ground: those on higher ground than the view's
+ *   centre floated above the map, by hundreds of metres on Cuenca's hills.
  */
 
 test.use({ viewport: { width: 1920, height: 1080 } });
@@ -35,6 +39,7 @@ test.use({ viewport: { width: 1920, height: 1080 } });
 const REGIONS_PANEL = 'A world of regions · like Cesium OSM Buildings';
 const BOX_PANEL = 'A world in one box · like Google Photorealistic 3D Tiles';
 const ION_PANEL = 'An ion asset served from elsewhere · like Google through Cesium ion';
+const BUILDINGS_PANEL = 'Batched buildings on hills · like Cesium OSM Buildings';
 
 /** How far deck has lowered the panel's tileset, in metres, or null before it has loaded. */
 async function tilesetShift(map: Locator): Promise<number | null> {
@@ -273,6 +278,70 @@ async function farBuilding(map: Locator): Promise<{ origin: number[]; offset: nu
 }
 
 /**
+ * How high deck draws each building of the tile of buildings (`blocks.b3dm`),
+ * in metres above the map: the lowest of its vertices, by batch id, through the
+ * sublayer deck built for the tile — the glTF it was handed, the node's matrix,
+ * its `modelMatrix` and the height of its `coordinateOrigin`. Null until deck
+ * has built that sublayer for a tile it draws.
+ */
+async function buildingBases(map: Locator): Promise<number[] | null> {
+  return map.evaluate((node) => {
+    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
+    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
+    let deck: any = null;
+    while (fiber) {
+      const instance = fiber.stateNode;
+      if (instance && instance._deck && instance._deck.layerManager) {
+        deck = instance._deck;
+        break;
+      }
+      fiber = fiber.return;
+    }
+    if (!deck) {
+      throw new Error('deck.gl instance not found from map node');
+    }
+    const layer = deck.layerManager.getLayers().find((candidate: any) => candidate.state?.tileset3d);
+    const tiles: any[] = layer?.state?.tileset3d?.tiles ?? [];
+    const tile = tiles.find(
+      (candidate) => candidate.selected && /blocks\.b3dm/.test(String(candidate.contentUrl ?? ''))
+    );
+    const sublayer = tile && layer.state.layerMap?.[tile.id]?.layer;
+    if (!sublayer) {
+      return null;
+    }
+    const { modelMatrix, coordinateOrigin, scenegraph } = sublayer.props;
+    const multiply = (a: ArrayLike<number>, b: ArrayLike<number>) =>
+      Array.from({ length: 16 }, (_, i) => {
+        const [column, row] = [Math.floor(i / 4), i % 4];
+        return [0, 1, 2, 3].reduce((sum, k) => sum + a[k * 4 + row] * b[column * 4 + k], 0);
+      });
+    const bases: number[] = [];
+    // The fixture's nodes carry no translation, rotation or scale: a matrix is all there is to follow.
+    const visit = (gltfNode: any, parent: ArrayLike<number>) => {
+      const world = gltfNode.matrix ? multiply(parent, gltfNode.matrix) : parent;
+      const m = multiply(modelMatrix, world);
+      for (const primitive of gltfNode.mesh?.primitives ?? []) {
+        const positions = primitive.attributes.POSITION.value;
+        const ids = primitive.attributes._BATCHID.value;
+        for (let i = 0; i < positions.length / 3; i++) {
+          const [x, y, z] = [positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]];
+          const height = m[2] * x + m[6] * y + m[10] * z + m[14] + coordinateOrigin[2];
+          bases[ids[i]] = Math.min(bases[ids[i]] ?? Infinity, height);
+        }
+      }
+      for (const child of gltfNode.children ?? []) {
+        visit(child, world);
+      }
+    };
+    const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+    for (const root of scenegraph.scenes[0].nodes) {
+      visit(root, identity);
+    }
+    return bases;
+  });
+}
+
+/**
  * How far, in metres over the ground, deck draws a point from where it is.
  *
  * deck draws a tile's sublayer with `METER_OFFSETS` round its origin, turning
@@ -411,4 +480,34 @@ test('an ion asset served from elsewhere is loaded from there, and the ion token
   expect(elsewhere.filter((request) => request.authorization)).toEqual([]);
   // ion's own URL for the asset, which answered 401, is no longer asked at all.
   expect(requests.filter((request) => request.url.startsWith('https://assets.ion.cesium.com/'))).toEqual([]);
+});
+
+test('a tileset of batched buildings draws each building on the map, on the hills too', async ({
+  page,
+  gotoDashboardPage,
+  readProvisionedDashboard,
+}) => {
+  test.slow();
+  const requests = await routeTiles3d(page);
+  const dashboard = await gotoDashboardPage(await readProvisionedDashboard({ fileName: 'tile3dGlobal.json' }));
+  const panel = dashboard.getPanelByTitle(BUILDINGS_PANEL).locator;
+  const map = panel.locator('.maplibregl-map');
+
+  await expect
+    .poll(() => requests.map((request) => request.path), { timeout: 60_000 })
+    .toContain('/world-buildings/blocks.b3dm');
+  // Lowered by the ground under the view, 2 490 m, the building on the hill
+  // was drawn 210 m above the map. Each building now has its lowest vertex on it.
+  await expect
+    .poll(
+      async () => {
+        const bases = await buildingBases(map);
+        return bases?.length === HILL_BUILDINGS.length ? Math.max(...bases.map((base) => Math.abs(base))) : Infinity;
+      },
+      { timeout: 30_000 }
+    )
+    .toBeLessThan(1);
+  // Put there each on its own: the tileset itself is no longer lowered.
+  expect(await tilesetShift(map)).toBeLessThan(1);
+  await expect(panel.getByText(/An error in deck\.gl/)).toHaveCount(0);
 });

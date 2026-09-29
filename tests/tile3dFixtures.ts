@@ -10,6 +10,10 @@ import type { Page } from '@playwright/test';
  *   2 490 m — and, beside them, a coarse tile whose one building lies far from
  *   its centre, the way OSM Buildings keeps Cuenca's stadium (see
  *   {@link FAR_BUILDING}).
+ * - `world-buildings/`: Cesium OSM Buildings' buildings. The same world, and
+ *   under it one tile of two batched buildings standing on the ground at
+ *   different heights, the way OSM Buildings places each on the terrain
+ *   ({@link HILL_BUILDINGS}).
  * - `world-box/`: Google Photorealistic 3D Tiles' shape. A cube centred on the
  *   centre of the Earth, then a small box over Cuenca.
  * - An ion asset (424242) whose endpoint answers with a URL elsewhere, the way
@@ -42,6 +46,17 @@ export const CITY_REGION_GROUND = 2490;
  * with `RTC_CENTER`, so it lies ~29 km from the origin deck draws the tile round.
  */
 export const FAR_BUILDING = { east: 9_900, north: 27_900, height: 2_500 };
+
+/**
+ * Two buildings a few hundred metres apart, each at the altitude of its own
+ * base, as Cesium OSM Buildings places them from Cesium World Terrain: one on
+ * Parque Calderón at 2 490 m, one on a hill at 2 700 m. `east` and `north` are
+ * metres from Parque Calderón to the building's south-west corner.
+ */
+export const HILL_BUILDINGS = [
+  { east: 0, north: 0, base: 2490, height: 20 },
+  { east: 250, north: 300, base: 2700, height: 30 },
+];
 
 /** The height at which the vertical under the view enters the box world's city tile. */
 export const CITY_BOX_GROUND = 2400;
@@ -87,6 +102,19 @@ function farRegion(): number[] {
     radians(centreLatitude + 0.26),
     CITY_REGION_GROUND,
     2610,
+  ];
+}
+
+/** The region of the tile the buildings come in: a few blocks round them, from the lower base to the taller top. */
+function buildingsRegion(): number[] {
+  const { longitude, latitude } = CUENCA;
+  return [
+    radians(longitude - 0.01),
+    radians(latitude - 0.01),
+    radians(longitude + 0.01),
+    radians(latitude + 0.01),
+    Math.min(...HILL_BUILDINGS.map(({ base }) => base)),
+    Math.max(...HILL_BUILDINGS.map(({ base, height }) => base + height)),
   ];
 }
 
@@ -144,18 +172,98 @@ function triangleGlb(): Buffer {
   );
 }
 
+/** Where the buildings' glb is centred, `RTC_CENTER`: over Parque Calderón, 2 600 m up. */
+function buildingsCentre(): number[] {
+  return ecef(radians(CUENCA.longitude), radians(CUENCA.latitude), 2600);
+}
+
+/**
+ * The buildings as ion's tiler writes them: one glb, Y up round `RTC_CENTER`,
+ * one box of 20 m by 20 m per building, each vertex tagged with its
+ * building's `_BATCHID`.
+ */
+function buildingsGlb(): Buffer {
+  const centre = buildingsCentre();
+  const positions: number[] = [];
+  const ids: number[] = [];
+  const indices: number[] = [];
+  // A box's six faces, as the corners below number them: bottom 0-3, top 4-7, each anticlockwise from south-west.
+  const faces = [
+    [0, 2, 1, 0, 3, 2],
+    [4, 5, 6, 4, 6, 7],
+    [0, 1, 5, 0, 5, 4],
+    [1, 2, 6, 1, 6, 5],
+    [2, 3, 7, 2, 7, 6],
+    [3, 0, 4, 3, 4, 7],
+  ];
+  HILL_BUILDINGS.forEach(({ east, north, base, height }, id) => {
+    const first = positions.length / 3;
+    for (const up of [0, height]) {
+      for (const [e, n] of [
+        [0, 0],
+        [20, 0],
+        [20, 20],
+        [0, 20],
+      ]) {
+        const latitude = CUENCA.latitude + (north + n) / METRES_PER_DEGREE_NORTH;
+        const longitude = CUENCA.longitude + (east + e) / (METRES_PER_DEGREE_EAST * Math.cos(radians(CUENCA.latitude)));
+        const corner = ecef(radians(longitude), radians(latitude), base + up);
+        const [x, y, z] = [0, 1, 2].map((axis) => corner[axis] - centre[axis]);
+        // ECEF offset to glTF's Y up: loaders.gl turns it back with a quarter turn about x.
+        positions.push(x, z, -y);
+        ids.push(id);
+      }
+    }
+    faces.flat().forEach((index) => indices.push(first + index));
+  });
+
+  const positionBytes = Buffer.alloc(positions.length * 4);
+  positions.forEach((value, i) => positionBytes.writeFloatLE(value, i * 4));
+  const idBytes = Buffer.alloc(ids.length * 4);
+  ids.forEach((value, i) => idBytes.writeFloatLE(value, i * 4));
+  const indexBytes = Buffer.alloc(indices.length * 2);
+  indices.forEach((value, i) => indexBytes.writeUInt16LE(value, i * 2));
+  const count = positions.length / 3;
+  const low = [0, 1, 2].map((axis) => Math.min(...positions.filter((_, i) => i % 3 === axis)));
+  const high = [0, 1, 2].map((axis) => Math.max(...positions.filter((_, i) => i % 3 === axis)));
+  return glb(
+    {
+      asset: { version: '2.0' },
+      scene: 0,
+      scenes: [{ nodes: [0] }],
+      nodes: [{ mesh: 0 }],
+      meshes: [{ primitives: [{ attributes: { POSITION: 0, _BATCHID: 1 }, indices: 2 }] }],
+      accessors: [
+        { bufferView: 0, componentType: 5126, count, type: 'VEC3', min: low, max: high },
+        { bufferView: 1, componentType: 5126, count, type: 'SCALAR' },
+        { bufferView: 2, componentType: 5123, count: indices.length, type: 'SCALAR' },
+      ],
+      bufferViews: [
+        { buffer: 0, byteOffset: 0, byteLength: positionBytes.length },
+        { buffer: 0, byteOffset: positionBytes.length, byteLength: idBytes.length },
+        { buffer: 0, byteOffset: positionBytes.length + idBytes.length, byteLength: indexBytes.length },
+      ],
+      buffers: [{ byteLength: positionBytes.length + idBytes.length + indexBytes.length }],
+    },
+    Buffer.concat([positionBytes, idBytes, indexBytes])
+  );
+}
+
 /** A valid glTF with nothing to draw: no `meshes` at all, like OSM Buildings' `root.b3dm`. */
 function emptyGlb(): Buffer {
   return glb({ asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{}] });
 }
 
 /**
- * A batched 3D model wrapping a glb, with an empty batch; `rtcCenter` places
- * the glb's origin in ECEF, as ion's tiler does.
+ * A batched 3D model wrapping a glb, with an empty batch unless told how many
+ * features it holds; `rtcCenter` places the glb's origin in ECEF, as ion's
+ * tiler does.
  */
-function b3dm(content: Buffer, rtcCenter?: number[]): Buffer {
+function b3dm(content: Buffer, rtcCenter?: number[], batchLength = 0): Buffer {
   // The glb has to start on an 8-byte boundary: the 28-byte header plus this JSON.
-  let featureTable = Buffer.from(JSON.stringify({ BATCH_LENGTH: 0, ...(rtcCenter ? { RTC_CENTER: rtcCenter } : {}) }));
+  let featureTable = Buffer.from(
+    JSON.stringify({ BATCH_LENGTH: batchLength, ...(rtcCenter ? { RTC_CENTER: rtcCenter } : {}) })
+  );
   featureTable = Buffer.concat([featureTable, Buffer.alloc((8 - ((28 + featureTable.length) % 8)) % 8, 0x20)]);
   const header = Buffer.alloc(28);
   header.write('b3dm', 0, 'ascii');
@@ -189,6 +297,25 @@ const REGION_WEST = {
     children: [
       { boundingVolume: { region: cityRegion() }, geometricError: 0, refine: 'ADD', content: { uri: 'city.b3dm' } },
       { boundingVolume: { region: farRegion() }, geometricError: 0, refine: 'ADD', content: { uri: 'far.b3dm' } },
+    ],
+  },
+};
+
+const BUILDINGS_WORLD = {
+  asset: { version: '1.0' },
+  geometricError: 77067,
+  root: {
+    boundingVolume: { region: WORLD },
+    geometricError: 77067,
+    refine: 'ADD',
+    content: { uri: 'root.b3dm' },
+    children: [
+      {
+        boundingVolume: { region: buildingsRegion() },
+        geometricError: 0,
+        refine: 'ADD',
+        content: { uri: 'blocks.b3dm' },
+      },
     ],
   },
 };
@@ -231,6 +358,12 @@ export async function routeTiles3d(page: Page): Promise<Tiles3dRequest[]> {
     '/world-regions/city.b3dm': () => ({ body: b3dm(triangleGlb()), contentType: 'application/octet-stream' }),
     '/world-regions/far.b3dm': () => ({
       body: b3dm(triangleGlb(), ecef(radians(CUENCA.longitude), radians(CUENCA.latitude), FAR_BUILDING.height)),
+      contentType: 'application/octet-stream',
+    }),
+    '/world-buildings/tileset.json': () => ({ body: JSON.stringify(BUILDINGS_WORLD), contentType: 'application/json' }),
+    '/world-buildings/root.b3dm': () => ({ body: b3dm(emptyGlb()), contentType: 'application/octet-stream' }),
+    '/world-buildings/blocks.b3dm': () => ({
+      body: b3dm(buildingsGlb(), buildingsCentre(), HILL_BUILDINGS.length),
       contentType: 'application/octet-stream',
     }),
     '/world-box/root.json': () => ({ body: JSON.stringify(BOX_WORLD), contentType: 'application/json' }),
