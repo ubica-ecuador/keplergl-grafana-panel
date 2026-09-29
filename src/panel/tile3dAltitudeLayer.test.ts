@@ -1,3 +1,7 @@
+import { Ellipsoid } from '@math.gl/geospatial';
+import { Matrix4, Vector3 } from '@math.gl/core';
+
+import { fitToDeck, shiftContent } from './tile3dAltitude';
 import { TILE3D_ALTITUDE_VIS_CONFIGS, altitudeAware, withTile3dAltitude } from './tile3dAltitudeLayer';
 import { sturdyLoader } from './tile3dLoader';
 
@@ -665,5 +669,212 @@ describe('altitudeAware', () => {
 
     expect(() => layer.updateState({})).not.toThrow();
     expect(layer.traversals).toHaveLength(0);
+  });
+});
+
+/** WGS 84, geodetic (degrees, metres) to ECEF. */
+function ecefAt(longitude: number, latitude: number, height: number): number[] {
+  const [lon, lat] = [(longitude * Math.PI) / 180, (latitude * Math.PI) / 180];
+  const n = 6378137 / Math.sqrt(1 - 6.69437999014e-3 * Math.sin(lat) ** 2);
+  return [
+    (n + height) * Math.cos(lat) * Math.cos(lon),
+    (n + height) * Math.cos(lat) * Math.sin(lon),
+    (n * (1 - 6.69437999014e-3) + height) * Math.sin(lat),
+  ];
+}
+
+/** Two buildings of central Cuenca, as batch ids 0 and 1: one 2 490 m up, one on a rise 2 700 m up, 400 m away. */
+const BUILDINGS = [
+  { longitude: -79.0045, latitude: -2.8975, base: 2490, height: 20 },
+  { longitude: -79.002, latitude: -2.895, base: 2700, height: 30 },
+];
+
+/**
+ * A b3dm of those two buildings as loaders.gl hands it over once loaded:
+ * post-processed glTF, Y up round `RTC_CENTER`, its matrices worked out and
+ * in deck's metres — at their real altitude, or already moved by `delta`
+ * (ECEF) when it loaded under a tileset that had been moved. With no
+ * `_BATCHID`, the same mesh the way Google's tiles come.
+ */
+function buildingsContent(delta: ArrayLike<number> = [0, 0, 0], batched = true) {
+  const centre = ecefAt(-79.0045, -2.8975, 2600);
+  const cartesian = new Matrix4().translate(centre).rotateX(Math.PI / 2);
+  const toGltf = cartesian.clone().invert();
+  const positions: number[] = [];
+  const ids: number[] = [];
+  BUILDINGS.forEach(({ longitude, latitude, base, height }, id) => {
+    for (const up of [0, height]) {
+      for (const [east, north] of [
+        [0, 0],
+        [0.0001, 0],
+        [0, 0.0001],
+      ]) {
+        positions.push(...toGltf.transform(ecefAt(longitude + east, latitude + north, base + up)));
+        ids.push(id);
+      }
+    }
+  });
+  const attributes: Record<string, unknown> = {
+    POSITION: { value: new Float32Array(positions), components: 3, componentType: 5126 },
+    ...(batched ? { _BATCHID: { value: new Float32Array(ids), components: 1, componentType: 5126 } } : {}),
+  };
+  const node = { mesh: { primitives: [{ attributes }] } };
+  const cartesianOrigin = new Vector3(centre);
+  const cartographicModelMatrix = Ellipsoid.WGS84.eastNorthUpToFixedFrame(cartesianOrigin)
+    .invert()
+    .multiplyRight(cartesian);
+  const content = {
+    type: batched ? 'b3dm' : 'glTF',
+    ...(batched ? { featureTableJson: { BATCH_LENGTH: 2 } } : {}),
+    gltf: { scenes: [{ nodes: [node] }], nodes: [node] } as Record<string, any>,
+    cartesianOrigin,
+    cartesianModelMatrix: cartesian,
+    cartographicOrigin: Ellipsoid.WGS84.cartesianToCartographic(cartesianOrigin, new Vector3()),
+    cartographicModelMatrix,
+    modelMatrix: cartographicModelMatrix,
+  };
+  fitToDeck(content);
+  shiftContent(content, delta);
+  return content;
+}
+
+/** The lowest height deck draws each building at, by batch id, in metres above the map. */
+function drawnBases(content: ReturnType<typeof buildingsContent>): number[] {
+  const { POSITION } = content.gltf.scenes[0].nodes[0].mesh.primitives[0].attributes;
+  const matrix = new Matrix4(Array.from(content.modelMatrix as ArrayLike<number>));
+  const bases = [Infinity, Infinity];
+  for (let i = 0; i < POSITION.value.length / 3; i++) {
+    const z = matrix.transform(Array.from(POSITION.value.slice(i * 3, i * 3 + 3)))[2] + content.cartographicOrigin[2];
+    const id = i < POSITION.value.length / 6 ? 0 : 1;
+    bases[id] = Math.min(bases[id], z);
+  }
+  return bases;
+}
+
+describe('altitudeAware, with a tileset of batched buildings', () => {
+  type BuildingsLayer = FakeDeckLayer & { _onTileLoad(tile: unknown): void };
+  const Aware = () =>
+    altitudeAware(FakeDeckLayer as never) as never as new (props: Record<string, unknown>) => BuildingsLayer;
+
+  /**
+   * OSM Buildings over Cuenca, lowered by the ground under the view as any
+   * tileset round the world is, and a tile of two buildings loaded under it.
+   */
+  function loadedOverCuenca(batched = true) {
+    const layer = new (Aware())({ groundTileset: true, altitudeOffset: 0 });
+    const ts = osmBuildingsOverCuenca() as ReturnType<typeof osmBuildingsOverCuenca> & { tiles?: unknown[] };
+    layer.context = { viewport: viewportOver(-79.0, -2.894, 1700) };
+    layer.state = { tileset3d: ts, activeViewports: { main: 'vp' }, lastUpdatedViewports: null, frameNumber: 1 };
+    layer.updateState({});
+    const content = buildingsContent([ts.modelMatrix[12], ts.modelMatrix[13], ts.modelMatrix[14]], batched);
+    const tile = {
+      id: 'blocks',
+      tileset: ts,
+      computedTransform: ts.modelMatrix.clone(),
+      content,
+      header: { boundingVolume: {} },
+    };
+    ts.tiles = [tile];
+    return { layer, ts, content, tile };
+  }
+
+  const translation = (ts: { modelMatrix: ArrayLike<number> }) =>
+    Math.hypot(ts.modelMatrix[12], ts.modelMatrix[13], ts.modelMatrix[14]);
+
+  it('stops lowering the tileset by the ground under the view, and draws each building on the map', () => {
+    const { layer, ts, content, tile } = loadedOverCuenca();
+    expect(translation(ts)).toBeCloseTo(2490, 3);
+    expect(drawnBases(content)[1] - drawnBases(content)[0]).toBeCloseTo(210, 0);
+
+    layer._onTileLoad(tile);
+    layer.updateState({});
+
+    expect(translation(ts)).toBeLessThan(1e-6);
+    drawnBases(content).forEach((base) => expect(base).toBeCloseTo(0, 1));
+    expect(layer.traversals.length).toBeGreaterThan(1);
+
+    // Moving the view does not bring the old grounding back.
+    layer.context = { viewport: viewportOver(-79.01, -2.9, 1700) };
+    layer.updateState({});
+    expect(translation(ts)).toBeLessThan(1e-6);
+  });
+
+  it('lifts every building by the Height adjustment', () => {
+    const { layer, ts, content, tile } = loadedOverCuenca();
+    layer._onTileLoad(tile);
+    layer.updateState({});
+
+    layer.props = { ...layer.props, altitudeOffset: 20 };
+    layer.updateState({});
+    expect(translation(ts)).toBeCloseTo(20, 6);
+    drawnBases(content).forEach((base) => expect(base).toBeCloseTo(20, 1));
+  });
+
+  it('puts the buildings back at their real altitude with Sit on the ground off, and on the map again with it on', () => {
+    const { layer, ts, content, tile } = loadedOverCuenca();
+    const { POSITION } = content.gltf.scenes[0].nodes[0].mesh.primitives[0].attributes;
+    const loaded = POSITION.value;
+    layer._onTileLoad(tile);
+    layer.updateState({});
+    const flattened = layer.traversals.length;
+
+    layer.props = { ...layer.props, groundTileset: false };
+    layer.updateState({});
+    expect(POSITION.value).toBe(loaded);
+    expect(translation(ts)).toBeLessThan(1e-6);
+    const [centre, rise] = drawnBases(content);
+    expect(centre).toBeCloseTo(2490, 0);
+    expect(rise).toBeCloseTo(2700, 0);
+    expect(layer.traversals.length).toBeGreaterThan(flattened);
+
+    layer.props = { ...layer.props, groundTileset: true };
+    layer.updateState({});
+    drawnBases(content).forEach((base) => expect(base).toBeCloseTo(0, 1));
+  });
+
+  it('culls its tiles where the buildings are drawn, from the map up', () => {
+    const { layer, ts, tile } = loadedOverCuenca();
+    const blocks = (ts.roots['kepler-map'] as any).children[0].children[0];
+    layer._onTileLoad(tile);
+    layer.updateState({});
+    expect(blocks.header.boundingVolume.box).toHaveLength(12);
+
+    layer.props = { ...layer.props, groundTileset: false };
+    layer.updateState({});
+    expect(blocks.header.boundingVolume.box).toBeUndefined();
+  });
+
+  it('draws a tile that loads afterwards on the map as it loads, and has deck build it again', () => {
+    const { layer, ts, tile } = loadedOverCuenca();
+    layer._onTileLoad(tile);
+    layer.updateState({});
+
+    const later = buildingsContent();
+    const layerMap = { later: { layer: { id: 'later-sublayer' }, needsUpdate: false } };
+    layer.state = { ...layer.state, layerMap };
+    layer._onTileLoad({ id: 'later', tileset: ts, computedTransform: ts.modelMatrix.clone(), content: later });
+    drawnBases(later).forEach((base) => expect(base).toBeCloseTo(0, 1));
+    expect(layerMap.later.needsUpdate).toBe(true);
+  });
+
+  it('culls the tiles of a nested tileset that loads afterwards where their buildings are drawn', () => {
+    const { layer, ts, tile } = loadedOverCuenca();
+    layer._onTileLoad(tile);
+    layer.updateState({});
+
+    const region = [-1.37916, -0.05066, -1.37846, -0.05036, 2490, 2610];
+    const child = { header: { boundingVolume: { region } }, children: [] };
+    const nested = { hasTilesetContent: true, tileset: ts, header: { boundingVolume: {} }, children: [child] };
+    layer._onTileLoad(nested);
+    expect(child.header.boundingVolume).toHaveProperty('box');
+  });
+
+  it('keeps lowering a mesh with no feature ids, like Google’s, by the ground under the view', () => {
+    const { layer, ts, content, tile } = loadedOverCuenca(false);
+    const positions = content.gltf.scenes[0].nodes[0].mesh.primitives[0].attributes.POSITION.value;
+    layer._onTileLoad(tile);
+    layer.updateState({});
+    expect(translation(ts)).toBeCloseTo(2490, 3);
+    expect(content.gltf.scenes[0].nodes[0].mesh.primitives[0].attributes.POSITION.value).toBe(positions);
   });
 });

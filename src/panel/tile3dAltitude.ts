@@ -187,7 +187,7 @@ export function spansTooWide(tileset: TilesetLike | null | undefined): boolean {
 }
 
 /** Whether a tile carries a transform that moves what lies under it: loaders.gl's own identity does not count. */
-function hasOwnTransform(tile: TileLike | null | undefined): boolean {
+export function hasOwnTransform(tile: TileLike | null | undefined): boolean {
   return [tile?.transform, tile?.header?.transform, tile?.header?.transformMatrix].some(
     (matrix) => Boolean(matrix) && !isIdentity(matrix!)
   );
@@ -748,7 +748,7 @@ const POLAR_RADIUS = EARTH_RADIUS * Math.sqrt(1 - WGS84_E2);
  * ECEF to `[longitude, latitude, height]`, in degrees and metres: math.gl's
  * `cartesianToCartographic`, which is what loaders.gl gives deck.
  */
-function cartographicOf(point: ArrayLike<number>): Vec3 {
+export function cartographicOf(point: ArrayLike<number>): Vec3 {
   const [x, y, z] = [point[0], point[1], point[2]];
   const p = Math.hypot(x, y);
   let latitude = Math.atan2(z, p * (1 - WGS84_E2));
@@ -848,7 +848,7 @@ function drawingMatrix(
  * `modelMatrix` that very object for 3D Tiles. I3S sets one of its own, and is
  * left alone.
  */
-function drawsCartographic(content: TileContentLike): boolean {
+export function drawsCartographic(content: TileContentLike): boolean {
   return Boolean(content.cartographicModelMatrix) && content.modelMatrix === content.cartographicModelMatrix;
 }
 
@@ -931,7 +931,7 @@ export function fitToDeck(content: TileContentLike | null | undefined): boolean 
 }
 
 /** Every tile the tileset keeps — the tree for each viewport, the first one, and the ones last selected — once each. */
-function everyTile(tileset: TilesetLike): Set<TileLike> {
+export function everyTile(tileset: TilesetLike): Set<TileLike> {
   const found = new Set<TileLike>();
   const stack: TileLike[] = [];
   const add = (tile: TileLike | null | undefined) => {
