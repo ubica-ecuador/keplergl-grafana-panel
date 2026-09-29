@@ -56,8 +56,8 @@ release documents what changed since the one before it.
     a smaller tileset of buildings — a city model, a BIM model — is still lowered as a whole by its
     base. Each building part is placed by its own lowest point, so a part that starts above the
     ground — an overhang, a skybridge, the upper section of a tower — may land at the ground with the
-    parts below it. Buildings far from the centre of the coarse tile they come in stay hidden below
-    the map rather than being drawn out of place.
+    parts below it. Buildings far from the centre of the coarse tile they come in are hidden rather
+    than drawn out of place or in the air.
 - **Charts**: kepler's charts panel gets its button in the map control — big numbers, bars, lines,
   heatmaps and pivot tables over the map's data, saved with the map. Its **tooltip charts** plot an
   entity's own history in its popup: hover a station and see its day. With kepler's tooltip compare

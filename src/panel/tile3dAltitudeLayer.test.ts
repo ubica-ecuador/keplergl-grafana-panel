@@ -1,10 +1,9 @@
 import { Ellipsoid } from '@math.gl/geospatial';
 import { Matrix4, Vector3 } from '@math.gl/core';
 
-import { fitToDeck, setScaleHeightOffset, shiftContent } from './tile3dAltitude';
+import { fitToDeck, shiftContent } from './tile3dAltitude';
 import { TILE3D_ALTITUDE_VIS_CONFIGS, altitudeAware, withTile3dAltitude } from './tile3dAltitudeLayer';
-import { flattenedDrop } from './tile3dBuildings';
-import { sturdyLoader } from './tile3dLoader';
+import { regionBox, sturdyLoader } from './tile3dLoader';
 
 /** math.gl's `Matrix4` as far as this code cares: an array with a `clone`. */
 class FakeMatrix extends Array<number> {
@@ -697,7 +696,7 @@ const BUILDINGS = [
  * (ECEF) when it loaded under a tileset that had been moved. With no
  * `_BATCHID`, the same mesh the way Google's tiles come.
  */
-function buildingsContent(delta: ArrayLike<number> = [0, 0, 0], batched = true) {
+function buildingsContent(delta: ArrayLike<number> = [0, 0, 0], batched = true, origin?: ArrayLike<number>) {
   const centre = ecefAt(-79.0045, -2.8975, 2600);
   const cartesian = new Matrix4().translate(centre).rotateX(Math.PI / 2);
   const toGltf = cartesian.clone().invert();
@@ -720,7 +719,8 @@ function buildingsContent(delta: ArrayLike<number> = [0, 0, 0], batched = true) 
     ...(batched ? { _BATCHID: { value: new Float32Array(ids), components: 1, componentType: 5126 } } : {}),
   };
   const node = { mesh: { primitives: [{ attributes }] } };
-  const cartesianOrigin = new Vector3(centre);
+  // loaders.gl's origin is the centre of the tile's volume, wherever the geometry stands in it.
+  const cartesianOrigin = new Vector3(origin ? Array.from(origin) : centre);
   const cartographicModelMatrix = Ellipsoid.WGS84.eastNorthUpToFixedFrame(cartesianOrigin)
     .invert()
     .multiplyRight(cartesian);
@@ -878,27 +878,44 @@ describe('altitudeAware, with a tileset of batched buildings', () => {
     expect(layer.state.ground).toBeNull();
   });
 
-  it('works out deck’s metres for a tile loading in a flattened volume from where its geometry stands', () => {
+  it('works out deck’s metres for a tile loading in a flattened volume as for one loaded before', () => {
     // loaders.gl puts a tile's origin at the centre of its volume: lowered,
     // ~2 500 m below the buildings, where deck's scale is a few parts in ten
-    // thousand off — and off from that of a tile loaded before.
+    // thousand off that of the same tile loaded before the volume came down.
     const { layer, ts, tile } = loadedOverCuenca();
-    layer._onTileLoad(tile);
-    layer.updateState({});
     const blocks = (ts.roots['kepler-map'] as any).children[0].children[0];
-    const later = { id: 'later', tileset: ts, computedTransform: ts.modelMatrix.clone(), header: blocks.header };
-    const drop = flattenedDrop(later);
-    expect(drop).toBeGreaterThan(2400);
-    expect(drop).toBeLessThan(2600);
+    const realCentre = regionBox(blocks.header.boundingVolume.region).slice(0, 3);
+    const lowered = [ts.modelMatrix[12], ts.modelMatrix[13], ts.modelMatrix[14]];
+    const early = {
+      id: 'early',
+      tileset: ts,
+      computedTransform: ts.modelMatrix.clone(),
+      header: blocks.header,
+      content: buildingsContent(lowered, true, realCentre),
+    };
+    ts.tiles!.push(early);
+    layer._onTileLoad(tile);
+    layer._onTileLoad(early);
+    layer.updateState({});
 
-    const content = buildingsContent();
-    const reference = buildingsContent();
-    setScaleHeightOffset(reference, drop);
-    fitToDeck(reference);
-    layer._onTileLoad({ ...later, content });
-    Array.from(reference.modelMatrix as ArrayLike<number>).forEach((value, i) =>
-      expect((content.modelMatrix as ArrayLike<number>)[i]).toBeCloseTo(value, 9)
-    );
+    const flatCentre = blocks.header.boundingVolume.box.slice(0, 3);
+    const late = {
+      id: 'late',
+      tileset: ts,
+      computedTransform: ts.modelMatrix.clone(),
+      header: blocks.header,
+      content: buildingsContent([0, 0, 0], true, flatCentre),
+    };
+    expect(late.content.cartographicOrigin[2]).toBeLessThan(early.content.cartographicOrigin[2] - 2000);
+    layer._onTileLoad(late);
+
+    // The same scale: the same linear part of the drawing matrix.
+    for (const i of [0, 1, 2, 4, 5, 6, 8, 9, 10]) {
+      expect((late.content.modelMatrix as ArrayLike<number>)[i]).toBeCloseTo(
+        (early.content.modelMatrix as ArrayLike<number>)[i],
+        6
+      );
+    }
   });
 
   it('lowers a small tileset of buildings as a whole, by its base, and leaves each building as it is', () => {
@@ -910,12 +927,15 @@ describe('altitudeAware, with a tileset of batched buildings', () => {
     layer.updateState({});
     const content = buildingsContent([0, 0, -300]);
     const positions = content.gltf.scenes[0].nodes[0].mesh.primitives[0].attributes.POSITION.value;
+    // Its tile's volume as the loader leaves it: a region, and a box that holds it.
+    const region = [-1.37916, -0.05066, -1.37846, -0.05036, 2490, 2610];
+    const box = regionBox(region);
     const tile = {
       id: 'block',
       tileset: ts,
       computedTransform: ts.modelMatrix.clone(),
       content,
-      header: { boundingVolume: {} },
+      header: { boundingVolume: { region, box } },
     };
     ts.tiles = [tile];
 
@@ -924,7 +944,7 @@ describe('altitudeAware, with a tileset of batched buildings', () => {
 
     expect(ts.modelMatrix[14]).toBeCloseTo(-300, 9);
     expect(content.gltf.scenes[0].nodes[0].mesh.primitives[0].attributes.POSITION.value).toBe(positions);
-    expect(tile.header.boundingVolume).not.toHaveProperty('box');
+    expect(tile.header.boundingVolume.box).toBe(box);
   });
 
   it('keeps lowering a mesh with no feature ids, like Google’s, by the ground under the view', () => {
