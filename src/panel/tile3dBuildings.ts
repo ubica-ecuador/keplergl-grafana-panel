@@ -40,9 +40,8 @@
  * roof relative to its base, since only its lowest vertex is put on the map;
  * a part that starts above the ground — an overhang, a skybridge, a tower's
  * upper section — is put on the map by its own lowest vertex, so it may land
- * with the parts below it; a building far from its tile's origin is left
- * buried ({@link MAX_FOOTPRINT_REACH}); and the map is flat, so no relief is
- * shown.
+ * with the parts below it; a building far from its tile's origin is hidden
+ * ({@link MAX_FOOTPRINT_REACH}); and the map is flat, so no relief is shown.
  */
 
 import {
@@ -148,13 +147,21 @@ const COMPONENT_ARRAYS: Record<
  * large buildings in coarse tiles (ADD refinement), some 60 km from the tile's
  * centre and further, to near the antipode: there the tile's tangent plane has
  * left the ground so far that a building put on the map by its lowest vertex
- * stood tilted and hundreds of metres to kilometres off. Such a building keeps
- * its geometry, buried below the map as before: hidden rather than misplaced.
+ * stood tilted and hundreds of metres to kilometres off; and left as it loaded,
+ * over Cuenca, it hung up to ~2 200 m above the map (measured on a depth-11
+ * tile). Such a building is hidden instead: every vertex of it moved to one
+ * point, where its triangles have no area and draw nothing — buried below the
+ * map it would still be drawn over the base map, deck having no ground to hide
+ * it behind.
  */
 const MAX_FOOTPRINT_REACH = 50_000;
 
-/** More features than this in one content, or ids that are not small whole numbers, and it is left as it is. */
-const MAX_FEATURES = 10_000_000;
+/**
+ * Nodes given a mesh of their own by {@link splitShared}: their positions no
+ * longer look shared, yet they draw a second copy of the same features, which
+ * has to be measured apart on every flatten after the first.
+ */
+const splitNodes = new WeakSet<NodeLike>();
 
 /**
  * One primitive to move: its positions, the feature of each vertex (none: the
@@ -431,6 +438,7 @@ function splitShared(parts: Part[]): MeshLike[] {
     };
     added.set(node, { own, mesh });
     node.mesh = mesh;
+    splitNodes.add(node);
   }
   // Every part the node draws now comes from its own mesh, shared or not.
   for (const part of parts) {
@@ -459,7 +467,8 @@ function splitShared(parts: Part[]): MeshLike[] {
  * `(h − base) · L⁻¹·ẑ`, `L` being the linear part of that product: straight
  * down, as drawn, and by exactly that much. The east and north of every
  * vertex stay where they were. A building whose footprint reaches further
- * than {@link MAX_FOOTPRINT_REACH} from the origin is not moved.
+ * than {@link MAX_FOOTPRINT_REACH} from the origin is hidden instead: every
+ * vertex of it, in each primitive, moved onto its first.
  *
  * The positions moved become new float arrays — quantized ones brought back
  * to floats (KHR_mesh_quantization), their accessor saying so — and the
@@ -482,11 +491,20 @@ export function flattenBuildings(content: BuildingsContentLike | null | undefine
     return false;
   }
   const parts = partsOf(content.gltf);
+  // Feature ids run below BATCH_LENGTH, or at least below the number of
+  // vertices: past it, an id is not one to make room for — one stray id of ten
+  // million would have 240 MB of arrays made for it — and the content is left
+  // as it loaded.
+  const batchLength = Number(content.featureTableJson?.BATCH_LENGTH);
+  const cap =
+    Number.isInteger(batchLength) && batchLength > 0
+      ? batchLength
+      : parts.reduce((sum, { positions }) => sum + positions.value!.length / 3, 0);
   let features = 1;
   for (const { ids } of parts) {
     for (let i = 0; ids && i < ids.length; i++) {
       const id = ids[i];
-      if (!(id >= 0 && id < MAX_FEATURES) || (id | 0) !== id) {
+      if (!(id >= 0 && id < cap) || (id | 0) !== id) {
         return false;
       }
       if (id >= features) {
@@ -501,15 +519,12 @@ export function flattenBuildings(content: BuildingsContentLike | null | undefine
   // buildings, measured apart: its features get slots of their own.
   const blocks = new Map<NodeLike, number>();
   for (const { node, shared } of parts) {
-    if (shared && !blocks.has(node)) {
+    if ((shared || splitNodes.has(node)) && !blocks.has(node)) {
       blocks.set(node, (blocks.size + 1) * features);
     }
   }
   const offsets = parts.map(({ node }) => blocks.get(node) ?? 0);
   const slots = features * (blocks.size + 1);
-  if (slots > MAX_FEATURES) {
-    return false;
-  }
 
   // Each feature's lowest drawn height, and how far its footprint reaches from the origin, squared.
   const lowest = new Float64Array(slots).fill(Infinity);
@@ -538,10 +553,20 @@ export function flattenBuildings(content: BuildingsContentLike | null | undefine
       }
     }
   });
+  // How far each feature is moved down; or, reaching too far, hidden (see MAX_FOOTPRINT_REACH).
   const drops = new Float64Array(slots);
+  const hidden = new Uint8Array(slots);
+  let anyHidden = false;
   let any = false;
   for (let id = 0; id < slots; id++) {
-    if (Number.isFinite(lowest[id]) && reach[id] <= MAX_FOOTPRINT_REACH ** 2 && lowest[id] !== base) {
+    if (!Number.isFinite(lowest[id])) {
+      continue;
+    }
+    if (reach[id] > MAX_FOOTPRINT_REACH ** 2) {
+      hidden[id] = 1;
+      anyHidden = true;
+      any = true;
+    } else if (lowest[id] !== base) {
       drops[id] = lowest[id] - base;
       any = true;
     }
@@ -566,11 +591,24 @@ export function flattenBuildings(content: BuildingsContentLike | null | undefine
 
     const f = floats[k];
     const offset = offsets[k];
+    // Where each hidden feature's vertices go: the first of them, in this primitive.
+    const points = anyHidden ? new Int32Array(slots).fill(-1) : null;
     let moved = false;
     let [minX, minY, minZ, maxX, maxY, maxZ] = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
     for (let i = 0, j = 0; j < f.length; i++, j += 3) {
-      const drop = drops[offset + (ids === null ? 0 : ids[i] | 0)];
-      if (drop !== 0) {
+      const slot = offset + (ids === null ? 0 : ids[i] | 0);
+      const drop = drops[slot];
+      if (points !== null && hidden[slot] === 1) {
+        const point = points[slot];
+        if (point < 0) {
+          points[slot] = j;
+        } else {
+          f[j] = f[point];
+          f[j + 1] = f[point + 1];
+          f[j + 2] = f[point + 2];
+          moved = true;
+        }
+      } else if (drop !== 0) {
         f[j] -= drop * dx;
         f[j + 1] -= drop * dy;
         f[j + 2] -= drop * dz;

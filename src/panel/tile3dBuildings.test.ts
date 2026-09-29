@@ -316,21 +316,48 @@ describe('flattenBuildings', () => {
     expect(flattenBuildings({ type: 'pnts', attributes: {} } as never)).toBe(false);
   });
 
-  it('leaves a building far from the tile’s origin buried rather than misplaced', () => {
+  it('hides a building far from the tile’s origin, rather than drawing it misplaced or in the air', () => {
     // OSM Buildings' coarse tiles hold buildings 60 km from their centre and
     // more: there the tangent plane has left the ground, and one put on the map
-    // stood tilted and far off.
+    // stood tilted and far off; left as it loaded, over a city 2 500 m up, it
+    // hung ~1 800 m above the map. Every vertex of it goes to one point, and
+    // triangles of no area draw nothing.
     const near: Building = { east: 7_000, north: 7_000, base: 2600, height: 20 };
     const far: Building = { east: 70_000, north: 70_000, base: 2600, height: 20 };
-    const content = batchedContent([near, far]);
-    const before = drawnHeights(content);
+    const content = batchedContent([near, far], { inBuffer: true });
+    const loaded = Array.from(positionsOf(content).value as ArrayLike<number>);
+    const farVertices = (values: ArrayLike<number>) =>
+      Array.from({ length: 8 }, (_, i) => Array.from(values).slice((8 + i) * 3, (9 + i) * 3));
 
     expect(flattenBuildings(content)).toBe(true);
 
     const after = drawnHeights(content);
     expect(after.get(0)!.base).toBeCloseTo(0, 1);
-    expect(after.get(1)!.base).toBe(before.get(1)!.base);
-    expect(after.get(1)!.top).toBe(before.get(1)!.top);
+    const [first, ...rest] = farVertices(positionsOf(content).value);
+    rest.forEach((vertex) => expect(vertex).toEqual(first));
+    expect(after.get(1)!.top).toBe(after.get(1)!.base);
+
+    // Back exactly as it loaded, and hidden again the next time.
+    restoreBuildings(content);
+    expect(Array.from(positionsOf(content).value)).toEqual(loaded);
+    expect(flattenBuildings(content)).toBe(true);
+    const [again, ...others] = farVertices(positionsOf(content).value);
+    others.forEach((vertex) => expect(vertex).toEqual(again));
+  });
+
+  it('leaves alone a content whose feature ids run past its features, rather than make room for them', () => {
+    // One stray id of ten million would otherwise have three arrays of 80 MB made for it.
+    const stray = batchedContent([CENTRE, HILL]);
+    const ids = stray.gltf.nodes[0].mesh.primitives[0].attributes._BATCHID.value;
+    ids[3] = 5_000_000;
+    const positions = positionsOf(stray).value;
+    expect(flattenBuildings(stray)).toBe(false);
+    expect(positionsOf(stray).value).toBe(positions);
+
+    // With no BATCH_LENGTH, no more features than vertices.
+    const unbatched = batchedContent([CENTRE, HILL], { type: 'glTF', idName: '_FEATURE_ID_0' });
+    unbatched.gltf.nodes[0].mesh.primitives[0].attributes._FEATURE_ID_0.value[0] = 17;
+    expect(flattenBuildings(unbatched)).toBe(false);
   });
 
   it('gives positions drawn by two nodes with different matrices a copy for each, and moves each by its own', () => {
@@ -353,6 +380,15 @@ describe('flattenBuildings', () => {
     // luma.gl finds a node's mesh by id among the glTF's meshes.
     expect(content.gltf.meshes).toContain(second.mesh);
     expect(second.mesh.id).not.toBe(first.mesh.id);
+
+    // And again after Sit on the ground off and on: each copy by its own.
+    restoreBuildings(content);
+    expect(flattenBuildings(content)).toBe(true);
+    for (const node of [0, 1]) {
+      const heights = drawnHeights(content, node);
+      expect(heights.get(0)!.base).toBeCloseTo(0, 1);
+      expect(heights.get(1)!.base).toBeCloseTo(0, 1);
+    }
 
     restoreBuildings(content);
     for (const node of [first, second]) {
