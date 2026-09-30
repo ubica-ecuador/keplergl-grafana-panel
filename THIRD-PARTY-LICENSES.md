@@ -8,6 +8,7 @@ compiled third-party code and vendored assets. Their notices follow.
 | Library                                                                                                                                                                                                                                          | Version         | Licence              | Copyright                                                                                                           |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | kepler.gl and its `@kepler.gl/*` packages                                                                                                                                                                                                        | 3.3.0-alpha.15  | MIT                  | Copyright contributors to the kepler.gl project                                                                     |
+| @grafana/assistant                                                                                                                                                                                                                               | 0.1.34          | Apache-2.0           | Copyright Grafana Labs                                                                                              |
 | @deck.gl/core, /layers, /geo-layers and the rest                                                                                                                                                                                                 | 9.3.11          | MIT                  | Copyright Vis.gl contributors.                                                                                      |
 | @luma.gl/core and the rest                                                                                                                                                                                                                       | 9.3.6           | MIT                  | Copyright (c) 2020 vis.gl contributors                                                                              |
 | @deck.gl-community/editable-layers                                                                                                                                                                                                               | 9.3.8           | MIT                  | Copyright (c) 2020 vis.gl a Series of LF Projects, LLC                                                              |
@@ -76,7 +77,7 @@ what one would guess (kepler and deck.gl both attribute to contributors rather t
 within the loaders.gl/math.gl/probe.gl family the copyright line is not even uniform: math.gl and
 mjolnir.js still say "Uber Technologies, Inc.", loaders.gl says "vis.gl contributors" in lower case,
 and probe.gl / react-map-gl / @vis.gl/react-maplibre say "Vis.gl contributors" with a capital V — each
-was read from its own file rather than assumed from its neighbours).
+was read from its own file rather than assumed from its neighbours). On 2026-09-29, `@grafana/assistant` was added; its copyright and licence were read from the package.json `author` and `license` fields.
 
 `mapbox-gl` is the only package name in this table with two unrelated copies historically in the
 dependency tree: a top-level copy (3.31.0 as of the kepler.gl 3.3.0-alpha.15 bump) under Mapbox's
@@ -133,8 +134,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-`@flowmap.gl/data`, `@flowmap.gl/layers`, `long`, `a5-js` and `thrift` are also Apache-2.0 and bundled,
-but none of the five ships a `NOTICE` file (`thrift` checked on 2026-09-23, when its row was added) (`long`'s own `@license` banner is carried verbatim in `LICENSE.txt`
+`@flowmap.gl/data`, `@flowmap.gl/layers`, `long`, `a5-js`, `@grafana/assistant` and `thrift` are also Apache-2.0 and bundled,
+but none of the six ships a `NOTICE` file (`thrift` checked on 2026-09-23, when its row was added) (`long`'s own `@license` banner is carried verbatim in `LICENSE.txt`
 regardless). `chroma-js` is dual BSD-3-Clause/Apache-2.0 for the small portion of it derived from
 colorbrewer2.org; that portion's Apache notice is already reproduced verbatim inside `LICENSE.txt`'s
 chroma.js banner, so it is not repeated here. `parquet-wasm` and `s2-geometry` are each licensed
