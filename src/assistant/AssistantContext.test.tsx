@@ -1,8 +1,5 @@
 import React from 'react';
 import { render, waitFor } from '@testing-library/react';
-import type { PanelProps } from '@grafana/data';
-
-import type { KeplerPanelOptions } from '../types';
 
 jest.mock('@grafana/assistant', () => ({
   isAssistantAvailable: jest.fn(),
@@ -14,13 +11,15 @@ jest.mock('@grafana/assistant', () => ({
   })),
 }));
 
-import { isAssistantAvailable, providePageContext, provideQuestions } from '@grafana/assistant';
+import { isAssistantAvailable, providePageContext, provideQuestions, createAssistantContextItem } from '@grafana/assistant';
 
-import { AssistantContext } from './AssistantContext';
+import { AssistantContext, AssistantComposition, type AssistantContextProps } from './AssistantContext';
+import type { AssistantDigest } from './digest';
 
 const mockIsAvailable = isAssistantAvailable as jest.Mock;
 const mockProvidePageContext = providePageContext as jest.Mock;
 const mockProvideQuestions = provideQuestions as jest.Mock;
+const mockCreateAssistantContextItem = createAssistantContextItem as jest.Mock;
 
 /** An Observable-like source that resolves asynchronously, like the real SDK. */
 function availability(value: boolean) {
@@ -36,7 +35,7 @@ function fakeTime(iso: string, epochMs: number) {
   return { valueOf: () => epochMs, toISOString: () => iso };
 }
 
-function fakeProps(overrides: Partial<PanelProps<KeplerPanelOptions>> = {}): PanelProps<KeplerPanelOptions> {
+function fakeProps(overrides: Partial<AssistantContextProps> = {}): AssistantContextProps {
   const base = {
     id: 1,
     title: undefined,
@@ -47,7 +46,7 @@ function fakeProps(overrides: Partial<PanelProps<KeplerPanelOptions>> = {}): Pan
       to: fakeTime('2024-01-01T01:00:00.000Z', 2000),
     },
   };
-  return { ...base, ...overrides } as unknown as PanelProps<KeplerPanelOptions>;
+  return { ...base, ...overrides } as unknown as AssistantContextProps;
 }
 
 beforeEach(() => {
@@ -129,5 +128,70 @@ describe('when the assistant is available', () => {
 
     expect(unregisterCtx).toHaveBeenCalledTimes(1);
     expect(unregisterQuestions).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back the base map to the resolved id when no styleType is saved', async () => {
+    render(<AssistantContext {...fakeProps({ resolvedBasemapId: 'dark-matter' })} />);
+
+    await waitFor(() => expect(mockCreateAssistantContextItem).toHaveBeenCalledTimes(1));
+
+    const data = mockCreateAssistantContextItem.mock.calls[0][1].data as AssistantDigest;
+    expect(data.baseMap).toEqual({ id: 'dark-matter' });
+  });
+
+  it('re-registers when the resolved base map id changes', async () => {
+    const { rerender } = render(<AssistantContext {...fakeProps({ resolvedBasemapId: 'dark-matter' })} />);
+    await waitFor(() => expect(mockProvidePageContext).toHaveBeenCalledTimes(1));
+
+    rerender(<AssistantContext {...fakeProps({ resolvedBasemapId: 'positron' })} />);
+    await waitFor(() => expect(mockProvidePageContext).toHaveBeenCalledTimes(2));
+
+    const data = mockCreateAssistantContextItem.mock.calls[1][1].data as AssistantDigest;
+    expect(data.baseMap).toEqual({ id: 'positron' });
+  });
+
+  it('fills bounds from the saved mapState rather than leaving it undefined', async () => {
+    const mapState = { latitude: 1, longitude: 2, zoom: 3 };
+    const mapConfig = { version: 'v1', config: { mapState } } as never;
+
+    render(<AssistantContext {...fakeProps({ options: { mapConfig } as never })} />);
+
+    await waitFor(() => expect(mockCreateAssistantContextItem).toHaveBeenCalledTimes(1));
+
+    const data = mockCreateAssistantContextItem.mock.calls[0][1].data as AssistantDigest;
+    expect(data.bounds).toEqual(mapState);
+  });
+
+  it('registers exactly the base digest when no composition provider wraps it', async () => {
+    render(<AssistantContext {...fakeProps({ title: 'Fleet map' })} />);
+
+    await waitFor(() => expect(mockCreateAssistantContextItem).toHaveBeenCalledTimes(1));
+
+    const [, params] = mockCreateAssistantContextItem.mock.calls[0];
+    expect(params.title).toBe('Kepler map — Fleet map (live)');
+    expect(params.data).toEqual(
+      expect.objectContaining({ datasets: [], filters: [], timeRange: expect.any(Object) })
+    );
+  });
+
+  it('lets a composing host (e.g. Plus) extend the digest and override the title', async () => {
+    const extendDigest = jest.fn((digest: AssistantDigest) => ({ ...digest, plusOnly: 'extra-field' }));
+
+    render(
+      <AssistantComposition.Provider value={{ extendDigest, title: 'Plus map' }}>
+        <AssistantContext {...fakeProps({ title: 'Fleet map' })} />
+      </AssistantComposition.Provider>
+    );
+
+    await waitFor(() => expect(mockCreateAssistantContextItem).toHaveBeenCalledTimes(1));
+
+    const [, params] = mockCreateAssistantContextItem.mock.calls[0];
+    expect(extendDigest).toHaveBeenCalled();
+    // The title override wins over the panel-derived one.
+    expect(params.title).toBe('Plus map');
+    // The extended data carries both the base digest fields and the addition.
+    expect(params.data).toEqual(
+      expect.objectContaining({ plusOnly: 'extra-field', datasets: [], filters: [], timeRange: expect.any(Object) })
+    );
   });
 });

@@ -168,7 +168,7 @@ export function KeplerPanel(props: Props) {
 
   return (
     <div style={{ width, height, position: 'relative' }}>
-      <AssistantContext {...props} />
+      <AssistantContext {...props} resolvedBasemapId={basemapId ?? undefined} />
       <LazyKeplerMap
         width={width}
         height={height}
