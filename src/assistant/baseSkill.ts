@@ -8,4 +8,4 @@ area) and can publish the viewport to dashboard variables ('viewportVariables');
 support drawing a rectangle.
 Data layers draw from the panel's Grafana queries: to add a layer that needs data, add a
 query (refId) returning the columns, then a layer in 'config.visState.layers' whose dataId is
-that query's dataset.`;
+that query's dataset. The dataset id is grafana-<refId> (e.g., query B → grafana-B).`;
