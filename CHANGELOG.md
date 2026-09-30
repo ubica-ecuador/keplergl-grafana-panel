@@ -6,6 +6,15 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Grafana Assistant awareness**: on a Grafana that has the Assistant, the panel now grounds it in
+  the map — the page context carries each query's fields and row counts, the base map actually
+  shown, the saved filters and viewport, and always the dashboard's time range — and two starter
+  questions appear in the sidebar, once per dashboard however many kepler panels it holds. Nothing
+  is sent to any backend, and on a Grafana without the Assistant the panel is unchanged. The
+  panel also exports its schema knowledge as a small skill text (`baseAssistantSkill`) that an
+  organisation can paste as standing Assistant instructions, and an `AssistantComposition` seam so
+  an app embedding the panel extends the digest instead of registering a competing one. The skill
+  spells out the dataset-id rule for hand-written layers: query B's data is dataset `grafana-B`.
 - **Temporal cursor**: the map joins Grafana's shared cursor. Hovering a Time series graph draws an
   amber marker where each vehicle was at that instant, on Point layers and on Trip layers in both
   table and timestamped GeoJSON form, and the same instant as a line on the map's time bar. With

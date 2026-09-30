@@ -60,7 +60,9 @@ kepler ships the entire effects feature and the entire charts panel, but its sto
 mounts neither button, and nothing in the core mounts either manager panel — both are wired by the
 host application. The panel replaces `MapControlFactory` with one that adds both buttons and hosts
 both managers beside the toolbar, as kepler's demo app does. kepler's demo app also mounts a SQL
-data explorer and an AI assistant; neither is included here.
+data explorer and an AI assistant; neither is included here. (The panel does talk to the
+**Grafana** Assistant where one exists — that is a different thing, see
+[Grafana Assistant](../guide/dashboard/grafana-assistant).)
 
 Effect thumbnails are vendored along with the icons, so the picker needs no outbound request.
 

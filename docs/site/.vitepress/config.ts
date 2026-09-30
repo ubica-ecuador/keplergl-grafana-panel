@@ -133,6 +133,7 @@ export default defineConfig({
           { text: 'Cross-filtering', link: '/guide/dashboard/cross-filtering' },
           { text: 'Publishing viewport and areas', link: '/guide/dashboard/publishing' },
           { text: 'Explorer results on the map', link: '/guide/dashboard/explorer-results' },
+          { text: 'Grafana Assistant', link: '/guide/dashboard/grafana-assistant' },
         ],
       },
       {

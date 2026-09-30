@@ -15,7 +15,9 @@ and hosts the manager beside the toolbar — and does the same for [charts](./ch
 [Differences from stock kepler.gl](../../reference/differences-from-kepler).
 
 Two things from the demo app are deliberately _not_ included: the SQL data explorer and the AI
-assistant. Neither belongs in a dashboard panel.
+assistant. Neither belongs in a dashboard panel. (Grafana's own Assistant is another matter — the
+panel feeds it live context where it exists; see
+[Grafana Assistant](../dashboard/grafana-assistant).)
 
 ## Thumbnails are vendored
 

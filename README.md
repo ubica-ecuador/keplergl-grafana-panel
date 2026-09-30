@@ -48,6 +48,10 @@ tutorials, a layer gallery and a complete option reference.
   that variable filters the map. Clicks, the viewport and drawn areas publish too, a click can be
   made to confirm from the popup first, and whatever is selected is ringed on the map — on a shared
   link as well.
+- **Grafana Assistant awareness** — on a Grafana with the Assistant, the panel tells it live what
+  the map is showing (each query's fields, the base map, the saved filters and viewport, the time
+  range) so it can answer about the map and edit it knowingly. Without the Assistant, nothing
+  changes.
 - **Your layer configuration survives a refresh.** Data is swapped underneath the layers rather than
   the datasets being torn down and rebuilt.
 - **Saved map configuration** stored with the dashboard, and configs pasted from kepler.gl,
