@@ -3,6 +3,7 @@ import { PanelProps } from '@grafana/data';
 import { useTheme2 } from '@grafana/ui';
 
 import { KeplerPanelOptions } from '../types';
+import { AssistantContext } from '../assistant/AssistantContext';
 import { framesToDatasets } from '../data/framesToDatasets';
 import { framesToEsri } from '../data/esriDataset';
 import { framesToRasters } from '../data/rasterDataset';
@@ -32,18 +33,19 @@ const EMPTY_MAPPINGS: VariableMapping[] = [];
  * dynamic import in LazyKeplerMap, so a dashboard that merely has the plugin
  * installed does not pay for deck.gl and MapLibre.
  */
-export function KeplerPanel({
-  options,
-  eventBus,
-  onOptionsChange,
-  data,
-  timeRange,
-  onChangeTimeRange,
-  replaceVariables,
-  width,
-  height,
-  id,
-}: Props) {
+export function KeplerPanel(props: Props) {
+  const {
+    options,
+    eventBus,
+    onOptionsChange,
+    data,
+    timeRange,
+    onChangeTimeRange,
+    replaceVariables,
+    width,
+    height,
+    id,
+  } = props;
   const grafanaTheme = useTheme2();
 
   // kepler and the sync hook work in epoch ms; Grafana hands DateTime objects.
@@ -166,6 +168,7 @@ export function KeplerPanel({
 
   return (
     <div style={{ width, height, position: 'relative' }}>
+      <AssistantContext {...props} />
       <LazyKeplerMap
         width={width}
         height={height}
