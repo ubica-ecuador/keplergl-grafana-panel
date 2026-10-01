@@ -3,6 +3,7 @@ import { MapContainerFactory } from '@kepler.gl/components';
 
 import { withTemporalCursor } from './temporalCursorMapContainer';
 import { withMarkersOnTop } from './markersOnTop';
+import { withTerrainAnchor } from './terrainMapContainer';
 import { selectionHalo, type HaloRing, type Selection } from './selectionHalo';
 import { haloDeckLayers, haloOutlines } from './selectionHaloDeckLayers';
 import { haloInputFrom, type VisStateLike } from './selectionHaloInput';
@@ -102,12 +103,15 @@ export function withSelectionHalo<P extends MapContainerProps>(MapContainer: Rea
 
 /**
  * kepler's `MapContainer` with what the panel draws on it: the selection halo,
- * then the markers above everything (`markersOnTop.tsx`). The halo's wrapper is
- * the outer one, so its layers are already in the list when the markers are
- * moved to the end of it.
+ * then the markers above everything (`markersOnTop.tsx`), and the markers and
+ * symbols standing on the basemap's relief (`terrainMapContainer.tsx`). The
+ * halo's wrapper is the outer one, so its layers are already in the list when
+ * the markers are moved to the end of it. The relief's is the inner one and
+ * lifts the main deck's layers last, after the copy of the markers drawn above
+ * the top map has been taken from them.
  */
 export function withPanelLayers(MapContainer: React.ComponentType<MapContainerProps>): React.FC<MapContainerProps> {
-  return withSelectionHalo(withTemporalCursor(withMarkersOnTop(MapContainer)));
+  return withSelectionHalo(withTemporalCursor(withMarkersOnTop(withTerrainAnchor(MapContainer))));
 }
 
 CustomMapContainerFactory.deps = MapContainerFactory.deps;

@@ -45,9 +45,12 @@ function deckContext(picked: MarkerSpec | null) {
   };
 }
 
-function mounted(props: Record<string, unknown>, picked: MarkerSpec | null = markers[0]) {
+function mounted(props: Record<string, unknown>, picked: MarkerSpec | null = markers[0], viewport?: object) {
   const layer = new DraggableMarkersLayer({ ...baseProps, ...props } as never) as any;
   const { context, handlers } = deckContext(picked);
+  if (viewport) {
+    context.viewport = viewport as typeof context.viewport;
+  }
   layer.context = context;
   layer.state = {};
   layer.initializeState();
@@ -133,5 +136,56 @@ describe('DraggableMarkersLayer', () => {
 
     layer.updateState({ props: { ...layer.props, markers: [...markers] }, oldProps: layer.props });
     expect(drag.moved()).toBeNull();
+  });
+
+  describe('on relief', () => {
+    // The ground 1000 m above the centre everywhere; the model matrix the layer
+    // is cloned with takes the centre's 2000 m off.
+    const terrain = { centre: 2000, version: 3, elevationAt: () => 3000 };
+    // A camera on which a point 1000 m up shows one degree east of its foot.
+    const viewport = {
+      project: ([x, y, z = 0]: number[]) => [x + z / 1000, y],
+      unproject: ([x, y]: number[], opts?: { targetZ?: number }) => [x - (opts?.targetZ ?? 0) / 1000, y],
+    };
+
+    it('draws the markers at the elevation of the ground under them', () => {
+      const layer = new DraggableMarkersLayer({ ...baseProps, drag: new MarkerDrag(), terrain } as never) as any;
+      const handles = layer.renderLayers()[0];
+      expect(handles.props.getPosition(markers[0])).toEqual([-79, -2.9, 3000]);
+      expect(handles.props.updateTriggers.getPosition).toContain(3);
+    });
+
+    it('drops a marker on the ground under the pointer, not on the plane below it', () => {
+      const drag = new MarkerDrag();
+      const { layer } = mounted({ drag, terrain }, markers[0], viewport);
+      const target = new EventTarget();
+      const drops: MarkerDropDetail[] = [];
+      target.addEventListener(MARKER_DROP_EVENT, (event) => drops.push((event as CustomEvent).detail));
+
+      // Grabbed where it shows, a degree east of its foot.
+      layer.onGesture(gesture('panstart', -78, -2.9));
+      layer.onGesture(gesture('panend', -77.5, -3.1, target));
+
+      // Drawn back 1000 m up, it shows where the pointer let go of it.
+      expect(drops).toEqual([{ layerId: 'punto', markerId: 'a', position: [-78.5, -3.1] }]);
+    });
+
+    it('settles on a steep slope facing the camera, where the ground height swings the ray back and forth', () => {
+      // 600 m higher per degree east: taken straight, each pass undoes six
+      // tenths of the last one's step and the answer is circled, not reached.
+      const slope = { centre: 2000, version: 1, elevationAt: (lng: number) => 2000 + 600 * (lng + 77.5) };
+      const drag = new MarkerDrag();
+      const { layer } = mounted({ drag, terrain: slope }, markers[0], viewport);
+      const target = new EventTarget();
+      const drops: MarkerDropDetail[] = [];
+      target.addEventListener(MARKER_DROP_EVENT, (event) => drops.push((event as CustomEvent).detail));
+
+      // The marker's foot, at -79, is 900 m below the centre: it shows at -79.9.
+      layer.onGesture(gesture('panstart', -79.9, -2.9));
+      layer.onGesture(gesture('panend', -77, -2.9, target));
+
+      // The one point whose ground shows at -77: lng = -77 - 0.6 (lng + 77.5).
+      expect(drops[0].position[0]).toBeCloseTo(-77.1875, 2);
+    });
   });
 });

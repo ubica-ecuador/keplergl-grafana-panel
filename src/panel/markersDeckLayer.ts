@@ -5,6 +5,7 @@ import { MarkerDrag } from './markerDrag';
 import type { LngLat, MarkerSpec } from './markers';
 import { buildSymbolDeckLayer } from './symbolDeckLayer';
 import { deckAngle } from './symbolLayer';
+import type { TerrainAnchor } from './terrainAnchor';
 
 /**
  * The deck.gl layer that draws the markers and lets the user drag them.
@@ -54,6 +55,11 @@ interface Props {
   drag: MarkerDrag | null;
   /** False in the copy drawn above the basemap: it neither listens to the pointer nor picks. */
   interactive: boolean;
+  /**
+   * The relief the markers stand on, set with the model matrix that lowers the
+   * centre's elevation (`terrainAnchor.ts`); null on a flat map.
+   */
+  terrain: TerrainAnchor | null;
 }
 
 /** What mjolnir.js hands an event-manager handler, narrowed to what is used. */
@@ -98,7 +104,10 @@ type DeckContext = {
     };
     pickObject(opts: { x: number; y: number; radius: number; layerIds: string[] }): { object?: unknown } | null;
   };
-  viewport: { unproject(xy: number[]): number[]; project(xyz: number[]): number[] };
+  viewport: {
+    unproject(xy: number[], opts?: { targetZ?: number }): number[];
+    project(xyz: number[]): number[];
+  };
 };
 
 export class DraggableMarkersLayer extends CompositeLayer<Props> {
@@ -111,6 +120,7 @@ export class DraggableMarkersLayer extends CompositeLayer<Props> {
     angleDegrees: 0,
     drag: null,
     interactive: true,
+    terrain: null,
   };
 
   declare state: State;
@@ -186,7 +196,7 @@ export class DraggableMarkersLayer extends CompositeLayer<Props> {
         return;
       }
       event.stopImmediatePropagation();
-      const [ax, ay] = this.deckContext.viewport.project(marker.position);
+      const [ax, ay] = this.deckContext.viewport.project([...marker.position, this.groundZ(marker.position)]);
       this.setState({ grab: [x - ax, y - ay] });
       this.drag.start(handler, marker.id, marker.position);
       return;
@@ -219,18 +229,47 @@ export class DraggableMarkersLayer extends CompositeLayer<Props> {
     event.srcEvent?.target?.dispatchEvent(new CustomEvent(MARKER_DROP_EVENT, { detail, bubbles: true }));
   }
 
+  /**
+   * Height of the ground at a point as deck's camera sees it: its elevation
+   * less the centre's, which the model matrix takes off. 0 on a flat map.
+   */
+  private groundZ([lng, lat]: LngLat): number {
+    const { terrain } = this.props;
+    return terrain ? terrain.elevationAt(lng, lat) - terrain.centre : 0;
+  }
+
   private pointerLngLat(event: GestureEvent, [gx, gy]: [number, number]): LngLat | null {
-    const [lng, lat] = this.deckContext.viewport.unproject([event.offsetCenter.x - gx, event.offsetCenter.y - gy]);
+    const xy = [event.offsetCenter.x - gx, event.offsetCenter.y - gy];
+    const viewport = this.deckContext.viewport;
+    let [lng, lat] = viewport.unproject(xy);
+    // On relief the pointer is over the ground, not over z = 0: the ground's
+    // height where the ray lands decides where it lands. Taken straight, that
+    // height overshoots on a slope facing the camera — the ray lands lower,
+    // the ground there is higher — and the passes swing round the answer
+    // (measured over Cuenca: 8 px, then 6, 4, 4…). Averaged with the height
+    // before, each pass narrows it several times over.
+    let z = 0;
+    for (let pass = 0; this.props.terrain && pass < 5 && Number.isFinite(lng) && Number.isFinite(lat); pass++) {
+      z = pass === 0 ? this.groundZ([lng, lat]) : (z + this.groundZ([lng, lat])) / 2;
+      [lng, lat] = viewport.unproject(xy, { targetZ: z });
+    }
     return Number.isFinite(lng) && Number.isFinite(lat) ? [lng, lat] : null;
   }
 
   renderLayers() {
     const data = this.drag.drawn(this.props.markers);
     const moved = this.drag.moved();
-    const trigger = [moved?.id, moved?.position?.[0], moved?.position?.[1]];
-    const { radiusPx, interactive } = this.props;
+    const { radiusPx, interactive, terrain } = this.props;
+    const trigger = [moved?.id, moved?.position?.[0], moved?.position?.[1], terrain?.version ?? null];
 
-    const getPosition = (marker: MarkerSpec) => marker.position as LngLat;
+    // On relief, at the ground's elevation; the model matrix the layer was
+    // cloned with brings the centre's back down to deck's z = 0.
+    const getPosition = terrain
+      ? (marker: MarkerSpec) => {
+          const [lng, lat] = marker.position as LngLat;
+          return [lng, lat, terrain.elevationAt(lng, lat)];
+        }
+      : (marker: MarkerSpec) => marker.position as LngLat;
     const getColor = (marker: MarkerSpec) => [...marker.color, 255];
     const colorTrigger = data.map((m) => m.color.join());
 

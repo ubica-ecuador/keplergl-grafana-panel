@@ -32,6 +32,11 @@ release documents what changed since the one before it.
   and where it stops — so a chart can draw a bar at the moment the map is playing, or a SQL panel can
   count what is on the road right then. It is independent of *Time range sync*. The interval option
   now also shows when this one is set.
+- **Markers and symbols stand on the relief**: over the *Satellite + relief* and *Topographic +
+  relief* basemaps, markers and symbols used to be drawn at sea level under a camera aimed at the
+  ground, so on a hill higher than the centre of the view they sank into it, and they slid as the
+  map panned. They are now drawn at the ground's elevation, labels, shadows and outlines included,
+  and a dragged marker lands on the ground under the pointer. Other layers are unchanged.
 - **Markers stay on top**: a markers layer is now drawn above every other layer, whatever its place
   in the layer panel, and above the base map's roads and labels when the base map is set to draw
   those over the data. Until now such a base map covered the markers. Dragging them works as before.
