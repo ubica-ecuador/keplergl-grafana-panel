@@ -1,9 +1,4 @@
-import {
-  BASE_MAP_COLOR_MODES,
-  DEFAULT_LAYER_GROUPS,
-  DEFAULT_MAPLIBRE_STYLES,
-  DEFAULT_NO_BASEMAP_STYLE,
-} from '@kepler.gl/constants';
+import { BASE_MAP_COLOR_MODES, DEFAULT_MAPLIBRE_STYLES, DEFAULT_NO_BASEMAP_STYLE } from '@kepler.gl/constants';
 
 import {
   CUSTOM_BASEMAP_ID,
@@ -12,26 +7,16 @@ import {
   TOPOGRAPHIC_TERRAIN_BASEMAP_ID,
 } from './constants';
 import { assetBaseUrl } from './keplerConfig';
+import { SATELLITE_LAYER_GROUPS, STYLE_LAYER_GROUPS, type LayerGroup } from './layerGroups';
 
 export interface RegisteredMapStyle {
   id: string;
   label: string;
   url: string;
   icon?: string;
-  layerGroups?: Array<(typeof DEFAULT_LAYER_GROUPS)[number]>;
+  layerGroups?: LayerGroup[];
   colorMode?: string;
 }
-
-/**
- * The two groups the satellite overlays answer to.
- *
- * kepler draws a switch for every group on the entry, so handing it the whole
- * of DEFAULT_LAYER_GROUPS would add five — Border, Building, Water, Land, 3d
- * Building — that match none of our layer ids and do nothing when clicked. The
- * filters come from kepler rather than being copied, so a rename upstream
- * surfaces as a test failure instead of an inert switch.
- */
-const SATELLITE_LAYER_GROUPS = DEFAULT_LAYER_GROUPS.filter((group) => group.slug === 'label' || group.slug === 'road');
 
 /**
  * Thumbnails for the style picker: real tiles from the services each style
@@ -66,7 +51,9 @@ const CARTO_RASTER_ICONS: Record<string, string> = {
  */
 const NO_BASEMAP_ICON =
   'data:image/svg+xml;utf8,' +
-  encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#1a1a1a"/></svg>');
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#1a1a1a"/></svg>'
+  );
 
 /**
  * Whether the panel replaces kepler's own list of base maps with this one.
@@ -97,10 +84,12 @@ export function registeredMapStyles(customBasemapUrl?: string): RegisteredMapSty
     // Mapbox ones, and that one earns its place: it is how a dashboard shows
     // data on a plain background, with no tiles fetched at all.
     { ...DEFAULT_NO_BASEMAP_STYLE, icon: NO_BASEMAP_ICON },
-    // kepler's own Carto entries, verbatim apart from the thumbnail.
+    // kepler's own Carto entries, verbatim apart from the thumbnail and the
+    // switches, whose filters here ignore case (layerGroups.ts).
     ...DEFAULT_MAPLIBRE_STYLES.map((style) => ({
       ...style,
       icon: CARTO_RASTER_ICONS[style.id] ?? `${assetBaseUrl()}/${style.icon}`,
+      layerGroups: STYLE_LAYER_GROUPS,
     })),
     {
       id: SATELLITE_BASEMAP_ID,
@@ -134,7 +123,7 @@ export function registeredMapStyles(customBasemapUrl?: string): RegisteredMapSty
   ];
 
   if (customBasemapUrl) {
-    styles.push({ id: CUSTOM_BASEMAP_ID, label: 'Custom', url: customBasemapUrl });
+    styles.push({ id: CUSTOM_BASEMAP_ID, label: 'Custom', url: customBasemapUrl, layerGroups: STYLE_LAYER_GROUPS });
   }
 
   return styles;

@@ -133,6 +133,16 @@ describe('registeredMapStyles', () => {
     }
   });
 
+  it('hands the CARTO and self-hosted entries switches that ignore case', () => {
+    const styles = registeredMapStyles('https://tiles.internal/style.json');
+    for (const id of ['dark-matter', 'positron', 'voyager', CUSTOM_BASEMAP_ID]) {
+      const groups = styles.find((s) => s.id === id)?.layerGroups ?? [];
+      expect(
+        groups.filter((g) => Boolean(g.filter({ id: 'Water', type: 'fill' } as never))).map((g) => g.slug)
+      ).toEqual(['water']);
+    }
+  });
+
   it('carries exactly the two layer groups the satellite overlays answer to', () => {
     const satellite = registeredMapStyles().find((s) => s.id === SATELLITE_BASEMAP_ID);
 
