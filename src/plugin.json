@@ -4,8 +4,20 @@
   "name": "Kepler Geospatial Maps",
   "id": "ubica-keplergl-panel",
   "info": {
-    "keywords": ["map", "geospatial", "gis", "spatio-temporal", "kepler.gl", "deck.gl", "trips", "flows", "geojson"],
-    "description": "Spatio-temporal maps for Grafana dashboards — trajectories, origin-destination flows and velocity fields from any data source. Runs kepler.gl inside the panel.",
+    "keywords": [
+      "map",
+      "geospatial",
+      "gis",
+      "spatio-temporal",
+      "kepler.gl",
+      "deck.gl",
+      "trips",
+      "flows",
+      "geojson",
+      "grafana assistant",
+      "ai"
+    ],
+    "description": "Spatio-temporal maps for Grafana dashboards — trajectories, origin-destination flows and velocity fields from any data source. Runs kepler.gl inside the panel, and works with Grafana Assistant.",
     "author": {
       "name": "UBICA"
     },

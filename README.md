@@ -48,10 +48,9 @@ tutorials, a layer gallery and a complete option reference.
   that variable filters the map. Clicks, the viewport and drawn areas publish too, a click can be
   made to confirm from the popup first, and whatever is selected is ringed on the map — on a shared
   link as well.
-- **Grafana Assistant awareness** — on a Grafana with the Assistant, the panel tells it live what
-  the map is showing (each query's fields, the base map, the saved filters and viewport, the time
-  range) so it can answer about the map and edit it knowingly. Without the Assistant, nothing
-  changes.
+- **Works with Grafana Assistant** — the panel tells the Assistant live what the map is showing,
+  so it can answer about the map, restyle it, and build whole dashboards around it from a prompt.
+  More in the Grafana Assistant section below. Without the Assistant, nothing changes.
 - **Your layer configuration survives a refresh.** Data is swapped underneath the layers rather than
   the datasets being torn down and rebuilt.
 - **Saved map configuration** stored with the dashboard, and configs pasted from kepler.gl,
@@ -181,6 +180,26 @@ through it properly, and
 [tutorial 1](https://docs.ubica.dev/tutorials/first-map.html) builds a
 live map of global seismicity from a public feed.
 
+## Grafana Assistant
+
+On a Grafana that has the [Grafana Assistant](https://grafana.com/docs/grafana-cloud/platform/grafana-assistant/)
+— Grafana Cloud, or self-managed Grafana 13 connected to a Cloud stack — the panel needs no setup:
+
+- **It knows what the map shows.** While a dashboard with a map is open, the Assistant is handed
+  each query's fields and row count, the base map on screen, the saved filters and viewport, and
+  the dashboard's time range. Ask _"what is this map showing?"_ and it answers without running a
+  query.
+- **It can build dashboards with it.** Ask for _"a map of the GPS tracks with a time series of
+  point counts, filtered by clicking a track"_ and it writes the queries, the map, the chart and
+  the variable that ties them together.
+- **Two short skill texts make it reliable.** On its own the Assistant gets the saved map's JSON
+  shape wrong — base maps the panel does not have, configs the panel silently drops. Paste the
+  two texts from the [Grafana Assistant guide](https://docs.ubica.dev/guide/dashboard/grafana-assistant.html)
+  as standing instructions and it restyles the map right the first time.
+
+Nothing is sent anywhere by the panel itself, and on a Grafana without the Assistant the panel
+behaves exactly as before.
+
 ## Documentation
 
 | Section                                                                                    | Covers                                                                                       |
@@ -188,7 +207,7 @@ live map of global seismicity from a public feed.
 | [Getting data in](https://docs.ubica.dev/guide/data/how-a-query-becomes-a-map.html)        | How a query becomes a map, points, geometry, trajectories, flows, H3 and S2, velocity fields |
 | [The map](https://docs.ubica.dev/guide/map/basemaps-and-relief.html)                       | Base maps and relief, theme, saving and importing a configuration                            |
 | [Using kepler's own panel](https://docs.ubica.dev/guide/kepler/layers-and-attributes.html) | Layers, colour, filters, interactions, playback, effects — and what differs here             |
-| [Dashboard integration](https://docs.ubica.dev/guide/dashboard/time-range-sync.html)       | Time sync, cross-filtering, publishing the viewport and drawn areas                          |
+| [Dashboard integration](https://docs.ubica.dev/guide/dashboard/time-range-sync.html)       | Time sync, cross-filtering, publishing the viewport and drawn areas, Grafana Assistant       |
 | [Data source recipes](https://docs.ubica.dev/guide/sources/postgis.html)                   | PostGIS, DuckDB, Infinity, and any other SQL source                                          |
 | [Layer gallery](https://docs.ubica.dev/layers/)                                            | Every layer type the panel can build, with the query behind it                               |
 | [Tutorials](https://docs.ubica.dev/tutorials/)                                             | Six end-to-end walkthroughs against public data                                              |
