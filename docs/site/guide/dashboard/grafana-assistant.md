@@ -60,6 +60,66 @@ quotes it; the export is the source of truth.
 The dataset-id rule is the one thing worth remembering when writing layers by hand too: a layer
 that needs data must name `dataId: "grafana-B"` to draw from query **B**.
 
+## Authoring whole dashboards
+
+An assistant asked to *build* a dashboard with this panel gets surprisingly far on its own — it
+reads the panel's option names from the schema, writes the queries, and wires dashboard
+variables. What it gets wrong, reliably, is the saved map's JSON shape. A second skill text
+covers exactly that, and nothing more:
+
+```text
+# Authoring dashboards with the Kepler panel
+The panel auto-detects query columns named latitude/longitude (or lat/lng), time, and a
+track/trip id, and creates layers from them by itself — write a 'mapConfig' only to restyle
+the map or add layers beyond the automatic ones.
+'mapConfig' MUST be a kepler saved config with a top-level version key:
+{"version":"v1","config":{"visState":…,"mapState":…,"mapStyle":…}}. Without "version" the
+panel will silently ignore the whole mapConfig.
+In a saved layer, 'visualChannels' is a SIBLING of 'config' — never inside it — while
+'dataId', 'columns' and 'visConfig' live inside 'config'. Worked example (a point layer
+coloured green→red by the 'kmh' column of query A):
+{
+ "version": "v1",
+ "config": {
+  "mapStyle": { "styleType": "dark-matter" },
+  "mapState": { "latitude": -2.9, "longitude": -79.0, "zoom": 11 },
+  "visState": {
+   "filters": [],
+   "layers": [
+    {
+     "id": "speed-points",
+     "type": "point",
+     "config": {
+      "dataId": "grafana-A",
+      "label": "Speed",
+      "columns": { "lat": "latitude", "lng": "longitude" },
+      "isVisible": true,
+      "visConfig": {
+       "radius": 6,
+       "colorRange": {
+        "name": "Custom", "type": "custom", "category": "Custom",
+        "colors": ["#2ecc71", "#f1c40f", "#e74c3c"]
+       }
+      }
+     },
+     "visualChannels": { "colorField": { "name": "kmh", "type": "real" }, "colorScale": "quantile" }
+    }
+   ]
+  }
+ }
+}
+The panel applies 'mapConfig' when the dashboard loads; if a live edit does not show on the
+open dashboard, reload the page once.
+If the data is historical, save an absolute dashboard time range that covers it — a relative
+range like now-6h shows an empty map.
+```
+
+Paste it alongside the base text above. In code it is exported as `dashboardAuthoringSkill`,
+and its worked example is held to the panel by tests: the JSON must pass the panel's own
+config parser, and the layer's `dataId` must match the real `datasetId()`. As with the base
+text, the export is the source of truth; this page quotes it. (The JSON block above is
+formatted for reading — the export embeds the same object, machine-formatted.)
+
 ## For app plugins built on this panel
 
 An app that embeds this panel can *compose* onto its Assistant contribution instead of competing

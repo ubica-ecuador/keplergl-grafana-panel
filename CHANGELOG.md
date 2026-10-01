@@ -15,6 +15,12 @@ release documents what changed since the one before it.
   organisation can paste as standing Assistant instructions, and an `AssistantComposition` seam so
   an app embedding the panel extends the digest instead of registering a competing one. The skill
   spells out the dataset-id rule for hand-written layers: query B's data is dataset `grafana-B`.
+  A second export, `dashboardAuthoringSkill`, teaches an assistant to *build* dashboards with the
+  panel — the saved map's exact JSON shape (the mandatory `"version": "v1"`, `visualChannels`
+  beside `config`, a worked example held to the panel's own parser by tests), when a `mapConfig`
+  is needed at all, and to save an absolute time range over historical data. Tried against the
+  real Grafana Assistant: without these lines it picks unregistered base maps and writes configs
+  the panel silently drops; with them it restyles the map correctly on the first try.
 - **Temporal cursor**: the map joins Grafana's shared cursor. Hovering a Time series graph draws an
   amber marker where each vehicle was at that instant, on Point layers and on Trip layers in both
   table and timestamped GeoJSON form, and the same instant as a line on the map's time bar. With
