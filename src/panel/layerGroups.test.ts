@@ -3,6 +3,7 @@ import { DEFAULT_LAYER_GROUPS } from '@kepler.gl/constants';
 import { CARTO_DARK_MATTER_LAYERS, OPENFREEMAP_LIBERTY_LAYERS, UPPER_CASE_LAYERS } from './basemapStyleFixtures';
 import {
   isPointOfInterest,
+  layerGroupsIn,
   SATELLITE_LAYER_GROUPS,
   STYLE_LAYER_GROUPS,
   slugsMatching,
@@ -65,5 +66,30 @@ describe('points of interest', () => {
 
   it('are symbols only: a circle on the poi source layer is not one', () => {
     expect(isPointOfInterest({ id: 'poi-dots', type: 'circle', 'source-layer': 'poi' })).toBe(false);
+  });
+});
+
+describe('3D buildings', () => {
+  it("are the style's own extrusions, and the flat footprints are not", () => {
+    const of = (id: string) =>
+      slugsMatching(
+        STYLE_LAYER_GROUPS,
+        OPENFREEMAP_LIBERTY_LAYERS.find((l) => l.id === id)!
+      );
+    expect(of('building-3d')).toEqual(['3d building']);
+    expect(of('building')).toEqual(['building']);
+  });
+
+  it('get no switch on a style without extrusions, CARTO among them', () => {
+    // kepler's own 3D buildings come from Mapbox and need a token the free panel does not have.
+    const slugsIn = (layers: StyleLayer[]) => layerGroupsIn(STYLE_LAYER_GROUPS, { layers }).map((g) => g.slug);
+    expect(slugsIn(CARTO_DARK_MATTER_LAYERS)).not.toContain('3d building');
+    expect(slugsIn(OPENFREEMAP_LIBERTY_LAYERS)).toContain('3d building');
+  });
+
+  it("start on, and offer no colour picker — it paints only kepler's Mapbox buildings", () => {
+    const group = STYLE_LAYER_GROUPS.find((g) => g.slug === '3d building')!;
+    expect(group.defaultVisibility).toBe(true);
+    expect(group.isColorPickerAvailable).toBe(false);
   });
 });

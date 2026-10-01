@@ -1,4 +1,4 @@
-import { DEFAULT_LAYER_GROUPS } from '@kepler.gl/constants';
+import { DEFAULT_LAYER_GROUPS, THREE_D_BUILDING_LAYER_GROUP_SLUG } from '@kepler.gl/constants';
 
 /** One of kepler's "Map Layers" groups: a slug, a filter over style layers and the switch's defaults. */
 export type LayerGroup = (typeof DEFAULT_LAYER_GROUPS)[number];
@@ -54,14 +54,50 @@ const withoutPointsOfInterest = (group: LayerGroup): LayerGroup =>
     filter: (layer: StyleLayer) => Boolean(group.filter(layer as never)) && !isPointOfInterest(layer),
   }) as LayerGroup;
 
+const isExtrusion = (layer: StyleLayer) => layer.type?.toLowerCase() === 'fill-extrusion';
+
+/**
+ * "3D Building", pointed at the style's own extrusions.
+ *
+ * kepler's switch draws a deck.gl layer of Mapbox's buildings, which it builds
+ * only when it has a Mapbox token (`layer-utils.js`); the free panel has none,
+ * so the switch did nothing. Pointed at a style's `fill-extrusion` layers it
+ * hides and shows those — and with no such layer the group is dropped
+ * (`layerGroupsIn`). The colour picker paints only kepler's layer, so it is off.
+ */
+const styleExtrusions = (group: LayerGroup): LayerGroup =>
+  ({
+    ...group,
+    filter: (layer: StyleLayer) => isExtrusion(layer),
+    defaultVisibility: true,
+    isColorPickerAvailable: false,
+  }) as LayerGroup;
+
+/** Flat footprints only, so the two building switches never hide each other's layers. */
+const withoutExtrusions = (group: LayerGroup): LayerGroup =>
+  ({
+    ...group,
+    filter: (layer: StyleLayer) => Boolean(group.filter(layer as never)) && !isExtrusion(layer),
+  }) as LayerGroup;
+
 /**
  * The groups every vector base map is registered with: kepler's, ignoring
- * case, with points of interest right after labels. kepler draws a switch for
- * each group an entry lists.
+ * case, with points of interest right after labels and 3D buildings that are
+ * the style's own. kepler draws a switch for each group an entry lists;
+ * `loadedLayerGroups.ts` keeps only the ones the document turns out to have.
  */
-export const STYLE_LAYER_GROUPS: LayerGroup[] = DEFAULT_LAYER_GROUPS.map(caseInsensitive).flatMap((group) =>
-  group.slug === 'label' ? [withoutPointsOfInterest(group), POI_LAYER_GROUP] : [group]
-);
+export const STYLE_LAYER_GROUPS: LayerGroup[] = DEFAULT_LAYER_GROUPS.map(caseInsensitive).flatMap((group) => {
+  switch (group.slug) {
+    case 'label':
+      return [withoutPointsOfInterest(group), POI_LAYER_GROUP];
+    case 'building':
+      return [withoutExtrusions(group)];
+    case THREE_D_BUILDING_LAYER_GROUP_SLUG:
+      return [styleExtrusions(group)];
+    default:
+      return [group];
+  }
+});
 
 /**
  * The two groups the satellite overlays answer to: their roads and labels are

@@ -25,7 +25,7 @@ describe('withLoadedLayerGroups', () => {
       } as never)
     );
     const groups = (withLoadedLayerGroups(action) as any).payload.payload.newStyles.x.layerGroups;
-    expect(slugs(groups)).toEqual(['label', 'poi', 'road', 'border', 'building', 'water']);
+    expect(slugs(groups)).toEqual(['label', 'poi', 'road', 'border', 'building', 'water', '3d building']);
   });
 
   it('leaves an entry without a document alone — a style that never loads keeps its switches', () => {
