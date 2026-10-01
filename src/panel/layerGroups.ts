@@ -29,11 +29,39 @@ export function caseInsensitive(group: LayerGroup): LayerGroup {
   } as LayerGroup;
 }
 
+/** A point of interest in the OpenMapTiles schema: a symbol of the `poi` source layer. */
+export function isPointOfInterest(layer: StyleLayer): boolean {
+  return layer.type?.toLowerCase() === 'symbol' && layer['source-layer']?.toLowerCase() === 'poi';
+}
+
 /**
- * The groups every vector base map is registered with. kepler draws a switch
- * for each group an entry lists.
+ * A switch kepler does not have: shops, stations, hospitals… which kepler files
+ * under its labels. Named through `mapLayers.poi` in `localeMessages.ts`.
  */
-export const STYLE_LAYER_GROUPS: LayerGroup[] = DEFAULT_LAYER_GROUPS.map(caseInsensitive);
+export const POI_LAYER_GROUP = {
+  slug: 'poi',
+  filter: (layer: StyleLayer) => isPointOfInterest(layer),
+  defaultVisibility: true,
+  isVisibilityToggleAvailable: true,
+  isMoveToTopAvailable: true,
+  isColorPickerAvailable: false,
+} as LayerGroup;
+
+/** kepler's label group catches every symbol; points of interest have their own switch. */
+const withoutPointsOfInterest = (group: LayerGroup): LayerGroup =>
+  ({
+    ...group,
+    filter: (layer: StyleLayer) => Boolean(group.filter(layer as never)) && !isPointOfInterest(layer),
+  }) as LayerGroup;
+
+/**
+ * The groups every vector base map is registered with: kepler's, ignoring
+ * case, with points of interest right after labels. kepler draws a switch for
+ * each group an entry lists.
+ */
+export const STYLE_LAYER_GROUPS: LayerGroup[] = DEFAULT_LAYER_GROUPS.map(caseInsensitive).flatMap((group) =>
+  group.slug === 'label' ? [withoutPointsOfInterest(group), POI_LAYER_GROUP] : [group]
+);
 
 /**
  * The two groups the satellite overlays answer to: their roads and labels are
