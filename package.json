@@ -139,6 +139,9 @@
     "texture-compressor": {
       "image-size": "2.0.4"
     },
+    "get-uri": {
+      "basic-ftp": "6.2.1"
+    },
     "thrift": "0.23.0",
     "@loaders.gl/excel": "$@loaders.gl/excel",
     "postcss": "8.5.28",
