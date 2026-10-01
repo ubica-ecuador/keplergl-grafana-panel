@@ -86,9 +86,29 @@ describe('anchorToTerrain', () => {
     expect(lifted.props.modelMatrix).toEqual(terrainModelMatrix(2500));
   });
 
-  it('changes nothing on a flat map', () => {
+  it('reads the positions again once the relief is gone, without lifting them', () => {
+    // kepler's symbol layer names no trigger for its positions: without one of
+    // ours on a flat map, deck would keep the lifted ones and draw them
+    // thousands of metres up, out of sight, once the model matrix is dropped.
+    const asKepler = () =>
+      new IconLayer({
+        id: 'sym-symbol',
+        data: rows,
+        getPosition: (row: { position: number[] }) => row.position as [number, number, number],
+        updateTriggers: { getColor: 'c' },
+      });
+    const [lifted] = anchorToTerrain([asKepler()], keplerLayers, anchor) as IconLayer[];
+    const [flat] = anchorToTerrain([asKepler()], keplerLayers, null) as IconLayer[];
+    // deck skips a trigger the new props leave out, so one must be there.
+    expect(flat.props.updateTriggers.getPosition).toBeDefined();
+    expect(flat.props.updateTriggers.getPosition).not.toEqual(lifted.props.updateTriggers.getPosition);
+    expect(flat.props.modelMatrix).toBeFalsy();
+    expect(at(flat, rows[1])).toEqual([-1, 0, 50]);
+  });
+
+  it('leaves every layer alone when there is nothing to stand on the relief', () => {
     const layers = [symbols()];
-    expect(anchorToTerrain(layers, keplerLayers, null)).toBe(layers);
+    expect(anchorToTerrain(layers, [{ id: 'sym-2', type: 'point' }], null)).toBe(layers);
   });
 });
 

@@ -108,21 +108,33 @@ function ownerOf(deckId: string, keplerIds: string[]): string | null {
   return owner;
 }
 
-/** The deck layer standing on the relief; the same layer when it has no position to lift. */
-function anchored(layer: DeckLayerLike, anchor: TerrainAnchor): DeckLayerLike {
-  const modelMatrix = terrainModelMatrix(anchor.centre);
-  // The markers read their positions inside, and lift them there.
+/**
+ * The deck layer standing on the relief, or on a flat map the same layer
+ * marked as not standing on any; the layer itself when it has no position.
+ */
+function anchored(layer: DeckLayerLike, anchor: TerrainAnchor | null): DeckLayerLike {
+  // The markers read their positions inside, lift them there, and always name
+  // the relief in their own trigger.
   if (layer instanceof DraggableMarkersLayer) {
-    return layer.clone({ modelMatrix, terrain: anchor });
+    return anchor ? layer.clone({ modelMatrix: terrainModelMatrix(anchor.centre), terrain: anchor }) : layer;
   }
   const getPosition = layer.props.getPosition;
   if (typeof getPosition !== 'function') {
     return layer;
   }
-  const { elevationAt, version } = anchor;
   const triggers = layer.props.updateTriggers ?? {};
+  // kepler's symbol layer names no trigger for its positions, and deck skips a
+  // trigger the new props leave out. Off the relief — a flat basemap picked
+  // over a relief one — the layer must still say so, or deck keeps the lifted
+  // positions and, the model matrix gone, draws them thousands of metres up.
+  if (!anchor) {
+    return layer.clone({
+      updateTriggers: { ...triggers, getPosition: { was: triggers.getPosition ?? null, terrain: null } },
+    });
+  }
+  const { elevationAt, version } = anchor;
   return layer.clone({
-    modelMatrix,
+    modelMatrix: terrainModelMatrix(anchor.centre),
     // A height the row already has — the symbol layer's altitude column — is
     // kept, as a height above the ground.
     getPosition: (row: unknown, info: unknown) => {
@@ -137,16 +149,14 @@ function anchored(layer: DeckLayerLike, anchor: TerrainAnchor): DeckLayerLike {
 
 /**
  * kepler's deck layers, with those of its markers and symbol layers standing on
- * the relief; the same array when there is no relief or nothing to stand on it.
+ * the relief, or marked as flat when there is none; the same array when there
+ * is nothing to stand on it.
  */
 export function anchorToTerrain(
   layers: unknown[],
   keplerLayers: Array<{ id?: string; type?: string | null }>,
   anchor: TerrainAnchor | null
 ): unknown[] {
-  if (!anchor) {
-    return layers;
-  }
   const allIds = keplerLayers.map((layer) => layer.id).filter((id): id is string => typeof id === 'string');
   const anchoredIds = new Set(
     keplerLayers.filter((layer) => layer.id && ANCHORED_TYPES.has(layer.type ?? '')).map((layer) => layer.id as string)
