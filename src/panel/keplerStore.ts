@@ -19,6 +19,7 @@ import { buildVectorFieldDeckLayer } from './vectorFieldDeckLayer';
 import { makeVectorFieldLayer } from './vectorFieldLayer';
 import { buildTimedWmsLayer } from './wmsDeckLayer';
 import { withWmsTime } from './wmsTimeLayer';
+import { withPresentLayerGroups } from './loadedLayerGroups';
 import { buildZarrDeckLayer } from './zarrDeckLayer';
 import { makeZarrLayer } from './zarrTileLayer';
 
@@ -135,21 +136,27 @@ const layerClasses = {
  * effects — tile loading, file parsing, geocoding. It used to come from
  * react-palm; since 3.3.0-alpha.11 kepler ships its own in `@kepler.gl/tasks`,
  * which is why this plugin no longer depends on react-palm.
+ *
+ * Every `LOAD_MAP_STYLES` passes through `withPresentLayerGroups`, so a base
+ * map's "Map Layers" switches are the ones its document really has (see
+ * `loadedLayerGroups.ts`).
  */
 export function createKeplerStore(): Store {
   // kepler.gl's components look their state up at `state.keplerGl` by default.
   // Mounting the reducer at the store root instead makes every one of them fail
   // with "kepler.gl state does not exist".
   const reducer = combineReducers({
-    keplerGl: keplerGlReducer.initialState({
-      uiState: {
-        // The export/share modals reach for cloud providers we do not configure.
-        currentModal: null,
-      },
-      // Merged key by key into kepler's own initial vis state, so this replaces
-      // the layer registry and nothing else.
-      visState: { layerClasses },
-    }),
+    keplerGl: withPresentLayerGroups(
+      keplerGlReducer.initialState({
+        uiState: {
+          // The export/share modals reach for cloud providers we do not configure.
+          currentModal: null,
+        },
+        // Merged key by key into kepler's own initial vis state, so this replaces
+        // the layer registry and nothing else.
+        visState: { layerClasses },
+      })
+    ),
   });
 
   return legacy_createStore(reducer, {}, applyMiddleware(...enhanceReduxMiddleware([])));

@@ -71,6 +71,19 @@ export const SATELLITE_LAYER_GROUPS: LayerGroup[] = STYLE_LAYER_GROUPS.filter(
   (group) => group.slug === 'label' || group.slug === 'road'
 );
 
+/**
+ * The groups with at least one layer in `style`. kepler draws a switch for
+ * every group an entry lists, and one that matches nothing does nothing.
+ * Without a `layers` array there is nothing to judge by, so all stay.
+ */
+export function layerGroupsIn(groups: readonly LayerGroup[], style: unknown): LayerGroup[] {
+  const layers = (style as { layers?: unknown } | null | undefined)?.layers;
+  if (!Array.isArray(layers)) {
+    return [...groups];
+  }
+  return groups.filter((group) => layers.some((layer) => Boolean(group.filter(layer as never))));
+}
+
 /** The slugs of the groups a style layer falls into. */
 export function slugsMatching(groups: readonly LayerGroup[], layer: StyleLayer): string[] {
   return groups.filter((group) => Boolean(group.filter(layer as never))).map((group) => group.slug);
