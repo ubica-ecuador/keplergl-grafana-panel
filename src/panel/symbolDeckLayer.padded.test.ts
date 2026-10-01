@@ -105,4 +105,12 @@ describe('the padded atlases, for the shadow and the outline', () => {
     expect(layer.props.sizeScale).toBeCloseTo(PADDED_CELL / CELL);
     expect('shadow' in layer.props).toBe(false);
   });
+
+  it('keeps the zoom’s shrinking on top of the padding’s scale, so the halo shrinks with its symbol', () => {
+    const plain = buildSymbolDeckLayer({ symbols: ['cross'], sizeScale: 0.5 }) as any;
+    const outline = buildSymbolDeckLayer({ symbols: ['cross'], outline: 3, sizeScale: 0.5 }) as any;
+
+    expect(plain.props.sizeScale).toBe(0.5);
+    expect(outline.props.sizeScale).toBeCloseTo((0.5 * PADDED_CELL) / CELL);
+  });
 });

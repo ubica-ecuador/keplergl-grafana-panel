@@ -254,8 +254,10 @@ export const buildSymbolDeckLayer = (
     ...rest,
     // deck sizes an icon by its cell, so the glyph in a padded cell would come
     // out smaller than the symbol by the padding's ratio. Last, because the
-    // padding is this module's business and nobody else's.
-    ...(padded ? { sizeScale: PADDED_CELL / CELL } : {}),
+    // padding is this module's business and nobody else's — on top of any
+    // scale the layer asked for, the zoom's shrinking, so a halo shrinks with
+    // its symbol.
+    ...(padded ? { sizeScale: (Number(rest.sizeScale) || 1) * (PADDED_CELL / CELL) } : {}),
     // After kepler's own extensions, never instead of them: its GPU filter is
     // one, and without it the dashboard clock hides nothing.
     ...(gradient !== undefined

@@ -9,6 +9,7 @@ import { replaceLayerConfigurator } from './flowFieldConfigurator';
 import { SymbolLayerConfig } from './symbolConfigurator';
 import { SYMBOL_MESSAGES } from './symbolMessages';
 import { SYMBOL_TYPE, SYMBOL_VIS_CONFIGS } from './symbolLayer';
+import { noteZoom } from './zoomScale';
 
 /** The selector under the side-panel label that reads `label`. */
 function selectorLabelled(container: HTMLElement, label: string): HTMLElement {
@@ -156,6 +157,57 @@ describe('symbol layer panel', () => {
 
     expect(screen.getByText('Use the column’s number')).toBeInTheDocument();
     expect(screen.queryByText('Use the column’s degrees')).not.toBeInTheDocument();
+  });
+
+  it('offers the zoom shrinking, and sets its reference zoom from the map', () => {
+    noteZoom('layer-zoom', 7.26);
+    const onChange = jest.fn();
+    const layer = {
+      id: 'layer-zoom',
+      type: SYMBOL_TYPE,
+      config: {
+        visConfig: {
+          symbol: 'arrow',
+          directionConvention: 'towards',
+          symbolZoomScale: true,
+          symbolZoomRef: 10,
+          symbolZoomRate: 0.5,
+        },
+        colorField: null,
+        colorUI: {},
+      },
+      visConfigSettings: {
+        symbolZoomScale: SYMBOL_VIS_CONFIGS.symbolZoomScale,
+        symbolZoomRef: SYMBOL_VIS_CONFIGS.symbolZoomRef,
+        symbolZoomRate: SYMBOL_VIS_CONFIGS.symbolZoomRate,
+      },
+      visualChannels: {
+        angle: { key: 'angle', property: 'angle' },
+        size: { key: 'size', property: 'size' },
+        color: { key: 'color', property: 'color' },
+      },
+    };
+
+    render(
+      <IntlProvider locale="en" messages={{ ...messages.en, ...SYMBOL_MESSAGES }}>
+        <ThemeProvider theme={theme}>
+          <SymbolLayerConfig
+            layer={layer}
+            visConfiguratorProps={{ layer, onChange }}
+            layerConfiguratorProps={{ layer, onChange: () => undefined }}
+            layerChannelConfigProps={{ layer, fields: [], onChange: () => undefined }}
+          />
+        </ThemeProvider>
+      </IntlProvider>
+    );
+
+    expect(screen.getByText('Shrink when zooming out')).toBeInTheDocument();
+    expect(screen.getByText('Full size from zoom')).toBeInTheDocument();
+    expect(screen.getByText('Shrink rate')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Use current zoom'));
+
+    expect(onChange).toHaveBeenCalledWith({ symbolZoomRef: 7.3 });
   });
 
   it('offers the declutter switch and its spacing slider once declutter is on', () => {

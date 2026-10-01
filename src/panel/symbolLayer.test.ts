@@ -228,6 +228,53 @@ describe('symbol layer', () => {
   });
 });
 
+describe('shrinking when zooming out', () => {
+  const symbolLayer = () =>
+    new (SymbolLayer as never as new (props?: Record<string, unknown>) => any)({ dataId: 'd1', columns: stationColumns });
+
+  const zoomedTo = (zoom: number, visConfig: Record<string, unknown>) => {
+    const layer = symbolLayer();
+    layer.updateLayerConfig({ visConfig: { ...layer.config.visConfig, ...visConfig } });
+    layer.renderLayer({ data: layer.formatLayerData({ d1: threeStations }), mapState: { zoom } });
+    return layer;
+  };
+
+  it('is off by default: no size scale at any zoom', () => {
+    zoomedTo(3, {});
+
+    expect(SYMBOL_VIS_CONFIGS.symbolZoomScale.defaultValue).toBe(false);
+    expect(built[0].sizeScale).toBeUndefined();
+  });
+
+  it('scales every symbol by the zoom factor through deck’s uniform, not per row', () => {
+    zoomedTo(9, { symbolZoomScale: true, symbolZoomRef: 10, symbolZoomRate: 1 });
+
+    expect(built[0].sizeScale).toBeCloseTo(0.5, 6);
+    // The per-row size is untouched, so deck recomputes no attribute on a zoom.
+    expect(built[0].getSize).toBe(built[0].getSize);
+    expect(built[0].getSize({ index: 0 })).toBe(20);
+  });
+
+  it('shrinks the outline and shadow with the symbols', () => {
+    zoomedTo(9, { symbolZoomScale: true, symbolZoomRef: 10, symbolZoomRate: 1, outline: true, shadow: true });
+
+    expect(built.map((props) => props.sizeScale)).toEqual([0.5, 0.5, 0.5]);
+  });
+
+  it('keeps the set size past the reference zoom', () => {
+    zoomedTo(14, { symbolZoomScale: true, symbolZoomRef: 10, symbolZoomRate: 1 });
+
+    expect(built[0].sizeScale).toBe(1);
+  });
+
+  it('remembers the zoom it was drawn at, for the panel’s button', () => {
+    const { currentZoomOf } = jest.requireActual('./zoomScale');
+    const layer = zoomedTo(6.04, {});
+
+    expect(currentZoomOf(layer.id)).toBe(6);
+  });
+});
+
 describe('import-time cost', () => {
   /**
    * `keplerStore.ts` imports this module on every panel render, whether or

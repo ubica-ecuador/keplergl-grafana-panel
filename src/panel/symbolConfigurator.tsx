@@ -1,10 +1,13 @@
 import React, { ComponentType } from 'react';
+import { FormattedMessage } from 'react-intl';
 import {
+  Button,
   ChannelByValueSelector,
   ConfigGroupCollapsibleContent,
   LayerColorRangeSelector,
   LayerColorSelector,
   LayerConfigGroup,
+  SidePanelSection,
   VisConfigSlider,
   VisConfigSwitch,
 } from '@kepler.gl/components';
@@ -12,6 +15,7 @@ import {
 import { PictureSourceInput } from './pictureSourceInput';
 import { SelectKnob } from './selectKnob';
 import { SymbolPicker } from './symbolPicker';
+import { currentZoomOf } from './zoomScale';
 
 /**
  * The layer panel for the symbol layer.
@@ -140,6 +144,32 @@ export function SymbolLayerConfig({
         ) : (
           slider('symbolSize')
         )}
+        {settings.symbolZoomScale ? (
+          <>
+            <VisConfigSwitch {...settings.symbolZoomScale} {...visConfiguratorProps} />
+            {visConfig.symbolZoomScale === true ? (
+              <>
+                {slider('symbolZoomRef')}
+                <SidePanelSection>
+                  {/* kepler hands the configurator no map state; the layer notes the zoom it was last drawn at. */}
+                  <Button
+                    secondary
+                    small
+                    onClick={() => {
+                      const zoom = layer.id ? currentZoomOf(layer.id) : null;
+                      if (zoom !== null) {
+                        onVisConfigChange({ symbolZoomRef: zoom });
+                      }
+                    }}
+                  >
+                    <FormattedMessage id="symbol.zoomRefCurrent" />
+                  </Button>
+                </SidePanelSection>
+                {slider('symbolZoomRate')}
+              </>
+            ) : null}
+          </>
+        ) : null}
         {settings.declutter ? (
           <>
             <VisConfigSwitch {...settings.declutter} {...visConfiguratorProps} />

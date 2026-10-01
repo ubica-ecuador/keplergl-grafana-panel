@@ -7,6 +7,7 @@ import { resolveSymbol, SYMBOL_FALLBACK, symbolNames } from './symbolGlyphs';
 import { PictureAnchor, pictureAnchorOf } from './pictureKeys';
 import { assignPictures, PictureAssignment } from './pictureRows';
 import { recordPictureAssignment } from './pictureState';
+import { DEFAULT_REF_ZOOM, DEFAULT_ZOOM_SCALE, noteZoom, zoomFactor, ZoomScale } from './zoomScale';
 
 /**
  * A symbol per row, turned by one column and sized by another.
@@ -107,6 +108,34 @@ export const SYMBOL_VIS_CONFIGS = {
     label: 'symbol.fixedSize',
     group: 'display',
     property: 'fixedSize',
+  },
+  /** Off by default, so a layer saved before it keeps its pixel size at every zoom. */
+  symbolZoomScale: {
+    type: 'boolean',
+    defaultValue: false,
+    label: 'symbol.zoomScale',
+    group: 'display',
+    property: 'symbolZoomScale',
+  },
+  symbolZoomRef: {
+    type: 'number',
+    defaultValue: DEFAULT_REF_ZOOM,
+    label: 'symbol.zoomRef',
+    isRanged: false,
+    range: [0, 22],
+    step: 0.1,
+    group: 'display',
+    property: 'symbolZoomRef',
+  },
+  symbolZoomRate: {
+    type: 'number',
+    defaultValue: DEFAULT_ZOOM_SCALE,
+    label: 'symbol.zoomRate',
+    isRanged: false,
+    range: [0, 1],
+    step: 0.05,
+    group: 'display',
+    property: 'symbolZoomRate',
   },
   declutter: {
     type: 'boolean',
@@ -236,6 +265,19 @@ export const SYMBOL_VIS_CONFIGS = {
  * layer's opacity still applies.
  */
 const PICTURE_TINT = [255, 255, 255, 255];
+
+/** The zoom shrinking the settings ask for, or null while it is off. */
+export function zoomScaleOf(visConfig: Record<string, unknown>): ZoomScale | null {
+  if (visConfig.symbolZoomScale !== true) {
+    return null;
+  }
+  const within = (value: unknown, fallback: number, low: number, high: number) =>
+    Math.min(high, Math.max(low, setting(value, fallback)));
+  return {
+    refZoom: within(visConfig.symbolZoomRef, DEFAULT_REF_ZOOM, 0, 22),
+    scale: within(visConfig.symbolZoomRate, DEFAULT_ZOOM_SCALE, 0, 1),
+  };
+}
 
 /** A row as kepler hands it to a row-based layer. */
 type SymbolRow = { index: number; position: [number, number, number] };
@@ -445,7 +487,9 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       return (row: { index: number }): [number, number, number] => [
         toNumber(dataContainer?.valueAt(row.index, lng?.fieldIdx as number)),
         toNumber(dataContainer?.valueAt(row.index, lat?.fieldIdx as number)),
-        altitude && (altitude.fieldIdx ?? -1) > -1 ? toNumber(dataContainer?.valueAt(row.index, altitude.fieldIdx as number)) : 0,
+        altitude && (altitude.fieldIdx ?? -1) > -1
+          ? toNumber(dataContainer?.valueAt(row.index, altitude.fieldIdx as number))
+          : 0,
       ];
     }
 
@@ -479,7 +523,9 @@ export function makeSymbolLayer<C extends Constructor<object>>(
 
     /** The extent kepler frames the map to, measured from the rows themselves. */
     updateLayerMeta(dataset: { dataContainer?: DataContainer }): void {
-      this.updateMeta({ bounds: this.getPointsBounds(dataset.dataContainer, this.getPositionAccessor(dataset.dataContainer)) });
+      this.updateMeta({
+        bounds: this.getPointsBounds(dataset.dataContainer, this.getPositionAccessor(dataset.dataContainer)),
+      });
     }
 
     /**
@@ -593,7 +639,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       data?: Record<string, unknown>;
       visible?: boolean;
       gpuFilter?: Pick<GpuFilter, 'filterValueUpdateTriggers'>;
-      mapState?: { bearing?: number };
+      mapState?: { bearing?: number; zoom?: number };
     }): unknown[] {
       const layerData = opts?.data;
       const rows = (layerData?.data ?? []) as SymbolRow[];
@@ -602,6 +648,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       }
 
       const visConfig = this.config.visConfig ?? {};
+      noteZoom(this.id, opts?.mapState?.zoom);
 
       // Which picture each row draws, when the layer draws pictures — and which
       // rows draw none, left out before deck sees them, since deck throws on a
@@ -609,7 +656,8 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       // dashboard clock never changes which rows have a picture. Recorded
       // against this layer object on every render, which the memo makes an
       // identity check: kept by id, it would mix with a repeated panel's.
-      const pictures = visConfig.symbolSource === 'picture' ? this.picturesFor(rows, layerData?.getPicture, visConfig) : null;
+      const pictures =
+        visConfig.symbolSource === 'picture' ? this.picturesFor(rows, layerData?.getPicture, visConfig) : null;
       if (pictures) {
         recordPictureAssignment(this, pictures);
       }
@@ -644,10 +692,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
               // Longitude is divided by the cosine of the latitude so a cell is
               // as wide as it is tall on the ground, instead of stretching
               // towards the poles.
-              (row) => [
-                row.position[0] * Math.max(0.2, Math.cos((row.position[1] * Math.PI) / 180)),
-                row.position[1],
-              ],
+              (row) => [row.position[0] * Math.max(0.2, Math.cos((row.position[1] * Math.PI) / 180)), row.position[1]],
               spacingDegrees,
               (row) => Number(sizeOf(row))
             )
@@ -664,6 +709,13 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       // Under a pitched camera a direction on the ground foreshortens and the
       // screen angle is an approximation; lying flat is exact.
       const upright = visConfig.upright === true;
+
+      // Shrinking when zooming out goes through deck's `sizeScale`, a uniform:
+      // kepler renders the layer on every frame of a zoom, and folded into
+      // `getSize` it would have deck recompute every row's size on each one.
+      // Left out while it is off, so deck keeps its own default.
+      const zoomScale = zoomScaleOf(visConfig);
+      const sizeFactor = zoomFactor(opts?.mapState?.zoom, zoomScale);
       const mapBearing = upright && this.config.angleField ? Number(opts?.mapState?.bearing ?? 0) || 0 : 0;
 
       const channelTriggers = this.getVisualChannelUpdateTriggers();
@@ -703,6 +755,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
         getAngle: (row: unknown) => deckAngle(Number(angleOf(row) ?? 0), convention) + mapBearing,
         billboard: upright,
         getSize: sizeOf,
+        ...(zoomScale ? { sizeScale: sizeFactor } : {}),
         getColor: pictures ? PICTURE_TINT : colorOf,
         // Left out rather than passed as undefined when there is none, so the
         // filter extension keeps its own default instead of an empty prop.
@@ -734,14 +787,17 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       // kepler's own text labels, the ones its point layer draws, over the rows
       // actually drawn — so declutter thins the labels with their symbols.
       const labelAnchor = pictures ? pictureAnchorOf(visConfig.pictureAnchor) : 'center';
+      // A label clears the symbol as drawn, shrunk or not.
+      const drawnSizeOf = sizeFactor === 1 ? sizeOf : (row: unknown) => Number(sizeOf(row)) * sizeFactor;
       const labels = Array.isArray(layerData?.textLabels)
         ? this.renderTextLabelLayer(
             {
               getPosition: layerData?.getPosition,
-              getPixelOffset: labelOffsetBeside(sizeOf, labelAnchor),
+              getPixelOffset: labelOffsetBeside(drawnSizeOf, labelAnchor),
               // kepler builds a label's offset trigger from `getRadius`, the
-              // point layer's size: the anchor has to reach it that way.
-              updateTriggers: { ...updateTriggers, getRadius: { labelAnchor } },
+              // point layer's size: the anchor and the shrinking have to reach
+              // it that way.
+              updateTriggers: { ...updateTriggers, getRadius: { labelAnchor, sizeFactor } },
               sharedProps: {
                 ...(getFilterValue ? { getFilterValue } : {}),
                 extensions: defaults.extensions,
@@ -780,7 +836,11 @@ export function makeSymbolLayer<C extends Constructor<object>>(
      * origin, not its address: only the scheme matters, for mixed content,
      * and the address changes with every time range and variable.
      */
-    picturesFor(rows: SymbolRow[], getPicture: unknown, visConfig: Record<string, unknown>): PictureAssignment<SymbolRow> {
+    picturesFor(
+      rows: SymbolRow[],
+      getPicture: unknown,
+      visConfig: Record<string, unknown>
+    ): PictureAssignment<SymbolRow> {
       const anchor = pictureAnchorOf(visConfig.pictureAnchor);
       const origin = typeof location === 'undefined' ? 'https://localhost' : location.origin;
       const pictureIdx = typeof getPicture === 'function' ? (this.config.columns?.picture?.fieldIdx ?? -1) : -1;

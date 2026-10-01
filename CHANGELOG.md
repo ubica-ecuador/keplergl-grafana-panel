@@ -37,6 +37,11 @@ release documents what changed since the one before it.
   ground, so on a hill higher than the centre of the view they sank into it, and they slid as the
   map panned. They are now drawn at the ground's elevation, labels, shadows and outlines included,
   and a dragged marker lands on the ground under the pointer. Other layers are unchanged.
+- **Symbols shrink when zooming out**: a new *Shrink when zooming out* switch in the symbol layer's
+  Size group. Off by default, so a symbol keeps its pixel size at every zoom as before. On, every
+  symbol — picture, outline and shadow included, and its label's clearance — is scaled by
+  2^((zoom − reference zoom) × rate): never above the set size when zooming in, never below a fifth
+  of it. *Use current zoom* sets the reference zoom from the map as it is.
 - **Markers stay on top**: a markers layer is now drawn above every other layer, whatever its place
   in the layer panel, and above the base map's roads and labels when the base map is set to draw
   those over the data. Until now such a base map covered the markers. Dragging them works as before.
