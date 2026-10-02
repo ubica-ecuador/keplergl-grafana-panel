@@ -1,7 +1,8 @@
-import { receiveMapConfig, registerEntry, toggleSplitMap, wrapTo } from '@kepler.gl/actions';
+import { loadMapStyles, receiveMapConfig, registerEntry, toggleSplitMap, wrapTo } from '@kepler.gl/actions';
 
 import { KEPLER_INSTANCE_ID } from './constants';
 import { createKeplerStore } from './keplerStore';
+import { registeredMapStyles } from './basemaps';
 
 /**
  * The store the panel really builds, driven through kepler's real reducers.
@@ -48,5 +49,50 @@ describe('createKeplerStore', () => {
     }
     // Empty appended panes lose nothing, so the fold does its work silently.
     expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+describe('the base map the store starts on', () => {
+  // kepler's own initial style is CARTO's Dark Matter, and registering the
+  // panel's styles fetches whichever one the store is on. Starting there asked
+  // CARTO for a document on every load, whatever base map the panel then showed.
+  const realFetch = global.fetch;
+  let fetched: string[];
+  beforeEach(() => {
+    fetched = [];
+    global.fetch = jest.fn((url: RequestInfo | URL) => {
+      fetched.push(String(url));
+      return new Promise<Response>(() => {});
+    }) as typeof fetch;
+  });
+  afterEach(() => {
+    global.fetch = realFetch;
+  });
+
+  const registerStyles = (store: ReturnType<typeof createKeplerStore>) => {
+    store.dispatch(registerEntry({ id: KEPLER_INSTANCE_ID }) as never);
+    store.dispatch(
+      wrapTo(
+        KEPLER_INSTANCE_ID,
+        loadMapStyles(Object.fromEntries(registeredMapStyles().map((style) => [style.id, style])) as never)
+      ) as never
+    );
+  };
+  const styleTypeOf = (store: ReturnType<typeof createKeplerStore>) =>
+    (store.getState() as { keplerGl: Record<string, { mapStyle: { styleType: string } }> }).keplerGl[KEPLER_INSTANCE_ID]
+      .mapStyle.styleType;
+
+  it('is the one the panel is about to show, and only that one is fetched', () => {
+    const store = createKeplerStore('openfreemap-dark');
+    registerStyles(store);
+    expect(styleTypeOf(store)).toBe('openfreemap-dark');
+    expect(fetched).toEqual(['https://tiles.openfreemap.org/styles/dark']);
+  });
+
+  it('is No Basemap when the panel has not said, so nothing is fetched at all', () => {
+    const store = createKeplerStore();
+    registerStyles(store);
+    expect(styleTypeOf(store)).toBe('no_map');
+    expect(fetched).toEqual([]);
   });
 });

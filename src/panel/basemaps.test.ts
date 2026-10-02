@@ -6,7 +6,7 @@ import satelliteStyle from '../basemaps/satellite.json';
 import satelliteTerrainStyle from '../basemaps/satellite-terrain.json';
 import topographicTerrainStyle from '../basemaps/topographic-terrain.json';
 
-import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES } from './basemaps';
+import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES, startingStyleType } from './basemaps';
 import { STYLE_LAYER_GROUPS } from './layerGroups';
 import {
   CUSTOM_BASEMAP_ID,
@@ -257,5 +257,23 @@ describe('the style picker thumbnails', () => {
         expect(style.icon).toMatch(/^(https:\/\/|data:image\/)/);
       }
     }
+  });
+});
+
+describe('startingStyleType', () => {
+  const styles = registeredMapStyles();
+
+  it('starts where a saved map names, then where the panel option points', () => {
+    expect(startingStyleType('voyager', 'openfreemap-dark', styles)).toBe('voyager');
+    expect(startingStyleType(undefined, 'openfreemap-positron', styles)).toBe('openfreemap-positron');
+  });
+
+  it('skips an id the panel does not offer, such as a Mapbox style from a pasted kepler config', () => {
+    expect(startingStyleType('satellite', 'openfreemap-dark', styles)).toBe('openfreemap-dark');
+  });
+
+  it('falls back to No Basemap, which fetches nothing', () => {
+    expect(startingStyleType(undefined, null, styles)).toBe('no_map');
+    expect(startingStyleType('satellite', 'nope', styles)).toBe('no_map');
   });
 });

@@ -1,4 +1,9 @@
-import { BASE_MAP_COLOR_MODES, DEFAULT_MAPLIBRE_STYLES, DEFAULT_NO_BASEMAP_STYLE } from '@kepler.gl/constants';
+import {
+  BASE_MAP_COLOR_MODES,
+  DEFAULT_MAPLIBRE_STYLES,
+  DEFAULT_NO_BASEMAP_STYLE,
+  NO_MAP_ID,
+} from '@kepler.gl/constants';
 
 import {
   CUSTOM_BASEMAP_ID,
@@ -160,4 +165,18 @@ export function registeredMapStyles(customBasemapUrl?: string, cartoApiKey?: str
   }
 
   return styles;
+}
+
+/**
+ * The base map the kepler store starts on: the one a saved map names, else the
+ * one the panel option points at — whichever the panel offers — else No
+ * Basemap. See `createKeplerStore` for why it matters.
+ */
+export function startingStyleType(
+  savedStyleType: string | undefined,
+  basemapId: string | null | undefined,
+  styles: readonly RegisteredMapStyle[]
+): string {
+  const offered = (id: string | null | undefined): id is string => Boolean(id) && styles.some((s) => s.id === id);
+  return [savedStyleType, basemapId].find(offered) ?? NO_MAP_ID;
 }

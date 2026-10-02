@@ -17,7 +17,7 @@ import type { ZarrDataset } from '../data/zarrDataset';
 import { namesBasemap, type SavedMapConfig } from '../data/mapConfig';
 import type { KeplerThemeOverride } from '../data/keplerTheme';
 import { KEPLER_INSTANCE_ID } from './constants';
-import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES } from './basemaps';
+import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES, startingStyleType } from './basemaps';
 import { cartoTransformRequest } from './cartoKey';
 import { configureKepler } from './keplerConfig';
 import { configureMaplibreWorker } from './maplibreWorker';
@@ -229,7 +229,18 @@ export function KeplerMap({
     }),
     [eventBus, hoverSync, hoverPublishSpike, hoverLayerId, hoverMaxAgeSeconds]
   );
-  const store = useMemo(() => createKeplerStore(), []);
+  // Started on the base map it is about to show, never kepler's own CARTO
+  // default — see `createKeplerStore`. Built once: later changes go through
+  // `setBasemap` and the saved config like any other.
+  const [store] = useState(() =>
+    createKeplerStore(
+      startingStyleType(
+        namesBasemap(mapConfig) ? (mapConfig?.config?.mapStyle as { styleType: string }).styleType : undefined,
+        basemapId,
+        registeredMapStyles(customBasemapUrl)
+      )
+    )
+  );
   const [styleTarget, setStyleTarget] = useState<HTMLElement | null>(null);
   const [isReady, setIsReady] = useState(false);
   // Bumped on every rebuild; arms the viewport guard for the load window.

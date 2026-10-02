@@ -1,3 +1,4 @@
+import { NO_MAP_ID } from '@kepler.gl/constants';
 import { Layer, LayerClasses, RasterTileIcon } from '@kepler.gl/layers';
 import { keplerGlReducer, enhanceReduxMiddleware } from '@kepler.gl/reducers';
 import type { ComponentType } from 'react';
@@ -140,8 +141,15 @@ const layerClasses = {
  * Every `LOAD_MAP_STYLES` passes through `withPresentLayerGroups`, so a base
  * map's "Map Layers" switches are the ones its document really has (see
  * `loadedLayerGroups.ts`).
+ *
+ * The map starts on `styleType`, the base map the panel is about to show.
+ * kepler's own starting point is CARTO's Dark Matter, and registering the
+ * panel's styles fetches whichever one the store is on — so every load asked
+ * CARTO for a document no one would see, and a hardened Grafana logged a
+ * blocked request. With no base map named it starts on No Basemap, which
+ * fetches nothing.
  */
-export function createKeplerStore(): Store {
+export function createKeplerStore(styleType: string = NO_MAP_ID): Store {
   // kepler.gl's components look their state up at `state.keplerGl` by default.
   // Mounting the reducer at the store root instead makes every one of them fail
   // with "kepler.gl state does not exist".
@@ -155,6 +163,7 @@ export function createKeplerStore(): Store {
         // Merged key by key into kepler's own initial vis state, so this replaces
         // the layer registry and nothing else.
         visState: { layerClasses },
+        mapStyle: { styleType },
       })
     ),
   });
