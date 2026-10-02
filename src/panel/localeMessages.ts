@@ -44,6 +44,18 @@ export const OWN_LAYER_LABELS: Record<string, string> = {
   markers: 'Markers',
 };
 
+/**
+ * The name of the Points of interest switch (`layerGroups.ts`), which kepler
+ * looks up as `mapLayers.<camelised slug>` and does not ship. Unlike a layer
+ * type it is a common noun, so it is translated where kepler has the language.
+ */
+const POI_SWITCH_LABELS: Record<string, string> = {
+  en: 'Points of interest',
+  es: 'Puntos de interés',
+  ca: "Punts d'interès",
+  pt: 'Pontos de interesse',
+};
+
 /** kepler's message catalogue: locale → flat id → text. */
 type Messages = Record<string, Record<string, string>>;
 
@@ -57,6 +69,9 @@ type Messages = Record<string, Record<string, string>>;
  * The same name goes into every language on purpose. These are proper nouns —
  * Zarr is Zarr, an ArcGIS Image Service is one in any language — and the
  * alternative is leaving every locale but English showing the raw id.
+ *
+ * The Points of interest switch is named here too, translated where there is a
+ * translation and in English elsewhere.
  */
 export function withOwnLayerLabels(messages: Messages): Messages {
   const own = Object.fromEntries(
@@ -64,6 +79,9 @@ export function withOwnLayerLabels(messages: Messages): Messages {
   );
 
   return Object.fromEntries(
-    Object.entries(messages).map(([locale, catalogue]) => [locale, { ...catalogue, ...own }])
+    Object.entries(messages).map(([locale, catalogue]) => [
+      locale,
+      { ...catalogue, ...own, 'mapLayers.poi': POI_SWITCH_LABELS[locale] ?? POI_SWITCH_LABELS.en },
+    ])
   );
 }

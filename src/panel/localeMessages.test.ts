@@ -64,3 +64,27 @@ describe('withOwnLayerLabels', () => {
     expect(keplerMessages.en['layer.type.zarr']).toBeUndefined();
   });
 });
+
+describe('the Points of interest switch', () => {
+  const merged = withOwnLayerLabels(keplerMessages);
+
+  it('is looked up the way kepler names every Map Layers switch: mapLayers.<camelised slug>', () => {
+    // The pattern, read off kepler's own catalogue: '3d building' → mapLayers.3dBuilding.
+    expect(keplerMessages.en['mapLayers.3dBuilding']).toBeDefined();
+    expect(merged.en['mapLayers.poi']).toBe('Points of interest');
+  });
+
+  it.each([
+    ['es', 'Puntos de interés'],
+    ['ca', "Punts d'interès"],
+    ['pt', 'Pontos de interesse'],
+  ])('is translated in %s', (locale, text) => {
+    expect(merged[locale]['mapLayers.poi']).toBe(text);
+  });
+
+  it('falls back to English in the other languages kepler ships', () => {
+    for (const locale of Object.keys(keplerMessages).filter((l) => !['es', 'ca', 'pt'].includes(l))) {
+      expect(merged[locale]['mapLayers.poi']).toBe('Points of interest');
+    }
+  });
+});
