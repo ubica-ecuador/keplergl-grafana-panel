@@ -124,3 +124,38 @@ export function layerGroupsIn(groups: readonly LayerGroup[], style: unknown): La
 export function slugsMatching(groups: readonly LayerGroup[], layer: StyleLayer): string[] {
   return groups.filter((group) => Boolean(group.filter(layer as never))).map((group) => group.slug);
 }
+
+type GroupStates = Record<string, boolean>;
+
+/** The part of a parsed saved config {@link poiFollowsSavedLabel} reads. */
+interface ConfigWithMapStyle {
+  mapStyle?: { visibleLayerGroups?: GroupStates; topLayerGroups?: GroupStates };
+}
+
+/**
+ * A parsed saved config whose switch states predate the Points of interest
+ * group, with that group given the state labels had.
+ *
+ * kepler's label group caught every symbol, so a map saved with labels off hid
+ * points of interest too, and labels on top drew them on top. Without this, the
+ * missing `poi` would take its default and bring them back. Returns the config
+ * it was given, by identity, when there is nothing to carry over.
+ */
+export function poiFollowsSavedLabel<C>(config: C): C {
+  const mapStyle = (config as ConfigWithMapStyle | null | undefined)?.mapStyle;
+  const carried = (states?: GroupStates) =>
+    states && 'label' in states && !('poi' in states) ? { ...states, poi: states.label } : states;
+  const visibleLayerGroups = carried(mapStyle?.visibleLayerGroups);
+  const topLayerGroups = carried(mapStyle?.topLayerGroups);
+  if (!mapStyle || (visibleLayerGroups === mapStyle.visibleLayerGroups && topLayerGroups === mapStyle.topLayerGroups)) {
+    return config;
+  }
+  return {
+    ...config,
+    mapStyle: {
+      ...mapStyle,
+      ...(visibleLayerGroups && { visibleLayerGroups }),
+      ...(topLayerGroups && { topLayerGroups }),
+    },
+  };
+}

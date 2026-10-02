@@ -1,9 +1,11 @@
 import { DEFAULT_LAYER_GROUPS } from '@kepler.gl/constants';
+import KeplerGlSchema from '@kepler.gl/schemas';
 
 import { CARTO_DARK_MATTER_LAYERS, OPENFREEMAP_LIBERTY_LAYERS, UPPER_CASE_LAYERS } from './basemapStyleFixtures';
 import {
   isPointOfInterest,
   layerGroupsIn,
+  poiFollowsSavedLabel,
   SATELLITE_LAYER_GROUPS,
   STYLE_LAYER_GROUPS,
   slugsMatching,
@@ -91,5 +93,47 @@ describe('3D buildings', () => {
     const group = STYLE_LAYER_GROUPS.find((g) => g.slug === '3d building')!;
     expect(group.defaultVisibility).toBe(true);
     expect(group.isColorPickerAvailable).toBe(false);
+  });
+});
+
+describe('a config saved before the Points of interest switch existed', () => {
+  // kepler's label group caught every symbol, points of interest included, so a
+  // map saved with labels off hid them too, and labels on top drew them on top.
+  const saved = (mapStyle: Record<string, unknown>) => ({
+    mapStyle: { styleType: 'dark-matter', ...mapStyle } as Record<string, unknown>,
+  });
+
+  it('gives points of interest the state labels had', () => {
+    const config = poiFollowsSavedLabel(
+      saved({ visibleLayerGroups: { label: false, road: true }, topLayerGroups: { label: true } })
+    );
+    expect(config.mapStyle.visibleLayerGroups).toEqual({ label: false, poi: false, road: true });
+    expect(config.mapStyle.topLayerGroups).toEqual({ label: true, poi: true });
+  });
+
+  it("reads the shape kepler's own parser hands back", () => {
+    const parsed = KeplerGlSchema.parseSavedConfig({
+      version: 'v1',
+      config: { mapStyle: { styleType: 'dark-matter', visibleLayerGroups: { label: false, road: true } } },
+    } as never);
+    expect(poiFollowsSavedLabel(parsed)?.mapStyle?.visibleLayerGroups).toMatchObject({ label: false, poi: false });
+  });
+
+  it('adds no switch states the config did not have', () => {
+    const config = poiFollowsSavedLabel(saved({ visibleLayerGroups: { label: false } }));
+    expect(config.mapStyle).not.toHaveProperty('topLayerGroups');
+  });
+
+  it('leaves a config that already names points of interest alone', () => {
+    const config = saved({ visibleLayerGroups: { label: false, poi: true } });
+    expect(poiFollowsSavedLabel(config)).toBe(config);
+  });
+
+  it('leaves configs without labels, map style or config alone', () => {
+    const noLabel = saved({ visibleLayerGroups: { road: false } });
+    expect(poiFollowsSavedLabel(noLabel)).toBe(noLabel);
+    const noStyle = { visState: {} };
+    expect(poiFollowsSavedLabel(noStyle)).toBe(noStyle);
+    expect(poiFollowsSavedLabel(null)).toBeNull();
   });
 });
