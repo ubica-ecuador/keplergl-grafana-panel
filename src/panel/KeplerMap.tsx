@@ -18,6 +18,7 @@ import { namesBasemap, type SavedMapConfig } from '../data/mapConfig';
 import type { KeplerThemeOverride } from '../data/keplerTheme';
 import { KEPLER_INSTANCE_ID } from './constants';
 import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES } from './basemaps';
+import { cartoTransformRequest } from './cartoKey';
 import { configureKepler } from './keplerConfig';
 import { configureMaplibreWorker } from './maplibreWorker';
 import { createKeplerStore } from './keplerStore';
@@ -128,6 +129,8 @@ export interface KeplerMapProps {
   /** Resolved base map style id, or null to leave kepler's default alone. */
   basemapId?: string | null;
   customBasemapUrl?: string;
+  /** CARTO's key, already interpolated; undefined when there is none. */
+  cartoApiKey?: string;
   showSidePanel: boolean;
   /** Bumped by the options editor to request a configuration snapshot. */
   saveRequest: number;
@@ -196,6 +199,7 @@ export function KeplerMap({
   theme,
   basemapId,
   customBasemapUrl,
+  cartoApiKey,
   showSidePanel,
   saveRequest,
   onMapConfigCaptured,
@@ -242,7 +246,13 @@ export function KeplerMap({
   // account, plus a self-hosted style.json when one is configured, which is
   // what makes the panel usable in air-gapped installs where the Carto base
   // maps are unreachable.
-  const mapStyles = useMemo(() => registeredMapStyles(customBasemapUrl), [customBasemapUrl]);
+  // Read through a ref so a new key re-keys every later request without a new map.
+  const cartoKeyRef = useRef(cartoApiKey);
+  useEffect(() => {
+    cartoKeyRef.current = cartoApiKey;
+  });
+  const transformRequest = useCallback((url: string) => cartoTransformRequest(() => cartoKeyRef.current)(url), []);
+  const mapStyles = useMemo(() => registeredMapStyles(customBasemapUrl, cartoApiKey), [customBasemapUrl, cartoApiKey]);
 
   // A query that named a service but no dates still gets a timeline: the
   // service publishes its own. Everything below works with the filled-in list,
@@ -588,6 +598,10 @@ export function KeplerMap({
                     /* Drops kepler's own list, which is half Mapbox styles that
                      cannot load without an account — see REPLACES_DEFAULT_MAP_STYLES. */
                     mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
+                    /* kepler hands it to MapLibre in place of its own, which passes
+                     URLs through untouched: the CARTO key on every style, sprite,
+                     glyph and tile URL. */
+                    transformRequest={transformRequest}
                     /* kepler renders one commit late and silently discards actions
                      addressed to an instance that has not registered yet. */
                     onKeplerGlInitialized={() => setIsReady(true)}

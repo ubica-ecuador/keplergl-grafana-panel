@@ -30,7 +30,7 @@ export interface KeplerThemeOverride {
   activeColor: string;
   borderColor: string;
   /** Not part of kepler's theme — the base map style id that suits this mode. */
-  mapStyle: 'dark-matter' | 'positron';
+  mapStyle: 'openfreemap-dark' | 'openfreemap-positron';
 }
 
 /**
@@ -67,6 +67,6 @@ export function toKeplerTheme(theme: GrafanaTheme2): KeplerThemeOverride {
     panelHeaderIconActive: theme.colors.text.maxContrast,
     activeColor: theme.colors.primary.main,
     borderColor: theme.colors.border.weak,
-    mapStyle: isDark ? 'dark-matter' : 'positron',
+    mapStyle: isDark ? 'openfreemap-dark' : 'openfreemap-positron',
   };
 }

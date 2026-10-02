@@ -6,6 +6,7 @@ import {
   SATELLITE_TERRAIN_BASEMAP_ID,
   TOPOGRAPHIC_TERRAIN_BASEMAP_ID,
 } from './constants';
+import { withCartoKey } from './cartoKey';
 import { assetBaseUrl } from './keplerConfig';
 import { SATELLITE_LAYER_GROUPS, STYLE_LAYER_GROUPS, type LayerGroup } from './layerGroups';
 
@@ -29,19 +30,37 @@ const SATELLITE_ICON = 'https://services.arcgisonline.com/ArcGIS/rest/services/W
 const TOPOGRAPHIC_ICON = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/3/4/2';
 
 /**
- * Thumbnails for kepler's own Carto entries, likewise real tiles.
+ * A thumbnail shipped with the plugin (src/images/basemaps), rendered once from
+ * the real style.
  *
- * kepler names its thumbnails as paths under whatever `cdnUrl` the app
- * configures, and this plugin points that at its own assets so the vendored
- * effect thumbnails resolve — which left every base map thumbnail asking this
- * plugin for a `geodude/*.png` it does not ship, and answering 404. A raster
- * tile from the same service the style itself draws needs no vendoring, and
- * when it is unreachable so is the style it stands for.
+ * kepler names its own thumbnails as paths under `cdnUrl`, which this plugin
+ * points at its own assets, so they asked for a `geodude/*.png` it never
+ * shipped. Raster tiles from CARTO stood in for a while, until CARTO began
+ * watermarking them without a key; a file in the plugin carries no watermark
+ * and needs no network for the picker to show it.
  */
-const CARTO_RASTER_ICONS: Record<string, string> = {
-  'dark-matter': 'https://basemaps.cartocdn.com/dark_all/3/4/2.png',
-  positron: 'https://basemaps.cartocdn.com/light_all/3/4/2.png',
-  voyager: 'https://basemaps.cartocdn.com/rastertiles/voyager/3/4/2.png',
+const shippedIcon = (id: string) => `${assetBaseUrl()}/images/basemaps/${id}.png`;
+
+/**
+ * OpenFreeMap's styles: OpenMapTiles over OpenStreetMap, served with no key
+ * and no account (https://openfreemap.org). The defaults since CARTO began
+ * asking for a key — see `cartoKey.ts`. OpenFreeMap's "3D" is Liberty with the
+ * camera tilted, which is the map's business in kepler, not the base map's;
+ * Liberty's own extrusions carry the 3D Building switch.
+ */
+const OPENFREEMAP_STYLES = [
+  { name: 'positron', label: 'Positron', colorMode: BASE_MAP_COLOR_MODES.LIGHT },
+  { name: 'bright', label: 'Bright', colorMode: BASE_MAP_COLOR_MODES.LIGHT },
+  { name: 'liberty', label: 'Liberty', colorMode: BASE_MAP_COLOR_MODES.LIGHT },
+  { name: 'dark', label: 'Dark', colorMode: BASE_MAP_COLOR_MODES.DARK },
+  { name: 'fiord', label: 'Fiord', colorMode: BASE_MAP_COLOR_MODES.DARK },
+];
+
+/** CARTO's entries, renamed so the picker says whose they are. */
+const CARTO_LABELS: Record<string, string> = {
+  'dark-matter': 'Dark Matter (CARTO)',
+  positron: 'Positron (CARTO)',
+  voyager: 'Voyager (CARTO)',
 };
 
 /**
@@ -63,32 +82,46 @@ const NO_BASEMAP_ICON =
  * every one of them is a `mapbox://` URL that cannot load without an account.
  * Left in place they sit in the picker as choices that blank the map when
  * clicked. Replacing the list means re-registering the three that do work
- * without a token (Carto's), which {@link registeredMapStyles} does from
- * kepler's own definitions rather than by copying them.
+ * without a Mapbox token (CARTO's), which {@link registeredMapStyles} does from
+ * kepler's own definitions rather than by copying them, next to OpenFreeMap's.
  */
 export const REPLACES_DEFAULT_MAP_STYLES = true;
 
 /**
  * The map styles this panel offers.
  *
- * Four of them are the plugin's own documents, served from its assets: flat
+ * OpenFreeMap's five come first and need nothing at all. CARTO's three keep
+ * kepler's ids, so dashboards saved on them still open there, and take the
+ * optional `cartoApiKey`; without one their tiles may carry a watermark. Four
+ * more are the plugin's own documents, served from its assets: flat
  * satellite imagery, the same imagery over real elevation, a topographic map
  * over real elevation, and — once configured — a self-hosted `style.json`.
  * None needs an account. The relief pair carries a `terrain` key that MapLibre
  * reads straight from the style; kepler passes it through untouched, which is
  * the whole reason elevation is possible here at all.
  */
-export function registeredMapStyles(customBasemapUrl?: string): RegisteredMapStyle[] {
+export function registeredMapStyles(customBasemapUrl?: string, cartoApiKey?: string): RegisteredMapStyle[] {
   const styles: RegisteredMapStyle[] = [
     // Replacing kepler's list drops its "No Basemap" entry along with the
     // Mapbox ones, and that one earns its place: it is how a dashboard shows
     // data on a plain background, with no tiles fetched at all.
     { ...DEFAULT_NO_BASEMAP_STYLE, icon: NO_BASEMAP_ICON },
-    // kepler's own Carto entries, verbatim apart from the thumbnail and the
-    // switches, whose filters here ignore case (layerGroups.ts).
+    ...OPENFREEMAP_STYLES.map(({ name, label, colorMode }) => ({
+      id: `openfreemap-${name}`,
+      label: `${label} (OpenFreeMap)`,
+      url: `https://tiles.openfreemap.org/styles/${name}`,
+      icon: shippedIcon(`openfreemap-${name}`),
+      layerGroups: STYLE_LAYER_GROUPS,
+      colorMode,
+    })),
+    // kepler's own CARTO entries: their ids stay, so a dashboard saved on Dark
+    // Matter opens on it, with or without a key. The switches' filters here
+    // ignore case (layerGroups.ts).
     ...DEFAULT_MAPLIBRE_STYLES.map((style) => ({
       ...style,
-      icon: CARTO_RASTER_ICONS[style.id] ?? `${assetBaseUrl()}/${style.icon}`,
+      label: CARTO_LABELS[style.id] ?? style.label,
+      url: cartoApiKey ? withCartoKey(style.url, cartoApiKey) : style.url,
+      icon: shippedIcon(style.id),
       layerGroups: STYLE_LAYER_GROUPS,
     })),
     {

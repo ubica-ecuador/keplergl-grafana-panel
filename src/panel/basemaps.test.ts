@@ -1,3 +1,5 @@
+import { existsSync } from 'fs';
+import { join } from 'path';
 import { DEFAULT_LAYER_GROUPS } from '@kepler.gl/constants';
 
 import satelliteStyle from '../basemaps/satellite.json';
@@ -5,6 +7,7 @@ import satelliteTerrainStyle from '../basemaps/satellite-terrain.json';
 import topographicTerrainStyle from '../basemaps/topographic-terrain.json';
 
 import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES } from './basemaps';
+import { STYLE_LAYER_GROUPS } from './layerGroups';
 import {
   CUSTOM_BASEMAP_ID,
   SATELLITE_BASEMAP_ID,
@@ -85,6 +88,11 @@ describe('registeredMapStyles', () => {
       // would otherwise drop it along with the Mapbox entries, and it is how a
       // dashboard shows data with no tiles fetched at all.
       'no_map',
+      'openfreemap-positron',
+      'openfreemap-bright',
+      'openfreemap-liberty',
+      'openfreemap-dark',
+      'openfreemap-fiord',
       'dark-matter',
       'positron',
       'voyager',
@@ -93,6 +101,22 @@ describe('registeredMapStyles', () => {
       TOPOGRAPHIC_TERRAIN_BASEMAP_ID,
     ]);
     expect(registeredMapStyles('https://tiles.internal/style.json').map((s) => s.id)).toContain(CUSTOM_BASEMAP_ID);
+  });
+
+  it('offers every OpenFreeMap style, keyless, with the candidate switches', () => {
+    const ofm = registeredMapStyles().filter((s) => s.id.startsWith('openfreemap-'));
+    expect(ofm.map((s) => s.url)).toEqual(
+      ['positron', 'bright', 'liberty', 'dark', 'fiord'].map((n) => `https://tiles.openfreemap.org/styles/${n}`)
+    );
+    for (const style of ofm) {
+      expect(style.layerGroups).toBe(STYLE_LAYER_GROUPS);
+      expect(style.label).toMatch(/\(OpenFreeMap\)$/);
+    }
+  });
+
+  it('keeps the CARTO ids so saved dashboards open where they were, and says whose they are', () => {
+    const carto = registeredMapStyles().filter((s) => ['dark-matter', 'positron', 'voyager'].includes(s.id));
+    expect(carto.map((s) => s.label)).toEqual(['Dark Matter (CARTO)', 'Positron (CARTO)', 'Voyager (CARTO)']);
   });
 
   it("replaces kepler's list rather than adding to it, so no mapbox:// entry survives", () => {
@@ -147,6 +171,20 @@ describe('registeredMapStyles', () => {
     const satellite = registeredMapStyles().find((s) => s.id === SATELLITE_BASEMAP_ID);
 
     expect(satellite?.layerGroups?.map((g) => g.slug)).toEqual(['label', 'road']);
+  });
+
+  it('asks CARTO with the key when there is one, and only CARTO', () => {
+    const styles = registeredMapStyles(undefined, 'k');
+    for (const id of ['dark-matter', 'positron', 'voyager']) {
+      expect(styles.find((s) => s.id === id)?.url).toMatch(/\?key=k$/);
+    }
+    expect(
+      styles
+        .filter((s) => s.url.includes('key='))
+        .map((s) => s.id)
+        .sort()
+    ).toEqual(['dark-matter', 'positron', 'voyager']);
+    expect(registeredMapStyles().find((s) => s.id === 'positron')?.url).not.toContain('key=');
   });
 });
 
@@ -207,14 +245,17 @@ describe('the style picker thumbnails', () => {
     }
   });
 
-  it('gives every offered style something to show', () => {
+  it('ships the CARTO and OpenFreeMap thumbnails with the plugin, so no provider is asked for one', () => {
+    // CARTO's raster tiles carry a watermark without a key; a file in the plugin carries none.
     for (const style of registeredMapStyles('https://tiles.internal/style.json')) {
-      // The self-hosted entry is the one exception: the panel cannot know what
-      // a URL someone typed looks like.
-      if (style.id === CUSTOM_BASEMAP_ID) {
-        continue;
+      if (/^(openfreemap-|dark-matter$|positron$|voyager$)/.test(style.id)) {
+        expect(style.icon).toBe(`/images/basemaps/${style.id}.png`);
+        expect(existsSync(join(__dirname, '..', 'images', 'basemaps', `${style.id}.png`))).toBe(true);
+      } else if (style.id !== CUSTOM_BASEMAP_ID) {
+        // The self-hosted entry is the one exception: the panel cannot know
+        // what a URL someone typed looks like.
+        expect(style.icon).toMatch(/^(https:\/\/|data:image\/)/);
       }
-      expect(style.icon).toMatch(/^(https:\/\/|data:image\/)/);
     }
   });
 });

@@ -29,7 +29,7 @@ describe('toKeplerTheme', () => {
   });
 
   it('picks a base map style matching the mode', () => {
-    expect(toKeplerTheme(createTheme({ colors: { mode: 'dark' } })).mapStyle).toBe('dark-matter');
-    expect(toKeplerTheme(createTheme({ colors: { mode: 'light' } })).mapStyle).toBe('positron');
+    expect(toKeplerTheme(createTheme({ colors: { mode: 'dark' } })).mapStyle).toBe('openfreemap-dark');
+    expect(toKeplerTheme(createTheme({ colors: { mode: 'light' } })).mapStyle).toBe('openfreemap-positron');
   });
 });

@@ -171,9 +171,14 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       settings: {
         options: [
           { value: 'auto', label: 'Match theme' },
-          { value: 'dark-matter', label: 'Dark Matter' },
-          { value: 'positron', label: 'Positron' },
-          { value: 'voyager', label: 'Voyager' },
+          { value: 'openfreemap-positron', label: 'Positron (OpenFreeMap)' },
+          { value: 'openfreemap-bright', label: 'Bright (OpenFreeMap)' },
+          { value: 'openfreemap-liberty', label: 'Liberty (OpenFreeMap)' },
+          { value: 'openfreemap-dark', label: 'Dark (OpenFreeMap)' },
+          { value: 'openfreemap-fiord', label: 'Fiord (OpenFreeMap)' },
+          { value: 'dark-matter', label: 'Dark Matter (CARTO)' },
+          { value: 'positron', label: 'Positron (CARTO)' },
+          { value: 'voyager', label: 'Voyager (CARTO)' },
           { value: 'grafana-satellite', label: 'Satellite (Esri)' },
           { value: 'grafana-satellite-terrain', label: 'Satellite + relief' },
           { value: 'grafana-topographic-terrain', label: 'Topographic + relief' },
@@ -189,6 +194,14 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       category: ['Map'],
       settings: { placeholder: 'https://tiles.internal/style.json' },
       showIf: (config) => config.basemap === 'custom',
+    })
+    .addTextInput({
+      path: 'cartoApiKey',
+      name: 'CARTO API key',
+      description:
+        'Only for the CARTO base maps (Dark Matter, Positron, Voyager). Free at carto.com/basemaps/apikey; public by design, it travels in every tile URL. Dashboard variables are interpolated.',
+      category: ['Map'],
+      settings: { placeholder: 'Optional' },
     })
     .addTextInput({
       path: 'rasterServerUrl',

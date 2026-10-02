@@ -32,7 +32,7 @@ they all fall under `connect-src` — which `content_security_policy = true` clo
 Add the hosts for the base maps you actually use:
 
 ```ini
-content_security_policy_template = """… connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com …;"""
+content_security_policy_template = """… connect-src 'self' grafana.com https://tiles.openfreemap.org https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com …;"""
 ```
 
 Or set **Base map** to a self-hosted `style.json`, or to _No Basemap_, and skip it entirely. See
@@ -41,6 +41,19 @@ Or set **Base map** to a self-hosted `style.json`, or to _No Basemap_, and skip 
 Note that the _thumbnails_ in the style picker will still load when the tiles do not — they are
 `<img>` elements under `img-src`. A picker full of working thumbnails over a blank map is the
 signature of this problem.
+
+## CARTO base maps show "API KEY REQUIRED"
+
+**Cause:** since 23 September 2026 CARTO asks for an API key on every request to
+`basemaps.cartocdn.com`, and without one its tiles come back watermarked or blank. It affects the
+_Dark Matter (CARTO)_, _Positron (CARTO)_ and _Voyager (CARTO)_ base maps, including dashboards
+saved on them before OpenFreeMap became the default.
+
+Either switch **Base map** to one of the OpenFreeMap styles, which need no key, or get a free key at
+[carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/) and paste it into **CARTO API key**.
+The panel adds it to every CARTO style, sprite, glyph and tile URL; dashboard variables are
+interpolated, so one variable can carry it for a whole dashboard. Keys registered before
+23 September 2026 work until 30 November 2026.
 
 ## Maps go black when several are open
 

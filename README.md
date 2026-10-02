@@ -56,7 +56,9 @@ tutorials, a layer gallery and a complete option reference.
 - **Saved map configuration** stored with the dashboard, and configs pasted from kepler.gl,
   Foursquare Studio or Dekart are accepted.
 - **Follows the dashboard theme**, base map included.
-- **No account needed for any base map.** Carto's three, and Esri's three — flat satellite imagery,
+- **No account needed for the base maps.** OpenFreeMap's five by default — Positron, Bright,
+  Liberty, Dark, Fiord — with no key at all; CARTO's three, with an optional CARTO API key (without
+  one their tiles may carry a watermark since 23 Sep 2026); and Esri's three — flat satellite imagery,
   plus satellite and topographic with **real elevation**: tilt the camera and the ground has relief.
   Topographic exists only in this relief form; there is no flat version. Every one can be swapped for
   a self-hosted `style.json`; kepler's icon library ships with the plugin.
@@ -138,15 +140,15 @@ blocks the base map. MapLibre fetches styles, sprites, glyphs and tiles over XHR
 under that directive:
 
 ```ini
-content_security_policy_template = """...connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com https://titiler.xyz ...;"""
+content_security_policy_template = """...connect-src 'self' grafana.com https://tiles.openfreemap.org https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com https://titiler.xyz ...;"""
 ```
 
 If your template also sets `worker-src`, it has to allow `'self'`: MapLibre's worker is a file served
 with the plugin, under `public/plugins/ubica-keplergl-panel/maplibre/`, not a `blob:` URL.
 
-Each host serves only what its name suggests: Carto the three default base maps, Esri the satellite
-and topographic ones, Mapterhorn the elevation tiles behind the two relief styles, and `titiler.xyz`
-the default raster tile server, described next. Leave out the ones you never use — or point
+Each host serves only what its name suggests: OpenFreeMap the five default base maps, CARTO its
+three, Esri the satellite and topographic ones, Mapterhorn the elevation tiles behind the two relief
+styles, and `titiler.xyz` the default raster tile server, described next. Leave out the ones you never use — or point
 **Base map** and **Raster tile server** at infrastructure of your own and skip this entirely.
 
 > **The raster tile server.** A query that returns imagery — a COG, a Zarr store, a WMS — is drawn

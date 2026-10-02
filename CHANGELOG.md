@@ -6,6 +6,17 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Base maps without CARTO by default**: since 23 Sep 2026 CARTO asks for a key, and without one its
+  raster tiles — the picker's thumbnails among them — carry an "API key required" watermark. The
+  defaults are now OpenFreeMap's styles (Positron, Bright, Liberty, Dark, Fiord), with no key or
+  account. **Change:** a panel on _Match theme_ now shows OpenFreeMap Dark or Positron instead of
+  CARTO's Dark Matter or Positron. Dashboards saved on Dark Matter, Positron or Voyager still open on
+  CARTO, now labelled as such, and a new _CARTO API key_ option keys every CARTO request. Thumbnails
+  ship with the plugin. The Map Layers switches are truthful now: a _Points of interest_ switch for
+  OpenMapTiles styles (translated), _3D Building_ only where the style draws its own buildings
+  (Liberty; it did nothing on CARTO without a Mapbox token), switches that match upper-case layer
+  ids, and a self-hosted `style.json` that shows its switches and keeps their states when the base
+  map changes.
 - **Grafana Assistant awareness**: on a Grafana that has the Assistant, the panel now grounds it in
   the map — the page context carries each query's fields and row counts, the base map actually
   shown, the saved filters and viewport, and always the dashboard's time range — and two starter

@@ -10,13 +10,18 @@ import { ViewportVariables } from './panel/viewportSync';
 /**
  * Base maps offered in the panel options.
  *
- * All of them work without a Mapbox token: the first four are kepler's MapLibre
- * styles served by Carto, and `grafana-satellite` is the plugin's own Esri
- * imagery style. The value is the kepler style id, so `KeplerPanel` can pass it
+ * All of them work without a Mapbox token: five OpenFreeMap styles that need no
+ * key at all, kepler's three CARTO styles (keyed by `cartoApiKey`), and the
+ * plugin's own Esri imagery and relief styles. The value is the kepler style id, so `KeplerPanel` can pass it
  * straight through.
  */
 export type BasemapChoice =
   | 'auto'
+  | 'openfreemap-positron'
+  | 'openfreemap-bright'
+  | 'openfreemap-liberty'
+  | 'openfreemap-dark'
+  | 'openfreemap-fiord'
   | 'dark-matter'
   | 'positron'
   | 'voyager'
@@ -53,7 +58,7 @@ export interface KeplerPanelOptions {
   /** kepler's layer/filter side panel. Worth hiding on small dashboard tiles. */
   showSidePanel?: boolean;
 
-  /** `auto` follows the Grafana theme: dark-matter in dark mode, positron in light. */
+  /** `auto` follows the Grafana theme: OpenFreeMap Dark in dark mode, OpenFreeMap Positron in light. */
   basemap?: BasemapChoice;
 
   /**
@@ -61,6 +66,13 @@ export interface KeplerPanelOptions {
    * internet, which air-gapped Grafana installs do not have.
    */
   customBasemapUrl?: string;
+
+  /**
+   * CARTO's API key, for the Dark Matter, Positron and Voyager base maps. Public
+   * by design — it travels in every tile URL. Without it CARTO's raster tiles
+   * carry an "API key required" watermark since 2026-09-23.
+   */
+  cartoApiKey?: string;
 
   /**
    * Colour ramp for rasters the queries produce.

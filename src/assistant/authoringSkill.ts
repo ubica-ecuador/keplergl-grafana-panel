@@ -8,7 +8,7 @@
 export const exampleMapConfig = {
   version: 'v1',
   config: {
-    mapStyle: { styleType: 'dark-matter' },
+    mapStyle: { styleType: 'openfreemap-dark' },
     mapState: { latitude: -2.9, longitude: -79.0, zoom: 11 },
     visState: {
       filters: [],
