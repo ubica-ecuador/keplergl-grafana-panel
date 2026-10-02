@@ -110,7 +110,10 @@ On a hardened Grafana each choice needs its host allowed in `connect-src`:
 | No Basemap                      | nothing                                                               |
 | Self-hosted                     | your own host                                                         |
 
-Leave out the ones you never select. Full configuration in [Install](../install#hardened-grafana).
+Leave out the ones you never select. One exception: kepler starts on CARTO's Dark Matter before the
+panel applies its own base map, so every load requests that one style document from
+`basemaps.cartocdn.com`. Without the CARTO hosts the map still draws, but the browser logs a blocked
+request. Full configuration in [Install](../install#hardened-grafana).
 
 ## Self-hosted style.json
 

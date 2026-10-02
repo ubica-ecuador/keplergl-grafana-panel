@@ -88,14 +88,19 @@ sit in the picker as choices that blank the map when clicked.
 
 What replaces them:
 
-- kepler's three Carto styles, re-registered **from kepler's own definitions** rather than copied, so
-  an upstream rename fails a test instead of producing an inert entry.
+- OpenFreeMap's five styles — Positron, Bright, Liberty, Dark, Fiord — which need no key; the
+  defaults.
+- kepler's three CARTO styles, re-registered **from kepler's own definitions** rather than copied, so
+  an upstream rename fails a test instead of producing an inert entry. They keep kepler's ids and take
+  an optional CARTO API key.
 - kepler's "No Basemap" entry, re-added deliberately — replacing the list would otherwise drop it.
 - Esri satellite and topographic, and two relief styles, as the plugin's own style documents.
 - A self-hosted `style.json`, when configured.
 
-Thumbnails are real tiles from each service rather than kepler's bundled images, because pointing
-`cdnUrl` at the plugin left every base map thumbnail requesting a file the plugin does not ship.
+The OpenFreeMap and CARTO thumbnails ship with the plugin, rendered once from each style, rather
+than kepler's bundled images: pointing `cdnUrl` at the plugin left every base map thumbnail
+requesting a file the plugin does not ship, and CARTO's raster tiles carry a watermark without a key.
+The Esri thumbnails are real tiles from the service.
 
 Full detail on [Base maps and relief](../guide/map/basemaps-and-relief).
 

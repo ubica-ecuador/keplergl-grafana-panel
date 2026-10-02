@@ -48,7 +48,7 @@ features:
     link: /guide/dashboard/cross-filtering
     linkText: Cross-filtering
   - title: Base maps with no account
-    details: Carto's three, Esri's satellite and topographic, and two of those with real elevation. Or point it at a style.json on your own network for an air-gapped install.
+    details: OpenFreeMap's five with no key, CARTO's three with an optional one, Esri's satellite and topographic, and two of those with real elevation. Or point it at a style.json on your own network for an air-gapped install.
     link: /guide/map/basemaps-and-relief
     linkText: Base maps
   - title: All of kepler.gl, in the panel

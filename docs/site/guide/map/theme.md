@@ -30,8 +30,8 @@ reimplementation of kepler's design system in Grafana's tokens.
 
 ### The base map
 
-When **Base map** is set to _Match theme_ — the default — the theme also decides which Carto style
-is used: **Dark Matter** in dark mode, **Positron** in light.
+When **Base map** is set to _Match theme_ — the default — the theme also decides which OpenFreeMap
+style is used: **Dark** in dark mode, **Positron** in light.
 
 Pick any other base map explicitly and that choice stands in both themes. A satellite map does not
 become a light satellite map.
