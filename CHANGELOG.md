@@ -6,6 +6,9 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **The side panel names the plugin**: its header shows the plugin's own logo and name, linked to the
+  documentation, with "powered by kepler.gl" under them, linked to kepler.gl. It used to show
+  kepler.gl's logo alone, which read as if the map were kepler.gl's product.
 - **Base maps without CARTO by default**: since 23 Sep 2026 CARTO asks for a key, and without one its
   raster tiles — the picker's thumbnails among them — carry an "API key required" watermark. The
   defaults are now OpenFreeMap's styles (Positron, Bright, Liberty, Dark, Fiord), with no key or

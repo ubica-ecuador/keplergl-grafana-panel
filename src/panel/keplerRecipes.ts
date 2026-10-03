@@ -3,6 +3,7 @@ import { replaceMapControl } from './mapControl';
 import { replaceLayerConfigurator } from './flowFieldConfigurator';
 import { replaceMapContainer } from './haloMapContainer';
 import { replaceLayerPanelHeader } from './layerPanelHeader';
+import { replacePanelHeader } from './panelHeader';
 import { replaceMapPopoverContent } from './selectPopover';
 import { replaceRangeSlider, replaceTimelineSlider } from './timeBarCursorSlider';
 
@@ -45,6 +46,7 @@ export function keplerRecipes(): Array<[unknown, unknown]> {
     replaceLayerConfigurator(),
     replaceLayerPanelHeader(),
     replaceMapPopoverContent(),
+    replacePanelHeader(),
     // The smallest trees here (the time bars of the two widget sizes), so last.
     replaceRangeSlider(),
     replaceTimelineSlider(),
