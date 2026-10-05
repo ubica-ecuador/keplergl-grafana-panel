@@ -21,6 +21,23 @@ describe('framesToDatasets', () => {
     expect(dataset.rows[0]).toEqual({ latitude: -2.9, longitude: -79.0 });
   });
 
+  it('names the columns kepler renames, by the query column they come from', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'vehicle_id', type: FieldType.string, values: ['a', 'b'] },
+        { name: 'ts', type: FieldType.time, values: [1000, 2000] },
+        { name: 'lat', type: FieldType.number, values: [-2.9, -2.8] },
+        { name: 'lon', type: FieldType.number, values: [-79.0, -78.9] },
+        { name: 'speed', type: FieldType.number, values: [10, 20] },
+      ],
+    });
+
+    const [dataset] = framesToDatasets([frame]);
+
+    expect(dataset.renames).toEqual({ vehicle_id: 'trip_id', ts: 'time', lat: 'latitude', lon: 'longitude' });
+  });
+
   it('keeps the columns of a query that returned no rows', () => {
     // An empty result is ordinary — the bunched pair before any row is clicked —
     // and a saved layer on it still needs its columns to exist. Without them

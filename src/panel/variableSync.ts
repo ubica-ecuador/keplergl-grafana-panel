@@ -54,6 +54,34 @@ export interface VariableMapping {
   keepOnDeselect?: boolean;
 }
 
+/**
+ * The mappings with each column one pointed at kepler's name for it.
+ *
+ * The options name the query's columns, as the editor lists them, but kepler's dataset knows a column with a role
+ * by the role's name (`vehicle_id` reaches kepler as `trip_id`, toKeplerDataset.ts), so a mapping on it found no
+ * filter, no clicked value and no halo. Only the mappings that read a column move: a `coordinate` or `center`
+ * mapping's field means nothing. The first dataset that renames the column decides. The same list comes back when
+ * nothing moves, so a memo on it holds.
+ */
+export function withKeplerFields(
+  mappings: VariableMapping[],
+  datasets: ReadonlyArray<{ renames?: Record<string, string> }>
+): VariableMapping[] {
+  let moved = false;
+  const translated = mappings.map((mapping) => {
+    if (isCoordinateMapping(mapping) || isCenterMapping(mapping)) {
+      return mapping;
+    }
+    const name = datasets.find((dataset) => dataset.renames?.[mapping.field])?.renames?.[mapping.field];
+    if (!name || name === mapping.field) {
+      return mapping;
+    }
+    moved = true;
+    return { ...mapping, field: name };
+  });
+  return moved ? translated : mappings;
+}
+
 /** Whether a mapping publishes a numeric range as a min/max variable pair. */
 export function isRangeMapping(mapping: VariableMapping): boolean {
   return Boolean(mapping.variable && mapping.variableTo);

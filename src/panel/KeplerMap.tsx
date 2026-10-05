@@ -50,6 +50,7 @@ import { useVariableSync } from './useVariableSync';
 import { useClickSync } from './useClickSync';
 import { offersSelection, selectApi, SelectContext } from './selectPopover';
 import { HaloContext } from './haloMapContainer';
+import { PanelMappingsContext, type PanelMappings } from './panelMappingsContext';
 import { TemporalCursorContext } from './temporalCursorMapContainer';
 import { useSelectionValues } from './useSelectionValues';
 import { useCoordinateSync } from './useCoordinateSync';
@@ -503,6 +504,11 @@ export function KeplerMap({
   // What the halo marks: the selection the click mappings have published, read
   // from the URL so a shared link or another panel shows it too.
   const haloSelection = useSelectionValues(variableMappings);
+  // For what renders in kepler's own tree (panelMappingsContext.ts).
+  const panelMappings = useMemo<PanelMappings>(
+    () => ({ mappings: variableMappings, confirm: clickConfirm }),
+    [variableMappings, clickConfirm]
+  );
 
   // One-way: publishes the clicked map coordinate as a lat/lng variable pair,
   // keeping the last pin through kepler's unpin toggle and data refreshes.
@@ -590,33 +596,35 @@ export function KeplerMap({
             <TemporalCursorContext.Provider value={temporalCursor}>
               <HaloContext.Provider value={haloSelection}>
                 <SelectContext.Provider value={selection}>
-                  <KeplerGl
-                    id={KEPLER_INSTANCE_ID}
-                    width={width}
-                    height={height}
-                    /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
+                  <PanelMappingsContext.Provider value={panelMappings}>
+                    <KeplerGl
+                      id={KEPLER_INSTANCE_ID}
+                      width={width}
+                      height={height}
+                      /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
                      required by the type but unused unless a Mapbox style is picked. */
-                    mapboxApiAccessToken=""
-                    /* `appName` is deliberately left at kepler's own default: the
+                      mapboxApiAccessToken=""
+                      /* `appName` is deliberately left at kepler's own default: the
                      side panel names the library the map comes from, and calling
                      it "Grafana" claimed credit for someone else's work. */
-                    theme={theme}
-                    /* kepler ships translations for its own layer types only, so the
+                      theme={theme}
+                      /* kepler ships translations for its own layer types only, so the
                      four this plugin adds showed as `Layer.Type.Esriimage` and the
                      like wherever a layer is named. */
-                    localeMessages={localeMessages}
-                    mapStyles={mapStyles}
-                    /* Drops kepler's own list, which is half Mapbox styles that
+                      localeMessages={localeMessages}
+                      mapStyles={mapStyles}
+                      /* Drops kepler's own list, which is half Mapbox styles that
                      cannot load without an account — see REPLACES_DEFAULT_MAP_STYLES. */
-                    mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
-                    /* kepler hands it to MapLibre in place of its own, which passes
+                      mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
+                      /* kepler hands it to MapLibre in place of its own, which passes
                      URLs through untouched: the CARTO key on every style, sprite,
                      glyph and tile URL. */
-                    transformRequest={transformRequest}
-                    /* kepler renders one commit late and silently discards actions
+                      transformRequest={transformRequest}
+                      /* kepler renders one commit late and silently discards actions
                      addressed to an instance that has not registered yet. */
-                    onKeplerGlInitialized={() => setIsReady(true)}
-                  />
+                      onKeplerGlInitialized={() => setIsReady(true)}
+                    />
+                  </PanelMappingsContext.Provider>
                 </SelectContext.Provider>
               </HaloContext.Provider>
             </TemporalCursorContext.Provider>

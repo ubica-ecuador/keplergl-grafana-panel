@@ -109,6 +109,16 @@ export function keplerColumnName(roles: FieldRoles, sourceName: string): string 
   return keplerRenames(roles).get(sourceName) ?? sourceName;
 }
 
+/**
+ * Source column name → the name kepler reads it by, for every column a role renames.
+ *
+ * What the panel's options, which name the query's columns, need to find a column in kepler's dataset: a click
+ * mapping on `vehicle_id` reads kepler's `trip_id` (variableSync.ts `withKeplerFields`).
+ */
+export function keplerRenamesOf(roles: FieldRoles): Record<string, string> {
+  return Object.fromEntries(keplerRenames(roles));
+}
+
 /** Source column name → the name kepler reads it by, for every role that renames. */
 function keplerRenames(roles: FieldRoles): Map<string, string> {
   const renames = new Map<string, string>();

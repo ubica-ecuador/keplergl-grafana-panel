@@ -7,7 +7,7 @@ import { buildTripLayer, TripLayerConfig, TripLayerMode } from './buildTripLayer
 import { buildTrips } from './buildTrips';
 import { describesLattice, earliestTimestepRows } from './buildWindField';
 import { detectFields, FieldRoleOverrides, FieldRoles, resolveRoles } from './detectFields';
-import { KeplerColumn, KeplerRow, toKeplerColumns, toKeplerRows } from './toKeplerDataset';
+import { KeplerColumn, KeplerRow, keplerRenamesOf, toKeplerColumns, toKeplerRows } from './toKeplerDataset';
 
 /** One kepler dataset per Grafana query. */
 export interface PanelDataset {
@@ -21,6 +21,11 @@ export interface PanelDataset {
    * and saving the map configuration then drops it.
    */
   columns?: KeplerColumn[];
+  /**
+   * The query columns kepler knows by another name: source name → kepler name. A role is expressed by renaming its
+   * column (toKeplerDataset.ts), while the panel's options name the query's columns; `withKeplerFields` translates.
+   */
+  renames?: Record<string, string>;
   /**
    * A flow layer to add for this dataset, when the query is origin-destination.
    * kepler does not auto-detect flow layers, so the panel adds it explicitly.
@@ -88,6 +93,7 @@ export function framesToDatasets(
         id,
         label,
         rows: toKeplerRows(frame, roles),
+        renames: keplerRenamesOf(roles),
         flowFieldLayer: buildFlowField(roles, id) ?? undefined,
       };
     }
@@ -111,6 +117,7 @@ export function framesToDatasets(
       label,
       rows,
       columns: rows.length === 0 ? toKeplerColumns(frame, roles) : undefined,
+      renames: keplerRenamesOf(roles),
       tripLayer: buildTripLayer(roles, id) ?? undefined,
       flowLayer: buildFlows(roles, id, { renderingMode: opts.flowRenderMode }) ?? undefined,
       symbolLayer: pointsSymbols(symbolRoles) ? (buildSymbolLayer(symbolRoles, id) ?? undefined) : undefined,

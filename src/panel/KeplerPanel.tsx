@@ -20,7 +20,7 @@ import { LazyKeplerMap } from './LazyKeplerMap';
 import { useInterpolatedOption } from './useInterpolatedOption';
 import { useStableValue } from './useStableValue';
 import { publishIntervalOf } from './timeVariableSync';
-import type { VariableMapping } from './variableSync';
+import { withKeplerFields, type VariableMapping } from './variableSync';
 
 interface Props extends PanelProps<KeplerPanelOptions> {}
 
@@ -76,6 +76,12 @@ export function KeplerPanel(props: Props) {
         tripLayerMode: options.tripLayerMode,
       }),
     [data.series, fieldMappings, options.flowRenderMode, options.tripLayerMode]
+  );
+
+  // The mappings name the query's columns, as the editor lists them; kepler knows a column with a role by the role's
+  // name (`vehicle_id` is `trip_id` there). Stable, so a refresh that renames the same columns re-subscribes nothing.
+  const keplerMappings = useStableValue(
+    useMemo(() => withKeplerFields(variableMappings, datasets), [variableMappings, datasets])
   );
 
   // Interpolated like the custom basemap url, and for the same reason: a
@@ -193,7 +199,7 @@ export function KeplerPanel(props: Props) {
         timeSync={options.timeSync ?? 'toMap'}
         grafanaRange={grafanaRange}
         onChangeGrafanaRange={onChangeTimeRange}
-        variableMappings={variableMappings}
+        variableMappings={keplerMappings}
         areaVariable={options.areaVariable ?? ''}
         clickArea={Boolean(options.clickArea)}
         clickAreaSizeMetres={options.clickAreaSizeMetres ?? DEFAULT_CLICK_AREA_METRES}

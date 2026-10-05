@@ -10,6 +10,7 @@ import {
   rangeVariableWrites,
   readRangeFromVariables,
   variableFilterValues,
+  withKeplerFields,
 } from './variableSync';
 
 const mappings = [
@@ -427,5 +428,45 @@ describe('chartVariableValues', () => {
   it('leaves out mappings that are not driven by a chart', () => {
     const filters = [{ type: 'multiSelect', name: ['estacion'], value: ['Esmeraldas'] }];
     expect(chartVariableValues(filters, [{ field: 'estacion', variable: 'estacion' }])).toEqual({});
+  });
+});
+
+describe('withKeplerFields', () => {
+  const datasets: Array<{ renames?: Record<string, string> }> = [
+    { renames: { vehicle_id: 'trip_id', lat: 'latitude' } },
+    { renames: {} },
+    {},
+  ];
+
+  it('points the column mappings at the name kepler gives the column', () => {
+    expect(
+      withKeplerFields(
+        [
+          { field: 'vehicle_id', variable: 'vehicle', source: 'click' },
+          { field: 'vehicle_id', variable: 'v' },
+          { field: 'vehicle_id', variable: 'c', source: 'chart' },
+          { field: 'site', variable: 'site', source: 'click' },
+        ],
+        datasets
+      )
+    ).toEqual([
+      { field: 'trip_id', variable: 'vehicle', source: 'click' },
+      { field: 'trip_id', variable: 'v' },
+      { field: 'trip_id', variable: 'c', source: 'chart' },
+      { field: 'site', variable: 'site', source: 'click' },
+    ]);
+  });
+
+  it('leaves the place mappings alone: their field means nothing', () => {
+    const place = [
+      { field: 'lat', variable: 'lat', variableTo: 'lng', source: 'coordinate' as const },
+      { field: 'lat', variable: 'lat', variableTo: 'lng', source: 'center' as const },
+    ];
+    expect(withKeplerFields(place, datasets)).toBe(place);
+  });
+
+  it('hands back the same list when nothing is renamed', () => {
+    const list = [{ field: 'site', variable: 'site', source: 'click' as const }];
+    expect(withKeplerFields(list, datasets)).toBe(list);
   });
 });
