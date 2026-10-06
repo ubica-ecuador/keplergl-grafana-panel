@@ -1363,7 +1363,7 @@ interface VisStateLike {
     dataId?: string[] | string;
   }>;
   /** Filters parked by a dataset replace, waiting to be merged back — in their saved form. */
-  filterToBeMerged?: Array<{ id?: string; name?: string[] | string; dataId?: string[] | string }>;
+  filterToBeMerged?: Array<{ id?: string; type?: string; name?: string[] | string; dataId?: string[] | string }>;
   /** kepler's charts; a chart's cross-filters live among `filters`. See `chartFilters.ts`. */
   charts?: ChartLike[];
   /** Charts parked by a dataset replace, waiting to be merged back. */
@@ -1957,6 +1957,13 @@ function applyFilterValue(store: Store, dispatch: Dispatch, field: string, value
     return true;
   }
 
+  // A refresh parks the time filter until its dataset's new rows land. A filter made in that gap is a second one,
+  // and the parked one comes back on its old window, ahead of it, where the map and every sync read it. Not landed,
+  // so the caller pushes again once it is back.
+  if (timeFilterAwaitingRows(visState)) {
+    return false;
+  }
+
   for (const [dataId, dataset] of Object.entries(visState.datasets)) {
     if (dataset.fields.some((f) => f.name === field)) {
       dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(undefined, dataId, field, value)));
@@ -2150,6 +2157,13 @@ export function pushTimeRange(store: Store, dispatch: Dispatch, range: TimeRange
     return true;
   }
 
+  // A refresh parks the time filter until its dataset's new rows land. A filter made in that gap is a second one,
+  // and the parked one comes back on its old window, ahead of it, where the map and every sync read it. Not landed,
+  // so the caller pushes again once it is back.
+  if (timeFilterAwaitingRows(visState)) {
+    return false;
+  }
+
   for (const [dataId, dataset] of Object.entries(visState.datasets)) {
     const timeField = findTimeFieldName(dataset.fields);
     if (timeField) {
@@ -2159,6 +2173,18 @@ export function pushTimeRange(store: Store, dispatch: Dispatch, range: TimeRange
   }
 
   return false;
+}
+
+/**
+ * Whether a time filter is parked for a dataset that is not loaded, so is coming back. kepler also parks a filter
+ * it failed to validate, against loaded datasets, and leaves it there: that one is not waited for.
+ */
+function timeFilterAwaitingRows(visState: VisStateLike): boolean {
+  const loaded = new Set(Object.keys(visState.datasets));
+  return withoutChartFilters(visState.filterToBeMerged ?? [], chartOwnedFilterIds(visState)).some((filter) => {
+    const dataIds = Array.isArray(filter.dataId) ? filter.dataId : filter.dataId ? [filter.dataId] : [];
+    return filter.type === TIME_FILTER_TYPE && dataIds.some((id) => !loaded.has(id));
+  });
 }
 
 /** Whether the map is ready for an auto-added layer to be added for `dataId`. */

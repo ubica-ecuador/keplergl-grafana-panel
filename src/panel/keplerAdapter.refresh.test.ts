@@ -300,3 +300,24 @@ describe('a data refresh while the time filter plays', () => {
     expect(timeFilter(store)).toMatchObject({ id, isAnimating: false });
   });
 });
+
+describe('a dashboard range pushed while a refresh has the time filter parked', () => {
+  // A new range re-runs the queries, so the push and the refresh arrive together. Pushed into the gap, it found
+  // no time filter and made a second one on a dataset still loaded; the parked one then came back with the old
+  // window, first in the list, and the range sync, taking its push as done, never put the new window on it.
+  it('waits for the filter to come back, then lands on it', async () => {
+    const store = await mapWithTimeFilter([answer('A'), answer('B')], DOMAIN);
+    const { id } = timeFilter(store)!;
+
+    // A's new rows are still on their way; B is loaded, as it is when its own rows landed first.
+    refreshDatasets(store, store.dispatch, [answer('A', 0.01)]);
+    expect(pushTimeRange(store, store.dispatch, { from: NARROWED[0], to: NARROWED[1] })).toBe(false);
+    await settle();
+    expect(pushTimeRange(store, store.dispatch, { from: NARROWED[0], to: NARROWED[1] })).toBe(true);
+    await settle();
+
+    const timeFilters = visStateOf(store).filters.filter((f: { type?: string }) => f.type === 'timeRange');
+    expect(timeFilters).toHaveLength(1);
+    expect(timeFilters[0]).toMatchObject({ id, value: NARROWED });
+  });
+});
