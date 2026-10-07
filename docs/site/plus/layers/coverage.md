@@ -107,7 +107,7 @@ visible.
 Switching **3D dome** on shows four more settings. Tilt the map with the 3D control to see the
 result.
 
-![Street lights along a few blocks drawn as 3D light cones, yellow or orange by lux and red where a light has failed](/img/plus/coverage-3d-lights.jpg)
+![Street lights drawn as soft light cones among MapTiler's 3D buildings on a tilted map, coloured by lux, with the Coverage layer open in kepler's side panel](/img/plus/coverage-3d-lights.jpg)
 
 | Option                  | What it does                                                                         | Default    |
 | ----------------------- | ------------------------------------------------------------------------------------ | ---------- |

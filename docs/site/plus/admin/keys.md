@@ -19,8 +19,6 @@ without any, Plus draws the free panel's base maps.
 | **Cesium ion access token**      | 3D layers from your Cesium ion account                                             |
 | **Azure Maps subscription key**  | Azure Maps' road, dark grey, imagery and hybrid maps                               |
 
-The page also has a **Mapbox access token** field. No map in this version uses it; leave it empty.
-
 Each field's description says what the provider expects of the key. Two are worth knowing before you create one:
 
 - The **ArcGIS API key** must come from an ArcGIS Location Platform account, not from ArcGIS Online, and have the

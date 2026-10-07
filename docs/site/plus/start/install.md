@@ -35,7 +35,6 @@ the organisation:
 | Field                        | What it switches on                                                                                                              |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | CARTO basemaps API key       | The default Dark Matter, Positron and Voyager maps ask CARTO with this key, which keeps CARTO's watermark off them               |
-| Mapbox access token          | Nothing in this version: no Plus map uses it, so leave it empty                                                                  |
 | MapTiler API key             | MapTiler's base maps, with its 3D buildings, points of interest and Relief switches                                              |
 | ArcGIS API key               | Esri's ArcGIS basemap styles, with a Relief switch; it must be an ArcGIS Location Platform key with the basemap styles privilege |
 | Google Maps Platform API key | Google's roadmap, satellite, hybrid and terrain maps, and Google Photorealistic 3D Tiles; it needs the Map Tiles API enabled     |
