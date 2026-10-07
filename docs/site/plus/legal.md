@@ -153,7 +153,7 @@ versions; the changelog says which.
 
 7.3 **Security.** UBICA addresses vulnerabilities in the Software rated critical within 7 days, and
 those rated high within 30 days, of becoming aware of them, by releasing a fixed version. Report a
-suspected vulnerability to <soporte@ubica.dev>, and please do not disclose it publicly until a fix is
+suspected vulnerability to <jgarcia@ubicacuenca.com>, and please do not disclose it publicly until a fix is
 available.
 
 7.4 Grafana Labs is not responsible for supporting the Software. Grafana Labs handles billing and
@@ -272,7 +272,7 @@ may assign this Agreement to a company that continues UBICA's business, with not
 15.3 **Severability and waiver.** If a provision is unenforceable, the rest stays in force and the
 provision is applied to the extent allowed. A failure to enforce a right is not a waiver of it.
 
-15.4 **Notices.** Notices to UBICA go to <soporte@ubica.dev>. Notices to you go to the contact in
+15.4 **Notices.** Notices to UBICA go to <jgarcia@ubicacuenca.com>. Notices to you go to the contact in
 your Order or to the administrators of your Grafana.
 
 15.5 **Force majeure.** Neither party is liable for a delay or failure caused by events beyond its
@@ -300,5 +300,5 @@ take away, those rights stand.
 
 ## 17. Contact
 
-Javier Andrés García Galarza, trading as UBICA · Cuenca, Ecuador · <soporte@ubica.dev> ·
+Javier Andrés García Galarza, trading as UBICA · Cuenca, Ecuador · <jgarcia@ubicacuenca.com> ·
 <https://ubica.dev>

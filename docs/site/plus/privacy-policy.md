@@ -11,7 +11,7 @@ has the technical detail, host by host, and [End-User Licence Agreement](/plus/l
 This policy explains what Javier Andrés García Galarza, trading as UBICA ("UBICA", "we"), of Cuenca,
 Ecuador, does with personal data in connection with Kepler Geospatial Maps Plus (the "Software"), its
 documentation site and its support, and what the Software itself does with data. UBICA is the
-controller of the personal data described in section 3. Contact: <soporte@ubica.dev>.
+controller of the personal data described in section 3. Contact: <jgarcia@ubicacuenca.com>.
 
 ## 1. The short version
 
@@ -68,7 +68,7 @@ to your Grafana, not to UBICA.
 
 ## 3. What UBICA collects, why, and for how long
 
-3.1 **Support and security reports.** When you write to <soporte@ubica.dev> or through another
+3.1 **Support and security reports.** When you write to <jgarcia@ubicacuenca.com> or through another
 support channel, UBICA receives your name, email address and organisation, your Grafana edition and
 version, and whatever you send: screenshots, dashboard JSON, logs or query results. Purpose: to provide
 the support the licence includes and to fix the Software. Legal basis: the performance of the contract
@@ -122,7 +122,7 @@ delay.
 
 Under the laws that apply to you, among them the GDPR and Ecuador's Ley Orgánica de Protección de
 Datos Personales, you may ask to access, rectify, erase, restrict or port the personal data UBICA
-holds about you, and object to processing based on legitimate interest. Write to <soporte@ubica.dev>;
+holds about you, and object to processing based on legitimate interest. Write to <jgarcia@ubicacuenca.com>;
 UBICA answers within the time the applicable law sets. You may also complain to your supervisory
 authority, which in Ecuador is the Superintendencia de Protección de Datos Personales.
 
@@ -139,7 +139,7 @@ New versions of this policy are dated and numbered. The version shipped inside t
 
 ## 10. Contact
 
-Javier Andrés García Galarza, trading as UBICA · Cuenca, Ecuador · <soporte@ubica.dev> ·
+Javier Andrés García Galarza, trading as UBICA · Cuenca, Ecuador · <jgarcia@ubicacuenca.com> ·
 <https://ubica.dev>
 
 ## 11. The providers' privacy policies
