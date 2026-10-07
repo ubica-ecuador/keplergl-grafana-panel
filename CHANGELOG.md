@@ -4,7 +4,7 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
-## Unreleased
+## 1.1.0 (2026-10-07)
 
 - **The side panel names the plugin**: its header shows the plugin's own logo and name, linked to the
   documentation, with "powered by kepler.gl" under them, linked to kepler.gl. It used to show
@@ -109,6 +109,15 @@ release documents what changed since the one before it.
   cross-filter** publishes what a chart in kepler's charts panel filters on a column, one way. On
   `mareas-ecuador`, a click on a heatmap cell sets the port and the three-hour block, and a time
   series under the map draws that port's tide minute by minute.
+- **Variable mappings on a column kepler renames**: a mapping on a column that a role renames in
+  kepler's dataset, as `vehicle_id` reaches kepler as `trip_id`, used to find no filter, no clicked
+  value and no halo: the options name the query's column, and kepler knows it by the role's name.
+  Mappings that read a column now follow the rename. *Coordinate* and *center* mappings, whose
+  field means nothing, are untouched.
+- **A dashboard range pushed during a refresh**: a refresh parks the time filter until its dataset's
+  new rows land. A dashboard range pushed in that gap used to make a second time filter on the new
+  window, and the parked one came back on its old window ahead of it, where the map and every sync
+  read it. The push now waits for the parked filter and lands on it once it is back.
 
 ## 1.0.1 (2026-09-23)
 

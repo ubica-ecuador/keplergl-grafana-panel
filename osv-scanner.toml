@@ -1,0 +1,14 @@
+# Advisories the plugin catalog's validator reports on package-lock.json, through osv-scanner,
+# that no version bump can clear. The validator loads this file from the repository root, which
+# release.yml hands it as the source tree; without it the release job fails at "Validate plugin"
+# before the zip is attached, as 1.0.0 did. Re-check every entry before each tag:
+#   npx -y @grafana/plugin-validator@latest -sourceCodeUri file://./ <zip>
+# and drop the entry once the lock carries a fixed version.
+
+[[IgnoredVulns]]
+# GHSA-vfj7-8cjw-p6xm, CVE-2026-93687: braces <= 3.0.3, stack exhaustion on deeply nested
+# brace patterns. braces is a dev-only transitive dependency (eslint-webpack-plugin > micromatch
+# > braces), never in the shipped bundle, and 3.0.3 is the latest release: no fixed version
+# exists. The validator matches the CVE and its GHSA alias from this one id.
+id = "CVE-2026-93687"
+reason = "braces is a dev-only transitive dependency (eslint-webpack-plugin > micromatch); no fixed npm release exists as of 2026-10-07"
