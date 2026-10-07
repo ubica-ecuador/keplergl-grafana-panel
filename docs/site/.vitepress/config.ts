@@ -1,5 +1,7 @@
 import { defineConfig } from 'vitepress';
 
+import { PLUS_SIDEBAR } from './plusSidebar';
+
 /**
  * The versions this documentation is written against.
  *
@@ -66,140 +68,146 @@ export default defineConfig({
       { text: 'Tutorials', link: '/tutorials/' },
       { text: 'Layer gallery', link: '/layers/' },
       { text: 'Reference', link: '/reference/panel-options' },
+      { text: 'Plus', link: '/plus/' },
     ],
 
-    sidebar: [
-      {
-        text: 'Introduction',
-        items: [
-          { text: 'Live demos ↗', link: DEMO_URL },
-          { text: 'What it is', link: '/guide/what-it-is' },
-          { text: 'Install', link: '/guide/install' },
-          { text: 'Quickstart', link: '/guide/quickstart' },
-          { text: 'Coming from another kepler.gl tool', link: '/guide/coming-from-another-kepler-tool' },
-        ],
-      },
-      {
-        text: 'Getting data in',
-        collapsed: false,
-        items: [
-          { text: 'How a query becomes a map', link: '/guide/data/how-a-query-becomes-a-map' },
-          { text: 'Points', link: '/guide/data/points' },
-          { text: 'Geometry', link: '/guide/data/geometry' },
-          { text: 'Trajectories', link: '/guide/data/trajectories' },
-          { text: 'Origin–destination flows', link: '/guide/data/flows' },
-          { text: 'H3 and S2', link: '/guide/data/h3-and-s2' },
-          { text: 'Symbols', link: '/guide/data/symbols' },
-          { text: 'Velocity fields', link: '/guide/data/velocity-fields' },
-          { text: 'Rasters', link: '/guide/data/rasters' },
-          { text: 'WMS services', link: '/guide/data/wms' },
-          { text: 'ArcGIS Image Services', link: '/guide/data/arcgis-image-service' },
-          { text: 'Zarr stores', link: '/guide/data/zarr' },
-          { text: 'Imagery over time', link: '/guide/data/imagery-over-time' },
-        ],
-      },
-      {
-        text: 'The map',
-        collapsed: false,
-        items: [
-          { text: 'Base maps and relief', link: '/guide/map/basemaps-and-relief' },
-          { text: 'Theme', link: '/guide/map/theme' },
-          { text: 'Markers', link: '/guide/map/markers' },
-          { text: 'Map configuration', link: '/guide/map/map-configuration' },
-        ],
-      },
-      {
-        text: "Using kepler's own panel",
-        collapsed: true,
-        items: [
-          { text: 'Layers and attributes', link: '/guide/kepler/layers-and-attributes' },
-          { text: 'Colour palettes and scales', link: '/guide/kepler/colour-palettes-and-scales' },
-          { text: 'Filters', link: '/guide/kepler/filters' },
-          { text: 'Interactions', link: '/guide/kepler/interactions' },
-          { text: 'Map settings', link: '/guide/kepler/map-settings' },
-          { text: 'Time playback', link: '/guide/kepler/time-playback' },
-          { text: 'Effects', link: '/guide/kepler/effects' },
-          { text: 'Charts', link: '/guide/kepler/charts' },
-        ],
-      },
-      {
-        text: 'Dashboard integration',
-        collapsed: false,
-        items: [
-          { text: 'Time range sync', link: '/guide/dashboard/time-range-sync' },
-          { text: 'Time window variables', link: '/guide/dashboard/time-window-variables' },
-          { text: 'Peer time sync', link: '/guide/dashboard/peer-time-sync' },
-          { text: 'Temporal cursor', link: '/guide/dashboard/temporal-cursor' },
-          { text: 'Cross-filtering', link: '/guide/dashboard/cross-filtering' },
-          { text: 'Publishing viewport and areas', link: '/guide/dashboard/publishing' },
-          { text: 'Explorer results on the map', link: '/guide/dashboard/explorer-results' },
-          { text: 'Grafana Assistant', link: '/guide/dashboard/grafana-assistant' },
-        ],
-      },
-      {
-        text: 'Data source recipes',
-        collapsed: true,
-        items: [
-          { text: 'PostGIS', link: '/guide/sources/postgis' },
-          { text: 'DuckDB — parquet, CSV, GeoJSON', link: '/guide/sources/duckdb-geoparquet' },
-          { text: 'Infinity — GeoJSON, CSV, WFS', link: '/guide/sources/infinity' },
-          { text: 'Any other SQL source', link: '/guide/sources/other-sql' },
-          { text: 'Measuring imagery', link: '/guide/sources/measuring-imagery' },
-          { text: 'STAC catalogues', link: '/guide/sources/stac-catalogs' },
-          { text: 'Icechunk — forecast archives', link: '/guide/sources/icechunk' },
-          { text: 'ERDDAP — gridded ocean data', link: '/guide/sources/erddap' },
-        ],
-      },
-      {
-        text: 'Layer gallery',
-        collapsed: true,
-        items: [
-          { text: 'Overview', link: '/layers/' },
-          { text: 'Points and aggregation', link: '/layers/points-and-aggregation' },
-          { text: 'Geometry and spatial indices', link: '/layers/geometry-and-indices' },
-          { text: 'Origin–destination', link: '/layers/origin-destination' },
-          { text: 'Symbols and markers', link: '/layers/symbols-and-markers' },
-          { text: 'Time', link: '/layers/time' },
-          { text: 'Layers configured with a URL', link: '/layers/url-configured' },
-        ],
-      },
-      {
-        text: 'Tutorials',
-        collapsed: false,
-        items: [
-          { text: 'Overview', link: '/tutorials/' },
-          { text: '1 — Your first map', link: '/tutorials/first-map' },
-          { text: '2 — Animate trajectories', link: '/tutorials/trajectories' },
-          { text: '3 — An OD flow map', link: '/tutorials/od-flows' },
-          { text: '4 — A cross-filtered dashboard', link: '/tutorials/cross-filtered-dashboard' },
-          { text: '5 — Click the map, query a radius', link: '/tutorials/click-to-query' },
-          { text: '6 — A wind field', link: '/tutorials/wind-field' },
-          { text: '7 — Imagery over time', link: '/tutorials/imagery-over-time' },
-        ],
-      },
-      {
-        text: 'Reference',
-        collapsed: false,
-        items: [
-          { text: 'Panel options', link: '/reference/panel-options' },
-          { text: 'Field roles', link: '/reference/field-roles' },
-          { text: 'Variable formats', link: '/reference/variable-formats' },
-          { text: 'Differences from stock kepler.gl', link: '/reference/differences-from-kepler' },
-          { text: 'Under the hood — deck.gl', link: '/reference/under-the-hood' },
-          { text: 'Upstream documentation', link: '/reference/upstream-docs' },
-          { text: 'Troubleshooting', link: '/reference/troubleshooting' },
-          { text: 'Compatibility', link: '/reference/compatibility' },
-        ],
-      },
-      {
-        text: 'Support',
-        items: [{ text: 'Support and services', link: '/support' }],
-      },
-      {
-        text: 'Contributing',
-        items: [{ text: 'Developing the plugin', link: '/contributing' }],
-      },
-    ],
+    // Plus has its own sidebar, so its pages never show the free panel's and
+    // the other way round.
+    sidebar: {
+      '/plus/': PLUS_SIDEBAR,
+      '/': [
+        {
+          text: 'Introduction',
+          items: [
+            { text: 'Live demos ↗', link: DEMO_URL },
+            { text: 'What it is', link: '/guide/what-it-is' },
+            { text: 'Install', link: '/guide/install' },
+            { text: 'Quickstart', link: '/guide/quickstart' },
+            { text: 'Coming from another kepler.gl tool', link: '/guide/coming-from-another-kepler-tool' },
+          ],
+        },
+        {
+          text: 'Getting data in',
+          collapsed: false,
+          items: [
+            { text: 'How a query becomes a map', link: '/guide/data/how-a-query-becomes-a-map' },
+            { text: 'Points', link: '/guide/data/points' },
+            { text: 'Geometry', link: '/guide/data/geometry' },
+            { text: 'Trajectories', link: '/guide/data/trajectories' },
+            { text: 'Origin–destination flows', link: '/guide/data/flows' },
+            { text: 'H3 and S2', link: '/guide/data/h3-and-s2' },
+            { text: 'Symbols', link: '/guide/data/symbols' },
+            { text: 'Velocity fields', link: '/guide/data/velocity-fields' },
+            { text: 'Rasters', link: '/guide/data/rasters' },
+            { text: 'WMS services', link: '/guide/data/wms' },
+            { text: 'ArcGIS Image Services', link: '/guide/data/arcgis-image-service' },
+            { text: 'Zarr stores', link: '/guide/data/zarr' },
+            { text: 'Imagery over time', link: '/guide/data/imagery-over-time' },
+          ],
+        },
+        {
+          text: 'The map',
+          collapsed: false,
+          items: [
+            { text: 'Base maps and relief', link: '/guide/map/basemaps-and-relief' },
+            { text: 'Theme', link: '/guide/map/theme' },
+            { text: 'Markers', link: '/guide/map/markers' },
+            { text: 'Map configuration', link: '/guide/map/map-configuration' },
+          ],
+        },
+        {
+          text: "Using kepler's own panel",
+          collapsed: true,
+          items: [
+            { text: 'Layers and attributes', link: '/guide/kepler/layers-and-attributes' },
+            { text: 'Colour palettes and scales', link: '/guide/kepler/colour-palettes-and-scales' },
+            { text: 'Filters', link: '/guide/kepler/filters' },
+            { text: 'Interactions', link: '/guide/kepler/interactions' },
+            { text: 'Map settings', link: '/guide/kepler/map-settings' },
+            { text: 'Time playback', link: '/guide/kepler/time-playback' },
+            { text: 'Effects', link: '/guide/kepler/effects' },
+            { text: 'Charts', link: '/guide/kepler/charts' },
+          ],
+        },
+        {
+          text: 'Dashboard integration',
+          collapsed: false,
+          items: [
+            { text: 'Time range sync', link: '/guide/dashboard/time-range-sync' },
+            { text: 'Time window variables', link: '/guide/dashboard/time-window-variables' },
+            { text: 'Peer time sync', link: '/guide/dashboard/peer-time-sync' },
+            { text: 'Temporal cursor', link: '/guide/dashboard/temporal-cursor' },
+            { text: 'Cross-filtering', link: '/guide/dashboard/cross-filtering' },
+            { text: 'Publishing viewport and areas', link: '/guide/dashboard/publishing' },
+            { text: 'Explorer results on the map', link: '/guide/dashboard/explorer-results' },
+            { text: 'Grafana Assistant', link: '/guide/dashboard/grafana-assistant' },
+          ],
+        },
+        {
+          text: 'Data source recipes',
+          collapsed: true,
+          items: [
+            { text: 'PostGIS', link: '/guide/sources/postgis' },
+            { text: 'DuckDB — parquet, CSV, GeoJSON', link: '/guide/sources/duckdb-geoparquet' },
+            { text: 'Infinity — GeoJSON, CSV, WFS', link: '/guide/sources/infinity' },
+            { text: 'Any other SQL source', link: '/guide/sources/other-sql' },
+            { text: 'Measuring imagery', link: '/guide/sources/measuring-imagery' },
+            { text: 'STAC catalogues', link: '/guide/sources/stac-catalogs' },
+            { text: 'Icechunk — forecast archives', link: '/guide/sources/icechunk' },
+            { text: 'ERDDAP — gridded ocean data', link: '/guide/sources/erddap' },
+          ],
+        },
+        {
+          text: 'Layer gallery',
+          collapsed: true,
+          items: [
+            { text: 'Overview', link: '/layers/' },
+            { text: 'Points and aggregation', link: '/layers/points-and-aggregation' },
+            { text: 'Geometry and spatial indices', link: '/layers/geometry-and-indices' },
+            { text: 'Origin–destination', link: '/layers/origin-destination' },
+            { text: 'Symbols and markers', link: '/layers/symbols-and-markers' },
+            { text: 'Time', link: '/layers/time' },
+            { text: 'Layers configured with a URL', link: '/layers/url-configured' },
+          ],
+        },
+        {
+          text: 'Tutorials',
+          collapsed: false,
+          items: [
+            { text: 'Overview', link: '/tutorials/' },
+            { text: '1 — Your first map', link: '/tutorials/first-map' },
+            { text: '2 — Animate trajectories', link: '/tutorials/trajectories' },
+            { text: '3 — An OD flow map', link: '/tutorials/od-flows' },
+            { text: '4 — A cross-filtered dashboard', link: '/tutorials/cross-filtered-dashboard' },
+            { text: '5 — Click the map, query a radius', link: '/tutorials/click-to-query' },
+            { text: '6 — A wind field', link: '/tutorials/wind-field' },
+            { text: '7 — Imagery over time', link: '/tutorials/imagery-over-time' },
+          ],
+        },
+        {
+          text: 'Reference',
+          collapsed: false,
+          items: [
+            { text: 'Panel options', link: '/reference/panel-options' },
+            { text: 'Field roles', link: '/reference/field-roles' },
+            { text: 'Variable formats', link: '/reference/variable-formats' },
+            { text: 'Differences from stock kepler.gl', link: '/reference/differences-from-kepler' },
+            { text: 'Under the hood — deck.gl', link: '/reference/under-the-hood' },
+            { text: 'Upstream documentation', link: '/reference/upstream-docs' },
+            { text: 'Troubleshooting', link: '/reference/troubleshooting' },
+            { text: 'Compatibility', link: '/reference/compatibility' },
+          ],
+        },
+        {
+          text: 'Support',
+          items: [{ text: 'Support and services', link: '/support' }],
+        },
+        {
+          text: 'Contributing',
+          items: [{ text: 'Developing the plugin', link: '/contributing' }],
+        },
+      ],
+    },
 
     footer: {
       message:
