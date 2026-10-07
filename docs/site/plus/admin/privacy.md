@@ -35,4 +35,5 @@ open. The alerts do not leave Grafana and the browser.
 
 Neither the app nor the panel sends analytics, usage statistics or error reports, to UBICA or to anyone else.
 
-The privacy policy is at [Licence and terms](/plus/legal).
+The [privacy policy](/plus/privacy-policy) itself says who the controller is, what UBICA keeps about you and your
+rights, and the [End-User Licence Agreement](/plus/legal) the terms of use.

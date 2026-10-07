@@ -65,6 +65,7 @@ export const PLUS_SIDEBAR: DefaultTheme.SidebarItem[] = [
       { text: 'Versions', link: '/plus/admin/versions' },
       { text: 'Support', link: '/plus/support' },
       { text: 'Licence and terms', link: '/plus/legal' },
+      { text: 'Privacy policy', link: '/plus/privacy-policy' },
     ],
   },
   {
