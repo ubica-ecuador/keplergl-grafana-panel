@@ -56,8 +56,10 @@ export default defineConfig({
 
   // The Plus pages carry the Plus edition's name in the browser tab and its
   // logo as their favicon; the nav bar does the same through NavBarTitle.vue.
+  // They carry no footer: the site's says Apache-2.0, which Plus is not.
   transformPageData(pageData) {
     if (isPlusPage(pageData.relativePath)) {
+      pageData.frontmatter.footer = false;
       // The overview's own title is the edition's name: no suffix there.
       pageData.titleTemplate = pageData.title === PLUS_TITLE ? false : `:title | ${PLUS_TITLE}`;
       pageData.frontmatter.head ??= [];
@@ -82,7 +84,17 @@ export default defineConfig({
 
     // MiniSearch, bundled with VitePress. No Algolia and no outbound request,
     // which is the same premise the plugin itself is built on.
-    search: { provider: 'local' },
+    //
+    // Until the Plus edition is listed, nothing on the free panel's pages leads
+    // to it: no nav entry, and its pages are left out of the search index.
+    search: {
+      provider: 'local',
+      options: {
+        _render(src, env, md) {
+          return isPlusPage(env.relativePath) ? '' : md.render(src, env);
+        },
+      },
+    },
 
     // The live instance comes first on purpose: the fastest way to understand
     // what the panel does is to drag one of its timelines, and that costs a
@@ -94,7 +106,6 @@ export default defineConfig({
       { text: 'Tutorials', link: '/tutorials/' },
       { text: 'Layer gallery', link: '/layers/' },
       { text: 'Reference', link: '/reference/panel-options' },
-      { text: 'Plus', link: '/plus/' },
     ],
 
     // Plus has its own sidebar, so its pages never show the free panel's and
