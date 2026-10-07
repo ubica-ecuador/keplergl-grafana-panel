@@ -1,5 +1,8 @@
+import { fileURLToPath, URL } from 'node:url';
+
 import { defineConfig } from 'vitepress';
 
+import { isPlusPage, PLUS_LOGO, PLUS_TITLE } from './plus';
 import { PLUS_SIDEBAR } from './plusSidebar';
 
 /**
@@ -50,6 +53,29 @@ export default defineConfig({
   // Notes for whoever maintains the site, not a page of it.
   srcExclude: ['README.md'],
   head: [['link', { rel: 'icon', href: `${base}logo.svg` }]],
+
+  // The Plus pages carry the Plus edition's name in the browser tab and its
+  // logo as their favicon; the nav bar does the same through NavBarTitle.vue.
+  transformPageData(pageData) {
+    if (isPlusPage(pageData.relativePath)) {
+      // The overview's own title is the edition's name: no suffix there.
+      pageData.titleTemplate = pageData.title === PLUS_TITLE ? false : `:title | ${PLUS_TITLE}`;
+      pageData.frontmatter.head ??= [];
+      pageData.frontmatter.head.push(['link', { rel: 'icon', href: `${base}${PLUS_LOGO.slice(1)}` }]);
+    }
+  },
+
+  vite: {
+    resolve: {
+      // VitePress's documented way to override one of its internal components.
+      alias: [
+        {
+          find: /^.*\/VPNavBarTitle\.vue$/,
+          replacement: fileURLToPath(new URL('./theme/NavBarTitle.vue', import.meta.url)),
+        },
+      ],
+    },
+  },
 
   themeConfig: {
     logo: '/logo.svg',
