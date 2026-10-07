@@ -13,7 +13,9 @@ amber and red with breaks at 70 and 90. The map opens tilted at 45° so the heig
 
 The template's query is `avg by (site) (utilizacion_pct)` against the Prometheus data source chosen
 in the **Data source** variable. It returns nothing until you replace `utilizacion_pct` with a metric
-of your own.
+of your own. The panel's Places options name `site` as the place column, so its values have to be
+places [Places](/plus/data/places) recognises, such as cloud regions, airport or PoP codes or
+countries; sites known only by names of your own need `latitude` and `longitude` columns instead.
 
 Grafana may replace the template when the app is updated, so copy the dashboard before changing it.
 

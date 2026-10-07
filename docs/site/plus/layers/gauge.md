@@ -43,8 +43,9 @@ avg by (site) (utilizacion_pct)
 
 [Places](/plus/data/places) turns the label into `place`, `latitude` and `longitude` columns, and the
 value arrives in a column called `Value`. Places detects a label by its name, and `site` is not one
-of the names it recognises, so either pick it as the query's **Column** in the Places options or name
-the label after a recognised kind (`region`, `zone`, `country`, and so on).
+of the names it recognises, so the template names it as the query's **Column** in the Places options.
+Its values then have to be places Places knows: cloud regions, airport or PoP codes, countries. Sites
+known only by names of your own need `latitude` and `longitude` columns in the query instead.
 
 A Gauge layer is never created by itself. Add it in kepler's side panel with **+ Add Layer**, choose
 **Gauge** as the type, and assign the latitude and longitude columns. Underneath, it is kepler's point
@@ -147,8 +148,8 @@ or a site icon, that the gauge would otherwise cover.
   **Maximum** for anything larger.
 - **Every gauge nearly empty.** The values sit below **Minimum**, or a 0–1 ratio has one stray value
   above 1, which makes `auto` read 100.
-- **The template shows nothing.** The placeholder metric returns no series, or the `site` label is
-  not placed: set it as the **Column** in the query's Places options.
+- **The template shows nothing.** The placeholder metric returns no series, or the `site` values are
+  not places Places recognises: return `latitude` and `longitude` instead.
 - **Gauges missing in one area.** A kepler filter, a drawn polygon or the time filter's window
   leaves those rows out.
 
