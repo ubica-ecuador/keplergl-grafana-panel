@@ -103,4 +103,33 @@ describe('SelectKnob', () => {
     // The symbol picker's case: the symbol drawn is in another category.
     expect(renderKnob('gone', { displayOption: (option) => option, keepChosen: true }).textContent).toBe('gone');
   });
+
+  it('shows a hint beside the label when the knob registered a description, and none otherwise', () => {
+    // The same `description` kepler's sliders and switches take: a message id,
+    // behind the info icon, so a layer hints every kind of knob the same way.
+    const described = {
+      ...layer,
+      visConfigSettings: {
+        placement: { ...layer.visConfigSettings.placement, description: 'test.placement.hint' },
+      },
+    };
+    const { container } = render(
+      <IntlProvider locale="en" messages={{ ...catalogue, 'test.placement.hint': 'Where the glyphs sit.' }}>
+        <ThemeProvider theme={theme}>
+          <SelectKnob layer={described} visConfiguratorProps={{ onChange: () => undefined }} property="placement" />
+        </ThemeProvider>
+      </IntlProvider>
+    );
+    expect(container.textContent).toContain('Placement');
+    expect(container.querySelector('.info-helper__content')?.textContent).toBe('Where the glyphs sit.');
+
+    const { container: plain } = render(
+      <IntlProvider locale="en" messages={catalogue}>
+        <ThemeProvider theme={theme}>
+          <SelectKnob layer={layer} visConfiguratorProps={{ onChange: () => undefined }} property="placement" />
+        </ThemeProvider>
+      </IntlProvider>
+    );
+    expect(plain.querySelector('.info-helper')).toBeNull();
+  });
 });

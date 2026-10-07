@@ -1,6 +1,6 @@
 import React, { ReactElement } from 'react';
 import { useIntl } from 'react-intl';
-import { ItemSelector, PanelLabel, SidePanelSection } from '@kepler.gl/components';
+import { InfoHelper, ItemSelector, PanelLabel, PanelLabelWrapper, SidePanelSection } from '@kepler.gl/components';
 
 /**
  * A choice among words, for a knob a layer registered as a `select`.
@@ -16,6 +16,8 @@ import { ItemSelector, PanelLabel, SidePanelSection } from '@kepler.gl/component
  */
 export interface SelectKnobProps {
   layer: {
+    /** Keeps one layer's hints apart from another's, when kepler shows both panels. */
+    id?: string;
     config: { visConfig: Record<string, unknown> };
     /** Each entry is the definition the layer registered for that knob. */
     visConfigSettings: Record<string, Record<string, unknown>>;
@@ -67,7 +69,7 @@ export function SelectKnob({
 }: SelectKnobProps) {
   const intl = useIntl();
   const setting = layer.visConfigSettings[property] as
-    { options?: string[]; defaultValue?: string; label?: string } | undefined;
+    { options?: string[]; defaultValue?: string; label?: string; description?: string } | undefined;
   const choices = options ?? setting?.options;
 
   if (!setting?.label || !choices) {
@@ -80,7 +82,13 @@ export function SelectKnob({
 
   return (
     <SidePanelSection>
-      <PanelLabel>{intl.formatMessage({ id: label })}</PanelLabel>
+      <PanelLabelWrapper>
+        <PanelLabel>{intl.formatMessage({ id: label })}</PanelLabel>
+        {/* The knob's hint, the way kepler's sliders and switches show theirs: a message id behind the info icon. */}
+        {setting.description ? (
+          <InfoHelper description={setting.description} id={`${layer.id ?? 'layer'}-${property}-description`} />
+        ) : null}
+      </PanelLabelWrapper>
       <ItemSelector
         selectedItems={chosen && (keepChosen || choices.includes(chosen)) ? chosen : choices[0]}
         options={choices}
