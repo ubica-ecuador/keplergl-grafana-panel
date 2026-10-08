@@ -6,18 +6,13 @@ between sensors (**Interpolate**) or how many vehicles are within a distance of 
 
 ![Count mode over Madrid: vehicles within 500 m drawn as coloured bands with labelled isolines, densest in the centre, with the vehicles as white dots on top](/img/plus/surface-count.jpg)
 
-## Start from the template
+## See it in the layer tour
 
-Two [template dashboards](/plus/start/templates) are installed with the app:
-
-- **Sensor surface** — temperature between 40 weather stations, in Interpolate mode, with the
-  stations drawn as dots on top.
-- **Fleet density** — vehicles within 500 m in Madrid, in Count mode, from 100 synthetic vehicles
-  reporting once an hour.
-
-Both read synthetic data from the TestData data source. Press play on the time filter to watch the
-surface change, then replace the query with your own. Grafana may replace a template when the app is
-updated, so copy it before customising it.
+The **Weather** map of the [layer tour](/plus/start/templates), installed with the app, estimates temperature between 40
+weather stations around Madrid, in Interpolate mode, with the stations drawn as dots on top. It reads
+synthetic data from the TestData data source. Press play on the time filter to watch the surface
+change, then replace the query with your own. Grafana may replace the tour when the app is updated, so
+copy it before customising it.
 
 ## What the query needs
 
@@ -43,7 +38,7 @@ Pick the number under **Color**: it is the value estimated between sensors. The 
 _Values between sensors are estimated (inverse distance weighting)_: each place on the surface takes
 a weighted average of the sensors around it, the closer ones weighing more. A place on a sensor takes
 that sensor's value. The estimate is a guide, not a measurement — keep the sensors visible as a point
-layer on top, as the template does, so readers can tell the two apart.
+layer on top, as the layer tour does, so readers can tell the two apart.
 
 A sensor is a place: rows with exactly the same coordinates belong to one sensor, so a station
 reporting every minute still counts once, and no id column is needed. Only the rows that kepler's
@@ -135,7 +130,7 @@ if the breaks stay put.
   as time moves; the layer warns of this. Type fixed breaks to compare frames. They are positive
   numbers separated by commas, semicolons or spaces, sorted and deduplicated when you leave the box;
   if the first is above 1, a break at 1 is added below it. The palette's colours are spread evenly
-  over the bands. The Fleet density template uses `2, 5, 10, 20, 40`.
+  over the bands. For vehicles within 500 m, `2, 5, 10, 20, 40` reads well.
 - **Interpolate:** the breaks are the colour scale's. A **custom** scale gives exact breaks that never
   move.
 

@@ -20,17 +20,15 @@ anything silent?":
 
 ![A live fleet in a city: each vehicle at its last position with its heading, status colour and a short trail; one marked as silent](/img/plus/fleet.jpg)
 
-## Start from the template
+## See it in the layer tour
 
-**Live fleet** has three maps over the same query: **Live fleet** (the fleet now), **Replay** (press
-▶ on the time filter to watch the fleet move) and **Vehicle cam**, which follows the vehicle chosen
-in the **Vehicle** variable from behind. The data is synthetic: cars, vans, trucks, buses, bicycles,
-drones and a herd of cattle. To use your own, switch the data source variable and keep the panels. On Vehicle cam, also
-set the Vehicle variable to your asset ids and move its time window to your data, because its time
-sync is off.
+The **City** map of the [layer tour](/plus/start/templates), installed with the app, draws a synthetic fleet in Cuenca in 3D:
+cars, vans, trucks, buses, bicycles, drones and a herd of cattle, each at its position now with a
+bundled model, three of them silent. Press ▶ on the time filter to replay the hour. To use your own
+data, swap the query and keep the panel.
 
-**Fleet density** is a different tool for the same kind of data. It counts vehicles within 500 m
-and draws the result as bands and isolines with a [Surface](/plus/layers/surface) layer.
+A [Surface](/plus/layers/surface) layer in Count mode is a different tool for the same kind of data: it
+counts vehicles within a radius of each place and draws the result as bands and isolines.
 
 ## What the query needs
 

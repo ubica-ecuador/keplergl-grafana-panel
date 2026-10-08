@@ -121,16 +121,13 @@ in kepler's tooltip, filters and labels. For a state with an ISO 3166-2 code, `a
 
 States and districts are not drawn as flows, and cannot be the ends of [network links](/plus/data/network-links).
 
-## Start from the template
+## See it in the layer tour
 
-The **Regions** template dashboard has two maps fed by Grafana's TestData data source, so it draws with no setup:
+The **Regions** map of the [layer tour](/plus/start/templates), installed with the app, places Ecuador's 24 provinces by name, from
+a query with a `country` column of `EC` and a `province` column, fed by Grafana's TestData data source, so it draws
+with no setup.
 
-- **Sales by province**: Ecuador's provinces by name, with a `country` column of `EC`;
-- **Cases by county**: three US counties (`Los Angeles`, `Harris`, `Kings`) with a `state` column of postal
-  abbreviations and a `country_code` column of `US`.
-
-Replace the queries with your own and keep the column names, or use the Places options to say what each column is.
-See [Template dashboards](/plus/start/templates).
+Replace the query with your own and keep the column names, or use the Places options to say what each column is.
 
 ## When a unit does not land
 

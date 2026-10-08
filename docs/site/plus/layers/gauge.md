@@ -6,19 +6,12 @@ thermometer, a tank, a battery, a drop or any icon from the catalogue.
 
 ![Site utilisation in Europe: each city drawn as a ring filled to its value, green, amber or red, with its percentage in the middle and its name underneath](/img/plus/gauge.jpg)
 
-## Start from the template
+## See it in the layer tour
 
-The **Site gauges** dashboard, installed with the app, has two panels built on this layer:
-
-- **Site utilisation**: rings filled from 0 to an automatic maximum, green below 70, amber below 90,
-  red above.
-- **Site temperature**: thermometers filled from −10 to 50, showing the value in °C, blue below 10,
-  yellow below 30, red above.
-
-Both read the Prometheus data source chosen in the dashboard's **Data source** variable. Their
-metrics, `utilizacion_pct` and `temperatura_c`, are placeholders: replace them with your own. Grafana
-may replace the dashboard when the app is updated, so copy it before customising it. See
-[Template dashboards](/plus/start/templates).
+The **Power grid** map of the [layer tour](/plus/start/templates), installed with the app, draws each country's renewable share
+as a ring filled from 0 to 100, red below 30, amber below 60, green above, with the percentage in the
+middle. It reads synthetic data, so it draws with no setup; press ▶ on its time filter to play the
+day. Grafana may replace the dashboard when the app is updated, so copy it before customising it.
 
 ![Site temperature drawn as thermometers that fill from −10 to 50 °C, blue, yellow and red](/img/plus/gauge-shapes.jpg)
 
@@ -34,8 +27,8 @@ SELECT site        AS name,
 FROM site_status;
 ```
 
-The position can also come from a place name instead of coordinates, which is how the template
-works. Its query is an instant PromQL query with **Format** set to Table:
+The position can also come from a place name instead of coordinates. For sites named by a label,
+use an instant PromQL query with **Format** set to Table:
 
 ```promql
 avg by (site) (utilizacion_pct)
@@ -43,7 +36,7 @@ avg by (site) (utilizacion_pct)
 
 [Places](/plus/data/places) turns the label into `place`, `latitude` and `longitude` columns, and the
 value arrives in a column called `Value`. Places detects a label by its name, and `site` is not one
-of the names it recognises, so the template names it as the query's **Column** in the Places options.
+of the names it recognises, so name it as the query's **Column** in the Places options.
 Its values then have to be places Places knows: cloud regions, airport or PoP codes, countries. Sites
 known only by names of your own need `latitude` and `longitude` columns in the query instead.
 
@@ -141,14 +134,14 @@ or a site icon, that the gauge would otherwise cover.
 ## When it does not draw
 
 - **No layer at all.** Unlike kepler's point layer, a Gauge layer is never added automatically. Add
-  it by hand, or start from the template.
+  it by hand, or copy the layer tour's Power grid map.
 - **Empty gauges with no text.** No **Color Based On** column is set, or its values are not numbers.
   A row whose value is empty or not a number draws an empty gauge.
 - **Every gauge full.** The values are above the maximum: an `auto` maximum is 100 at most, so set
   **Maximum** for anything larger.
 - **Every gauge nearly empty.** The values sit below **Minimum**, or a 0–1 ratio has one stray value
   above 1, which makes `auto` read 100.
-- **The template shows nothing.** The placeholder metric returns no series, or the `site` values are
+- **Sites named by a label do not draw.** The query returns no series, or the `site` values are
   not places Places recognises: return `latitude` and `longitude` instead.
 - **Gauges missing in one area.** A kepler filter, a drawn polygon or the time filter's window
   leaves those rows out.

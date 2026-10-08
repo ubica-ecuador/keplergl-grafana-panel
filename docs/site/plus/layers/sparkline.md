@@ -6,12 +6,12 @@ gauges, weather stations, meters, the endpoints of each region.
 
 ![River stations in Cuenca drawn as sparkline cards with their turbidity over the day, each value in its band's colour, and one station in red with No data and a blinking button](/img/plus/sparkline.jpg)
 
-## Start from the template
+## See it in the layer tour
 
-The **Station trends** dashboard is a complete example: six river stations, a fixed day of turbidity
-readings every 15 minutes, a map with one Sparkline layer and a Time series of the same stations
-under it. One station stops reporting at 17:00, so its card goes into alert later that afternoon.
-See [Templates](/plus/start/templates).
+The **Rivers** map of the [layer tour](/plus/start/templates) is a complete example: six river stations, a fixed day of
+turbidity readings every 15 minutes, a map with one Sparkline layer and a Time series of the same
+stations under it. One station stops reporting at 17:00, so its card goes into alert later that
+afternoon.
 
 Open it, press play on the time filter and hover the graph under the map: everything this page
 describes is on screen.
@@ -28,7 +28,7 @@ One row per reading, in a long table:
 | a name (text)          | Shown on the card.                                                   |
 | an id (text), optional | Shown before the name, as in `E01 · Centro Histórico`.               |
 
-The template's data has exactly these columns. From SQL it would be:
+The layer tour's data has exactly these columns. From SQL it would be:
 
 ```sql
 SELECT s.name,
@@ -58,7 +58,7 @@ The panel never creates a Sparkline layer by itself. In kepler's layer panel, ad
 
 Then set the layer's colour to the reading's column. The colour field is what the card charts and
 shows as its value: a layer without one draws cards with no value and no line. The colour range is
-also where the bands come from. The template uses a custom range with breaks at 30 and 40 NTU:
+also where the bands come from. The layer tour uses a custom range with breaks at 30 and 40 NTU:
 blue below 30, amber up to 40, red above. Each colour in the range is a band, and the last one is
 the worst. Grafana's thresholds do not reach the map; set the bands in the layer's colour range
 (see [Colour palettes and scales](/guide/kepler/colour-palettes-and-scales)).
@@ -138,7 +138,7 @@ A card goes into alert when its station has sent nothing for too long:
 - A number: that many minutes, for every station.
 
 "Now" is the time filter's cursor, or the end of the dashboard's range once the cursor reaches the
-newest reading. In the template, the station that stops at 17:00 alerts from 17:45.
+newest reading. In the layer tour, the station that stops at 17:00 alerts from 17:45.
 
 A card in alert for no data shows **No data** and how long it has been silent in red, in place of
 the id, and greys its last value. With **Worst band too** on, a station whose current reading is in
@@ -163,14 +163,14 @@ and the alerts stay with the time filter.
 For this to work, open the dashboard settings and set **Graph tooltip** to **Shared crosshair** or
 **Shared tooltip**. Without it, Grafana's graphs do not share their cursor. The same setting is
 needed the other way: with **Card hover drives graphs** on, hovering a card's chart moves the
-crosshair of every graph on the dashboard. The template has both on.
+crosshair of every graph on the dashboard. The layer tour has both on.
 
 A graph with its own time override can point outside the cards' range; the cards then draw no
 line. See [Temporal cursor](/guide/dashboard/temporal-cursor) for the shared cursor in the free
 panel.
 
 ::: tip A graph of the same stations without a second query
-The template's Time series uses the **-- Dashboard --** data source to read the map panel's query,
+The layer tour's Time series uses the **-- Dashboard --** data source to read the map panel's query,
 and a **Partition by values** transformation on `name` to split it into one line per station.
 :::
 

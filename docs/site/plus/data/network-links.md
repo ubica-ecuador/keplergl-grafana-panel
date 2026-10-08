@@ -143,16 +143,15 @@ A query is drawn up to its first **5,000 links**. Beyond that, the map's corner 
 `Links: showing the first 5000 of 12000 rows`, and the rows past the limit, a timeline's last steps for instance,
 are not drawn.
 
-## Start from the template
+## See it in the layer tour
 
-The **Network map** template dashboard draws a link query as a [Traffic](/plus/layers/traffic) layer, with named
-dots and labels at the midpoints. Its query is `sum by (source, target) (link_mbps)` against the Prometheus data
-source chosen in its **Data source** variable, with thresholds of green, orange from 50 and red from 80.
+The **Power grid** map of the [layer tour](/plus/start/templates), installed with the app, draws a link query as a
+[Traffic](/plus/layers/traffic) layer: the interconnectors between sixteen European countries, from a frame of
+`source` and `target` rows with a time, beside a nodes frame that gives each country its coordinates.
 
-It returns nothing until you replace `link_mbps` with your own link metric: no metric name is common to every
-vendor and SNMP exporter. Keep the `source` and `target` labels, or rename yours to them with `label_replace`. The
-template's saved layers fit the one-frame shape: with a node graph query, add a layer for its nodes frame yourself.
-See [Template dashboards](/plus/start/templates).
+From Prometheus, a query such as `sum by (source, target) (link_mbps)` gives the one-frame shape: no metric name is
+common to every vendor and SNMP exporter, so use your own link metric. Keep the `source` and `target` labels, or
+rename yours to them with `label_replace`.
 
 ## When links do not draw
 
@@ -166,7 +165,7 @@ See [Template dashboards](/plus/start/templates).
   numeric column.
 - **No line layer after adding a link query to a saved map.** The layers are added only while the saved map does
   not already decide what is drawn. Add a Line layer in kepler on the links dataset, with `srclat`, `srclng`,
-  `dstlat` and `dstlng` as its columns, or start from the Network map template.
+  `dstlat` and `dstlng` as its columns.
 
 ## Related pages
 

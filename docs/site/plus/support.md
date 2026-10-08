@@ -32,7 +32,7 @@ within 30 days of UBICA becoming aware of them, as the [licence agreement](/plus
 
 ## What support covers
 
-The Plus plugin: its layers, Places, base maps, 3D layers, the template dashboards and its configuration page. It does
+The Plus plugin: its layers, Places, base maps, 3D layers, the template dashboard and its configuration page. It does
 not cover Grafana itself, your data sources or the map providers' services, though UBICA will help you tell where a
 problem lies. Feature requests are welcome at the same address; the ones that fit the plugin go into its changelog
 when they ship.

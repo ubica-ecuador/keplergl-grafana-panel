@@ -55,7 +55,7 @@ trail.
 Sparkline and Fleet cards are drawn above every layer, the map's labels included, so the data they describe never
 hides them.
 
-## Templates
+## The layer tour
 
-Each layer page starts from a template dashboard installed with the app. They are listed in
-[Template dashboards](/plus/start/templates).
+The app installs one dashboard, the layer tour, with a map for each group of these layers on synthetic data. Each
+layer page says which map shows it. See [Template dashboard](/plus/start/templates).

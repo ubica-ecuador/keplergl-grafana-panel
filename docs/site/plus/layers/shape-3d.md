@@ -5,19 +5,19 @@ height, width and colour read from the query's columns.
 
 ![Utilisation per European city drawn as 3D cylinders in a tilted view, each one's height and colour taken from the same metric, green, amber or red](/img/plus/shape-3d.jpg)
 
-## Start from the template
+## See it in the layer tour
 
-The Plus app installs a dashboard called **3D shapes**. Its one panel, **Sites in 3D**, draws each
-site as a cylinder whose height and colour both come from the query's `Value` column, coloured green,
-amber and red with breaks at 70 and 90. The map opens tilted at 45° so the heights read.
+The **Power grid** map of the [layer tour](/plus/start/templates), installed with the app, raises each country as a cylinder
+as tall as its demand, sized in pixels, under the renewable share gauges and between the Traffic lines
+of the interconnectors. The map opens tilted so the heights read. It reads synthetic data, so it draws
+with no setup.
 
-The template's query is `avg by (site) (utilizacion_pct)` against the Prometheus data source chosen
-in the **Data source** variable. It returns nothing until you replace `utilizacion_pct` with a metric
-of your own. The panel's Places options name `site` as the place column, so its values have to be
-places [Places](/plus/data/places) recognises, such as cloud regions, airport or PoP codes or
-countries; sites known only by names of your own need `latitude` and `longitude` columns instead.
+The position can also come from a place name: a query like `avg by (site) (utilizacion_pct)`, with
+`site` named as the place column in the Places options, places each site when its values are places
+[Places](/plus/data/places) recognises, such as cloud regions, airport or PoP codes or countries.
+Sites known only by names of your own need `latitude` and `longitude` columns instead.
 
-Grafana may replace the template when the app is updated, so copy the dashboard before changing it.
+Grafana may replace the tour when the app is updated, so copy the dashboard before changing it.
 
 ## What the query needs
 
@@ -47,7 +47,7 @@ The layer's settings are kepler's **Color** group followed by the groups below.
 ### Color
 
 kepler's own colour group: a single colour, or a **Color** column with a colour range and its
-scale. A custom range with breaks gives threshold colours, as in the template. See
+scale. A custom range with breaks gives threshold colours. See
 [colour palettes and scales](/guide/kepler/colour-palettes-and-scales). **Opacity** applies to the
 whole solid.
 
@@ -124,7 +124,7 @@ column, or **Off**.
   country-wide view. In metres they grow and shrink with the map, which suits a city where the
   solids stand on real sites.
 - **Tilt.** Heights only show with the map tilted. Tilt it by dragging with the right mouse button,
-  or save a pitch with the map, as the template does.
+  or save a pitch with the map, as the layer tour does.
 
 ## When it does not draw
 

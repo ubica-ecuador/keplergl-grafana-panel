@@ -20,7 +20,7 @@ run side by side on the same Grafana and the same dashboard.
   [active alerts](/plus/data/active-alerts) the viewer can read, on the same map as your data.
 - [Base maps](/plus/maps/basemaps) from MapTiler, Esri, Azure Maps, Google and keyed CARTO, and
   [3D tiles](/plus/maps/3d-tiles) from Google, with keys set once for the organisation.
-- [Twelve template dashboards](/plus/start/templates) installed with the app.
+- A [layer tour](/plus/start/templates) dashboard installed with the app, on synthetic data that needs no setup.
 - [Grafana Assistant skills](/plus/assistant) that explain a Plus map, edit it and build dashboards around it.
 
 [What Plus adds](/plus/start/what-plus-adds) compares the two editions feature by feature.
@@ -43,6 +43,6 @@ picker. See [Install and configure the app](/plus/start/install).
 
 - [Install and configure the app](/plus/start/install), then add the keys of the map services you use.
 - [Move a dashboard to Plus](/plus/start/upgrade-a-dashboard) to switch a free panel without losing its map.
-- Open a [template dashboard](/plus/start/templates) and replace its query with your own.
+- Open the [layer tour](/plus/start/templates) and replace a map's query with your own.
 - The [free panel's documentation](/guide/what-it-is) covers everything Plus inherits: queries, kepler's layers,
   filters, time playback and the links to the rest of the dashboard.

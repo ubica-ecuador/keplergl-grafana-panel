@@ -15,7 +15,7 @@ export const PLUS_SIDEBAR: DefaultTheme.SidebarItem[] = [
       { text: 'What Plus adds', link: '/plus/start/what-plus-adds' },
       { text: 'Install and configure the app', link: '/plus/start/install' },
       { text: 'Move a dashboard to Plus', link: '/plus/start/upgrade-a-dashboard' },
-      { text: 'Template dashboards', link: '/plus/start/templates' },
+      { text: 'Template dashboard', link: '/plus/start/templates' },
     ],
   },
   {

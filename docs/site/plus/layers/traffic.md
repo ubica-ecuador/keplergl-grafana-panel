@@ -9,13 +9,12 @@ link query still reads as a weathermap; the motion adds direction and pace on to
 Two-way links can draw as two facing lanes or as weathermap halves, the lines can lie flat or rise
 as arcs, and the animation can be comets, dashes, dots or a pulse.
 
-## Start from the template
+## See it in the layer tour
 
-The **Network map** template dashboard draws a link query as a Traffic layer, with each end a named
-dot and the formatted metric at each midpoint. Its query is `sum by (source, target) (link_mbps)`
-against a Prometheus data source you pick; it returns nothing until you replace `link_mbps` with
-your own link metric. Line colours come from the panel's **Thresholds**. See
-[Template dashboards](/plus/start/templates).
+The **Power grid** map of the [layer tour](/plus/start/templates), installed with the app, draws the interconnectors between
+sixteen European countries as Traffic lines: comets run with the flow, faster where it carries more
+power, coloured by the line's load, and change direction through the day. Its link query is a frame
+with `source` and `target` columns and a time, so kepler's time filter plays it.
 
 ## What the query needs
 
@@ -26,7 +25,7 @@ columns, whose ends are placed by [Places](/plus/data/places).
 
 A link query draws as a Line layer. To animate it, open the layer in kepler's layer panel and change
 its type to **Traffic**. The colours keep following the query's thresholds. Traffic never creates a
-layer by itself: it is there because you chose it, or because a saved map or a template has one.
+layer by itself: it is there because you chose it, or because a saved map has one.
 
 What Traffic adds is a **Speed** field. When you switch a layer to Traffic it is set once for you:
 to the link metric on a link query, otherwise to the layer's width field. A saved map keeps
@@ -79,8 +78,7 @@ A link that carries traffic both ways needs two lines that do not sit on top of 
   half. Under **Arc**, each half runs from its end up to the top of the arc.
 - **Straight** draws every row as one whole line, whichever way it runs.
 
-A layer you switch to Traffic starts in Lanes. A saved map, the Network map template included, keeps
-the mode it was saved with.
+A layer you switch to Traffic starts in Lanes. A saved map keeps the mode it was saved with.
 
 ![WAN in and out traffic between European cities drawn as two-way lanes, replayed under kepler's time filter](/img/plus/traffic-in-out.jpg)
 

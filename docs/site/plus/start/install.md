@@ -1,7 +1,7 @@
 # Install and configure the app
 
 Plus is an app plugin, **Kepler Geospatial Maps Plus** (`ubica-keplerplus-app`). The app holds the organisation's
-map service keys and the template dashboards, and it brings its own panel, also called **Kepler Geospatial Maps
+map service keys and the template dashboard, and it brings its own panel, also called **Kepler Geospatial Maps
 Plus** (`ubica-keplerplus-panel`). The panel does not need the free panel to be installed, and does not get in its
 way when it is.
 
@@ -13,7 +13,7 @@ patch, or 12.2.5 and later.
 1. In Grafana, open **Administration → Plugins and data → Plugins**, search for **Kepler Geospatial Maps Plus** in
    Grafana's plugin catalogue, and install it.
 2. On the app's page, choose **Enable**. Enabling the app installs the
-   [template dashboards](#the-template-dashboards) and makes the panel available.
+   [template dashboard](#the-template-dashboard) and makes the panel available.
 3. Open the app's **Configuration** tab and add the keys of the map services you use. Every key is optional.
 
 The panel then appears as **Kepler Geospatial Maps Plus** in the visualization picker of every dashboard in the
@@ -61,14 +61,13 @@ A map saved on a keyed base map opens on the default style, with a notice, when 
 On a Grafana with a Content Security Policy, the hosts of each provider you enable must be allowed. See
 [Content Security Policy](/plus/admin/csp).
 
-## The template dashboards
+## The template dashboard
 
-Enabling the app installs twelve template dashboards, listed on the app's **Dashboards** tab and in
-[Template dashboards](/plus/start/templates). Each one has a starting query and a note on what to change to use your
-own data.
+Enabling the app installs one dashboard, **Kepler Plus layer tour**: five maps of the main Plus layers on synthetic
+data from Grafana's TestData data source, so it draws with nothing else set up. It is listed on the app's
+**Dashboards** tab and described in [Template dashboard](/plus/start/templates).
 
-Grafana manages these dashboards with the app: it may replace them when the app is updated, and removes them when
-the app is disabled. To customise one, save a copy first with **Save as**.
+Grafana manages this dashboard with the app: it may replace it when the app is updated, and removes it when the app
+is disabled. To customise it, save a copy first with **Save as**.
 
-The **Dashboards** tab also imports a template again, for instance one that was deleted, or one added by an update
-of an app that was already enabled.
+The **Dashboards** tab also imports the tour again, for instance after it was deleted.

@@ -154,40 +154,36 @@ fail the most checks are the largest. `failing` should count failing checks, so 
 Any query can use this by naming its column `failing`, with a Grafana transformation or an alias in the query. Once
 you change the layer's colour or size in kepler, your choice is kept.
 
-## The Service health templates
+## A service health map
 
-Two template dashboards put probes and alerts together. Both read
 [Synthetic Monitoring](https://grafana.com/docs/grafana-cloud/testing/synthetic-monitoring/), Grafana Cloud's
-service for running checks from probe locations around the world. To use them you need:
+service for running checks from probe locations around the world, puts probes and alerts together on one map. You
+need:
 
 - Synthetic Monitoring set up, with at least one check running;
-- its Prometheus data source, chosen in the dashboard's **Data source** variable. The templates read the
-  `probe_success` and `sm_check_info` metrics that Synthetic Monitoring writes there;
+- its Prometheus data source, which holds the `probe_success` and `sm_check_info` metrics Synthetic Monitoring
+  writes;
 - for alerts on the map, alert rules whose labels place them, as described above.
 
-The **job** and **probe** variables narrow the dashboard to some checks or some probes. Each probe is placed by the
-`geohash` label that Synthetic Monitoring sets on `sm_check_info`.
+Each probe is placed by the `geohash` label that Synthetic Monitoring sets on `sm_check_info`. This instant query,
+with **Format** set to Table, counts for each probe the checks whose last result failed:
 
-### Service health map
+```promql
+sum by (probe, geohash) (
+  (1 - probe_success)
+  * on (job, instance, probe, config_version) group_left (geohash)
+  max by (job, instance, probe, config_version, geohash) (sm_check_info)
+)
+```
 
-The live view, refreshed every minute over the last hour:
+Add an **Add field from calculation** transformation, in Reduce row mode, that sums `Value` into a field named
+`failing`, and hide `Value` with **Organize fields**. The probes then draw as health points, sized by how many of
+their checks fail now; turn **Show active alerts** on to add the alerts beside them. A Grafana alert list and a table
+of `probe_success == 0` next to the map complete the view.
 
-- **Where is it failing?**: the probes as health points, sized by how many of their checks fail now, with
-  **Show active alerts** on;
-- **Active alerts**: Grafana's alert list, firing and pending;
-- **Failing probes**: a table of the checks failing now.
-
-Its map query counts, for each probe, the checks whose last result failed, and a transformation names that count
-`failing`.
-
-### Service health history
-
-The same probes over the dashboard's time range, sampled every 5 minutes: one point per probe and sample, green while
-its checks pass and red when they fail. Press play on kepler's time filter to replay them. A **Reachability by
-probe** chart sits under the map. This dashboard does not show active alerts, which are only ever the current
-ones.
-
-See [Template dashboards](/plus/start/templates).
+For history, drop the instant option: the same query over the dashboard's time range gives one point per probe and
+sample, and kepler's time filter replays them. Active alerts are only ever the current ones, so they are not part of
+a history view.
 
 ## When no alerts are shown
 

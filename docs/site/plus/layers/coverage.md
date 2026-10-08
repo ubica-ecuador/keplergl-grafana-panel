@@ -11,17 +11,14 @@ dome or cone, highest at the site and falling to the ground at its range.
 
 ![The same cell sites as 3D signal domes in a tilted view, each sector its own dome coloured by load](/img/plus/coverage-3d.jpg)
 
-## Start from the template
+## See it in the layer tour
 
-Two template dashboards come with the app, both on built-in test data:
+The **City** map of the [layer tour](/plus/start/templates), installed with the app, draws Coverage 3D on synthetic data: six
+cell sites in Cuenca as signal domes coloured by load per sector, and a set of cameras with their
+fields of view as cones under a radar's dome, with a fleet moving among them.
 
-- **Coverage** — cell sites coloured by load per sector, and a set of cameras with their fields of
-  view under a radar's full circle.
-- **Coverage 3D** — street lights as light cones coloured by lux, the same cell sites as signal
-  domes, and the cameras and radar in 3D.
-
-Open one, edit a panel and swap its query for your own: the layers keep their settings as long as
-your columns have the same names. To add a layer to another map, open kepler's side panel, choose
+Edit the panel and swap a query for your own: the layers keep their settings as long as your columns
+have the same names. To add a layer to another map, open kepler's side panel, choose
 **Add Layer** and pick **Coverage** as the layer type. The panel never adds a coverage layer on its
 own.
 
@@ -41,7 +38,7 @@ None of the three is required: each can be a fixed value for the whole layer ins
 set of identical street lights needs only a position and a value to colour by; a radar sweeping all
 round needs no azimuth at all.
 
-The cell sites in the **Coverage** template come from a query of this shape:
+The cell sites in the layer tour come from a query of this shape:
 
 ```sql
 SELECT site,
@@ -119,8 +116,7 @@ result.
 
 A height in percent makes a long-reaching sector a tall one, which suits signal domes. A height in
 metres keeps every sector at one height whatever its reach, which suits light cones from poles of
-the same height: the street lights in the **Coverage 3D** template are cones 9 m high at High
-detail. **Fade with distance** still applies in 3D, fading each step as it goes out.
+the same height: street lights read well as cones 9 m high at High detail. **Fade with distance** still applies in 3D, fading each step as it goes out.
 
 ### Interaction
 

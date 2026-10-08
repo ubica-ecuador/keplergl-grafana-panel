@@ -24,7 +24,7 @@ Plus adds.
 | [Google Photorealistic 3D Tiles](/plus/maps/3d-tiles) layers                                                                   |            |  ✓   |
 | Clicks and drawn polygons that also select and filter the Plus layers, and reach the other panels                              |            |  ✓   |
 | Sparkline and Fleet cards that follow Grafana's shared crosshair from the other panels                                         |            |  ✓   |
-| [Twelve template dashboards](/plus/start/templates) and [Grafana Assistant skills](/plus/assistant) for the Plus map           |            |  ✓   |
+| A [layer tour dashboard](/plus/start/templates) and [Grafana Assistant skills](/plus/assistant) for the Plus map               |            |  ✓   |
 
 ## Same options, same saved map
 
