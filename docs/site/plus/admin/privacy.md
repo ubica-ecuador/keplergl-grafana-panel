@@ -6,7 +6,7 @@ talks to your Grafana and to the map providers whose keys you set. This page say
 ## Map tiles and 3D tiles
 
 Base map and 3D tile requests go from the viewer's browser straight to each provider: CARTO, MapTiler, Esri, Azure
-Maps, Google or Cesium ion. Each request carries the organisation's key for that provider, and, like any web
+Maps or Google. Each request carries the organisation's key for that provider, and, like any web
 request, the viewer's IP address and the part of the world the map is showing. Each provider handles them under its
 own terms and privacy policy.
 

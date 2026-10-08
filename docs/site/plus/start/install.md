@@ -38,14 +38,13 @@ the organisation:
 | MapTiler API key             | MapTiler's base maps, with its 3D buildings, points of interest and Relief switches                                              |
 | ArcGIS API key               | Esri's ArcGIS basemap styles, with a Relief switch; it must be an ArcGIS Location Platform key with the basemap styles privilege |
 | Google Maps Platform API key | Google's roadmap, satellite, hybrid and terrain maps, and Google Photorealistic 3D Tiles; it needs the Map Tiles API enabled     |
-| Cesium ion access token      | Your Cesium ion account's 3D assets, and Cesium OSM Buildings                                                                    |
 | Azure Maps subscription key  | Azure Maps' road, dark grey, imagery and hybrid maps, with a Relief switch                                                       |
 
 The keyed base maps then appear in kepler's base map picker, and the 3D services in the **3D (Plus)** tab of
 **Add Data**. See [Base maps](/plus/maps/basemaps) and [3D tiles](/plus/maps/3d-tiles) for each provider's styles,
 and how to restrict its key.
 
-Under the Google, Cesium ion and Azure Maps fields the page shows a warning with that provider's terms or the limits
+Under the Google and Azure Maps fields the page shows a warning with that provider's terms or the limits
 of its key. Read them before saving the key: they apply to every map drawn with it.
 
 ::: warning Keys are readable by viewers

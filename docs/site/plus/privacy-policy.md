@@ -41,8 +41,8 @@ them through Grafana's API, which answers every signed-in user of the organisati
 sends each key to its provider with each request.
 
 2.3 **Map, imagery, terrain and 3D tile requests** go from the browser straight to the provider:
-CARTO, MapTiler, Esri, Microsoft Azure Maps, Google (Map Tiles API and Photorealistic 3D Tiles) and
-Cesium ion when you set their keys, and OpenFreeMap, CARTO, Mapterhorn and Esri World Imagery, the
+CARTO, MapTiler, Esri, Microsoft Azure Maps and Google (Map Tiles API and Photorealistic 3D Tiles)
+when you set their keys, and OpenFreeMap, CARTO, Mapterhorn and Esri World Imagery, the
 free panel's defaults, without a key. Each request carries the key, the IP address of the browser, its
 user agent, and the coordinates of the tile, which say what area and zoom level the viewer is looking
 at. Requests to Google also carry a session token the browser obtains with the key, and the request
@@ -157,7 +157,6 @@ Javier Andrés García Galarza, trading as UBICA · Cuenca, Ecuador · <jgarcia@
 - Esri: <https://www.esri.com/en-us/privacy/overview>
 - Microsoft (Azure Maps): <https://privacy.microsoft.com/privacystatement>
 - Google (Maps Platform): <https://policies.google.com/privacy>
-- Cesium (ion): <https://cesium.com/legal/privacy-policy/>
 - OpenFreeMap: <https://openfreemap.org/>
 - Mapterhorn: <https://mapterhorn.com/>
 - Development Seed (titiler.xyz, the default raster tile server): <https://developmentseed.org/>

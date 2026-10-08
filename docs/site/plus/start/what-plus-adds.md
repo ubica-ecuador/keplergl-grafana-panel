@@ -21,7 +21,7 @@ Plus adds.
 | [Network links](/plus/data/network-links) between named sites, coloured by Grafana thresholds                                  |            |  ✓   |
 | [Active alerts](/plus/data/active-alerts) on the map, with only the rules the viewer can read                                  |            |  ✓   |
 | [MapTiler, Esri, Azure Maps and Google base maps](/plus/maps/basemaps), keyed CARTO, Relief, POI and 3D building switches, sky |            |  ✓   |
-| [Google Photorealistic 3D Tiles and Cesium ion](/plus/maps/3d-tiles) layers                                                    |            |  ✓   |
+| [Google Photorealistic 3D Tiles](/plus/maps/3d-tiles) layers                                                                   |            |  ✓   |
 | Clicks and drawn polygons that also select and filter the Plus layers, and reach the other panels                              |            |  ✓   |
 | Sparkline and Fleet cards that follow Grafana's shared crosshair from the other panels                                         |            |  ✓   |
 | [Twelve template dashboards](/plus/start/templates) and [Grafana Assistant skills](/plus/assistant) for the Plus map           |            |  ✓   |

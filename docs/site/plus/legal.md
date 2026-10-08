@@ -125,7 +125,7 @@ the features the Plus edition adds will not draw once the Software is uninstalle
 
 6.1 The Software can draw base maps, imagery, terrain and 3D tiles from services such as CARTO,
 MapTiler, Esri (ArcGIS), Microsoft Azure Maps, Google Maps Platform (Map Tiles API and Photorealistic
-3D Tiles), Cesium ion, OpenFreeMap and Mapterhorn, with keys from your own accounts where a key is
+3D Tiles), OpenFreeMap and Mapterhorn, with keys from your own accounts where a key is
 needed. UBICA does not provide those services, is not a party to your agreement with their providers
 and does not resell them.
 

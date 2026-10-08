@@ -1,9 +1,12 @@
 # 3D tiles
 
-Plus adds two sources of 3D tiles to the map, each drawn with the organisation's own key: Google
-Photorealistic 3D Tiles, the photorealistic 3D mesh of cities, and the 3D Tiles assets of the organisation's
-Cesium ion account, Cesium OSM Buildings among them. Both are added from a **3D (Plus)** tab in kepler's **Add
-Data** dialog and become an ordinary kepler 3D tile layer.
+Plus adds Google Photorealistic 3D Tiles, the photorealistic 3D mesh of cities, drawn with the organisation's own
+key. It is added from a **3D (Plus)** tab in kepler's **Add Data** dialog and becomes an ordinary kepler 3D tile
+layer.
+
+::: info Cesium ion
+Assets of a Cesium ion account are not in this version of Plus. A map saved with one says so instead of drawing it.
+:::
 
 kepler's own **Add Data → Tileset → 3D Tile** form is still there for any other tileset, with a URL and a
 token you type yourself. See [Layers configured with a URL](/layers/url-configured).
@@ -16,7 +19,6 @@ Plugins → Kepler Geospatial Maps Plus**):
 | Source                         | Key field                        | What the configuration page asks for                                                                                     |
 | ------------------------------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Google Photorealistic 3D Tiles | **Google Maps Platform API key** | the Map Tiles API enabled; the key restricted to that API, with a daily quota. It is the same key as Google's base maps  |
-| Cesium ion                     | **Cesium ion access token**      | a token with only the public `assets:read` scope, limited to the assets you want on dashboards and to this Grafana's URL |
 
 Anyone who can open a dashboard can read these keys. See [Keys and who can read them](/plus/admin/keys).
 
@@ -28,19 +30,14 @@ Open kepler's side panel, choose **Add Data**, and open the **3D (Plus)** tab.
 serves 3D tiles to the organisation's key, then adds a layer named _Google Photorealistic 3D_. Each map load
 counts as one 3D session on the organisation's Google account, and so does this check.
 
-**Cesium ion.** Type the asset's numeric ID, as your Cesium ion account shows it, in **Asset ID** and select
-**Add asset**. The tab has no list of the account's assets: you give the ID. Plus asks ion for the asset
-first, and adds it only if the token can read it and it is 3D Tiles. The layer takes the asset's name from
-ion. **Add Cesium OSM Buildings** adds asset 96188, which every Cesium ion account includes.
-
-The buttons are greyed out when the organisation has no key for the provider, and the tab says why.
+The button is greyed out when the organisation has no Google key, and the tab says why.
 
 ## Keys stay out of dashboards
 
 A layer added from the 3D (Plus) tab carries no key. The key is added when the layer is drawn, so a saved
 dashboard, an exported one and the map configuration JSON hold none.
 
-A token typed into kepler's own 3D Tile form, for a Google or Cesium ion tileset, is dropped when the
+A token typed into kepler's own 3D Tile form, for a Google tileset, is dropped when the
 dashboard is saved if the organisation has its own key for that provider: the layer draws with the
 organisation's key instead. Where the organisation has no key for the provider, the typed token is kept,
 because the layer needs it.
@@ -53,11 +50,10 @@ tileset hosted anywhere else, even under another Google domain, never receives i
 Plus draws a block at the bottom left of the map, beside the side panel when it is open:
 
 - a **Google** line, with the Google Maps logo and the copyrights of the 3D tiles in view, joined with the
-  copyright of a Google base map when one is showing;
-- a **Cesium ion** line, with Cesium's logo and the attributions ion gives for each asset in view.
+  copyright of a Google base map when one is showing.
 
-A line shows only while a layer from that provider is visible. The block replaces the attribution kepler would
-otherwise write for these layers. Cesium's logo is loaded from `assets.ion.cesium.com`.
+The line shows only while a Google 3D layer is visible. The block replaces the attribution kepler would otherwise
+write for the layer.
 
 ## Height
 
@@ -66,8 +62,7 @@ carry two controls, from the free panel:
 
 - **Sit on the ground**, on by default, brings the tileset's ground down to height 0, where your data is
   drawn. Without it, a mesh surveyed at 2,500 m would float 2,500 m above the map and often not draw at all.
-  For Cesium OSM Buildings, and any tileset of buildings round the whole world, each building is set on the
-  ground on its own.
+  For a tileset of buildings round the whole world, each building is set on the ground on its own.
 - **Height adjustment (m)**, from −4,000 to 4,000, lifts or lowers the tileset on top of that, for a tileset
   whose own idea of its ground is wrong.
 
@@ -97,9 +92,6 @@ or the base map's ground and the tiles' ground part ways. See
 
 - **Google**: the same terms as Google's base maps, on
   [Base maps](/plus/maps/basemaps#terms-the-organisation-accepts).
-- **Cesium ion**: the configuration page warns that the Community plan is for non-commercial use, and a
-  company above the revenue the page names needs a paid plan, and that Cesium requires its logo wherever ion
-  content is shown, which Plus draws.
 
 ## Content Security Policy
 
@@ -108,7 +100,6 @@ On a Grafana with `content_security_policy = true`, allow in `connect-src`:
 | Source     | Host to allow                                                |
 | ---------- | ------------------------------------------------------------ |
 | Google 3D  | `https://tile.googleapis.com`                                |
-| Cesium ion | `https://api.cesium.com` and `https://assets.ion.cesium.com` |
 
 See [Content Security Policy](/plus/admin/csp).
 
@@ -116,12 +107,10 @@ See [Content Security Policy](/plus/admin/csp).
 
 | What you see                                                                          | What it means                                                                                                                                            |
 | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "No Google key is set" or "No Cesium ion token is set" in the tab                     | The organisation has no key for the provider. An administrator adds it on the configuration page.                                                        |
+| "No Google key is set" in the tab                                                     | The organisation has no key for the provider. An administrator adds it on the configuration page.                                                        |
 | "Google turned this organisation's key away, or did not answer, when the page loaded" | The key failed the check at page load. Reload once the key is fixed.                                                                                     |
 | "Google refused this organisation's key for Photorealistic 3D Tiles"                  | The Map Tiles API is off for the key, the key is restricted to other sites, or the account is billed in the European Economic Area.                      |
-| "Cesium ion refused the token for asset …"                                            | The token has expired, or cannot read that asset.                                                                                                        |
-| "Cesium ion has no asset …"                                                           | The ID is wrong.                                                                                                                                         |
-| "Asset … is …, not 3D Tiles"                                                          | The asset is imagery, terrain or another type. Only 3D Tiles assets can be added.                                                                        |
-| A notice that a 3D layer "needs a Google key" or "a Cesium ion key"                   | The dashboard was saved with the layer, and this organisation has no key for the provider.                                                               |
-| A notice that Google "did not serve" or Cesium ion "refused" the 3D layer             | The provider refused the key when the layer asked for tiles, for the reasons above.                                                                      |
+| A notice that a 3D layer "needs a Google key"                                         | The dashboard was saved with the layer, and this organisation has no key for the provider.                                                               |
+| A notice that Google "did not serve" the 3D layer                                     | The provider refused the key when the layer asked for tiles, for the reasons above.                                                                      |
+| A notice that a 3D layer "is a Cesium ion asset" and ion "is not available in this version" | The dashboard was saved, on another version or edition, with a Cesium ion asset. Remove the layer, or keep it for a version that offers ion. |
 | The layer is in the list but nothing shows                                            | Check that **Sit on the ground** is on, that the view is over the tileset's area, and, on a hardened Grafana, that the hosts above are in `connect-src`. |

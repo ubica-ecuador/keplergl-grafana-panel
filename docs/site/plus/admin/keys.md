@@ -16,7 +16,6 @@ without any, Plus draws the free panel's base maps.
 | **MapTiler API key**             | MapTiler's base maps, and MapTiler's terrain under their **Relief** switch         |
 | **ArcGIS API key**               | Esri's ArcGIS basemap styles                                                       |
 | **Google Maps Platform API key** | Google's base maps and Google Photorealistic 3D Tiles                              |
-| **Cesium ion access token**      | 3D layers from your Cesium ion account                                             |
 | **Azure Maps subscription key**  | Azure Maps' road, dark grey, imagery and hybrid maps                               |
 
 Each field's description says what the provider expects of the key. Two are worth knowing before you create one:
@@ -52,7 +51,6 @@ allows it, also restrict what the key can do and set a quota.
 | MapTiler   | Restrict the key to your Grafana's URL in your MapTiler account                                                    |
 | Esri       | Restrict the key to your Grafana's URL                                                                             |
 | Google     | Restrict the key to your Grafana's URL (website restrictions) and to the Map Tiles API, and set a daily quota      |
-| Cesium ion | Give the token only the public `assets:read` scope, only the assets you want on dashboards, and your Grafana's URL |
 | Azure Maps | **Cannot be restricted** to an address; see below                                                                  |
 
 Use the address your users type in their browser. A key restricted to another address is refused, and the map shows
@@ -67,11 +65,11 @@ read it and use it from anywhere. The configuration page warns about this under 
 - set a spending cap on that account,
 - rotate the key if it leaks.
 
-### Google and Cesium ion
+### Google
 
-Both count use against your account. Each map load that draws Google Photorealistic 3D Tiles counts as one 3D
-session on your Google account, and the configuration page states Google's free allowance. Cesium ion's Community
-plan is for non-commercial use. Read each provider's terms on the configuration page before you add its key.
+Each map load that draws Google Photorealistic 3D Tiles counts as one 3D session on your Google account, and the
+configuration page states Google's free allowance. Read each provider's terms on the configuration page before you
+add its key.
 
 ## Rotating a key
 
@@ -112,5 +110,5 @@ Two fields inherited from the free panel can still put a key in a dashboard:
   organisation's **CARTO basemaps API key** instead.
 - A 3D tileset added through kepler's own form with a typed token keeps that token in the dashboard, **unless** the
   organisation has a key for that service: then Plus drops the token when the dashboard is saved and draws with the
-  organisation's key. Add Google and Cesium ion layers from the **3D (Plus)** tab in **Add Data** instead; see
+  organisation's key. Add Google 3D layers from the **3D (Plus)** tab in **Add Data** instead; see
   [3D tiles](/plus/maps/3d-tiles).

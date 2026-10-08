@@ -19,7 +19,6 @@ set on the configuration page.
 | Azure Maps                     | `atlas.microsoft.com`                              | Tiles, and the attribution of the view                               |
 | Google base maps               | `tile.googleapis.com`                              | The session, the tiles, and the copyright of the view                |
 | Google Photorealistic 3D Tiles | `tile.googleapis.com`                              | The 3D tiles                                                         |
-| Cesium ion                     | `api.cesium.com`, `assets.ion.cesium.com`          | The asset's details and attributions, then its tiles                 |
 | A Fleet layer's own 3D model   | wherever the model is served                       | The model file                                                       |
 
 Esri's style names further Esri hosts for its tiles, fonts and sprites, so `basemapstyles-api.arcgis.com` alone is
@@ -44,14 +43,13 @@ Grafana's default policy allows images from any host, and then nothing here is n
 | Service    | Host                    | What it serves                                      |
 | ---------- | ----------------------- | --------------------------------------------------- |
 | MapTiler   | `api.maptiler.com`      | The thumbnails in kepler's base map picker          |
-| Cesium ion | `assets.ion.cesium.com` | The Cesium ion logo drawn on maps with an ion layer |
 
 ## An example
 
 The free panel's list, followed by every host Plus adds:
 
 ```ini
-content_security_policy_template = """… connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com https://titiler.xyz https://api.maptiler.com https://*.arcgis.com https://atlas.microsoft.com https://tile.googleapis.com https://api.cesium.com https://assets.ion.cesium.com …;"""
+content_security_policy_template = """… connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com https://titiler.xyz https://api.maptiler.com https://*.arcgis.com https://atlas.microsoft.com https://tile.googleapis.com …;"""
 ```
 
 `https://*.arcgis.com` does not cover the free panel's `services.arcgisonline.com`, which is under another domain,

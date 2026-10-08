@@ -19,7 +19,7 @@ run side by side on the same Grafana and the same dashboard.
 - [Network links](/plus/data/network-links) between named sites, and the
   [active alerts](/plus/data/active-alerts) the viewer can read, on the same map as your data.
 - [Base maps](/plus/maps/basemaps) from MapTiler, Esri, Azure Maps, Google and keyed CARTO, and
-  [3D tiles](/plus/maps/3d-tiles) from Google and Cesium ion, with keys set once for the organisation.
+  [3D tiles](/plus/maps/3d-tiles) from Google, with keys set once for the organisation.
 - [Twelve template dashboards](/plus/start/templates) installed with the app.
 - [Grafana Assistant skills](/plus/assistant) that explain a Plus map, edit it and build dashboards around it.
 
