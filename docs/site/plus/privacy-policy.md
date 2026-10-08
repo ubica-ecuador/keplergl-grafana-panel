@@ -29,7 +29,12 @@ controller of the personal data described in section 3. Contact: <jgarcia@ubicac
 The technical detail, host by host, is at <https://docs.ubica.dev/plus/admin/privacy>.
 
 2.1 **Your query results** are drawn in the browser from the data sources of your Grafana. They are
-never sent to UBICA, nor to any map provider.
+never sent to UBICA, nor to any map provider, with one exception that comes from the free panel: when a
+row carries the URL of a raster to draw (a cloud-optimised GeoTIFF), the browser sends that URL, with any
+signature it carries, to the raster tile server set in the panel's options, which reads the raster on the
+map's behalf. That server is <https://titiler.xyz>, a public demonstration server run by Development
+Seed, unless you set your own; the option says so, and a raster that is not public needs a server of
+your own.
 
 2.2 **Keys** of map services are stored in your Grafana, in the Software's settings. The panel reads
 them through Grafana's API, which answers every signed-in user of the organisation, and the browser
@@ -40,8 +45,10 @@ CARTO, MapTiler, Esri, Microsoft Azure Maps, Google (Map Tiles API and Photoreal
 Cesium ion when you set their keys, and OpenFreeMap, CARTO, Mapterhorn and Esri World Imagery, the
 free panel's defaults, without a key. Each request carries the key, the IP address of the browser, its
 user agent, and the coordinates of the tile, which say what area and zoom level the viewer is looking
-at. Requests to Google also carry a session token the browser obtains with the key. Each provider
-processes these requests under its own privacy policy (section 11). UBICA receives none of them.
+at. Requests to Google also carry a session token the browser obtains with the key, and the request
+that opens that session carries the language and region of the Grafana user, so that Google labels the
+map in them. Raster tile requests go to the raster tile server of section 2.1. Each provider processes
+these requests under its own privacy policy (section 11). UBICA receives none of them.
 
 2.4 **Places and IP addresses.** Region codes, airports, country names and IP addresses in your data
 are looked up in data files shipped inside the plugin, among them the IP-to-country table from DB-IP.
@@ -58,9 +65,10 @@ processed by Grafana Labs under Grafana's terms and privacy policy. Nothing of i
 2.7 **Your own 3D models.** If you give the Fleet layer the URL of a model, the browser fetches the
 model from that URL.
 
-2.8 **Browser storage.** The Software stores nothing in the browser beyond the memory of the open
-page. Pinned cards and the followed asset are saved in the dashboard itself, in your Grafana, by the
-users allowed to save dashboards.
+2.8 **Browser storage.** The Software's own code stores nothing in the browser beyond the memory of
+the open page. kepler.gl, which it embeds, keeps one preference in the browser's local storage: the unit
+of the map scale, kilometres or miles, which holds no personal data. Pinned cards and the followed asset
+are saved in the dashboard itself, in your Grafana, by the users allowed to save dashboards.
 
 2.9 **Delivery of the plugin.** On Grafana Cloud, Grafana Labs serves the plugin's files from its
 plugin CDN; on Grafana Enterprise, your Grafana serves them. Those requests are made to Grafana Labs or
@@ -152,6 +160,7 @@ Javier Andrés García Galarza, trading as UBICA · Cuenca, Ecuador · <jgarcia@
 - Cesium (ion): <https://cesium.com/legal/privacy-policy/>
 - OpenFreeMap: <https://openfreemap.org/>
 - Mapterhorn: <https://mapterhorn.com/>
+- Development Seed (titiler.xyz, the default raster tile server): <https://developmentseed.org/>
 - Grafana Labs: <https://grafana.com/legal/privacy-policy/>
 - GitHub (the documentation site's host):
   <https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement>

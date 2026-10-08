@@ -13,8 +13,11 @@ own terms and privacy policy.
 UBICA receives neither the keys, nor the tiles, nor anything about the map.
 
 Your query results are not sent to any provider. They arrive through the data sources you already configured, and
-the panel draws them in the browser. The one exception comes from the free panel: the address of a raster you draw
-reaches the tile server you configured; see [Hardened Grafana](/guide/install#hardened-grafana).
+the panel draws them in the browser. The one exception comes from the free panel: the address of a raster you draw,
+with any signature it carries, reaches the raster tile server set in the panel's options, which is `titiler.xyz`, a
+public demonstration server run by Development Seed, unless you set your own; see
+[Hardened Grafana](/guide/install#hardened-grafana). The request that opens a Google session also carries the
+Grafana user's language and region, so Google labels the map in them.
 
 See [Keys and who can read them](/plus/admin/keys) for who can see the keys, and
 [Content Security Policy](/plus/admin/csp) for the full list of hosts.
