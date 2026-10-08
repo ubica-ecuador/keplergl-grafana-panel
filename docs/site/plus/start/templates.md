@@ -26,6 +26,9 @@ is disabled. Save a copy with **Save as** before changing it.
 
 The dashboard's **About this dashboard** panel repeats what each map shows and what to change to use your own data.
 
+More dashboards built with Plus, on live public data, are on the
+[live demos](https://pacha.ubica.dev/dashboards?tag=plus), public and read-only.
+
 ## Power grid
 
 ![Sixteen European countries with a gauge for their renewable share, a cylinder for their demand, and comets running along the interconnectors between them](/img/plus/european-grid.jpg)

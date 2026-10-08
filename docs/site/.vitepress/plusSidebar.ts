@@ -7,10 +7,17 @@ import type { DefaultTheme } from 'vitepress';
  * pages document only what Plus adds and link back to the free pages for the
  * rest, the same way the free pages treat kepler.gl.
  */
+/**
+ * Plus's live dashboards: the public, read-only pacha instance filtered to the
+ * `plus` tag, so a dashboard joins the list by its tag alone.
+ */
+export const PLUS_DEMO_URL = 'https://pacha.ubica.dev/dashboards?tag=plus';
+
 export const PLUS_SIDEBAR: DefaultTheme.SidebarItem[] = [
   {
     text: 'Plus',
     items: [
+      { text: 'Live demos ↗', link: PLUS_DEMO_URL },
       { text: 'Overview', link: '/plus/' },
       { text: 'What Plus adds', link: '/plus/start/what-plus-adds' },
       { text: 'Install and configure the app', link: '/plus/start/install' },
