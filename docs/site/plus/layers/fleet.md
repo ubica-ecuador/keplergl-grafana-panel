@@ -207,17 +207,20 @@ follow camera runs on the main map only, not on a split map or the globe.
 With **Display** on **3D**, each type value gets a **Model**. On **Auto**, with the **Silhouette**
 marker, the type value picks a bundled model by name: `bus`, `school bus`, `tram`, `metro`,
 `train`, `ambulance`, `police`, `fire truck`, `taxi`, `van`, `truck`, `car`, `bicycle`, `boat`,
-`ferry`, `cargo ship` and similar words. Types with no bundled model, such as drones, motorbikes
-and planes, keep their extruded silhouette.
+`ferry`, `cargo ship`, `plane`, `airbus`, `boeing`, `cessna`, `helicopter`, `drone`, `uav` and
+similar words. Types with no bundled model, such as motorbikes, scooters and robots, keep their
+extruded silhouette. With a column picked under **Altitude (above ground)**, every model flies at
+its height in metres, with a line down to the ground.
 
-The bundled models come from Kenney's Car Kit, Train Kit and Watercraft Kit and Quaternius'
-Public Transport Pack, all CC0:
+The road, rail and water models come from Kenney's Car Kit, Train Kit and Watercraft Kit and
+Quaternius' Public Transport Pack, all CC0; the aircraft are modelled for the panel:
 
 | Group | Models                                                                                                                           |
 | ----- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Road  | Car, Taxi, SUV, Van, Truck, Pickup, Flatbed, Ambulance, Police car, Fire truck, Garbage truck, Tractor, Bus, School bus, Bicycle |
 | Rail  | Train, Locomotive, Metro, Tram, High-speed train, Freight car, Tank car                                                          |
 | Water | Boat, Speedboat, Sailboat, Tug, Cargo ship, Ferry                                                                                |
+| Air   | Airliner, Light aircraft, Helicopter, Drone                                                                                      |
 
 Under **Types**, each type value (or **All assets**, when there is no type column) can pick a
 different model, **None (shape)**, or **Custom URL…** for your own `.glb` file. The server that
