@@ -11,10 +11,22 @@ import type { HaloDataset, HaloInput, HaloLayer, Selection } from './selectionHa
  * layer's type, visibility, dataset and column roles, each dataset's columns
  * and rows, the filters, and the split.
  */
+/**
+ * What a layer class that kepler does not ship tells the halo about itself,
+ * through an optional `selectionHaloMark()` method on its instances. kepler's
+ * own layers do not have one, and are marked by their type.
+ */
+export interface HaloMark {
+  mark: 'ring' | 'geojson';
+  /** See `HaloLayer.ringPx`. */
+  ringPx?: (row: number, zoom: number, latitude: number) => number | null;
+}
+
 export interface VisStateLike {
   layers?: Array<{
     id: string;
     type: string | null;
+    selectionHaloMark?: () => HaloMark | null;
     config: {
       dataId: string | null;
       isVisible: boolean;
@@ -80,7 +92,19 @@ function haloLayers(visState: VisStateLike): HaloLayer[] {
           }
         : undefined;
 
-    return [{ id: layer.id, type: layer.type, isVisible, dataId, columns: roles, columnMode, radius }];
+    const own = typeof layer.selectionHaloMark === 'function' ? layer.selectionHaloMark() : null;
+    return [
+      {
+        id: layer.id,
+        type: layer.type,
+        isVisible,
+        dataId,
+        columns: roles,
+        columnMode,
+        radius,
+        ...(own ? { mark: own.mark, ringPx: own.ringPx } : {}),
+      },
+    ];
   });
 }
 

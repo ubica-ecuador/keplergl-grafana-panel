@@ -46,7 +46,7 @@ import { useTimeRangeSync } from './useTimeRangeSync';
 import { useAutoLayers } from './useAutoLayers';
 import { useFlowFieldContext } from './useFlowFieldContext';
 import { usePeerTimeSync } from './usePeerTimeSync';
-import { useVariableSync } from './useVariableSync';
+import { readVariable, useVariableSync } from './useVariableSync';
 import { useClickSync } from './useClickSync';
 import { offersSelection, selectApi, SelectContext } from './selectPopover';
 import { HaloContext } from './haloMapContainer';
@@ -55,6 +55,7 @@ import { TemporalCursorContext } from './temporalCursorMapContainer';
 import { useSelectionValues } from './useSelectionValues';
 import { useCoordinateSync } from './useCoordinateSync';
 import { useCenterSync } from './useCenterSync';
+import { centerOnLoad, withLoadCenter } from './centerSync';
 import { useRasterTimeline } from './useRasterTimeline';
 import { useWmsCalendar } from './useWmsCalendar';
 import { useWmsTimeline } from './useWmsTimeline';
@@ -196,7 +197,7 @@ export function KeplerMap({
   wmsLayers,
   zarrLayers,
   esriLayers,
-  mapConfig,
+  mapConfig: savedMapConfig,
   theme,
   basemapId,
   customBasemapUrl,
@@ -220,6 +221,18 @@ export function KeplerMap({
   playheadVariable,
   panelId,
 }: KeplerMapProps) {
+  // A link that carries a center mapping's pair opens the map there: the
+  // config the panel mounts with is loaded with that viewport, so the guard
+  // defends it like a saved one (`withLoadCenter`). Only that first config —
+  // a later one, a save or an edit, is the author's framing again.
+  const [loadCenter] = useState(() => ({
+    config: savedMapConfig,
+    center: centerOnLoad(variableMappings, readVariable),
+  }));
+  const mapConfig = useMemo(
+    () => (savedMapConfig === loadCenter.config ? withLoadCenter(savedMapConfig, loadCenter.center) : savedMapConfig),
+    [savedMapConfig, loadCenter]
+  );
   const temporalCursor = useMemo(
     () => ({
       eventBus,

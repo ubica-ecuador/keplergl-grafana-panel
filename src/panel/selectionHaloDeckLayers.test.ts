@@ -1,5 +1,5 @@
 import { RING_MIN_PX } from './selectionHalo';
-import { HALO_COLOR, haloDeckLayers, haloOutlines, haloShapeFeature } from './selectionHaloDeckLayers';
+import { HALO_CASING_COLOR, HALO_CASING_PX, HALO_COLOR, haloDeckLayers, haloOutlines, haloShapeFeature } from './selectionHaloDeckLayers';
 
 /**
  * The halo as deck layers. deck layers are plain descriptors until a Deck
@@ -102,7 +102,7 @@ describe('haloOutlines', () => {
 
 describe('haloDeckLayers', () => {
   it('draws rings as unfilled amber circles that no click can land on', () => {
-    const [points] = haloDeckLayers({ rings: [ring], outlines: [] }, 0, { globe: false }) as Array<{
+    const [, points] = haloDeckLayers({ rings: [ring], outlines: [] }, 0, { globe: false }) as Array<{
       id: string;
       props: Record<string, any>;
     }>;
@@ -123,14 +123,35 @@ describe('haloDeckLayers', () => {
     expect(points.props.getRadius(ring)).toBe(12);
   });
 
+  it('lays a wider dark casing under each ring, drawn first, so the amber reads on an amber layer', () => {
+    const [casing, points] = haloDeckLayers({ rings: [ring], outlines: [] }, 0, { globe: false }) as Array<{
+      id: string;
+      props: Record<string, any>;
+    }>;
+
+    expect(casing.id).toBe('panel-selection-halo-points-casing-0');
+    expect(casing.props).toMatchObject({
+      data: [ring],
+      filled: false,
+      pickable: false,
+      getLineWidth: HALO_CASING_PX,
+      getLineColor: HALO_CASING_COLOR,
+    });
+    expect(HALO_CASING_PX).toBeGreaterThan(points.props.getLineWidth);
+  });
+
   it('draws outlines for the shapes, on their own layer', () => {
     const layers = haloDeckLayers({ rings: [], outlines: haloOutlines([hexagon]) }, 1, { globe: false }) as Array<{
       id: string;
       props: Record<string, any>;
     }>;
 
-    expect(layers.map((layer) => layer.id)).toEqual(['panel-selection-halo-outlines-1']);
-    expect(layers[0].props).toMatchObject({
+    expect(layers.map((layer) => layer.id)).toEqual([
+      'panel-selection-halo-outlines-casing-1',
+      'panel-selection-halo-outlines-1',
+    ]);
+    expect(layers[0].props).toMatchObject({ getLineColor: HALO_CASING_COLOR, getLineWidth: HALO_CASING_PX });
+    expect(layers[1].props).toMatchObject({
       stroked: true,
       filled: false,
       pickable: false,
@@ -139,7 +160,7 @@ describe('haloDeckLayers', () => {
       getLineWidth: 3,
       parameters: { depthTest: false },
     });
-    expect(layers[0].props.data).toHaveLength(1);
+    expect(layers[1].props.data).toHaveLength(1);
   });
 
   it('tests the outlines against the globe too', () => {

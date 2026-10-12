@@ -75,6 +75,28 @@ describe('haloInputFrom', () => {
     expect(selectionHalo(input).rings).toEqual([{ position: [-79.02, -2.895], radiusPx: 10 }]);
   });
 
+  it("takes a mark from a layer that kepler does not ship, through its selectionHaloMark()", async () => {
+    const store = await crossFilterStore();
+    const visState = visStateOf(store) as unknown as { layers: object[] };
+    const ringPx = () => 30;
+    const layers = visState.layers.map((layer) =>
+      // A Plus layer subclasses a kepler one; `type` is a getter on the class.
+      Object.create(layer, {
+        type: { value: 'coverage' },
+        selectionHaloMark: { value: () => ({ mark: 'ring', ringPx }) },
+      })
+    );
+    const input = haloInputFrom({
+      visState: { ...visState, layers } as never,
+      zoom: 13,
+      index: 0,
+      selection: { site: ['site-02'] },
+    });
+
+    expect(input.layers).toEqual([expect.objectContaining({ type: 'coverage', mark: 'ring', ringPx })]);
+    expect(selectionHalo(input).rings).toEqual([{ position: [-79.02, -2.895], radiusPx: 30 + 6 }]);
+  });
+
   it("carries kepler's data revision, so an in-place update rescans", async () => {
     const store = await crossFilterStore();
     const input = haloInputFrom({ visState: visStateOf(store), zoom: 13, index: 0, selection: {} });

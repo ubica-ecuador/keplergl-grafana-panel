@@ -1,4 +1,5 @@
-import type { VariableMapping } from './variableSync';
+import type { SavedMapConfig } from '../data/mapConfig';
+import { isCenterMapping, type VariableMapping } from './variableSync';
 
 /**
  * Decides when the map centres itself on its lat/lng variable pair.
@@ -94,4 +95,74 @@ function parseCoord(raw: unknown): number | null {
   }
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+/** Where a link asks the map to open: the pair of its first center mapping that holds one. */
+export interface LoadCenter {
+  latitude: number;
+  longitude: number;
+  /** The mapping's `zoom`, when it names one. */
+  zoom?: number;
+}
+
+/**
+ * The centre a URL asks for as the map mounts, or null when it asks for none.
+ *
+ * A shared link, or a table's data link that opens the dashboard afresh,
+ * carries the pair; the map should open on it rather than on the saved
+ * framing, where the selection may be one dot among hundreds.
+ */
+export function centerOnLoad(mappings: VariableMapping[], read: (name: string) => unknown): LoadCenter | null {
+  for (const mapping of mappings) {
+    if (!isCenterMapping(mapping) || !mapping.variable || !mapping.variableTo) {
+      continue;
+    }
+    const { target } = decideCenter({
+      variableValues: { [mapping.variable]: read(mapping.variable), [mapping.variableTo]: read(mapping.variableTo) },
+      mapping,
+      pinned: undefined,
+      lastCentered: undefined,
+    });
+    if (target) {
+      const zoom = Number(mapping.zoom);
+      return {
+        latitude: target[0],
+        longitude: target[1],
+        ...(mapping.zoom !== undefined && Number.isFinite(zoom) ? { zoom } : {}),
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * The saved config with its viewport moved to the centre a link asks for.
+ *
+ * Opening there through the config, rather than centring once it has loaded,
+ * is what settles the restore: the load frames the map on this viewport, and
+ * the viewport guard defends it like any saved one. Bearing and pitch stay the
+ * author's, and so does the zoom unless the mapping names one. A config with
+ * no viewport of its own is handed back as it is: nothing races the first
+ * pass of the center sync then, and it centres on its own.
+ */
+export function withLoadCenter(
+  config: SavedMapConfig | null | undefined,
+  center: LoadCenter | null
+): SavedMapConfig | null | undefined {
+  const mapState = config?.config?.mapState as Record<string, unknown> | undefined;
+  if (!center || !config || !mapState || typeof mapState.zoom !== 'number') {
+    return config;
+  }
+  return {
+    ...config,
+    config: {
+      ...config.config,
+      mapState: {
+        ...mapState,
+        latitude: center.latitude,
+        longitude: center.longitude,
+        ...(center.zoom !== undefined ? { zoom: center.zoom } : {}),
+      },
+    },
+  };
 }

@@ -69,8 +69,9 @@ describe('withSelectionHalo', () => {
     const deck = mount({ site: ['site-02'] }) as { layers: Array<string | { id: string; props: any }> };
 
     expect(deck.layers[0]).toBe('kepler-layer');
-    expect(deck.layers).toHaveLength(2);
-    const halo = deck.layers[1] as { id: string; props: any };
+    expect(deck.layers).toHaveLength(3);
+    expect((deck.layers[1] as { id: string }).id).toBe('panel-selection-halo-points-casing-0');
+    const halo = deck.layers[2] as { id: string; props: any };
     expect(halo.id).toBe('panel-selection-halo-points-0');
     expect(halo.props.pickable).toBe(false);
     expect(halo.props.data).toEqual([{ position: [-79.02, -2.895], radiusPx: 10 }]);
@@ -83,7 +84,7 @@ describe('withSelectionHalo', () => {
 
   it('gives each side of a split map a halo of its own', () => {
     const deck = mount({ site: ['site-02'] }, { index: 1 }) as { layers: Array<string | { id: string }> };
-    expect((deck.layers[1] as { id: string }).id).toBe('panel-selection-halo-points-1');
+    expect((deck.layers[2] as { id: string }).id).toBe('panel-selection-halo-points-1');
   });
 
   it('still runs a render callback kepler was already given', () => {
@@ -96,7 +97,7 @@ describe('withSelectionHalo', () => {
     };
 
     expect(deck.layers.slice(0, 2)).toEqual(['kepler-layer', 'other-layer']);
-    expect((deck.layers[2] as { id: string }).id).toBe('panel-selection-halo-points-0');
+    expect((deck.layers[3] as { id: string }).id).toBe('panel-selection-halo-points-0');
   });
 });
 

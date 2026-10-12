@@ -10,6 +10,14 @@ export const HALO_COLOR: [number, number, number, number] = [255, 179, 0, 255];
 
 export const HALO_LINE_PX = 3;
 
+/**
+ * A dark band under the amber, wider by this much, so the ring reads on an
+ * amber or orange layer and on a light base map as well as on a dark one.
+ */
+export const HALO_CASING_COLOR: [number, number, number, number] = [17, 17, 17, 200];
+
+export const HALO_CASING_PX = HALO_LINE_PX + 4;
+
 export const HALO_LAYER_PREFIX = 'panel-selection-halo';
 
 /**
@@ -83,9 +91,10 @@ function depthParameters(globe: boolean): Record<string, boolean> {
 }
 
 /**
- * The halo for one side of the map: rings for points, outlines for shapes.
+ * The halo for one side of the map: rings for points, outlines for shapes,
+ * each amber over a dark casing.
  *
- * Neither layer is pickable, so a click on a ringed point still reaches the
+ * None of the layers is pickable, so a click on a ringed point still reaches the
  * kepler layer under it — which is what kepler's popup and the click mappings
  * need. The layers are new on every call, which deck diffs prop by prop; the
  * data is handed through as it came, so it stays the same data.
@@ -94,44 +103,51 @@ export function haloDeckLayers(data: HaloDeckData, side: number, { globe }: { gl
   const layers: Layer[] = [];
   const parameters = depthParameters(globe);
 
-  if (data.rings.length) {
-    layers.push(
-      new ScatterplotLayer<HaloRing>({
-        id: `${HALO_LAYER_PREFIX}-points-${side}`,
-        data: data.rings,
-        getPosition: (ring) => ring.position,
-        getRadius: (ring) => ring.radiusPx,
-        radiusUnits: 'pixels',
-        stroked: true,
-        filled: false,
-        lineWidthUnits: 'pixels',
-        getLineWidth: HALO_LINE_PX,
-        getLineColor: HALO_COLOR,
-        pickable: false,
-        parameters,
-      }) as unknown as Layer
-    );
-  }
+  // The casing first, then the amber over it, each pass drawing every mark.
+  const strokes = [
+    { suffix: '-casing', color: HALO_CASING_COLOR, widthPx: HALO_CASING_PX },
+    { suffix: '', color: HALO_COLOR, widthPx: HALO_LINE_PX },
+  ];
+  for (const { suffix, color, widthPx } of strokes) {
+    if (data.rings.length) {
+      layers.push(
+        new ScatterplotLayer<HaloRing>({
+          id: `${HALO_LAYER_PREFIX}-points${suffix}-${side}`,
+          data: data.rings,
+          getPosition: (ring) => ring.position,
+          getRadius: (ring) => ring.radiusPx,
+          radiusUnits: 'pixels',
+          stroked: true,
+          filled: false,
+          lineWidthUnits: 'pixels',
+          getLineWidth: widthPx,
+          getLineColor: color,
+          pickable: false,
+          parameters,
+        }) as unknown as Layer
+      );
+    }
 
-  if (data.outlines.length) {
-    layers.push(
-      new GeoJsonLayer({
-        id: `${HALO_LAYER_PREFIX}-outlines-${side}`,
-        data: data.outlines as never,
-        stroked: true,
-        filled: false,
-        lineWidthUnits: 'pixels',
-        getLineWidth: HALO_LINE_PX,
-        getLineColor: HALO_COLOR,
-        // A GeoJSON point gets a ring like a kepler point's, not deck's
-        // default one-metre dot.
-        pointType: 'circle',
-        pointRadiusUnits: 'pixels',
-        getPointRadius: RING_MIN_PX,
-        pickable: false,
-        parameters,
-      }) as unknown as Layer
-    );
+    if (data.outlines.length) {
+      layers.push(
+        new GeoJsonLayer({
+          id: `${HALO_LAYER_PREFIX}-outlines${suffix}-${side}`,
+          data: data.outlines as never,
+          stroked: true,
+          filled: false,
+          lineWidthUnits: 'pixels',
+          getLineWidth: widthPx,
+          getLineColor: color,
+          // A GeoJSON point gets a ring like a kepler point's, not deck's
+          // default one-metre dot.
+          pointType: 'circle',
+          pointRadiusUnits: 'pixels',
+          getPointRadius: RING_MIN_PX,
+          pickable: false,
+          parameters,
+        }) as unknown as Layer
+      );
+    }
   }
 
   return layers;

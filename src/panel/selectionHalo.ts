@@ -103,6 +103,19 @@ export interface HaloLayer {
   columnMode?: string;
   /** Point layers only. */
   radius?: PointRadius;
+  /**
+   * How a layer that is not one of kepler's own asks to be marked — Plus's
+   * layers do (`HaloMark` in `selectionHaloInput.ts`). Its column roles must
+   * still hold what the mark needs: lat and lng for a ring, a geometry for an
+   * outline.
+   */
+  mark?: 'ring' | 'geojson';
+  /**
+   * With `mark: 'ring'`, how far out a row's ring goes, in pixels, before the
+   * margin; null for a row the layer does not draw, which gets no ring. Absent,
+   * the ring is the smallest one.
+   */
+  ringPx?: (row: number, zoom: number, latitude: number) => number | null;
 }
 
 export interface HaloInput {
@@ -174,11 +187,18 @@ function coordinate(value: unknown): number {
 /**
  * How a layer's rows are marked, or null for a type the halo leaves alone: a
  * point layer only while it reads lat/lng columns (`points` mode), a GeoJSON
- * layer only while it reads a geometry column (`geojson` mode).
+ * layer only while it reads a geometry column (`geojson` mode), and a layer
+ * that names its own mark only while it has the columns for it.
  */
 function haloKind(layer: HaloLayer): 'ring' | 'geojson' | 'hexagon' | null {
   const has = (role: 'lat' | 'lng' | 'geojson' | 'hex_id') => (layer.columns[role] ?? -1) >= 0;
   const inMode = (mode: string) => layer.columnMode === undefined || layer.columnMode === mode;
+  if (layer.mark === 'ring') {
+    return has('lat') && has('lng') ? 'ring' : null;
+  }
+  if (layer.mark === 'geojson') {
+    return has('geojson') ? 'geojson' : null;
+  }
   switch (layer.type) {
     case 'point':
       return inMode('points') && has('lat') && has('lng') ? 'ring' : null;
@@ -226,7 +246,14 @@ export function selectionHalo(input: HaloInput): HaloTargets {
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
           continue;
         }
-        const pointPx = layer.radius ? pointRadiusPx(layer.radius, input.zoom, lat) : 0;
+        const pointPx = layer.ringPx
+          ? layer.ringPx(row, input.zoom, lat)
+          : layer.radius
+            ? pointRadiusPx(layer.radius, input.zoom, lat)
+            : 0;
+        if (pointPx === null) {
+          continue;
+        }
         const radiusPx = Math.max(RING_MIN_PX, pointPx + RING_MARGIN_PX);
         const key = `${layer.dataId}:${row}:${latIdx}:${lngIdx}`;
         const existing = rings.get(key);
