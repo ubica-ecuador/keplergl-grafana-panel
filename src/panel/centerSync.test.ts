@@ -1,4 +1,4 @@
-import { decideCenter } from './centerSync';
+import { centerOnLoad, decideCenter, withLoadCenter } from './centerSync';
 import type { VariableMapping } from './variableSync';
 
 /**
@@ -129,5 +129,56 @@ describe('decideCenter', () => {
     expect(
       decideCenter({ variableValues: { lat: '-4.2' }, mapping: latOnly, pinned: undefined, lastCentered: undefined })
     ).toEqual({ target: null, key: undefined });
+  });
+});
+
+describe('centerOnLoad', () => {
+  const read = (values: Record<string, string>) => (name: string) => values[name];
+
+  it('reads the pair a link carries, with the mapping’s zoom', () => {
+    expect(centerOnLoad([mapping], read({ lat: '34.02', lng: '-118.47' }))).toEqual({
+      latitude: 34.02,
+      longitude: -118.47,
+      zoom: 6,
+    });
+  });
+
+  it('asks for nothing when the link carries no pair, or no mapping is a center one', () => {
+    expect(centerOnLoad([mapping], read({ lat: '34.02' }))).toBeNull();
+    expect(centerOnLoad([{ field: 'site', variable: 'site' }], read({ site: 'a' }))).toBeNull();
+  });
+
+  it('leaves the zoom out when the mapping names none', () => {
+    const { zoom, ...noZoom } = mapping;
+    expect(centerOnLoad([noZoom], read({ lat: '1', lng: '2' }))).toEqual({ latitude: 1, longitude: 2 });
+  });
+});
+
+describe('withLoadCenter', () => {
+  const saved = {
+    version: 'v1',
+    config: { mapState: { latitude: 34, longitude: -118, zoom: 11, bearing: 20, pitch: 40 } },
+  } as never;
+  const mapStateOf = (config: unknown) => (config as { config: { mapState: unknown } }).config.mapState;
+
+  it('moves the saved viewport to the link’s centre, keeping bearing and pitch', () => {
+    expect(mapStateOf(withLoadCenter(saved, { latitude: 34.02, longitude: -118.47, zoom: 14 }))).toEqual({
+      latitude: 34.02,
+      longitude: -118.47,
+      zoom: 14,
+      bearing: 20,
+      pitch: 40,
+    });
+  });
+
+  it('keeps the author’s zoom when the mapping names none', () => {
+    expect(mapStateOf(withLoadCenter(saved, { latitude: 1, longitude: 2 }))).toMatchObject({ zoom: 11 });
+  });
+
+  it('hands back the config untouched with no centre, or no saved viewport to move', () => {
+    expect(withLoadCenter(saved, null)).toBe(saved);
+    const noViewport = { version: 'v1', config: {} } as never;
+    expect(withLoadCenter(noViewport, { latitude: 1, longitude: 2 })).toBe(noViewport);
+    expect(withLoadCenter(null, { latitude: 1, longitude: 2 })).toBeNull();
   });
 });

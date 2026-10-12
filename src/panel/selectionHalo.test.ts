@@ -182,6 +182,27 @@ describe('selectionHalo', () => {
     });
   });
 
+  it('marks a layer kepler does not ship when it names a ring, sized by its own ringPx', () => {
+    const ringPx = jest.fn((row: number) => (row === 1 ? 40 : 5));
+    const wedges = pointsLayer({ type: 'coverage', radius: undefined, mark: 'ring', ringPx });
+    const [ring] = selectionHalo(inputOf({ layers: [wedges] })).rings;
+
+    expect(ring.position).toEqual([-79.02, -2.895]);
+    expect(ring.radiusPx).toBeGreaterThan(40);
+    expect(ringPx).toHaveBeenCalledWith(1, 13, -2.895);
+  });
+
+  it('leaves a row its layer does not draw unringed', () => {
+    const wedges = pointsLayer({ type: 'coverage', mark: 'ring', ringPx: () => null });
+    expect(selectionHalo(inputOf({ layers: [wedges] })).rings).toEqual([]);
+  });
+
+  it('leaves a layer of another type alone unless it names a mark, and then only with the columns for it', () => {
+    expect(selectionHalo(inputOf({ layers: [pointsLayer({ type: 'coverage' })] })).rings).toEqual([]);
+    const noLng = pointsLayer({ type: 'coverage', mark: 'ring', columns: { lat: 0 } });
+    expect(selectionHalo(inputOf({ layers: [noLng] })).rings).toEqual([]);
+  });
+
   it('draws the ring outside a point that is large on screen', () => {
     const [ring] = selectionHalo(inputOf({ zoom: 16 })).rings;
     // 8.38 px of point at this latitude, plus the 6 px margin.
