@@ -27,7 +27,7 @@ is disabled. Save a copy with **Save as** before changing it.
 The dashboard's **About this dashboard** panel repeats what each map shows and what to change to use your own data.
 
 More dashboards built with Plus, on live public data, are on the
-[live demos](https://pacha.ubica.dev/dashboards?tag=plus), public and read-only.
+[live demos](https://pacha.ubica.dev/dashboards/f/plus/?orgId=1), public and read-only.
 
 ## Power grid
 

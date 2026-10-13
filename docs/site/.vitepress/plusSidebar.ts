@@ -8,10 +8,10 @@ import type { DefaultTheme } from 'vitepress';
  * rest, the same way the free pages treat kepler.gl.
  */
 /**
- * Plus's live dashboards: the public, read-only pacha instance filtered to the
- * `plus` tag, so a dashboard joins the list by its tag alone.
+ * Plus's live dashboards: the `plus` folder of the public, read-only pacha
+ * instance, so a dashboard joins the list by being saved in that folder.
  */
-export const PLUS_DEMO_URL = 'https://pacha.ubica.dev/dashboards?tag=plus';
+export const PLUS_DEMO_URL = 'https://pacha.ubica.dev/dashboards/f/plus/?orgId=1';
 
 export const PLUS_SIDEBAR: DefaultTheme.SidebarItem[] = [
   {

@@ -41,7 +41,7 @@ picker. See [Install and configure the app](/plus/start/install).
 
 ## Where to go next
 
-- See Plus at work on the [live demos](https://pacha.ubica.dev/dashboards?tag=plus), public and read-only.
+- See Plus at work on the [live demos](https://pacha.ubica.dev/dashboards/f/plus/?orgId=1), public and read-only.
 - [Install and configure the app](/plus/start/install), then add the keys of the map services you use.
 - [Move a dashboard to Plus](/plus/start/upgrade-a-dashboard) to switch a free panel without losing its map.
 - Open the [layer tour](/plus/start/templates) and replace a map's query with your own.
