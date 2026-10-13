@@ -235,7 +235,11 @@ describe('withPanelLayers', () => {
     );
 
     const layers = (seen[seen.length - 1].deck as { layers: Array<{ id?: string }> }).layers;
-    expect(layers[0].id).toBe('panel-selection-halo-points-0');
+    // The halo's dark casing first, its amber ring over it, the markers last.
+    expect(layers.map((layer) => layer.id).slice(0, 2)).toEqual([
+      'panel-selection-halo-points-casing-0',
+      'panel-selection-halo-points-0',
+    ]);
     expect(layers[layers.length - 1]).toBe(markers);
   });
 });

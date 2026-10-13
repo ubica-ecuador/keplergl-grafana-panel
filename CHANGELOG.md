@@ -4,6 +4,20 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## 1.2.0 (2026-10-13)
+
+- **A shared link opens the map on its place**: a link that carries the lat/lng pair of a *center*
+  mapping — a shared dashboard URL, or a table's data link that opens the dashboard afresh — now
+  opens the map centred there, at the mapping's zoom when it names one, instead of on the saved
+  framing, where the selection could be one dot among hundreds. Bearing and pitch stay the saved
+  ones. Only the first load does this: a later save or edit frames the map as the author left it.
+- **The selection halo reads on orange layers**: its amber ring and outline are now drawn over a
+  dark casing, so a selected row stands out on a layer coloured close to amber.
+- **Halos on layers kepler does not ship**: a layer class that kepler does not ship can ask to be
+  marked by the halo through an optional `selectionHaloMark()` method, naming a ring (with its own
+  size per row, or none for a row it does not draw) or an outline. kepler's own layers are marked
+  as before. This is the seam Kepler Geospatial Maps Plus uses for its own layers.
+
 ## 1.1.0 (2026-10-07)
 
 - **The side panel names the plugin**: its header shows the plugin's own logo and name, linked to the
