@@ -71,9 +71,25 @@ so. See [Colour palettes and scales](/guide/kepler/colour-palettes-and-scales).
 | Fade edge        | Shown with a max distance: the last third before it fades out instead of ending in a hard edge | on           |
 | Area             | Sensors hull (the shape the outer sensors enclose) or Rectangle (their bounding box)           | Sensors hull |
 | Margin (%)       | Draws past the outer sensors by this share of their extent, 0 to 50                            | 0            |
+| Under 3D buildings | Draws the surface inside the base map, under its 3D buildings, so they stand in front of it; off, it is drawn over them like every other layer | on |
+| Altitude (m)     | Metres above the ground the surface is drawn at, up to 10,000; empty is the ground             | On the ground |
 
 **Last** is the newest reading, because Grafana returns rows in time order. **Mean**, **Min** and
 **Max** summarise every reading of the sensor among the rows the filters keep.
+
+### Under the buildings
+
+The panel draws its layers above the base map, so on a tilted map a surface on the ground would
+cover every building the base map draws, as if it floated over the city. With **Under 3D buildings**
+on, the surface is drawn inside the base map instead, right under its 3D buildings: a building
+stands in front of the bands, the roads stay under them and the base map's labels above. Hovering
+still shows the estimate under the cursor.
+
+It takes a base map that draws its own 3D buildings (OpenFreeMap Liberty, MapTiler's styles) and
+applies once the map is zoomed in enough for them to appear. The surface stays over the buildings
+where the map cannot draw it underneath: a base map without 3D buildings, a Mapbox base map, the
+globe, and Relief, whose terrain would bury it. Lifted with **Altitude**, every building is drawn in
+front of it. The other layers, the stations for instance, are still drawn over the buildings.
 
 Without a max distance the surface covers the whole area, even far from any sensor, where the
 estimate is little more than an average of distant stations. Setting one is the honest choice when
@@ -111,7 +127,7 @@ reported from.
 | Vehicle                                                                    | The column that names each vehicle: Auto, None (each position) or a column    | Auto         |
 | Radius (m)                                                                 | The distance counted around each place, in metres on the ground, 10 to 50,000 | 500          |
 | Breaks                                                                     | The band boundaries, such as `2, 5, 10, 20, 40`; empty is Automatic           | Automatic    |
-| Bands, Isolines, Isoline colour, Isoline width, Isoline labels, Label size | As in Interpolate                                                             | as above     |
+| Bands, Isolines, Isoline colour, Isoline width, Isoline labels, Label size, Under 3D buildings, Altitude | As in Interpolate                                | as above     |
 | Resolution                                                                 | Low, Medium or High                                                           | Medium       |
 | Area                                                                       | Sensors hull or Rectangle, around the vehicles and their radius               | Sensors hull |
 | Margin (%)                                                                 | 0 to 50                                                                       | 0            |
