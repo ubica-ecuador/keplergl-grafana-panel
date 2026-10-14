@@ -71,8 +71,11 @@ panel is only a placeholder in the layout, as short as one row. **Pinned bar goe
 | **Bottom**   | At the foot of the page, where the panel was across it.                                 | whenever the panel is out of view.    |
 | **Floating** | Wherever the reader drags it by the grip at its left; the grip at its right resizes it. | whenever the panel is out of view.    |
 
-A floating bar first opens where a top bar would, and remembers where it was left in this browser, per
-dashboard and panel. **Space from the edge** adds room under Grafana's own top bars or above the bottom of the
+A floating bar first opens where a top bar would. Its right grip widens it, and the corner at its bottom
+right makes it wider and taller at once. Where it is left is remembered in this browser, per dashboard and panel;
+the **save** button on the bar keeps that place in the dashboard instead, so everyone who opens it finds the bar
+there once the dashboard is saved. A reader's own drag still wins in their browser until they save it or the
+dashboard's place changes. **Space from the edge** adds room under Grafana's own top bars or above the bottom of the
 page. **Pinned bar carries** keeps everything or only the buttons and the readout, **Pinned histogram height**
 sets how tall its bar is, and **Pinned bar background** is solid or translucent over the panels scrolling under
 it.
