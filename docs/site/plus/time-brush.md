@@ -59,12 +59,21 @@ feed.
 
 ## The pinned bar
 
-With **Pin to the top when scrolled past** on, the bar is drawn at the top of the page, where the panel was across
-it, from the moment the panel scrolls out of view until it comes back. Everything on it works there: drag, step,
-play; an arrow at its right scrolls the page back to the panel. **Space above** adds room under Grafana's own top
-bars when a theme or a kiosk mode changes their height. **Pinned bar carries** keeps everything or only the buttons
-and the readout, **Pinned histogram height** sets how tall its bar is, and **Pinned bar background** is solid or
-translucent over the panels scrolling under it.
+With **Pin to the top when scrolled past** on, the bar is drawn over the page from the moment the panel leaves the
+view until it comes back, and everything on it works there: drag, step, play; an arrow at its right scrolls the
+page back to the panel. **Pinned bar goes** chooses where:
+
+| Position     | Where it is drawn                                                                       | When                                  |
+| ------------ | --------------------------------------------------------------------------------------- | ------------------------------------- |
+| **Top**      | Under the bars Grafana keeps fixed, where the panel was across the page.                | Once the reader has scrolled past it. |
+| **Bottom**   | At the foot of the page, where the panel was across it.                                 | Whenever the panel is out of view.    |
+| **Floating** | Wherever the reader drags it by the grip at its left; the grip at its right resizes it. | Whenever the panel is out of view.    |
+
+A floating bar first opens where a top bar would, and remembers where it was left in this browser, per
+dashboard and panel. **Space from the edge** adds room under Grafana's own top bars or above the bottom of the
+page. **Pinned bar carries** keeps everything or only the buttons and the readout, **Pinned histogram height**
+sets how tall its bar is, and **Pinned bar background** is solid or translucent over the panels scrolling under
+it.
 
 ## Appearance
 
