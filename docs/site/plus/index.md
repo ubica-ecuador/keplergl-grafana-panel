@@ -22,6 +22,8 @@ run side by side on the same Grafana and the same dashboard.
   [3D tiles](/plus/maps/3d-tiles) from Google, with keys set once for the organisation.
 - A [layer tour](/plus/start/templates) dashboard installed with the app, on synthetic data that needs no setup.
 - [Grafana Assistant skills](/plus/assistant) that explain a Plus map, edit it and build dashboards around it.
+- A second panel, [Time Brush](/plus/time-brush): a histogram with a window to drag, step and play, written to
+  variables or to the dashboard time range, pinned to the top of the page while you scroll.
 
 [What Plus adds](/plus/start/what-plus-adds) compares the two editions feature by feature.
 

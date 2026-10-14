@@ -25,6 +25,7 @@ Plus adds.
 | Clicks and drawn polygons that also select and filter the Plus layers, and reach the other panels                              |            |  ✓   |
 | Sparkline and Fleet cards that follow Grafana's shared crosshair from the other panels                                         |            |  ✓   |
 | A [layer tour dashboard](/plus/start/templates) and [Grafana Assistant skills](/plus/assistant) for the Plus map               |            |  ✓   |
+| A second panel, [Time Brush](/plus/time-brush): one time brush for the whole dashboard, pinned to the top while scrolling      |            |  ✓   |
 
 ## Same options, same saved map
 

@@ -51,6 +51,11 @@ export const PLUS_SIDEBAR: DefaultTheme.SidebarItem[] = [
     ],
   },
   {
+    text: 'Time',
+    collapsed: false,
+    items: [{ text: 'Time Brush panel', link: '/plus/time-brush' }],
+  },
+  {
     text: 'Base maps and 3D',
     collapsed: false,
     items: [
