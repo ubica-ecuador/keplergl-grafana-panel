@@ -59,15 +59,17 @@ feed.
 
 ## The pinned bar
 
-With **Pin to the top when scrolled past** on, the bar is drawn over the page from the moment the panel leaves the
-view until it comes back, and everything on it works there: drag, step, play; an arrow at its right scrolls the
-page back to the panel. **Pinned bar goes** chooses where:
+**Pin the bar to the page** decides whether the bar leaves the panel: **Never**, **When scrolled past**, or
+**Always**. When it does, it is drawn over the page and everything on it works there: drag, step, play. With
+_When scrolled past_ it leaves once the panel is out of view and comes back with it, and an arrow at its right
+scrolls the page back to the panel; with _Always_ it is on the page from the moment the dashboard opens, and the
+panel is only a placeholder in the layout, as short as one row. **Pinned bar goes** chooses where:
 
-| Position     | Where it is drawn                                                                       | When                                  |
+| Position     | Where it is drawn                                                                       | When scrolled past pins…              |
 | ------------ | --------------------------------------------------------------------------------------- | ------------------------------------- |
-| **Top**      | Under the bars Grafana keeps fixed, where the panel was across the page.                | Once the reader has scrolled past it. |
-| **Bottom**   | At the foot of the page, where the panel was across it.                                 | Whenever the panel is out of view.    |
-| **Floating** | Wherever the reader drags it by the grip at its left; the grip at its right resizes it. | Whenever the panel is out of view.    |
+| **Top**      | Under the bars Grafana keeps fixed, where the panel was across the page.                | once the reader has scrolled past it. |
+| **Bottom**   | At the foot of the page, where the panel was across it.                                 | whenever the panel is out of view.    |
+| **Floating** | Wherever the reader drags it by the grip at its left; the grip at its right resizes it. | whenever the panel is out of view.    |
 
 A floating bar first opens where a top bar would, and remembers where it was left in this browser, per
 dashboard and panel. **Space from the edge** adds room under Grafana's own top bars or above the bottom of the
