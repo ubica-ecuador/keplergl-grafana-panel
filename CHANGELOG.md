@@ -4,6 +4,15 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## 1.2.1 (2026-10-14)
+
+Nothing on the map looks or behaves differently: this release changes how the plugin is built.
+
+- The development build no longer lints files as they change: `eslint-webpack-plugin` is gone from
+  the build and its dependencies. It brought in `braces`, whose every release carries a high
+  advisory with no fix (CVE-2026-93687), which the plugin validator reports. It never ran in the
+  production build; linting stays with `npm run lint` and the editor.
+
 ## 1.2.0 (2026-10-13)
 
 - **A shared link opens the map on its place**: a link that carries the lat/lng pair of a *center*

@@ -6,7 +6,6 @@
  */
 
 import CopyWebpackPlugin from 'copy-webpack-plugin';
-import ESLintPlugin from 'eslint-webpack-plugin';
 import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin';
 import path from 'path';
 import ReplaceInFileWebpackPlugin from 'replace-in-file-webpack-plugin';
@@ -208,11 +207,11 @@ const config = async (env: Env): Promise<Configuration> => {
           },
           typescript: { configFile: path.join(process.cwd(), 'tsconfig.json') },
         }),
-        new ESLintPlugin({
-          extensions: ['.ts', '.tsx'],
-          lintDirtyModulesOnly: Boolean(env.development), // don't lint on start, only lint changed files
-          failOnError: Boolean(env.production),
-        }),
+        // Local change: the scaffold's eslint-webpack-plugin is removed. It ran in development
+        // builds only, and it brings in micromatch > braces, whose every release (through 3.0.3)
+        // carries CVE-2026-93687 with no fix, an error in the plugin validator's osv-scanner
+        // check. Lint runs with `npm run lint` (CI, release) and in the editor. Keep it out when
+        // a create-plugin update brings it back.
       ] : []),
     ],
 
