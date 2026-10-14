@@ -72,6 +72,7 @@ so. See [Colour palettes and scales](/guide/kepler/colour-palettes-and-scales).
 | Area             | Sensors hull (the shape the outer sensors enclose) or Rectangle (their bounding box)           | Sensors hull |
 | Margin (%)       | Draws past the outer sensors by this share of their extent, 0 to 50                            | 0            |
 | Under 3D buildings | Draws the surface inside the base map, under its 3D buildings, so they stand in front of it; off, it is drawn over them like every other layer | on |
+| Follow 3D tiles  | With a 3D tileset on the map, lays the surface over the ground of its tiles; off, it stays flat | on |
 | Altitude (m)     | Metres above the ground the surface is drawn at, up to 10,000; empty is the ground             | On the ground |
 
 **Last** is the newest reading, because Grafana returns rows in time order. **Mean**, **Min** and
@@ -90,6 +91,17 @@ applies once the map is zoomed in enough for them to appear. The surface stays o
 where the map cannot draw it underneath: a base map without 3D buildings, a Mapbox base map, the
 globe, and Relief, whose terrain would bury it. Lifted with **Altitude**, every building is drawn in
 front of it. The other layers, the stations for instance, are still drawn over the buildings.
+
+### On the ground of 3D tiles
+
+A 3D tileset ([Google Photorealistic 3D Tiles](../maps/3d-tiles.md)) carries the real relief: the
+panel lowers it as a whole so the ground under the view sits at sea level, and a flat surface is
+buried where the land rises and floats where it falls. With **Follow 3D tiles** on, the surface is
+laid over the ground the tiles' meshes tell, two metres above it, and its isolines and labels
+follow: streets, parks and water are covered, and buildings stand through it. The ground is read
+from the tiles loaded for the view, so the surface settles as they load and is interpolated between
+its samples, about a sixtieth of its width apart; in a narrow street between towers it can still be
+hidden. Off, or with no tileset on the map, the surface stays flat.
 
 Without a max distance the surface covers the whole area, even far from any sensor, where the
 estimate is little more than an average of distant stations. Setting one is the honest choice when
@@ -127,7 +139,7 @@ reported from.
 | Vehicle                                                                    | The column that names each vehicle: Auto, None (each position) or a column    | Auto         |
 | Radius (m)                                                                 | The distance counted around each place, in metres on the ground, 10 to 50,000 | 500          |
 | Breaks                                                                     | The band boundaries, such as `2, 5, 10, 20, 40`; empty is Automatic           | Automatic    |
-| Bands, Isolines, Isoline colour, Isoline width, Isoline labels, Label size, Under 3D buildings, Altitude | As in Interpolate                                | as above     |
+| Bands, Isolines, Isoline colour, Isoline width, Isoline labels, Label size, Under 3D buildings, Follow 3D tiles, Altitude | As in Interpolate                                | as above     |
 | Resolution                                                                 | Low, Medium or High                                                           | Medium       |
 | Area                                                                       | Sensors hull or Rectangle, around the vehicles and their radius               | Sensors hull |
 | Margin (%)                                                                 | 0 to 50                                                                       | 0            |
