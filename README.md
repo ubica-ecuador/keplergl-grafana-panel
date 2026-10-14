@@ -8,7 +8,7 @@ source. Built for advanced spatio-temporal mobility data — points, trajectorie
 kepler.gl runs inside the panel, against your own queries: no account, no Mapbox token, and no
 hosted service rendering your map.
 
-**🌍 [Live demos](https://grafana.ubica.ec/dashboards)** — dashboards running in a public Grafana. No account and nothing to install: open one and pan, filter and play it yourself.
+**🌍 [Live demos](https://pacha.ubica.dev/)** — dashboards running on Pacha, a public Grafana. No account and nothing to install: open one and pan, filter and play it yourself.
 
 **📖 [Full documentation](https://docs.ubica.dev/)** — guides,
 tutorials, a layer gallery and a complete option reference.
@@ -69,8 +69,8 @@ tutorials, a layer gallery and a complete option reference.
 
 ## Dashboards built with it
 
-Every picture is the panel drawing rows a query returned — and every one of them is
-**[live at grafana.ubica.ec](https://grafana.ubica.ec/dashboards)**, read-only, so the screenshots
+Every picture is the panel drawing rows a query returned — and most of them are
+**[live on pacha.ubica.dev](https://pacha.ubica.dev/)**, read-only, so the screenshots
 below can be checked against the running thing.
 
 <table>
@@ -112,7 +112,7 @@ below can be checked against the running thing.
   </tr>
 </table>
 
-**[Open the live demos →](https://grafana.ubica.ec/dashboards)** — these six and a dozen more, from
+**[Open the live demos →](https://pacha.ubica.dev/)** — these and some forty more, from
 Zarr, COG, STAC and PMTiles imagery to wind fields and transit isochrones. How each one was built is in the
 [documentation](https://docs.ubica.dev/).
 

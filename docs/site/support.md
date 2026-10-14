@@ -36,7 +36,7 @@ here means funding work on the plugin.
 We design and build spatio-temporal dashboards on your own data sources — PostGIS, DuckDB over
 GeoParquet, STAC catalogues, cloud-optimised rasters, Zarr stores and WMS services — and deploy them
 on your Grafana, hardened and air-gapped installs included. The
-[live demos](https://grafana.ubica.ec/dashboards) are examples of that work.
+[live demos](https://pacha.ubica.dev/) are examples of that work.
 
 ## Training
 

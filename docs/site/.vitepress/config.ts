@@ -31,13 +31,14 @@ export const VERSIONS = {
 const base = process.env.DOCS_BASE ?? '/';
 
 /**
- * The published instance: the `grafana-sources` bench behind grafana.ubica.ec,
+ * The published instance: Pacha (github.com/ubica-ecuador/pacha) at
+ * pacha.ubica.dev, whose home page lists every dashboard with a screenshot,
  * reachable anonymously as a read-only Viewer, so a reader can open the
  * dashboards these pages describe without installing anything first.
  * Kept as a constant because it appears in the nav and the sidebar, and a dead
  * demo link in both places at once is worse than none.
  */
-export const DEMO_URL = 'https://grafana.ubica.ec/dashboards';
+export const DEMO_URL = 'https://pacha.ubica.dev/';
 
 export default defineConfig({
   base,

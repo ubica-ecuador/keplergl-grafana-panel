@@ -11,7 +11,7 @@ hero:
   actions:
     - theme: brand
       text: Live demos →
-      link: https://grafana.ubica.ec/dashboards
+      link: https://pacha.ubica.dev/
     - theme: brand
       text: Quickstart
       link: /guide/quickstart
@@ -62,8 +62,8 @@ features:
 Six of them, each one a Grafana dashboard and nothing else — no account, no Mapbox token, no hosted
 service rendering the map. Every picture here is the panel drawing rows a query returned.
 
-All six are **running live at [grafana.ubica.ec](https://grafana.ubica.ec/dashboards)**, along with
-a dozen more, on a public Grafana that lets anyone in as a read-only viewer. Nothing to install and
+Most of them are **running live on [pacha.ubica.dev](https://pacha.ubica.dev/)**, along with
+some forty more, on a public Grafana that lets anyone in as a read-only viewer. Nothing to install and
 nothing to sign up for: open one, drag its timeline, draw on the map. Several are labelled in
 Spanish; the maps are the point.
 
@@ -71,7 +71,7 @@ Spanish; the maps are the point.
 
 <div class="showcase-cta">
 
-[Open the live demos →](https://grafana.ubica.ec/dashboards) · [Build one in ten minutes →](./guide/quickstart)
+[Open the live demos →](https://pacha.ubica.dev/) · [Build one in ten minutes →](./guide/quickstart)
 
 </div>
 

@@ -6,7 +6,7 @@ in it. If you have neither, [Tutorial 1](../tutorials/first-map) starts a step e
 one from a public URL.
 
 To see where this ends up before installing anything, the
-[live demos](https://grafana.ubica.ec/dashboards) are some finished dashboards on a public
+[live demos](https://pacha.ubica.dev/) are some finished dashboards on a public
 Grafana, open to anyone as a read-only viewer.
 
 ## 1. Add a panel

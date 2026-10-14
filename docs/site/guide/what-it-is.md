@@ -21,7 +21,7 @@ hundreds of thousands of features and animate them.
 
 ::: tip See it running before you install anything
 The dashboards built with this panel are live at
-**[grafana.ubica.ec](https://grafana.ubica.ec/dashboards)** — trajectories, wind fields, satellite
+**[pacha.ubica.dev](https://pacha.ubica.dev/)** — trajectories, wind fields, satellite
 imagery on a clock, polygons out of a database, tables that re-rank as you pan. Anonymous visitors
 are let in as read-only viewers, so you can pan, filter and play them with no account and nothing
 installed.
