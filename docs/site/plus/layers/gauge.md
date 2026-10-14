@@ -63,6 +63,7 @@ setting needs them.
 | Icon                    | The catalogue icon that fills, when Shape is Icon                                                  | square                    |
 | Position                | Center, or Above, Right, Below or Left of the point                                                | Center                    |
 | Distance                | Gap in pixels between the point and the gauge, 0 to 120; shown when Position is not Center         | 30                        |
+| Over roads and labels   | Keeps the gauges over the base map groups moved to the top (roads, labels) and over other layers   | on                        |
 | Per place               | Which rows a place draws: All rows, Last, Min or Max                                               | Last                      |
 | Asset                   | The column that tells moving things apart: Auto, None (by position), or a column                   | Auto                      |
 | History                 | What the popup charts: Off, Color field, or any numeric column                                     | Color field               |

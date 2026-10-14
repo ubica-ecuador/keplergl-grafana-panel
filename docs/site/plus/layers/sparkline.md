@@ -100,29 +100,30 @@ the dashboard to keep them. Click the pin again to drop it.
 
 Under **Sparkline** in the layer's settings, below kepler's colour group.
 
-| Option                       | What it does                                                                                                             | Default                 |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
-| **Name field**               | The text column shown as the card's name.                                                                                | first text column       |
-| **Time field**               | The time column the chart runs along.                                                                                    | Auto (first time field) |
-| **Scale**                    | **Common** to all cards, or **Per site**.                                                                                | Common                  |
-| **Asset**                    | The column that names a moving asset; **None (by position)** groups by coordinates only.                                 | Auto                    |
-| **Minimum**, **Maximum**     | Fix the chart's vertical range. Empty means from the data.                                                               | auto                    |
-| **Unit**                     | Text after the value, kept as typed: a leading space separates it from the number (` NTU`).                              | empty                   |
-| **Card size**                | Small, Medium or Large.                                                                                                  | Medium                  |
-| **Cards**                    | **Auto** places cards by itself; **On hover** shows only hovered and pinned cards.                                       | Auto                    |
-| **Overlap**                  | How much cards may cover each other: **Don't allow**, **Some**, **Allow**.                                               | Don't allow             |
-| **Show dots**                | Off makes the dots see-through, for a map whose other layer already draws the stations. Hovering and pinning still work. | on                      |
-| **Dot radius**               | The dot's size, 2 to 20 pixels.                                                                                          | 5                       |
-| **Fill under the line**      | Shades the area under the series.                                                                                        | on                      |
-| **Card opacity**             | The card's background only; the text and the chart stay opaque.                                                          | 0.9                     |
-| **Alerts**                   | Turns the alerts below on or off.                                                                                        | on                      |
-| **No data after (min)**      | Minutes without a reading before a card alerts. Empty means three of the station's own intervals.                        | auto                    |
-| **Worst band too**           | A station in the colour range's last band also alerts.                                                                   | off                     |
-| **Tooltip**                  | kepler's tooltip on hover. Off, the card still shows.                                                                    | on                      |
-| **Follow shared crosshair**  | Draws Grafana's shared crosshair on each card's chart.                                                                   | on                      |
-| **Show crosshair value**     | Beside the value, the reading at the crosshair and the change since.                                                     | on                      |
-| **Change colour**            | How the change is coloured: **Neutral**, **Rising is good**, **Rising is bad**.                                          | Neutral                 |
-| **Card hover drives graphs** | Hovering a card's chart moves the crosshair of the dashboard's graphs.                                                   | off                     |
+| Option                         | What it does                                                                                                                                                     | Default                 |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| **Name field**                 | The text column shown as the card's name.                                                                                                                        | first text column       |
+| **Time field**                 | The time column the chart runs along.                                                                                                                            | Auto (first time field) |
+| **Scale**                      | **Common** to all cards, or **Per site**.                                                                                                                        | Common                  |
+| **Asset**                      | The column that names a moving asset; **None (by position)** groups by coordinates only.                                                                         | Auto                    |
+| **Minimum**, **Maximum**       | Fix the chart's vertical range. Empty means from the data.                                                                                                       | auto                    |
+| **Unit**                       | Text after the value, kept as typed: a leading space separates it from the number (` NTU`).                                                                      | empty                   |
+| **Card size**                  | Small, Medium or Large.                                                                                                                                          | Medium                  |
+| **Cards**                      | **Auto** places cards by itself; **On hover** shows only hovered and pinned cards.                                                                               | Auto                    |
+| **Overlap**                    | How much cards may cover each other: **Don't allow**, **Some**, **Allow**.                                                                                       | Don't allow             |
+| **Show dots**                  | Off makes the dots see-through, for a map whose other layer already draws the stations. Hovering and pinning still work.                                         | on                      |
+| **Dot radius**                 | The dot's size, 2 to 20 pixels.                                                                                                                                  | 5                       |
+| **Dots over roads and labels** | Keeps the dots over the base map groups moved to the top of the map (roads, labels), as the cards always are; off, the dots keep their place in the layer order. | on                      |
+| **Fill under the line**        | Shades the area under the series.                                                                                                                                | on                      |
+| **Card opacity**               | The card's background only; the text and the chart stay opaque.                                                                                                  | 0.9                     |
+| **Alerts**                     | Turns the alerts below on or off.                                                                                                                                | on                      |
+| **No data after (min)**        | Minutes without a reading before a card alerts. Empty means three of the station's own intervals.                                                                | auto                    |
+| **Worst band too**             | A station in the colour range's last band also alerts.                                                                                                           | off                     |
+| **Tooltip**                    | kepler's tooltip on hover. Off, the card still shows.                                                                                                            | on                      |
+| **Follow shared crosshair**    | Draws Grafana's shared crosshair on each card's chart.                                                                                                           | on                      |
+| **Show crosshair value**       | Beside the value, the reading at the crosshair and the change since.                                                                                             | on                      |
+| **Change colour**              | How the change is coloured: **Neutral**, **Rising is good**, **Rising is bad**.                                                                                  | Neutral                 |
+| **Card hover drives graphs**   | Hovering a card's chart moves the crosshair of the dashboard's graphs.                                                                                           | off                     |
 
 **No data after (min)** and **Worst band too** show only while **Alerts** is on, and **Change
 colour** only while **Show crosshair value** is on.
