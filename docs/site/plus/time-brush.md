@@ -36,7 +36,8 @@ map. The brush lives in a panel of its own, as tall as you like, and every panel
 
 On the histogram, drag inside the window to move it, drag a handle to resize it, or drag the empty bar to draw a
 new one. When the window already covers everything, a drag anywhere draws a new one; Shift and drag draws from
-anywhere at any time.
+anywhere at any time. A click on the empty bar picks the bucket under it while the window snaps to buckets, and
+means nothing otherwise.
 
 ## Buckets
 
@@ -60,7 +61,22 @@ feed.
 
 With **Pin to the top when scrolled past** on, the bar is drawn at the top of the page, where the panel was across
 it, from the moment the panel scrolls out of view until it comes back. Everything on it works there: drag, step,
-play. **Space above** adds room under Grafana's own top bars when a theme or a kiosk mode changes their height.
+play; an arrow at its right scrolls the page back to the panel. **Space above** adds room under Grafana's own top
+bars when a theme or a kiosk mode changes their height. **Pinned bar carries** keeps everything or only the buttons
+and the readout, **Pinned histogram height** sets how tall its bar is, and **Pinned bar background** is solid or
+translucent over the panels scrolling under it.
+
+## Appearance
+
+| Option                        | What it sets                                                                  |
+| ----------------------------- | ----------------------------------------------------------------------------- |
+| Window colour                 | The window's fill, border and handles. Empty: the theme's primary colour.     |
+| Shared cursor colour          | The cursor's line. Empty: the theme's warning colour.                         |
+| Bars                          | A colour per series, from the standard colour options, or one colour for all. |
+| Bars outside the window       | How visible they stay, in percent.                                            |
+| Time axis                     | The dates under the histogram.                                                |
+| Window mode and speed pickers | The two pickers at the right of the toolbar.                                  |
+| Density                       | Comfortable, or compact for a bar in a short panel.                           |
 
 ## The shared crosshair
 
