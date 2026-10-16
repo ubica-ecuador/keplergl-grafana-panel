@@ -165,6 +165,16 @@ describe('readClickedPosition', () => {
     });
   });
 
+  it('reads the row from getClickData when the layer hides its tooltip from getHoverData', () => {
+    const quiet = store({ clicked: ON_FIRE });
+    const layer = (quiet.getState() as any).keplerGl[KEPLER_INSTANCE_ID].visState.layers[0];
+    const read = layer.getHoverData;
+    layer.getHoverData = () => null;
+    layer.getClickData = read;
+
+    expect(readClickedPosition(quiet)).toMatchObject({ kind: 'position', position: { lng: -122.95, lat: 39.25 } });
+  });
+
   it('is unresolved when a layer has neither columns nor a geometry', () => {
     expect(readClickedPosition(store({ clicked: ON_FIRE, columns: { hex_id: { value: 'h3' } } }))).toMatchObject({
       kind: 'unresolved',

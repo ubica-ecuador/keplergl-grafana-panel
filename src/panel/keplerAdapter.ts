@@ -1400,6 +1400,17 @@ interface VisStateLike {
       animationConfig: unknown,
       hoverInfo: unknown
     ) => unknown;
+    /**
+     * Resolves a clicked object to its row, for a layer whose click answers
+     * apart from its tooltip; `getHoverData`'s arguments. See `clickedRow`.
+     */
+    getClickData?: (
+      pickedObject: unknown,
+      dataContainer: unknown,
+      fields: Array<{ name: string }>,
+      animationConfig: unknown,
+      clickInfo: unknown
+    ) => unknown;
   }>;
   /**
    * The deck.gl picking info of the entity last clicked, stored verbatim by
@@ -1576,6 +1587,9 @@ export function readClickSlices(store: Store): unknown[] {
  * The feature's rows all share the identity columns — the feature exists
  * because they were grouped by trip id — so the first row answers for the
  * trip.
+ *
+ * A layer whose tooltip is off but whose clicks still select answers through
+ * `getClickData` instead; see `clickedRow`.
  */
 export function readClickedEntity(store: Store, fields: string[]): Record<string, unknown> | null | undefined {
   const visState = getVisState(store);
@@ -1617,19 +1631,11 @@ export function readClickedEntity(store: Store, fields: string[]): Record<string
   const layer = typeof layerIdx === 'number' ? (visState.layers ?? [])[layerIdx] : undefined;
   const dataId = layer?.config?.dataId;
   const dataset = dataId ? visState.datasets[dataId] : undefined;
-  if (!layer?.getHoverData || !dataset) {
+  if (!(layer?.getClickData || layer?.getHoverData) || !dataset) {
     return undefined;
   }
 
-  // `object ?? index`: binary-format geojson layers pick with a null object
-  // and the row index instead, same contract as kepler's `getLayerHoverProp`.
-  const row = layer.getHoverData(
-    clicked.object ?? clicked.index,
-    dataset.dataContainer,
-    dataset.fields,
-    visState.animationConfig,
-    clicked
-  );
+  const row = clickedRow(layer, dataset, visState.animationConfig, clicked);
   const fallback = firstFeatureRow(clicked.object);
 
   const values: Record<string, unknown> = {};
@@ -1644,6 +1650,38 @@ export function readClickedEntity(store: Store, fields: string[]): Record<string
     }
   }
   return values;
+}
+
+type KeplerLayerLike = VisStateLike['layers'][number];
+
+/**
+ * The row a click picked: the layer's `getClickData` when it has one, else the
+ * row its tooltip shows.
+ *
+ * A layer hides kepler's tooltip by answering `getHoverData` with nothing —
+ * kepler opens no popup for a hover or a click without a row — and that alone
+ * would leave its clicks selecting nothing. A layer that wants no tooltip but
+ * clicks that select, as a Plus sparkline with its tooltip switched off does
+ * for its dot and its card, answers `getClickData` with the row.
+ *
+ * `object ?? index`: binary-format geojson layers pick with a null object and
+ * the row index instead, same contract as kepler's `getLayerHoverProp`.
+ */
+function clickedRow(
+  layer: KeplerLayerLike,
+  dataset: VisStateLike['datasets'][string],
+  animationConfig: unknown,
+  clicked: { object?: unknown; index?: number }
+): unknown {
+  const read = layer.getClickData ?? layer.getHoverData;
+  return read?.call(
+    layer,
+    clicked.object ?? clicked.index,
+    dataset.dataContainer,
+    dataset.fields,
+    animationConfig,
+    clicked
+  );
 }
 
 /** A table-mode trip feature's first vertex row, if the object is one. */
@@ -1697,16 +1735,10 @@ export function readClickedPosition(store: Store): ClickedPosition {
   if (columns?.lat && columns?.lng) {
     const dataId = layer.config?.dataId;
     const dataset = dataId ? visState.datasets[dataId] : undefined;
-    if (!dataset || !layer.getHoverData) {
+    if (!dataset || !(layer.getClickData || layer.getHoverData)) {
       return { kind: 'unresolved', ...where, reason: 'the layer has no dataset to read the clicked row from' };
     }
-    const row = layer.getHoverData(
-      clicked.object ?? clicked.index,
-      dataset.dataContainer,
-      dataset.fields,
-      visState.animationConfig,
-      clicked
-    );
+    const row = clickedRow(layer, dataset, visState.animationConfig, clicked);
     const lat = coordinateValue(rowFieldValue(row, columnFieldIdx(columns.lat, dataset.fields)));
     const lng = coordinateValue(rowFieldValue(row, columnFieldIdx(columns.lng, dataset.fields)));
     if (lat !== null && lng !== null) {
