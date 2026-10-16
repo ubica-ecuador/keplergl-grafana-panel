@@ -1,7 +1,7 @@
 import { messages } from '@kepler.gl/localization';
 import { initApplicationConfig } from '@kepler.gl/utils';
 
-import { DEFAULT_RASTER_SERVER_URL } from './constants';
+import { DEFAULT_RASTER_SERVER_URL, rasterServerUrlsOf } from './constants';
 import { registerFlowFieldMessages } from './flowFieldMessages';
 import { registerSymbolMessages } from './symbolMessages';
 import { registerMarkersMessages } from './markersMessages';
@@ -35,7 +35,9 @@ export function assetBaseUrl(): string {
 export function configureKepler(): void {
   initApplicationConfig({
     cdnUrl: assetBaseUrl(),
-    rasterServerUrls: [DEFAULT_RASTER_SERVER_URL],
+    // kepler's own Add Data → Tileset form starts from this list. Empty by
+    // default, like the panel option: see DEFAULT_RASTER_SERVER_URL.
+    rasterServerUrls: rasterServerUrlsOf(DEFAULT_RASTER_SERVER_URL),
     // A "new release" banner has no place inside a dashboard panel.
     showReleaseBanner: false,
     // The Flow layer is the reason this plugin pins kepler.gl 3.3.0-alpha.15

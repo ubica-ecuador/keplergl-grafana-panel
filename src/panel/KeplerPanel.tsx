@@ -12,11 +12,12 @@ import { framesToWms } from '../data/wmsDataset';
 import { framesToZarr } from '../data/zarrDataset';
 import { toKeplerTheme } from '../data/keplerTheme';
 import { SavedMapConfig } from '../data/mapConfig';
-import { CUSTOM_BASEMAP_ID, DEFAULT_RASTER_SERVER_URL } from './constants';
+import { CUSTOM_BASEMAP_ID, rasterServerUrlsOf, resolveRasterServerUrl } from './constants';
 import { resolveCartoKey } from './cartoKey';
 import { resolveCustomBasemapUrl } from './customBasemapUrl';
 import { DEFAULT_CLICK_AREA_METRES } from './clickArea';
 import { LazyKeplerMap } from './LazyKeplerMap';
+import { RasterServerNotice } from './RasterServerNotice';
 import { useInterpolatedOption } from './useInterpolatedOption';
 import { useStableValue } from './useStableValue';
 import { publishIntervalOf } from './timeVariableSync';
@@ -97,16 +98,20 @@ export function KeplerPanel(props: Props) {
   // Rasters travel separately from the row datasets all the way to the adapter:
   // a scene has no rows, and `processRowObject([])` returns null, so anything
   // riding in the row list is dropped on the way into kepler.
-  const rasters = useMemo(
-    () =>
-      framesToRasters(data.series, fieldMappings, {
-        tileServerUrls: [(options.rasterServerUrl || DEFAULT_RASTER_SERVER_URL).trim()],
-        colormap: options.rasterColormap || undefined,
-        painted: options.rasterPainted,
-        bands,
-      }),
-    [data.series, fieldMappings, options.rasterServerUrl, options.rasterColormap, options.rasterPainted, bands]
-  );
+  //
+  // No server is set by default (see DEFAULT_RASTER_SERVER_URL), and a query
+  // that needs one is then left off the map and named in `rasterServerMissing`.
+  const { rasters, rasterServerMissing } = useMemo(() => {
+    const missing: string[] = [];
+    const rasters = framesToRasters(data.series, fieldMappings, {
+      tileServerUrls: rasterServerUrlsOf(options.rasterServerUrl),
+      colormap: options.rasterColormap || undefined,
+      painted: options.rasterPainted,
+      bands,
+      onMissingServer: (label) => missing.push(label),
+    });
+    return { rasters, rasterServerMissing: missing };
+  }, [data.series, fieldMappings, options.rasterServerUrl, options.rasterColormap, options.rasterPainted, bands]);
 
   // A WMS travels the same separate road, and for the same reason: what the
   // query describes is a service, not rows. Nothing about it needs a tile
@@ -124,14 +129,22 @@ export function KeplerPanel(props: Props) {
   // be one more place to get it wrong. The colour ramp is shared for the same
   // reason: TiTiler's colormap names are the vocabulary that option already
   // speaks.
-  const zarrLayers = useMemo(
-    () =>
-      framesToZarr(data.series, fieldMappings, {
-        serverUrl: (options.rasterServerUrl || DEFAULT_RASTER_SERVER_URL).trim(),
-        colormap: options.rasterColormap || undefined,
-        rescale: options.zarrRescale || undefined,
-      }),
-    [data.series, fieldMappings, options.rasterServerUrl, options.rasterColormap, options.zarrRescale]
+  const { zarrLayers, zarrServerMissing } = useMemo(() => {
+    const missing: string[] = [];
+    const zarrLayers = framesToZarr(data.series, fieldMappings, {
+      serverUrl: resolveRasterServerUrl(options.rasterServerUrl),
+      colormap: options.rasterColormap || undefined,
+      rescale: options.zarrRescale || undefined,
+      onMissingServer: (label) => missing.push(label),
+    });
+    return { zarrLayers, zarrServerMissing: missing };
+  }, [data.series, fieldMappings, options.rasterServerUrl, options.rasterColormap, options.zarrRescale]);
+
+  // The queries waiting for a tile server, each named once: a query can carry
+  // both a raster and a Zarr store.
+  const serverMissing = useMemo(
+    () => [...new Set([...rasterServerMissing, ...zarrServerMissing])],
+    [rasterServerMissing, zarrServerMissing]
   );
 
   const keplerTheme = useMemo(() => toKeplerTheme(grafanaTheme), [grafanaTheme]);
@@ -217,6 +230,8 @@ export function KeplerPanel(props: Props) {
         hoverMaxAgeSeconds={options.hoverMaxAgeSeconds}
         panelId={id}
       />
+      {/* After the map, so it stacks over it. */}
+      <RasterServerNotice queries={serverMissing} />
     </div>
   );
 }

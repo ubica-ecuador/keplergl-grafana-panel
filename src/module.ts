@@ -12,7 +12,7 @@ import { AreaVariableEditor } from './editors/AreaVariableEditor';
 import { DEFAULT_CLICK_AREA_METRES } from './panel/clickArea';
 import { ViewportVariablesEditor } from './editors/ViewportVariablesEditor';
 import { PlayheadVariableEditor } from './editors/PlayheadVariableEditor';
-import { DEFAULT_RASTER_SERVER_URL } from './panel/constants';
+import { RASTER_SERVER_PLACEHOLDER } from './panel/constants';
 import { DEFAULT_PUBLISH_INTERVAL_MS, MIN_PUBLISH_INTERVAL_MS } from './panel/timeVariableSync';
 
 export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelOptions((builder) =>
@@ -207,9 +207,9 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       path: 'rasterServerUrl',
       name: 'Raster tile server',
       description:
-        'TiTiler-compatible server that turns a COG into tiles, for queries returning a raster_url column. It reads the imagery on the map\u2019s behalf, so it must be able to reach it \u2014 the public default cannot see anything private, and is given the url you point it at. A .pmtiles url needs no server and ignores this.',
+        'TiTiler-compatible server that turns a COG or a Zarr store into tiles, for queries returning a raster_url or zarr_url column. None is set by default, and until one is, those queries draw nothing. It reads the imagery on the map\u2019s behalf and is handed every url, signature included, so use a server you run; Development Seed\u2019s public demo, https://titiler.xyz, reads public imagery only. A .pmtiles url needs no server and ignores this.',
       category: ['Map'],
-      settings: { placeholder: DEFAULT_RASTER_SERVER_URL },
+      settings: { placeholder: RASTER_SERVER_PLACEHOLDER },
     })
     .addBooleanSwitch({
       path: 'rasterPainted',

@@ -193,6 +193,15 @@ export function isPanelRasterId(id: string): boolean {
 }
 
 /**
+ * A query as an editor knows it, for a message: `Query A`, or the frame's own
+ * name with the query beside it. Many data sources name the frame after the
+ * query's ref id, and "A returns imagery" reads as a typo.
+ */
+export function queryName(frame: DataFrame, refId: string): string {
+  return frame.name && frame.name !== refId ? `${frame.name} (query ${refId})` : `Query ${refId}`;
+}
+
+/**
  * Turns the queries that point at imagery into raster descriptors.
  *
  * Sibling to `framesToDatasets` rather than part of it: a raster dataset has no
@@ -209,7 +218,14 @@ export function isPanelRasterId(id: string): boolean {
 export function framesToRasters(
   frames: DataFrame[],
   overrides: Record<string, FieldRoleOverrides> = {},
-  opts: { tileServerUrls: string[]; colormap?: string; painted?: boolean; bands?: BandCombination }
+  opts: {
+    tileServerUrls: string[];
+    colormap?: string;
+    painted?: boolean;
+    bands?: BandCombination;
+    /** Told the name of each query dropped for want of a tile server (`queryName`), so the panel can say so. */
+    onMissingServer?: (label: string) => void;
+  }
 ): RasterDataset[] {
   const rasters: RasterDataset[] = [];
 
@@ -267,14 +283,17 @@ export function framesToRasters(
     // A COG with nowhere to be served is dropped here, on its own. Left in,
     // kepler's `getTitilerUrl` throws 'No raster tile servers' from inside the
     // layer's tile fetch, where it surfaces as a layer that draws nothing
-    // rather than as anything anyone can act on. An archive beside it is
-    // unaffected: it never wanted a server.
+    // rather than as anything anyone can act on — so the caller is told
+    // instead, and the panel says which query is waiting for a server. An
+    // archive beside it is unaffected: it never wanted a server.
     const kind: RasterKind = !wantsItem
       ? rasterKind(opening.sourceUrl, opts.painted)
       : recipe.renderer === 'painted'
         ? 'painted'
         : 'stac';
+    const label = frame.name ?? `Query ${refId}`;
     if (kind !== 'pmtiles' && opts.tileServerUrls.length === 0) {
+      opts.onMissingServer?.(queryName(frame, refId));
       return;
     }
 
@@ -285,7 +304,7 @@ export function framesToRasters(
 
     rasters.push({
       id: rasterDatasetId(refId),
-      label: frame.name ?? `Query ${refId}`,
+      label,
       kind,
       sourceUrl,
       metadataUrl,

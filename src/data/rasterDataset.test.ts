@@ -128,6 +128,36 @@ describe('framesToRasters', () => {
     expect(framesToRasters([rasterFrame(COG)], {}, { tileServerUrls: [] })).toEqual([]);
   });
 
+  it('names each query it dropped for want of a server, so the panel can say so', () => {
+    const missing: string[] = [];
+    framesToRasters([rasterFrame(COG, 'A'), rasterFrame(COG, 'B')], {}, {
+      tileServerUrls: [],
+      onMissingServer: (label) => missing.push(label),
+    });
+
+    expect(missing).toEqual(['Query A', 'Query B']);
+  });
+
+  it('names a query by its frame’s name when that is more than the ref id', () => {
+    const named = (name: string) => ({ ...rasterFrame(COG, 'B'), name });
+    const missing: string[] = [];
+    framesToRasters([named('B'), named('Sentinel-2')], {}, {
+      tileServerUrls: [],
+      onMissingServer: (label) => missing.push(label),
+    });
+
+    expect(missing).toEqual(['Query B', 'Sentinel-2 (query B)']);
+  });
+
+  it('names no query when there is a server, or when the query needs none', () => {
+    const missing: string[] = [];
+    framesToRasters([rasterFrame(COG)], {}, { tileServerUrls: [SERVER], onMissingServer: (l) => missing.push(l) });
+    framesToRasters([rasterFrame(PMTILES)], {}, { tileServerUrls: [], onMissingServer: (l) => missing.push(l) });
+    framesToRasters([rasterFrame('   ')], {}, { tileServerUrls: [], onMissingServer: (l) => missing.push(l) });
+
+    expect(missing).toEqual([]);
+  });
+
   it('names the dataset after the query', () => {
     const frame = toDataFrame({
       refId: 'B',

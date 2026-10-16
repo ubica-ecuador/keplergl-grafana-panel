@@ -307,6 +307,24 @@ describe('framesToZarr', () => {
     // makes for a COG without a server.
     expect(framesToZarr([zarrFrame()], {}, { serverUrl: '  ' })).toEqual([]);
   });
+
+  it('names each query it dropped for want of a server, so the panel can say so', () => {
+    const missing: string[] = [];
+    framesToZarr([zarrFrame({}, 'A'), zarrFrame({ variable: '' }, 'B')], {}, {
+      serverUrl: '',
+      onMissingServer: (label) => missing.push(label),
+    });
+
+    // B names no variable, so it asked for nothing a server could draw.
+    expect(missing).toEqual(['Query A']);
+  });
+
+  it('names no query when there is a server', () => {
+    const missing: string[] = [];
+    framesToZarr([zarrFrame()], {}, { serverUrl: SERVER, onMissingServer: (label) => missing.push(label) });
+
+    expect(missing).toEqual([]);
+  });
 });
 
 describe('defaultTimeLabel', () => {
