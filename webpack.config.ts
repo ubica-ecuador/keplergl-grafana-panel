@@ -130,6 +130,22 @@ const config = async (env: Env): Promise<Configuration> => {
             from: '../node_modules/maplibre-gl/dist/maplibre-gl-{worker,shared}.mjs',
             to: 'maplibre/[name][ext]',
           },
+          /*
+           * The decoders loaders.gl would otherwise fetch from unpkg.com and
+           * www.gstatic.com at runtime; src/panel/loaderOptions.ts points it
+           * here instead. The Basis transcoder and encoder (KTX2 textures in 3D
+           * tiles and glTF) are loaded by loaders.gl itself, by file name. The
+           * Draco decoder's JavaScript is compiled into the bundle
+           * (src/panel/dracoDecoder.ts) and only its WebAssembly is a file.
+           */
+          {
+            from: '../node_modules/@loaders.gl/textures/dist/libs/basis_{transcoder,encoder}.{js,wasm}',
+            to: 'loaders/[name][ext]',
+            // Shipped byte for byte as loaders.gl publishes them, not run
+            // through the bundle's minifier a second time.
+            info: { minimized: true },
+          },
+          { from: '../node_modules/draco3d/draco_decoder.wasm', to: 'loaders/[name][ext]' },
         ],
       }),
       /*
@@ -284,6 +300,30 @@ const config = async (env: Env): Promise<Configuration> => {
           test: /\.css$/,
           resourceQuery: RAW_QUERY,
           type: 'asset/source',
+        },
+        /*
+         * The Draco decoder compiled into the bundle (src/panel/dracoDecoder.ts)
+         * is Emscripten's environment-sniffing build, which requires Node's
+         * `fs` and `path` on the branch it takes under Node. In the browser that
+         * branch never runs, but webpack resolves the requires anyway and has
+         * no browser stand-in for either; an empty module is all they need.
+         */
+        {
+          test: /[\\/]draco3d[\\/]draco_decoder_nodejs\.js$/,
+          resolve: { fallback: { fs: false, path: false } },
+        },
+        /*
+         * parquet-wasm's WebAssembly, which webpack already emits because the
+         * package locates it with `new URL(…, import.meta.url)`, under a name
+         * src/panel/loaderOptions.ts can point loaders.gl at. Its default
+         * would be a content hash, and loaders.gl's Parquet reader passes its
+         * own unpkg.com URL unless it is given this one.
+         */
+        {
+          test: /[\\/]parquet-wasm[\\/]esm[\\/]parquet_wasm_bg\.wasm$/,
+          dependency: 'url',
+          type: 'asset/resource',
+          generator: { filename: 'loaders/[name][ext]' },
         },
       ],
     },

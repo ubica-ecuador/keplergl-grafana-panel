@@ -16,3 +16,14 @@ declare module '*.css?raw' {
   const text: string;
   export default text;
 }
+
+/**
+ * Google's Draco decoder as the `draco3d` package ships it: an Emscripten
+ * factory that takes the module's settings (here `wasmBinary` and the
+ * `onModuleLoaded`/`onAbort` callbacks) and returns its ready promise. See
+ * `panel/dracoDecoder.ts`.
+ */
+declare module 'draco3d/draco_decoder_nodejs.js' {
+  const DracoDecoderModule: (settings: Record<string, unknown>) => Promise<unknown> | undefined;
+  export default DracoDecoderModule;
+}

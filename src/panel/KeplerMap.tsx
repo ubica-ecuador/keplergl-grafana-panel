@@ -20,6 +20,7 @@ import { KEPLER_INSTANCE_ID } from './constants';
 import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES, startingStyleType } from './basemaps';
 import { cartoTransformRequest } from './cartoKey';
 import { configureKepler } from './keplerConfig';
+import { configureLoaders } from './loaderOptions';
 import { configureMaplibreWorker } from './maplibreWorker';
 import { createKeplerStore } from './keplerStore';
 import {
@@ -84,6 +85,7 @@ const NO_TIME_VARIABLES: TimeVariableMapping = { from: '', to: '' };
 // module.ts so it is part of the deferred chunk.
 configureKepler();
 configureMaplibreWorker();
+configureLoaders();
 
 // Three repairs to the stock KeplerGl and one addition: a map control that
 // carries the effects button kepler ships but never mounts, a range brush that
@@ -633,6 +635,11 @@ export function KeplerMap({
                      URLs through untouched: the CARTO key on every style, sprite,
                      glyph and tile URL. */
                       transformRequest={transformRequest}
+                      /* No right-to-left text plugin. On a Mapbox base map
+                     react-map-gl would load one from api.mapbox.com and run it in
+                     the map's workers, which is code from a third-party host;
+                     this plugin's MapLibre maps never ask for one. */
+                      RTLTextPlugin={false}
                       /* kepler renders one commit late and silently discards actions
                      addressed to an instance that has not registered yet. */
                       onKeplerGlInitialized={() => setIsReady(true)}
