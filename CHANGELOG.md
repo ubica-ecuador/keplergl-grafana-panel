@@ -25,6 +25,13 @@ release documents what changed since the one before it.
   the editor sees it. **Change:** a panel that left the option empty and drew imagery through the
   demo now shows the notice instead; type `https://titiler.xyz` into the option to keep that, for
   public imagery.
+- **Symbols anchor where you choose**: a new **Anchor** puts the centre, an edge or a corner of a
+  symbol on the row's position, shapes and pictures alike. A shape's edges and corners are those of
+  what it draws, so an arrow anchored at its bottom has its tail on the point and a vector drawn from
+  a station starts at the station. **Turn about** chooses whether a turned symbol pivots on that
+  anchor or spins about its own centre. The centre keeps each glyph's own point, so no saved layer
+  moves. With **Use the column's number** on, the size range is no longer offered, as it is never
+  read then.
 - **Save the map from the map**: while the panel is open in the panel editor, the map shows a
   **Save map** button along its top edge, just right of the side panel's toggle. It saves the map
   configuration exactly as **Map configuration → Save current map configuration** does, and says
