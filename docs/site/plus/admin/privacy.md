@@ -1,22 +1,30 @@
 # Privacy
 
 Plus has no backend and no server of UBICA's behind it. Everything it does happens in the viewer's browser, which
-talks to your Grafana and to the map providers whose keys you set. This page says what goes where.
+talks to your Grafana and to the map providers whose keys you set, and in Grafana's own plugin proxy, which forwards
+requests to Google and Azure Maps with their keys. This page says what goes where.
 
 ## Map tiles and 3D tiles
 
-Base map and 3D tile requests go from the viewer's browser straight to each provider: CARTO, MapTiler, Esri, Azure
-Maps or Google. Each request carries the organisation's key for that provider, and, like any web
-request, the viewer's IP address and the part of the world the map is showing. Each provider handles them under its
-own terms and privacy policy.
+Base map requests to CARTO, MapTiler and Esri go from the viewer's browser straight to each provider. Each request
+carries the organisation's key for that provider, and, like any web request, the viewer's IP address and the part of
+the world the map is showing.
+
+Base map and 3D tile requests to Google and Azure Maps go from the viewer's browser to your Grafana, at
+`/api/plugin-proxy/ubica-keplerplus-app/…`, and Grafana forwards them to the provider with the key, which never
+reaches the browser. Grafana passes on the viewer's IP address (`X-Forwarded-For`), the address of the dashboard
+(`X-Grafana-Referer`) and the part of the world the map is showing, and drops the `Referer`, `Origin` and cookie
+headers. Plus has it blank the headers that would describe the signed-in user (`X-Grafana-Context`, `X-Grafana-User`,
+`X-Grafana-Id`).
+
+Each provider handles these requests under its own terms and privacy policy.
 
 UBICA receives neither the keys, nor the tiles, nor anything about the map.
 
 Your query results are not sent to any provider. They arrive through the data sources you already configured, and
 the panel draws them in the browser. The one exception comes from the free panel: the address of a raster you draw,
-with any signature it carries, reaches the raster tile server set in the panel's options, which is `titiler.xyz`, a
-public demonstration server run by Development Seed, unless you set your own; see
-[Hardened Grafana](/guide/install#hardened-grafana). The request that opens a Google session also carries the
+with any signature it carries, reaches the raster tile server set in the panel's options. No server is set until
+someone chooses one; see [Hardened Grafana](/guide/install#hardened-grafana). The request that opens a Google session also carries the
 Grafana user's language and region, so Google labels the map in them.
 
 See [Keys and who can read them](/plus/admin/keys) for who can see the keys, and

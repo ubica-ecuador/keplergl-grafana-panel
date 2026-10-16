@@ -16,9 +16,6 @@ set on the configuration page.
 | MapTiler                       | `api.maptiler.com`                                 | Styles, tiles, thumbnails and the terrain under **Relief**           |
 | Esri                           | `basemapstyles-api.arcgis.com`, and see below      | The basemap styles                                                   |
 | Esri and Azure Maps **Relief** | `tiles.mapterhorn.com`                             | Already in the free panel's list                                     |
-| Azure Maps                     | `atlas.microsoft.com`                              | Tiles, and the attribution of the view                               |
-| Google base maps               | `tile.googleapis.com`                              | The session, the tiles, and the copyright of the view                |
-| Google Photorealistic 3D Tiles | `tile.googleapis.com`                              | The 3D tiles                                                         |
 | A Fleet layer's own 3D model   | wherever the model is served                       | The model file                                                       |
 
 Esri's style names further Esri hosts for its tiles, fonts and sprites, so `basemapstyles-api.arcgis.com` alone is
@@ -27,7 +24,9 @@ the browser's developer tools open and add each host the console reports as bloc
 
 Everything else Plus fetches comes from your Grafana itself, so `'self'` covers it:
 
-- the keys, read from the app's settings;
+- the browser keys, read from the app's settings;
+- Google's base maps and Photorealistic 3D Tiles and Azure Maps' tiles, asked for through the app's proxy on your
+  Grafana (`/api/plugin-proxy/ubica-keplerplus-app/…`), which adds the key;
 - the Places data files: country outlines, airports, the IP-to-country table and the region boundaries, all shipped
   inside the plugin;
 - the 3D models bundled with the Fleet layer;
@@ -40,16 +39,16 @@ See [Privacy](/plus/admin/privacy) for what each of these requests carries.
 Grafana's default policy allows images from any host, and then nothing here is needed. If your template narrows
 `img-src`, add:
 
-| Service    | Host                    | What it serves                                      |
-| ---------- | ----------------------- | --------------------------------------------------- |
-| MapTiler   | `api.maptiler.com`      | The thumbnails in kepler's base map picker          |
+| Service  | Host               | What it serves                             |
+| -------- | ------------------ | ------------------------------------------ |
+| MapTiler | `api.maptiler.com` | The thumbnails in kepler's base map picker |
 
 ## An example
 
 The free panel's list, followed by every host Plus adds:
 
 ```ini
-content_security_policy_template = """… connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com https://titiler.xyz https://api.maptiler.com https://*.arcgis.com https://atlas.microsoft.com https://tile.googleapis.com …;"""
+content_security_policy_template = """… connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com https://api.maptiler.com https://*.arcgis.com …;"""
 ```
 
 `https://*.arcgis.com` does not cover the free panel's `services.arcgisonline.com`, which is under another domain,

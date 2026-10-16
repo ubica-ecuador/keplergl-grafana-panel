@@ -16,11 +16,12 @@ token you type yourself. See [Layers configured with a URL](/layers/url-configur
 An administrator sets the keys on the configuration page of Kepler Geospatial Maps Plus (**Administration →
 Plugins → Kepler Geospatial Maps Plus**):
 
-| Source                         | Key field                        | What the configuration page asks for                                                                                     |
-| ------------------------------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Google Photorealistic 3D Tiles | **Google Maps Platform API key** | the Map Tiles API enabled; the key restricted to that API, with a daily quota. It is the same key as Google's base maps  |
+| Source                         | Key field                        | What the configuration page asks for                                                                                    |
+| ------------------------------ | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Google Photorealistic 3D Tiles | **Google Maps Platform API key** | the Map Tiles API enabled; the key restricted to that API, with a daily quota. It is the same key as Google's base maps |
 
-Anyone who can open a dashboard can read these keys. See [Keys and who can read them](/plus/admin/keys).
+The Google key is kept in Grafana's encrypted settings: the 3D tiles are asked for through Grafana, which adds the
+key, so no browser sees it. See [Keys and who can read them](/plus/admin/keys).
 
 ## Add a layer
 
@@ -97,20 +98,20 @@ or the base map's ground and the tiles' ground part ways. See
 
 On a Grafana with `content_security_policy = true`, allow in `connect-src`:
 
-| Source     | Host to allow                                                |
-| ---------- | ------------------------------------------------------------ |
-| Google 3D  | `https://tile.googleapis.com`                                |
+| Source    | Host to allow                 |
+| --------- | ----------------------------- |
+| Google 3D | `https://tile.googleapis.com` |
 
 See [Content Security Policy](/plus/admin/csp).
 
 ## Troubleshooting
 
-| What you see                                                                          | What it means                                                                                                                                            |
-| ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "No Google key is set" in the tab                                                     | The organisation has no key for the provider. An administrator adds it on the configuration page.                                                        |
-| "Google turned this organisation's key away, or did not answer, when the page loaded" | The key failed the check at page load. Reload once the key is fixed.                                                                                     |
-| "Google refused this organisation's key for Photorealistic 3D Tiles"                  | The Map Tiles API is off for the key, the key is restricted to other sites, or the account is billed in the European Economic Area.                      |
-| A notice that a 3D layer "needs a Google key"                                         | The dashboard was saved with the layer, and this organisation has no key for the provider.                                                               |
-| A notice that Google "did not serve" the 3D layer                                     | The provider refused the key when the layer asked for tiles, for the reasons above.                                                                      |
-| A notice that a 3D layer "is a Cesium ion asset" and ion "is not available in this version" | The dashboard was saved, on another version or edition, with a Cesium ion asset. Remove the layer, or keep it for a version that offers ion. |
-| The layer is in the list but nothing shows                                            | Check that **Sit on the ground** is on, that the view is over the tileset's area, and, on a hardened Grafana, that the hosts above are in `connect-src`. |
+| What you see                                                                                | What it means                                                                                                                                            |
+| ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "No Google key is set" in the tab                                                           | The organisation has no key for the provider. An administrator adds it on the configuration page.                                                        |
+| "Google turned this organisation's key away, or did not answer, when the page loaded"       | The key failed the check at page load. Reload once the key is fixed.                                                                                     |
+| "Google refused this organisation's key for Photorealistic 3D Tiles"                        | The Map Tiles API is off for the key, the key is restricted to other sites, or the account is billed in the European Economic Area.                      |
+| A notice that a 3D layer "needs a Google key"                                               | The dashboard was saved with the layer, and this organisation has no key for the provider.                                                               |
+| A notice that Google "did not serve" the 3D layer                                           | The provider refused the key when the layer asked for tiles, for the reasons above.                                                                      |
+| A notice that a 3D layer "is a Cesium ion asset" and ion "is not available in this version" | The dashboard was saved, on another version or edition, with a Cesium ion asset. Remove the layer, or keep it for a version that offers ion.             |
+| The layer is in the list but nothing shows                                                  | Check that **Sit on the ground** is on, that the view is over the tileset's area, and, on a hardened Grafana, that the hosts above are in `connect-src`. |

@@ -44,13 +44,15 @@ The keyed base maps then appear in kepler's base map picker, and the 3D services
 **Add Data**. See [Base maps](/plus/maps/basemaps) and [3D tiles](/plus/maps/3d-tiles) for each provider's styles,
 and how to restrict its key.
 
-Under the Google and Azure Maps fields the page shows a warning with that provider's terms or the limits
-of its key. Read them before saving the key: they apply to every map drawn with it.
+Under the Google field the page shows a warning with Google's terms. Read it before saving the key: it applies to
+every map drawn with it. A saved Google or Azure Maps key shows as **configured**, never in full; **Reset** clears it.
 
-::: warning Keys are readable by viewers
-Each provider expects its key in the browser, so anyone who can open a dashboard in the organisation can read the
-keys set here. No dashboard saves them. Restrict each key to your Grafana's address where the provider allows it;
-Azure Maps does not. See [Keys and who can read them](/plus/admin/keys).
+::: warning Browser keys are readable by viewers
+The Google and Azure Maps keys are kept in Grafana's encrypted settings: maps reach those providers through Grafana,
+which adds the key, and no browser sees it. The CARTO, MapTiler and Esri keys are browser keys: those providers take
+a key only in the address the browser asks for, so anyone who can open a dashboard in the organisation can read
+them. No dashboard saves any key. Restrict each browser key to your Grafana's address. See
+[Keys and who can read them](/plus/admin/keys).
 :::
 
 A Plus panel reads the keys when the page loads. After saving a key, reload the dashboards that are already open.

@@ -12,9 +12,10 @@ An administrator sets each provider's key once, on the configuration page of Kep
 kepler's base map picker on every Plus panel in the organisation, after the free ones. A provider without a
 key offers nothing, and with no keys at all the picker shows the free base maps only.
 
-No dashboard holds a key: a saved map names the style, and the key comes from the app when the map loads.
-Anyone who can open a dashboard can read the keys, which is why each one should be restricted. See
-[Keys and who can read them](/plus/admin/keys).
+No dashboard holds a key: a saved map names the style, and the key comes from the app when the map loads. Google
+and Azure Maps tiles are asked for through Grafana, which adds the key, so no browser sees those two. The CARTO,
+MapTiler and Esri keys are read by the browser, which is why each should be restricted to your Grafana's address.
+See [Keys and who can read them](/plus/admin/keys).
 
 ## Providers at a glance
 
@@ -45,9 +46,9 @@ What each key needs, as the configuration page states it:
 - **MapTiler**: restrict the key to this Grafana's URL in your MapTiler account.
 - **Esri**: an ArcGIS Location Platform API key, not one from ArcGIS Online, with the basemap styles
   privilege, restricted to this Grafana's URL. Esri keys expire within a year.
-- **Azure Maps**: a subscription key from your Azure Maps account. The configuration page warns next to the
-  field that it cannot be restricted to this Grafana's address: use a key from an Azure Maps account kept for
-  this Grafana, with a spending cap, and rotate it if it leaks.
+- **Azure Maps**: a subscription key from your Azure Maps account, kept in Grafana's encrypted settings. Azure
+  cannot restrict a key to an address, so use one from an Azure Maps account kept for this Grafana, with a
+  spending cap.
 - **Google**: the Map Tiles API enabled on the key. Restrict the key to that API and set a daily quota in
   Google Cloud.
 - **CARTO**: free from [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/); add restrictions to it

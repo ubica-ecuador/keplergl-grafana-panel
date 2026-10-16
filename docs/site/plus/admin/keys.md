@@ -4,19 +4,26 @@ Plus draws base maps and 3D layers from services that each need a key. You set e
 organisation, and every Plus panel in it uses them. This page says where each key goes, who can read it, and how to
 limit what a copied key can be used for.
 
+Since Plus 1.3.0 there are two kinds of key. **Server keys** (Google and Azure Maps) are kept in Grafana's encrypted
+settings and never reach a browser. **Browser keys** (CARTO, MapTiler and Esri) are read by the browser, because those
+providers take a key only in the address the browser asks for.
+
 ## Where each key goes
 
 Open **Administration → Plugins → Kepler Geospatial Maps Plus** and its configuration page. Under **Map service
 keys** there is one field per provider. Fill in the ones you use and press **Save keys**. Every key is optional:
 without any, Plus draws the free panel's base maps.
 
-| Field                            | What it switches on                                                                |
-| -------------------------------- | ---------------------------------------------------------------------------------- |
-| **CARTO basemaps API key**       | The default Dark Matter, Positron and Voyager base maps, without CARTO's watermark |
-| **MapTiler API key**             | MapTiler's base maps, and MapTiler's terrain under their **Relief** switch         |
-| **ArcGIS API key**               | Esri's ArcGIS basemap styles                                                       |
-| **Google Maps Platform API key** | Google's base maps and Google Photorealistic 3D Tiles                              |
-| **Azure Maps subscription key**  | Azure Maps' road, dark grey, imagery and hybrid maps                               |
+| Field                            | What it switches on                                                                | Kind        |
+| -------------------------------- | ---------------------------------------------------------------------------------- | ----------- |
+| **CARTO basemaps API key**       | The default Dark Matter, Positron and Voyager base maps, without CARTO's watermark | Browser key |
+| **MapTiler API key**             | MapTiler's base maps, and MapTiler's terrain under their **Relief** switch         | Browser key |
+| **ArcGIS API key**               | Esri's ArcGIS basemap styles                                                       | Browser key |
+| **Google Maps Platform API key** | Google's base maps and Google Photorealistic 3D Tiles                              | Server key  |
+| **Azure Maps subscription key**  | Azure Maps' road, dark grey, imagery and hybrid maps                               | Server key  |
+
+A server key's field shows **configured** once it is saved, never the key itself; **Reset** clears it. A browser
+key's field shows the key as it is stored.
 
 Each field's description says what the provider expects of the key. Two are worth knowing before you create one:
 
@@ -30,40 +37,47 @@ See [Base maps](/plus/maps/basemaps) and [3D tiles](/plus/maps/3d-tiles) for wha
 
 ## Who can read them
 
-**Any signed-in user of the organisation, Viewers included, can read every key.**
+### Server keys: no browser
 
-Plus has no backend: nothing of it runs on the Grafana server. Maps are drawn in each viewer's browser, and the
-browser asks each provider for tiles directly, with the key, so the browser has to have the key. Plus keeps the keys
-in the app's settings and the panel reads them through Grafana's API, which answers any signed-in user of the
-organisation. Anyone who opens a dashboard can also see the keys in the browser's network requests.
+The Google and Azure Maps keys are kept in the app's encrypted settings (`secureJsonData`), which Grafana never sends
+to a browser. A map asks Google and Azure Maps for its tiles through Grafana's plugin proxy: the browser sends the
+request to your Grafana, at `/api/plugin-proxy/ubica-keplerplus-app/google/…` or `…/azure/…`, and Grafana adds the
+key as a request header on its way to the provider. Viewers, and anyone watching the browser's network requests, see
+neither key.
+
+The proxy also blanks the headers Grafana would otherwise send the provider about the signed-in user
+(`X-Grafana-Context`, `X-Grafana-User`, `X-Grafana-Id`). As a browser asking directly would, Grafana still passes on
+the viewer's IP address (`X-Forwarded-For`) and the address of the dashboard (`X-Grafana-Referer`); it removes the
+`Referer` and `Origin` headers. Google's 3D tiles and Azure's tiles go through your Grafana server.
+
+### Browser keys: any user who can open a dashboard
+
+CARTO, MapTiler and Esri take a key only as part of the address the browser asks for, and Grafana's plugin proxy for
+app plugins can add headers but not address parameters. So these keys stay where the browser can read them: in the
+app's settings, which Grafana's API gives to any signed-in user of the organisation, Viewers included, and in the
+browser's network requests. MapTiler also writes its key into the style documents it serves.
 
 This is how these providers expect browser keys to be used, and why they let you restrict a key to the site that
-uses it. Treat each key as public, and restrict it.
+uses it. Treat each browser key as public, and restrict it.
 
-## Restrict each key to your Grafana
+## Restrict each key
 
-Restrict every key to your Grafana's address, so that a copy of it is refused anywhere else. Where the provider
-allows it, also restrict what the key can do and set a quota.
+Restrict every browser key to your Grafana's address, so that a copy of it is refused anywhere else. Where the
+provider allows it, also restrict what a key can do and set a quota.
 
-| Provider   | What to restrict                                                                                                   |
-| ---------- | ------------------------------------------------------------------------------------------------------------------ |
-| CARTO      | Add restrictions to the key in CARTO's dashboard                                                                   |
-| MapTiler   | Restrict the key to your Grafana's URL in your MapTiler account                                                    |
-| Esri       | Restrict the key to your Grafana's URL                                                                             |
-| Google     | Restrict the key to your Grafana's URL (website restrictions) and to the Map Tiles API, and set a daily quota      |
-| Azure Maps | **Cannot be restricted** to an address; see below                                                                  |
+| Provider   | What to restrict                                                                                                      |
+| ---------- | --------------------------------------------------------------------------------------------------------------------- |
+| CARTO      | Add restrictions to the key in CARTO's dashboard                                                                      |
+| MapTiler   | Restrict the key to your Grafana's URL in your MapTiler account                                                       |
+| Esri       | Restrict the key to your Grafana's URL                                                                                |
+| Google     | Restrict the key to the Map Tiles API and set a daily quota. Website restrictions do not apply: Grafana's server asks |
+| Azure Maps | Use a key from an Azure Maps account kept for this Grafana, with a spending cap                                       |
 
-Use the address your users type in their browser. A key restricted to another address is refused, and the map shows
-a notice saying so; see [While a key is missing or refused](#while-a-key-is-missing-or-refused).
+Use the address your users type in their browser. A browser key restricted to another address is refused, and the
+map shows a notice saying so; see [While a key is missing or refused](#while-a-key-is-missing-or-refused).
 
-### Azure Maps
-
-An Azure Maps subscription key cannot be restricted to your Grafana's address. Anyone who can open a dashboard can
-read it and use it from anywhere. The configuration page warns about this under the field. If you use Azure Maps:
-
-- use a key from an Azure Maps account kept for this Grafana alone,
-- set a spending cap on that account,
-- rotate the key if it leaks.
+A Google key restricted to websites (HTTP referrers) is refused when Grafana's server asks with it. Restrict it to the
+Map Tiles API instead, or to your Grafana server's IP addresses.
 
 ### Google
 
@@ -71,10 +85,19 @@ Each map load that draws Google Photorealistic 3D Tiles counts as one 3D session
 configuration page states Google's free allowance. Read each provider's terms on the configuration page before you
 add its key.
 
+## Keys saved by an earlier version
+
+Before 1.3.0, Plus kept every key, Google's and Azure's included, where any signed-in user could read them. After
+upgrading, the configuration page fills the Google and Azure Maps fields in from there and says **Move the keys out of
+the open settings**. Until you press **Save keys**, the Google and Azure base maps and Google's 3D tiles are not
+offered. Saving moves both keys to the encrypted settings and removes them from the open ones. As they were readable
+before, consider rotating them.
+
 ## Rotating a key
 
 1. Create the new key at the provider, with the same restrictions as the old one.
-2. Paste it into its field on the configuration page and press **Save keys**.
+2. On the configuration page, paste it into its field (for a server key, press **Reset** first) and press **Save
+   keys**.
 3. Revoke the old key at the provider.
 
 A dashboard reads the keys once, when the page loads. A dashboard that was already open keeps using the old key, and
