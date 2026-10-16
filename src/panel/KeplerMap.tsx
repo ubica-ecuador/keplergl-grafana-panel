@@ -24,7 +24,6 @@ import { configureLoaders } from './loaderOptions';
 import { configureMaplibreWorker } from './maplibreWorker';
 import { createKeplerStore } from './keplerStore';
 import {
-  captureMapConfig,
   capturePlayingTimeFilter,
   closeMapPopover,
   loadDatasets,
@@ -74,6 +73,9 @@ import { scopeLabelClicks } from './scopedLabelClicks';
 import { useClickArea } from './useClickArea';
 import { useTimeVariableSync } from './useTimeVariableSync';
 import { usePlayheadVariableSync } from './usePlayheadVariableSync';
+import { useSaveMapConfig } from './useSaveMapConfig';
+import { useSidePanelOpen } from './useSidePanelOpen';
+import { SaveMapConfigButton } from './SaveMapConfigButton';
 import type { TimeRangeMs, TimeSyncMode } from './timeSync';
 import type { TimeVariableMapping } from './timeVariableSync';
 import type { VariableMapping } from './variableSync';
@@ -136,7 +138,10 @@ export interface KeplerMapProps {
   /** CARTO's key, already interpolated; undefined when there is none. */
   cartoApiKey?: string;
   showSidePanel: boolean;
-  /** Bumped by the options editor to request a configuration snapshot. */
+  /**
+   * Bumped by the options editor to request a configuration snapshot. The
+   * button the map shows in the panel editor takes the same save directly.
+   */
   saveRequest: number;
   onMapConfigCaptured: (config: SavedMapConfig) => void;
   /** How the dashboard time range couples to the map's time filter. */
@@ -166,7 +171,10 @@ export interface KeplerMapProps {
   peerTimeSync: boolean;
   /** Variable the trip playhead is written to; empty for none. */
   playheadVariable: string;
-  /** Grafana's id for this panel: explorer results addressed to another panel are ignored. */
+  /**
+   * Grafana's id for this panel: explorer results addressed to another panel
+   * are ignored, and the save button shows only while this panel is edited.
+   */
   panelId?: number;
 }
 
@@ -267,7 +275,6 @@ export function KeplerMap({
   const appliedConfig = useRef<SavedMapConfig | null | undefined>(undefined);
   const appliedDatasets = useRef<PanelDataset[] | undefined>(undefined);
   const appliedRasters = useRef<RasterDataset[] | undefined>(undefined);
-  const handledSaveRequest = useRef(saveRequest);
 
   // Registering the plugin's own styles: satellite imagery that needs no Mapbox
   // account, plus a self-hosted style.json when one is configured, which is
@@ -462,20 +469,16 @@ export function KeplerMap({
     setSidePanel(store.dispatch, showSidePanel);
   }, [isReady, showSidePanel, store]);
 
-  useEffect(() => {
-    if (saveRequest === handledSaveRequest.current) {
-      return;
-    }
-    handledSaveRequest.current = saveRequest;
-
-    const captured = captureMapConfig(store);
-    if (captured) {
-      // Record it as applied so saving does not rebuild the map the user is
-      // currently looking at.
-      appliedConfig.current = captured;
-      onMapConfigCaptured(captured);
-    }
-  }, [saveRequest, store, onMapConfigCaptured]);
+  // The options editor's save and the map's own button: one capture for both.
+  // Its effect keeps its place after the load effect, which therefore runs
+  // first in a commit that brings a save request.
+  const saveMapConfig = useSaveMapConfig({
+    store,
+    saveRequest,
+    onMapConfigCaptured,
+    appliedConfigRef: appliedConfig,
+  });
+  const sidePanelOpen = useSidePanelOpen(store);
 
   // Declared after the load effect so its own effects register later and run
   // once the datasets are already in the store.
@@ -650,6 +653,11 @@ export function KeplerMap({
             </TemporalCursorContext.Provider>
           </Provider>
         </StyleSheetManager>
+      )}
+      {/* Outside the Provider, where @grafana/ui finds Grafana's own context.
+          Only once kepler is there to capture, and only in the panel editor. */}
+      {isReady && (
+        <SaveMapConfigButton panelId={panelId} width={width} sidePanelOpen={sidePanelOpen} onSave={saveMapConfig} />
       )}
     </div>
   );

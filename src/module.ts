@@ -320,6 +320,9 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       category: ['Cross-filtering'],
       editor: ViewportVariablesEditor,
     })
+    // "Map configuration" must stay the last category: saving the map is the
+    // step that follows every other option, so it belongs where they end. Add
+    // new options above this point.
     .addCustomEditor({
       id: 'saveRequest',
       path: 'saveRequest',

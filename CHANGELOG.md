@@ -25,6 +25,12 @@ release documents what changed since the one before it.
   the editor sees it. **Change:** a panel that left the option empty and drew imagery through the
   demo now shows the notice instead; type `https://titiler.xyz` into the option to keep that, for
   public imagery.
+- **Save the map from the map**: while the panel is open in the panel editor, the map shows a
+  **Save map** button along its top edge, just right of the side panel's toggle. It saves the map
+  configuration exactly as **Map configuration → Save current map configuration** does, and says
+  **Saved** for a moment once it has, so shaping a map no longer means scrolling to the end of the
+  options after every change. The dashboard still has to be saved. The button is never shown on the
+  dashboard, in kiosk mode, in a solo panel or on a public dashboard.
 
 ## 1.2.1 (2026-10-14)
 

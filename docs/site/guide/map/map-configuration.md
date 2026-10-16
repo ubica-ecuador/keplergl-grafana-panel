@@ -10,6 +10,12 @@ page reload until you capture it.
 and writes it into the panel's options, which means into the dashboard JSON. Save the dashboard and
 it comes back on the next load.
 
+While the panel is open in the panel editor, the map carries the same save as a button of its own:
+**Save map**, along its top edge, just right of the toggle of kepler's side panel. It takes the same
+snapshot, says **Saved** for a moment once it has, and leaves the dashboard to be saved like the
+options button does. It is there only in the panel editor, never on the dashboard, in kiosk mode, in
+a solo panel or on a public dashboard.
+
 ### Why saving is explicit
 
 Two reasons, both about the dashboard JSON.

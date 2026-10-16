@@ -56,3 +56,51 @@ test('rejects pasted JSON that is not a kepler configuration', async ({
 
   await expect(page.getByText(/Not a kepler.gl configuration/)).toBeVisible();
 });
+
+/**
+ * The same save, drawn on the map while the panel is edited, so an author
+ * shaping the map does not have to scroll to the end of the options after every
+ * change. It is the editor's capture, so it shows up in the same place.
+ */
+test('saves the map configuration from the button on the map, in the panel editor only', async ({
+  gotoPanelEditPage,
+  readProvisionedDashboard,
+  page,
+}) => {
+  // A map mounted twice, once in the editor and once more back on the
+  // dashboard; same budget as the save test above.
+  test.slow();
+  const dashboard = await readProvisionedDashboard({ fileName: 'dashboard.json' });
+  const panelEditPage = await gotoPanelEditPage({ dashboard, id: '1' });
+
+  await expect(page.locator('.dataset-name')).toHaveText('Query A', { timeout: 60_000 });
+  await expect(page.getByText('Nothing saved yet')).toBeVisible();
+
+  const save = page.getByTestId('save-map-config-on-map');
+  await expect(save).toBeVisible();
+  await expect(save).toHaveAccessibleName('Save map configuration');
+
+  await save.click();
+
+  await expect(page.getByText(/Saved: 2 layers/)).toBeVisible({ timeout: 10_000 });
+  await expect(save).toHaveText('Saved');
+
+  // Leaving the editor moves the URL without reloading the page: the button
+  // goes with it, while the map stays.
+  await panelEditPage.backToDashboard();
+  await expect(page.locator('.dataset-name').first()).toHaveText('Query A', { timeout: 60_000 });
+  await expect(save).toHaveCount(0);
+});
+
+test('shows no save button on the map when the dashboard is viewed', async ({
+  gotoDashboardPage,
+  readProvisionedDashboard,
+  page,
+}) => {
+  const dashboard = await readProvisionedDashboard({ fileName: 'dashboard.json' });
+  await gotoDashboardPage(dashboard);
+
+  // The trips map is up, so its button would be drawn by now.
+  await expect(page.locator('.dataset-name').first()).toHaveText('Query A', { timeout: 60_000 });
+  await expect(page.getByTestId('save-map-config-on-map')).toHaveCount(0);
+});

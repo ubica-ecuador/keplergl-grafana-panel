@@ -13,8 +13,9 @@ import { Alert } from '@grafana/ui';
  * Shown to everyone who opens the dashboard, since a viewer is as puzzled by a
  * blank map as an editor; the words are for whoever can change the panel.
  * Dismissable, so it never stands between a viewer and the rest of the map.
+ * `top` moves it below the save button the map shows in the panel editor.
  */
-export function RasterServerNotice({ queries }: { queries: string[] }) {
+export function RasterServerNotice({ queries, top = 8 }: { queries: string[]; top?: number }) {
   const [dismissed, setDismissed] = useState(false);
   if (queries.length === 0 || dismissed) {
     return null;
@@ -24,7 +25,7 @@ export function RasterServerNotice({ queries }: { queries: string[] }) {
     <div
       style={{
         position: 'absolute',
-        top: 8,
+        top,
         left: '50%',
         transform: 'translateX(-50%)',
         width: 'min(520px, calc(100% - 16px))',

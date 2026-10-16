@@ -18,6 +18,8 @@ import { resolveCustomBasemapUrl } from './customBasemapUrl';
 import { DEFAULT_CLICK_AREA_METRES } from './clickArea';
 import { LazyKeplerMap } from './LazyKeplerMap';
 import { RasterServerNotice } from './RasterServerNotice';
+import { SAVE_BUTTON_CLEARANCE_PX } from './SaveMapConfigButton';
+import { usePanelEditing } from './usePanelEditing';
 import { useInterpolatedOption } from './useInterpolatedOption';
 import { useStableValue } from './useStableValue';
 import { publishIntervalOf } from './timeVariableSync';
@@ -190,6 +192,10 @@ export function KeplerPanel(props: Props) {
     [onOptionsChange, options]
   );
 
+  // The map shows its save button along its top edge while this panel is in the
+  // panel editor; the notice moves below it then.
+  const editing = usePanelEditing(id);
+
   return (
     <div style={{ width, height, position: 'relative' }}>
       <AssistantContext {...props} resolvedBasemapId={basemapId ?? undefined} />
@@ -231,7 +237,7 @@ export function KeplerPanel(props: Props) {
         panelId={id}
       />
       {/* After the map, so it stacks over it. */}
-      <RasterServerNotice queries={serverMissing} />
+      <RasterServerNotice queries={serverMissing} top={editing ? SAVE_BUTTON_CLEARANCE_PX : undefined} />
     </div>
   );
 }

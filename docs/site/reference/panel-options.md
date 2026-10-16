@@ -73,7 +73,8 @@ filter on `field` publishes its min and max as a pair.
 ::: tip Why the save button is a counter
 Grafana gives panel option editors no channel to the panel component, and the map state lives in the
 panel's own Redux store. So the editor bumps a counter and the panel — which can see its store —
-does the capture.
+does the capture. The **Save map** button the map shows in the panel editor needs no counter: it is
+part of the panel, and calls that same capture directly.
 :::
 
 ## Options this panel ignores
