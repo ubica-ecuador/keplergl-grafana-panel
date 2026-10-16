@@ -74,6 +74,10 @@ Ctrl or ⌘ and the wheel zoom about the pointer; Shift and the wheel, or a side
 and where the window is, and the automatic bucket follows the zoom. **The brush spans** the dashboard's _Time range_
 or _The data_. **View start variable**, **View end variable** and **Bucket variable (seconds)**, when named, carry the
 view's bounds and bucket, so the panel's own query can be asked again at the resolution being looked at.
+**Zoom to a window set from outside**, off by default, brings the axis to a window that a link, another panel or
+the time picker sets, with a quarter of its width either side, so a day set from a chart is not a sliver of a long
+axis; it keeps that frame, through a move of the dashboard range that came with the window, until you zoom, pan or
+move the window yourself. A link that carries the view opens on its view instead.
 
 ## Keys
 
