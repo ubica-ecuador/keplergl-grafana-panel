@@ -140,7 +140,8 @@ services:
       # The raster hosts are the third delta, and all three go in connect-src —
       # not img-src, which is where a "tile" would normally be looked for.
       # kepler fetches COG tiles as NumPy arrays over XHR (:8088 here, and
-      # titiler.xyz which is the panel's default server), and reads a PMTiles
+      # titiler.xyz, Development Seed's public demo, for a panel that names it;
+      # the panel has no default server since 1.3.0), and reads a PMTiles
       # archive by asking :8089 for byte ranges of it.
       #
       # A WMS host belongs there too, and that one is genuinely surprising: the

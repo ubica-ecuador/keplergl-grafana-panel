@@ -81,11 +81,16 @@ goes blank: MapLibre fetches styles, sprites, glyphs and tiles over XHR, so ever
 under `connect-src`.
 
 ```ini
-content_security_policy_template = """… connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com https://titiler.xyz …;"""
+content_security_policy_template = """… connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com …;"""
 ```
 
 If your template also sets `worker-src`, it has to allow `'self'`: MapLibre's worker is a file served
 with the plugin, under `public/plugins/ubica-keplergl-panel/maplibre/`, not a `blob:` URL.
+
+No code is fetched from a CDN, so `script-src` needs nothing added. The decoders that 3D tiles,
+glTF models and Parquet files need — Draco, Basis/KTX2 and parquet-wasm — are files served with the
+plugin, under `public/plugins/ubica-keplergl-panel/loaders/`, and loaders.gl parses on the main
+thread rather than starting Web Workers from unpkg.com.
 
 Each host serves only what its name suggests:
 
@@ -94,7 +99,6 @@ Each host serves only what its name suggests:
 | `basemaps.cartocdn.com`     | Carto's Dark Matter, Positron and Voyager base maps   |
 | `services.arcgisonline.com` | Esri's satellite and topographic imagery              |
 | `tiles.mapterhorn.com`      | Elevation tiles behind the two relief styles          |
-| `titiler.xyz`                | The default **Raster tile server** — see next section |
 
 Leave out the ones whose base maps you never select — or point **Base map** at a `style.json` on
 your own network and skip the list entirely. See [Base maps and relief](./map/basemaps-and-relief).
@@ -120,8 +124,8 @@ no CSP message about images.
 :::
 
 Imagery is also the one case where the paragraph above wants qualifying. Your rows still never leave
-Grafana — but the **address** of a raster does reach whichever tile server you configured, and the
-option defaults to a public one. Point it at a server of your own for anything private. See
+Grafana — but the **address** of a raster does reach whichever tile server you configure. None is
+configured by default: a query that needs one draws nothing, and says so, until you set it. See
 [Rasters](./data/rasters#something-has-to-read-the-file).
 
 ## Esri's terms of use

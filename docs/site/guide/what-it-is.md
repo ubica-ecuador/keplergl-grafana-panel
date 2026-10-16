@@ -32,10 +32,11 @@ installed.
 The whole library runs **in the panel**, in your browser, against the rows your data source
 returned. There is no iframe and no hosted service rendering the map: the browser draws it directly.
 It does still reach outward for pixels — Carto, Esri and Mapterhorn for the default base maps, and
-`https://titiler.xyz` by default for raster tiles — see [Install → Hardened
+the raster tile server you set, if you set one — see [Install → Hardened
 Grafana](./install#hardened-grafana) for the exact hosts and how to point every one of them at
-infrastructure of your own instead. kepler's own icon library ships with the plugin, so that piece
-at least is never fetched from a CDN at runtime.
+infrastructure of your own instead. It never reaches outward for code: kepler's icon library and the
+decoders that 3D tiles, glTF models and Parquet files need ship with the plugin, so nothing is
+fetched from a CDN at runtime.
 
 That matters for three kinds of install. An **air-gapped** Grafana can serve its own `style.json`
 and never reach the internet. A Grafana with `content_security_policy = true` needs a handful of

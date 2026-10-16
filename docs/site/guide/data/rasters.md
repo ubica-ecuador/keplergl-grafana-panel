@@ -41,12 +41,16 @@ It reads the imagery **on the map's behalf**, which has one consequence worth st
 server is what must be able to reach the file, not the browser. A raster in a private bucket needs a
 tile server that can see that bucket — which is to say, one of your own.
 
-The option defaults to `https://titiler.xyz`, Development Seed's public demo, and that default is
-there so a freshly installed plugin draws a **public** COG without being configured first. Its limits
-are real:
+**No server is set by default.** The server is handed every URL a query returns, **signature and
+all**, and which third party that may be is for whoever runs the Grafana to decide, not the plugin.
+Until the option names one, a query that returns a COG or a Zarr store draws nothing, and the panel
+shows a notice naming the query and the option to set.
+
+Development Seed's public demo, `https://titiler.xyz`, was the default before 1.3.0 and still
+works when you type it in, for a public COG. Its limits are real:
 
 - it can only read imagery that is public;
-- it is handed the URL you point it at, **signature and all**;
+- it is handed the URL you point it at, signature and all;
 - it is a demo endpoint, with the availability that implies.
 
 Anything private, or anything you depend on, wants a server of your own. Under a strict CSP it is

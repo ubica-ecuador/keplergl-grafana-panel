@@ -140,24 +140,29 @@ blocks the base map. MapLibre fetches styles, sprites, glyphs and tiles over XHR
 under that directive:
 
 ```ini
-content_security_policy_template = """...connect-src 'self' grafana.com https://tiles.openfreemap.org https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com https://titiler.xyz ...;"""
+content_security_policy_template = """...connect-src 'self' grafana.com https://tiles.openfreemap.org https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com ...;"""
 ```
 
 If your template also sets `worker-src`, it has to allow `'self'`: MapLibre's worker is a file served
 with the plugin, under `public/plugins/ubica-keplergl-panel/maplibre/`, not a `blob:` URL.
 
-Each host serves only what its name suggests: OpenFreeMap the five default base maps, CARTO its
-three, Esri the satellite and topographic ones, Mapterhorn the elevation tiles behind the two relief
-styles, and `titiler.xyz` the default raster tile server, described next. Leave out the ones you never use — or point
-**Base map** and **Raster tile server** at infrastructure of your own and skip this entirely.
+No code is fetched from a CDN at runtime. The decoders that 3D tiles, glTF and Parquet files need
+(Draco, Basis/KTX2, parquet-wasm) ship with the plugin under
+`public/plugins/ubica-keplergl-panel/loaders/`, and loaders.gl parses on the main thread instead of
+starting workers from unpkg.com.
 
-> **The raster tile server.** A query that returns imagery — a COG, a Zarr store, a WMS — is drawn
-> by a tile server, not by the browser. The **Raster tile server** option starts at
-> `https://titiler.xyz`, Development Seed's public demo, so that a fresh install draws a public COG
-> without being configured first. It reads the imagery on the map's behalf, which means the URL you
-> point it at is handed to a third party, and it cannot see anything private. Point the option at a
-> TiTiler of your own for anything that matters, and add that host to `connect-src` instead. A
-> `.pmtiles` archive needs no server at all.
+Each host serves only what its name suggests: OpenFreeMap the five default base maps, CARTO its
+three, Esri the satellite and topographic ones, and Mapterhorn the elevation tiles behind the two
+relief styles. Leave out the ones you never use — or point **Base map** at infrastructure of your
+own and skip this entirely. A raster tile server, if you set one, is the one host more.
+
+> **The raster tile server.** A query that returns a COG or a Zarr store is drawn by a tile server,
+> not by the browser. None is set by default: until the **Raster tile server** option names one,
+> such a query draws nothing and the panel says which query is waiting for it. The server reads the
+> imagery on the map's behalf, which means every URL the query returns — signature and all — is
+> handed to it, so point it at a TiTiler of your own and add that host to `connect-src`.
+> Development Seed's public demo, `https://titiler.xyz` (the default before 1.3.0), still works
+> for public imagery. A `.pmtiles` archive, a WMS and an ArcGIS Image Service need no server at all.
 
 ## A first map
 

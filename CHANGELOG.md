@@ -4,6 +4,28 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## 1.3.0 (unreleased)
+
+- **No code from third-party hosts**: loaders.gl, which reads every 3D tile, glTF model and file
+  dropped on the map, fetched its worker scripts from unpkg.com, and Google's Draco decoder —
+  JavaScript and WebAssembly — from www.gstatic.com; every Draco-compressed mesh, Google's
+  Photorealistic 3D Tiles among them, did. The Draco decoder is now compiled into the plugin with its
+  WebAssembly beside it, the Basis/KTX2 texture decoders and Parquet's WebAssembly ship in the
+  plugin's `loaders/` folder, and loaders.gl parses on the main thread instead of starting workers.
+  One setting at load covers every copy of loaders.gl in the bundle, so a library it does not name
+  misses on the plugin's own host rather than reaching unpkg. A Mapbox base map no longer loads its
+  right-to-left text plugin from api.mapbox.com either; the plugin's MapLibre maps never did.
+- **No raster tile server by default**: the **Raster tile server** option used to fall back to
+  `https://titiler.xyz`, Development Seed's public demo, which was then handed every COG and Zarr
+  URL a query returned, a presigned link's signature included, without anyone having chosen it.
+  Left empty, it now means no server: such a query draws nothing, and the panel shows a notice
+  naming the query and the option to set. A `.pmtiles` archive, a WMS and an ArcGIS Image Service
+  need no server and are unaffected. kepler's own Add Data → Tileset form starts from an empty
+  server list too, though for a bare `.tif` it still fills in titiler.xyz itself, in the form, where
+  the editor sees it. **Change:** a panel that left the option empty and drew imagery through the
+  demo now shows the notice instead; type `https://titiler.xyz` into the option to keep that, for
+  public imagery.
+
 ## 1.2.1 (2026-10-14)
 
 Nothing on the map looks or behaves differently: this release changes how the plugin is built.
