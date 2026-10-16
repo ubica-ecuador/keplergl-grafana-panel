@@ -94,7 +94,7 @@
     "@grafana/runtime": "12.0.0",
     "@grafana/ui": "12.0.0",
     "@loaders.gl/excel": "file:stubs/loaders-gl-excel",
-    "@loaders.gl/wms": "4.4.1",
+    "@loaders.gl/wms": "4.5.2",
     "apache-arrow": "21.2.0",
     "kepler.gl": "3.3.0-alpha.15",
     "react": "18.3.1",
