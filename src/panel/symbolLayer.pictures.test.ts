@@ -176,8 +176,8 @@ describe('the symbol layer drawing pictures, on kepler’s real Layer', () => {
     }
 
     expect(new Set(ids)).toEqual(new Set(['places-picture-symbol']));
-    // The picture, its anchor and its column: nothing that counts generations.
-    expect(triggers[MAX_PICTURES]).toEqual([`https://example.org/${MAX_PICTURES}.png`, 'center', -1]);
+    // The picture, its anchor, what it turns about and its column: nothing that counts generations.
+    expect(triggers[MAX_PICTURES]).toEqual([`https://example.org/${MAX_PICTURES}.png`, 'center', 'anchor', -1]);
   });
 
   it('sets labels about the middle of a picture standing on its point, and redraws them when the anchor changes', () => {

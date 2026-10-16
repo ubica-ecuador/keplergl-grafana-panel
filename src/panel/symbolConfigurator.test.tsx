@@ -159,6 +159,68 @@ describe('symbol layer panel', () => {
     expect(screen.queryByText('Use the column’s degrees')).not.toBeInTheDocument();
   });
 
+  /** The panel for a shape layer with these settings and columns. */
+  const shapePanel = (visConfig: Record<string, unknown>, columns: Record<string, unknown> = {}) => {
+    const layer = {
+      id: 'layer-1',
+      type: SYMBOL_TYPE,
+      config: {
+        visConfig: { symbol: 'arrow', directionConvention: 'towards', ...visConfig },
+        colorField: null,
+        colorUI: {},
+        ...columns,
+      },
+      visConfigSettings: {
+        pictureAnchor: SYMBOL_VIS_CONFIGS.pictureAnchor,
+        turnAbout: SYMBOL_VIS_CONFIGS.turnAbout,
+        fixedSize: SYMBOL_VIS_CONFIGS.fixedSize,
+        sizeRange: SYMBOL_VIS_CONFIGS.sizeRange,
+      },
+      visualChannels: {
+        angle: { key: 'angle', property: 'angle' },
+        size: { key: 'size', property: 'size' },
+        color: { key: 'color', property: 'color' },
+      },
+    };
+    return render(
+      <IntlProvider locale="en" messages={{ ...messages.en, ...SYMBOL_MESSAGES }}>
+        <ThemeProvider theme={theme}>
+          <SymbolLayerConfig
+            layer={layer as never}
+            visConfiguratorProps={{ layer, onChange: () => undefined }}
+            layerConfiguratorProps={{ layer, onChange: () => undefined }}
+            layerChannelConfigProps={{ layer, fields: [], onChange: () => undefined }}
+          />
+        </ThemeProvider>
+      </IntlProvider>
+    );
+  };
+
+  it('offers the anchor for shapes too, and what they turn about once it is off the centre', () => {
+    const centred = shapePanel({ pictureAnchor: 'center' });
+
+    expect(selectorLabelled(centred.container, 'Anchor')).toHaveTextContent('Centre');
+    expect(screen.queryByText('Turn about')).not.toBeInTheDocument();
+    centred.unmount();
+
+    const standing = shapePanel({ pictureAnchor: 'bottom-left', turnAbout: 'anchor' });
+
+    expect(selectorLabelled(standing.container, 'Anchor')).toHaveTextContent('Bottom left');
+    expect(selectorLabelled(standing.container, 'Turn about')).toHaveTextContent('The anchor');
+  });
+
+  it('hides the size range while the column’s own number is the size, since it is not read', () => {
+    const raw = shapePanel({ fixedSize: true, sizeRange: [10, 128] }, { sizeField: { name: 'size_px' } });
+
+    expect(screen.getByText('Use the column’s number')).toBeInTheDocument();
+    expect(screen.queryByText('Size range (px)')).not.toBeInTheDocument();
+    raw.unmount();
+
+    shapePanel({ fixedSize: false, sizeRange: [10, 128] }, { sizeField: { name: 'size_px' } });
+
+    expect(screen.getByText('Size range (px)')).toBeInTheDocument();
+  });
+
   it('offers the zoom shrinking, and sets its reference zoom from the map', () => {
     noteZoom('layer-zoom', 7.26);
     const onChange = jest.fn();

@@ -1,3 +1,5 @@
+import { anchorFractions, cellBox, placeIn, SymbolAnchor, symbolAnchorOf, TurnAbout } from './symbolAnchor';
+
 /**
  * What names a picture, where it may come from, and how it sits in its cell.
  *
@@ -8,7 +10,8 @@
 /** The side of the square every picture is rasterised into, in pixels. */
 export const PICTURE_CELL = 128;
 
-export type PictureAnchor = 'center' | 'bottom';
+/** Any of the nine points of the symbol layer's Anchor: a picture is placed with the same setting as a shape. */
+export type PictureAnchor = SymbolAnchor;
 
 /** Why a picture is not drawn, as the layer panel names it. */
 export type PictureProblem = 'scheme' | 'mixed-content' | 'load' | 'timeout' | 'decode';
@@ -32,7 +35,7 @@ export interface PictureRect {
 }
 
 export function pictureAnchorOf(value: unknown): PictureAnchor {
-  return value === 'bottom' ? 'bottom' : 'center';
+  return symbolAnchorOf(value);
 }
 
 const KEY_PREFIX = 'picture:';
@@ -47,11 +50,18 @@ const KEY_SUFFIX = ':end';
  * URL that Grafana's `img-src * data:` does not allow. The suffix keeps a key
  * from ending in `.svg`, and `encodeURIComponent` escapes the `?` and `#` the
  * pattern also looks for. The anchor is part of the key because it changes the
- * pixels painted.
+ * pixels painted. Turning about the centre is too, after the anchor: it
+ * changes where deck pins the icon, and deck keeps an icon's anchor from the
+ * first time it packs its id. Turning about the anchor adds nothing, so a key
+ * reads as it did before pictures could turn about anything else.
  */
-export function pictureKey(url: string, anchor: PictureAnchor): string {
-  return `${KEY_PREFIX}${anchor}:${encodeURIComponent(url)}${KEY_SUFFIX}`;
+export function pictureKey(url: string, anchor: PictureAnchor, turnAbout: TurnAbout = 'anchor'): string {
+  const pin = turnAbout === 'centre' ? `${anchor}${TURN_MARK}` : anchor;
+  return `${KEY_PREFIX}${pin}:${encodeURIComponent(url)}${KEY_SUFFIX}`;
 }
+
+/** Marks a key whose picture turns about its centre. */
+const TURN_MARK = '@centre';
 
 export function parsePictureKey(key: string): { url: string; anchor: PictureAnchor } | null {
   if (!key.startsWith(KEY_PREFIX) || !key.endsWith(KEY_SUFFIX)) {
@@ -59,12 +69,13 @@ export function parsePictureKey(key: string): { url: string; anchor: PictureAnch
   }
   const body = key.slice(KEY_PREFIX.length, -KEY_SUFFIX.length);
   const colon = body.indexOf(':');
-  const anchor = body.slice(0, colon);
-  if (colon < 0 || (anchor !== 'center' && anchor !== 'bottom')) {
+  const pin = body.slice(0, colon);
+  const anchor = pin.endsWith(TURN_MARK) ? pin.slice(0, -TURN_MARK.length) : pin;
+  if (colon < 0 || symbolAnchorOf(anchor) !== anchor) {
     return null;
   }
   try {
-    return { url: decodeURIComponent(body.slice(colon + 1)), anchor };
+    return { url: decodeURIComponent(body.slice(colon + 1)), anchor: anchor as PictureAnchor };
   } catch {
     // A malformed escape: not a key this module made.
     return null;
@@ -104,7 +115,10 @@ export function checkPictureUrl(url: string, pageHref: string): PictureProblem |
 
 /**
  * Where a picture is drawn inside its cell: as large as fits, keeping its
- * proportions, centred across and either centred or resting on the bottom.
+ * proportions, and pushed against the sides its anchor names — centred across
+ * for the top and the bottom, resting on the bottom for the bottom, in the
+ * corner for a corner. So the anchor is always the same point of the cell,
+ * whatever the picture's shape, and the icon can name it before it loads.
  *
  * A picture with no size of its own — an SVG without width, height or a
  * view box — counts as square.
@@ -115,9 +129,10 @@ export function fitPicture(naturalWidth: number, naturalHeight: number, anchor: 
   const scale = Math.min(PICTURE_CELL / width, PICTURE_CELL / height);
   const drawnWidth = width * scale;
   const drawnHeight = height * scale;
+  const [fx, fy] = anchorFractions(anchor);
   return {
-    x: (PICTURE_CELL - drawnWidth) / 2,
-    y: anchor === 'bottom' ? PICTURE_CELL - drawnHeight : (PICTURE_CELL - drawnHeight) / 2,
+    x: (PICTURE_CELL - drawnWidth) * fx,
+    y: (PICTURE_CELL - drawnHeight) * fy,
     width: drawnWidth,
     height: drawnHeight,
   };
@@ -129,16 +144,24 @@ export function fitPicture(naturalWidth: number, naturalHeight: number, anchor: 
  * Exact on purpose. deck resizes an image that does not match what `getIcon`
  * declared, and when it does it updates the width and height but not the
  * anchor, which is in absolute pixels — a bottom anchor would float.
+ *
+ * Pinned at the anchor, or at the cell's centre when the picture turns about
+ * it; the symbol layer pushes it back so the anchor stays on the position. The
+ * centre is the cell's: the picture's own along its longer side, and off it
+ * along the shorter one for an anchor at that side, since the picture's shape
+ * is not known until it loads.
  */
-export function pictureIcon(url: string, anchor: PictureAnchor): PictureIcon {
-  const key = pictureKey(url, anchor);
+export function pictureIcon(url: string, anchor: PictureAnchor, turnAbout: TurnAbout = 'anchor'): PictureIcon {
+  const key = pictureKey(url, anchor, turnAbout);
+  const half = PICTURE_CELL / 2;
+  const { pivot } = placeIn(cellBox(PICTURE_CELL), [half, half], anchor, turnAbout);
   return {
     id: key,
     url: key,
     width: PICTURE_CELL,
     height: PICTURE_CELL,
-    anchorX: PICTURE_CELL / 2,
-    anchorY: anchor === 'bottom' ? PICTURE_CELL : PICTURE_CELL / 2,
+    anchorX: pivot[0],
+    anchorY: pivot[1],
     mask: false,
   };
 }

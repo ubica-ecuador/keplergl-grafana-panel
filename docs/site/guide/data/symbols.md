@@ -87,6 +87,9 @@ Everything below is on the layer's own panel inside the map, not in the panel op
 | ---------------------------- | ----------------------------------------------------------------------- |
 | **Size (px)**                | one size for every symbol                                               |
 | **Size range (px)**          | when a column is bound to size, the range it is spread over             |
+| **Use the column’s number**  | takes the size column as pixels as it is, instead of spreading it over the range (the range is hidden then) |
+| **Anchor**                   | which point of the symbol sits on the row's position: its centre, an edge or a corner |
+| **Turn about**               | with the anchor off the centre: whether a turned symbol pivots on its anchor or on its own centre |
 | **Angle (°), when no column**| a fixed bearing, for a layer with nothing to turn by                    |
 | **Outline** / colour / thickness | a contour, so a dark symbol survives a dark base map               |
 | **Shadow** / intensity / distance | a drop shadow, which does the same job differently                 |
@@ -96,6 +99,12 @@ Everything below is on the layer's own panel inside the map, not in the panel op
 
 Labels work the way they do on the point layer: pick a column under kepler's own **Label** section
 and every symbol is captioned with it.
+
+**Anchor** takes the edges and corners of what the shape draws, not of the empty square around it,
+so an arrow anchored at its **Bottom** has its tail on the point and a vector drawn from a station
+starts at the station. Turned by a column, it swings about that tail. **Turn about** _The centre_
+keeps the symbol where the anchor puts it but spins it in place, about its middle. A symbol off its
+centre has its labels set about its middle.
 
 ::: tip Thinning is not filtering
 **Thin overlapping symbols** drops marks that would collide *at the current zoom* and brings them
@@ -113,8 +122,9 @@ logo per operator, a photograph per site, a flag per country.
   work under a strict Content-Security-Policy.
 - A small image can be **uploaded into the layer** instead of hosted, up to 75 KB. It is stored in
   the saved map configuration, so it travels with the dashboard.
-- **Anchor** puts the image's centre on the row's position, or its bottom edge — the difference
-  between a circular badge and a pin.
+- **Anchor** puts the image's centre on the row's position, an edge or a corner — the difference
+  between a circular badge and a pin. A picture fills its square along the anchor's sides, so a
+  picture anchored at its bottom stands on the point.
 - Up to 96 distinct pictures are drawn per layer; beyond that, rows fall back to the layer picture.
 
 When one fails, the layer panel says why rather than drawing nothing in silence: a blocked

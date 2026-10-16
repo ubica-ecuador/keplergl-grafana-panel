@@ -2,6 +2,7 @@ import { Layer, LayerExtension } from '@deck.gl/core';
 import { IconLayer } from '@deck.gl/layers';
 
 import { buildPictureDeckLayer } from './pictureDeckLayer';
+import { InkBox, inkBoxIn } from './symbolAnchor';
 import { ATLAS_COLUMNS, CELL, createAtlasCanvas, IconFrame } from './vectorFieldGlyphs';
 import { glyphsFor, paintGlyphs, SymbolPainter } from './symbolGlyphs';
 
@@ -20,6 +21,8 @@ import { glyphsFor, paintGlyphs, SymbolPainter } from './symbolGlyphs';
 interface Atlas {
   canvas: HTMLCanvasElement;
   mapping: Record<string, IconFrame>;
+  /** What each glyph fills of its cell, measured once it is painted; on the sharp atlas only. */
+  ink?: Record<string, InkBox>;
 }
 
 /**
@@ -78,10 +81,78 @@ function atlasFor(names: string[]): Atlas | null {
   const glyphs = glyphsFor(names);
   return cached(glyphs.map((glyph) => glyph.key).join(','), () => {
     const created = createAtlasCanvas(glyphs.length);
-    return created
-      ? { canvas: created.canvas, mapping: paintGlyphs(glyphs, created.ctx as unknown as SymbolPainter) }
-      : null;
+    if (!created) {
+      return null;
+    }
+    const mapping = paintGlyphs(glyphs, created.ctx as unknown as SymbolPainter);
+    return { canvas: created.canvas, mapping, ink: measureInk(created.ctx, created.canvas.width, mapping) };
   });
+}
+
+/**
+ * Each glyph's drawn box, read back from the atlas just painted: one read of
+ * the canvas per atlas, which is a glyph or two. Nothing when the canvas will
+ * not be read, and a glyph then anchors on its cell.
+ */
+function measureInk(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  mapping: Record<string, IconFrame>
+): Record<string, InkBox> {
+  const ink: Record<string, InkBox> = {};
+  let pixels: ImageData;
+  try {
+    pixels = ctx.getImageData(0, 0, width, ctx.canvas.height);
+  } catch {
+    return ink;
+  }
+  for (const [name, frame] of Object.entries(mapping)) {
+    const box = inkBoxIn(pixels.data, width, frame);
+    if (box) {
+      ink[name] = box;
+    }
+  }
+  return ink;
+}
+
+/**
+ * What a glyph fills of its cell, in cell pixels, or null where it cannot be
+ * measured — no canvas, as under jest. Paints the glyph's atlas if it is not
+ * painted yet: the same one the layer draws from, so nothing is painted twice.
+ */
+export function glyphInk(name: string): InkBox | null {
+  return atlasFor([name])?.ink?.[name] ?? null;
+}
+
+/**
+ * An atlas's mapping with its glyphs pinned elsewhere than where they were
+ * drawn to sit: at `anchors`, in pixels of the sharp cell, moved by the
+ * padding of a padded one. The same object for the same atlas and anchors, so
+ * deck, which compares a mapping by identity, looks no icon up again on a
+ * render that changes nothing.
+ */
+const reanchored = new WeakMap<Atlas, { key: string; mapping: Record<string, IconFrame> }>();
+
+function mappingAnchoredAt(
+  atlas: Atlas,
+  anchors: Record<string, [number, number]> | undefined,
+  pad: number
+): Record<string, IconFrame> {
+  if (!anchors || Object.keys(anchors).length === 0) {
+    return atlas.mapping;
+  }
+  const key = JSON.stringify(anchors);
+  const hit = reanchored.get(atlas);
+  if (hit && hit.key === key) {
+    return hit.mapping;
+  }
+  const mapping: Record<string, IconFrame> = {};
+  for (const [name, frame] of Object.entries(atlas.mapping)) {
+    const at = anchors[name];
+    mapping[name] = at ? { ...frame, anchorX: at[0] + pad, anchorY: at[1] + pad } : frame;
+  }
+  reanchored.set(atlas, { key, mapping });
+  return mapping;
 }
 
 /**
@@ -226,7 +297,14 @@ const symbolGradient = new SymbolGradientExtension();
 
 /** Builds the icon layer, or null when the atlas could not be painted. */
 export const buildSymbolDeckLayer = (
-  props: { symbols?: string[]; shadow?: boolean; outline?: number; gradient?: number } & Record<string, unknown>
+  props: {
+    symbols?: string[];
+    shadow?: boolean;
+    outline?: number;
+    gradient?: number;
+    /** Where each glyph is pinned and turned about, in pixels of its sharp cell; where it was drawn to sit when left out. */
+    anchors?: Record<string, [number, number]>;
+  } & Record<string, unknown>
 ): unknown => {
   // A picture per row packs its own atlas from loaded images: none of the
   // glyph atlases below apply, and neither do the shadow, outline or gradient
@@ -234,7 +312,7 @@ export const buildSymbolDeckLayer = (
   if (props.picture === true) {
     return buildPictureDeckLayer(props);
   }
-  const { symbols, shadow, outline, gradient, ...rest } = props;
+  const { symbols, shadow, outline, gradient, anchors, ...rest } = props;
   const names = symbols ?? [];
   const built =
     outline !== undefined ? outlineAtlasFor(names, outline) : shadow ? shadowAtlasFor(names) : atlasFor(names);
@@ -244,7 +322,7 @@ export const buildSymbolDeckLayer = (
   }
   return new IconLayer({
     iconAtlas: built.canvas,
-    iconMapping: built.mapping,
+    iconMapping: mappingAnchoredAt(built, anchors, padded ? PAD : 0),
     getPosition: (row: { position: [number, number, number] }) => row.position,
     // Pixels, so a symbol reads the same at every zoom.
     sizeUnits: 'pixels',

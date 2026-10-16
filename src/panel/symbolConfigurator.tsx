@@ -21,9 +21,10 @@ import { currentZoomOf } from './zoomScale';
  * The layer panel for the symbol layer.
  *
  * Four groups, and what each offers follows what is drawn: the fixed angle only
- * where no column turns the symbols, the size range only where a column sizes
- * them. kepler hands this method `layerChannelConfigProps`, which is what makes
- * a column picker one line rather than a pile of wiring.
+ * where no column turns the symbols, the pivot only where the anchor is off the
+ * centre, the size range only where a column sizes them through it. kepler
+ * hands this method `layerChannelConfigProps`, which is what makes a column
+ * picker one line rather than a pile of wiring.
  */
 /**
  * The change the Draw selector writes. Choosing pictures stands them upright in
@@ -87,7 +88,6 @@ export function SymbolLayerConfig({
               value={typeof visConfig.pictureUrl === 'string' ? visConfig.pictureUrl : ''}
               onChange={(url) => onVisConfigChange({ pictureUrl: url })}
             />
-            <SelectKnob layer={layer} visConfiguratorProps={visConfiguratorProps} property="pictureAnchor" />
           </>
         ) : (
           // About a thousand glyph names, with no messages behind them: the
@@ -96,6 +96,8 @@ export function SymbolLayerConfig({
           // words apart and shapes apart.
           <SymbolPicker layer={layer} visConfiguratorProps={visConfiguratorProps} />
         )}
+        {/* Shapes and pictures alike: which of the symbol's nine points sits on the row's place. */}
+        <SelectKnob layer={layer} visConfiguratorProps={visConfiguratorProps} property="pictureAnchor" />
         <SelectKnob layer={layer} visConfiguratorProps={visConfiguratorProps} property="directionConvention" />
         {settings.upright ? <VisConfigSwitch {...settings.upright} {...visConfiguratorProps} /> : null}
         <ConfigGroupCollapsibleContent>{slider('opacity')}</ConfigGroupCollapsibleContent>
@@ -132,6 +134,10 @@ export function SymbolLayerConfig({
             any range is a wrong bearing anyway. It is the one registered knob
             that deliberately has no control; do not add one. */}
         {layer.config.angleField ? null : slider('angleDegrees')}
+        {/* At the centre the anchor is the middle, and there is nothing to choose between. */}
+        {settings.turnAbout && visConfig.pictureAnchor && visConfig.pictureAnchor !== 'center' ? (
+          <SelectKnob layer={layer} visConfiguratorProps={visConfiguratorProps} property="turnAbout" />
+        ) : null}
       </LayerConfigGroup>
 
       <LayerConfigGroup label={'symbol.group.size'} collapsible>
@@ -139,7 +145,10 @@ export function SymbolLayerConfig({
         {layer.config.sizeField ? (
           <>
             <VisConfigSwitch {...settings.fixedSize} {...visConfiguratorProps} />
-            {slider('sizeRange')}
+            {/* With the column's own number in pixels, kepler's scale is the
+                identity and the range is never read: a slider here would move
+                nothing on the map. */}
+            {visConfig.fixedSize === true ? null : slider('sizeRange')}
           </>
         ) : (
           slider('symbolSize')

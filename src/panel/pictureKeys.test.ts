@@ -39,12 +39,26 @@ describe('pictureKey', () => {
     expect(pictureKey('https://a/b.png', 'center')).not.toBe(pictureKey('https://a/b.png', 'bottom'));
   });
 
-  it.each(['', 'picture:center:x', 'picture:left:x:end', 'other:center:x:end', 'picture:center:%E0%A4%A:end'])(
-    'refuses %p as a key',
-    (key) => {
-      expect(parsePictureKey(key)).toBeNull();
-    }
-  );
+  it('keeps a picture turning about its centre apart, since deck pins it elsewhere', () => {
+    const url = 'https://a/b.png?x=1';
+    const turning = pictureKey(url, 'bottom-left', 'centre');
+
+    expect(turning).not.toBe(pictureKey(url, 'bottom-left'));
+    expect(parsePictureKey(turning)).toEqual({ url, anchor: 'bottom-left' });
+    // Turning about the anchor is the key as it always was.
+    expect(pictureKey(url, 'bottom', 'anchor')).toBe(pictureKey(url, 'bottom'));
+  });
+
+  it.each([
+    '',
+    'picture:center:x',
+    'picture:middle:x:end',
+    'picture:left@middle:x:end',
+    'other:center:x:end',
+    'picture:center:%E0%A4%A:end',
+  ])('refuses %p as a key', (key) => {
+    expect(parsePictureKey(key)).toBeNull();
+  });
 });
 
 describe('checkPictureUrl', () => {
@@ -110,9 +124,29 @@ describe('pictureIcon', () => {
 });
 
 describe('pictureAnchorOf', () => {
-  it('reads anything but bottom as center', () => {
+  it('reads the nine points of the symbol layer’s anchor, and anything else as center', () => {
     expect(pictureAnchorOf('bottom')).toBe('bottom');
-    expect(pictureAnchorOf('left')).toBe('center');
+    expect(pictureAnchorOf('top-left')).toBe('top-left');
+    expect(pictureAnchorOf('middle')).toBe('center');
     expect(pictureAnchorOf(undefined)).toBe('center');
+  });
+});
+
+describe('pictures at the edges and corners', () => {
+  it('pushes a picture against the sides its anchor names, so the anchor is a point of the cell', () => {
+    expect(fitPicture(50, 100, 'bottom-left')).toEqual({ x: 0, y: 0, width: 64, height: 128 });
+    expect(fitPicture(50, 100, 'right')).toEqual({ x: 64, y: 0, width: 64, height: 128 });
+    expect(fitPicture(200, 100, 'top-right')).toEqual({ x: 0, y: 0, width: 128, height: 64 });
+    expect(fitPicture(200, 100, 'bottom-right')).toEqual({ x: 0, y: 64, width: 128, height: 64 });
+  });
+
+  it('pins the icon at that point, or at the cell’s centre when it turns about it', () => {
+    expect(pictureIcon('https://a/b.png', 'bottom-left')).toMatchObject({ anchorX: 0, anchorY: 128 });
+    expect(pictureIcon('https://a/b.png', 'top-right')).toMatchObject({ anchorX: 128, anchorY: 0 });
+    expect(pictureIcon('https://a/b.png', 'bottom-left', 'centre')).toMatchObject({
+      id: pictureKey('https://a/b.png', 'bottom-left', 'centre'),
+      anchorX: 64,
+      anchorY: 64,
+    });
   });
 });

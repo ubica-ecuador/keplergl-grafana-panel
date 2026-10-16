@@ -3,8 +3,19 @@ import { CHANNEL_SCALES } from '@kepler.gl/constants';
 import { thinBySpacing } from './declutter';
 import { shownInPane } from './paneVisibility';
 import { setting } from './velocityField';
-import { resolveSymbol, SYMBOL_FALLBACK, symbolNames } from './symbolGlyphs';
-import { PictureAnchor, pictureAnchorOf } from './pictureKeys';
+import { resolveSymbol, SYMBOL_FALLBACK, symbolCatalogue, symbolNames } from './symbolGlyphs';
+import { PICTURE_CELL, pictureAnchorOf } from './pictureKeys';
+import {
+  cellBox,
+  InkBox,
+  pivotOffset,
+  placeIn,
+  Placement,
+  SYMBOL_ANCHORS,
+  TURN_ABOUT,
+  turnAboutOf,
+} from './symbolAnchor';
+import { CELL } from './vectorFieldGlyphs';
 import { assignPictures, PictureAssignment } from './pictureRows';
 import { recordPictureAssignment } from './pictureState';
 import { DEFAULT_REF_ZOOM, DEFAULT_ZOOM_SCALE, noteZoom, zoomFactor, ZoomScale } from './zoomScale';
@@ -249,13 +260,34 @@ export const SYMBOL_VIS_CONFIGS = {
     group: 'display',
     property: 'pictureUrl',
   },
+  /**
+   * Which point of the symbol sits on the row's position: its centre, an edge
+   * or a corner. Named for pictures, which had it first, with two points; the
+   * name stays so saved layers keep theirs, and shapes read it too. A shape
+   * saved before had only the centre, and every shape layer saved since
+   * pictures came carries `center` unless it drew pictures with another
+   * anchor, so none moves.
+   */
   pictureAnchor: {
     type: 'select',
     defaultValue: 'center',
-    options: ['center', 'bottom'],
+    options: [...SYMBOL_ANCHORS],
     label: 'symbol.pictureAnchor',
     group: 'display',
     property: 'pictureAnchor',
+  },
+  /**
+   * What a turned symbol turns about: the point on the position — deck's own
+   * way, and the only one before this setting — or the middle of the symbol,
+   * which then keeps its place beside the position at every angle.
+   */
+  turnAbout: {
+    type: 'select',
+    defaultValue: 'anchor',
+    options: [...TURN_ABOUT],
+    label: 'symbol.turnAbout',
+    group: 'display',
+    property: 'turnAbout',
   },
 } as const;
 
@@ -383,21 +415,26 @@ const LABEL_GAP_PX = 4;
  * half-size is its radius here, and it comes from the row, so a larger symbol
  * pushes its label further out.
  *
- * A picture anchored at its bottom stands wholly above its point, so its
- * labels are set about its middle, half its size higher, rather than about the
- * point.
+ * A symbol anchored at an edge or a corner stands off its point — a picture
+ * anchored at its bottom wholly above it — so its labels are set about its
+ * middle rather than about the point: `lift` is the way from the point to
+ * that middle, in fractions of the symbol's size, with y down.
  */
-export function labelOffsetBeside(sizeOf: (row: unknown) => number, anchor: PictureAnchor = 'center') {
+export function labelOffsetBeside(sizeOf: (row: unknown) => number, lift: [number, number] = [0, 0]) {
   return (label: TextLabel) => {
     const x = label.anchor === 'middle' ? 0 : label.anchor === 'start' ? 1 : -1;
     const y = label.alignment === 'center' ? 0 : label.alignment === 'bottom' ? 1 : -1;
     const clearance = (row: unknown) => Number(sizeOf(row)) / 2 + LABEL_GAP_PX;
-    const lift = (row: unknown) => (anchor === 'bottom' ? Number(sizeOf(row)) / 2 : 0);
     return (row: unknown): [number, number] => [
-      x * clearance(row) || 0,
-      y * (clearance(row) + (y === 0 ? 0 : (label.size ?? 0))) - lift(row) || 0,
+      x * clearance(row) + lift[0] * Number(sizeOf(row)) || 0,
+      y * (clearance(row) + (y === 0 ? 0 : (label.size ?? 0))) + lift[1] * Number(sizeOf(row)) || 0,
     ];
   };
+}
+
+/** The point a glyph was drawn to sit on, in pixels of its cell: the centre, or a pin's tip. */
+function ownAnchorOf(symbol: string): [number, number] {
+  return symbolCatalogue().get(symbol)?.anchor ?? [CELL / 2, CELL / 2];
 }
 
 /** What a kepler dataset carries for the filters that run on the GPU. */
@@ -442,10 +479,16 @@ interface SymbolLayerLike {
   updateMeta(meta: Record<string, unknown>): unknown;
 }
 
+/**
+ * `inkOf` measures what a glyph fills of its cell, which is where a shape's
+ * edges and corners are; `symbolDeckLayer.ts` supplies it, from the atlas it
+ * paints. Without it, or where it cannot measure, a shape's box is its cell.
+ */
 export function makeSymbolLayer<C extends Constructor<object>>(
   BaseLayer: C,
   buildDeckLayer: (props: Record<string, unknown>) => unknown,
-  icon?: unknown
+  icon?: unknown,
+  inkOf?: (symbol: string) => InkBox | null
 ): C {
   class SymbolLayer extends (BaseLayer as Constructor<SymbolLayerLike>) {
     constructor(props?: Record<string, unknown>) {
@@ -656,6 +699,8 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       // dashboard clock never changes which rows have a picture. Recorded
       // against this layer object on every render, which the memo makes an
       // identity check: kept by id, it would mix with a repeated panel's.
+      const anchor = pictureAnchorOf(visConfig.pictureAnchor);
+      const turnAbout = turnAboutOf(visConfig.turnAbout);
       const pictures =
         visConfig.symbolSource === 'picture' ? this.picturesFor(rows, layerData?.getPicture, visConfig) : null;
       if (pictures) {
@@ -718,18 +763,37 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       const sizeFactor = zoomFactor(opts?.mapState?.zoom, zoomScale);
       const mapBearing = upright && this.config.angleField ? Number(opts?.mapState?.bearing ?? 0) || 0 : 0;
 
+      // Where the symbol is pinned and what it turns about. A picture fills
+      // its cell along the anchor's sides (`fitPicture`), so its box is the
+      // cell; a shape's is what it draws of its own. A picture's pin is in its
+      // icon (`pictureIcon`), a shape's in the atlas mapping, handed over only
+      // when it moves off the point the glyph was drawn to sit on.
+      const cellSide = pictures ? PICTURE_CELL : CELL;
+      const own = pictures ? ([PICTURE_CELL / 2, PICTURE_CELL / 2] as [number, number]) : ownAnchorOf(symbol);
+      const placement: Placement = placeIn(
+        pictures ? cellBox(PICTURE_CELL) : (inkOf?.(symbol) ?? cellBox(CELL)),
+        own,
+        anchor,
+        turnAbout
+      );
+      const pinned = !pictures && (placement.pivot[0] !== own[0] || placement.pivot[1] !== own[1]);
+      // Turning about the centre pins the centre; this pushes it back so the
+      // anchor stays on the position. Sized per row, and with the zoom's
+      // shrinking, which deck applies to the icon but not to an offset — so
+      // while both are on, the offsets follow every frame of a zoom.
+      const getPixelOffset = pivotOffset(placement.shift, cellSide, sizeOf, sizeFactor);
+
       const channelTriggers = this.getVisualChannelUpdateTriggers();
       const updateTriggers = {
         ...channelTriggers,
         getIcon: pictures
-          ? [
-              String(visConfig.pictureUrl ?? ''),
-              pictureAnchorOf(visConfig.pictureAnchor),
-              this.config.columns?.picture?.fieldIdx ?? -1,
-            ]
+          ? [String(visConfig.pictureUrl ?? ''), anchor, turnAbout, this.config.columns?.picture?.fieldIdx ?? -1]
           : [symbol],
         getAngle: { ...channelTriggers.getAngle, directionConvention: convention, mapBearing },
         getFilterValue: opts?.gpuFilter?.filterValueUpdateTriggers,
+        ...(getPixelOffset
+          ? { getPixelOffset: { ...channelTriggers.getSize, shift: placement.shift, sizeFactor } }
+          : {}),
       };
 
       const symbolProps = {
@@ -749,6 +813,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
               // Only the glyph in use, so the atlas stays one cell wide.
               symbols: [symbol],
               getIcon: () => symbol,
+              ...(pinned ? { anchors: { [symbol]: placement.pivot } } : {}),
             }),
         visible: this.config.isVisible !== false && shownInPane(opts),
         getPosition: layerData?.getPosition,
@@ -756,6 +821,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
         billboard: upright,
         getSize: sizeOf,
         ...(zoomScale ? { sizeScale: sizeFactor } : {}),
+        ...(getPixelOffset ? { getPixelOffset } : {}),
         getColor: pictures ? PICTURE_TINT : colorOf,
         // Left out rather than passed as undefined when there is none, so the
         // filter extension keeps its own default instead of an empty prop.
@@ -786,18 +852,18 @@ export function makeSymbolLayer<C extends Constructor<object>>(
 
       // kepler's own text labels, the ones its point layer draws, over the rows
       // actually drawn — so declutter thins the labels with their symbols.
-      const labelAnchor = pictures ? pictureAnchorOf(visConfig.pictureAnchor) : 'center';
+      const lift: [number, number] = [placement.lift[0] / cellSide, placement.lift[1] / cellSide];
       // A label clears the symbol as drawn, shrunk or not.
       const drawnSizeOf = sizeFactor === 1 ? sizeOf : (row: unknown) => Number(sizeOf(row)) * sizeFactor;
       const labels = Array.isArray(layerData?.textLabels)
         ? this.renderTextLabelLayer(
             {
               getPosition: layerData?.getPosition,
-              getPixelOffset: labelOffsetBeside(drawnSizeOf, labelAnchor),
+              getPixelOffset: labelOffsetBeside(drawnSizeOf, lift),
               // kepler builds a label's offset trigger from `getRadius`, the
               // point layer's size: the anchor and the shrinking have to reach
               // it that way.
-              updateTriggers: { ...updateTriggers, getRadius: { labelAnchor, sizeFactor } },
+              updateTriggers: { ...updateTriggers, getRadius: { lift, sizeFactor } },
               sharedProps: {
                 ...(getFilterValue ? { getFilterValue } : {}),
                 extensions: defaults.extensions,
@@ -818,6 +884,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       pictureIdx: number;
       url: unknown;
       anchor: string;
+      turnAbout: string;
       origin: string;
       result: PictureAssignment<SymbolRow>;
     } | null = null;
@@ -842,6 +909,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       visConfig: Record<string, unknown>
     ): PictureAssignment<SymbolRow> {
       const anchor = pictureAnchorOf(visConfig.pictureAnchor);
+      const turnAbout = turnAboutOf(visConfig.turnAbout);
       const origin = typeof location === 'undefined' ? 'https://localhost' : location.origin;
       const pictureIdx = typeof getPicture === 'function' ? (this.config.columns?.picture?.fieldIdx ?? -1) : -1;
       const memo = this.pictureMemo;
@@ -851,6 +919,7 @@ export function makeSymbolLayer<C extends Constructor<object>>(
         memo.pictureIdx === pictureIdx &&
         memo.url === visConfig.pictureUrl &&
         memo.anchor === anchor &&
+        memo.turnAbout === turnAbout &&
         memo.origin === origin
       ) {
         return memo.result;
@@ -859,9 +928,10 @@ export function makeSymbolLayer<C extends Constructor<object>>(
         urlOf: typeof getPicture === 'function' ? (getPicture as (row: SymbolRow) => unknown) : null,
         layerPicture: visConfig.pictureUrl,
         anchor,
+        turnAbout,
         pageHref: `${origin}/`,
       });
-      this.pictureMemo = { rows, pictureIdx, url: visConfig.pictureUrl, anchor, origin, result };
+      this.pictureMemo = { rows, pictureIdx, url: visConfig.pictureUrl, anchor, turnAbout, origin, result };
       return result;
     }
 
@@ -909,6 +979,9 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       const alpha = Math.round(255 * Math.min(1, Math.max(0, setting(visConfig.shadowOpacity, 0.5))));
       const distance = setting(visConfig.shadowDistance, 4);
       const color = [0, 0, 0, alpha];
+      // On top of the symbol's own push, when it turns about its centre: the
+      // shadow falls from where the symbol is, not from where it is pinned.
+      const pushed = symbolProps.getPixelOffset as ((row: unknown) => [number, number]) | undefined;
       return buildDeckLayer({
         ...symbolProps,
         id: `${this.id}-symbol-shadow`,
@@ -916,11 +989,16 @@ export function makeSymbolLayer<C extends Constructor<object>>(
         pickable: false,
         onFilteredItemsChange: undefined,
         getColor: () => color,
-        getPixelOffset: [distance, distance],
+        getPixelOffset: pushed
+          ? (row: unknown) => {
+              const [x, y] = pushed(row);
+              return [x + distance, y + distance];
+            }
+          : [distance, distance],
         updateTriggers: {
           ...symbolProps.updateTriggers,
           getColor: [alpha],
-          getPixelOffset: [distance],
+          getPixelOffset: pushed ? { distance, pushed: symbolProps.updateTriggers.getPixelOffset } : [distance],
         },
       });
     }

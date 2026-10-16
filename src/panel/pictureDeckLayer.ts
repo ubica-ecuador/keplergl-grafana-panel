@@ -16,7 +16,7 @@ import { recordPictureOutcome } from './pictureState';
  */
 
 /** The symbol layer's props that only its glyph atlases read. deck keeps any prop it is given. */
-const GLYPH_ONLY_PROPS = ['picture', 'symbols', 'shadow', 'outline', 'gradient'];
+const GLYPH_ONLY_PROPS = ['picture', 'symbols', 'shadow', 'outline', 'gradient', 'anchors'];
 
 /** A constant, so deck sees the same load options on every render. */
 const LOAD_OPTIONS = { core: { fetch: pictureFetch } };

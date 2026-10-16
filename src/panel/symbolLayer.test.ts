@@ -228,6 +228,74 @@ describe('symbol layer', () => {
   });
 });
 
+describe('anchoring a shape', () => {
+  /** The arrow's drawn box in its cell of 96, as the deck module measures it. */
+  const arrowInk = { left: 36, top: 8, right: 60, bottom: 80 };
+  const MeasuredLayer = makeSymbolLayer(FakeBaseLayer as never, fakeBuild, undefined, (symbol) =>
+    symbol === 'arrow' ? arrowInk : null
+  );
+
+  const drawn = (visConfig: Record<string, unknown>, Factory = MeasuredLayer) => {
+    const layer = new (Factory as never as new (props?: Record<string, unknown>) => any)({
+      dataId: 'd1',
+      columns: stationColumns,
+    });
+    layer.updateLayerConfig({ visConfig: { ...layer.config.visConfig, symbol: 'arrow', ...visConfig } });
+    layer.renderLayer({ data: layer.formatLayerData({ d1: threeStations }), mapState: { zoom: 9 } });
+    return built;
+  };
+
+  it('offers nine points and two pivots, defaulting to the centre and the anchor', () => {
+    expect(SYMBOL_VIS_CONFIGS.pictureAnchor.options).toHaveLength(9);
+    expect(SYMBOL_VIS_CONFIGS.pictureAnchor.defaultValue).toBe('center');
+    expect(SYMBOL_VIS_CONFIGS.turnAbout.defaultValue).toBe('anchor');
+  });
+
+  it('draws a layer saved before anchors exactly as it was: no pin, no push', () => {
+    const [symbols] = drawn({});
+
+    expect(symbols.anchors).toBeUndefined();
+    expect(symbols.getPixelOffset).toBeUndefined();
+  });
+
+  it('pins a shape standing on its bottom at the bottom of what it draws, and turns it there', () => {
+    const [symbols] = drawn({ pictureAnchor: 'bottom' });
+
+    expect(symbols.anchors).toEqual({ arrow: [48, 80] });
+    expect(symbols.getPixelOffset).toBeUndefined();
+  });
+
+  it('turning about the centre pins the middle and pushes it back, by the row’s size', () => {
+    const [symbols] = drawn({ pictureAnchor: 'bottom', turnAbout: 'centre' });
+
+    expect(symbols.anchors).toEqual({ arrow: [48, 44] });
+    // 36 cell pixels up, at 20 px for a cell of 96.
+    expect(symbols.getPixelOffset({ index: 0 })).toEqual([0, -7.5]);
+    expect(symbols.updateTriggers.getPixelOffset).toMatchObject({ shift: [0, -36], sizeFactor: 1 });
+  });
+
+  it('pushes the outline with the symbol, and the shadow from where the symbol is', () => {
+    const [shadow, outline, symbols] = drawn({
+      pictureAnchor: 'bottom',
+      turnAbout: 'centre',
+      outline: true,
+      shadow: true,
+      shadowDistance: 4,
+    });
+
+    expect(outline.anchors).toEqual(symbols.anchors);
+    expect(outline.getPixelOffset({ index: 0 })).toEqual([0, -7.5]);
+    expect(shadow.anchors).toEqual(symbols.anchors);
+    expect(shadow.getPixelOffset({ index: 0 })).toEqual([4, -3.5]);
+  });
+
+  it('takes the cell for the box where nothing could be measured', () => {
+    const [symbols] = drawn({ pictureAnchor: 'top-left' }, SymbolLayer);
+
+    expect(symbols.anchors).toEqual({ arrow: [0, 0] });
+  });
+});
+
 describe('shrinking when zooming out', () => {
   const symbolLayer = () =>
     new (SymbolLayer as never as new (props?: Record<string, unknown>) => any)({ dataId: 'd1', columns: stationColumns });
@@ -359,8 +427,15 @@ describe('labelOffsetBeside', () => {
     expect(labelOffsetBeside(size40)({ anchor: 'start', alignment: 'bottom', size: 10 })(row)).toEqual([24, 34]);
   });
 
+  it('sets a label about the middle of a symbol anchored at a corner, beside and above its point', () => {
+    const offset = labelOffsetBeside(size40, [-0.5, -0.5]);
+
+    expect(offset({ anchor: 'middle', alignment: 'center' })(row)).toEqual([-20, -20]);
+    expect(offset({ anchor: 'start', alignment: 'center' })(row)).toEqual([4, -20]);
+  });
+
   it('sets a label about the middle of a bottom-anchored picture, which stands above its point', () => {
-    const offset = labelOffsetBeside(size40, 'bottom');
+    const offset = labelOffsetBeside(size40, [0, -0.5]);
 
     expect(offset({ anchor: 'middle', alignment: 'center' })(row)).toEqual([0, -20]);
     expect(offset({ anchor: 'start', alignment: 'center' })(row)).toEqual([24, -20]);

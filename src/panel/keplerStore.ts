@@ -13,7 +13,7 @@ import { makeFlowFieldLayer } from './flowFieldLayer';
 import { buildMarkersDeckLayer } from './markersDeckLayer';
 import { makeMarkersLayer } from './markersLayer';
 import { ownLayerIcon } from './ownLayerIcon';
-import { buildSymbolDeckLayer } from './symbolDeckLayer';
+import { buildSymbolDeckLayer, glyphInk } from './symbolDeckLayer';
 import { makeSymbolLayer } from './symbolLayer';
 import { withTile3dAltitude } from './tile3dAltitudeLayer';
 import { buildVectorFieldDeckLayer } from './vectorFieldDeckLayer';
@@ -117,7 +117,7 @@ const layerClasses = {
   // one symbol per row, turned and sized by columns of the table. Built on the
   // base `Layer` so kepler's row machinery — filters, the clock, tooltips —
   // applies unchanged.
-  symbol: makeSymbolLayer(Layer as never, buildSymbolDeckLayer, ICON_LAYER_ICON),
+  symbol: makeSymbolLayer(Layer as never, buildSymbolDeckLayer, ICON_LAYER_ICON, glyphInk),
   // Reference points the user drags, each publishing its position to a pair of
   // dashboard variables — an isochrone's origin and destination. Nothing from
   // the dataset is drawn; see `markersLayer.ts`.

@@ -49,7 +49,17 @@ export const SYMBOL_MESSAGES: Record<string, string> = {
   'symbol.pictureUrl': 'Picture URL',
   'symbol.pictureAnchor': 'Anchor',
   'symbol.pictureAnchor.center': 'Centre',
+  'symbol.pictureAnchor.top': 'Top',
   'symbol.pictureAnchor.bottom': 'Bottom',
+  'symbol.pictureAnchor.left': 'Left',
+  'symbol.pictureAnchor.right': 'Right',
+  'symbol.pictureAnchor.top-left': 'Top left',
+  'symbol.pictureAnchor.top-right': 'Top right',
+  'symbol.pictureAnchor.bottom-left': 'Bottom left',
+  'symbol.pictureAnchor.bottom-right': 'Bottom right',
+  'symbol.turnAbout': 'Turn about',
+  'symbol.turnAbout.anchor': 'The anchor',
+  'symbol.turnAbout.centre': 'The centre',
   // kepler labels a column with the message `columns.<name>`.
   'columns.picture': 'picture URL',
 

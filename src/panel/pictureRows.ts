@@ -1,4 +1,5 @@
 import { checkPictureUrl, PictureAnchor, PictureIcon, pictureIcon, PictureProblem } from './pictureKeys';
+import { TurnAbout } from './symbolAnchor';
 
 /**
  * Which picture each row of a symbol layer draws, and which rows draw none.
@@ -43,6 +44,8 @@ export interface AssignOptions<R> {
   urlOf: ((row: R) => unknown) | null;
   layerPicture: unknown;
   anchor: PictureAnchor;
+  /** What the pictures turn about; their anchor when left out. */
+  turnAbout?: TurnAbout;
   pageHref: string;
   max?: number;
 }
@@ -77,7 +80,7 @@ export function assignPictures<R extends { index: number }>(rows: R[], options: 
       overflowing.add(url);
       return null;
     }
-    const icon = pictureIcon(url, options.anchor);
+    const icon = pictureIcon(url, options.anchor, options.turnAbout);
     accepted.set(url, icon);
     return icon;
   };
