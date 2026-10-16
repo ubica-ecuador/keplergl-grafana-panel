@@ -4,7 +4,7 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
-## 1.3.0 (unreleased)
+## 1.3.0 (2026-10-16)
 
 - **No code from third-party hosts**: loaders.gl, which reads every 3D tile, glTF model and file
   dropped on the map, fetched its worker scripts from unpkg.com, and Google's Draco decoder —
