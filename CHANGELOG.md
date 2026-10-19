@@ -20,6 +20,10 @@ release documents what changed since the one before it.
   under it to the click variables, and saved maps keep doing so. The time slider's incremental
   window reaching the last of the data, a fix this panel carried, now comes from kepler itself, sent
   upstream from this project; nothing on the map changes with it.
+- **The map's name and description are saved**: what is typed under **Interactions → Map info**
+  now survives **Save map**, kept beside the configuration as kepler's own **Export map** keeps it,
+  and comes back when the dashboard loads. Pasting a map exported from kepler.gl brings its name and
+  description too. Until now both were gone on the next load.
 
 ## 1.3.0 (2026-10-16)
 

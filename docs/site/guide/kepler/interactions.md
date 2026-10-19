@@ -84,13 +84,9 @@ detailed layer, labels or a dense point cloud out of the way at country zoom wit
 ## Map info
 
 A **Name** and a **Description** for the map, shown in a card on its right side; the description
-can carry links written as `[label](https://…)`.
-
-::: warning Not kept by Save map
-kepler keeps the name and description apart from the configuration it exports, so **Save map**
-leaves them out and they are gone on the next load. Use the panel's title and description for
-something that has to stay.
-:::
+can carry links written as `[label](https://…)`. Both are saved with the map. kepler keeps them
+apart from the configuration it exports, so the panel saves them beside it, the way kepler's own
+**Export map** does.
 
 ## Geocoder
 
