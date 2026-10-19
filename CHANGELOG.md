@@ -20,6 +20,11 @@ release documents what changed since the one before it.
   under it to the click variables, and saved maps keep doing so. The time slider's incremental
   window reaching the last of the data, a fix this panel carried, now comes from kepler itself, sent
   upstream from this project; nothing on the map changes with it.
+- **The data table opens over the page**: kepler's dialogs — a dataset's data table, Add Data, the
+  exports, the delete confirmation — opened inside the panel, which cut them at its edges. The
+  table's close button was cut off with the rest, and the dialog's backdrop stayed over the map and
+  took every click. They now open over the whole dashboard, as kepler draws them, and close from
+  their ✕.
 
 ## 1.3.0 (2026-10-16)
 

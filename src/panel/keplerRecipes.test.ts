@@ -6,6 +6,7 @@ import {
   MapContainerFactory,
   MapControlFactory,
   MapPopoverContentFactory,
+  ModalDialogFactory,
   PanelHeaderFactory,
   RangeSliderFactory,
 } from '@kepler.gl/components';
@@ -48,6 +49,7 @@ describe('the recipes the panel injects', () => {
     ['the layer panel header', LayerPanelHeaderFactory, 'LayerPanelHeaderWithOwnNames'],
     ['the popup content', MapPopoverContentFactory, 'ContentWithSelect'],
     ['the side panel header', PanelHeaderFactory, 'BrandedPanelHeader'],
+    ['the modal dialog', ModalDialogFactory, 'ModalDialogOnBody'],
     ['the map container', MapContainerFactory, 'MapContainerWithHalo'],
     ['the enlarged time bar', RangeSliderFactory, 'TimeBarCursorRangeSlider'],
     ['the minified time bar', TimelineSliderFactory, 'TimeBarCursorTimelineSlider'],
