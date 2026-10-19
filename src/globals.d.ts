@@ -27,3 +27,13 @@ declare module 'draco3d/draco_decoder_nodejs.js' {
   const DracoDecoderModule: (settings: Record<string, unknown>) => Promise<unknown> | undefined;
   export default DracoDecoderModule;
 }
+
+/**
+ * sql.js as its package ships it: Emscripten's factory, which takes the module's
+ * settings (here `locateFile`) and resolves to SQLite's classes. See
+ * `panel/exportSqlJs.ts`.
+ */
+declare module 'sql.js/dist/sql-wasm.js' {
+  const initSqlJs: (settings: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  export default initSqlJs;
+}

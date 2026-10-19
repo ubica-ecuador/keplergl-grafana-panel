@@ -146,6 +146,12 @@ const config = async (env: Env): Promise<Configuration> => {
             info: { minimized: true },
           },
           { from: '../node_modules/draco3d/draco_decoder.wasm', to: 'loaders/[name][ext]' },
+          /*
+           * sql.js's WebAssembly, for kepler's GeoPackage export, which would
+           * otherwise fetch it from cdn.jsdelivr.net. The JavaScript half is
+           * bundled; see src/panel/exportSqlJs.ts.
+           */
+          { from: '../node_modules/sql.js/dist/sql-wasm.wasm', to: 'loaders/[name][ext]' },
         ],
       }),
       /*
@@ -176,6 +182,26 @@ const config = async (env: Env): Promise<Configuration> => {
         const issuer: string = resource.contextInfo?.issuer ?? '';
         if (issuer.includes('@kepler.gl')) {
           resource.request = path.resolve(process.cwd(), 'src', 'panel', 'portaledBodyMount.tsx');
+        }
+      }),
+      /*
+       * kepler's Export data writes a GeoPackage with sql.js and GeoParquet with
+       * parquet-wasm, and fetches both from a CDN: its `sql-js` module adds a
+       * script from cdn.jsdelivr.net, and its GeoParquet writer starts
+       * parquet-wasm with a WebAssembly URL on unpkg.com. Each is swapped here,
+       * for kepler's file only, with a module that loads the same package from
+       * the plugin (src/panel/exportSqlJs.ts, src/panel/exportParquetWasm.ts).
+       */
+      new webpack.NormalModuleReplacementPlugin(/^\.\/sql-js(\.js)?$/, (resource) => {
+        const issuer: string = resource.contextInfo?.issuer ?? '';
+        if (/@kepler\.gl[\\/]processors[\\/]/.test(issuer)) {
+          resource.request = path.resolve(process.cwd(), 'src', 'panel', 'exportSqlJs.ts');
+        }
+      }),
+      new webpack.NormalModuleReplacementPlugin(/^parquet-wasm$/, (resource) => {
+        const issuer: string = resource.contextInfo?.issuer ?? '';
+        if (/@kepler\.gl[\\/]processors[\\/].*geoparquet-writer\.js$/.test(issuer)) {
+          resource.request = path.resolve(process.cwd(), 'src', 'panel', 'exportParquetWasm.ts');
         }
       }),
       /*
@@ -311,6 +337,11 @@ const config = async (env: Env): Promise<Configuration> => {
         {
           test: /[\\/]draco3d[\\/]draco_decoder_nodejs\.js$/,
           resolve: { fallback: { fs: false, path: false } },
+        },
+        // The same for sql.js (src/panel/exportSqlJs.ts), which also names `crypto`.
+        {
+          test: /[\\/]sql\.js[\\/]dist[\\/]sql-wasm\.js$/,
+          resolve: { fallback: { fs: false, path: false, crypto: false } },
         },
         /*
          * parquet-wasm's WebAssembly, which webpack already emits because the

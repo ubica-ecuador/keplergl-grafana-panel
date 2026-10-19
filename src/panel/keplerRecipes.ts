@@ -1,4 +1,3 @@
-import { replaceAnimationController } from './animationSweepFix';
 import { replaceMapControl } from './mapControl';
 import { replaceLayerConfigurator } from './flowFieldConfigurator';
 import { replaceMapContainer } from './haloMapContainer';
@@ -42,7 +41,6 @@ export function keplerRecipes(): Array<[unknown, unknown]> {
   return [
     replaceMapContainer(),
     replaceMapControl(),
-    replaceAnimationController(),
     replaceLayerConfigurator(),
     replaceLayerPanelHeader(),
     replaceMapPopoverContent(),

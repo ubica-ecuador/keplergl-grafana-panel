@@ -83,7 +83,7 @@ import { chartFilterIds, onlyChartFilters, withoutChartFilters, type ChartLike }
 /**
  * The ONLY module that talks to the kepler.gl API.
  *
- * kepler.gl is pinned to a pre-release (3.3.0-alpha.15) because the Flow layer
+ * kepler.gl is pinned to a pre-release (3.3.0-alpha.17) because the Flow layer
  * exists nowhere else. Funnelling every kepler call through here means the
  * alpha -> stable upgrade touches one file instead of the whole tree.
  */
@@ -218,18 +218,18 @@ export function loadDatasets(
 /**
  * The saved config's own tooltip compare setting, when it states one.
  *
- * Upstream cause: kepler.gl 3.3.0-alpha.15's `mergeInteractions`
- * (`@kepler.gl/reducers`, `vis-state-merger.ts` ~474 — which `addDataToMap`
+ * Upstream cause: kepler.gl 3.3.0-alpha.17's `mergeInteractions`
+ * (`@kepler.gl/reducers`, `vis-state-merger.ts` ~484 — which `addDataToMap`
  * runs twice: synchronously, inside `receiveMapConfigUpdater` right after it
  * resets the config, and again once the saved config's datasets have settled)
- * rebuilds the tooltip's `config` as `{fieldsToShow}` only, so `compareMode` and
- * `compareType` never reach the store through that merge alone — even though
- * kepler's own "Save current map" writes them (`InteractionSchemaV1.save`
- * spreads the whole tooltip config). `KeplerGlSchema.parseSavedConfig` keeps
- * them, though: `InteractionSchemaV1.load` is a plain `cloneDeep`, so they
- * land flat on `interactionConfig.tooltip`, beside `fieldsToShow` — which is
- * what this reads. Delete this once kepler's own merge keeps the saved
- * tooltip config.
+ * rebuilds the tooltip's `config` as `{fieldsToShow}` and, since alpha.17, the
+ * time zone, nothing else, so `compareMode` and `compareType` never reach the
+ * store through that merge alone — even though kepler's own "Save current map"
+ * writes them (`InteractionSchemaV1.save` spreads the whole tooltip config).
+ * `KeplerGlSchema.parseSavedConfig` keeps them, though: `InteractionSchemaV1.load`
+ * is a plain `cloneDeep`, so they land flat on `interactionConfig.tooltip`,
+ * beside `fieldsToShow` — which is what this reads. Delete this once kepler's
+ * own merge keeps the saved tooltip config.
  */
 export function savedTooltipCompare(
   config: ParsedConfig | null

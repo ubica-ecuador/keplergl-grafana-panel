@@ -15,7 +15,7 @@ settings it passes:
 enableFlowLayer: true
 ```
 
-The Flow layer is why this plugin pins **kepler.gl 3.3.0-alpha.15** rather than the 3.2.6 stable
+The Flow layer is why this plugin pins **kepler.gl 3.3.0-alpha.17** rather than the 3.2.6 stable
 release: it exists nowhere else. Stating it explicitly rather than relying on the upstream default
 means a change in that default cannot silently remove the feature the plugin is partly built around.
 
@@ -72,8 +72,8 @@ source is **Chart cross-filter**. See [Charts](../guide/kepler/charts).
 
 ## A saved compare mode is kept
 
-kepler.gl 3.3.0-alpha.15's `mergeInteractions` keeps only `fieldsToShow` when it merges a saved
-config onto a freshly loaded map, so a saved tooltip `compareMode`/`compareType` never reaches the
+kepler.gl 3.3.0-alpha.17's `mergeInteractions` keeps only `fieldsToShow` and the time zone when it
+merges a saved config onto a freshly loaded map, so a saved tooltip `compareMode`/`compareType` never reaches the
 store through `addDataToMap` alone. The panel reads the saved value itself and dispatches it right
 after loading the map, before that merge runs. See
 [Charts](../guide/kepler/charts#comparing-two-entities).
@@ -186,7 +186,7 @@ re-runs.
 ## Where upstream documentation is behind this plugin
 
 kepler.gl's public documentation describes the **3.2 stable line**. This plugin bundles
-**3.3.0-alpha.15**. Two consequences when you follow an outbound link:
+**3.3.0-alpha.17**. Two consequences when you follow an outbound link:
 
 - Upstream lists **fifteen** layer types. The bundled pre-release registers **twenty-two** — the Flow
   layer and the Flow Field among them, neither of which upstream documents at all.

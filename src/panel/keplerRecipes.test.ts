@@ -1,7 +1,6 @@
 import {
   injector,
   provideRecipesToInjector,
-  AnimationControllerFactory,
   LayerConfiguratorFactory,
   LayerPanelHeaderFactory,
   MapContainerFactory,
@@ -45,7 +44,6 @@ describe('the recipes the panel injects', () => {
 
   it.each([
     ['the map control', MapControlFactory, 'CustomMapControl'],
-    ['the animation controller', AnimationControllerFactory, 'SweepingAnimationController'],
     ['the layer configurator', LayerConfiguratorFactory, 'LayerConfiguratorWithFlowField'],
     ['the layer panel header', LayerPanelHeaderFactory, 'LayerPanelHeaderWithOwnNames'],
     ['the popup content', MapPopoverContentFactory, 'ContentWithSelect'],
