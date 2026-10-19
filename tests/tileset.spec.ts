@@ -71,12 +71,16 @@ async function addVectorTileset(page: Page): Promise<void> {
   // The name comes back from the metadata, which is also the signal it parsed.
   await expect(page.locator('#tileset-name')).toHaveValue(TILE_JSON.name, { timeout: 30_000 });
 
+  // Since kepler.gl 3.3.0-alpha.16 the form no longer adds the tileset itself:
+  // the bar along the modal's foot confirms it, as it does a file upload, with
+  // **Add Data**: the same words as the side panel's button, hence the scope.
+  //
   // Dispatched rather than clicked: kepler's modal footer is laid out below a
   // 440px-min-height dialog and spills out of the panel box, so in the panel
   // editor this button lands over Grafana's Monaco query editor and playwright
   // reports every click as intercepted. Where the button sits is not what this
   // test is about.
-  await page.getByRole('button', { name: 'Add Tileset' }).dispatchEvent('click');
+  await page.locator('.add-data-bar').getByRole('button', { name: 'Add Data' }).dispatchEvent('click');
 }
 
 test('keeps a tileset added in kepler in the saved map configuration', async ({

@@ -73,5 +73,5 @@ scripting time during playback was within the noise of the measurement.
 
 **Upstream:** kepler documents the charts panel in its repository rather than on the docs site.
 
-Written against **kepler.gl 3.3.0-alpha.15**. See
+Written against **kepler.gl 3.3.0-alpha.17**. See
 [Upstream documentation](../../reference/upstream-docs).

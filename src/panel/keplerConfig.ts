@@ -40,7 +40,7 @@ export function configureKepler(): void {
     rasterServerUrls: rasterServerUrlsOf(DEFAULT_RASTER_SERVER_URL),
     // A "new release" banner has no place inside a dashboard panel.
     showReleaseBanner: false,
-    // The Flow layer is the reason this plugin pins kepler.gl 3.3.0-alpha.15
+    // The Flow layer is the reason this plugin pins kepler.gl 3.3.0-alpha.17
     // rather than the 3.2.6 stable. Stated explicitly so a change in the
     // upstream default cannot silently remove it.
     enableFlowLayer: true,

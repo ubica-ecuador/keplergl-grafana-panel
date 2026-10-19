@@ -4,6 +4,23 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## Unreleased
+
+- **kepler.gl 3.3.0-alpha.17**: a layer card's zoom, duplicate, `{ }` and remove buttons move into a
+  ⋮ menu on the card. **Export data** writes GeoJSON, GeoParquet, Shapefile, GeoPackage, KML and KMZ
+  as well as CSV; kepler fetches the GeoPackage and GeoParquet writers' WebAssembly from
+  cdn.jsdelivr.net and unpkg.com, and the plugin ships both instead, so an export calls no host but
+  Grafana. Filters gain **Filter out** and a 12/24-hour clock, and a range or select filter can span
+  several datasets, as a time filter already could; arcs and lines can end in an arrow; cluster,
+  hexbin and grid layers can label their counts; the tooltip can show times in a chosen time zone;
+  playback can step by interval; and **Interactions** gains a legend section, fading by zoom and a
+  map name and description shown on the map. With the coordinate interaction on, a right-click on
+  the map offers to copy the coordinates under it. The WMS layer's new **Allow hover** switch starts
+  on in this panel, though kepler starts it off: a click on a queryable WMS is what writes the value
+  under it to the click variables, and saved maps keep doing so. The time slider's incremental
+  window reaching the last of the data, a fix this panel carried, now comes from kepler itself, sent
+  upstream from this project; nothing on the map changes with it.
+
 ## 1.3.0 (2026-10-16)
 
 - **No code from third-party hosts**: loaders.gl, which reads every 3D tile, glTF model and file

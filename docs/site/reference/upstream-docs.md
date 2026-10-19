@@ -8,7 +8,7 @@ page is the link hub, with the versions each link was written against.
 
 | Library        | Version bundled                |
 | -------------- | ------------------------------ |
-| kepler.gl      | **3.3.0-alpha.15**             |
+| kepler.gl      | **3.3.0-alpha.17**             |
 | deck.gl        | **9.3.11**                     |
 | MapLibre GL JS | **6.11.1** (kepler asks for 4) |
 | React          | 18.3.1                         |

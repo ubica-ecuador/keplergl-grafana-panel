@@ -19,6 +19,7 @@ import { withTile3dAltitude } from './tile3dAltitudeLayer';
 import { buildVectorFieldDeckLayer } from './vectorFieldDeckLayer';
 import { makeVectorFieldLayer } from './vectorFieldLayer';
 import { buildTimedWmsLayer } from './wmsDeckLayer';
+import { withWmsPicking } from './wmsPicking';
 import { withWmsTime } from './wmsTimeLayer';
 import { withPresentLayerGroups } from './loadedLayerGroups';
 import { buildZarrDeckLayer } from './zarrDeckLayer';
@@ -64,8 +65,9 @@ const POINT_LAYER_ICON = own(iconOf(LayerClasses.point));
 const RASTER_ICON = own(RasterTileIcon);
 
 /**
- * kepler's layer classes, with the WMS layer taught to ask for a date and four
- * layers added that kepler has no equivalent of.
+ * kepler's layer classes, with the WMS layer taught to ask for a date (and to
+ * answer clicks, see `wmsPicking.ts`) and four layers added that kepler has no
+ * equivalent of.
  *
  * kepler builds layers from `visState.layerClasses`, so replacing an entry here
  * is the whole of the change — see `wmsTimeLayer.ts` for why a time-aware WMS
@@ -74,7 +76,7 @@ const RASTER_ICON = own(RasterTileIcon);
  */
 const layerClasses = {
   ...LayerClasses,
-  wms: withWmsTime(LayerClasses.wms, buildTimedWmsLayer),
+  wms: withWmsTime(withWmsPicking(LayerClasses.wms), buildTimedWmsLayer),
   // A repair, like the WMS one above. A 3D tileset states its geometry at its
   // real altitude and this map's ground is a plane at zero, so a mesh surveyed
   // on a hill draws in mid-air — and past a certain camera does not draw at
