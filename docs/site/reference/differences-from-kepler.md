@@ -51,8 +51,8 @@ enableAnimationJsonEditor: false
 
 Since 3.3.0-alpha.14 kepler puts a `{ }` JSON editor on the time widget. That widget sits on the map
 for everyone who opens the dashboard, side panel or not, and whatever is typed into it is gone on the
-next refresh, so the panel leaves it out. The `{ }` editors on the layer, filter and effect cards in
-the side panel are kepler's and stay.
+next refresh, so the panel leaves it out. The `{ }` editors on the layer, filter, effect and chart
+cards in the side panel are kepler's and stay.
 
 ## The map control
 
@@ -156,6 +156,24 @@ from the query, or from the service's own `GetCapabilities` — puts it on the m
 carries the selected date onto every request, the click that asks `GetFeatureInfo` included.
 
 See [Imagery over time](../guide/data/imagery-over-time).
+
+## A WMS answers clicks unless told not to
+
+kepler.gl 3.3.0-alpha.16 gave the WMS layer the **Allow hover** switch its point, GeoJSON and
+raster tile layers already had, but turned off where theirs is on, and made the layer pickable only
+with it on. A click on a queryable WMS is what asks `GetFeatureInfo` and writes the answer to a
+click mapping's variable, so with kepler's default every saved map with a WMS would have stopped
+answering clicks, with nothing on screen to say why. The panel's WMS layer starts with the switch
+on; a map that turns it off keeps it off. See [WMS services](../guide/data/wms#clicking-asks-the-service).
+
+## Exports write with the plugin's own code
+
+kepler's **Export data** writes GeoPackage with sql.js and GeoParquet with parquet-wasm, and fetches
+both at the moment of exporting: sql.js as a script from cdn.jsdelivr.net, parquet-wasm's
+WebAssembly from unpkg.com. A plugin may not run code from a third-party host, and Grafana's
+Content-Security-Policy would refuse it anyway. The plugin bundles sql.js and ships both
+WebAssembly files in its `loaders/` folder, and kepler's writers are handed those instead, so an
+export calls no host but Grafana. See [Exporting data](../guide/kepler/export-data).
 
 ## Scene changes happen on the layer, not to it
 

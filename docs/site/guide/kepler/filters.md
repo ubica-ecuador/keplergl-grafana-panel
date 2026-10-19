@@ -31,6 +31,23 @@ That property is what makes the _Slider writes variables_ time-sync mode work â€
 mask over the whole dataset, so you can always widen it again. See
 [Time range sync](../dashboard/time-range-sync).
 
+The time widget's settings choose a 12- or 24-hour clock (**Time Format**) beside the time zone.
+
+## Filter out
+
+A filter's **Filter out** switch turns it inside out: the rows that match are hidden and the rest
+stay. Select the daytime hours and switch it on to keep the night; pick a category to see everything
+but it. It works on range, select, time and polygon filters.
+
+One cost to know on a large dataset: kepler runs an inverted range or time filter on the CPU rather
+than the GPU, so dragging one is slower than dragging the same filter the right way out.
+
+## One filter across datasets
+
+A filter can act on several datasets at once, matching a field in each â€” **Add synced filter** in
+the filter's card. Time filters always could; range and select filters can too now, so a map built
+from two queries that share a column, a `site` or a `category`, narrows both with one control.
+
 ## Publishing a filter to the dashboard
 
 A select, multi-select or text filter can be bound to a dashboard variable, and a numeric range

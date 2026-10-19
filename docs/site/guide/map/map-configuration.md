@@ -35,6 +35,10 @@ Whatever kepler's own export produces: the layer list with all their styling, fi
 interaction configuration, split-map state, and the base map. It does not capture your data —
 that comes from the queries, every time.
 
+Nor the map's name and description (**Interactions → Map info**): kepler keeps them apart from the
+configuration it exports, so they are gone on the next load. See
+[Interactions](../kepler/interactions#map-info).
+
 **With one exception: tilesets.** A layer you added through kepler's own **Add Data → Tileset** —
 vector tile, raster tile, WMS, 3D tiles, bitmap — has no query behind it, so nothing would rebuild
 it on the next load. The save writes its **descriptor** instead: the name, the field list, and the

@@ -34,7 +34,10 @@ describes a rectangle in degrees, which is a poor description of what a globe is
 ## Legend
 
 Shows the colour and size encodings for the visible layers. It is part of the saved configuration,
-so a provisioned dashboard can open with it already on.
+so a provisioned dashboard can open with it already on. Which layers it lists is chosen under
+**Interactions → Legend**, where a layer can be left out of the legend and stay on the map — see
+[Interactions](./interactions#legend). It can be resized from its top edge as well as its bottom,
+so one sitting in a bottom corner grows without being moved first.
 
 On a small tile it covers a meaningful share of the map. A stat panel or a text panel beside the map
 is often a better legend than the legend.

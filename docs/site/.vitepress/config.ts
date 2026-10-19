@@ -165,6 +165,7 @@ export default defineConfig({
             { text: 'Time playback', link: '/guide/kepler/time-playback' },
             { text: 'Effects', link: '/guide/kepler/effects' },
             { text: 'Charts', link: '/guide/kepler/charts' },
+            { text: 'Exporting data', link: '/guide/kepler/export-data' },
           ],
         },
         {

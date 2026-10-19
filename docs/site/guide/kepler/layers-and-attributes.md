@@ -28,6 +28,9 @@ ones your query returned, under the names the panel gave them: coordinate roles 
 and `longitude`, geometry as `_geojson`, origin/destination as `lat0`/`lng0`/`lat1`/`lng1`. Every
 column without a role keeps its original name.
 
+Each layer card has a **⋮** menu beside its eye: **Zoom to layer**, **Duplicate layer**, **Edit
+layer JSON** and **Remove layer**. They used to be buttons that appeared on hover.
+
 ## Attributes
 
 Every layer has colour, "colour based on", a palette, a scale and opacity. Beyond that they diverge:
@@ -46,11 +49,39 @@ declares or reads it — deck.gl retired the separate 64-bit path years ago and 
 precision handling is always on. Do not go looking for the switch. See
 [Under the hood](../../reference/under-the-hood).
 
+A few attributes are recent enough that kepler's own reference may not list them yet:
+
+- **Target Arrow** on arc and line layers draws an arrowhead at the end of each one, with its
+  **Arrow Shape** and **Arrow Size**: a direction you otherwise only read from a colour gradient.
+- **Cluster**, **Hexbin** and **Grid** label each cell with its point count, abbreviated like
+  cluster bubbles (1.5k). A layer added now starts with the label on; clearing its field turns it
+  off, and a layer saved before stays unlabelled. Cluster also has **Min Points per Cluster**,
+  which hides the clusters below it — 2 removes the single points.
+- Extruded **GeoJSON** polygons take an **Elevation Offset**, which lifts them off the ground, and
+  **Invert height**, which gives the lowest values the greatest height.
+
 ## Styling does not save itself
 
 Everything you set here lives in kepler's store. It survives a query refresh — the panel swaps data
 underneath your layers rather than rebuilding them — but **not a page reload**, until you capture it
 with **Map configuration → Save current map**. See [Map configuration](../map/map-configuration).
+
+## The datasets are the queries'
+
+The dataset list above the layers has a **⋮** menu of its own — **Replace**, **Group By**,
+**Join**, **Spatial Join**, **Suitability Analysis** and **Remove dataset** — and the data table
+behind each dataset's table icon lets you rename a column, change its type or delete it. They work
+in the panel, on data the panel does not keep: every dataset is rebuilt from its query.
+
+- A column renamed or retyped in the table is back as the query returns it on the next refresh.
+- **Group By**, **Join**, **Spatial Join** and **Suitability Analysis** add a dataset and a layer
+  for the result. Both outlast a refresh, but not a reload of the page, and **Save map** does not
+  keep them: it saves the map's configuration, not data, and nothing rebuilds the result when the
+  panel loads.
+
+Use them to explore. For a result the dashboard should show every time, do the same in the query
+— `GROUP BY`, a join, `ST_Intersects` — or in a Grafana transformation, and the map draws it like
+any other query.
 
 ## Layers configured with a URL
 

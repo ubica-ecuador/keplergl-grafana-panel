@@ -13,6 +13,9 @@ mounts the panel. The plugin wires both, the way kepler's own demo app does.
 Charts are saved with the map: **Save current map** captures them with the layers and filters, and
 a provisioned dashboard opens with them in place. See [Map configuration](../map/map-configuration).
 
+Each chart card has kepler's `{ }` button, as layer, filter and effect cards do: it opens the
+chart's settings as JSON to edit in place.
+
 ## Tooltip charts
 
 Two of the chart types — **Tooltip: Time Series** and **Tooltip: Category** — do not draw in the

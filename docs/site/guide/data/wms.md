@@ -60,6 +60,11 @@ A WMS carries no rows, so the only way to know what is under a pixel is to ask t
 popover, and a **click mapping** on the field `wms_value` sends it to a dashboard variable, so the
 panels around the map can read it. See [Cross-filtering](../dashboard/cross-filtering).
 
+kepler asks only while the layer's **Allow hover** switch is on. kepler.gl gave the WMS layer that
+switch in 3.3.0-alpha.16, turned off; the panel starts it on, so a WMS answers clicks as it did
+before, in saved dashboards too. Turned off, the layer stops showing its popover and a click on it
+asks the service nothing.
+
 `wms_value` is the first value the service returned, under a name that is the same everywhere. The
 attributes also arrive under their own names — both as the service spells them (`GRAY_INDEX`) and as
 kepler displays them (`GRAY INDEX`) — for a vector WMS returning several.
