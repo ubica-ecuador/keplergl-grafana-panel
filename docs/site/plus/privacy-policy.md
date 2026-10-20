@@ -6,7 +6,7 @@ shipped with each version of the plugin describes that version. [Privacy](/plus/
 has the technical detail, host by host, and [End-User Licence Agreement](/plus/legal) the terms of use.
 :::
 
-**Kepler Geospatial Maps Plus** · Version 1.1 · 16 October 2026
+**Kepler Geospatial Maps Plus** · Version 1.2 · 20 October 2026
 
 This policy explains what Javier Andrés García Galarza, trading as UBICA ("UBICA", "we"), of Cuenca,
 Ecuador, does with personal data in connection with Kepler Geospatial Maps Plus (the "Software"), its
@@ -39,16 +39,14 @@ map's behalf. No server is set until someone chooses one, and until then no rast
 says so.
 
 2.2 **Keys** of map services are stored in your Grafana, in the Software's settings. The Google and
-Microsoft Azure Maps keys are kept in Grafana's encrypted settings and never reach a browser: Grafana
-adds them to the requests it forwards to those providers (section 2.3). The CARTO, MapTiler and Esri
-keys are read by the panel through Grafana's API, which answers every signed-in user of the
-organisation, and the browser sends each of them to its provider with each request, because those
-providers accept a key only in the address of the request.
+Microsoft Azure Maps keys, the only ones the Software takes, are kept in Grafana's encrypted settings and
+never reach a browser: Grafana adds them to the requests it forwards to those providers (section 2.3).
+Earlier versions also kept CARTO, MapTiler and Esri keys, where every signed-in user of the organisation
+could read them; this version no longer reads them, and saving its configuration page removes them.
 
-2.3 **Map, imagery, terrain and 3D tile requests** go from the browser straight to the provider:
-CARTO, MapTiler and Esri when you set their keys, and OpenFreeMap, CARTO, Mapterhorn and Esri World
-Imagery, the free panel's defaults, without a key. Each request carries the key, the IP address of the
-browser, its user agent, and the coordinates of the tile, which say what area and zoom level the viewer
+2.3 **Map, imagery, terrain and 3D tile requests** go from the browser straight to the provider for
+OpenFreeMap, CARTO, Mapterhorn and Esri World Imagery, the free panel's defaults, which need no key.
+Each request carries the IP address of the browser, its user agent, and the coordinates of the tile, which say what area and zoom level the viewer
 is looking at. Requests to Microsoft Azure Maps and Google (Map Tiles API and Photorealistic 3D Tiles)
 go from the browser to your Grafana, which forwards them to the provider with the key. Grafana passes
 on the browser's IP address and user agent, the address of the dashboard and the coordinates of the
@@ -178,7 +176,6 @@ Javier Andrés García Galarza, trading as UBICA · Cuenca, Ecuador · <jgarcia@
 ## 11. The providers' privacy policies
 
 - CARTO: <https://carto.com/privacy>
-- MapTiler: <https://www.maptiler.com/privacy-policy/>
 - Esri: <https://www.esri.com/en-us/privacy/overview>
 - Microsoft (Azure Maps): <https://privacy.microsoft.com/privacystatement>
 - Google (Maps Platform): <https://policies.google.com/privacy>
