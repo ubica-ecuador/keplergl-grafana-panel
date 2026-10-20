@@ -114,9 +114,9 @@ shipped with the Software as `PRIVACY.md` and published at <https://docs.ubica.d
 explains what the Software does with data.
 
 5.3 **Keys.** The keys of Third-Party Services that you enter on the Software's configuration page are
-stored in your Grafana and are readable by every signed-in user of the organisation, as the
-Documentation explains. You are responsible for those keys, for restricting them, for the usage and
-charges they incur, and for who can read them.
+stored in your Grafana's encrypted settings, which Grafana never sends to a browser: Grafana adds them
+to the requests it forwards to those services, as the Documentation explains. You are responsible for
+those keys, for restricting them in each provider's account, and for the usage and charges they incur.
 
 5.4 **Dashboards after the term.** Dashboards you build stay yours after the Subscription Term, but
 the features the Plus edition adds will not draw once the Software is uninstalled.
@@ -124,9 +124,8 @@ the features the Plus edition adds will not draw once the Software is uninstalle
 ## 6. Third-Party Services
 
 6.1 The Software can draw base maps, imagery, terrain and 3D tiles from services such as CARTO,
-MapTiler, Esri (ArcGIS), Microsoft Azure Maps, Google Maps Platform (Map Tiles API and Photorealistic
-3D Tiles), OpenFreeMap and Mapterhorn, with keys from your own accounts where a key is
-needed. UBICA does not provide those services, is not a party to your agreement with their providers
+Esri (ArcGIS), Microsoft Azure Maps, Google Maps Platform (Map Tiles API and Photorealistic 3D Tiles),
+OpenFreeMap and Mapterhorn, with keys from your own accounts where a key is needed. UBICA does not provide those services, is not a party to your agreement with their providers
 and does not resell them.
 
 6.2 Your use of each Third-Party Service is governed solely by that provider's terms of service and
