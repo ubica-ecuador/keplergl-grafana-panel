@@ -88,9 +88,10 @@ If your template also sets `worker-src`, it has to allow `'self'`: MapLibre's wo
 with the plugin, under `public/plugins/ubica-keplergl-panel/maplibre/`, not a `blob:` URL.
 
 No code is fetched from a CDN, so `script-src` needs nothing added. The decoders that 3D tiles,
-glTF models and Parquet files need — Draco, Basis/KTX2 and parquet-wasm — are files served with the
-plugin, under `public/plugins/ubica-keplergl-panel/loaders/`, and loaders.gl parses on the main
-thread rather than starting Web Workers from unpkg.com.
+glTF models and Parquet files need — Draco, Basis/KTX2 and parquet-wasm — and the SQLite that
+kepler's **Export data** writes a GeoPackage with (sql.js) are files served with the plugin, under
+`public/plugins/ubica-keplergl-panel/loaders/`, and loaders.gl parses on the main thread rather than
+starting Web Workers from unpkg.com.
 
 Each host serves only what its name suggests:
 

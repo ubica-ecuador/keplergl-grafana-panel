@@ -1,4 +1,4 @@
-import { keepRemoteDatasets, namesBasemap, parseMapConfigJson } from './mapConfig';
+import { keepMapInfo, keepRemoteDatasets, namesBasemap, parseMapConfigJson } from './mapConfig';
 import savedByThePanel from '../../testdata/kepler-configs/kepler-v1-saved-config.json';
 
 /** A tileset descriptor as kepler's DatasetSchema saves one. */
@@ -60,6 +60,30 @@ describe('parseMapConfigJson', () => {
     expect(parseMapConfigJson(JSON.stringify(saved))).toEqual(saved);
   });
 
+  it('round-trips the map name and description this panel saved', () => {
+    const saved = {
+      version: 'v1',
+      config: { visState: { layers: [] } },
+      info: { title: 'Rain', description: 'Cuenca' },
+    };
+
+    expect(parseMapConfigJson(JSON.stringify(saved))).toEqual(saved);
+  });
+
+  it('keeps the name and description of an exported map, and nothing else of its info', () => {
+    // kepler's own `save` adds the app and the moment of the export.
+    const exported = {
+      datasets: [],
+      config: { version: 'v1', config: { visState: { layers: [] } } },
+      info: { app: 'kepler.gl', created_at: 'Mon Oct 19 2026', title: 'Rain', description: 'Cuenca' },
+    };
+
+    expect(parseMapConfigJson(JSON.stringify(exported))).toEqual({
+      ...exported.config,
+      info: { title: 'Rain', description: 'Cuenca' },
+    });
+  });
+
   it('drops datasets the paste carried that cannot be restored', () => {
     // Without this a hand-edited paste could leave a `datasets` key full of
     // entries the load path would hand to kepler as if they were tilesets.
@@ -115,6 +139,20 @@ describe('keepRemoteDatasets', () => {
   it('tolerates junk where a dataset list should be', () => {
     for (const input of [undefined, null, 'nope', {}, [null], [{ version: 1, data: {} }], [{ version: 'v1' }]]) {
       expect(keepRemoteDatasets(input)).toEqual([]);
+    }
+  });
+});
+
+describe('keepMapInfo', () => {
+  it('keeps a name, a description or both', () => {
+    expect(keepMapInfo({ title: 'Rain', description: 'Cuenca' })).toEqual({ title: 'Rain', description: 'Cuenca' });
+    expect(keepMapInfo({ title: 'Rain' })).toEqual({ title: 'Rain' });
+    expect(keepMapInfo({ description: 'Cuenca' })).toEqual({ description: 'Cuenca' });
+  });
+
+  it('is nothing for an info with neither, or for junk', () => {
+    for (const value of [undefined, null, 'Rain', [], {}, { app: 'kepler.gl' }, { title: '  ', description: 3 }]) {
+      expect(keepMapInfo(value)).toBeUndefined();
     }
   });
 });

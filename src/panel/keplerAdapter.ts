@@ -50,6 +50,7 @@ import type { FlowLayerConfig } from '../data/buildFlows';
 import type { SymbolLayerConfig } from '../data/buildSymbolLayer';
 import type { TripLayerConfig } from '../data/buildTripLayer';
 import {
+  keepMapInfo,
   keepRemoteDatasets,
   REMOTE_DATASET_TYPES,
   type SavedMapConfig,
@@ -180,6 +181,9 @@ export function loadDatasets(
         datasets: [...toKeplerDatasets(datasets), ...restoredDatasets(savedConfig)],
         options: { centerMap },
         ...(config ? { config } : {}),
+        // The map's name and description, which kepler's config leaves out;
+        // see `SavedMapConfig.info`.
+        ...(savedConfig?.info ? { info: savedConfig.info } : {}),
       })
     )
   );
@@ -1073,6 +1077,9 @@ export function restoredDatasets(savedConfig?: SavedMapConfig | null): ProtoData
  * which flattens *every* dataset — the whole query result included — only for
  * this to throw the result away.
  *
+ * And the map's name and description, which `getConfigToSave` leaves out; see
+ * `SavedMapConfig.info`.
+ *
  * Returns null before kepler has registered its instance, which is what happens
  * if the user hits save on a panel whose map has not finished mounting.
  */
@@ -1084,7 +1091,12 @@ export function captureMapConfig(store: Store): SavedMapConfig | null {
   }
   const config = KeplerGlSchema.getConfigToSave(instance) as unknown as SavedMapConfig;
   const datasets = captureRemoteDatasets(store);
-  return datasets.length > 0 ? { ...config, datasets } : config;
+  const info = keepMapInfo(KeplerGlSchema.getMapInfo(instance));
+  return {
+    ...config,
+    ...(datasets.length > 0 ? { datasets } : {}),
+    ...(info ? { info } : {}),
+  };
 }
 
 /** The saved form of every URL-backed dataset the map currently holds. */

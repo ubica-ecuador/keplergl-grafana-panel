@@ -61,6 +61,13 @@ the database is never asked anything.
 kepler's speed control multiplies playback rate. Note that it interacts with the two costly modes
 above: at 4× in _Both directions_, you are asking for four times as many query rounds.
 
+## Step by interval
+
+The playback window menu on a time filter has a mode beside the moving and growing windows: **Step
+by Interval**. The window is one bar of the histogram wide and jumps a bar at a time, and dragging
+the brush snaps to a bar. For data that comes in steps — a scene a day, a count an hour — it shows
+each step whole, where a sliding window spends most of its frames straddling two.
+
 ## Data outside the window
 
 Kepler's animation shows the window; it does not remove the rest of the data. Widening the brush

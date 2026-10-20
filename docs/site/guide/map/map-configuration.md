@@ -35,6 +35,10 @@ Whatever kepler's own export produces: the layer list with all their styling, fi
 interaction configuration, split-map state, and the base map. It does not capture your data —
 that comes from the queries, every time.
 
+The map's name and description (**Interactions → Map info**) are saved too, beside the
+configuration rather than in it, as kepler's own **Export map** keeps them. See
+[Interactions](../kepler/interactions#map-info).
+
 **With one exception: tilesets.** A layer you added through kepler's own **Add Data → Tileset** —
 vector tile, raster tile, WMS, 3D tiles, bitmap — has no query behind it, so nothing would rebuild
 it on the next load. The save writes its **descriptor** instead: the name, the field list, and the
@@ -71,9 +75,9 @@ bring a map across from somewhere else — including from the tools this plugin 
 | `{ datasets, config, info }` | kepler's **Export map**, and Dekart |
 
 From the second, the `config` half is kept along with any **tileset descriptors** among its
-datasets — so a map built over someone's vector tiles arrives with those tiles. Everything else in
-`datasets` is dropped: the data comes from your panel's own queries, and importing a map does not
-import someone else's rows.
+datasets — so a map built over someone's vector tiles arrives with those tiles — and the map's name
+and description from `info`. Everything else in `datasets` is dropped: the data comes from your
+panel's own queries, and importing a map does not import someone else's rows.
 
 ### Configurations from older kepler releases
 

@@ -1,6 +1,7 @@
 # Interactions
 
-kepler's Interactions menu has three switches — tooltip, brush and coordinate display — and the
+kepler's Interactions menu has a section for each of the features below — tooltip, brush,
+coordinate display, legend, fading on zoom, the map's name and description, geocoder — and the
 panel manages one of them for you.
 
 ## Tooltip
@@ -12,7 +13,11 @@ Two formatting behaviours are worth knowing, both from kepler: a field whose **n
 `<img>`** and whose value is an HTTP URL renders as an image, and a value starting with `http://`
 renders as a clickable link. Both work in a Grafana panel.
 
-Clicking a feature **pins** the tooltip so it stays put; a blue pin icon unpins it.
+Dates in the tooltip are shown in the time zone picked in the tooltip's settings, which is saved
+with the map. It is kepler's own setting: it does not follow the dashboard's time zone.
+
+Clicking a feature **pins** the tooltip so it stays put; a blue pin icon unpins it. A right-click
+pins it too.
 
 Because the panel passes every column without a role through untouched, everything your query
 selected is available here — including columns you added purely for the tooltip.
@@ -39,6 +44,10 @@ under **Cross-filtering** instead.
 
 If you have no Coordinates mapping, the switch behaves exactly as it does in stock kepler.
 
+With the coordinate display on, a right-click on empty map opens a small menu at the pointer with
+**Copy coordinates**, which puts `lat, lng` on the clipboard. The same menu offers **Add
+Annotation**, whether or not the coordinate display is on, to anyone who can see the map.
+
 ## Clicks, and who gets them
 
 The map's click has several possible meanings, and they do not conflict:
@@ -53,7 +62,31 @@ The map's click has several possible meanings, and they do not conflict:
 Clicking empty map clears a Click mapping's variable — but only when the value currently in it was
 published by this panel, so a shared link's preset survives a stray click.
 
+A right-click counts as a click for both mappings: on a feature it publishes what a click would, and
+on empty map a Coordinates mapping publishes the place, and the menu above opens as well.
+
 See [Cross-filtering](../dashboard/cross-filtering) for both mappings.
+
+## Legend
+
+Chooses which layers appear in the map's legend. A layer left out stays on the map; **Hide hidden
+layers in legend** also drops the ones switched off. The switch at the top of this section and the
+legend button in the map control are the same switch. Both are saved with the map. See
+[Map settings](./map-settings#legend).
+
+## Fade on zoom
+
+Fades layers and annotations in and out as the map zooms. Each controller names the layers it
+drives and four zoom levels: where they **Appear**, the **Full start** and **Full end** of full
+opacity, and where they **Disappear**. Saved with the map. On a dashboard it is a way to keep a
+detailed layer, labels or a dense point cloud out of the way at country zoom without a second panel.
+
+## Map info
+
+A **Name** and a **Description** for the map, shown in a card on its right side; the description
+can carry links written as `[label](https://…)`. Both are saved with the map. kepler keeps them
+apart from the configuration it exports, so the panel saves them beside it, the way kepler's own
+**Export map** does.
 
 ## Geocoder
 

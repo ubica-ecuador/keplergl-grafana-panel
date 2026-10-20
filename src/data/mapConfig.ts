@@ -34,6 +34,12 @@ export interface SavedRemoteDataset {
  */
 export const REMOTE_DATASET_TYPES = ['vector-tile', 'raster-tile', 'wms-tile', 'tile-3d', 'bitmap'];
 
+/** The map's name and description, as kepler's `info` carries them. */
+export interface SavedMapInfo {
+  title?: string;
+  description?: string;
+}
+
 /** A kepler saved config: `{version, config}`, as produced by `getConfigToSave`. */
 export interface SavedMapConfig {
   version: string;
@@ -51,6 +57,16 @@ export interface SavedMapConfig {
    * only), so a config carrying it is still a config kepler can parse.
    */
   datasets?: SavedRemoteDataset[];
+  /**
+   * The map's name and description, **Interactions → Map info** in kepler.
+   *
+   * `getConfigToSave` leaves them out: kepler keeps them in the vis state but
+   * exports them only as the `info` of a whole map, `{datasets, config, info}`,
+   * and `addDataToMap` takes them back as an `info` of its own. Without this a
+   * map lost its name and description on every load. Absent when the map has
+   * neither, so a config saved without them is unchanged.
+   */
+  info?: SavedMapInfo;
 }
 
 /**
@@ -60,8 +76,9 @@ export interface SavedMapConfig {
  *
  * - the bare saved config, `{version, config}`
  * - a full exported map, `{datasets, config, info}` — what kepler's "Export map"
- *   and Dekart produce. Only the config half and the URL-backed datasets are
- *   kept; the rest of the data comes from the panel's own queries.
+ *   and Dekart produce. Only the config half, the URL-backed datasets and the
+ *   map's name and description are kept; the rest of the data comes from the
+ *   panel's own queries.
  *
  * Returns null rather than throwing, so a typo in a textarea cannot take the
  * panel down.
@@ -79,14 +96,34 @@ export function parseMapConfigJson(text: string): SavedMapConfig | null {
   }
 
   // A full exported map nests the saved config under `config` and keeps its
-  // datasets as a sibling.
+  // datasets and info as siblings.
   if (isSavedConfig(parsed.config)) {
-    return withRemoteDatasets(parsed.config, parsed.datasets);
+    return cleanSavedConfig(parsed.config, parsed.datasets, parsed.info);
   }
 
-  // The bare saved config — including one this panel wrote, whose datasets are
-  // already a sibling of `config` rather than of the wrapper.
-  return isSavedConfig(parsed) ? withRemoteDatasets(parsed, parsed.datasets) : null;
+  // The bare saved config — including one this panel wrote, whose datasets and
+  // info are already siblings of `config` rather than of the wrapper.
+  return isSavedConfig(parsed) ? cleanSavedConfig(parsed, parsed.datasets, parsed.info) : null;
+}
+
+/**
+ * The name and description in `value`, when it has either, and nothing else.
+ *
+ * An export's `info` carries more — kepler's own `save` adds `app` and
+ * `created_at` — and none of it belongs in the dashboard JSON.
+ */
+export function keepMapInfo(value: unknown): SavedMapInfo | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const info: SavedMapInfo = {};
+  for (const key of ['title', 'description'] as const) {
+    const text = value[key];
+    if (typeof text === 'string' && text.trim() !== '') {
+      info[key] = text;
+    }
+  }
+  return Object.keys(info).length > 0 ? info : undefined;
 }
 
 /**
@@ -122,16 +159,22 @@ function isRemoteDataset(value: unknown): value is SavedRemoteDataset {
 }
 
 /**
- * The config with its restorable datasets attached, and nothing else.
+ * The config with its restorable datasets and its map info attached, and
+ * nothing else.
  *
- * Rebuilt from its two known keys rather than spread, so a config that arrives
+ * Rebuilt from its known keys rather than spread, so a config that arrives
  * carrying datasets of its own — one this panel wrote, or a hand-edited one —
  * cannot keep the ones the filter rejected.
  */
-function withRemoteDatasets(config: SavedMapConfig, datasets: unknown): SavedMapConfig {
+function cleanSavedConfig(config: SavedMapConfig, datasets: unknown, info: unknown): SavedMapConfig {
   const cleaned: SavedMapConfig = { version: config.version, config: config.config };
   const kept = keepRemoteDatasets(datasets);
-  return kept.length > 0 ? { ...cleaned, datasets: kept } : cleaned;
+  const keptInfo = keepMapInfo(info);
+  return {
+    ...cleaned,
+    ...(kept.length > 0 ? { datasets: kept } : {}),
+    ...(keptInfo ? { info: keptInfo } : {}),
+  };
 }
 
 /**

@@ -25,6 +25,10 @@ release documents what changed since the one before it.
   table's close button was cut off with the rest, and the dialog's backdrop stayed over the map and
   took every click. They now open over the whole dashboard, as kepler draws them, and close from
   their ✕.
+- **The map's name and description are saved**: what is typed under **Interactions → Map info**
+  now survives **Save map**, kept beside the configuration as kepler's own **Export map** keeps it,
+  and comes back when the dashboard loads. Pasting a map exported from kepler.gl brings its name and
+  description too. Until now both were gone on the next load.
 
 ## 1.3.0 (2026-10-16)
 
