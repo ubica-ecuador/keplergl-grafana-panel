@@ -1,14 +1,15 @@
 # Privacy
 
 Plus has no backend and no server of UBICA's behind it. Everything it does happens in the viewer's browser, which
-talks to your Grafana and to the map providers whose keys you set, and in Grafana's own plugin proxy, which forwards
+talks to your Grafana and to the free panel's map providers, and in Grafana's own plugin proxy, which forwards
 requests to Google and Azure Maps with their keys. This page says what goes where.
 
 ## Map tiles and 3D tiles
 
-Base map requests to CARTO, MapTiler and Esri go from the viewer's browser straight to each provider. Each request
-carries the organisation's key for that provider, and, like any web request, the viewer's IP address and the part of
-the world the map is showing.
+Base map requests for the free panel's styles, to OpenFreeMap, CARTO, Esri's public imagery and Mapterhorn, go from
+the viewer's browser straight to each provider, with no key. Like any web request, each carries the viewer's IP
+address and the part of the world the map is showing. No request from the browser carries one of the
+organisation's keys.
 
 Base map and 3D tile requests to Google and Azure Maps go from the viewer's browser to your Grafana, at
 `/api/plugin-proxy/ubica-keplerplus-app/…`, and Grafana forwards them to the provider with the key, which never

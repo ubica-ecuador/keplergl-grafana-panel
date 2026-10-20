@@ -18,8 +18,8 @@ run side by side on the same Grafana and the same dashboard.
   ISO 3166-2 code.
 - [Network links](/plus/data/network-links) between named sites, and the
   [active alerts](/plus/data/active-alerts) the viewer can read, on the same map as your data.
-- [Base maps](/plus/maps/basemaps) from MapTiler, Esri, Azure Maps, Google and keyed CARTO, and
-  [3D tiles](/plus/maps/3d-tiles) from Google, with keys set once for the organisation.
+- [Base maps](/plus/maps/basemaps) from Azure Maps and Google, and [3D tiles](/plus/maps/3d-tiles) from Google,
+  with keys set once for the organisation and kept where no browser sees them.
 - A [layer tour](/plus/start/templates) dashboard installed with the app, on synthetic data that needs no setup.
 - [Grafana Assistant skills](/plus/assistant) that explain a Plus map, edit it and build dashboards around it.
 - A second panel, [Time Brush](/plus/time-brush): a histogram with a window to drag, step and play, written to

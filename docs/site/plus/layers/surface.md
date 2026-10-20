@@ -86,7 +86,7 @@ on, the surface is drawn inside the base map instead, right under its 3D buildin
 stands in front of the bands, the roads stay under them and the base map's labels above. Hovering
 still shows the estimate under the cursor.
 
-It takes a base map that draws its own 3D buildings (OpenFreeMap Liberty, MapTiler's styles) and
+It takes a base map that draws its own 3D buildings (OpenFreeMap Liberty, or a self-hosted style) and
 applies once the map is zoomed in enough for them to appear. The surface stays over the buildings
 where the map cannot draw it underneath: a base map without 3D buildings, a Mapbox base map, the
 globe, and Relief, whose terrain would bury it. Lifted with **Altitude**, every building is drawn in

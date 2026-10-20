@@ -83,7 +83,7 @@ or the base map's ground and the tiles' ground part ways. See
   and refuses the key. The tab and the layer's notice say so.
 - **Next to another provider's map.** Google's terms forbid showing its maps with or near a map from another
   provider. Draw Photorealistic 3D Tiles over a Google base map or over **No Basemap**, not over CARTO,
-  MapTiler, Esri or Azure Maps maps. Plus does not enforce this: the tab and the configuration page state it,
+  OpenFreeMap, Esri or Azure Maps maps. Plus does not enforce this: the tab and the configuration page state it,
   and the organisation answers for it.
 - **A page where the Google key was turned away.** Plus checks the Google key when the page loads. If Google
   refused it, or did not answer within 5 seconds, neither Google's base maps nor its 3D tiles are offered on
@@ -96,13 +96,9 @@ or the base map's ground and the tiles' ground part ways. See
 
 ## Content Security Policy
 
-On a Grafana with `content_security_policy = true`, allow in `connect-src`:
-
-| Source    | Host to allow                 |
-| --------- | ----------------------------- |
-| Google 3D | `https://tile.googleapis.com` |
-
-See [Content Security Policy](/plus/admin/csp).
+A layer from the **3D (Plus)** tab needs nothing added on a Grafana with `content_security_policy = true`: its
+tiles are asked for through your Grafana, which `'self'` covers. A tileset added through kepler's own 3D Tile form
+is fetched from its own host, which then goes in `connect-src`. See [Content Security Policy](/plus/admin/csp).
 
 ## Troubleshooting
 
@@ -114,4 +110,4 @@ See [Content Security Policy](/plus/admin/csp).
 | A notice that a 3D layer "needs a Google key"                                               | The dashboard was saved with the layer, and this organisation has no key for the provider.                                                               |
 | A notice that Google "did not serve" the 3D layer                                           | The provider refused the key when the layer asked for tiles, for the reasons above.                                                                      |
 | A notice that a 3D layer "is a Cesium ion asset" and ion "is not available in this version" | The dashboard was saved, on another version or edition, with a Cesium ion asset. Remove the layer, or keep it for a version that offers ion.             |
-| The layer is in the list but nothing shows                                                  | Check that **Sit on the ground** is on, that the view is over the tileset's area, and, on a hardened Grafana, that the hosts above are in `connect-src`. |
+| The layer is in the list but nothing shows                                                  | Check that **Sit on the ground** is on, that the view is over the tileset's area, and, on a hardened Grafana, that the console reports no blocked hosts. |

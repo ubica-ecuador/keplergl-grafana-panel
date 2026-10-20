@@ -39,7 +39,7 @@ Plus base maps still draw only when the organisation has the provider's key; see
 
 **Change the map.**
 
-- _"Switch to Esri imagery with relief."_
+- _"Switch to Azure Maps imagery with relief."_
 - _"Colour the stations by turbidity."_
 - _"Filter the last hour."_
 

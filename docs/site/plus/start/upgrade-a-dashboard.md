@@ -14,6 +14,10 @@ the variables it reads and writes. Plus has the same options under the same path
 Only options carried over from the free panel are kept; switching from any other visualization, such as Geomap,
 starts the Plus panel from its defaults.
 
+The one option left behind is the free panel's **CARTO API key**, which Plus does not offer because it saves the key
+in the dashboard. CARTO's base maps are then asked for without a key; see
+[CARTO without a key](/plus/maps/basemaps#carto-without-a-key).
+
 Once switched, the panel shows the Plus settings as well: the **Places** and **Active alerts** groups in the panel
 options, the [Plus layer types](/plus/layers/) in kepler's layer list, the [Plus base maps](/plus/maps/basemaps) in
 kepler's base map picker, and the **3D (Plus)** tab in **Add Data**.
@@ -28,12 +32,12 @@ panel keeps its own visualization, so you can move the maps that need Plus and l
 
 ## When a key is missing
 
-A Plus map saved on a keyed base map, such as a MapTiler or Google style, needs that provider's key on the
+A Plus map saved on a keyed base map, such as a Google or Azure Maps style, needs that provider's key on the
 organisation that opens it. When the key is missing or the provider refuses it, the map does not go blank: it draws
 the free panel's default base map for the dashboard's theme, OpenFreeMap's Positron or Dark, and shows a notice,
 such as:
 
-> The base map “MapTiler Streets” needs a MapTiler key, and this organisation has none. Showing Positron
+> The base map “Google Roadmap” needs a Google key, and this organisation has none. Showing Positron
 > (OpenFreeMap) instead.
 > An administrator can add the key on the configuration page of Kepler Geospatial Maps Plus.
 
@@ -43,6 +47,10 @@ data and the layers are drawn as usual in every case.
 
 To bring the base map back, an administrator adds or replaces the key on the app's
 [configuration page](/plus/start/install#the-configuration-page); viewers then reload the dashboard.
+
+A map saved by Plus 1.3 or earlier on a MapTiler or Esri style opens the same way, with a notice that Plus no longer
+offers that provider's base maps. No key brings those back: pick another base map and save the map. See
+[Upgrading from 1.3](/plus/admin/keys#upgrading-from-1-3).
 
 ## Going back to the free panel
 

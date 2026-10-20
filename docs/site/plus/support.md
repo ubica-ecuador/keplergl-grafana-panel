@@ -19,8 +19,9 @@ says.
   handle the report ([privacy policy](/plus/privacy-policy)).
 - For a map that does not draw as expected: the panel's JSON (**Panel menu → Inspect → Panel JSON**), a screenshot,
   and what you expected instead.
-- For a base map or 3D layer that does not load: the provider, whether its key is restricted to your Grafana's
-  address ([Keys and who can read them](/plus/admin/keys)), and any notice the map showed. Never send a key.
+- For a base map or 3D layer that does not load: the provider, how its key is restricted
+  ([Keys and who can read them](/plus/admin/keys#restrict-each-key)), and any notice the map showed. Never send a
+  key.
 - For a blank map on a Grafana with a strict Content Security Policy: the console's blocked-request messages; see
   [Content Security Policy](/plus/admin/csp).
 

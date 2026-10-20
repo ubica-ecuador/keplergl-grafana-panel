@@ -32,28 +32,26 @@ Every key is optional. Without any, Plus draws the free panel's base maps, and e
 links and active alerts work as usual. Each key switches on the services of one provider for every Plus panel in
 the organisation:
 
-| Field                        | What it switches on                                                                                                              |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| CARTO basemaps API key       | The default Dark Matter, Positron and Voyager maps ask CARTO with this key, which keeps CARTO's watermark off them               |
-| MapTiler API key             | MapTiler's base maps, with its 3D buildings, points of interest and Relief switches                                              |
-| ArcGIS API key               | Esri's ArcGIS basemap styles, with a Relief switch; it must be an ArcGIS Location Platform key with the basemap styles privilege |
-| Google Maps Platform API key | Google's roadmap, satellite, hybrid and terrain maps, and Google Photorealistic 3D Tiles; it needs the Map Tiles API enabled     |
-| Azure Maps subscription key  | Azure Maps' road, dark grey, imagery and hybrid maps, with a Relief switch                                                       |
+| Field                        | What it switches on                                                                                                          |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Google Maps Platform API key | Google's roadmap, satellite, hybrid and terrain maps, and Google Photorealistic 3D Tiles; it needs the Map Tiles API enabled |
+| Azure Maps subscription key  | Azure Maps' road, dark grey, imagery and hybrid maps, with a Relief switch                                                   |
 
 The keyed base maps then appear in kepler's base map picker, and the 3D services in the **3D (Plus)** tab of
 **Add Data**. See [Base maps](/plus/maps/basemaps) and [3D tiles](/plus/maps/3d-tiles) for each provider's styles,
 and how to restrict its key.
 
 Under the Google field the page shows a warning with Google's terms. Read it before saving the key: it applies to
-every map drawn with it. A saved Google or Azure Maps key shows as **configured**, never in full; **Reset** clears it.
+every map drawn with it. A saved key shows as **configured**, never in full; **Reset** clears it.
 
-::: warning Browser keys are readable by viewers
-The Google and Azure Maps keys are kept in Grafana's encrypted settings: maps reach those providers through Grafana,
-which adds the key, and no browser sees it. The CARTO, MapTiler and Esri keys are browser keys: those providers take
-a key only in the address the browser asks for, so anyone who can open a dashboard in the organisation can read
-them. No dashboard saves any key. Restrict each browser key to your Grafana's address. See
-[Keys and who can read them](/plus/admin/keys).
+::: info No browser sees the keys
+Both keys are kept in Grafana's encrypted settings: maps reach Google and Azure Maps through Grafana, which adds the
+key, and no browser sees it. No dashboard saves any key. See [Keys and who can read them](/plus/admin/keys).
 :::
+
+Plus 1.4.0 no longer takes the MapTiler, CARTO and Esri keys of earlier versions. When 1.3 left any of them in the
+settings, the page says **Remove the keys this version no longer uses**: save the page to remove them, then revoke
+them in each provider's account. See [Upgrading from 1.3](/plus/admin/keys#upgrading-from-1-3).
 
 A Plus panel reads the keys when the page loads. After saving a key, reload the dashboards that are already open.
 
