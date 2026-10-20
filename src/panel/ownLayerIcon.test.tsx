@@ -5,7 +5,7 @@ import { LayerClasses, RasterTileIcon } from '@kepler.gl/layers';
 
 import { KEPLER_INSTANCE_ID } from './constants';
 import { createKeplerStore, iconOf } from './keplerStore';
-import { OWN_LAYER_ICON_CLASS, OWN_LAYER_ICON_CSS, ownLayerIcon } from './ownLayerIcon';
+import { OWN_LAYER_ICON_CLASS, OWN_LAYER_ICON_TONES, OWN_LAYER_TONES, ownLayerIcon } from './ownLayerIcon';
 
 type Icon = React.ComponentType<{ height?: string; className?: string; style?: React.CSSProperties }>;
 
@@ -32,17 +32,30 @@ describe('ownLayerIcon', () => {
     const Own = ownLayerIcon(ArcLayerIcon);
     const { container } = render(<Own height="16px" />);
 
-    // kepler's own <style> sits inside the <svg>; ours sits beside it.
+    // kepler's own <style> would sit inside the <svg>.
     expect(container.querySelector('svg style')).toBeNull();
   });
 
-  it('scopes every tone rule to the class', () => {
-    const rules = OWN_LAYER_ICON_CSS.split('}').filter((rule) => rule.trim() !== '');
+  it('renders no <style> element of its own: the tones are an Emotion class', () => {
+    const Own = ownLayerIcon(ArcLayerIcon);
+    const { container } = render(<Own height="16px" />);
 
-    expect(rules.length).toBeGreaterThan(0);
-    for (const rule of rules) {
-      expect(rule.trim().startsWith(`.${OWN_LAYER_ICON_CLASS} `)).toBe(true);
-    }
+    expect(container.querySelector('style')).toBeNull();
+    expect(container.querySelector('svg')?.getAttribute('class')).toContain(OWN_LAYER_ICON_TONES);
+  });
+
+  it('scopes every tone rule to the class', () => {
+    const Own = ownLayerIcon(ArcLayerIcon);
+    render(<Own height="16px" />);
+    const rules = Array.from(document.styleSheets)
+      .flatMap((sheet) => Array.from(sheet.cssRules))
+      .filter(
+        (rule): rule is CSSStyleRule => 'selectorText' in rule && / \.cr\d$/.test((rule as CSSStyleRule).selectorText)
+      );
+    const tones = rules.filter((rule) => rule.selectorText.startsWith(`.${OWN_LAYER_ICON_TONES} `));
+
+    expect(tones.map((rule) => rule.style.fill.toUpperCase())).toEqual(OWN_LAYER_TONES);
+    expect(tones).toHaveLength(rules.length);
   });
 
   it('colours a single-tone icon too, which paints with currentColor', () => {

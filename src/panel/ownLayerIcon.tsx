@@ -1,3 +1,4 @@
+import { css, cx } from '@emotion/css';
 import React from 'react';
 
 /**
@@ -14,7 +15,8 @@ export const OWN_LAYER_ICON_CLASS = 'ubica-own-layer-icon';
 export const OWN_LAYER_TONES = ['#FFD54F', '#FFB300', '#FF8F00', '#FFCA28', '#FFA000', '#FFC107'];
 
 /**
- * One fill per tone class, scoped to the plugin's icons.
+ * One fill per tone class, scoped to the plugin's icons by an Emotion class
+ * beside the marker class.
  *
  * kepler's icons take a `colors` prop, and that is exactly what must not be
  * used: its `Base` writes the palette as an `<svg><style>.cr1{fill:…}` whose
@@ -22,9 +24,10 @@ export const OWN_LAYER_TONES = ['#FFD54F', '#FFB300', '#FF8F00', '#FFCA28', '#FF
  * repaint every kepler icon on the page. Scoped here, the rules reach only
  * icons with the class — and outrank kepler's unscoped `.crN` if one is around.
  */
-export const OWN_LAYER_ICON_CSS = OWN_LAYER_TONES.map(
-  (tone, i) => `.${OWN_LAYER_ICON_CLASS} .cr${i + 1} { fill: ${tone}; }`
-).join('\n');
+export const OWN_LAYER_ICON_TONES = css({
+  label: 'own-layer-icon',
+  ...Object.fromEntries(OWN_LAYER_TONES.map((tone, i) => [`& .cr${i + 1}`, { fill: tone }])),
+});
 
 interface IconProps {
   className?: string;
@@ -39,16 +42,13 @@ interface IconProps {
  */
 export function ownLayerIcon<P extends IconProps>(Icon: React.ComponentType<P>): React.FC<P> {
   function OwnLayerIcon(props: P) {
-    const className = props.className ? `${props.className} ${OWN_LAYER_ICON_CLASS}` : OWN_LAYER_ICON_CLASS;
+    const className = cx(props.className, OWN_LAYER_ICON_CLASS, OWN_LAYER_ICON_TONES);
     return (
-      <>
-        <style>{OWN_LAYER_ICON_CSS}</style>
-        <Icon
-          {...props}
-          className={className}
-          style={{ fill: 'currentColor', ...props.style, color: OWN_LAYER_TONES[1] }}
-        />
-      </>
+      <Icon
+        {...props}
+        className={className}
+        style={{ fill: 'currentColor', ...props.style, color: OWN_LAYER_TONES[1] }}
+      />
     );
   }
   OwnLayerIcon.displayName = `OwnLayerIcon(${Icon.displayName ?? Icon.name ?? 'Icon'})`;
