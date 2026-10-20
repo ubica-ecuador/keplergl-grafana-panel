@@ -29,6 +29,9 @@ release documents what changed since the one before it.
   now survives **Save map**, kept beside the configuration as kepler's own **Export map** keeps it,
   and comes back when the dashboard loads. Pasting a map exported from kepler.gl brings its name and
   description too. Until now both were gone on the next load.
+- **No `<style>` elements**: the amber of the panel's own layers in **Add Layer** comes from a
+  scoped Emotion class instead of a `<style>` element drawn beside each icon. The icons look the
+  same.
 
 ## 1.3.0 (2026-10-16)
 
