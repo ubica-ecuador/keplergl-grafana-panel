@@ -4,7 +4,7 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
-## Unreleased
+## 1.4.0 (2026-10-20)
 
 - **kepler.gl 3.3.0-alpha.17**: a layer card's zoom, duplicate, `{ }` and remove buttons move into a
   ⋮ menu on the card. **Export data** writes GeoJSON, GeoParquet, Shapefile, GeoPackage, KML and KMZ
@@ -29,6 +29,11 @@ release documents what changed since the one before it.
   now survives **Save map**, kept beside the configuration as kepler's own **Export map** keeps it,
   and comes back when the dashboard loads. Pasting a map exported from kepler.gl brings its name and
   description too. Until now both were gone on the next load.
+- **Clicks apart from tooltips**: a layer class that kepler does not ship can answer a click through an
+  optional `getClickData()` method, which the click variables and the click-to-box read before kepler's
+  `getHoverData()`. A layer that hides its tooltip by answering `getHoverData()` with nothing can still
+  hand a click its row. kepler's own layers answer as before. This is the seam Kepler Geospatial Maps
+  Plus uses for its Sparkline's dot and card with the tooltip off.
 - **No `<style>` elements**: the amber of the panel's own layers in **Add Layer** comes from a
   scoped Emotion class instead of a `<style>` element drawn beside each icon. The icons look the
   same.
