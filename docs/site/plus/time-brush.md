@@ -163,6 +163,24 @@ The window is two variables, so an annotation can draw it as a region on every T
 [Time window variables](/guide/dashboard/time-window-variables#shade-the-window-on-the-graphs) shows. The
 provisioned **Time brush** dashboard of the development bench does exactly that over three random walks.
 
+## Linked to a Mosaic selection
+
+The variables travel through the URL, and every panel that reads them runs its query again once the window rests.
+With the [Chaski app](https://github.com/ubica-ecuador/chaski) there is a faster path, the one its Mosaic and filters
+panels take among themselves: a **Mosaic Selection**, shared by name on the dashboard. Name it under
+**Mosaic → Mosaic selection**, and the time column of its data under **Time column** (`time` by default):
+
+- **Time Brush → Mosaic.** The window is a clause on that column, sent as you drag and at every step of play. The
+  Mosaic and filters panels redraw under the pointer, from pre-aggregated tables, as they do for their own brushes.
+- **Mosaic → Time Brush.** A brush on that column in a Mosaic or filters panel moves the window, which writes its
+  variables as before: the maps and queries that read them follow a brush they know nothing about.
+- **One window per column.** A histogram of the time column shows the Time Brush's window as its brush, and the last
+  one moved wins. A [map linked to the same Selection](/guide/dashboard/cross-filtering#linked-to-a-mosaic-selection)
+  moves its time filter with it.
+
+A range only: an instant stays out of the Selection. It needs the Chaski app with shared selections on the Grafana,
+and a Chaski dataset on the dashboard.
+
 ## What it does not do yet
 
 - It does not move a Trip layer's playhead; that clock still belongs to the map.
