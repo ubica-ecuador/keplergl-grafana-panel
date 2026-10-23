@@ -6,6 +6,7 @@ import {
   applyLinkedFilter,
   hasFieldFilter,
   openFieldFilter,
+  readDrawnAreas,
   readFieldType,
   readLinkableFilters,
   readMapState,
@@ -23,8 +24,12 @@ interface Params {
   isReady: boolean;
   /** The Selection's name; empty leaves the map out of Mosaic. */
   selection: string;
-  /** The longitude and latitude columns the view filters, or null. */
-  viewport: [string, string] | null;
+  /** The longitude and latitude columns the view and the drawn area filter, or null. */
+  columns: [string, string] | null;
+  /** The view filters the Selection as a bbox. */
+  viewport: boolean;
+  /** The latest drawn figure filters the Selection. */
+  area: boolean;
   /** False when the time filter follows the dashboard time range. */
   linkTime: boolean;
 }
@@ -61,8 +66,8 @@ function loadMosaic(): Promise<MosaicRuntimeLike> {
  * frame is all Mosaic can draw. The Selection's events land on a microtask,
  * outside whatever Mosaic is in the middle of.
  */
-export function useMosaicSelection({ store, isReady, selection, viewport, linkTime }: Params): void {
-  const [lng, lat] = viewport ?? ['', ''];
+export function useMosaicSelection({ store, isReady, selection, columns, viewport, area, linkTime }: Params): void {
+  const [lng, lat] = columns ?? ['', ''];
 
   useEffect(() => {
     const name = selection.trim();
@@ -81,6 +86,7 @@ export function useMosaicSelection({ store, isReady, selection, viewport, linkTi
       open: (field) => openFieldFilter(store, store.dispatch, field),
       remove: (field) => removeFieldFilter(store, store.dispatch, field),
       viewport: () => readViewportBounds(store),
+      areas: () => readDrawnAreas(store),
     };
 
     const start = async () => {
@@ -91,13 +97,15 @@ export function useMosaicSelection({ store, isReady, selection, viewport, linkTi
       }
       const link = new MosaicSelectionLink(runtime, shared, map, {
         linkTime,
-        viewport: lng && lat ? [lng, lat] : null,
+        columns: lng && lat ? [lng, lat] : null,
+        viewport,
+        area,
       });
 
       const watcher = new SliceWatcher();
       let frame: number | null = null;
       const onStore = () => {
-        const slices = lng && lat ? [...readSyncSlices(store), readMapState(store)] : readSyncSlices(store);
+        const slices = lng && lat && viewport ? [...readSyncSlices(store), readMapState(store)] : readSyncSlices(store);
         if (!watcher.changed(slices) || frame !== null) {
           return;
         }
@@ -145,5 +153,5 @@ export function useMosaicSelection({ store, isReady, selection, viewport, linkTi
       abort.abort();
       teardown();
     };
-  }, [isReady, selection, lng, lat, linkTime, store]);
+  }, [isReady, selection, lng, lat, viewport, area, linkTime, store]);
 }

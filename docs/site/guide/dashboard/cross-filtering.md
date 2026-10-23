@@ -253,8 +253,17 @@ takes part in it the way a brush does:
 - **One window per column.** A histogram of the same column in a Mosaic panel shows the map's
   window as its brush, and the last one moved wins. The map is never filtered by its own clauses.
 
-**Mosaic view columns** (`lng, lat`) adds the view: what the map shows filters the Selection as a
-bounding box on those two columns while you pan and zoom.
+**Mosaic location columns** (`lng, lat`) name the longitude and latitude columns of the
+Selection's data, and add the map's place:
+
+- **Filter by the drawn area** (on by default): the polygon or rectangle drawn on the map keeps the
+  rows inside it, in every Mosaic panel. Draw another and it takes over; move a vertex and the
+  panels follow; delete it and they show everything again. With several figures, the latest one
+  drawn or edited counts, as for the drawn-area variable.
+- **Filter by the view** (off by default): what the map shows filters the Selection as a bounding
+  box on those two columns while you pan and zoom.
+
+The area needs DuckDB's spatial extension, which Chaski loads.
 
 The column names are the link: a clause on `fare` lands on the map's `fare`, so name the map's
 columns as the Chaski dataset names them. The map's data can come from any datasource; the clauses

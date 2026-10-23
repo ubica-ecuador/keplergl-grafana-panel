@@ -365,13 +365,29 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       settings: { placeholder: 'brush' },
     })
     .addTextInput({
-      path: 'mosaicViewport',
-      name: 'Mosaic view columns',
+      path: 'mosaicColumns',
+      name: 'Mosaic location columns',
       description:
-        'Longitude and latitude columns, as lng, lat: what the map shows filters the Mosaic Selection as a bounding box while you pan and zoom.',
+        'The longitude and latitude columns of the Selection’s data, as lng, lat: what the view and a drawn area filter there.',
       category: ['Cross-filtering'],
       settings: { placeholder: 'lng, lat' },
       showIf: (config) => Boolean(config.mosaicSelection?.trim()),
+    })
+    .addBooleanSwitch({
+      path: 'mosaicArea',
+      name: 'Filter by the drawn area',
+      description: 'A polygon or rectangle drawn on the map keeps, in the Mosaic panels, the rows inside it.',
+      category: ['Cross-filtering'],
+      defaultValue: true,
+      showIf: (config) => Boolean(config.mosaicSelection?.trim()) && Boolean(config.mosaicColumns?.trim()),
+    })
+    .addBooleanSwitch({
+      path: 'mosaicViewport',
+      name: 'Filter by the view',
+      description: 'What the map shows filters the Mosaic panels as a bounding box while you pan and zoom.',
+      category: ['Cross-filtering'],
+      defaultValue: false,
+      showIf: (config) => Boolean(config.mosaicSelection?.trim()) && Boolean(config.mosaicColumns?.trim()),
     })
     .addCustomEditor({
       id: 'fitOnVariables',

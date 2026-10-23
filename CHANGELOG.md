@@ -12,8 +12,9 @@ release documents what changed since the one before it.
   the slider moves, and the Mosaic and filters panels redraw under the pointer (50–90 ms a move on
   200,000 rows); their brushes and picks land on the map's filter of the same column, made for them
   if the map had none, as a filter in the browser with no query run again. A histogram of the same
-  column shows the map's window as its brush, and the last one moved wins. **Mosaic view columns**
-  (`lng, lat`) adds what the map shows as a bounding box. Needs the Chaski app 2.2 or later; a time
+  column shows the map's window as its brush, and the last one moved wins. **Mosaic location columns**
+  (`lng, lat`) add the map's place: the figure drawn on it keeps the rows inside (**Filter by the
+  drawn area**, on), and what it shows can be a bounding box (**Filter by the view**). Needs the Chaski app 2.2 or later; a time
   filter that follows the dashboard time range stays out of it.
 
 - **Identifiers keep their leading zeros**: kepler types a column by its values, so a column of

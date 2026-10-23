@@ -166,8 +166,12 @@ export interface KeplerMapProps {
   viewportVariables?: ViewportVariables;
   /** The Mosaic Selection the map's filters take part in; empty for none. */
   mosaicSelection?: string;
-  /** The longitude and latitude columns its view filters there, as a bbox; null for none. */
-  mosaicViewport?: [string, string] | null;
+  /** The longitude and latitude columns its view and drawn area filter there; null for none. */
+  mosaicColumns?: [string, string] | null;
+  /** The view filters the Selection as a bbox on `mosaicColumns`. */
+  mosaicViewport?: boolean;
+  /** The latest drawn figure filters the Selection on `mosaicColumns`. */
+  mosaicArea?: boolean;
   /** Variables whose change frames the map on its rows again; empty for none. */
   fitOnVariables: readonly string[];
   /** A column whose true rows are selected too; empty for none. */
@@ -240,7 +244,9 @@ export function KeplerMap({
   clickConfirm,
   viewportVariables,
   mosaicSelection = '',
-  mosaicViewport = null,
+  mosaicColumns = null,
+  mosaicViewport = false,
+  mosaicArea = false,
   fitOnVariables,
   selectionField,
   dimUnselected,
@@ -621,7 +627,9 @@ export function KeplerMap({
     store,
     isReady,
     selection: mosaicSelection,
+    columns: mosaicColumns,
     viewport: mosaicViewport,
+    area: mosaicArea,
     linkTime: !couplesDashboardRange(timeSync),
   });
 

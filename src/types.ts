@@ -319,9 +319,17 @@ export interface KeplerPanelOptions {
   mosaicSelection?: string;
 
   /**
-   * The longitude and latitude columns, `lng, lat`, that the map's view
-   * filters in the Mosaic Selection as a bbox while it pans and zooms. Empty
-   * sends no view.
+   * The longitude and latitude columns, `lng, lat`, of the Mosaic Selection's
+   * data: what the view and the drawn area filter. Empty sends neither.
    */
-  mosaicViewport?: string;
+  mosaicColumns?: string;
+
+  /** The map's view filters the Mosaic Selection as a bbox while it pans and zooms. Needs `mosaicColumns`. */
+  mosaicViewport?: boolean;
+
+  /**
+   * The figure drawn on the map, the latest one, filters the Mosaic Selection
+   * to the rows inside it. Needs `mosaicColumns`; on unless set to false.
+   */
+  mosaicArea?: boolean;
 }

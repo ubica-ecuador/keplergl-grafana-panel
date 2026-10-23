@@ -1,5 +1,12 @@
 import type { ClauseLike, LinkableFilter } from './mosaicLink';
-import { MosaicSelectionLink, type MapLike, type MosaicRuntimeLike, type SelectionLike } from './mosaicSelectionLink';
+import type { DrawnArea } from './keplerAdapter';
+import {
+  MosaicSelectionLink,
+  type LinkOptions,
+  type MapLike,
+  type MosaicRuntimeLike,
+  type SelectionLike,
+} from './mosaicSelectionLink';
 
 /**
  * The map in a crossfilter Selection, against a Selection that keeps
@@ -55,6 +62,7 @@ const runtime: MosaicRuntimeLike = {
   clauseIntervals: (fields, value, options) => ({ ...options, value, fields, meta: { type: 'interval' } }),
   clausePoints: (fields, value, options) => ({ ...options, value, fields, meta: { type: 'point' } }),
   clauseColumns: (clause) => (clause as Clause).fields,
+  clauseArea: (fields, wkt, options) => ({ ...options, value: wkt, fields, meta: { type: 'area' } }),
 };
 
 class FakeMap implements MapLike {
@@ -90,15 +98,23 @@ class FakeMap implements MapLike {
     this.list = this.list.filter((f) => f.field !== field);
   };
   viewport = () => this.view;
+  drawn: DrawnArea[] = [];
+  areas = () => this.drawn;
   set(field: string, value: unknown) {
     this.list.find((f) => f.field === field)!.value = value;
   }
 }
 
-const setup = (options: Partial<{ linkTime: boolean; viewport: [string, string] | null }> = {}) => {
+const setup = (options: Partial<LinkOptions> = {}) => {
   const selection = new FakeSelection();
   const map = new FakeMap();
-  const link = new MosaicSelectionLink(runtime, selection, map, { linkTime: true, viewport: null, ...options });
+  const link = new MosaicSelectionLink(runtime, selection, map, {
+    linkTime: true,
+    columns: null,
+    viewport: false,
+    area: false,
+    ...options,
+  });
   return { selection, map, link };
 };
 
@@ -222,7 +238,7 @@ it('ignores a brush on a column the map does not have', () => {
 });
 
 it('sends the view as a bbox once per move, and takes everything out on release', () => {
-  const { selection, map, link } = setup({ viewport: ['lng', 'lat'] });
+  const { selection, map, link } = setup({ columns: ['lng', 'lat'], viewport: true });
   map.list.push({ field: 'fare', type: 'range', value: [5, 20], domain: [0, 100], fieldType: 'real' });
   link.push();
   const view = selection.clauses.find((c) => c.fields.length === 2)!;
@@ -239,6 +255,93 @@ it('sends the view as a bbox once per move, and takes everything out on release'
   link.push();
   expect(selection.updates).toBe(updates + 1);
 
+  link.release();
+  expect(selection.clauses).toHaveLength(0);
+});
+
+const square = (id: string, x: number): DrawnArea => ({
+  id,
+  geometry: {
+    type: 'Polygon',
+    coordinates: [
+      [
+        [x, 0],
+        [x + 1, 0],
+        [x + 1, 1],
+        [x, 1],
+        [x, 0],
+      ],
+    ],
+  },
+});
+const areaOf = (selection: FakeSelection) => selection.clauses.find((c) => c.meta?.type === 'area');
+
+it('sends the latest drawn figure as an area, follows its edits, and takes it out when deleted', () => {
+  const { selection, map, link } = setup({ columns: ['lng', 'lat'], area: true });
+  link.push();
+  expect(areaOf(selection)).toBeUndefined();
+
+  map.drawn = [square('a', 0)];
+  link.push();
+  expect(areaOf(selection)).toMatchObject({ fields: ['lng', 'lat'], value: expect.stringMatching(/^POLYGON/) });
+  expect(link.isOwn(areaOf(selection)!.source)).toBe(true);
+
+  // A second figure is the latest: it replaces the first in the Selection.
+  map.drawn = [square('a', 0), square('b', 5)];
+  link.push();
+  expect(selection.clauses.filter((c) => c.meta?.type === 'area')).toHaveLength(1);
+  expect(areaOf(selection)!.value).toContain('5 0');
+
+  // Unchanged: nothing sent.
+  const updates = selection.updates;
+  link.push();
+  expect(selection.updates).toBe(updates);
+
+  // The latest deleted: the one left is the area; none left, no area.
+  map.drawn = [square('a', 0)];
+  link.push();
+  expect(areaOf(selection)!.value).toContain('0 0');
+  map.drawn = [];
+  link.push();
+  expect(areaOf(selection)).toBeUndefined();
+});
+
+it('sends a figure already on the map at load, and none with the area off or no columns', () => {
+  const on = setup({ columns: ['lng', 'lat'], area: true });
+  on.map.drawn = [square('a', 0)];
+  on.link.push();
+  expect(areaOf(on.selection)).toBeDefined();
+
+  const off = setup({ columns: ['lng', 'lat'], area: false });
+  off.map.drawn = [square('a', 0)];
+  off.link.push();
+  expect(areaOf(off.selection)).toBeUndefined();
+
+  const noColumns = setup({ area: true });
+  noColumns.map.drawn = [square('a', 0)];
+  noColumns.link.push();
+  expect(areaOf(noColumns.selection)).toBeUndefined();
+});
+
+it('leaves the area out with a Chaski app that has no area clause', () => {
+  const selection = new FakeSelection();
+  const map = new FakeMap();
+  const { clauseArea: _, ...older } = runtime;
+  const link = new MosaicSelectionLink(older, selection, map, {
+    linkTime: true,
+    columns: ['lng', 'lat'],
+    viewport: false,
+    area: true,
+  });
+  map.drawn = [square('a', 0)];
+  link.push();
+  expect(selection.clauses).toHaveLength(0);
+});
+
+it('takes the area out on release', () => {
+  const { selection, map, link } = setup({ columns: ['lng', 'lat'], area: true });
+  map.drawn = [square('a', 0)];
+  link.push();
   link.release();
   expect(selection.clauses).toHaveLength(0);
 });

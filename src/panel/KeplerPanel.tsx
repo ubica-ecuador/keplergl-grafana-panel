@@ -66,7 +66,7 @@ export function KeplerPanel(props: Props) {
   // — whenever this identity moves, which a clone would do on every click in
   // the panel editor.
   const viewportVariables = useStableValue(options.viewportVariables);
-  const mosaicViewport = useMemo(() => parseViewportColumns(options.mosaicViewport), [options.mosaicViewport]);
+  const mosaicColumns = useMemo(() => parseViewportColumns(options.mosaicColumns), [options.mosaicColumns]);
 
   // Same reason again: the fit's location listener is keyed by this list.
   const fitOnVariables = useStableValue(options.fitOnVariables ?? EMPTY_FIT_VARIABLES);
@@ -231,7 +231,9 @@ export function KeplerPanel(props: Props) {
         clickConfirm={Boolean(options.clickConfirm)}
         viewportVariables={viewportVariables}
         mosaicSelection={options.mosaicSelection ?? ''}
-        mosaicViewport={mosaicViewport}
+        mosaicColumns={mosaicColumns}
+        mosaicViewport={Boolean(options.mosaicViewport)}
+        mosaicArea={options.mosaicArea ?? true}
         fitOnVariables={fitOnVariables}
         selectionField={options.selectionField ?? ''}
         dimUnselected={Boolean(options.dimUnselected)}

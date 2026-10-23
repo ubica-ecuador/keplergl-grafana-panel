@@ -9,6 +9,8 @@ import {
   type FilterClause,
   type LinkableFilter,
 } from './mosaicLink';
+import { areaFingerprints, decideAreaPublish } from './areaSync';
+import type { DrawnArea } from './keplerAdapter';
 import type { ViewportBounds } from './viewportSync';
 
 /**
@@ -22,6 +24,8 @@ export interface MosaicRuntimeLike {
   clauseIntervals(fields: string[], value: unknown, options: object): ClauseLike;
   clausePoints(fields: string[], value: unknown, options: object): ClauseLike;
   clauseColumns(clause: ClauseLike): string[];
+  /** A drawn polygon as a clause on longitude and latitude; missing from a Chaski app before it. */
+  clauseArea?(fields: [string, string], wkt: string | null, options: object): ClauseLike;
 }
 
 /** What the link uses of a Mosaic Selection. */
@@ -49,13 +53,19 @@ export interface MapLike {
   open(field: string): void;
   remove(field: string): void;
   viewport(): ViewportBounds | null;
+  /** The figures drawn on the map, in kepler's order: the latest last. */
+  areas(): DrawnArea[];
 }
 
 export interface LinkOptions {
   /** False when the time filter belongs to the dashboard time range, which the link must not move. */
   linkTime: boolean;
-  /** The longitude and latitude columns the view filters as a bbox, or null to send no view. */
-  viewport: [string, string] | null;
+  /** The longitude and latitude columns of the Selection's data, or null to send neither view nor area. */
+  columns: [string, string] | null;
+  /** The view filters the Selection as a bbox. */
+  viewport: boolean;
+  /** The latest drawn figure filters the Selection. */
+  area: boolean;
 }
 
 interface Source {
@@ -94,6 +104,14 @@ export class MosaicSelectionLink {
   /** By column, the other panel's value `pull` put on the map, and whether `pull` made the filter for it. */
   private readonly applied = new Map<string, { foreign: string; key: string; created: boolean }>();
   private viewportSent = '';
+  private readonly areaSource = {
+    reset: () => {
+      this.areaSent = null;
+    },
+  };
+  /** Each drawn figure as last seen, by id; the figure whose polygon the Selection holds. */
+  private areasSeen: Record<string, string> = {};
+  private areaSent: string | null = null;
   /** A foreign value could not land (its filter parked, its rows not in): `push` tries again. */
   private retry = false;
   /** While the link takes its own clauses out, their reset is not a clearing to show on the map. */
@@ -107,7 +125,9 @@ export class MosaicSelectionLink {
   ) {}
 
   readonly isOwn = (source: unknown): boolean =>
-    source === this.viewportSource || [...this.sources.values()].includes(source as Source);
+    source === this.viewportSource ||
+    source === this.areaSource ||
+    [...this.sources.values()].includes(source as Source);
 
   /** From the map to the Selection. */
   push(): void {
@@ -144,6 +164,7 @@ export class MosaicSelectionLink {
       }
     }
     this.pushViewport();
+    this.pushArea();
   }
 
   /** From the Selection to the map. */
@@ -199,11 +220,14 @@ export class MosaicSelectionLink {
       for (const field of [...this.sent.keys()]) {
         this.withdraw(field);
       }
-      if (this.viewportSent && this.options.viewport) {
-        this.selection.update(
-          this.runtime.clauseIntervals(this.options.viewport, null, { source: this.viewportSource })
-        );
+      const columns = this.options.columns;
+      if (this.viewportSent && columns) {
+        this.selection.update(this.runtime.clauseIntervals(columns, null, { source: this.viewportSource }));
         this.viewportSent = '';
+      }
+      if (this.areaSent !== null && columns && this.runtime.clauseArea) {
+        this.selection.update(this.runtime.clauseArea(columns, null, { source: this.areaSource }));
+        this.areaSent = null;
       }
     } finally {
       this.releasing = false;
@@ -272,8 +296,8 @@ export class MosaicSelectionLink {
   }
 
   private pushViewport(): void {
-    const columns = this.options.viewport;
-    if (!columns) {
+    const columns = this.options.columns;
+    if (!columns || !this.options.viewport) {
       return;
     }
     const extent = viewportExtent(this.map.viewport());
@@ -286,5 +310,29 @@ export class MosaicSelectionLink {
     // changes its scale with every zoom, so there is nothing to pre-aggregate on. The others query it plainly.
     const clause = this.runtime.clauseIntervals(columns, extent, { source: this.viewportSource });
     this.selection.update({ ...clause, meta: { type: VIEWPORT_CLAUSE_TYPE } });
+  }
+
+  /**
+   * The latest figure drawn, or the last one moved, as a polygon clause; none
+   * once every figure is deleted. The rule of the drawn-area variable, except
+   * that a figure already on the map at load is sent too: the map is where the
+   * area lives.
+   */
+  private pushArea(): void {
+    const columns = this.options.columns;
+    const clauseArea = this.runtime.clauseArea;
+    if (!columns || !this.options.area || !clauseArea) {
+      return;
+    }
+    const candidates = this.map.areas();
+    const decision = decideAreaPublish({ candidates, lastSeen: this.areasSeen, publishedId: this.areaSent });
+    this.areasSeen = areaFingerprints(candidates);
+    if (decision.action === 'publish') {
+      this.areaSent = decision.id;
+      this.selection.update(clauseArea(columns, decision.wkt, { source: this.areaSource }));
+    } else if (decision.action === 'clear') {
+      this.areaSent = null;
+      this.selection.update(clauseArea(columns, null, { source: this.areaSource }));
+    }
   }
 }
