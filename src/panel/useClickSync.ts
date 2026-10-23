@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { locationService } from '@grafana/runtime';
+import { getTemplateSrv, locationService } from '@grafana/runtime';
 import type { Store } from 'redux';
 
 import { readClickedEntity, readClickSlices } from './keplerAdapter';
@@ -20,6 +20,20 @@ interface Params {
    * See the note on confirm mode below.
    */
   confirm?: boolean;
+}
+
+/**
+ * The dashboard's multi-value variables: the ones a Shift-click can add to.
+ * Empty where the template service is not there to ask, as in a unit test.
+ */
+function multiValueVariables(): Set<string> {
+  try {
+    return new Set(
+      (getTemplateSrv()?.getVariables() ?? []).filter((v) => (v as { multi?: boolean }).multi).map((v) => v.name)
+    );
+  } catch {
+    return new Set();
+  }
 }
 
 /** What the popup's button calls, and what it needs to know to label itself. */
@@ -60,6 +74,11 @@ export interface ClickSelectActions {
  * avoid, arriving through the other door. What writes instead are `select` and
  * `clear`, which the popup's own button calls.
  *
+ * **Shift+click** adds the entity to a multi-value variable, or takes it out
+ * (`decideClickPublish`). kepler's click state carries no modifier keys, so the
+ * hook notes Shift on every pointerdown, in the capture phase, before kepler
+ * handles the click that follows.
+ *
  * Same structural rules as the sibling hooks: reconcile on a microtask, never
  * inside the store subscription, and react only when the watched slice —
  * `clicked` alone — actually moves.
@@ -75,6 +94,16 @@ export function useClickSync({ store, isReady, mappings, confirm = false }: Para
 
   /** Whether the mapped variables hold a selection this panel published. */
   const published = useRef(false);
+
+  /** Whether Shift was held on the last pointerdown, the one that starts a click. */
+  const additive = useRef(false);
+  useEffect(() => {
+    const note = (event: PointerEvent) => {
+      additive.current = event.shiftKey;
+    };
+    window.addEventListener('pointerdown', note, true);
+    return () => window.removeEventListener('pointerdown', note, true);
+  }, []);
 
   /** The click mappings, the values their variables hold, and what is clicked. */
   const readState = useRef(() => {
@@ -92,7 +121,7 @@ export function useClickSync({ store, isReady, mappings, confirm = false }: Para
     return { click, variableValues, selection };
   });
 
-  const write = useRef((writes: Record<string, string>) => {
+  const write = useRef((writes: Record<string, string | string[]>) => {
     const entries = Object.entries(writes);
     if (entries.length) {
       locationService.partial(Object.fromEntries(entries.map(([name, value]) => [`var-${name}`, value])), true);
@@ -115,6 +144,8 @@ export function useClickSync({ store, isReady, mappings, confirm = false }: Para
       mappings: click,
       variableValues,
       published: published.current,
+      additive: additive.current,
+      multiVariables: additive.current ? multiValueVariables() : undefined,
     });
     published.current = decision.published;
     write.current(decision.writes);

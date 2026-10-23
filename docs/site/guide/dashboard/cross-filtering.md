@@ -71,6 +71,19 @@ One way only, map → variable. Clicking empty map clears the variable — but *
 selection was published from this panel**, so a shared link's preset value survives a stray click on
 the sea.
 
+### Shift+click — several at once
+
+When the variable is **multi-value** (a custom variable with _Multi-value_ on), **Shift+click** adds
+the entity to what it holds instead of replacing it, and Shift+click on one already in it takes it
+out. A plain click still replaces the whole selection with one entity; a Shift+click on empty map
+clears nothing, so a slip does not cost what you built. Consume it as a list:
+
+```sql
+WHERE vehicle_id IN (${vehicle:singlequote})
+```
+
+On a single-value variable Shift+click is a click like any other, since the variable cannot hold two.
+
 ## Coordinates — publish the place
 
 Switch a mapping's source to **Coordinates**. Instead of a column value, the pair of variables named

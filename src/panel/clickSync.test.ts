@@ -332,3 +332,50 @@ describe('wmsFeatureValues', () => {
     expect(wmsFeatureValues(partial)).toEqual({ OK: '2', wms_value: '2' });
   });
 });
+
+describe('decideClickPublish, Shift+click', () => {
+  const multi = new Set(['vehicle']);
+  const shift = (selection: Record<string, unknown> | null, current: unknown, multiVariables = multi) =>
+    decideClickPublish({
+      selection,
+      mappings: [vehicle],
+      variableValues: { vehicle: current },
+      published: true,
+      additive: true,
+      multiVariables,
+    });
+
+  it('adds the entity to what a multi-value variable holds', () => {
+    expect(shift({ vehicle_id: 'v8' }, ['v7', 'v9'])).toEqual({
+      writes: { vehicle: ['v7', 'v9', 'v8'] },
+      published: true,
+    });
+    expect(shift({ vehicle_id: 'v8' }, 'v7')).toEqual({ writes: { vehicle: ['v7', 'v8'] }, published: true });
+    expect(shift({ vehicle_id: 8 }, undefined)).toEqual({ writes: { vehicle: ['8'] }, published: true });
+  });
+
+  it('takes an entity already in the selection out of it, and empties the variable with the last one', () => {
+    expect(shift({ vehicle_id: 'v7' }, ['v7', 'v9'])).toEqual({ writes: { vehicle: ['v9'] }, published: true });
+    expect(shift({ vehicle_id: 'v7' }, 'v7')).toEqual({ writes: { vehicle: '' }, published: true });
+  });
+
+  it('replaces a single-value variable, which cannot hold two', () => {
+    expect(shift({ vehicle_id: 'v8' }, 'v7', new Set())).toEqual({ writes: { vehicle: 'v8' }, published: true });
+  });
+
+  it('keeps the selection on a Shift-click on empty map', () => {
+    expect(shift(null, ['v7', 'v9'])).toEqual({ writes: {}, published: true });
+  });
+
+  it('replaces the selection on a click without Shift, as always', () => {
+    expect(
+      decideClickPublish({
+        selection: { vehicle_id: 'v8' },
+        mappings: [vehicle],
+        variableValues: { vehicle: ['v7', 'v9'] },
+        published: true,
+        multiVariables: multi,
+      })
+    ).toEqual({ writes: { vehicle: 'v8' }, published: true });
+  });
+});

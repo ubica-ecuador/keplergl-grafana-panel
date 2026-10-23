@@ -6,6 +6,10 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Shift+click adds to the selection**: on a click mapping whose variable is multi-value,
+  Shift+click adds the entity to what the variable holds, or takes it out if it is already there,
+  and the halo rings them all. A plain click still replaces the selection, and a Shift+click on
+  empty map leaves it alone. Single-value variables behave as before.
 - **A selection the query flags, and the rest dimmed**: **Cross-filtering → Highlight rows where**
   names a column, and the rows where it is true (or 1) are ringed in amber as a click's selection
   is. A selection of thousands of rows — what a chart's brush caught, worked out by the query from

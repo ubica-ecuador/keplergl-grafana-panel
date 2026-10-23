@@ -1,4 +1,4 @@
-import { normalizeFilterKey, type VariableMapping } from './variableSync';
+import { normalizeFilterKey, toStringValues, type VariableMapping } from './variableSync';
 
 /**
  * Decides when the entity clicked on the map reaches the dashboard variables.
@@ -25,8 +25,8 @@ import { normalizeFilterKey, type VariableMapping } from './variableSync';
 export type ClickSelection = Record<string, unknown> | null | undefined;
 
 export interface ClickDecision {
-  /** variable name → value to write; empty means touch nothing. */
-  writes: Record<string, string>;
+  /** variable name → value to write (a list for a multi-value variable); empty means touch nothing. */
+  writes: Record<string, string | string[]>;
   /** Whether the variables now hold a selection this panel published. */
   published: boolean;
 }
@@ -45,12 +45,21 @@ export interface ClickDecision {
  * link keeps its variable until the user actually selects something here —
  * and never a mapping marked `keepOnDeselect`, whose variable only another
  * click changes.
+ *
+ * An `additive` click — Shift held — grows the selection instead of replacing
+ * it, on the mappings whose variable is multi-value (`multiVariables`): the
+ * entity's value joins the list, or leaves it if it was there. A mapping on a
+ * single-value variable is replaced as by any click, since it cannot hold two.
+ * An additive click on empty map clears nothing, so a slip of the Shift-click
+ * does not cost the selection built so far.
  */
 export function decideClickPublish({
   selection,
   mappings,
   variableValues,
   published,
+  additive = false,
+  multiVariables,
 }: {
   selection: ClickSelection;
   /** The click mappings only — see `partitionMappings`. */
@@ -59,8 +68,15 @@ export function decideClickPublish({
   variableValues: Record<string, unknown>;
   /** Whether the variables hold a selection this panel published earlier. */
   published: boolean;
+  /** Shift was held: add to the selection, or take out of it. */
+  additive?: boolean;
+  /** The variables that can hold several values; only these grow. */
+  multiVariables?: ReadonlySet<string>;
 }): ClickDecision {
   if (selection === undefined) {
+    return { writes: {}, published };
+  }
+  if (additive && selection === null) {
     return { writes: {}, published };
   }
 
@@ -80,7 +96,7 @@ export function decideClickPublish({
     return { writes, published: false };
   }
 
-  const writes: Record<string, string> = {};
+  const writes: Record<string, string | string[]> = {};
   let resolved = false;
   for (const { field, variable } of mappings) {
     const value = selection[field];
@@ -89,6 +105,12 @@ export function decideClickPublish({
     }
     resolved = true;
     const next = String(value);
+    if (additive && multiVariables?.has(variable)) {
+      const current = toStringValues(variableValues[variable]);
+      const grown = current.includes(next) ? current.filter((v) => v !== next) : [...current, next];
+      writes[variable] = grown.length ? grown : '';
+      continue;
+    }
     if (normalizeFilterKey(next) !== normalizeFilterKey(variableValues[variable])) {
       writes[variable] = next;
     }

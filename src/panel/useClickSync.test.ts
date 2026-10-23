@@ -7,11 +7,14 @@ import type { VariableMapping } from './variableSync';
 const partial = jest.fn();
 let search = new URLSearchParams();
 
+let variables: Array<{ name: string; multi?: boolean }> = [];
+
 jest.mock('@grafana/runtime', () => ({
   locationService: {
     partial: (...args: unknown[]) => partial(...args),
     getSearch: () => search,
   },
+  getTemplateSrv: () => ({ getVariables: () => variables }),
 }));
 
 /**
@@ -84,6 +87,7 @@ const flush = () => Promise.resolve().then(() => undefined);
 beforeEach(() => {
   partial.mockClear();
   search = new URLSearchParams();
+  variables = [];
 });
 
 describe('without the confirm mode', () => {
@@ -174,5 +178,38 @@ describe('with the confirm mode on', () => {
     await flush();
 
     expect(result.current.isSelected()).toBe(false);
+  });
+});
+
+describe('Shift+click', () => {
+  const press = (shiftKey: boolean) =>
+    window.dispatchEvent(new MouseEvent('pointerdown', { shiftKey }) as unknown as PointerEvent);
+
+  it('adds the clicked entity to a multi-value variable', async () => {
+    variables = [{ name: 'site', multi: true }];
+    search = new URLSearchParams('var-site=site-09');
+    const store = makeStore(undefined);
+    renderHook(() => useClickSync({ store: store as never, isReady: true, mappings: [site] }));
+    await flush();
+
+    press(true);
+    store.setClicked(clickOn(0));
+    await flush();
+
+    expect(partial).toHaveBeenLastCalledWith({ 'var-site': ['site-09', 'site-07'] }, true);
+  });
+
+  it('replaces it without Shift, and on a variable that holds one value', async () => {
+    variables = [{ name: 'site', multi: false }];
+    search = new URLSearchParams('var-site=site-09');
+    const store = makeStore(undefined);
+    renderHook(() => useClickSync({ store: store as never, isReady: true, mappings: [site] }));
+    await flush();
+
+    press(true);
+    store.setClicked(clickOn(0));
+    await flush();
+
+    expect(partial).toHaveBeenLastCalledWith({ 'var-site': 'site-07' }, true);
   });
 });
