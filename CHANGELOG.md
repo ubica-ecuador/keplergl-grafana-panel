@@ -6,6 +6,11 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Identifiers keep their leading zeros**: kepler types a column by its values, so a column of
+  digit strings became a number and lost its leading zeros — a census tract `06047001901` reached
+  the map, its tooltip and its click variable as `6047001901`, which matched nothing in the
+  dashboard's own queries. A column with a value like that now stays text, as the query sent it;
+  other numeric text is still read as numbers.
 - **Shift+click adds to the selection**: on a click mapping whose variable is multi-value,
   Shift+click adds the entity to what the variable holds, or takes it out if it is already there,
   and the halo rings them all. A plain click still replaces the selection, and a Shift+click on

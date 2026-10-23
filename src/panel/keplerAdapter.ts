@@ -37,6 +37,7 @@ import { FieldType } from '@grafana/data';
 
 import type { PanelDataset } from '../data/framesToDatasets';
 import type { KeplerColumn } from '../data/toKeplerDataset';
+import { keepLeadingZeroIds } from '../data/leadingZeroIds';
 import type { LiveLayer, SavedSplitPane } from './splitMapsGuard';
 import type { ClickedPosition, Figure, PolygonGeometry } from './clickArea';
 import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
@@ -108,6 +109,9 @@ export function toKeplerDatasets(datasets: PanelDataset[]): KeplerDataset[] {
   const out: KeplerDataset[] = [];
   for (const { id, label, rows, columns } of datasets) {
     const data = rows.length === 0 && columns?.length ? columnsOnly(columns) : processRowObject(rows);
+    if (data && rows.length) {
+      keepLeadingZeroIds(data, rows);
+    }
     if (data) {
       out.push({ info: { id, label }, data });
     }
@@ -542,7 +546,6 @@ export function swapRasterScene(store: Store, dispatch: Dispatch, raster: Raster
   return true;
 }
 
-
 /**
  * Puts the layer drawing a raster dataset back in step with that dataset's
  * type, and says whether it had to.
@@ -745,36 +748,34 @@ export function readFlowFieldLayers(store: Store): FlowFieldLayerState[] {
     return [];
   }
 
-  return visState.layers
-    // The vector field needs the same context: the camera for its screen grid,
-    // and a place in the stack of levels. The symbol layer needs only the
-    // camera, to convert its own spacing knob from pixels to ground degrees —
-    // it cannot read the map's zoom and latitude any other way.
-    .filter((layer) =>
-      [FLOW_FIELD_TYPE, VECTOR_FIELD_TYPE, SYMBOL_TYPE].includes((layer as { type?: string }).type ?? '')
-    )
-    .map((layer) => {
-      const config = layer.config as {
-        dataId?: string;
-        columns?: Record<string, { value?: string | null; fieldIdx?: number }>;
-        visConfig?: Record<string, unknown> & { flowContext?: FlowFieldContext };
-      };
-      const dataset = config.dataId ? visState.datasets?.[config.dataId] : undefined;
-      const altitude = config.columns?.altitude;
-      return {
-        id: layer.id,
-        // Carried through so `outdatedFlowContexts` can tell a level (flow
-        // field, vector field) from a layer that merely receives the camera
-        // (symbol) — see `isStackedLevel` in `flowFieldContext.ts`.
-        type: (layer as { type?: string }).type,
-        altitudeMeters: levelHeight(
-          altitude?.value,
-          constantAt(dataset, altitude?.fieldIdx),
-          config.visConfig ?? {}
-        ),
-        context: config.visConfig?.flowContext,
-      };
-    });
+  return (
+    visState.layers
+      // The vector field needs the same context: the camera for its screen grid,
+      // and a place in the stack of levels. The symbol layer needs only the
+      // camera, to convert its own spacing knob from pixels to ground degrees —
+      // it cannot read the map's zoom and latitude any other way.
+      .filter((layer) =>
+        [FLOW_FIELD_TYPE, VECTOR_FIELD_TYPE, SYMBOL_TYPE].includes((layer as { type?: string }).type ?? '')
+      )
+      .map((layer) => {
+        const config = layer.config as {
+          dataId?: string;
+          columns?: Record<string, { value?: string | null; fieldIdx?: number }>;
+          visConfig?: Record<string, unknown> & { flowContext?: FlowFieldContext };
+        };
+        const dataset = config.dataId ? visState.datasets?.[config.dataId] : undefined;
+        const altitude = config.columns?.altitude;
+        return {
+          id: layer.id,
+          // Carried through so `outdatedFlowContexts` can tell a level (flow
+          // field, vector field) from a layer that merely receives the camera
+          // (symbol) — see `isStackedLevel` in `flowFieldContext.ts`.
+          type: (layer as { type?: string }).type,
+          altitudeMeters: levelHeight(altitude?.value, constantAt(dataset, altitude?.fieldIdx), config.visConfig ?? {}),
+          context: config.visConfig?.flowContext,
+        };
+      })
+  );
 }
 
 /** The animation window `animationConfig` is currently showing. */
@@ -1742,8 +1743,7 @@ export function readClickedPosition(store: Store): ClickedPosition {
   }
   const where = { layerId: layer.id, layerType: layer.type };
 
-  const columns = (layer.config as { columns?: Record<string, { value?: string | null; fieldIdx?: number }> })
-    ?.columns;
+  const columns = (layer.config as { columns?: Record<string, { value?: string | null; fieldIdx?: number }> })?.columns;
   if (columns?.lat && columns?.lng) {
     const dataId = layer.config?.dataId;
     const dataset = dataId ? visState.datasets[dataId] : undefined;
@@ -1767,7 +1767,11 @@ export function readClickedPosition(store: Store): ClickedPosition {
   if (centre) {
     return { kind: 'position', position: centre, ...where };
   }
-  return { kind: 'unresolved', ...where, reason: 'the layer has no lat/lng columns and the clicked object no geometry' };
+  return {
+    kind: 'unresolved',
+    ...where,
+    reason: 'the layer has no lat/lng columns and the clicked object no geometry',
+  };
 }
 
 /**
