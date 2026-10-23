@@ -356,6 +356,23 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       category: ['Cross-filtering'],
       editor: ViewportVariablesEditor,
     })
+    .addTextInput({
+      path: 'mosaicSelection',
+      name: 'Mosaic selection',
+      description:
+        'The name of a Mosaic Selection on this dashboard (Chaski app). The map’s range, time and multi-select filters filter the Mosaic and filters panels as you drag, and their brushes filter the map, column by column.',
+      category: ['Cross-filtering'],
+      settings: { placeholder: 'brush' },
+    })
+    .addTextInput({
+      path: 'mosaicViewport',
+      name: 'Mosaic view columns',
+      description:
+        'Longitude and latitude columns, as lng, lat: what the map shows filters the Mosaic Selection as a bounding box while you pan and zoom.',
+      category: ['Cross-filtering'],
+      settings: { placeholder: 'lng, lat' },
+      showIf: (config) => Boolean(config.mosaicSelection?.trim()),
+    })
     .addCustomEditor({
       id: 'fitOnVariables',
       path: 'fitOnVariables',

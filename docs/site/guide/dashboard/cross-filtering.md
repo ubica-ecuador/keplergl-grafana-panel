@@ -169,7 +169,7 @@ Filter mapping for a category — three rows, three variables, one map driving t
 
 On a map where selecting is cheap, a click that publishes straight away is exactly right. On a map
 where it reloads a tab, re-runs a heavy query or swaps a whole dashboard's worth of panels, it makes
-*looking* expensive — and a reader who cannot look without committing stops exploring.
+_looking_ expensive — and a reader who cannot look without committing stops exploring.
 
 Turn on **Select from the popup**, under Cross-filtering, and the click is split in two: it opens
 kepler's popup with the entity's details and publishes nothing. The popup's **Select** button is what
@@ -193,12 +193,12 @@ Three things about it are deliberate:
 
 - **It is read from the variables, not from kepler's clicked entity.** kepler forgets what was
   clicked on every data refresh, and never knew it at all on a dashboard opened from a link. The
-  variables survive both, so the halo does too — which is what makes a shared link show *which*
+  variables survive both, so the halo does too — which is what makes a shared link show _which_
   entity the numbers beside the map are about.
 - **No click can land on it.** The rings are drawn above every layer so they are never buried, and
   they are deaf to the pointer, so clicking a ringed feature still hits the feature.
 - **It follows the columns, not one mapping.** A panel that maps both a zone and a station rings the
-  selected station *and* every row of the selected zone — the union, which is what a reader expects
+  selected station _and_ every row of the selected zone — the union, which is what a reader expects
   from two filters at once.
 
 In a split map it is drawn only in the pane where the layer it belongs to is visible.
@@ -234,6 +234,35 @@ white on a dark style, near-black on a light one — round a handful of shapes, 
 beyond 50 on a pane, where outlines of small shapes merge into blots and the veil already says it
 all. Without the veil, Auto is the amber it has always been. **Amber**, **Thin** and **None** pick
 one style whatever the selection.
+
+## Linked to a Mosaic selection
+
+Variables travel through the URL, and every panel that reads one runs its query again once the
+slider comes to rest. With the [Chaski app](https://github.com/ubica-ecuador/chaski) there is a
+faster path, the one its Mosaic and filters panels take among themselves: a **Mosaic Selection**,
+shared by name on the dashboard. Name it under **Cross-filtering → Mosaic selection**, and the map
+takes part in it the way a brush does:
+
+- **Map → Mosaic.** Each range, time or multi-select filter on the map is a clause on its column,
+  sent while the slider moves. The Mosaic panels redraw under the pointer, from pre-aggregated
+  tables, as they do for their own brushes.
+- **Mosaic → map.** A brush or a pick in a Mosaic or filters panel, on a column the map's data also
+  has, lands on the map's filter of that column — making the filter if the map had none, and taking
+  it away again when the brush clears. It is a filter in the browser: the map's query does not run
+  again.
+- **One window per column.** A histogram of the same column in a Mosaic panel shows the map's
+  window as its brush, and the last one moved wins. The map is never filtered by its own clauses.
+
+**Mosaic view columns** (`lng, lat`) adds the view: what the map shows filters the Selection as a
+bounding box on those two columns while you pan and zoom.
+
+The column names are the link: a clause on `fare` lands on the map's `fare`, so name the map's
+columns as the Chaski dataset names them. The map's data can come from any datasource; the clauses
+filter the Mosaic panels, which read Chaski. It needs the Chaski app (2.2 or later) on the Grafana
+and a Chaski dataset on the dashboard, and works alongside the variable mappings above, which still
+carry the state in the URL. A time filter that follows the dashboard time range (**Time sync** set
+to _To map_ or _Two-way_) stays out of the Selection: a brush elsewhere would move the time range of
+the whole dashboard.
 
 ## What else the map can publish
 

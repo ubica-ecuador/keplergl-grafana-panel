@@ -24,6 +24,7 @@ import { useInterpolatedOption } from './useInterpolatedOption';
 import { useStableValue } from './useStableValue';
 import { publishIntervalOf } from './timeVariableSync';
 import { withKeplerFields, type VariableMapping } from './variableSync';
+import { parseViewportColumns } from './mosaicLink';
 
 interface Props extends PanelProps<KeplerPanelOptions> {}
 
@@ -65,6 +66,7 @@ export function KeplerPanel(props: Props) {
   // — whenever this identity moves, which a clone would do on every click in
   // the panel editor.
   const viewportVariables = useStableValue(options.viewportVariables);
+  const mosaicViewport = useMemo(() => parseViewportColumns(options.mosaicViewport), [options.mosaicViewport]);
 
   // Same reason again: the fit's location listener is keyed by this list.
   const fitOnVariables = useStableValue(options.fitOnVariables ?? EMPTY_FIT_VARIABLES);
@@ -228,6 +230,8 @@ export function KeplerPanel(props: Props) {
         clickAreaSizeMetres={options.clickAreaSizeMetres ?? DEFAULT_CLICK_AREA_METRES}
         clickConfirm={Boolean(options.clickConfirm)}
         viewportVariables={viewportVariables}
+        mosaicSelection={options.mosaicSelection ?? ''}
+        mosaicViewport={mosaicViewport}
         fitOnVariables={fitOnVariables}
         selectionField={options.selectionField ?? ''}
         dimUnselected={Boolean(options.dimUnselected)}

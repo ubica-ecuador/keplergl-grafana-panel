@@ -306,4 +306,22 @@ export interface KeplerPanelOptions {
    * map's contrast colour) or `none` (the veil alone shows the selection).
    */
   haloStyle?: 'auto' | 'amber' | 'thin' | 'none';
+
+  /**
+   * A Mosaic Selection of the dashboard, by name, that the map takes part in
+   * through the Chaski app: each range, time or multi-select filter on the map
+   * is a clause on its column, sent while the slider moves, and the clauses
+   * the Mosaic and filters panels make land on the map's filter of the same
+   * column. Nothing goes through variables. Needs the Chaski app (its Mosaic
+   * panel shares the runtime) and a Chaski dataset on the dashboard. Empty
+   * leaves the map out.
+   */
+  mosaicSelection?: string;
+
+  /**
+   * The longitude and latitude columns, `lng, lat`, that the map's view
+   * filters in the Mosaic Selection as a bbox while it pans and zooms. Empty
+   * sends no view.
+   */
+  mosaicViewport?: string;
 }

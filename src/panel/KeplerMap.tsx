@@ -68,6 +68,7 @@ import { useViewportGuard } from './useViewportGuard';
 import { useSplitMapsGuard } from './useSplitMapsGuard';
 import { savedViewportOf } from './viewportGuard';
 import { useViewportSync } from './useViewportSync';
+import { useMosaicSelection } from './useMosaicSelection';
 import type { ViewportVariables } from './viewportSync';
 import { useAreaSync } from './useAreaSync';
 import { useMarkerSync } from './useMarkerSync';
@@ -78,7 +79,7 @@ import { usePlayheadVariableSync } from './usePlayheadVariableSync';
 import { useSaveMapConfig } from './useSaveMapConfig';
 import { useSidePanelOpen } from './useSidePanelOpen';
 import { SaveMapConfigButton } from './SaveMapConfigButton';
-import type { TimeRangeMs, TimeSyncMode } from './timeSync';
+import { couplesDashboardRange, type TimeRangeMs, type TimeSyncMode } from './timeSync';
 import type { TimeVariableMapping } from './timeVariableSync';
 import type { VariableMapping } from './variableSync';
 
@@ -163,6 +164,10 @@ export interface KeplerMapProps {
   /** Whether a click only shows the entity, leaving the selecting to the popup. */
   clickConfirm: boolean;
   viewportVariables?: ViewportVariables;
+  /** The Mosaic Selection the map's filters take part in; empty for none. */
+  mosaicSelection?: string;
+  /** The longitude and latitude columns its view filters there, as a bbox; null for none. */
+  mosaicViewport?: [string, string] | null;
   /** Variables whose change frames the map on its rows again; empty for none. */
   fitOnVariables: readonly string[];
   /** A column whose true rows are selected too; empty for none. */
@@ -234,6 +239,8 @@ export function KeplerMap({
   clickAreaSizeMetres,
   clickConfirm,
   viewportVariables,
+  mosaicSelection = '',
+  mosaicViewport = null,
   fitOnVariables,
   selectionField,
   dimUnselected,
@@ -607,6 +614,16 @@ export function KeplerMap({
   // One-way: publishes the bbox of what the map shows once it comes to rest,
   // and once on load so a consuming panel never opens without one.
   useViewportSync({ store, isReady, variables: viewportVariables });
+
+  // Live, both ways, with the Mosaic and filters panels of the Chaski app. The time filter stays out of it
+  // when it follows the dashboard time range: a brush elsewhere would move the range and re-run every query.
+  useMosaicSelection({
+    store,
+    isReady,
+    selection: mosaicSelection,
+    viewport: mosaicViewport,
+    linkTime: !couplesDashboardRange(timeSync),
+  });
 
   // Declared last so the dashboard-range sync has already had its say on load;
   // in `variables` mode that sync stands down entirely and this owns the clock.

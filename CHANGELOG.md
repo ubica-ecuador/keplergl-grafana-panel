@@ -6,6 +6,16 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Linked to a Mosaic selection**: **Cross-filtering → Mosaic selection** names a Selection of the
+  Chaski app's Mosaic panels, and the map takes part in it like a brush, with no variable in
+  between. Each range, time or multi-select filter on the map is a clause on its column, sent while
+  the slider moves, and the Mosaic and filters panels redraw under the pointer (50–90 ms a move on
+  200,000 rows); their brushes and picks land on the map's filter of the same column, made for them
+  if the map had none, as a filter in the browser with no query run again. A histogram of the same
+  column shows the map's window as its brush, and the last one moved wins. **Mosaic view columns**
+  (`lng, lat`) adds what the map shows as a bounding box. Needs the Chaski app 2.2 or later; a time
+  filter that follows the dashboard time range stays out of it.
+
 - **Identifiers keep their leading zeros**: kepler types a column by its values, so a column of
   digit strings became a number and lost its leading zeros — a census tract `06047001901` reached
   the map, its tooltip and its click variable as `6047001901`, which matched nothing in the

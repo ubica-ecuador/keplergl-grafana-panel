@@ -59,6 +59,7 @@ import {
 } from '../data/mapConfig';
 import { viewportFromMapState, type MapStateLike } from './windViewport';
 import type { ViewportBounds } from './viewportSync';
+import { MULTI_SELECT_FILTER_TYPE, type LinkableFilter } from './mosaicLink';
 import {
   findTimeFieldName,
   readTimeFilterDomain,
@@ -2034,6 +2035,91 @@ export function removeFieldFilter(store: Store, dispatch: Dispatch, field: strin
   const idx = target ? visState.filters.indexOf(target) : -1;
   if (idx >= 0) {
     dispatch(wrapTo(KEPLER_INSTANCE_ID, removeFilter(idx)));
+  }
+}
+
+const namesOf = (value: string[] | string | undefined): string[] =>
+  Array.isArray(value) ? value : value ? [value] : [];
+
+/**
+ * The map's filters on one column each, with the data's extent and the
+ * column's type — what the Mosaic link reads. Chart-owned filters stay out,
+ * as they do for every sync.
+ */
+export function readLinkableFilters(store: Store): LinkableFilter[] {
+  const visState = getVisState(store);
+  if (!visState) {
+    return [];
+  }
+  const found: LinkableFilter[] = [];
+  for (const filter of ownFilters(visState)) {
+    const names = namesOf(filter.name);
+    if (names.length !== 1 || !filter.type) {
+      continue;
+    }
+    const fieldType = namesOf(filter.dataId)
+      .map((id) => visState.datasets[id]?.fields.find((f) => f.name === names[0])?.type)
+      .find(Boolean);
+    found.push({ field: names[0], type: filter.type, value: filter.value, domain: filter.domain, fieldType });
+  }
+  return found;
+}
+
+/** The columns whose filters kepler has parked while their dataset's new rows land. */
+export function readParkedFilterFields(store: Store): Set<string> {
+  return new Set(readParkedFilters(store).flatMap((filter) => namesOf(filter.name)));
+}
+
+/** kepler's type of `field` in the first dataset that has it, or undefined when none does. */
+export function readFieldType(store: Store, field: string): string | undefined {
+  const visState = getVisState(store);
+  if (!visState) {
+    return undefined;
+  }
+  for (const dataset of Object.values(visState.datasets)) {
+    const found = dataset.fields.find((f) => f.name === field);
+    if (found) {
+      return found.type;
+    }
+  }
+  return undefined;
+}
+
+/** Whether the map has a filter of its own on `field`. */
+export function hasFieldFilter(store: Store, field: string): boolean {
+  const visState = getVisState(store);
+  return Boolean(visState && ownFilters(visState).some((f) => filterHasField(f, field)));
+}
+
+/**
+ * Sets the filter on `field` to `value`, making one when the map has none —
+ * a window for a range or a time, a list for a multi-select. Same contract as
+ * {@link applyFieldFilter}.
+ */
+export function applyLinkedFilter(store: Store, dispatch: Dispatch, field: string, value: unknown): boolean {
+  return applyFilterValue(store, dispatch, field, value);
+}
+
+/**
+ * Opens the filter on `field` without removing it: a window back to the
+ * data's whole extent, a multi-select back to nothing picked. For a filter
+ * the author put on the map, which a cleared selection must not take away.
+ */
+export function openFieldFilter(store: Store, dispatch: Dispatch, field: string): void {
+  const visState = getVisState(store);
+  const filter = visState ? ownFilters(visState).find((f) => filterHasField(f, field)) : undefined;
+  if (!filter) {
+    return;
+  }
+  const domain = filter.domain;
+  const value =
+    filter.type === MULTI_SELECT_FILTER_TYPE
+      ? []
+      : Array.isArray(domain) && domain.length === 2 && domain.every((v) => typeof v === 'number')
+        ? [domain[0], domain[1]]
+        : undefined;
+  if (value) {
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(filter.id, undefined, undefined, value)));
   }
 }
 
