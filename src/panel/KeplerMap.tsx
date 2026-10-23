@@ -55,6 +55,7 @@ import { TemporalCursorContext } from './temporalCursorMapContainer';
 import { useSelectionValues } from './useSelectionValues';
 import { useCoordinateSync } from './useCoordinateSync';
 import { useCenterSync } from './useCenterSync';
+import { useFitOnVariables } from './useFitOnVariables';
 import { centerOnLoad, withLoadCenter } from './centerSync';
 import { useRasterTimeline } from './useRasterTimeline';
 import { useWmsCalendar } from './useWmsCalendar';
@@ -161,6 +162,8 @@ export interface KeplerMapProps {
   /** Whether a click only shows the entity, leaving the selecting to the popup. */
   clickConfirm: boolean;
   viewportVariables?: ViewportVariables;
+  /** Variables whose change frames the map on its rows again; empty for none. */
+  fitOnVariables: readonly string[];
   /** The two variables the time slider's window is published to, if configured. */
   timeVariables?: TimeVariableMapping;
   /** Whether playing the slider publishes as it runs, or only once it stops. */
@@ -224,6 +227,7 @@ export function KeplerMap({
   clickAreaSizeMetres,
   clickConfirm,
   viewportVariables,
+  fitOnVariables,
   timeVariables,
   publishWhilePlaying,
   publishIntervalMs,
@@ -429,6 +433,11 @@ export function KeplerMap({
   ]);
 
   useViewportGuard({ store, isReady, mapConfig, arm: guardArm });
+
+  // A refresh leaves the viewport alone; a change of one of these variables
+  // means the rows moved, so the map frames them again. After the load effect,
+  // so its effect finds the refresh already dispatched.
+  useFitOnVariables({ store, isReady, variables: fitOnVariables, datasets, width, height });
 
   // A raster query that returns a dated series hands the choice of scene to the
   // map's own time widget.

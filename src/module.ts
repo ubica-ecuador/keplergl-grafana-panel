@@ -11,6 +11,7 @@ import { TimeVariableEditor } from './editors/TimeVariableEditor';
 import { AreaVariableEditor } from './editors/AreaVariableEditor';
 import { DEFAULT_CLICK_AREA_METRES } from './panel/clickArea';
 import { ViewportVariablesEditor } from './editors/ViewportVariablesEditor';
+import { FitVariablesEditor } from './editors/FitVariablesEditor';
 import { PlayheadVariableEditor } from './editors/PlayheadVariableEditor';
 import { RASTER_SERVER_PLACEHOLDER } from './panel/constants';
 import { DEFAULT_PUBLISH_INTERVAL_MS, MIN_PUBLISH_INTERVAL_MS } from './panel/timeVariableSync';
@@ -319,6 +320,14 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       description: 'Write the bounding box of what the map is showing to four dashboard variables.',
       category: ['Cross-filtering'],
       editor: ViewportVariablesEditor,
+    })
+    .addCustomEditor({
+      id: 'fitOnVariables',
+      path: 'fitOnVariables',
+      name: 'Fit to data when these change',
+      description: 'Frame the map on its rows again, as on load, when one of these variables changes.',
+      category: ['Cross-filtering'],
+      editor: FitVariablesEditor,
     })
     // "Map configuration" must stay the last category: saving the map is the
     // step that follows every other option, so it belongs where they end. Add

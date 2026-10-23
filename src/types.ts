@@ -236,6 +236,17 @@ export interface KeplerPanelOptions {
   viewportVariables?: ViewportVariables;
 
   /**
+   * Dashboard variables whose change frames the map on its data again, as the
+   * load does; empty for none. For variables that move the rows elsewhere — a
+   * state, a route — which a refresh otherwise leaves out of view, since a
+   * refresh never moves the viewport. The rows can arrive in several steps (a
+   * chain of datasets, answering first with the old rows), so the map frames
+   * them once they have moved and for a few seconds after; see
+   * `fitOnVariables.ts`.
+   */
+  fitOnVariables?: string[];
+
+  /**
    * Dashboard variable the figure drawn on the map is published to, as WKT in
    * EPSG:4326 — `ST_GeomFromText($area, 4326)` on the consuming side.
    *

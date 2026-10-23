@@ -119,6 +119,21 @@ Clicking a row flies the map to that feature. A pair of text boxes works the sam
 Two behaviours keep it sane: the map's **own** clicks are recognised and never re-centre it, and on
 load the saved viewport wins — the pair moves the map only when someone changes it.
 
+### Fit to data when a variable changes
+
+A centre needs a pair and keeps the zoom the mapping names, which suits a feature, not a region.
+When a variable moves the whole dataset somewhere else — a state picker, a route, a city — name
+it under **Cross-filtering → Fit to data when these change** instead: when it changes, the map
+frames its new rows as it does on load, at whatever zoom they need, from California to Rhode
+Island. Nothing else moves the viewport: a refresh, a time change or any other variable leaves it
+where the user put it.
+
+The rows a change brings can arrive in steps — a chain of browser datasets answers once per
+dataset, first with the old rows or with none. The map waits for rows somewhere else than the old
+ones, frames them, and frames any further step in the next few seconds; after that the map is the
+user's. Leave out variables that only filter what is already on screen, or every change would pull
+the map back to the whole dataset.
+
 ## Chart — a chart's cross-filter
 
 Switch a mapping's source to **Chart cross-filter** and pick a column: when a chart in kepler's

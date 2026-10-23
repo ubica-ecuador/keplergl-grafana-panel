@@ -4,6 +4,17 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## Unreleased
+
+- **Fit to data when a variable changes**: a new option under **Cross-filtering**,
+  `fitOnVariables`, names the variables that move the map's rows somewhere else — a state picker,
+  a route, a city. When one changes, the map frames the new rows as it does on load, at the zoom
+  they need; until now a refresh never moved the viewport, so a map switched from Illinois to
+  California went on showing Illinois, empty. Rows that arrive in steps, as a chain of browser
+  datasets answers first with the old rows or none, are framed once they have moved, and for a few
+  seconds after; then the map is the user's again, and a refresh or any other variable leaves it
+  where it is.
+
 ## 1.4.0 (2026-10-20)
 
 - **kepler.gl 3.3.0-alpha.17**: a layer card's zoom, duplicate, `{ }` and remove buttons move into a

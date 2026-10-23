@@ -29,6 +29,7 @@ interface Props extends PanelProps<KeplerPanelOptions> {}
 
 /** Stable empty list, so an unconfigured panel has nothing new to react to. */
 const EMPTY_MAPPINGS: VariableMapping[] = [];
+const EMPTY_FIT_VARIABLES: string[] = [];
 
 /**
  * Translates Grafana concerns into props for the map.
@@ -64,6 +65,9 @@ export function KeplerPanel(props: Props) {
   // — whenever this identity moves, which a clone would do on every click in
   // the panel editor.
   const viewportVariables = useStableValue(options.viewportVariables);
+
+  // Same reason again: the fit's location listener is keyed by this list.
+  const fitOnVariables = useStableValue(options.fitOnVariables ?? EMPTY_FIT_VARIABLES);
 
   // The cross-filtering mappings feed four hooks — filter, click, coordinate
   // and centre — each of which subscribes to the kepler store in an effect
@@ -224,6 +228,7 @@ export function KeplerPanel(props: Props) {
         clickAreaSizeMetres={options.clickAreaSizeMetres ?? DEFAULT_CLICK_AREA_METRES}
         clickConfirm={Boolean(options.clickConfirm)}
         viewportVariables={viewportVariables}
+        fitOnVariables={fitOnVariables}
         timeVariables={options.timeVariables}
         publishWhilePlaying={options.publishWhilePlaying ?? false}
         publishIntervalMs={publishIntervalOf(options.publishIntervalMs)}
