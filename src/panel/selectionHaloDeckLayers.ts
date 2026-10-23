@@ -152,3 +152,74 @@ export function haloDeckLayers(data: HaloDeckData, side: number, { globe }: { gl
 
   return layers;
 }
+
+/**
+ * The veil's colour: the base map's own tone, so what it covers fades into the
+ * map instead of turning grey. A dark style gets a dark veil and the rest a
+ * light one; at this alpha a covered shape keeps about a third of its colour.
+ */
+export function veilColor(styleType: string | undefined): [number, number, number, number] {
+  return styleType && /dark|fiord|matter|satellite|no_map/.test(styleType) ? [14, 15, 18, 170] : [250, 250, 250, 170];
+}
+
+/** The shapes as filled features, for the veil; a shape that is not geometry is left out. */
+export function veilFeatures(shapes: readonly HaloShape[]): object[] {
+  return shapes.flatMap((shape) => {
+    const feature = haloShapeFeature(shape);
+    return feature ? [feature] : [];
+  });
+}
+
+/** What the veil covers on one side of the map: point discs and filled shapes. */
+export interface VeilDeckData {
+  discs: readonly HaloRing[];
+  features: readonly object[];
+}
+
+/**
+ * The veil that dims what is not selected (`dimUnselected`): the unselected
+ * rows' points and shapes covered in the base map's tone, above kepler's layers
+ * and under the halo. Not pickable, like the halo, so a click on a dimmed tract
+ * still reaches it — which is how a selection grows by Shift+click.
+ */
+export function veilDeckLayers(
+  data: VeilDeckData,
+  side: number,
+  { globe, color }: { globe: boolean; color: [number, number, number, number] }
+): Layer[] {
+  const layers: Layer[] = [];
+  const parameters = depthParameters(globe);
+  if (data.discs.length) {
+    layers.push(
+      new ScatterplotLayer<HaloRing>({
+        id: `${HALO_LAYER_PREFIX}-veil-points-${side}`,
+        data: data.discs,
+        getPosition: (disc) => disc.position,
+        getRadius: (disc) => disc.radiusPx,
+        radiusUnits: 'pixels',
+        stroked: false,
+        filled: true,
+        getFillColor: color,
+        pickable: false,
+        parameters,
+      }) as unknown as Layer
+    );
+  }
+  if (data.features.length) {
+    layers.push(
+      new GeoJsonLayer({
+        id: `${HALO_LAYER_PREFIX}-veil-shapes-${side}`,
+        data: data.features as never,
+        stroked: false,
+        filled: true,
+        getFillColor: color,
+        pointType: 'circle',
+        pointRadiusUnits: 'pixels',
+        getPointRadius: RING_MIN_PX,
+        pickable: false,
+        parameters,
+      }) as unknown as Layer
+    );
+  }
+  return layers;
+}

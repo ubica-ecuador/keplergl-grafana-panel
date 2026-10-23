@@ -229,6 +229,8 @@ export function KeplerPanel(props: Props) {
         clickConfirm={Boolean(options.clickConfirm)}
         viewportVariables={viewportVariables}
         fitOnVariables={fitOnVariables}
+        selectionField={options.selectionField ?? ''}
+        dimUnselected={Boolean(options.dimUnselected)}
         timeVariables={options.timeVariables}
         publishWhilePlaying={options.publishWhilePlaying ?? false}
         publishIntervalMs={publishIntervalOf(options.publishIntervalMs)}

@@ -11,6 +11,24 @@
 /** Column name → the values the dashboard has selected in it. */
 export type Selection = Readonly<Record<string, readonly string[]>>;
 
+/** How a flag column says "selected": a boolean true, or a 1, as the URL would write them. */
+export const FLAG_VALUES: readonly string[] = ['true', '1'];
+
+/**
+ * The selection with the rows a query flags added to it: `selectionField`
+ * names a column, and the rows where it is true (or 1) are selected like the
+ * ones a click published. What lets a selection of thousands of rows show
+ * without travelling in the URL — the query works out which rows are in it,
+ * from whatever the dashboard holds (a brushed box's four edges, say).
+ */
+export function withFlaggedRows(selection: Selection, field: string): Selection {
+  if (!field) {
+    return selection;
+  }
+  const values = selection[field] ?? [];
+  return { ...selection, [field]: [...new Set([...values, ...FLAG_VALUES])] };
+}
+
 /** One dataset, as much of it as the halo needs. */
 export interface HaloDataset {
   fieldNames: readonly string[];
@@ -221,6 +239,40 @@ function haloKind(layer: HaloLayer): 'ring' | 'geojson' | 'hexagon' | null {
  * while a trip's pickup and dropoff layers ring each end.
  */
 export function selectionHalo(input: HaloInput): HaloTargets {
+  return markRows(input, (dataset) => selectedRows(dataset, input.selection), RING_MARGIN_PX, RING_MIN_PX);
+}
+
+/**
+ * Every row drawn on this side that is *not* selected, as the shapes and point
+ * discs a veil covers to dim them (`dimUnselected`). The discs are the points'
+ * own size, without the ring's margin. The caller draws the veil only while
+ * the selection marks something on this side: dimming a whole map because a
+ * selection lies elsewhere would only hide it.
+ */
+export function unselectedTargets(input: HaloInput): HaloTargets {
+  return markRows(
+    input,
+    (dataset) => {
+      const selected = new Set(selectedRows(dataset, input.selection));
+      const rows: number[] = [];
+      for (let row = 0; row < dataset.numRows; row++) {
+        if (!selected.has(row)) {
+          rows.push(row);
+        }
+      }
+      return rows;
+    },
+    0,
+    0
+  );
+}
+
+function markRows(
+  input: HaloInput,
+  rowsOf: (dataset: HaloDataset) => readonly number[],
+  marginPx: number,
+  minPx: number
+): HaloTargets {
   const rings = new Map<string, HaloRing>();
   const shapes = new Map<string, HaloShape>();
 
@@ -234,7 +286,7 @@ export function selectionHalo(input: HaloInput): HaloTargets {
       continue;
     }
 
-    for (const row of selectedRows(dataset, input.selection)) {
+    for (const row of rowsOf(dataset)) {
       if (!input.rowPasses(layer.dataId, row, layer.id)) {
         continue;
       }
@@ -254,7 +306,7 @@ export function selectionHalo(input: HaloInput): HaloTargets {
         if (pointPx === null) {
           continue;
         }
-        const radiusPx = Math.max(RING_MIN_PX, pointPx + RING_MARGIN_PX);
+        const radiusPx = Math.max(minPx, pointPx + marginPx);
         const key = `${layer.dataId}:${row}:${latIdx}:${lngIdx}`;
         const existing = rings.get(key);
         if (!existing || existing.radiusPx < radiusPx) {

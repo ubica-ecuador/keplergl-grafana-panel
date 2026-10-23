@@ -4,8 +4,8 @@ import { MapContainerFactory } from '@kepler.gl/components';
 import { withTemporalCursor } from './temporalCursorMapContainer';
 import { withMarkersOnTop } from './markersOnTop';
 import { withTerrainAnchor } from './terrainMapContainer';
-import { selectionHalo, type HaloRing, type Selection } from './selectionHalo';
-import { haloDeckLayers, haloOutlines } from './selectionHaloDeckLayers';
+import { selectionHalo, unselectedTargets, type HaloRing, type Selection } from './selectionHalo';
+import { haloDeckLayers, haloOutlines, veilColor, veilDeckLayers, veilFeatures } from './selectionHaloDeckLayers';
 import { haloInputFrom, type VisStateLike } from './selectionHaloInput';
 
 type Factory = typeof MapContainerFactory;
@@ -29,6 +29,9 @@ type OnDeckRender = (deckProps: DeckProps) => DeckProps | null;
 /** The dashboard's selection, from `KeplerMap`; null in a panel without click mappings. */
 export const HaloContext = createContext<Selection | null>(null);
 
+/** Whether the rows outside the selection are dimmed (`dimUnselected`). */
+export const HaloDimContext = createContext(false);
+
 /** kepler's deck props with the halo drawn last, after any callback already in place. */
 export function withHaloLayers(deckProps: DeckProps, halo: unknown[], chained?: OnDeckRender): DeckProps | null {
   const base = chained ? chained(deckProps) : deckProps;
@@ -41,6 +44,8 @@ export function withHaloLayers(deckProps: DeckProps, halo: unknown[], chained?: 
 interface MapContainerProps {
   visState?: VisStateLike;
   mapState?: { zoom?: number; globe?: { enabled?: boolean } };
+  /** The base map, which the veil takes its tone from. */
+  mapStyle?: { styleType?: string };
   /** 0, or 1 on the right of a split map. */
   index?: number;
   deckRenderCallbacks?: { onDeckRender?: OnDeckRender } & Record<string, unknown>;
@@ -62,6 +67,7 @@ const NO_OUTLINES: readonly object[] = [];
 export function withSelectionHalo<P extends MapContainerProps>(MapContainer: React.ComponentType<P>): React.FC<P> {
   const MapContainerWithHalo: React.FC<P> = (props) => {
     const context = useContext(HaloContext);
+    const dim = useContext(HaloDimContext);
     const selection = context && Object.keys(context).length && props.visState ? context : null;
     const side = props.index ?? 0;
     const zoom = props.mapState?.zoom ?? 0;
@@ -84,11 +90,34 @@ export function withSelectionHalo<P extends MapContainerProps>(MapContainer: Rea
       [selection, visState, side, zoom]
     );
 
+    // The rest dims only while the selection marks something on this side. Its
+    // shapes, like the outlines, do not depend on the zoom; its discs do.
+    const veiled = Boolean(selection && dim && (rings.length > 0 || outlines.length > 0));
+    const veilShapes = useMemo(
+      () =>
+        selection && veiled
+          ? veilFeatures(unselectedTargets(haloInputFrom({ visState, zoom: 0, index: side, selection })).shapes)
+          : NO_OUTLINES,
+      [selection, veiled, visState, side]
+    );
+    const veilDiscs = useMemo(
+      () =>
+        selection && veiled
+          ? unselectedTargets(haloInputFrom({ visState, zoom, index: side, selection })).rings
+          : NO_RINGS,
+      [selection, veiled, visState, side, zoom]
+    );
+    const veil = useMemo(() => ({ discs: veilDiscs, features: veilShapes }), [veilDiscs, veilShapes]);
+
     if (!selection) {
       return <MapContainer {...props} />;
     }
 
-    const halo = haloDeckLayers({ rings, outlines }, side, { globe: Boolean(props.mapState?.globe?.enabled) });
+    const globe = Boolean(props.mapState?.globe?.enabled);
+    const halo = [
+      ...veilDeckLayers(veil, side, { globe, color: veilColor(props.mapStyle?.styleType) }),
+      ...haloDeckLayers({ rings, outlines }, side, { globe }),
+    ];
     const chained = props.deckRenderCallbacks?.onDeckRender;
     const deckRenderCallbacks = {
       ...props.deckRenderCallbacks,

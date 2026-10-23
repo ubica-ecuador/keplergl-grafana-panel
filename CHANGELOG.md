@@ -6,6 +6,13 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **A selection the query flags, and the rest dimmed**: **Cross-filtering → Highlight rows where**
+  names a column, and the rows where it is true (or 1) are ringed in amber as a click's selection
+  is. A selection of thousands of rows — what a chart's brush caught, worked out by the query from
+  the brush's edges — then never travels in the URL, where a shared link that long fails. **Dim the
+  rest** covers every other row under a veil of the base map's tone while the selection marks
+  something on the map, with either kind of selection; the veil, like the rings, never takes a
+  click.
 - **Fit to data when a variable changes**: a new option under **Cross-filtering**,
   `fitOnVariables`, names the variables that move the map's rows somewhere else — a state picker,
   a route, a city. When one changes, the map frames the new rows as it does on load, at the zoom

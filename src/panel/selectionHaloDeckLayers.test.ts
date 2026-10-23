@@ -1,5 +1,14 @@
 import { RING_MIN_PX } from './selectionHalo';
-import { HALO_CASING_COLOR, HALO_CASING_PX, HALO_COLOR, haloDeckLayers, haloOutlines, haloShapeFeature } from './selectionHaloDeckLayers';
+import {
+  HALO_CASING_COLOR,
+  HALO_CASING_PX,
+  HALO_COLOR,
+  haloDeckLayers,
+  haloOutlines,
+  haloShapeFeature,
+  veilColor,
+  veilDeckLayers,
+} from './selectionHaloDeckLayers';
 
 /**
  * The halo as deck layers. deck layers are plain descriptors until a Deck
@@ -214,5 +223,37 @@ describe('haloDeckLayers', () => {
       props: Record<string, any>;
     }>;
     expect(points.props.parameters).toEqual({ depthTest: true, depthMask: false, cull: false });
+  });
+});
+
+describe('veilColor', () => {
+  it("takes the base map's tone: dark on the dark styles and satellite, light on the rest", () => {
+    for (const style of ['openfreemap-dark', 'openfreemap-fiord', 'dark-matter', 'grafana-satellite', 'no_map']) {
+      expect(veilColor(style)[0]).toBeLessThan(50);
+    }
+    for (const style of ['openfreemap-positron', 'openfreemap-bright', 'voyager', undefined]) {
+      expect(veilColor(style)[0]).toBeGreaterThan(200);
+    }
+  });
+});
+
+describe('veilDeckLayers', () => {
+  it('fills the discs and shapes it is handed, and none of it can be clicked', () => {
+    const layers = veilDeckLayers(
+      { discs: [{ position: [0, 0], radiusPx: 4 }], features: [{ type: 'Feature', geometry: null, properties: {} }] },
+      0,
+      { globe: false, color: [0, 0, 0, 170] }
+    );
+    expect(layers.map((layer) => layer.id)).toEqual([
+      'panel-selection-halo-veil-points-0',
+      'panel-selection-halo-veil-shapes-0',
+    ]);
+    for (const layer of layers) {
+      expect(layer.props.pickable).toBe(false);
+    }
+  });
+
+  it('draws nothing when there is nothing to cover', () => {
+    expect(veilDeckLayers({ discs: [], features: [] }, 0, { globe: false, color: [0, 0, 0, 170] })).toEqual([]);
   });
 });

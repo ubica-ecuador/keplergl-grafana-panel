@@ -313,6 +313,23 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
         (config.variableMappings ?? []).some((mapping) => mapping.source === 'click') ||
         (Boolean(config.areaVariable) && Boolean(config.clickArea)),
     })
+    .addFieldNamePicker({
+      path: 'selectionField',
+      name: 'Highlight rows where',
+      description:
+        'A column of the query: the rows where it is true (or 1) are marked as selected, like a click, without the selection travelling in the URL.',
+      category: ['Cross-filtering'],
+    })
+    .addBooleanSwitch({
+      path: 'dimUnselected',
+      name: 'Dim the rest',
+      description:
+        'While something is selected, cover every other row under a veil of the base map’s tone, so the selection stands out.',
+      category: ['Cross-filtering'],
+      defaultValue: false,
+      showIf: (config) =>
+        Boolean(config.selectionField) || (config.variableMappings ?? []).some((mapping) => mapping.source === 'click'),
+    })
     .addCustomEditor({
       id: 'viewportVariables',
       path: 'viewportVariables',

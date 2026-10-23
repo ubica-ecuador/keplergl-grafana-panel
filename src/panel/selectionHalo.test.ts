@@ -3,6 +3,8 @@ import {
   RING_MIN_PX,
   selectedRows,
   selectionHalo,
+  unselectedTargets,
+  withFlaggedRows,
   type HaloDataset,
   type HaloInput,
   type HaloLayer,
@@ -383,5 +385,105 @@ describe('selectionHalo', () => {
 
   it("marks nothing when a layer's dataset is missing", () => {
     expect(selectionHalo(inputOf({ datasets: {} }))).toEqual({ rings: [], shapes: [] });
+  });
+});
+
+describe('withFlaggedRows', () => {
+  it('selects the rows a query flags, true or 1, beside what a click published', () => {
+    const selection = withFlaggedRows({ site: ['site-01'] }, 'selected');
+    const dataset = datasetOf(
+      ['site', 'selected'],
+      [
+        ['site-01', false],
+        ['site-02', true],
+        ['site-03', 1],
+        ['site-04', 0],
+      ]
+    );
+    expect(selectedRows(dataset, selection)).toEqual([0, 1, 2]);
+  });
+
+  it('leaves the selection alone without a column', () => {
+    const published = { site: ['site-01'] };
+    expect(withFlaggedRows(published, '')).toBe(published);
+  });
+});
+
+describe('unselectedTargets', () => {
+  const tract = (x: number) => ({
+    type: 'Polygon',
+    coordinates: [
+      [
+        [x, 0],
+        [x + 1, 0],
+        [x + 1, 1],
+        [x, 0],
+      ],
+    ],
+  });
+  const tracts = () =>
+    datasetOf(
+      ['_geojson', 'geoid', 'selected'],
+      [
+        [tract(0), 'a', true],
+        [tract(1), 'b', false],
+        [tract(2), 'c', false],
+      ]
+    );
+  const layers: HaloLayer[] = [
+    { id: 'tracts', type: 'geojson', isVisible: true, dataId: 'T', columns: { geojson: 0 } },
+  ];
+  const input = (over: Partial<HaloInput> = {}): HaloInput => ({
+    selection: withFlaggedRows({}, 'selected'),
+    layers,
+    datasets: { T: tracts() },
+    rowPasses: () => true,
+    sideLayers: null,
+    zoom: 6,
+    ...over,
+  });
+
+  it('covers every drawn row the selection leaves out, and none of the selected', () => {
+    expect(selectionHalo(input()).shapes).toEqual([{ kind: 'geojson', value: tract(0) }]);
+    expect(unselectedTargets(input()).shapes).toEqual([
+      { kind: 'geojson', value: tract(1) },
+      { kind: 'geojson', value: tract(2) },
+    ]);
+  });
+
+  it("covers nothing kepler's filters already leave out", () => {
+    expect(unselectedTargets(input({ rowPasses: (_d, row) => row !== 2 })).shapes).toEqual([
+      { kind: 'geojson', value: tract(1) },
+    ]);
+  });
+
+  it("covers a point with a disc of the point's own size, not the ring's", () => {
+    const stations = datasetOf(
+      ['latitude', 'longitude', 'site'],
+      [
+        [-2.9, -79.02, 'site-01'],
+        [-2.895, -79.02, 'site-02'],
+      ]
+    );
+    const points: HaloLayer = {
+      id: 'points',
+      type: 'point',
+      isVisible: true,
+      dataId: 'A',
+      columns: { lat: 0, lng: 1 },
+      radius: { base: 10, fixed: false },
+    };
+    const { rings } = unselectedTargets({
+      selection: { site: ['site-02'] },
+      layers: [points],
+      datasets: { A: stations },
+      rowPasses: () => true,
+      sideLayers: null,
+      zoom: 16,
+    });
+    expect(rings).toHaveLength(1);
+    expect(rings[0].position).toEqual([-79.02, -2.9]);
+    // 8.38 px of point at this latitude, without the ring's 6 px margin.
+    expect(rings[0].radiusPx).toBeCloseTo(8.38, 1);
   });
 });

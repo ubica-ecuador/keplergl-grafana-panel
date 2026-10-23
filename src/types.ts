@@ -282,4 +282,20 @@ export interface KeplerPanelOptions {
    * query, so that looking at a point costs nothing.
    */
   clickConfirm?: boolean;
+
+  /**
+   * A column of the query whose true (or 1) rows the map marks as selected, as
+   * it marks what a click published: amber rings, and the veil of
+   * `dimUnselected`. The selection then never travels in the URL, however many
+   * rows it holds — the query decides which rows are in it, from whatever the
+   * dashboard has (a brushed box's four edges, a list in a dataset).
+   */
+  selectionField?: string;
+
+  /**
+   * Dims every drawn row outside the selection — published by a click, or
+   * flagged by `selectionField` — under a veil of the base map's tone, while
+   * the selection marks something on that side of the map.
+   */
+  dimUnselected?: boolean;
 }

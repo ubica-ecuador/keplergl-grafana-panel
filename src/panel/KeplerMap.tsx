@@ -49,7 +49,8 @@ import { usePeerTimeSync } from './usePeerTimeSync';
 import { readVariable, useVariableSync } from './useVariableSync';
 import { useClickSync } from './useClickSync';
 import { offersSelection, selectApi, SelectContext } from './selectPopover';
-import { HaloContext } from './haloMapContainer';
+import { HaloContext, HaloDimContext } from './haloMapContainer';
+import { withFlaggedRows } from './selectionHalo';
 import { PanelMappingsContext, type PanelMappings } from './panelMappingsContext';
 import { TemporalCursorContext } from './temporalCursorMapContainer';
 import { useSelectionValues } from './useSelectionValues';
@@ -164,6 +165,10 @@ export interface KeplerMapProps {
   viewportVariables?: ViewportVariables;
   /** Variables whose change frames the map on its rows again; empty for none. */
   fitOnVariables: readonly string[];
+  /** A column whose true rows are selected too; empty for none. */
+  selectionField: string;
+  /** Whether the rows outside the selection are dimmed. */
+  dimUnselected: boolean;
   /** The two variables the time slider's window is published to, if configured. */
   timeVariables?: TimeVariableMapping;
   /** Whether playing the slider publishes as it runs, or only once it stops. */
@@ -228,6 +233,8 @@ export function KeplerMap({
   clickConfirm,
   viewportVariables,
   fitOnVariables,
+  selectionField,
+  dimUnselected,
   timeVariables,
   publishWhilePlaying,
   publishIntervalMs,
@@ -530,7 +537,12 @@ export function KeplerMap({
 
   // What the halo marks: the selection the click mappings have published, read
   // from the URL so a shared link or another panel shows it too.
-  const haloSelection = useSelectionValues(variableMappings);
+  const publishedSelection = useSelectionValues(variableMappings);
+  // ...and the rows the query flags, which never pass through the URL.
+  const haloSelection = useMemo(
+    () => withFlaggedRows(publishedSelection, selectionField),
+    [publishedSelection, selectionField]
+  );
   // For what renders in kepler's own tree (panelMappingsContext.ts).
   const panelMappings = useMemo<PanelMappings>(
     () => ({ mappings: variableMappings, confirm: clickConfirm }),
@@ -622,42 +634,44 @@ export function KeplerMap({
                 popup through a floating portal, the map containers per side. */}
             <TemporalCursorContext.Provider value={temporalCursor}>
               <HaloContext.Provider value={haloSelection}>
-                <SelectContext.Provider value={selection}>
-                  <PanelMappingsContext.Provider value={panelMappings}>
-                    <KeplerGl
-                      id={KEPLER_INSTANCE_ID}
-                      width={width}
-                      height={height}
-                      /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
+                <HaloDimContext.Provider value={dimUnselected}>
+                  <SelectContext.Provider value={selection}>
+                    <PanelMappingsContext.Provider value={panelMappings}>
+                      <KeplerGl
+                        id={KEPLER_INSTANCE_ID}
+                        width={width}
+                        height={height}
+                        /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
                      required by the type but unused unless a Mapbox style is picked. */
-                      mapboxApiAccessToken=""
-                      /* `appName` is deliberately left at kepler's own default: the
+                        mapboxApiAccessToken=""
+                        /* `appName` is deliberately left at kepler's own default: the
                      side panel names the library the map comes from, and calling
                      it "Grafana" claimed credit for someone else's work. */
-                      theme={theme}
-                      /* kepler ships translations for its own layer types only, so the
+                        theme={theme}
+                        /* kepler ships translations for its own layer types only, so the
                      four this plugin adds showed as `Layer.Type.Esriimage` and the
                      like wherever a layer is named. */
-                      localeMessages={localeMessages}
-                      mapStyles={mapStyles}
-                      /* Drops kepler's own list, which is half Mapbox styles that
+                        localeMessages={localeMessages}
+                        mapStyles={mapStyles}
+                        /* Drops kepler's own list, which is half Mapbox styles that
                      cannot load without an account — see REPLACES_DEFAULT_MAP_STYLES. */
-                      mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
-                      /* kepler hands it to MapLibre in place of its own, which passes
+                        mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
+                        /* kepler hands it to MapLibre in place of its own, which passes
                      URLs through untouched: the CARTO key on every style, sprite,
                      glyph and tile URL. */
-                      transformRequest={transformRequest}
-                      /* No right-to-left text plugin. On a Mapbox base map
+                        transformRequest={transformRequest}
+                        /* No right-to-left text plugin. On a Mapbox base map
                      react-map-gl would load one from api.mapbox.com and run it in
                      the map's workers, which is code from a third-party host;
                      this plugin's MapLibre maps never ask for one. */
-                      RTLTextPlugin={false}
-                      /* kepler renders one commit late and silently discards actions
+                        RTLTextPlugin={false}
+                        /* kepler renders one commit late and silently discards actions
                      addressed to an instance that has not registered yet. */
-                      onKeplerGlInitialized={() => setIsReady(true)}
-                    />
-                  </PanelMappingsContext.Provider>
-                </SelectContext.Provider>
+                        onKeplerGlInitialized={() => setIsReady(true)}
+                      />
+                    </PanelMappingsContext.Provider>
+                  </SelectContext.Provider>
+                </HaloDimContext.Provider>
               </HaloContext.Provider>
             </TemporalCursorContext.Provider>
           </Provider>

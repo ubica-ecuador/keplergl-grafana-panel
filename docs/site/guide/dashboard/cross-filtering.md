@@ -190,6 +190,31 @@ Three things about it are deliberate:
 
 In a split map it is drawn only in the pane where the layer it belongs to is visible.
 
+### A selection the query flags
+
+A click publishes one entity, and a variable can hold a few. A selection of thousands — every tract
+a chart's brush caught — is better worked out by the query than carried in the URL, where a shared
+link that long fails. Name a column under **Cross-filtering → Highlight rows where**: the rows
+where it is true (or 1) are ringed like a click's, beside whatever the click mappings published.
+The query computes it from what the dashboard holds, for instance a brushed box's four edges:
+
+```sql
+SELECT geoid, geojson, share,
+       z BETWEEN $x0 AND $x1 AND lag BETWEEN $y0 AND $y1 AS selected
+FROM tracts
+```
+
+The four variables are short whatever the brush catches. As everywhere on this page, they come
+from another panel: a map that filtered on its own selection could never show the rest again.
+
+### Dim the rest
+
+**Cross-filtering → Dim the rest** covers every row outside the selection under a veil of the base
+map's tone — dark on the dark styles and satellite, light on the others — so the selection stands
+out the way it does in GeoDa. It works with either kind of selection, and only while the selection
+marks something on that pane: a selection that lies elsewhere dims nothing. The veil is deaf to the
+pointer like the rings, so a dimmed feature still answers a click.
+
 ## What else the map can publish
 
 The bounding box of the current view, and any polygon you draw on it — see

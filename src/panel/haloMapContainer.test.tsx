@@ -1,7 +1,7 @@
 import React from 'react';
 import { render } from '@testing-library/react';
 
-import { HaloContext, withHaloLayers, withSelectionHalo } from './haloMapContainer';
+import { HaloContext, HaloDimContext, withHaloLayers, withSelectionHalo } from './haloMapContainer';
 import type { Selection } from './selectionHalo';
 
 /**
@@ -98,6 +98,40 @@ describe('withSelectionHalo', () => {
 
     expect(deck.layers.slice(0, 2)).toEqual(['kepler-layer', 'other-layer']);
     expect((deck.layers[3] as { id: string }).id).toBe('panel-selection-halo-points-0');
+  });
+});
+
+describe('withSelectionHalo, dimming the rest', () => {
+  function mountDimmed(selection: Selection, mapStyle?: { styleType: string }) {
+    const Container = withSelectionHalo(StandIn as React.ComponentType<any>);
+    render(
+      <HaloContext.Provider value={selection}>
+        <HaloDimContext.Provider value={true}>
+          <Container visState={visState} mapState={{ zoom: 13 }} index={0} mapStyle={mapStyle} />
+        </HaloDimContext.Provider>
+      </HaloContext.Provider>
+    );
+    return handed[handed.length - 1] as { layers: Array<string | { id: string; props: any }> };
+  }
+
+  it('covers the unselected rows under the halo, above kepler’s layers, in the base map’s tone', () => {
+    const deck = mountDimmed({ site: ['site-02'] }, { styleType: 'openfreemap-dark' });
+    const ids = deck.layers.map((layer) => (typeof layer === 'string' ? layer : layer.id));
+    expect(ids).toEqual([
+      'kepler-layer',
+      'panel-selection-halo-veil-points-0',
+      'panel-selection-halo-points-casing-0',
+      'panel-selection-halo-points-0',
+    ]);
+    const veil = deck.layers[1] as { props: any };
+    expect(veil.props.data).toHaveLength(1);
+    expect(veil.props.data[0].position).toEqual([-79.02, -2.9]);
+    expect(veil.props.getFillColor[0]).toBeLessThan(50);
+  });
+
+  it('dims nothing while the selection marks nothing on the map', () => {
+    const deck = mountDimmed({ site: ['site-99'] });
+    expect(deck.layers).toEqual(['kepler-layer']);
   });
 });
 
