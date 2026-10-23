@@ -21,7 +21,10 @@ release documents what changed since the one before it.
   the brush's edges — then never travels in the URL, where a shared link that long fails. **Dim the
   rest** covers every other row under a veil of the base map's tone while the selection marks
   something on the map, with either kind of selection; the veil, like the rings, never takes a
-  click.
+  click. **Selection outline** picks how the selection is outlined: **Auto**, the default, keeps the
+  amber on a map that dims nothing and, under the veil, draws a thin line in the base map's
+  contrast colour round up to 50 shapes and no outline beyond; **Amber**, **Thin** and **None** fix
+  one.
 - **Fit to data when a variable changes**: a new option under **Cross-filtering**,
   `fitOnVariables`, names the variables that move the map's rows somewhere else — a state picker,
   a route, a city. When one changes, the map frames the new rows as it does on load, at the zoom

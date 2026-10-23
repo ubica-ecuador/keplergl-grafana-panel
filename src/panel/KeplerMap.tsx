@@ -49,7 +49,7 @@ import { usePeerTimeSync } from './usePeerTimeSync';
 import { readVariable, useVariableSync } from './useVariableSync';
 import { useClickSync } from './useClickSync';
 import { offersSelection, selectApi, SelectContext } from './selectPopover';
-import { HaloContext, HaloDimContext } from './haloMapContainer';
+import { HaloContext, HaloDimContext, HaloStyleContext } from './haloMapContainer';
 import { withFlaggedRows } from './selectionHalo';
 import { PanelMappingsContext, type PanelMappings } from './panelMappingsContext';
 import { TemporalCursorContext } from './temporalCursorMapContainer';
@@ -169,6 +169,8 @@ export interface KeplerMapProps {
   selectionField: string;
   /** Whether the rows outside the selection are dimmed. */
   dimUnselected: boolean;
+  /** How the selection is outlined. */
+  haloStyle: 'auto' | 'amber' | 'thin' | 'none';
   /** The two variables the time slider's window is published to, if configured. */
   timeVariables?: TimeVariableMapping;
   /** Whether playing the slider publishes as it runs, or only once it stops. */
@@ -235,6 +237,7 @@ export function KeplerMap({
   fitOnVariables,
   selectionField,
   dimUnselected,
+  haloStyle,
   timeVariables,
   publishWhilePlaying,
   publishIntervalMs,
@@ -635,42 +638,44 @@ export function KeplerMap({
             <TemporalCursorContext.Provider value={temporalCursor}>
               <HaloContext.Provider value={haloSelection}>
                 <HaloDimContext.Provider value={dimUnselected}>
-                  <SelectContext.Provider value={selection}>
-                    <PanelMappingsContext.Provider value={panelMappings}>
-                      <KeplerGl
-                        id={KEPLER_INSTANCE_ID}
-                        width={width}
-                        height={height}
-                        /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
+                  <HaloStyleContext.Provider value={haloStyle}>
+                    <SelectContext.Provider value={selection}>
+                      <PanelMappingsContext.Provider value={panelMappings}>
+                        <KeplerGl
+                          id={KEPLER_INSTANCE_ID}
+                          width={width}
+                          height={height}
+                          /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
                      required by the type but unused unless a Mapbox style is picked. */
-                        mapboxApiAccessToken=""
-                        /* `appName` is deliberately left at kepler's own default: the
+                          mapboxApiAccessToken=""
+                          /* `appName` is deliberately left at kepler's own default: the
                      side panel names the library the map comes from, and calling
                      it "Grafana" claimed credit for someone else's work. */
-                        theme={theme}
-                        /* kepler ships translations for its own layer types only, so the
+                          theme={theme}
+                          /* kepler ships translations for its own layer types only, so the
                      four this plugin adds showed as `Layer.Type.Esriimage` and the
                      like wherever a layer is named. */
-                        localeMessages={localeMessages}
-                        mapStyles={mapStyles}
-                        /* Drops kepler's own list, which is half Mapbox styles that
+                          localeMessages={localeMessages}
+                          mapStyles={mapStyles}
+                          /* Drops kepler's own list, which is half Mapbox styles that
                      cannot load without an account — see REPLACES_DEFAULT_MAP_STYLES. */
-                        mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
-                        /* kepler hands it to MapLibre in place of its own, which passes
+                          mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
+                          /* kepler hands it to MapLibre in place of its own, which passes
                      URLs through untouched: the CARTO key on every style, sprite,
                      glyph and tile URL. */
-                        transformRequest={transformRequest}
-                        /* No right-to-left text plugin. On a Mapbox base map
+                          transformRequest={transformRequest}
+                          /* No right-to-left text plugin. On a Mapbox base map
                      react-map-gl would load one from api.mapbox.com and run it in
                      the map's workers, which is code from a third-party host;
                      this plugin's MapLibre maps never ask for one. */
-                        RTLTextPlugin={false}
-                        /* kepler renders one commit late and silently discards actions
+                          RTLTextPlugin={false}
+                          /* kepler renders one commit late and silently discards actions
                      addressed to an instance that has not registered yet. */
-                        onKeplerGlInitialized={() => setIsReady(true)}
-                      />
-                    </PanelMappingsContext.Provider>
-                  </SelectContext.Provider>
+                          onKeplerGlInitialized={() => setIsReady(true)}
+                        />
+                      </PanelMappingsContext.Provider>
+                    </SelectContext.Provider>
+                  </HaloStyleContext.Provider>
                 </HaloDimContext.Provider>
               </HaloContext.Provider>
             </TemporalCursorContext.Provider>

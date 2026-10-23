@@ -298,4 +298,12 @@ export interface KeplerPanelOptions {
    * the selection marks something on that side of the map.
    */
   dimUnselected?: boolean;
+
+  /**
+   * How the selection is outlined: `auto` (the default: amber while nothing is
+   * dimmed; under the veil of `dimUnselected`, thin for up to 50 shapes and none
+   * beyond), `amber` (over a dark casing), `thin` (one fine line in the base
+   * map's contrast colour) or `none` (the veil alone shows the selection).
+   */
+  haloStyle?: 'auto' | 'amber' | 'thin' | 'none';
 }

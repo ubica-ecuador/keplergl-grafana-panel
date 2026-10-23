@@ -228,6 +228,13 @@ out the way it does in GeoDa. It works with either kind of selection, and only w
 marks something on that pane: a selection that lies elsewhere dims nothing. The veil is deaf to the
 pointer like the rings, so a dimmed feature still answers a click.
 
+Under the veil the amber outline is more than a selection needs, so **Cross-filtering → Selection
+outline** set to **Auto** (the default) draws one thin line in the base map's contrast colour —
+white on a dark style, near-black on a light one — round a handful of shapes, and no outline at all
+beyond 50 on a pane, where outlines of small shapes merge into blots and the veil already says it
+all. Without the veil, Auto is the amber it has always been. **Amber**, **Thin** and **None** pick
+one style whatever the selection.
+
 ## What else the map can publish
 
 The bounding box of the current view, and any polygon you draw on it — see

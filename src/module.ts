@@ -330,6 +330,24 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       showIf: (config) =>
         Boolean(config.selectionField) || (config.variableMappings ?? []).some((mapping) => mapping.source === 'click'),
     })
+    .addRadio({
+      path: 'haloStyle',
+      name: 'Selection outline',
+      description:
+        'Auto: amber, or under Dim the rest a thin line for a few shapes and none for many. Amber reads on anything; a thin line stays legible; none leaves the selection to Dim the rest.',
+      category: ['Cross-filtering'],
+      defaultValue: 'auto',
+      settings: {
+        options: [
+          { value: 'auto', label: 'Auto' },
+          { value: 'amber', label: 'Amber' },
+          { value: 'thin', label: 'Thin' },
+          { value: 'none', label: 'None' },
+        ],
+      },
+      showIf: (config) =>
+        Boolean(config.selectionField) || (config.variableMappings ?? []).some((mapping) => mapping.source === 'click'),
+    })
     .addCustomEditor({
       id: 'viewportVariables',
       path: 'viewportVariables',

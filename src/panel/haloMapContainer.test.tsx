@@ -117,12 +117,9 @@ describe('withSelectionHalo, dimming the rest', () => {
   it('covers the unselected rows under the halo, above kepler’s layers, in the base map’s tone', () => {
     const deck = mountDimmed({ site: ['site-02'] }, { styleType: 'openfreemap-dark' });
     const ids = deck.layers.map((layer) => (typeof layer === 'string' ? layer : layer.id));
-    expect(ids).toEqual([
-      'kepler-layer',
-      'panel-selection-halo-veil-points-0',
-      'panel-selection-halo-points-casing-0',
-      'panel-selection-halo-points-0',
-    ]);
+    // Auto under the veil, one mark: a thin line, no amber casing.
+    expect(ids).toEqual(['kepler-layer', 'panel-selection-halo-veil-points-0', 'panel-selection-halo-points-0']);
+    expect((deck.layers[2] as { props: any }).props.getLineColor).toEqual([255, 255, 255, 235]);
     const veil = deck.layers[1] as { props: any };
     expect(veil.props.data).toHaveLength(1);
     expect(veil.props.data[0].position).toEqual([-79.02, -2.9]);

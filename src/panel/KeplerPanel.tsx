@@ -231,6 +231,7 @@ export function KeplerPanel(props: Props) {
         fitOnVariables={fitOnVariables}
         selectionField={options.selectionField ?? ''}
         dimUnselected={Boolean(options.dimUnselected)}
+        haloStyle={options.haloStyle ?? 'auto'}
         timeVariables={options.timeVariables}
         publishWhilePlaying={options.publishWhilePlaying ?? false}
         publishIntervalMs={publishIntervalOf(options.publishIntervalMs)}

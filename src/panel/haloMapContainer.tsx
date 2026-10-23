@@ -5,7 +5,15 @@ import { withTemporalCursor } from './temporalCursorMapContainer';
 import { withMarkersOnTop } from './markersOnTop';
 import { withTerrainAnchor } from './terrainMapContainer';
 import { selectionHalo, unselectedTargets, type HaloRing, type Selection } from './selectionHalo';
-import { haloDeckLayers, haloOutlines, veilColor, veilDeckLayers, veilFeatures } from './selectionHaloDeckLayers';
+import {
+  haloDeckLayers,
+  haloOutlines,
+  veilColor,
+  veilDeckLayers,
+  veilFeatures,
+  resolveHaloStyle,
+  type HaloStyle,
+} from './selectionHaloDeckLayers';
 import { haloInputFrom, type VisStateLike } from './selectionHaloInput';
 
 type Factory = typeof MapContainerFactory;
@@ -31,6 +39,9 @@ export const HaloContext = createContext<Selection | null>(null);
 
 /** Whether the rows outside the selection are dimmed (`dimUnselected`). */
 export const HaloDimContext = createContext(false);
+
+/** How the selection is outlined (`haloStyle`). */
+export const HaloStyleContext = createContext<HaloStyle>('auto');
 
 /** kepler's deck props with the halo drawn last, after any callback already in place. */
 export function withHaloLayers(deckProps: DeckProps, halo: unknown[], chained?: OnDeckRender): DeckProps | null {
@@ -68,6 +79,7 @@ export function withSelectionHalo<P extends MapContainerProps>(MapContainer: Rea
   const MapContainerWithHalo: React.FC<P> = (props) => {
     const context = useContext(HaloContext);
     const dim = useContext(HaloDimContext);
+    const haloStyle = useContext(HaloStyleContext);
     const selection = context && Object.keys(context).length && props.visState ? context : null;
     const side = props.index ?? 0;
     const zoom = props.mapState?.zoom ?? 0;
@@ -116,7 +128,11 @@ export function withSelectionHalo<P extends MapContainerProps>(MapContainer: Rea
     const globe = Boolean(props.mapState?.globe?.enabled);
     const halo = [
       ...veilDeckLayers(veil, side, { globe, color: veilColor(props.mapStyle?.styleType) }),
-      ...haloDeckLayers({ rings, outlines }, side, { globe }),
+      ...haloDeckLayers({ rings, outlines }, side, {
+        globe,
+        style: resolveHaloStyle(haloStyle, veiled, rings.length + outlines.length),
+        styleType: props.mapStyle?.styleType,
+      }),
     ];
     const chained = props.deckRenderCallbacks?.onDeckRender;
     const deckRenderCallbacks = {

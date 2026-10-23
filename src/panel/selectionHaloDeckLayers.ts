@@ -99,16 +99,76 @@ function depthParameters(globe: boolean): Record<string, boolean> {
  * need. The layers are new on every call, which deck diffs prop by prop; the
  * data is handed through as it came, so it stays the same data.
  */
-export function haloDeckLayers(data: HaloDeckData, side: number, { globe }: { globe: boolean }): Layer[] {
+/**
+ * How the selection is outlined (`haloStyle`):
+ * - `amber`: the plugin's amber over a dark casing, which reads on any layer
+ *   and base map — and, round thousands of shapes, buries them;
+ * - `thin`: one fine line in the base map's contrast colour, white on a dark
+ *   style and near-black on a light one, which a large selection or the veil
+ *   of `dimUnselected` leaves legible;
+ * - `none`: no outline, for a map where the veil alone shows the selection;
+ * - `auto`, the default: amber while nothing is dimmed, as every map without
+ *   `dimUnselected` has always drawn it; under the veil, thin for a handful of
+ *   shapes, which the veil alone would leave hard to find, and none for many,
+ *   whose outlines would merge into blots where the shapes are small.
+ */
+export type HaloStyle = 'auto' | 'amber' | 'thin' | 'none';
+
+/** Above this many marks on one side, `auto` under the veil draws no outline. */
+export const AUTO_THIN_MAX_MARKS = 50;
+
+/** The style `auto` stands for, given whether the rest is dimmed and how many marks there are. */
+export function resolveHaloStyle(style: HaloStyle, dimmed: boolean, marks: number): Exclude<HaloStyle, 'auto'> {
+  if (style !== 'auto') {
+    return style;
+  }
+  if (!dimmed) {
+    return 'amber';
+  }
+  return marks <= AUTO_THIN_MAX_MARKS ? 'thin' : 'none';
+}
+
+export const HALO_THIN_PX = 1.5;
+
+/** Whether a base map style is a dark one: what the veil and the thin outline take their tone from. */
+export function isDarkStyle(styleType: string | undefined): boolean {
+  return Boolean(styleType && /dark|fiord|matter|satellite|no_map/.test(styleType));
+}
+
+/** The strokes each mark is drawn with, the first underneath. */
+export function haloStrokes(
+  style: Exclude<HaloStyle, 'auto'>,
+  styleType: string | undefined
+): Array<{ suffix: string; color: [number, number, number, number]; widthPx: number }> {
+  switch (style) {
+    case 'none':
+      return [];
+    case 'thin':
+      return [
+        {
+          suffix: '',
+          color: isDarkStyle(styleType) ? [255, 255, 255, 235] : [20, 20, 20, 235],
+          widthPx: HALO_THIN_PX,
+        },
+      ];
+    default:
+      return [
+        { suffix: '-casing', color: HALO_CASING_COLOR, widthPx: HALO_CASING_PX },
+        { suffix: '', color: HALO_COLOR, widthPx: HALO_LINE_PX },
+      ];
+  }
+}
+
+export function haloDeckLayers(
+  data: HaloDeckData,
+  side: number,
+  { globe, style = 'amber', styleType }: { globe: boolean; style?: Exclude<HaloStyle, 'auto'>; styleType?: string }
+): Layer[] {
   const layers: Layer[] = [];
   const parameters = depthParameters(globe);
 
-  // The casing first, then the amber over it, each pass drawing every mark.
-  const strokes = [
-    { suffix: '-casing', color: HALO_CASING_COLOR, widthPx: HALO_CASING_PX },
-    { suffix: '', color: HALO_COLOR, widthPx: HALO_LINE_PX },
-  ];
-  for (const { suffix, color, widthPx } of strokes) {
+  // Each pass draws every mark: the amber's casing first, then the amber over it.
+  for (const { suffix, color, widthPx } of haloStrokes(style, styleType)) {
     if (data.rings.length) {
       layers.push(
         new ScatterplotLayer<HaloRing>({
@@ -159,7 +219,7 @@ export function haloDeckLayers(data: HaloDeckData, side: number, { globe }: { gl
  * light one; at this alpha a covered shape keeps about a third of its colour.
  */
 export function veilColor(styleType: string | undefined): [number, number, number, number] {
-  return styleType && /dark|fiord|matter|satellite|no_map/.test(styleType) ? [14, 15, 18, 170] : [250, 250, 250, 170];
+  return isDarkStyle(styleType) ? [14, 15, 18, 170] : [250, 250, 250, 170];
 }
 
 /** The shapes as filled features, for the veil; a shape that is not geometry is left out. */

@@ -6,6 +6,9 @@ import {
   haloDeckLayers,
   haloOutlines,
   haloShapeFeature,
+  AUTO_THIN_MAX_MARKS,
+  haloStrokes,
+  resolveHaloStyle,
   veilColor,
   veilDeckLayers,
 } from './selectionHaloDeckLayers';
@@ -255,5 +258,32 @@ describe('veilDeckLayers', () => {
 
   it('draws nothing when there is nothing to cover', () => {
     expect(veilDeckLayers({ discs: [], features: [] }, 0, { globe: false, color: [0, 0, 0, 170] })).toEqual([]);
+  });
+});
+
+describe('resolveHaloStyle', () => {
+  it('keeps the amber on a map that dims nothing, as every map drew it before', () => {
+    expect(resolveHaloStyle('auto', false, 1)).toBe('amber');
+    expect(resolveHaloStyle('auto', false, 5000)).toBe('amber');
+  });
+
+  it('under the veil, outlines a handful thinly and leaves many to the veil', () => {
+    expect(resolveHaloStyle('auto', true, 2)).toBe('thin');
+    expect(resolveHaloStyle('auto', true, AUTO_THIN_MAX_MARKS)).toBe('thin');
+    expect(resolveHaloStyle('auto', true, AUTO_THIN_MAX_MARKS + 1)).toBe('none');
+  });
+
+  it('honours a style picked by name', () => {
+    expect(resolveHaloStyle('amber', true, 5000)).toBe('amber');
+    expect(resolveHaloStyle('none', false, 1)).toBe('none');
+  });
+});
+
+describe('haloStrokes', () => {
+  it('draws the amber over its casing, a thin line in the base map contrast colour, or nothing', () => {
+    expect(haloStrokes('amber', undefined).map((s) => s.suffix)).toEqual(['-casing', '']);
+    expect(haloStrokes('thin', 'openfreemap-dark')[0].color).toEqual([255, 255, 255, 235]);
+    expect(haloStrokes('thin', 'openfreemap-positron')[0].color).toEqual([20, 20, 20, 235]);
+    expect(haloStrokes('none', undefined)).toEqual([]);
   });
 });
