@@ -4,7 +4,7 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
-## Unreleased
+## 1.5.0 (2026-10-24)
 
 - **Linked to a Mosaic selection**: **Cross-filtering → Mosaic selection** names a Selection of the
   Chaski app's Mosaic panels, and the map takes part in it like a brush, with no variable in
@@ -12,11 +12,10 @@ release documents what changed since the one before it.
   the slider moves, and the Mosaic and filters panels redraw under the pointer (50–90 ms a move on
   200,000 rows); their brushes and picks land on the map's filter of the same column, made for them
   if the map had none, as a filter in the browser with no query run again. A histogram of the same
-  column shows the map's window as its brush, and the last one moved wins. **Mosaic location columns**
-  (`lng, lat`) add the map's place: the figure drawn on it keeps the rows inside (**Filter by the
-  drawn area**, on), and what it shows can be a bounding box (**Filter by the view**). Needs the Chaski app 2.2 or later; a time
-  filter that follows the dashboard time range stays out of it.
-
+  column shows the map's window as its brush, and the last one moved wins. **Mosaic location
+  columns** (`lng, lat`) add the map's place: the figure drawn on it keeps the rows inside (**Filter
+  by the drawn area**, on), and what it shows can be a bounding box (**Filter by the view**). Needs
+  the Chaski app 2.2 or later; a time filter that follows the dashboard time range stays out of it.
 - **Identifiers keep their leading zeros**: kepler types a column by its values, so a column of
   digit strings became a number and lost its leading zeros — a census tract `06047001901` reached
   the map, its tooltip and its click variable as `6047001901`, which matched nothing in the
