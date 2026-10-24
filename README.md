@@ -8,7 +8,7 @@ source. Built for advanced spatio-temporal mobility data — points, trajectorie
 kepler.gl runs inside the panel, against your own queries: no account, no Mapbox token, and no
 hosted service rendering your map.
 
-**🌍 [Live demos](https://pacha.ubica.dev/dashboards?tag=kepler)** — the dashboards tagged `kepler` on pacha.ubica.dev, a public Grafana. No account and nothing to install: open one and pan, filter and play it yourself. They run on [Pacha](https://github.com/ubica-ecuador/pacha), an open spatio-temporal stack for Grafana that includes this panel, with DuckDB on the server and in the browser: one command brings it up with these dashboards.
+**🌍 [Live demos](https://pacha.ubica.dev/)** — dashboards running on pacha.ubica.dev, a public Grafana. No account and nothing to install: open one and pan, filter and play it yourself. They run on [Pacha](https://github.com/ubica-ecuador/pacha), an open spatio-temporal stack for Grafana that includes this panel, with DuckDB on the server and in the browser: one command brings it up with these dashboards.
 
 **📖 [Full documentation](https://docs.ubica.dev/)** — guides,
 tutorials, a layer gallery and a complete option reference.
@@ -112,7 +112,7 @@ below can be checked against the running thing.
   </tr>
 </table>
 
-**[Open the live demos →](https://pacha.ubica.dev/dashboards?tag=kepler)** — these and some forty more, from
+**[Open the live demos →](https://pacha.ubica.dev/)** — these and some forty more, from
 Zarr, COG, STAC and PMTiles imagery to wind fields and transit isochrones. How each one was built is in the
 [documentation](https://docs.ubica.dev/).
 
