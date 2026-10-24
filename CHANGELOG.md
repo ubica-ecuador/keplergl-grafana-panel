@@ -43,6 +43,9 @@ release documents what changed since the one before it.
   datasets answers first with the old rows or none, are framed once they have moved, and for a few
   seconds after; then the map is the user's again, and a refresh or any other variable leaves it
   where it is.
+- **zod 4.6.7**: zod, which loaders.gl's vector tiles bring in, moves from 4.5.4 to 4.6.7 for
+  GHSA-mrhx-c7xc-m3w5 (CVE-2023-54404), a validation of an unbounded array that could exhaust memory.
+  The plugin catalog's validator now rejects the older version.
 
 ## 1.4.0 (2026-10-20)
 
