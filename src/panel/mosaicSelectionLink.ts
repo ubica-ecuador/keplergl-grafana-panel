@@ -55,6 +55,11 @@ export interface MapLike {
   viewport(): ViewportBounds | null;
   /** The figures drawn on the map, in kepler's order: the latest last. */
   areas(): DrawnArea[];
+  /**
+   * The rows the map holds, one entry per dataset; an entry changes only when its dataset's rows are
+   * replaced, as an answer to the map's query does, not when a filter moves.
+   */
+  rows(): readonly unknown[];
 }
 
 export interface LinkOptions {
@@ -114,6 +119,12 @@ export class MosaicSelectionLink {
   private areaSent: string | null = null;
   /** A foreign value could not land (its filter parked, its rows not in): `push` tries again. */
   private retry = false;
+  /**
+   * Columns whose filter kepler rebuilt with new rows: it comes back from its saved form, not on the
+   * window the others' clause put on it, and that is not the map moving. `pull` lands the clause again.
+   */
+  private readonly reland = new Set<string>();
+  private rowsSeen: readonly unknown[];
   /** While the link takes its own clauses out, their reset is not a clearing to show on the map. */
   private releasing = false;
 
@@ -122,7 +133,9 @@ export class MosaicSelectionLink {
     private readonly selection: SelectionLike,
     private readonly map: MapLike,
     private readonly options: LinkOptions
-  ) {}
+  ) {
+    this.rowsSeen = map.rows();
+  }
 
   readonly isOwn = (source: unknown): boolean =>
     source === this.viewportSource ||
@@ -131,7 +144,14 @@ export class MosaicSelectionLink {
 
   /** From the map to the Selection. */
   push(): void {
-    if (this.retry) {
+    const rows = this.map.rows();
+    if (rows.length !== this.rowsSeen.length || rows.some((r, i) => r !== this.rowsSeen[i])) {
+      this.rowsSeen = rows;
+      for (const field of this.applied.keys()) {
+        this.reland.add(field);
+      }
+    }
+    if (this.retry || this.reland.size > 0) {
       this.pull();
     }
     const parked = this.map.parked();
@@ -147,6 +167,10 @@ export class MosaicSelectionLink {
       seen.add(filter.field);
       const key = filterKey(clause);
       const applied = this.applied.get(filter.field);
+      if (this.reland.has(filter.field)) {
+        // Rebuilt from its saved form with the new rows, waiting for `pull` to land the clause again.
+        continue;
+      }
       if (applied) {
         if (applied.key === key) {
           continue;
@@ -175,10 +199,11 @@ export class MosaicSelectionLink {
     for (const value of foreign.values()) {
       const fieldType = this.map.fieldType(value.field);
       if (fieldType === undefined || (!this.options.linkTime && fieldType === 'timestamp')) {
+        this.reland.delete(value.field);
         continue;
       }
       const before = this.applied.get(value.field);
-      if (before?.foreign === value.key) {
+      if (before?.foreign === value.key && !this.reland.has(value.field)) {
         continue;
       }
       if (parked.has(value.field)) {
@@ -199,12 +224,14 @@ export class MosaicSelectionLink {
       const shown = this.map.filters().find((f) => f.field === value.field);
       const clause = shown && filterClause(shown);
       this.applied.set(value.field, { foreign: value.key, key: clause ? filterKey(clause) : value.key, created });
+      this.reland.delete(value.field);
     }
     for (const [field, entry] of [...this.applied]) {
       if (foreign.has(field)) {
         continue;
       }
       this.applied.delete(field);
+      this.reland.delete(field);
       if (entry.created) {
         this.map.remove(field);
       } else {

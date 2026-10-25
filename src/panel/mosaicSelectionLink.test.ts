@@ -71,7 +71,10 @@ class FakeMap implements MapLike {
   columns: Record<string, string> = { fare: 'real', borough: 'string', t: 'timestamp' };
   domains: Record<string, [number, number]> = { fare: [0, 100], t: [0, 10_000] };
   filters = () => this.list.map((f) => ({ ...f }));
-  parked = () => new Set<string>();
+  parkedFields = new Set<string>();
+  parked = () => this.parkedFields;
+  rowsHeld: unknown[] = [{}];
+  rows = () => this.rowsHeld;
   fieldType = (field: string) => this.columns[field];
   hasFilter = (field: string) => this.list.some((f) => f.field === field);
   apply = (field: string, value: unknown) => {
@@ -102,6 +105,11 @@ class FakeMap implements MapLike {
   areas = () => this.drawn;
   set(field: string, value: unknown) {
     this.list.find((f) => f.field === field)!.value = value;
+  }
+  /** New rows, as an answer to the map's query: kepler rebuilds the filter from its saved form, open. */
+  reload(field: string) {
+    this.rowsHeld = [{}];
+    this.set(field, this.domains[field]);
   }
 }
 
@@ -177,6 +185,45 @@ it('lands another panel’s brush on the map, making the filter, and sends nothi
   selection.reset();
   link.pull();
   expect(map.list).toHaveLength(0);
+});
+
+it('lands the brush again when new rows rebuild the map’s filter, and sends nothing back', () => {
+  const { selection, map, link } = setup();
+  const theirs = otherBrush('t', [new Date(1000), new Date(2000)]);
+  selection.update(theirs);
+  link.pull();
+  expect(map.list[0].value).toEqual([1000, 2000]);
+
+  map.reload('t');
+  link.push();
+  expect(map.list[0].value).toEqual([1000, 2000]);
+  expect(selection.clauses).toEqual([theirs]);
+  expect(theirs.source.reset).not.toHaveBeenCalled();
+
+  // The map's own move after that still goes out.
+  map.set('t', [3000, 4000]);
+  link.push();
+  expect(selection.clauses).toHaveLength(1);
+  expect(link.isOwn(selection.clauses[0].source)).toBe(true);
+});
+
+it('waits for a filter kepler parked with the new rows, then lands the brush on it', () => {
+  const { selection, map, link } = setup();
+  selection.update(otherBrush('fare', [10, 30]));
+  link.pull();
+  const filter = map.list.pop()!;
+
+  map.rowsHeld = [{}];
+  map.parkedFields = new Set(['fare']);
+  link.push();
+  expect(selection.clauses).toHaveLength(1);
+
+  map.parkedFields = new Set();
+  map.list.push({ ...filter, value: [0, 100] });
+  link.push();
+  expect(map.list[0].value).toEqual([10, 30]);
+  expect(selection.clauses).toHaveLength(1);
+  expect(link.isOwn(selection.clauses[0].source)).toBe(false);
 });
 
 it('opens, not removes, a filter the author put on the map when the brush clears', () => {

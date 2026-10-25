@@ -2065,6 +2065,15 @@ export function readLinkableFilters(store: Store): LinkableFilter[] {
   return found;
 }
 
+/**
+ * Each dataset's rows, by reference: kepler keeps a dataset's `dataContainer` while its filters
+ * move and makes a new one when the rows are replaced, so a change here is new rows.
+ */
+export function readDatasetRows(store: Store): unknown[] {
+  const visState = getVisState(store);
+  return visState ? Object.values(visState.datasets).map((dataset) => dataset.dataContainer) : [];
+}
+
 /** The columns whose filters kepler has parked while their dataset's new rows land. */
 export function readParkedFilterFields(store: Store): Set<string> {
   return new Set(readParkedFilters(store).flatMap((filter) => namesOf(filter.name)));

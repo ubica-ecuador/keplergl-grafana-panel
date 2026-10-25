@@ -6,6 +6,7 @@ import {
   applyLinkedFilter,
   hasFieldFilter,
   openFieldFilter,
+  readDatasetRows,
   readDrawnAreas,
   readFieldType,
   readLinkableFilters,
@@ -87,6 +88,7 @@ export function useMosaicSelection({ store, isReady, selection, columns, viewpor
       remove: (field) => removeFieldFilter(store, store.dispatch, field),
       viewport: () => readViewportBounds(store),
       areas: () => readDrawnAreas(store),
+      rows: () => readDatasetRows(store),
     };
 
     const start = async () => {
