@@ -58,6 +58,8 @@ jest.mock('./keplerAdapter', () => ({
   },
   readSyncSlices: () => [mockMap.filters],
   readTimeDomain: () => ({ from: 0, to: 100_000_000 }),
+  // One filter throughout: these tests move it, they never make it anew.
+  readTimeFilterId: () => 'time',
   readTimeRange: () => mockMap.window,
 }));
 

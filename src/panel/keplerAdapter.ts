@@ -2177,6 +2177,17 @@ export function readTimeRange(store: Store): TimeRangeMs | null {
   return visState ? readTimeFilterValue(ownFilters(visState)) : null;
 }
 
+/**
+ * The id of the map's time filter, the one `readTimeRange` reads; null when there is none.
+ *
+ * A drag, playback or a refresh keeps it. It changes when the filter is made anew, as when kepler registers the
+ * map again and its state starts over.
+ */
+export function readTimeFilterId(store: Store): string | null {
+  const visState = getVisState(store);
+  return (visState && ownFilters(visState).find((f) => f.type === TIME_FILTER_TYPE)?.id) || null;
+}
+
 /** The full time extent of the data behind the map's time filter. */
 export function readTimeDomain(store: Store): TimeRangeMs | null {
   const visState = getVisState(store);

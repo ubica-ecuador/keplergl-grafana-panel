@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { FieldType, toDataFrame } from '@grafana/data';
-import { registerEntry, setFilterAnimationTime, toggleFilterAnimation, wrapTo } from '@kepler.gl/actions';
+import { deleteEntry, registerEntry, setFilterAnimationTime, toggleFilterAnimation, wrapTo } from '@kepler.gl/actions';
 import type { Store } from 'redux';
 
 import { framesToDatasets, type PanelDataset } from '../data/framesToDatasets';
@@ -365,6 +365,80 @@ describe('the time variables while a refresh has the time filter parked', () => 
     const timeFilters = visStateOf(store).filters.filter((f: { type?: string }) => f.type === 'timeRange');
     expect(timeFilters).toHaveLength(1);
     expect(timeFilters[0].value).toEqual(NARROWED);
+    unmount();
+  });
+});
+
+describe('the time variables when kepler registers the map again', () => {
+  // kepler can mount the map again in the same store (Grafana re-renders the panel, a lazy row comes into view):
+  // the instance starts empty and the time filter comes back as a new one, on the whole domain. The variables sync
+  // kept the window it had agreed on, read the new filter as the map moved, and published the domain over it.
+  it('puts the window the variables hold on the new filter instead of publishing the domain', async () => {
+    const store = await mapWithTimeFilter([answer('A')], NARROWED);
+    mockSearch = new URLSearchParams({
+      'var-mapFrom': formatTimeValue(NARROWED[0]),
+      'var-mapTo': formatTimeValue(NARROWED[1]),
+    });
+    mockWrites.length = 0;
+    const { unmount } = renderHook(() =>
+      useTimeVariableSync({
+        store,
+        isReady: true,
+        enabled: true,
+        mapping: { from: 'mapFrom', to: 'mapTo' },
+        whilePlaying: true,
+        publishIntervalMs: 1500,
+        peerSync: false,
+      })
+    );
+    await settle();
+    const before = timeFilter(store)!.id;
+
+    store.dispatch(deleteEntry(KEPLER_INSTANCE_ID) as never);
+    store.dispatch(registerEntry({ id: KEPLER_INSTANCE_ID }) as never);
+    loadDatasets(store, store.dispatch, [answer('A')]);
+    await settle();
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    expect(timeFilter(store)!.id).not.toBe(before);
+    expect(mockWrites).toEqual([]);
+    expect(timeFilter(store)!.value).toEqual(NARROWED);
+    unmount();
+  });
+});
+
+describe('the time variables through refreshes that overlap', () => {
+  // A dashboard opening, or a window moved, can set off several answers to the map's queries at once: the next
+  // refresh replaces a dataset whose last replacement has not landed yet.
+  it('publishes nothing, and the window the variables hold stays on the map', async () => {
+    const store = await mapWithTimeFilter([answer('A'), answer('B')], NARROWED);
+    mockSearch = new URLSearchParams({
+      'var-mapFrom': formatTimeValue(NARROWED[0]),
+      'var-mapTo': formatTimeValue(NARROWED[1]),
+    });
+    mockWrites.length = 0;
+    const { unmount } = renderHook(() =>
+      useTimeVariableSync({
+        store,
+        isReady: true,
+        enabled: true,
+        mapping: { from: 'mapFrom', to: 'mapTo' },
+        whilePlaying: true,
+        publishIntervalMs: 1500,
+        peerSync: false,
+      })
+    );
+    await settle();
+
+    for (let i = 1; i <= 4; i++) {
+      refreshDatasets(store, store.dispatch, [answer('A', 0.01 * i)]);
+    }
+    await settle();
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    expect(mockWrites).toEqual([]);
+    const timeFilters = visStateOf(store).filters.filter((f: { type?: string }) => f.type === 'timeRange');
+    expect(timeFilters.map((f: { value: unknown }) => f.value)).toEqual([NARROWED]);
     unmount();
   });
 });

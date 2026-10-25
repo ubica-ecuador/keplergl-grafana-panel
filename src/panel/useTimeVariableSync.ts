@@ -9,6 +9,7 @@ import {
   pushTimeRange,
   readSyncSlices,
   readTimeDomain,
+  readTimeFilterId,
   readTimeRange,
 } from './keplerAdapter';
 import { PublishGate } from './publishGate';
@@ -98,6 +99,8 @@ export function useTimeVariableSync({
 }: Params): void {
   /** The window both sides last agreed on — the echo cutter. */
   const lastKey = useRef<string | undefined>(undefined);
+  /** The time filter that agreement was made with. */
+  const lastFilterId = useRef<string | null>(null);
 
   const mappingRef = useRef(mapping);
   const whilePlayingRef = useRef(whilePlaying);
@@ -270,6 +273,15 @@ export function useTimeVariableSync({
     // returns false when it does not, so the next store change retries.
     if (!ensureTimeFilter(store, store.dispatch)) {
       return;
+    }
+
+    // A time filter other than the one the last agreement was made with is a new clock, not the map moving: kepler
+    // registered the map again and its state started over, on the whole domain. Published as a move, that domain
+    // went over the window the dashboard had set. Starting afresh, the variables have the first word, as on load.
+    const filterId = readTimeFilterId(store);
+    if (filterId !== lastFilterId.current) {
+      lastFilterId.current = filterId;
+      lastKey.current = undefined;
     }
 
     const window = readTimeRange(store);
