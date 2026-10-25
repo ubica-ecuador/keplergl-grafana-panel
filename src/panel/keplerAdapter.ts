@@ -2220,6 +2220,13 @@ export function ensureTimeFilter(store: Store, dispatch: Dispatch): boolean {
     return true;
   }
 
+  // A refresh parks the time filter until its dataset's new rows land. One made in that gap is unnarrowed, on a
+  // dataset still loaded: the variables sync read the map as moved to the whole domain and published it over the
+  // window the dashboard had set. Not there yet, so the caller looks again on the next store change.
+  if (timeFilterAwaitingRows(visState)) {
+    return false;
+  }
+
   for (const [dataId, dataset] of Object.entries(visState.datasets)) {
     const timeField = findTimeFieldName(dataset.fields);
     if (timeField) {

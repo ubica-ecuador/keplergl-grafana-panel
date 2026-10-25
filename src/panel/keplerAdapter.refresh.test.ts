@@ -321,3 +321,50 @@ describe('a dashboard range pushed while a refresh has the time filter parked', 
     expect(timeFilters[0]).toMatchObject({ id, value: NARROWED });
   });
 });
+
+describe('the time variables while a refresh has the time filter parked', () => {
+  // A window set from the dashboard (a Time Brush, a link) re-runs the map's queries. While the new rows were on
+  // their way, the variables hook found no time filter and had ensureTimeFilter make one, unnarrowed, on a dataset
+  // still loaded: the map then read as moved to the whole domain and published it over the window.
+  it('makes no time filter in the gap', async () => {
+    const store = await mapWithTimeFilter([answer('A'), answer('B')], NARROWED);
+    refreshDatasets(store, store.dispatch, [answer('A', 0.01)]);
+    expect(ensureTimeFilter(store, store.dispatch)).toBe(false);
+    await settle();
+    expect(ensureTimeFilter(store, store.dispatch)).toBe(true);
+    expect(visStateOf(store).filters.filter((f: { type?: string }) => f.type === 'timeRange')).toHaveLength(1);
+  });
+
+  it('publishes nothing, and the window the variables hold stays on the map', async () => {
+    const store = await mapWithTimeFilter([answer('A'), answer('B')], NARROWED);
+    mockSearch = new URLSearchParams({
+      'var-mapFrom': formatTimeValue(NARROWED[0]),
+      'var-mapTo': formatTimeValue(NARROWED[1]),
+    });
+    mockWrites.length = 0;
+    const { unmount } = renderHook(() =>
+      useTimeVariableSync({
+        store,
+        isReady: true,
+        enabled: true,
+        mapping: { from: 'mapFrom', to: 'mapTo' },
+        whilePlaying: true,
+        publishIntervalMs: 1500,
+        peerSync: false,
+      })
+    );
+    await settle();
+    expect(mockWrites).toEqual([]);
+
+    refreshDatasets(store, store.dispatch, [answer('A', 0.01)]);
+    await settle();
+    // Past the 300 ms a window rests before it is published.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    expect(mockWrites).toEqual([]);
+    const timeFilters = visStateOf(store).filters.filter((f: { type?: string }) => f.type === 'timeRange');
+    expect(timeFilters).toHaveLength(1);
+    expect(timeFilters[0].value).toEqual(NARROWED);
+    unmount();
+  });
+});
