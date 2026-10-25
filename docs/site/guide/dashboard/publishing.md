@@ -1,7 +1,7 @@
 # Publishing the viewport and drawn areas
 
 Two more channels from the map to the rest of the dashboard: what the map is **looking at**, and
-what you have **drawn on it**. Both are one-way, and both come with the same warning.
+what you have **drawn on it**. Both come with the same warning, and the viewport is one way.
 
 ::: danger These are for the _other_ panels
 Put either value in **this** panel's own query and the map filters itself. The data shrinks to what
@@ -65,7 +65,7 @@ Use it **unquoted**, with a guard for the empty value.
 The variable must be a **text box** — the value is free-form WKT, so a query or custom variable
 cannot hold it.
 
-### Three deliberate limits
+### How the variable behaves
 
 **Only the most recent figure is published.** Draw three shapes and the variable holds the third.
 Deleting the last one clears the variable to the empty string, which is what the `!= ''` guard is
@@ -74,12 +74,19 @@ for.
 kepler keeps no timestamps on its features, so "most recent" is positional: the figures arrive in a
 deterministic order and the last new-or-changed one wins.
 
-**The channel is one way.** Editing the variable by hand does not draw anything on the map. There is
-no round trip.
+**What reaches the variable from elsewhere is drawn on the map.** A shared link, the browser's back
+button, another panel writing the variable: the map draws the area and applies it to every visible
+layer as a polygon filter, as if you had drawn it and filtered by it, replacing the figures it had.
+Emptied from elsewhere — the × of a Chaski filters panel's area filter, or its _Clear all_ — the
+variable takes the figures off the map. The area never goes into this panel's query: it is a
+filter in the browser, so the ratchet above does not apply. Only POLYGON and MULTIPOLYGON are read
+(any case, an optional `SRID=…;` prefix); any other value leaves the map as it is.
 
 **The value is never written on dashboard load.** A shared link keeps the area it was opened with,
 rather than having it overwritten by whatever the map restored from a saved configuration. The first
-pass only ever adopts what it finds.
+pass only ever adopts what it finds. A link's area is drawn once the map has a layer to show: a
+figure restored from the saved configuration with the same WKT is kept as it was saved, and nothing
+is drawn over it; an empty variable on load leaves a restored figure alone.
 
 ### What counts as a figure
 

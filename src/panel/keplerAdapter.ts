@@ -15,6 +15,7 @@ import {
   removeLayer,
   setFeatures,
   setFilterAnimationTime,
+  setPolygonFilterAllLayers,
   toggleFilterAnimation,
   toggleLayerAnimation,
   toggleLayerForMap,
@@ -1885,6 +1886,49 @@ export function closeMapPopover(dispatch: Dispatch): void {
 export function removeFigure(dispatch: Dispatch, figure: Figure): void {
   const feature = { id: figure.id, properties: figure.filterId ? { filterId: figure.filterId } : {} };
   dispatch(wrapTo(KEPLER_INSTANCE_ID, deleteFeature(feature as unknown as Parameters<typeof deleteFeature>[0])));
+}
+
+/**
+ * Makes `geometry` the only figure on the map, as `replaceFiguresWithSquare`
+ * does: in through `setFeatures`, the old ones in polygon filters out through
+ * `deleteFeature`. `applyAreaFilter` then filters the layers by it. Returns
+ * the id it was given.
+ */
+export function drawArea(dispatch: Dispatch, geometry: unknown, replace: Figure[]): string {
+  const id = `var-${Math.random().toString(36).slice(2, 9)}`;
+  const feature = { type: 'Feature', id, properties: { isClosed: true }, geometry };
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, setFeatures([feature] as unknown as Parameters<typeof setFeatures>[0])));
+  for (const figure of replace) {
+    if (figure.filterId) {
+      removeFigure(dispatch, figure);
+    }
+  }
+  return id;
+}
+
+/** Whether the map shows a layer yet: before its first rows arrive it has none. */
+export function hasVisibleLayer(store: Store): boolean {
+  return getVisState(store)?.layers.some((layer) => layer.config?.isVisible) ?? false;
+}
+
+/**
+ * Binds the editor figure `id` to one polygon filter on every visible layer,
+ * through `setPolygonFilterAllLayers`, the action kepler dispatches for a
+ * finished rectangle. False when the figure is not in the editor (already a
+ * filter, or deleted) or no layer is visible.
+ */
+export function applyAreaFilter(store: Store, dispatch: Dispatch, id: string): boolean {
+  const feature = getVisState(store)?.editor?.features?.find((f) => String(f.id) === id);
+  if (!feature || !hasVisibleLayer(store)) {
+    return false;
+  }
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      setPolygonFilterAllLayers(feature as unknown as Parameters<typeof setPolygonFilterAllLayers>[0])
+    )
+  );
+  return true;
 }
 
 /**

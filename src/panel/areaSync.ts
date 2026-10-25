@@ -1,11 +1,13 @@
 import { geoJsonToWkt } from '../data/geoJsonToWkt';
+import { wktToGeoJson, type ArealGeometry } from '../data/wktToGeoJson';
 import type { DrawnArea } from './keplerAdapter';
 
 /**
  * Decides when the figure drawn on the map reaches the dashboard variable.
  *
- * One direction only — map to variable. The variable is for the *other*
- * panels: a `WHERE` that references it must never appear in this panel's own
+ * Map to variable here; `decideAreaInbound` below is the way back. The
+ * variable is for the *other* panels: a `WHERE` that references it must never
+ * appear in this panel's own
  * query, or drawing a shape would shrink the map's own dataset and the shape
  * could never be widened again (the ratchet the cross-filtering design doc
  * warns about).
@@ -80,4 +82,47 @@ export function decideAreaPublish({ candidates, lastSeen, publishedId }: AreaSta
   }
 
   return { action: 'none' };
+}
+
+export type AreaInbound =
+  { action: 'none' } | { action: 'clear' } | { action: 'draw'; geometry: ArealGeometry; wkt: string };
+
+interface InboundState {
+  /** The variable's value in the URL now; undefined when the URL does not carry it. */
+  value: string | undefined;
+  /** Its value on the previous look, or null on the first one (dashboard load). */
+  previous: string | undefined | null;
+  /** id → WKT of the figures on the map now. */
+  fingerprints: Record<string, string>;
+}
+
+/**
+ * What the map should do about a value that reached the variable from
+ * elsewhere: a filters panel clearing it, a shared link, the back button.
+ *
+ * Only the variable's own changes count: other variables move the URL too (a
+ * timeline playing writes its window at every step), and reading the area on
+ * each of those would put back a figure the user is still drawing. A value
+ * some figure on the map already carries is this panel's own write coming
+ * back, or nothing new. An empty value removes the figures, except on load,
+ * where a saved config's figures stay as they always did; a value that does
+ * not parse leaves the map alone.
+ *
+ * Drawing it on the map does not feed it into this panel's query: it becomes
+ * a kepler polygon filter, the same as a figure the user draws and applies.
+ */
+export function decideAreaInbound({ value, previous, fingerprints }: InboundState): AreaInbound {
+  if (value === previous || value === undefined) {
+    return { action: 'none' };
+  }
+  const drawn = Object.values(fingerprints);
+  if (value.trim() === '') {
+    return previous !== null && drawn.length > 0 ? { action: 'clear' } : { action: 'none' };
+  }
+  const geometry = wktToGeoJson(value);
+  const wkt = geometry && geoJsonToWkt(geometry);
+  if (!geometry || !wkt || drawn.includes(wkt)) {
+    return { action: 'none' };
+  }
+  return { action: 'draw', geometry, wkt };
 }

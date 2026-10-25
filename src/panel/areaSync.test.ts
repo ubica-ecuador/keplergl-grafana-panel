@@ -1,4 +1,4 @@
-import { areaFingerprints, decideAreaPublish } from './areaSync';
+import { areaFingerprints, decideAreaInbound, decideAreaPublish } from './areaSync';
 
 /**
  * The decision behind "the figure you drew is now a dashboard variable".
@@ -41,9 +41,9 @@ describe('decideAreaPublish', () => {
     // The dashboard just loaded with a saved config that restored a polygon
     // filter. The variable may carry the value a shared link arrived with;
     // publishing now would overwrite it.
-    expect(
-      decideAreaPublish({ candidates: [square('a')], lastSeen: null, publishedId: null })
-    ).toEqual({ action: 'none' });
+    expect(decideAreaPublish({ candidates: [square('a')], lastSeen: null, publishedId: null })).toEqual({
+      action: 'none',
+    });
   });
 
   it('publishes a newly drawn figure', () => {
@@ -56,9 +56,9 @@ describe('decideAreaPublish', () => {
 
   it('publishes the most recent of several new figures', () => {
     const first = areaFingerprints([square('a')]);
-    expect(
-      decideAreaPublish({ candidates: [square('a'), square('b', 5)], lastSeen: first, publishedId: 'a' })
-    ).toEqual({ action: 'publish', id: 'b', wkt: 'POLYGON ((5 0, 5 1, 6 1, 6 0, 5 0))' });
+    expect(decideAreaPublish({ candidates: [square('a'), square('b', 5)], lastSeen: first, publishedId: 'a' })).toEqual(
+      { action: 'publish', id: 'b', wkt: 'POLYGON ((5 0, 5 1, 6 1, 6 0, 5 0))' }
+    );
   });
 
   it('republishes when a figure is edited', () => {
@@ -138,5 +138,52 @@ describe('decideAreaPublish', () => {
         publishedId: null,
       })
     ).toEqual({ action: 'none' });
+  });
+});
+
+describe('decideAreaInbound', () => {
+  const wkt = 'POLYGON ((0 0, 0 1, 1 1, 1 0, 0 0))';
+  const drawn = { a: wkt };
+
+  it('removes the figures when someone else clears the variable', () => {
+    expect(decideAreaInbound({ value: '', previous: wkt, fingerprints: drawn })).toEqual({ action: 'clear' });
+  });
+
+  it('leaves a saved figure alone when the dashboard loads with the variable empty', () => {
+    expect(decideAreaInbound({ value: '', previous: null, fingerprints: drawn })).toEqual({ action: 'none' });
+  });
+
+  it('draws an area that arrives in the link', () => {
+    expect(decideAreaInbound({ value: wkt, previous: null, fingerprints: {} })).toEqual({
+      action: 'draw',
+      wkt,
+      geometry: { type: 'Polygon', coordinates: square('x').geometry.coordinates },
+    });
+  });
+
+  it('draws an area another panel writes over the drawn one', () => {
+    const other = 'POLYGON ((5 0, 5 1, 6 1, 6 0, 5 0))';
+    expect(decideAreaInbound({ value: other, previous: wkt, fingerprints: drawn })).toMatchObject({
+      action: 'draw',
+      wkt: other,
+    });
+  });
+
+  it('takes its own write coming back for nothing new, however it is spaced', () => {
+    expect(decideAreaInbound({ value: wkt, previous: '', fingerprints: drawn })).toEqual({ action: 'none' });
+    expect(decideAreaInbound({ value: 'polygon((0 0,0 1,1 1,1 0,0 0))', previous: '', fingerprints: drawn })).toEqual({
+      action: 'none',
+    });
+  });
+
+  it('ignores the URL moving when the variable did not', () => {
+    const other = 'POLYGON ((5 0, 5 1, 6 1, 6 0, 5 0))';
+    // The user is reshaping the figure; a timeline step rewrote t0/t1 meanwhile.
+    expect(decideAreaInbound({ value: other, previous: other, fingerprints: drawn })).toEqual({ action: 'none' });
+  });
+
+  it('leaves the map alone for a value that does not parse or is not in the URL', () => {
+    expect(decideAreaInbound({ value: 'POINT (1 2)', previous: '', fingerprints: drawn })).toEqual({ action: 'none' });
+    expect(decideAreaInbound({ value: undefined, previous: wkt, fingerprints: drawn })).toEqual({ action: 'none' });
   });
 });

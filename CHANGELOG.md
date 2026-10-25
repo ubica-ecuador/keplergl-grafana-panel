@@ -11,6 +11,12 @@ release documents what changed since the one before it.
   variables says on Grafana's event bus as it plays (`ubica-time-window`), and moves its time filter
   there at once instead of a write at a time; while the brush plays, the variables trailing it
   neither move the map back nor get its window written over them.
+- **The drawn area follows its variable**: with **Publish drawn area**, an area that reaches the
+  variable from elsewhere is drawn on the map and applied to every visible layer as a polygon
+  filter — a shared link, the back button, another panel writing it — and an emptied variable takes
+  the figures off the map. Clearing the area from a Chaski filters panel used to leave the figure,
+  and the map filtered by it, while every other panel counted the whole map. A figure the saved
+  configuration restores with the same area is kept, not drawn twice.
 
 ## 1.5.0 (2026-10-24)
 
