@@ -321,6 +321,15 @@ const config = async (env: Env): Promise<Configuration> => {
           test: /\.m?js$/,
           resolve: { fullySpecified: false },
         },
+        /*
+         * kepler's polygon filter keeps every row of a layer type it does not
+         * know, the Symbols layer's among them; this teaches it to cut a layer
+         * that asks to be cut by its position. See the loader.
+         */
+        {
+          test: /[\\/]@kepler\.gl[\\/]utils[\\/]dist[\\/](esm|cjs)[\\/]filter-utils\.js$/,
+          use: [path.resolve(process.cwd(), 'scripts', 'kepler-polygon-filter-loader.cjs')],
+        },
         // The text of a `?raw` stylesheet; see `leaveRawStylesheetsAlone`.
         {
           test: /\.css$/,

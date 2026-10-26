@@ -1,3 +1,4 @@
+import { EDITOR_AVAILABLE_LAYERS } from '@kepler.gl/constants';
 import { loadMapStyles, receiveMapConfig, registerEntry, toggleSplitMap, wrapTo } from '@kepler.gl/actions';
 
 import { KEPLER_INSTANCE_ID } from './constants';
@@ -94,5 +95,13 @@ describe('the base map the store starts on', () => {
     registerStyles(store);
     expect(styleTypeOf(store)).toBe('no_map');
     expect(fetched).toEqual([]);
+  });
+});
+
+describe("kepler's drawn-figure menu", () => {
+  it('offers a drawn polygon to the Symbols layer, once however many stores are built', () => {
+    createKeplerStore();
+    createKeplerStore();
+    expect(EDITOR_AVAILABLE_LAYERS.filter((type) => type === 'symbol')).toHaveLength(1);
   });
 });

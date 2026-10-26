@@ -512,6 +512,17 @@ export function makeSymbolLayer<C extends Constructor<object>>(
       return ['lat', 'lng'];
     }
 
+    /**
+     * A figure drawn on the map and applied to this layer keeps the rows inside
+     * it, as on kepler's point layer: kepler's polygon filter tests the position
+     * `getPositionAccessor` reads. Read by the patch in
+     * `scripts/kepler-polygon-filter-loader.cjs`; kepler alone keeps every row of
+     * a layer type it does not know.
+     */
+    get polygonFilterByPosition(): boolean {
+      return true;
+    }
+
     get optionalColumns(): string[] {
       return ['altitude', 'picture'];
     }

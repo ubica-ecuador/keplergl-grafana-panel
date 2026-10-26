@@ -11,6 +11,11 @@ release documents what changed since the one before it.
   variables says on Grafana's event bus as it plays (`ubica-time-window`), and moves its time filter
   there at once instead of a write at a time; while the brush plays, the variables trailing it
   neither move the map back nor get its window written over them.
+- **A drawn area cuts the Symbols layer**: a figure applied to the map kept every row of a Symbols
+  layer while the point layer beside it was cut, because kepler's polygon filter keeps every row of a
+  layer type it does not know. The panel's build now teaches it to test a layer that asks for it by
+  its position, as it tests a point, and the Symbols layer asks; kepler's figure menu lists it among
+  the layers a drawn polygon can be applied to.
 - **The drawn area follows its variable**: with **Publish drawn area**, an area that reaches the
   variable from elsewhere is drawn on the map and applied to every visible layer as a polygon
   filter — a shared link, the back button, another panel writing it — and an emptied variable takes

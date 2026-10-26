@@ -1,4 +1,4 @@
-import { NO_MAP_ID } from '@kepler.gl/constants';
+import { EDITOR_AVAILABLE_LAYERS, NO_MAP_ID } from '@kepler.gl/constants';
 import { Layer, LayerClasses, RasterTileIcon } from '@kepler.gl/layers';
 import { keplerGlReducer, enhanceReduxMiddleware } from '@kepler.gl/reducers';
 import type { ComponentType } from 'react';
@@ -14,7 +14,7 @@ import { buildMarkersDeckLayer } from './markersDeckLayer';
 import { makeMarkersLayer } from './markersLayer';
 import { ownLayerIcon } from './ownLayerIcon';
 import { buildSymbolDeckLayer, glyphInk } from './symbolDeckLayer';
-import { makeSymbolLayer } from './symbolLayer';
+import { makeSymbolLayer, SYMBOL_TYPE } from './symbolLayer';
 import { withTile3dAltitude } from './tile3dAltitudeLayer';
 import { buildVectorFieldDeckLayer } from './vectorFieldDeckLayer';
 import { makeVectorFieldLayer } from './vectorFieldLayer';
@@ -125,6 +125,17 @@ const layerClasses = {
   // the dataset is drawn; see `markersLayer.ts`.
   markers: makeMarkersLayer(Layer as never, buildMarkersDeckLayer, POINT_LAYER_ICON),
 };
+
+/*
+ * The layers kepler's figure menu offers a drawn polygon to, and its "extract
+ * the rows inside" action accepts: a list kepler keeps of its own types, read
+ * whenever the menu opens. The Symbols layer joins it now that the polygon
+ * filter cuts it (`polygonFilterByPosition`); it is one shared array, so this
+ * runs once however many panels build a store.
+ */
+if (!EDITOR_AVAILABLE_LAYERS.includes(SYMBOL_TYPE)) {
+  EDITOR_AVAILABLE_LAYERS.push(SYMBOL_TYPE);
+}
 
 /**
  * Builds a Redux store dedicated to one panel instance.
