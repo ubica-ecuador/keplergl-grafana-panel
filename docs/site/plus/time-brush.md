@@ -87,7 +87,11 @@ and the end, Space plays, Escape stops and A selects everything.
 ## Playing
 
 A play moves the window one bucket every **Step every** milliseconds, at the chosen speed, and stops at the end
-unless **Loop** is on. **Write while playing** decides whether the other panels follow as it runs: on by
+unless **Loop** is on. With **Motion** on _Smooth_, the default, it glides there a little each frame rather than
+jumping a bucket at a time: the Mosaic panels on its selection follow every frame, and so does a map whose time
+window comes from the same two variables, which hears the window on Grafana's event bus ahead of the writes (see
+[Following a Time Brush](../guide/dashboard/time-window-variables#following-a-time-brush)). _By step_ keeps the
+jumps, and a window that snaps to marks always steps. **Write while playing** decides whether the other panels follow as it runs: on by
 default, with the window written at most once per **Least time between writes**, and, when the DuckDB-WASM
 datasource from the Grafana Geospatial Stack is on the page, only after the panels answering the previous write
 have settled, the same pacing the map panel uses for its own playback. Off, the window reaches the dashboard
