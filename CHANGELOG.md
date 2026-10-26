@@ -4,13 +4,23 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
-## Unreleased
+## 1.6.0 (2026-10-26)
 
 - **A map follows a Time Brush frame by frame.** A map whose time window comes from dashboard
   variables (`timeSync: variables`) hears the window a Kepler Plus Time Brush writing the same
   variables says on Grafana's event bus as it plays (`ubica-time-window`), and moves its time filter
   there at once instead of a write at a time; while the brush plays, the variables trailing it
-  neither move the map back nor get its window written over them.
+  neither move the map back nor get its window written over them. Only a map with a visible layer
+  that draws the rows its time filter covers follows frame by frame; one whose rows come from a
+  query over the window, with a time filter that only picks a scene, follows the variables at their
+  pace, instead of redrawing every frame for nothing.
+- **A map keeps the time window its variables give it**: when its queries answered again, or kepler
+  registered the map again, a map with `timeSync: variables` could take its fresh, unnarrowed time
+  filter for a move and publish the whole domain over the window a Time Brush had set, seconds
+  after load. The variables now keep the first word on a new time filter.
+- **A map in a Mosaic selection keeps the others' window** when its query answers again: kepler
+  rebuilds the filter from its saved form with the new rows, and the link used to take that for a
+  move of the map and drop the clause the other panels had landed on it.
 - **A drawn area cuts the Symbols layer**: a figure applied to the map kept every row of a Symbols
   layer while the point layer beside it was cut, because kepler's polygon filter keeps every row of a
   layer type it does not know. The panel's build now teaches it to test a layer that asks for it by
