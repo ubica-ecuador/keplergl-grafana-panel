@@ -2188,6 +2188,21 @@ export function readTimeFilterId(store: Store): string | null {
   return (visState && ownFilters(visState).find((f) => f.type === TIME_FILTER_TYPE)?.id) || null;
 }
 
+/**
+ * Whether a visible layer draws rows the map's time filter covers, so that moving its window moves something on the
+ * map. A filter whose datasets no layer draws only feeds a clock, as a Zarr layer's scene catalogue does: moving it
+ * every frame would only have the map draw itself again.
+ */
+export function timeFilterDrawn(store: Store): boolean {
+  const visState = getVisState(store);
+  const filter = visState && ownFilters(visState).find((f) => f.type === TIME_FILTER_TYPE);
+  if (!visState || !filter) {
+    return false;
+  }
+  const filtered = new Set<string | undefined>(Array.isArray(filter.dataId) ? filter.dataId : [filter.dataId]);
+  return visState.layers.some((layer) => Boolean(layer.config?.isVisible) && filtered.has(layer.config?.dataId));
+}
+
 /** The full time extent of the data behind the map's time filter. */
 export function readTimeDomain(store: Store): TimeRangeMs | null {
   const visState = getVisState(store);

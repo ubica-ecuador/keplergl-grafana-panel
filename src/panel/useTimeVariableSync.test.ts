@@ -9,10 +9,11 @@ import { useTimeVariableSync } from './useTimeVariableSync';
 const mockBus = new EventBusSrv();
 
 /** What the mocked adapter reads from kepler. A new `filters` object is a store change worth reacting to. */
-const mockMap: { window: TimeRangeMs; animating: boolean; filters: object } = {
+const mockMap: { window: TimeRangeMs; animating: boolean; filters: object; drawn: boolean } = {
   window: { from: 0, to: 60_000 },
   animating: false,
   filters: {},
+  drawn: true,
 };
 /** What the peer channel says about the other maps. */
 const mockPeers = { playing: false };
@@ -61,6 +62,7 @@ jest.mock('./keplerAdapter', () => ({
   // One filter throughout: these tests move it, they never make it anew.
   readTimeFilterId: () => 'time',
   readTimeRange: () => mockMap.window,
+  timeFilterDrawn: () => mockMap.drawn,
 }));
 
 jest.mock('./timeChannel', () => ({ timeChannel: { anyPlaying: () => mockPeers.playing } }));
@@ -210,6 +212,7 @@ describe('useTimeVariableSync, with publishing while playing on', () => {
     mockMap.window = { from: 0, to: 60_000 };
     mockMap.animating = false;
     mockMap.filters = {};
+    mockMap.drawn = true;
     mockPeers.playing = false;
     mockHistoryListeners.length = 0;
     mockOnWrite.length = 0;
@@ -423,6 +426,18 @@ describe('useTimeVariableSync, with publishing while playing on', () => {
       say(5000);
       store.touch();
       await frames(store, 1100, false);
+      clockWrites(9000);
+      await frames(store, 50, false);
+      expect(mockMap.window.from).toBe(9000);
+    });
+
+    it('leaves the window to the variables when no layer draws what its filter covers', async () => {
+      mockMap.drawn = false;
+      const store = mount(250);
+      await frames(store, 50, false);
+      say(5000);
+      await frames(store, 50, false);
+      expect(mockMap.window.from).toBe(0);
       clockWrites(9000);
       await frames(store, 50, false);
       expect(mockMap.window.from).toBe(9000);

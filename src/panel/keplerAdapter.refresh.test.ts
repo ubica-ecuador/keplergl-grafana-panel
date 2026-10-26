@@ -1,6 +1,13 @@
 import { renderHook } from '@testing-library/react';
 import { FieldType, toDataFrame } from '@grafana/data';
-import { deleteEntry, registerEntry, setFilterAnimationTime, toggleFilterAnimation, wrapTo } from '@kepler.gl/actions';
+import {
+  deleteEntry,
+  layerConfigChange,
+  registerEntry,
+  setFilterAnimationTime,
+  toggleFilterAnimation,
+  wrapTo,
+} from '@kepler.gl/actions';
 import type { Store } from 'redux';
 
 import { framesToDatasets, type PanelDataset } from '../data/framesToDatasets';
@@ -12,6 +19,7 @@ import {
   pushTimeRange,
   refreshDatasets,
   resumeTimeFilter,
+  timeFilterDrawn,
 } from './keplerAdapter';
 import { createKeplerStore } from './keplerStore';
 import { formatTimeValue } from './timeVariableSync';
@@ -440,5 +448,17 @@ describe('the time variables through refreshes that overlap', () => {
     const timeFilters = visStateOf(store).filters.filter((f: { type?: string }) => f.type === 'timeRange');
     expect(timeFilters.map((f: { value: unknown }) => f.value)).toEqual([NARROWED]);
     unmount();
+  });
+});
+
+describe('timeFilterDrawn', () => {
+  it('says whether a visible layer draws the rows the time filter covers', async () => {
+    const store = await mapWithTimeFilter([answer('A')], NARROWED);
+    expect(timeFilterDrawn(store)).toBe(true);
+    for (const layer of visStateOf(store).layers) {
+      store.dispatch(wrapTo(KEPLER_INSTANCE_ID, layerConfigChange(layer, { isVisible: false })) as never);
+    }
+    await settle();
+    expect(timeFilterDrawn(store)).toBe(false);
   });
 });

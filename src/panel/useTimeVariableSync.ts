@@ -11,6 +11,7 @@ import {
   readTimeDomain,
   readTimeFilterId,
   readTimeRange,
+  timeFilterDrawn,
 } from './keplerAdapter';
 import { PublishGate } from './publishGate';
 import { SliceWatcher } from './sliceWatcher';
@@ -355,10 +356,14 @@ export function useTimeVariableSync({
     });
   });
 
-  /** A window said on the bus for the variables this map reads: the brush goes there now. */
+  /**
+   * A window said on the bus for the variables this map reads: the brush goes there now, when a layer draws what it
+   * filters. A map whose rows come from a query over the window, with a time filter that only picks a scene, follows
+   * the variables at their pace instead: every frame would redraw it for nothing.
+   */
   const steer = useRef((said: TimeWindowSaid) => {
     const current = mappingRef.current;
-    if (said.variables.from !== current.from || said.variables.to !== current.to) {
+    if (said.variables.from !== current.from || said.variables.to !== current.to || !timeFilterDrawn(store)) {
       return;
     }
     steeredUntil.current = said.playing ? performance.now() + STEER_LAPSE_MS : 0;

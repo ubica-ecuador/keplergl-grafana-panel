@@ -127,6 +127,11 @@ The variables still change at the brush's own pace, and while it plays the map n
 them nor writes over them; its last word, as the play stops, is written to the variables too. Nothing
 to set up: the variable names are what pairs the two.
 
+Only a map whose time filter covers rows a visible layer draws follows frame by frame. A map whose rows
+come from a query over the window, with a time filter that only picks a scene (a Zarr layer's
+catalogue), would redraw every frame with nothing to show for it; it follows the variables at their
+pace. To have such a map glide, load the whole range once and let its time filter cut the rows.
+
 ## Why not just move the dashboard range
 
 Because moving the range re-runs the map's own query, and the rows that fall outside the new window
