@@ -70,6 +70,11 @@ class DatasourceEvent extends BusEventWithPayload<{ state: 'busy' | 'settled'; a
   static type = 'ubica-duckdbwasm-activity';
 }
 
+/** The Time Brush's own class for the window it says: same type string, nothing imported from it. */
+class BrushWindowEvent extends BusEventWithPayload<unknown> {
+  static type = 'ubica-time-window';
+}
+
 /** Another plugin's event on the same type string, keeping none of the contract. */
 class ForeignEvent extends BusEventWithPayload<unknown> {
   static type = 'ubica-duckdbwasm-activity';
@@ -375,6 +380,60 @@ describe('useTimeVariableSync, with publishing while playing on', () => {
       expect(mockWrites).toHaveLength(held + 1);
       expect(mockWrites[held].from).toBe(mockMap.window.from);
       expect(mockWrites[held].at - stoppedAt).toBeLessThanOrEqual(300);
+    });
+  });
+
+  describe('a clock writing the same variables, saying its window on the bus', () => {
+    const say = (from: number, playing = true, variables = MAPPING) =>
+      mockBus.publish(new BrushWindowEvent({ variables, window: { from, to: from + 60_000 }, playing }));
+    /** The clock's own trailing write of the variables, as the Time Brush makes it. */
+    const clockWrites = (from: number) => {
+      mockSearch = new URLSearchParams({
+        'var-mapFrom': formatTimeValue(from),
+        'var-mapTo': formatTimeValue(from + 60_000),
+      });
+      mockHistoryListeners.slice().forEach((fn) => fn());
+    };
+
+    it('moves the map to every window said, and its trailing writes neither move it back nor get written over', async () => {
+      const store = mount(250);
+      await frames(store, 50, false);
+      const start = performance.now();
+      for (let step = 1; step <= 60; step++) {
+        say(step * 1000);
+        store.touch();
+        if (step % 20 === 0) {
+          clockWrites((step - 10) * 1000);
+        }
+        await frames(store, FRAME_MS, false);
+        expect(mockMap.window.from).toBe(step * 1000);
+      }
+      say(61_000, false);
+      store.touch();
+      clockWrites(61_000);
+      await frames(store, 1000, false);
+
+      expect(mockMap.window.from).toBe(61_000);
+      expect(writesSince(start)).toEqual([]);
+    });
+
+    it('lets the variables lead again once a clock goes silent without its last word', async () => {
+      const store = mount(250);
+      await frames(store, 50, false);
+      say(5000);
+      store.touch();
+      await frames(store, 1100, false);
+      clockWrites(9000);
+      await frames(store, 50, false);
+      expect(mockMap.window.from).toBe(9000);
+    });
+
+    it('leaves a window said for other variables alone', async () => {
+      const store = mount(250);
+      await frames(store, 50, false);
+      say(5000, true, { from: 'other', to: 'mapTo' });
+      await frames(store, 50, false);
+      expect(mockMap.window.from).toBe(0);
     });
   });
 

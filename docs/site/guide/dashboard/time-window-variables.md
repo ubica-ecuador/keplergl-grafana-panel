@@ -117,6 +117,16 @@ for up to five seconds, so the pace becomes whichever is slower, the interval or
 DuckDB-WASM datasource from the Grafana Geospatial Stack does this. With any other datasource the
 interval is the whole story.
 
+## Following a Time Brush
+
+A map whose window comes from the same two variables a Kepler Plus Time Brush writes follows that brush
+frame by frame as it plays, not one write at a time. The brush says where its window is on Grafana's
+event bus every frame (the `ubica-time-window` event, with the two variable names, the window in
+epoch milliseconds and whether it is still playing), and the map moves its time filter there at once.
+The variables still change at the brush's own pace, and while it plays the map neither goes back to
+them nor writes over them; its last word, as the play stops, is written to the variables too. Nothing
+to set up: the variable names are what pairs the two.
+
 ## Why not just move the dashboard range
 
 Because moving the range re-runs the map's own query, and the rows that fall outside the new window

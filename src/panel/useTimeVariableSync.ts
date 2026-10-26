@@ -16,6 +16,7 @@ import { PublishGate } from './publishGate';
 import { SliceWatcher } from './sliceWatcher';
 import { timeChannel } from './timeChannel';
 import type { TimeRangeMs } from './timeSync';
+import { subscribeTimeWindow, type TimeWindowSaid } from './timeWindowEvent';
 import {
   DEFAULT_PUBLISH_INTERVAL_MS,
   decideTimeSync,
@@ -66,6 +67,13 @@ interface Params {
 const PUBLISH_DELAY_MS = 300;
 
 /**
+ * How long a clock steering the window over the event bus holds the variables off after it last spoke. It speaks
+ * every frame while it plays; one that went silent without its last word (a panel removed mid-play) lets the
+ * variables lead again.
+ */
+const STEER_LAPSE_MS = 1000;
+
+/**
  * Publishes the map's time window as a pair of dashboard variables, both ways.
  *
  * This is the alternative to `bidirectional` time sync, and the reason it exists
@@ -82,6 +90,10 @@ const PUBLISH_DELAY_MS = 300;
  *   otherwise only where it lands.
  * - Dashboard → map: setting either variable moves the brush, so a shared link
  *   or another panel's control restores the window.
+ * - A clock writing the same variables (the Time Brush) → map: its window, said
+ *   on the event bus every frame it plays, moves the brush at once. Its writes
+ *   to the variables trail it, so while it plays they neither move the brush
+ *   back nor get the map's window published over them.
  *
  * Same two structural rules as the other sync hooks: reconcile on a microtask,
  * never inside the store subscription, because dispatching there re-enters
@@ -133,6 +145,8 @@ export function useTimeVariableSync({
   const gate = useRef(new PublishGate());
   /** True while the pending publish sits in publish()'s playback hold rather than on the debounce. */
   const held = useRef(false);
+  /** Until when a clock on the event bus steers the window, on performance.now(); 0 when none does. */
+  const steeredUntil = useRef(0);
 
   /**
    * How long a playback step must still wait before it may leave: until a full
@@ -284,6 +298,11 @@ export function useTimeVariableSync({
       lastKey.current = undefined;
     }
 
+    // The variables trail a clock that steers the window: neither side has anything to say until it stops.
+    if (performance.now() < steeredUntil.current) {
+      return;
+    }
+
     const window = readTimeRange(store);
     const domain = readTimeDomain(store);
     const mapWindow = window ?? domain;
@@ -336,6 +355,20 @@ export function useTimeVariableSync({
     });
   });
 
+  /** A window said on the bus for the variables this map reads: the brush goes there now. */
+  const steer = useRef((said: TimeWindowSaid) => {
+    const current = mappingRef.current;
+    if (said.variables.from !== current.from || said.variables.to !== current.to) {
+      return;
+    }
+    steeredUntil.current = said.playing ? performance.now() + STEER_LAPSE_MS : 0;
+    if (pushTimeRange(store, store.dispatch, said.window)) {
+      cancelPublish.current();
+      // As for a window from the variables: what kepler settled on, which they will say once they catch up.
+      lastKey.current = windowKey(readTimeRange(store) ?? readTimeDomain(store));
+    }
+  });
+
   const watcher = useRef(new SliceWatcher());
   const onStoreChange = useRef(() => {
     if (watcher.current.changed(readSyncSlices(store))) {
@@ -358,6 +391,8 @@ export function useTimeVariableSync({
     const unsubscribeStore = store.subscribe(onStoreChange.current);
     // Dashboard → map: react to variable changes, which land in the URL.
     const unlisten = locationService.getHistory().listen(schedule.current);
+    // A clock writing the same variables says its window every frame, ahead of them.
+    const unsubscribeWindow = subscribeTimeWindow((said) => steer.current(said));
     // The DuckDB-WASM datasource, if it is on the page, says when the panels
     // it answers are done. A step held for them goes as soon as they are, and
     // the interval since the last write is up.
@@ -373,6 +408,7 @@ export function useTimeVariableSync({
     return () => {
       unsubscribeStore();
       unlisten();
+      unsubscribeWindow();
       unsubscribeActivity();
       cancel();
     };

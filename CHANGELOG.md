@@ -4,6 +4,14 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## Unreleased
+
+- **A map follows a Time Brush frame by frame.** A map whose time window comes from dashboard
+  variables (`timeSync: variables`) hears the window a Kepler Plus Time Brush writing the same
+  variables says on Grafana's event bus as it plays (`ubica-time-window`), and moves its time filter
+  there at once instead of a write at a time; while the brush plays, the variables trailing it
+  neither move the map back nor get its window written over them.
+
 ## 1.5.0 (2026-10-24)
 
 - **Linked to a Mosaic selection**: **Cross-filtering → Mosaic selection** names a Selection of the
