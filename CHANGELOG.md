@@ -4,6 +4,15 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## 1.6.2 (2026-10-27)
+
+- **Base maps draw when Grafana Cloud serves the plugin from its CDN.** A web worker has to come
+  from the page's own origin, and Grafana Cloud serves plugins from another one. MapLibre wraps a
+  worker from elsewhere in a module of the page's origin by itself, but the plugin's build compiled
+  that wrapper into a call that always failed ("Cannot find module …/maplibre-gl-worker.mjs"), so
+  MapLibre started no worker: OpenFreeMap, CARTO and every other base map stayed black while the
+  data layers drew. The panel now hands MapLibre that same-origin module itself.
+
 ## 1.6.1 (2026-10-27)
 
 - **A click on a map with many rows is no longer lost.** deck finds what is under the pointer as
