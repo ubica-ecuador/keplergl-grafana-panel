@@ -37,9 +37,9 @@ Plus needs Grafana Cloud or Grafana Enterprise, at one of these versions:
 
 These are the free panel's floors too; the free [Install](/guide/install#requirements) page explains why.
 
-Plus is an app plugin, **Kepler Geospatial Maps Plus** (`ubica-keplerplus-app`). Install it from Grafana's plugin
-catalogue and enable it, and its panel, also called **Kepler Geospatial Maps Plus**, appears in the visualization
-picker. See [Install and configure the app](/plus/start/install).
+Plus is an app plugin, **Kepler Geospatial Maps Plus** (`ubica-keplerplus-app`). Install it from
+[Grafana's plugin catalogue](https://grafana.com/grafana/plugins/ubica-keplerplus-app/) and enable it, and its panel, also called
+**Kepler Geospatial Maps Plus**, appears in the visualization picker. See [Install and configure the app](/plus/start/install).
 
 ## Where to go next
 

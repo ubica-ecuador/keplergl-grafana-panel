@@ -11,7 +11,8 @@ patch, or 12.2.5 and later.
 ## Install and enable the app
 
 1. In Grafana, open **Administration → Plugins and data → Plugins**, search for **Kepler Geospatial Maps Plus** in
-   Grafana's plugin catalogue, and install it.
+   Grafana's plugin catalogue, and install it. Its listing is
+   [Kepler Geospatial Maps Plus](https://grafana.com/grafana/plugins/ubica-keplerplus-app/) on grafana.com.
 2. On the app's page, choose **Enable**. Enabling the app installs the
    [template dashboard](#the-template-dashboard) and makes the panel available.
 3. Open the app's **Configuration** tab and add the keys of the map services you use. Every key is optional.
