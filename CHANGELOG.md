@@ -6,20 +6,13 @@ release documents what changed since the one before it.
 
 ## 1.6.2 (2026-10-27)
 
-- **Base maps draw when Grafana Cloud serves the plugin from its CDN.** A web worker has to come
-  from the page's own origin, and Grafana Cloud serves plugins from another one. MapLibre wraps a
-  worker from elsewhere in a module of the page's origin by itself, but the plugin's build compiled
-  that wrapper into a call that always failed ("Cannot find module …/maplibre-gl-worker.mjs"), so
-  MapLibre started no worker: OpenFreeMap, CARTO and every other base map stayed black while the
-  data layers drew. The panel now hands MapLibre that same-origin module itself.
+- **Base maps on Grafana Cloud.** OpenFreeMap, CARTO and the other base maps stayed black there
+  and only the data layers drew. They now load as on a Grafana of your own.
 
 ## 1.6.1 (2026-10-27)
 
-- **A click on a map with many rows is no longer lost.** deck finds what is under the pointer as
-  the button goes down, before it starts timing the press, and it took a press longer than 250 ms
-  for something other than a click. On a map with many rows that search alone could take longer,
-  so a click on a point published nothing and opened no popup, while the hover tooltip kept
-  working. A press that does not move now counts as a click for up to two seconds.
+- **A click on a map with many rows is no longer lost.** On a heavy map a click on a point could
+  publish nothing and open no popup, while the hover tooltip kept working.
 
 ## 1.6.0 (2026-10-26)
 
