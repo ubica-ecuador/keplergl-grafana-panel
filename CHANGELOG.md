@@ -4,6 +4,14 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## Unreleased
+
+- **A click on a map with many rows is no longer lost.** deck finds what is under the pointer as
+  the button goes down, before it starts timing the press, and it took a press longer than 250 ms
+  for something other than a click. On a map with many rows that search alone could take longer,
+  so a click on a point published nothing and opened no popup, while the hover tooltip kept
+  working. A press that does not move now counts as a click for up to two seconds.
+
 ## 1.6.0 (2026-10-26)
 
 - **A map follows a Time Brush frame by frame.** A map whose time window comes from dashboard

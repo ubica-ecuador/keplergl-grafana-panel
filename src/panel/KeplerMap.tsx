@@ -103,6 +103,16 @@ configureLoaders();
 // tuple type is lost in compilation — so the list needs a cast.
 const KeplerGl = injectComponents(keplerRecipes() as unknown as never[]);
 
+/**
+ * deck picks what is under the pointer on pointerdown, synchronously, and only
+ * then does the click recognizer start timing the press; it drops a press
+ * longer than 250 ms. On a map with many rows the pick alone can take that
+ * long, so the click vanished while the hover tooltip, picked between frames,
+ * kept working. A press that does not move counts as a click up to two seconds.
+ * Module scope: deck reads the option once, when it creates its event manager.
+ */
+const DECK_GL_PROPS = { eventRecognizerOptions: { click: { time: 2000 } } };
+
 /** kepler's catalogue with this plugin's layer names in it — see `localeMessages.ts`. */
 const localeMessages = withOwnLayerLabels(keplerMessages as unknown as Record<string, Record<string, string>>);
 
@@ -697,6 +707,7 @@ export function KeplerMap({
                           /* kepler renders one commit late and silently discards actions
                      addressed to an instance that has not registered yet. */
                           onKeplerGlInitialized={() => setIsReady(true)}
+                          deckGlProps={DECK_GL_PROPS}
                         />
                       </PanelMappingsContext.Provider>
                     </SelectContext.Provider>

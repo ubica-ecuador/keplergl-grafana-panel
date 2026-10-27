@@ -57,6 +57,29 @@ test('clicking a point publishes its column value, an empty click clears it', as
   await expect.poll(() => urlVariable(page, 'site'), { timeout: 10_000 }).toBe('');
 });
 
+// deck picks on pointerdown before the press is timed, so on a heavy map the
+// pick alone outlasted the 250 ms hammer allows a click. A held press stands in
+// for a slow pick.
+test('a press held longer than a quick click still publishes', async ({
+  gotoDashboardPage,
+  readProvisionedDashboard,
+  page,
+}) => {
+  test.slow();
+  const map = await gotoCrossFilterPanel(gotoDashboardPage, readProvisionedDashboard, page);
+
+  const rows = await projectRows(map);
+  expect(rows.length).toBeGreaterThan(0);
+  const target = rows[0];
+  await page.mouse.move(target.x, target.y);
+  await page.mouse.down();
+  await page.waitForTimeout(800);
+  await page.mouse.up();
+  await settle(page);
+
+  await expect.poll(() => urlVariable(page, 'site'), { timeout: 10_000 }).toBe(String(target.values.site));
+});
+
 test('an empty click leaves a keep-on-empty-click variable as it is', async ({
   gotoDashboardPage,
   readProvisionedDashboard,
