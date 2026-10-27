@@ -37,6 +37,12 @@ updates:
     # its nested 7.x; provider and consumer stop sharing a context and the tests
     # fail, as dependabot's own 10.1.24 PR demonstrated. 7.x patches stay
     # deduped and are fine.
+    #
+    # @loaders.gl/wms tracks kepler.gl too: it has to sit on the same loaders.gl
+    # minor as the @loaders.gl/core kepler installs (4.4.x for 3.3.0-alpha.17,
+    # whose packages peer on `~4.4.0`). A minor puts a second loaders.gl tree
+    # next to kepler's and `npm ci` fails, as dependabot's 4.5.4 PR showed. It
+    # moves when kepler moves; patches within the minor are fine.
     ignore:
       - dependency-name: "@grafana/data"
         update-types:
@@ -61,6 +67,10 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-intl"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "@loaders.gl/wms"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
     groups:
       unit-test:
         patterns:
