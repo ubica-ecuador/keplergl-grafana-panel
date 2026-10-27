@@ -4,7 +4,7 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
-## Unreleased
+## 1.6.1 (2026-10-27)
 
 - **A click on a map with many rows is no longer lost.** deck finds what is under the pointer as
   the button goes down, before it starts timing the press, and it took a press longer than 250 ms
