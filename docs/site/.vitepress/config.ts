@@ -85,17 +85,7 @@ export default defineConfig({
 
     // MiniSearch, bundled with VitePress. No Algolia and no outbound request,
     // which is the same premise the plugin itself is built on.
-    //
-    // Until the Plus edition is listed, nothing on the free panel's pages leads
-    // to it: no nav entry, and its pages are left out of the search index.
-    search: {
-      provider: 'local',
-      options: {
-        _render(src, env, md) {
-          return isPlusPage(env.relativePath) ? '' : md.render(src, env);
-        },
-      },
-    },
+    search: { provider: 'local' },
 
     // The live instance comes first on purpose: the fastest way to understand
     // what the panel does is to drag one of its timelines, and that costs a
@@ -107,6 +97,7 @@ export default defineConfig({
       { text: 'Tutorials', link: '/tutorials/' },
       { text: 'Layer gallery', link: '/layers/' },
       { text: 'Reference', link: '/reference/panel-options' },
+      { text: 'Plus', link: '/plus/' },
     ],
 
     // Plus has its own sidebar, so its pages never show the free panel's and

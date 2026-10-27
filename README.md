@@ -265,6 +265,14 @@ The [contributing guide](https://docs.ubica.dev/contributing.html)
 covers the three benches, the provisioned dashboards, the browser verification scripts and how the
 documentation screenshots are regenerated.
 
+## Kepler Geospatial Maps Plus
+
+The commercial edition, for operations maps: every sensor, site and vehicle on the map with its own
+time series, as gauges, sparkline cards, live fleets, network links and surfaces, over Google 3D
+Tiles if you like, with a Time Brush to drive the dashboard. It is a separate, closed-source plugin
+in the [Grafana plugin catalog](https://grafana.com/grafana/plugins/ubica-keplerplus-app/); this panel does not need it, and everything in this
+repository stays free. What it adds: [docs.ubica.dev/plus](https://docs.ubica.dev/plus/).
+
 ## Support
 
 The plugin is free, and every feature is in this repository. For organisations that depend on it,
