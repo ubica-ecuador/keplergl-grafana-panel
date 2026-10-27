@@ -62,13 +62,14 @@ A map saved on a keyed base map opens on the default style, with a notice, when 
 On a Grafana with a Content Security Policy, the hosts of each provider you enable must be allowed. See
 [Content Security Policy](/plus/admin/csp).
 
-## The template dashboard
+## The template dashboards
 
-Enabling the app installs one dashboard, **Kepler Plus layer tour**: five maps of the main Plus layers on synthetic
-data from Grafana's TestData data source, so it draws with nothing else set up. It is listed on the app's
-**Dashboards** tab and described in [Template dashboard](/plus/start/templates).
+Enabling the app installs three dashboards, the **Kepler Plus tour**: the Plus layers, kepler's and the free panel's
+layers, and the map's interactions, on synthetic rows each dashboard carries through Grafana's built-in data source, so
+they draw with nothing set up. They are listed on the app's **Dashboards** tab and described in
+[Template dashboards](/plus/start/templates).
 
-Grafana manages this dashboard with the app: it may replace it when the app is updated, and removes it when the app
-is disabled. To customise it, save a copy first with **Save as**.
+Grafana manages these dashboards with the app: it may replace them when the app is updated, and removes them when the
+app is disabled. To customise one, save a copy first with **Save as**.
 
 The **Dashboards** tab also imports the tour again, for instance after it was deleted.

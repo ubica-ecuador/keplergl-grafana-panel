@@ -10,7 +10,7 @@ between sensors (**Interpolate**) or how many vehicles are within a distance of 
 
 The **Weather** map of the [layer tour](/plus/start/templates), installed with the app, estimates temperature between 40
 weather stations around Madrid, in Interpolate mode, with the stations drawn as dots on top. It reads
-synthetic data from the TestData data source. Press play on the time filter to watch the surface
+synthetic data carried in the dashboard. Press play on the time filter to watch the surface
 change, then replace the query with your own. Grafana may replace the tour when the app is updated, so
 copy it before customising it.
 

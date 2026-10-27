@@ -57,5 +57,6 @@ hides them.
 
 ## The layer tour
 
-The app installs one dashboard, the layer tour, with a map for each group of these layers on synthetic data. Each
-layer page says which map shows it. See [Template dashboard](/plus/start/templates).
+The app installs the layer tour, **Kepler Plus tour — Plus layers**, with a map for each group of these layers on
+synthetic data, beside two more tours for kepler's own layers and for the map's interactions. Each layer page says
+which map shows it. See [Template dashboards](/plus/start/templates).

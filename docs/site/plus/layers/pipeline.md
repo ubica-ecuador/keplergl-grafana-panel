@@ -6,6 +6,12 @@ with the speed, colour and width from its metric and an optional height above th
 
 ![A power line across north-east Spain drawn as a Pipeline in two lanes with dashes running each way, beside two thin blue lines](/img/plus/pipeline.jpg)
 
+## See it in the layer tour
+
+The **Networks** map of the [layer tour](/plus/start/templates#networks), installed with the app, draws a gas line, a
+power line that carries load both ways in two lanes, and a river across Spain and Portugal, on synthetic data carried
+in the dashboard. Replace the queries with your own lines and keep the column names.
+
 ## What the query needs
 
 One row per line, with a geometry column. The column can hold GeoJSON, WKT or WKB hex, as any

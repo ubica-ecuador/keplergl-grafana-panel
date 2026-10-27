@@ -124,8 +124,8 @@ States and districts are not drawn as flows, and cannot be the ends of [network 
 ## See it in the layer tour
 
 The **Regions** map of the [layer tour](/plus/start/templates), installed with the app, places Ecuador's 24 provinces by name, from
-a query with a `country` column of `EC` and a `province` column, fed by Grafana's TestData data source, so it draws
-with no setup.
+a query with a `country` column of `EC` and a `province` column, carried in the dashboard by Grafana's built-in data
+source, so it draws with no setup.
 
 Replace the query with your own and keep the column names, or use the Places options to say what each column is.
 
