@@ -1,4 +1,6 @@
+import { MVTLayer } from '@deck.gl/geo-layers';
 import { setLoaderOptions } from '@loaders.gl/core';
+import { MVTLoader } from '@loaders.gl/mvt';
 
 import { bundledDraco3d, fetchWasm, type Draco3dModule } from './dracoDecoder';
 import { assetBaseUrl } from './keplerConfig';
@@ -29,7 +31,9 @@ import { assetBaseUrl } from './keplerConfig';
  *
  * - `worker: false` parses on the main thread with the loader's own code, all
  *   of which is already in the bundle. kepler's unpkg `workerUrl`s are then
- *   never read.
+ *   never read. One loader has no such code: deck's `MVTLayer` defaults to
+ *   `MVTWorkerLoader`, which parses only in a worker, so `mainThreadLoaders`
+ *   gives it `MVTLoader` (see there).
  * - `modules.draco3d` is the Draco decoder compiled into the plugin
  *   (`dracoDecoder.ts`), which loaders.gl calls instead of loading Google's.
  * - The Basis transcoder and encoder (the latter is what reads KTX2) are
@@ -97,9 +101,27 @@ export function pluginLoaderOptions(base: string, draco3d: Draco3dModule) {
   };
 }
 
+/**
+ * deck's layers whose default loader parses only in a worker, given the one
+ * that parses on the main thread.
+ *
+ * `MVTLayer` defaults to `MVTWorkerLoader`, which has no parser of its own:
+ * with workers off every tile it loads fails with "mvt loader - no parser found
+ * and worker is disabled". kepler's globe draws its base map (land, water,
+ * borders, place names) with an `MVTLayer` it passes no `loaders` to, so the
+ * globe showed a bare sphere. `MVTLoader` is the same format with its parser.
+ *
+ * Set on the class before any layer is made: deck reads `defaultProps` when
+ * the first instance is.
+ */
+export function mainThreadLoaders(): void {
+  MVTLayer.defaultProps.loaders = [MVTLoader];
+}
+
 /** Must run before any loader does; `KeplerMap.tsx` calls it at module load. */
 export function configureLoaders(): void {
   const base = loaderLibraryBaseUrl();
   const draco3d = bundledDraco3d(() => fetchWasm(`${base}/${DRACO_DECODER_WASM}`));
   setLoaderOptions(pluginLoaderOptions(base, draco3d));
+  mainThreadLoaders();
 }

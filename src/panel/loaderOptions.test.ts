@@ -1,6 +1,9 @@
 import { existsSync, readdirSync } from 'fs';
 import { join } from 'path';
-import { getLoaderOptions } from '@loaders.gl/core';
+import { MVTLayer } from '@deck.gl/geo-layers';
+import { getLoaderOptions, parse } from '@loaders.gl/core';
+import type { Loader } from '@loaders.gl/loader-utils';
+import { MVTWorkerLoader } from '@loaders.gl/mvt';
 import { getLibraryUrl } from '@loaders.gl/worker-utils';
 
 import {
@@ -158,5 +161,30 @@ describe('configureLoaders', () => {
         'draco_wasm_wrapper.js'
       )
     ).not.toMatch(THIRD_PARTY);
+  });
+});
+
+describe('mainThreadLoaders', () => {
+  beforeAll(() => {
+    // jsdom has no fetch API, and loaders.gl asks whether what it is handed is
+    // a `Response` before parsing it (as in dracoDecoder.test.ts).
+    (globalThis as { Response?: unknown }).Response ??= class Response {};
+    configureLoaders();
+  });
+
+  // An empty vector tile: a tile with no layers is a valid one.
+  const EMPTY_TILE = new ArrayBuffer(0);
+  const TILE_OPTIONS = {
+    mvt: { shape: 'geojson' as const, coordinates: 'wgs84' as const, tileIndex: { x: 0, y: 0, z: 0 } },
+  };
+
+  it('without it, deck’s default vector tile loader cannot parse with workers off', async () => {
+    await expect(parse(EMPTY_TILE, MVTWorkerLoader, TILE_OPTIONS)).rejects.toThrow(/no parser found/);
+  });
+
+  it('gives deck’s MVTLayer, which kepler’s globe draws its base map with, a loader that parses on the main thread', async () => {
+    const [loader] = MVTLayer.defaultProps.loaders as Loader[];
+
+    await expect(parse(EMPTY_TILE, loader, TILE_OPTIONS)).resolves.toEqual([]);
   });
 });
