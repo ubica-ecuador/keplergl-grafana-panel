@@ -30,7 +30,7 @@ map. The brush lives in a panel of its own, as tall as you like, and every panel
 | Control           | What it does                                                                                                                         |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | « »               | Move the window to the start or the end of the range, keeping its width.                                                             |
-| ‹ ›               | Move it one bucket back or forward.                                                                                                  |
+| ‹ ›               | One bucket back or forward, as a play in the window mode goes: Incremental grows or shrinks the end, the others move the window.     |
 | Play / Pause      | Walk the window across the range in the chosen mode and speed.                                                                       |
 | Select everything | Widen the window to the whole range.                                                                                                 |
 | Window mode       | **Free** slides a window of fixed width; **Incremental** keeps the start and grows the end; **Interval** walks one bucket at a time. |
