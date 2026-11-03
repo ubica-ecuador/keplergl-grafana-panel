@@ -72,6 +72,7 @@ export function KeplerPanel(props: Props) {
     [options.geomapImport, data.series, options.fieldMappings]
   );
   const fieldMappings = useStableValue(geomapConversion?.fieldMappings ?? options.fieldMappings);
+  const routeQueries = useStableValue(geomapConversion?.routeQueries ?? options.routeQueries);
   // What did not carry over outlives the conversion, which the saved options
   // clear: kept from the render that converted, for the notice.
   const [geomapDropped, setGeomapDropped] = useState<string[] | null>(null);
@@ -86,6 +87,7 @@ export function KeplerPanel(props: Props) {
       ...options,
       mapConfig: geomapConversion.mapConfig,
       fieldMappings: geomapConversion.fieldMappings,
+      routeQueries: geomapConversion.routeQueries,
       geomapImport: null,
     });
     // Once per conversion: the options it writes are what clears it.
@@ -113,8 +115,9 @@ export function KeplerPanel(props: Props) {
       framesToDatasets(data.series, fieldMappings, {
         flowRenderMode: options.flowRenderMode,
         tripLayerMode: options.tripLayerMode,
+        routeQueries,
       }),
-    [data.series, fieldMappings, options.flowRenderMode, options.tripLayerMode]
+    [data.series, fieldMappings, options.flowRenderMode, options.tripLayerMode, routeQueries]
   );
 
   // The mappings name the query's columns, as the editor lists them; kepler knows a column with a role by the role's

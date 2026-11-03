@@ -168,6 +168,10 @@ describe('fromGeomapPanel', () => {
     expect(result.geomapImport!.dropped).toHaveLength(3);
   });
 
+  it('keeps the map off the dashboard clock, as Geomap was', () => {
+    expect(convert(markersPanel)).toMatchObject({ timeSync: 'off', showSidePanel: false });
+  });
+
   it('turns the tooltip off when Geomap had none', () => {
     expect(convert({ ...markersPanel, tooltip: { mode: 'none' } }).geomapImport!.tooltip).toBe(false);
   });

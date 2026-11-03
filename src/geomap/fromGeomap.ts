@@ -38,6 +38,8 @@ interface GeomapDimension<T> {
 interface GeomapStyle {
   color?: GeomapDimension<string>;
   opacity?: number;
+  /** A route's stroke when nothing varies; Geomap then draws it at `size.fixed` anyway. */
+  lineWidth?: number;
   size?: GeomapDimension<number>;
   text?: GeomapDimension<string>;
   textConfig?: { fontSize?: number; offsetX?: number; offsetY?: number };
@@ -55,6 +57,8 @@ export interface GeomapLayer {
     weight?: GeomapDimension<number>;
     radius?: number;
     showLegend?: boolean;
+    /** Route only: an arrow at each segment's end (1), at its start (-1), or none (0). */
+    arrow?: number;
     blur?: number;
     theme?: string;
     server?: string;
@@ -82,7 +86,7 @@ export interface ImportedColorField {
 }
 
 export interface ImportedLayer {
-  type: 'point' | 'heatmap';
+  type: 'point' | 'heatmap' | 'route';
   label: string;
   /** The query the layer reads; absent means the first one, as in Geomap. */
   refId?: string;
@@ -90,7 +94,7 @@ export interface ImportedLayer {
   color: [number, number, number];
   colorField?: ImportedColorField;
   opacity: number;
-  /** Point radius in pixels, and the range a size field spreads over. */
+  /** Point radius (a route's width) in pixels, and the range a size field spreads over. */
   radius: number;
   radiusRange: [number, number];
   sizeField?: string;
@@ -102,6 +106,8 @@ export interface ImportedLayer {
   /** Heatmap only, in pixels: OpenLayers' radius plus its blur. */
   heatRadius?: number;
   weightField?: string;
+  /** Route only: which end of each segment carries an arrow. */
+  arrow?: 'end' | 'start';
 }
 
 export interface GeomapImport {
@@ -178,6 +184,10 @@ export function fromGeomapPanel(
     // A Geomap tile shows the map and nothing else; kepler's side panel is a
     // click away in the map's own controls.
     showSidePanel: false,
+    // Geomap draws every row its queries return; the dashboard's range reaches
+    // it only through the queries. Coupling the map's clock is a choice to make
+    // afterwards, not a change the switch should bring.
+    timeSync: 'off',
     geomapImport: {
       version: 1,
       layers,
@@ -254,7 +264,7 @@ function convertLayer(
   dropped: string[]
 ): ImportedLayer | null {
   const label = layer.name || layer.type || 'Layer';
-  if (layer.type !== 'markers' && layer.type !== 'heatmap') {
+  if (layer.type !== 'markers' && layer.type !== 'heatmap' && layer.type !== 'route') {
     dropped.push(`the ${layer.type ?? 'unknown'} layer “${label}”`);
     return null;
   }
@@ -291,6 +301,24 @@ function convertLayer(
 
   const size = style.size ?? {};
   const colorFieldName = style.color?.field;
+  const colorField = colorFieldName ? { colorField: colorFieldOf(colorFieldName, fieldConfig, theme) } : {};
+
+  if (layer.type === 'route') {
+    const arrow = layer.config?.arrow;
+    return {
+      ...base,
+      type: 'route',
+      // A route is drawn at full strength unless its style says otherwise.
+      opacity: (style.opacity ?? 1) * (layer.opacity ?? 1),
+      legend: false,
+      radius: size.fixed ?? DEFAULT_SIZE,
+      radiusRange: [size.min ?? DEFAULT_SIZE_RANGE[0], size.max ?? DEFAULT_SIZE_RANGE[1]],
+      ...(size.field ? { sizeField: size.field } : {}),
+      ...colorField,
+      ...(arrow === 1 ? { arrow: 'end' as const } : arrow === -1 ? { arrow: 'start' as const } : {}),
+    };
+  }
+
   const textField = style.text?.mode === 'field' || style.text?.field ? style.text?.field : undefined;
   return {
     ...base,
@@ -299,7 +327,7 @@ function convertLayer(
     radius: size.fixed ?? DEFAULT_SIZE,
     radiusRange: [size.min ?? DEFAULT_SIZE_RANGE[0], size.max ?? DEFAULT_SIZE_RANGE[1]],
     ...(size.field ? { sizeField: size.field } : {}),
-    ...(colorFieldName ? { colorField: colorFieldOf(colorFieldName, fieldConfig, theme) } : {}),
+    ...colorField,
     ...(textField
       ? {
           textField,

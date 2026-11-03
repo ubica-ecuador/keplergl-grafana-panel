@@ -1,6 +1,7 @@
 import { type DataFrame, FieldType } from '@grafana/data';
 
 import { detectFields, type FieldRoleOverrides, resolveRoles } from '../data/detectFields';
+import { ROUTE_COLUMNS, routeDatasetId } from '../data/buildRoute';
 import { datasetId } from '../data/framesToDatasets';
 import type { SavedMapConfig } from '../data/mapConfig';
 import { KEPLER_COLUMN, keplerColumnName } from '../data/toKeplerDataset';
@@ -14,6 +15,8 @@ import type { GeomapImport, ImportedColorField, ImportedLayer } from './fromGeom
 export interface GeomapConversion {
   mapConfig: SavedMapConfig;
   fieldMappings: Record<string, FieldRoleOverrides>;
+  /** The queries a route layer is drawn on, for the panel's `routeQueries`. */
+  routeQueries: string[];
   /** The import's own notes and what this step could not place. */
   dropped: string[];
 }
@@ -49,6 +52,22 @@ function heatRadiusAt(pixels: number, zoom: number): number {
   return Math.min(HEAT_MAX_RADIUS, Math.round(radius * 10) / 10);
 }
 
+/**
+ * kepler's line width in pixels is the thickness × 2/3 (its
+ * PROJECTED_PIXEL_SIZE_MULTIPLIER) times the width channel, which is 1 without
+ * a field and the field's value scaled into the size range with one.
+ */
+const LINE_PIXELS_PER_THICKNESS = 2 / 3;
+
+/**
+ * Arrowhead size in pixels, 4 to 64. Geomap's are one and a half times the
+ * line width, but drawn as notches cut across it; kepler's chevron in the same
+ * colour disappears under the line at that size, so it is drawn at three.
+ */
+function arrowSize(width: number): number {
+  return Math.min(64, Math.max(8, Math.round(width * 3)));
+}
+
 function pointRadius(pixels: number): number {
   return Math.round((pixels / PIXELS_PER_RADIUS_UNIT) * 10) / 10;
 }
@@ -70,6 +89,7 @@ export function geomapToKepler(
   const dropped = [...imported.dropped];
   const mappings: Record<string, FieldRoleOverrides> = { ...fieldMappings };
   const layers: unknown[] = [];
+  const routes = new Set<string>();
 
   const zoom = imported.view === 'fit' ? FIT_ZOOM_GUESS : imported.view.zoom;
   let legend = false;
@@ -99,7 +119,12 @@ export function geomapToKepler(
       const field = name ? frame.fields.find((f) => f.name === name) : undefined;
       return field ? { name: keplerColumnName(roles, field.name), type: keplerType(field.type) } : undefined;
     };
-    layers.push(toKeplerLayer(layer, `geomap-${index}`, datasetId(refId), column, zoom));
+    let dataId = datasetId(refId);
+    if (layer.type === 'route') {
+      routes.add(refId);
+      dataId = routeDatasetId(dataId);
+    }
+    layers.push(toKeplerLayer(layer, `geomap-${index}`, dataId, column, zoom));
   });
 
   const config: Record<string, unknown> = {
@@ -115,7 +140,12 @@ export function geomapToKepler(
   if (imported.view !== 'fit') {
     config.mapState = { ...imported.view, bearing: 0, pitch: 0, dragRotate: false };
   }
-  return { mapConfig: { version: KEPLER_CONFIG_VERSION, config }, fieldMappings: mappings, dropped };
+  return {
+    mapConfig: { version: KEPLER_CONFIG_VERSION, config },
+    fieldMappings: mappings,
+    routeQueries: [...routes],
+    dropped,
+  };
 }
 
 type ColumnOf = (name: string | undefined) => { name: string; type: string } | undefined;
@@ -135,6 +165,10 @@ function toKeplerLayer(
     columns: { lat: KEPLER_COLUMN.latitude, lng: KEPLER_COLUMN.longitude },
     isVisible: true,
   };
+
+  if (layer.type === 'route') {
+    return routeLayer(layer, id, dataId, column);
+  }
 
   if (layer.type === 'heatmap') {
     const weight = column(layer.weightField);
@@ -224,4 +258,50 @@ function keplerType(type: FieldType): string {
     default:
       return 'string';
   }
+}
+
+/**
+ * A Geomap route as kepler's line layer, on the segments `buildRoute.ts` makes
+ * of the query: one per pair of consecutive rows, coloured and sized by the
+ * starting row. An arrow at each segment's start draws the segments reversed,
+ * since kepler only puts arrowheads at the target end.
+ */
+function routeLayer(layer: ImportedLayer, id: string, dataId: string, column: ColumnOf): Record<string, unknown> {
+  const colorField = column(layer.colorField?.name);
+  const sizeField = column(layer.sizeField);
+  const reversed = layer.arrow === 'start';
+  const columns = reversed
+    ? { lat0: ROUTE_COLUMNS.lat1, lng0: ROUTE_COLUMNS.lng1, lat1: ROUTE_COLUMNS.lat0, lng1: ROUTE_COLUMNS.lng0 }
+    : { ...ROUTE_COLUMNS };
+  // With a width field the size range holds pixels, so the thickness is what
+  // makes the multiplier one.
+  const thickness = (sizeField ? 1 : layer.radius) / LINE_PIXELS_PER_THICKNESS;
+  return {
+    id,
+    type: 'line',
+    config: {
+      dataId,
+      label: layer.label,
+      color: layer.color,
+      columnMode: 'points',
+      columns,
+      isVisible: true,
+      visConfig: {
+        opacity: layer.opacity,
+        thickness: Math.round(thickness * 100) / 100,
+        sizeRange: layer.radiusRange,
+        elevationScale: 1,
+        ...(colorField && layer.colorField
+          ? { colorRange: colorRangeOf(layer.colorField, `Geomap · ${layer.colorField.name}`) }
+          : {}),
+        ...(layer.arrow
+          ? { targetArrowEnabled: true, targetArrowShape: 'chevron', targetArrowSize: arrowSize(layer.radius) }
+          : {}),
+      },
+    },
+    visualChannels: {
+      ...(colorField ? { colorField, colorScale: layer.colorField?.scale ?? 'quantize' } : {}),
+      ...(sizeField ? { sizeField, sizeScale: 'linear' } : {}),
+    },
+  };
 }

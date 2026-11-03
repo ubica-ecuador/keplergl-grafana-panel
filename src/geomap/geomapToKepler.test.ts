@@ -132,4 +132,38 @@ describe('geomapToKepler', () => {
     expect(legendOf(markers)).toBe(true);
     expect(legendOf({ ...markers, layers: [{ type: 'markers', name: 'Plain' }] })).toBe(false);
   });
+
+  it('draws a route as a line layer on the query’s segments, arrows and width included', () => {
+    const imported = importOf({
+      view: { id: 'fit' },
+      layers: [
+        {
+          type: 'route',
+          name: 'Track',
+          config: { arrow: 1, style: { color: { field: 'magnitude' }, size: { fixed: 4 }, lineWidth: 2 } },
+        },
+      ],
+    });
+    const result = geomapToKepler(imported, [stations])!;
+    const [line] = (result.mapConfig.config.visState as { layers: any[] }).layers;
+
+    expect(result.routeQueries).toEqual(['A']);
+    expect(line.type).toBe('line');
+    expect(line.config.dataId).toBe('grafana-A-route');
+    expect(line.config.columns).toEqual({ lat0: 'lat0', lng0: 'lng0', lat1: 'lat1', lng1: 'lng1' });
+    // 4 px at kepler's 2/3 px per unit of thickness.
+    expect(line.config.visConfig.thickness).toBe(6);
+    expect(line.config.visConfig).toMatchObject({ targetArrowEnabled: true, targetArrowSize: 12 });
+    expect(line.visualChannels.colorField).toEqual({ name: 'magnitude', type: 'real' });
+
+    const parsed = KeplerGlSchema.parseSavedConfig(result.mapConfig);
+    expect(parsed?.visState?.layers?.[0]).toMatchObject({ type: 'line' });
+  });
+
+  it('reverses the segments for arrows at their start', () => {
+    const imported = importOf({ layers: [{ type: 'route', name: 'Back', config: { arrow: -1 } }] });
+    const [line] = (geomapToKepler(imported, [stations])!.mapConfig.config.visState as { layers: any[] }).layers;
+
+    expect(line.config.columns).toEqual({ lat0: 'lat1', lng0: 'lng1', lat1: 'lat0', lng1: 'lng0' });
+  });
 });

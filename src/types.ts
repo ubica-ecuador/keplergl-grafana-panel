@@ -56,6 +56,13 @@ export interface KeplerPanelOptions {
   geomapImport?: GeomapImport | null;
 
   /**
+   * Queries also drawn as a route: each row joined to the next, in query order,
+   * as kepler line segments in a dataset beside the query's (`buildRoute.ts`).
+   * Written by the Geomap conversion for its route layers.
+   */
+  routeQueries?: string[];
+
+  /**
    * Save request counter.
    *
    * Grafana gives panel option editors no channel to the panel component, and

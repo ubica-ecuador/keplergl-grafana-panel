@@ -2,6 +2,7 @@ import { DataFrame, FieldType } from '@grafana/data';
 
 import { buildFlowField, FlowFieldLayerConfig } from './buildFlowField';
 import { buildFlows, FlowLayerConfig, FlowRenderMode } from './buildFlows';
+import { buildRouteSegments, routeColumns, routeDatasetId } from './buildRoute';
 import { buildSymbolLayer, SymbolLayerConfig } from './buildSymbolLayer';
 import { buildTripLayer, TripLayerConfig, TripLayerMode } from './buildTripLayer';
 import { buildTrips } from './buildTrips';
@@ -72,6 +73,8 @@ export function framesToDatasets(
   opts: {
     flowRenderMode?: FlowRenderMode;
     tripLayerMode?: TripLayerMode;
+    /** Queries also drawn as a route, row to row in order (`buildRoute.ts`). */
+    routeQueries?: string[];
   } = {}
 ): PanelDataset[] {
   const resolved = frames.map((frame, index) => {
@@ -79,7 +82,7 @@ export function framesToDatasets(
     return { frame, refId, roles: resolveRoles(detectFields(frame), overrides[refId]) };
   });
 
-  return resolved.map(({ frame, refId, roles }) => {
+  const datasets = resolved.map(({ frame, refId, roles }): PanelDataset => {
     const id = datasetId(refId);
     const label = frame.name ?? `Query ${refId}`;
 
@@ -122,6 +125,33 @@ export function framesToDatasets(
       flowLayer: buildFlows(roles, id, { renderingMode: opts.flowRenderMode }) ?? undefined,
       symbolLayer: pointsSymbols(symbolRoles) ? (buildSymbolLayer(symbolRoles, id) ?? undefined) : undefined,
     };
+  });
+
+  const routes = new Set(opts.routeQueries ?? []);
+  if (!routes.size) {
+    return datasets;
+  }
+  // A route rides beside its query's dataset, built from the same rows, so the
+  // query's own layers keep the dataset they were saved on.
+  return datasets.flatMap((dataset, index) => {
+    const { refId, roles } = resolved[index];
+    if (!routes.has(refId) || !roles.latitude || !roles.longitude || dataset.flowFieldLayer) {
+      return [dataset];
+    }
+    // A trajectory folded into one row per trip has no rows left to join.
+    const source =
+      opts.tripLayerMode === 'geojson' && isTripFrame(roles)
+        ? toKeplerRows(resolved[index].frame, roles)
+        : dataset.rows;
+    const rows = buildRouteSegments(source);
+    const route: PanelDataset = {
+      id: routeDatasetId(dataset.id),
+      label: `${dataset.label} · route`,
+      rows,
+      columns: rows.length === 0 ? routeColumns(toKeplerColumns(resolved[index].frame, roles)) : undefined,
+      renames: dataset.renames,
+    };
+    return [dataset, route];
   });
 }
 
