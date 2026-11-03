@@ -113,4 +113,15 @@ describe('supersededLayerIds: symbols', () => {
       'guessed',
     ]);
   });
+
+  it('lets a route replace the arc and points kepler guesses on its segments, and nothing on other datasets', () => {
+    const layers = [
+      { id: 'arc', type: 'arc', config: { dataId: 'grafana-A-route' } },
+      { id: 'dots', type: 'point', config: { dataId: 'grafana-A-route' } },
+      { id: 'query', type: 'point', config: { dataId: 'grafana-A' } },
+    ];
+    expect(supersededLayerIds(layers, { id: 'line-grafana-A-route', type: 'line', dataId: 'grafana-A-route' })).toEqual(
+      ['arc', 'dots']
+    );
+  });
 });

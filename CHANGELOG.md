@@ -6,6 +6,11 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Draw a query as a route.** A new option under *Map*, *Draw as a route*, joins a query's rows
+  in the order it returns them into one line: a dataset of its own, “… · route”, with one segment
+  per pair of rows, drawn as a Line layer that can be coloured and sized by any column. On a map
+  without a saved configuration the layer appears by itself.
+
 - **From Geomap in one click.** "Change visualization" from a Geomap panel to Kepler keeps its
   markers, heatmap and route layers (colour and size by field, thresholds and colour schemes,
   labels, route arrows), the columns it was told, its view and its base map, with the legend on

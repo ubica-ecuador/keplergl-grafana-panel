@@ -2,7 +2,7 @@ import { DataFrame, FieldType } from '@grafana/data';
 
 import { buildFlowField, FlowFieldLayerConfig } from './buildFlowField';
 import { buildFlows, FlowLayerConfig, FlowRenderMode } from './buildFlows';
-import { buildRouteSegments, routeColumns, routeDatasetId } from './buildRoute';
+import { buildRouteLayer, buildRouteSegments, routeColumns, routeDatasetId, RouteLayerConfig } from './buildRoute';
 import { buildSymbolLayer, SymbolLayerConfig } from './buildSymbolLayer';
 import { buildTripLayer, TripLayerConfig, TripLayerMode } from './buildTripLayer';
 import { buildTrips } from './buildTrips';
@@ -55,6 +55,8 @@ export interface PanelDataset {
    * built a flow field that drew nothing and explained nothing.
    */
   symbolLayer?: SymbolLayerConfig;
+  /** A line layer to add on a route dataset (`routeQueries`): the query's rows joined in order. */
+  routeLayer?: RouteLayerConfig;
 }
 
 /**
@@ -144,12 +146,15 @@ export function framesToDatasets(
         ? toKeplerRows(resolved[index].frame, roles)
         : dataset.rows;
     const rows = buildRouteSegments(source);
+    const id = routeDatasetId(dataset.id);
+    const label = `${dataset.label} · route`;
     const route: PanelDataset = {
-      id: routeDatasetId(dataset.id),
-      label: `${dataset.label} · route`,
+      id,
+      label,
       rows,
       columns: rows.length === 0 ? routeColumns(toKeplerColumns(resolved[index].frame, roles)) : undefined,
       renames: dataset.renames,
+      routeLayer: buildRouteLayer(id, label),
     };
     return [dataset, route];
   });

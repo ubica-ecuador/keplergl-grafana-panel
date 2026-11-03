@@ -8,6 +8,7 @@ import { SaveMapConfigEditor } from './editors/SaveMapConfigEditor';
 import { MapConfigEditor } from './editors/MapConfigEditor';
 import { HoverLayerEditor } from './editors/HoverLayerEditor';
 import { FieldMappingEditor } from './editors/FieldMappingEditor';
+import { RouteQueriesEditor } from './editors/RouteQueriesEditor';
 import { VariableSyncEditor } from './editors/VariableSyncEditor';
 import { TimeVariableEditor } from './editors/TimeVariableEditor';
 import { AreaVariableEditor } from './editors/AreaVariableEditor';
@@ -150,6 +151,14 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
           { value: 'geojson', label: 'GeoJSON' },
         ],
       },
+    })
+    .addCustomEditor({
+      id: 'routeQueries',
+      path: 'routeQueries',
+      name: 'Draw as a route',
+      description: 'Queries whose rows are joined in order into one line.',
+      category: ['Map'],
+      editor: RouteQueriesEditor,
     })
     .addSelect({
       path: 'flowRenderMode',
