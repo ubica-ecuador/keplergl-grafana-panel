@@ -1,7 +1,9 @@
 import { PanelPlugin } from '@grafana/data';
+import { config } from '@grafana/runtime';
 
 import { KeplerPanelOptions } from './types';
 import { KeplerPanel } from './panel/KeplerPanel';
+import { fromGeomapPanel } from './geomap/fromGeomap';
 import { SaveMapConfigEditor } from './editors/SaveMapConfigEditor';
 import { MapConfigEditor } from './editors/MapConfigEditor';
 import { HoverLayerEditor } from './editors/HoverLayerEditor';
@@ -416,4 +418,9 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       category: ['Map configuration'],
       editor: MapConfigEditor,
     })
+);
+
+// "Change visualization" from Geomap keeps its layers, view and base map.
+plugin.setPanelChangeHandler((_panel, prevPluginId, prevOptions, prevFieldConfig) =>
+  fromGeomapPanel(prevPluginId, prevOptions, prevFieldConfig, config.theme2)
 );

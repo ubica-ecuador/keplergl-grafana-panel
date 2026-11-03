@@ -4,6 +4,14 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## Unreleased
+
+- **From Geomap in one click.** "Change visualization" from a Geomap panel to Kepler keeps its
+  markers and heatmap layers (colour and size by field, thresholds and colour schemes, labels),
+  the columns it was told, its view and its base map, with the legend on when Geomap showed one.
+  What has no counterpart yet (photos, routes, GeoJSON files, geohash or lookup locations) is
+  named in a notice right after the switch.
+
 ## 1.6.2 (2026-10-27)
 
 - **Base maps on Grafana Cloud.** OpenFreeMap, CARTO and the other base maps stayed black there

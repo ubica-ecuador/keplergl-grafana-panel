@@ -58,6 +58,7 @@ import {
   type SavedMapConfig,
   type SavedRemoteDataset,
 } from '../data/mapConfig';
+import { savedViewportOf } from './viewportGuard';
 import { viewportFromMapState, type MapStateLike } from './windViewport';
 import type { ViewportBounds } from './viewportSync';
 import { MULTI_SELECT_FILTER_TYPE, type LinkableFilter } from './mosaicLink';
@@ -177,8 +178,9 @@ export function loadDatasets(
     : null;
 
   // A saved config already positions the map; re-framing it around the data
-  // would throw away the viewport the user deliberately saved.
-  const centerMap = options.centerMap ?? !config;
+  // would throw away the viewport the user deliberately saved. One that holds
+  // no viewport, as a Geomap set to "Fit to data" converts to, is framed.
+  const centerMap = options.centerMap ?? (!config || savedViewportOf(savedConfig) === null);
 
   dispatch(
     wrapTo(

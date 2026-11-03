@@ -6,6 +6,7 @@ import { TimeSyncMode } from './panel/timeSync';
 import { TimeVariableMapping } from './panel/timeVariableSync';
 import { VariableMapping } from './panel/variableSync';
 import { ViewportVariables } from './panel/viewportSync';
+import type { GeomapImport } from './geomap/fromGeomap';
 
 /**
  * Base maps offered in the panel options.
@@ -44,6 +45,15 @@ export interface KeplerPanelOptions {
    * Written by the panel when the user asks for a save, and applied on load.
    */
   mapConfig?: SavedMapConfig | null;
+
+  /**
+   * A Geomap panel's layers, view and tooltip, waiting for the first rows.
+   *
+   * Written when the visualization is changed from Geomap (`fromGeomap.ts`) and
+   * replaced by `mapConfig` as soon as the queries answer, since a kepler layer
+   * names its columns and Geomap's usual location mode names none.
+   */
+  geomapImport?: GeomapImport | null;
 
   /**
    * Save request counter.
