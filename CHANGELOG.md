@@ -4,6 +4,18 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## Unreleased
+
+- **Data links on the map.** Grafana's data links, set under **Data links and actions** as on any
+  other panel, show in the popup of a clicked entity, filled from the row that was clicked. A link
+  marked **One click** is followed on the click itself, unless the click selects the entity for the
+  dashboard's variables; then it waits in the popup.
+- **Actions on the map.** Grafana's actions show as buttons in the same popup, for the people who can
+  edit the dashboard (as on Grafana's own panels; viewers and anonymous visitors see none). They ask
+  for the values they declare, ask for confirmation, then send their request.
+- The panel editor no longer lists unit, colour scheme, thresholds and the other field options the
+  map never used.
+
 ## 1.6.2 (2026-10-27)
 
 - **Base maps on Grafana Cloud.** OpenFreeMap, CARTO and the other base maps stayed black there

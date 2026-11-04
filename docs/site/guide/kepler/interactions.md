@@ -65,7 +65,9 @@ published by this panel, so a shared link's preset survives a stray click.
 A right-click counts as a click for both mappings: on a feature it publishes what a click would, and
 on empty map a Coordinates mapping publishes the place, and the menu above opens as well.
 
-See [Cross-filtering](../dashboard/cross-filtering) for both mappings.
+See [Cross-filtering](../dashboard/cross-filtering) for both mappings, and
+[Data links and actions](../dashboard/data-links-and-actions) for the links and buttons a clicked
+entity's popup can carry.
 
 ## Legend
 
