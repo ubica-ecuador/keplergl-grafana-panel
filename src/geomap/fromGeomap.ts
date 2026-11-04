@@ -7,8 +7,9 @@ import {
   type ThresholdsConfig,
 } from '@grafana/data';
 
-import type { BasemapChoice, KeplerPanelOptions } from '../types';
+import type { KeplerPanelOptions } from '../types';
 import { type GeomapRule, type RuleColors, rulesToColors } from './geojsonRules';
+import { ESRI_SERVICES, esriTileTemplate } from '../data/xyzTiles';
 
 /**
  * Converting a Geomap panel, step one: what can be read from its options alone.
@@ -66,6 +67,9 @@ export interface GeomapLayer {
     theme?: string;
     server?: string;
     url?: string;
+    /** XYZ only: the zoom range the server answers. */
+    minZoom?: number;
+    maxZoom?: number;
     /** Night / Day only: the moment shown, the sun, and the night's colour. */
     show?: string;
     sun?: boolean;
@@ -96,7 +100,7 @@ export interface ImportedColorField {
 }
 
 export interface ImportedLayer {
-  type: 'point' | 'heatmap' | 'route' | 'geojson' | 'dayNight';
+  type: 'point' | 'heatmap' | 'route' | 'geojson' | 'dayNight' | 'xyz';
   label: string;
   /** The query the layer reads; absent means the first one, as in Geomap. */
   refId?: string;
@@ -128,6 +132,10 @@ export interface ImportedLayer {
   ruleColors?: RuleColors;
   /** Night / Day only: whether the sun is drawn. */
   sun?: boolean;
+  /** XYZ only: the tile template and the zoom range it answers. */
+  tileUrl?: string;
+  minZoom?: number;
+  maxZoom?: number;
 }
 
 export interface GeomapImport {
@@ -191,8 +199,8 @@ export function fromGeomapPanel(
   }
   const geomap = prevOptions as GeomapOptions;
   const dropped: string[] = [];
-  const basemap = convertBasemap(geomap.basemap, dropped);
   const layers: ImportedLayer[] = [];
+  const basemap = convertBasemap(geomap.basemap, dropped, layers);
   let dayNight: Pick<KeplerPanelOptions, 'dayNight' | 'dayNightSun'> = {};
   for (const layer of geomap.layers ?? []) {
     if (layer.type === 'dayNight') {
@@ -244,16 +252,6 @@ function convertView(view: GeomapOptions['view']): GeomapImport['view'] {
   };
 }
 
-/** Geomap's Esri services, onto the closest base map the panel offers. */
-const ESRI_BASEMAPS: Record<string, BasemapChoice> = {
-  streets: 'openfreemap-liberty',
-  'world-imagery': 'grafana-satellite',
-  'world-physical': 'grafana-topographic-terrain',
-  topo: 'grafana-topographic-terrain',
-  'usa-topo': 'grafana-topographic-terrain',
-  ocean: 'openfreemap-positron',
-};
-
 /**
  * Geomap's base map, onto the panel's. CARTO is not carried over as CARTO: its
  * tiles now want a key, which a Geomap never had to give, so it becomes the
@@ -261,9 +259,21 @@ const ESRI_BASEMAPS: Record<string, BasemapChoice> = {
  */
 function convertBasemap(
   basemap: GeomapLayer | undefined,
-  dropped: string[]
+  dropped: string[],
+  tiles: ImportedLayer[]
 ): Pick<KeplerPanelOptions, 'basemap' | 'customBasemapUrl'> {
   const type = basemap?.type ?? 'default';
+  // A tiled base map that the panel offers no style for is drawn as tiles at
+  // the bottom of the map, over the theme's base map.
+  if (type === 'xyz' || (type === 'esri-xyz' && (basemap?.config?.server ?? 'streets') !== 'world-imagery')) {
+    const tile = basemap ? convertXyz(basemap, 'Base map') : null;
+    if (tile) {
+      tiles.push(tile);
+    } else {
+      dropped.push(`the ${type} base map, which names no tile server`);
+    }
+    return { basemap: 'auto' };
+  }
   switch (type) {
     case 'default':
       return { basemap: 'auto' };
@@ -273,14 +283,9 @@ function convertBasemap(
     }
     case 'osm-standard':
       return { basemap: 'openfreemap-liberty' };
-    case 'esri-xyz': {
-      const choice = ESRI_BASEMAPS[basemap?.config?.server ?? 'streets'];
-      if (choice) {
-        return { basemap: choice };
-      }
-      dropped.push('the custom Esri MapServer base map (the map uses the theme’s base map)');
-      return { basemap: 'auto' };
-    }
+    case 'esri-xyz':
+      // World Imagery: the panel's satellite base map is that imagery.
+      return { basemap: 'grafana-satellite' };
     case 'maplibre':
       return basemap?.config?.url ? { basemap: 'custom', customBasemapUrl: basemap.config.url } : { basemap: 'auto' };
     default:
@@ -298,6 +303,13 @@ function convertLayer(
   const label = layer.name || layer.type || 'Layer';
   if (layer.type === 'geojson') {
     return convertGeojson(layer, label, theme, dropped);
+  }
+  if (layer.type === 'xyz' || layer.type === 'esri-xyz') {
+    const tile = convertXyz(layer, label);
+    if (!tile) {
+      dropped.push(`the ${layer.type} layer “${label}”, which names no tile server`);
+    }
+    return tile;
   }
   if (layer.type !== 'markers' && layer.type !== 'heatmap' && layer.type !== 'route') {
     dropped.push(`the ${layer.type ?? 'unknown'} layer “${label}”`);
@@ -473,6 +485,34 @@ function rgba(color: string): { color: [number, number, number]; alpha: number }
     color.startsWith('#') ? color : colorManipulator.asHexString(color)
   );
   return { color: toRgb(color), alpha: values.length > 3 ? values[3] : 1 };
+}
+
+/**
+ * An XYZ or Esri tile layer, as the panel's `{z}/{x}/{y}` tiles. Esri's named
+ * services are its public MapServer caches; a custom one gives its own url.
+ */
+function convertXyz(layer: GeomapLayer, label: string): ImportedLayer | null {
+  const config = layer.config ?? {};
+  const server = config.server ?? 'streets';
+  const url =
+    layer.type === 'esri-xyz' && server !== 'custom'
+      ? ESRI_SERVICES[server] && esriTileTemplate(ESRI_SERVICES[server])
+      : config.url;
+  if (!url) {
+    return null;
+  }
+  return {
+    type: 'xyz',
+    label,
+    location: { mode: 'auto' },
+    color: [0, 0, 0],
+    opacity: layer.opacity ?? 1,
+    radius: DEFAULT_SIZE,
+    radiusRange: DEFAULT_SIZE_RANGE,
+    tileUrl: url,
+    ...(typeof config.minZoom === 'number' ? { minZoom: config.minZoom } : {}),
+    ...(typeof config.maxZoom === 'number' ? { maxZoom: config.maxZoom } : {}),
+  };
 }
 
 function convertLocation(location: GeomapLayer['location']): ImportedLocation | null {

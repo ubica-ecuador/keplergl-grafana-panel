@@ -3,6 +3,7 @@ import { type DataFrame, FieldType } from '@grafana/data';
 import { detectFields, type FieldRoleOverrides, resolveRoles } from '../data/detectFields';
 import { isEdgeFrame } from '../data/buildNetwork';
 import { dayNightDatasets } from '../data/dayNight';
+import { XYZ_TILE_TYPE, xyzSavedDataset } from '../data/xyzTiles';
 import { ROUTE_COLUMNS, routeDatasetId } from '../data/buildRoute';
 import { datasetId } from '../data/framesToDatasets';
 import type { SavedMapConfig, SavedRemoteDataset } from '../data/mapConfig';
@@ -22,6 +23,9 @@ export interface GeomapConversion {
   /** The import's own notes and what this step could not place. */
   dropped: string[];
 }
+
+/** Layers drawn from no query: a map of only these converts without waiting for rows. */
+const ROWLESS = new Set(['geojson', 'dayNight', 'xyz']);
 
 /** The kepler config version the panel saves with. */
 const KEPLER_CONFIG_VERSION = 'v1';
@@ -92,7 +96,7 @@ export function geomapToKepler(
   fieldMappings: Record<string, FieldRoleOverrides> = {}
 ): GeomapConversion | null {
   // A map of files alone, a GeoJSON over the base map, has no rows to wait for.
-  if (!frames.length && imported.layers.some((layer) => layer.type !== 'geojson' && layer.type !== 'dayNight')) {
+  if (!frames.length && imported.layers.some((layer) => !ROWLESS.has(layer.type))) {
     return null;
   }
   const dropped = [...imported.dropped];
@@ -122,6 +126,23 @@ export function geomapToKepler(
             : fixed
         );
       }
+      return;
+    }
+    if (layer.type === 'xyz') {
+      const dataId = `geomap-xyz-${index}`;
+      files.push(
+        xyzSavedDataset(dataId, layer.label, {
+          url: layer.tileUrl!,
+          ...(layer.minZoom !== undefined ? { minZoom: layer.minZoom } : {}),
+          ...(layer.maxZoom !== undefined ? { maxZoom: layer.maxZoom } : {}),
+        })
+      );
+      layers.push({
+        id: `geomap-${index}`,
+        type: XYZ_TILE_TYPE,
+        config: { dataId, label: layer.label, isVisible: true, visConfig: { opacity: layer.opacity } },
+        visualChannels: {},
+      });
       return;
     }
     if (layer.type === 'geojson') {

@@ -41,6 +41,8 @@ export const REMOTE_DATASET_TYPES = [
   'tile-3d',
   'bitmap',
   'externally-hosted',
+  // The panel's own `{z}/{x}/{y}` tiles (`xyzTiles.ts`): a template, no rows.
+  'xyz-tiles',
 ];
 
 /** The map's name and description, as kepler's `info` carries them. */

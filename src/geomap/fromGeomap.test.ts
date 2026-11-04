@@ -155,15 +155,14 @@ describe('fromGeomapPanel', () => {
   it('says what it could not carry over', () => {
     const result = convert({
       ...markersPanel,
-      basemap: { type: 'xyz', config: { url: 'https://tiles.example.org/{z}/{x}/{y}.png' } },
       layers: [
         ...markersPanel.layers!,
         { type: 'photos', name: 'Pictures' },
         { type: 'markers', name: 'By hash', location: { mode: 'geohash', geohash: 'gh' } },
+        { type: 'xyz', name: 'Nothing', config: {} },
       ],
     });
 
-    expect(result.basemap).toBe('auto');
     expect(result.geomapImport!.layers).toHaveLength(1);
     expect(result.geomapImport!.dropped).toHaveLength(3);
   });
@@ -174,5 +173,29 @@ describe('fromGeomapPanel', () => {
 
   it('turns the tooltip off when Geomap had none', () => {
     expect(convert({ ...markersPanel, tooltip: { mode: 'none' } }).geomapImport!.tooltip).toBe(false);
+  });
+
+  it('draws a tiled base map the panel has no style for as tiles under every layer', () => {
+    const result = convert({
+      ...markersPanel,
+      basemap: { type: 'xyz', config: { url: 'https://tiles.example.org/{z}/{x}/{y}.png', maxZoom: 17 } },
+    });
+
+    expect(result.basemap).toBe('auto');
+    expect(result.geomapImport!.layers.map((l) => l.type)).toEqual(['xyz', 'point']);
+    expect(result.geomapImport!.layers[0]).toMatchObject({
+      tileUrl: 'https://tiles.example.org/{z}/{x}/{y}.png',
+      maxZoom: 17,
+    });
+  });
+
+  it('reads an Esri service as its public tile cache', () => {
+    const result = convert({
+      ...markersPanel,
+      layers: [{ type: 'esri-xyz', name: 'Ocean', config: { server: 'ocean' } }],
+    });
+    expect(result.geomapImport!.layers[0].tileUrl).toBe(
+      'https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}'
+    );
   });
 });
