@@ -89,8 +89,8 @@ operations — joins the turf family already bundled below the table's line. The
 on 2026-11-04 moved kepler's row again; its experimental Zarr layer brought in `zarrita`,
 `@zarrita/storage`, `numcodecs`, `reference-spec-reader`, `unzipit` and the
 `@developmentseed/*` raster packages (deck.gl-raster, deck.gl-zarr, geozarr, affine, morecantile,
-proj, raster-reproject), all MIT, read from their package.json `license` fields; the plugin turns
-that layer off (`enableZarrLayer: false`) but kepler imports it statically.
+proj, raster-reproject), all MIT, read from their package.json `license` fields. The plugin keeps
+that layer on (Add Data → Tileset → Zarr), so they are bundled.
 
 `mapbox-gl` is the only package name in this table with two unrelated copies historically in the
 dependency tree: a top-level copy (3.34.2 as of the kepler.gl 3.3.0-alpha.19 bump) under Mapbox's
