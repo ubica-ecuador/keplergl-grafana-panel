@@ -33,6 +33,22 @@ mask over the whole dataset, so you can always widen it again. See
 
 The time widget's settings choose a 12- or 24-hour clock (**Time Format**) beside the time zone.
 
+## A numeric filter as a timeline
+
+A range filter's card has a clock button, **Time Playback**, that opens the filter as a timeline at
+the bottom of the map, like the time filter's: a histogram of the column in bins (_Count of Rows by
+mag (0.1 bins)_ on a map of earthquakes), a brush, play, speed and the playback window menu. The
+widget's settings set the bin size, and a Y axis can plot a column's average or another aggregate
+instead of the count. Playing it sweeps the window across magnitudes, depths or prices the way the
+time filter sweeps across time.
+
+Only one filter is a timeline at a time: opening one sends any other, the time filter included, back
+to the side panel. It still filters there, and [time range sync](../dashboard/time-range-sync) still
+moves it; only its bar is gone. The panel's time features (time range sync, peer time sync, the time
+window variables) read the time filter only, never a numeric timeline. A range **Filter** mapping
+on the same column under **Cross-filtering** reads its window as it reads any range filter's. See
+[Time playback](./time-playback).
+
 ## Filter out
 
 A filter's **Filter out** switch turns it inside out: the rows that match are hidden and the rest
@@ -40,7 +56,8 @@ stay. Select the daytime hours and switch it on to keep the night; pick a catego
 but it. It works on range, select, time and polygon filters.
 
 One cost to know on a large dataset: kepler runs an inverted range or time filter on the CPU rather
-than the GPU, so dragging one is slower than dragging the same filter the right way out.
+than the GPU, so dragging one is slower than dragging the same filter the right way out. A numeric
+timeline set to **Step by Interval** runs on the CPU too.
 
 ## One filter across datasets
 
@@ -74,5 +91,5 @@ clearly returns — check the filter panel before checking the query.
 
 **Upstream:** [Filters](https://docs.kepler.gl/docs/user-guides/e-filters)
 
-Written against **kepler.gl 3.3.0-alpha.17**. See
+Written against **kepler.gl 3.3.0-alpha.19**. See
 [Upstream documentation](../../reference/upstream-docs).

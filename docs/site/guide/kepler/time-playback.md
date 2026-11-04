@@ -5,7 +5,7 @@ is something to animate.
 
 ## What creates it
 
-Three different things, and they behave differently:
+Four different things, and they behave differently:
 
 **A time filter.** Any dataset with a time column gets one, with a histogram and a brush. Playing it
 slides the window across the data.
@@ -18,6 +18,11 @@ the same way — see [Wind and other velocity fields](../data/velocity-fields).
 layer whose service publishes its own dates — puts those dates on the widget, and playing it walks
 the pictures. Nothing is re-queried as it does: the catalogue is already in the browser, and a WMS
 costs one image per date. See [Imagery over time](../data/imagery-over-time).
+
+**A numeric filter.** A range filter opened as a timeline, with the clock button on its card, plays
+its window across the column's values: magnitudes, depths, prices. Only one filter is on the bar at
+a time, so opening it puts the time filter's bar away. See
+[Filters](./filters#a-numeric-filter-as-a-timeline).
 
 A map can have more than one. They are separate clocks, which is why
 [peer time sync](../dashboard/peer-time-sync) carries them as separate fields.
@@ -48,6 +53,8 @@ choice matters most here — playback is where the cost of the wrong mode shows 
 _Both directions_ is the one to avoid for animation: 92 queries in ten seconds was the measurement
 on a two-panel dashboard.
 
+These modes follow the time filter, never a numeric timeline.
+
 In _Slider writes variables_ mode, **Update variables while playing** decides whether the window is
 published during playback or only when it stops. Off by default, because each write costs the
 animation frames. See [Time window variables](../dashboard/time-window-variables).
@@ -68,6 +75,9 @@ by Interval**. The window is one bar of the histogram wide and jumps a bar at a 
 the brush snaps to a bar. For data that comes in steps — a scene a day, a count an hour — it shows
 each step whole, where a sliding window spends most of its frames straddling two.
 
+A numeric timeline has the same mode, one bin at a time. kepler then filters that column on the CPU
+rather than the GPU, so that a value on a bin's edge falls in one bin only.
+
 ## Data outside the window
 
 Kepler's animation shows the window; it does not remove the rest of the data. Widening the brush
@@ -79,5 +89,5 @@ the rows are genuinely gone. That is the ratchet described in
 
 **Upstream:** [Time playback](https://docs.kepler.gl/docs/user-guides/h-playback)
 
-Written against **kepler.gl 3.3.0-alpha.17**. See
+Written against **kepler.gl 3.3.0-alpha.19**. See
 [Upstream documentation](../../reference/upstream-docs).

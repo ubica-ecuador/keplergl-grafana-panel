@@ -11,7 +11,8 @@ the toolbar: its stock map control never mounts it, and nothing in the core moun
 panel. Both are wired by the **host application**, which is what kepler's own demo app does.
 
 This plugin is that host, so it replaces kepler's map control with one that adds the effects button
-and hosts the manager beside the toolbar — and does the same for [charts](./charts). See
+and hosts the manager beside the toolbar — and does the same for [charts](./charts), and for the
+list of map notes behind **Aa** ([Annotations](../dashboard/annotations)). See
 [Differences from stock kepler.gl](../../reference/differences-from-kepler).
 
 Two things from the demo app are deliberately _not_ included: the SQL data explorer and the AI
@@ -51,5 +52,5 @@ open with its lighting already set. See [Map configuration](../map/map-configura
 **Upstream:** kepler documents effects in its repository rather than on the docs site —
 [Effects guide](https://github.com/keplergl/kepler.gl/blob/master/docs/user-guides/effects.md).
 
-Written against **kepler.gl 3.3.0-alpha.17**. See
+Written against **kepler.gl 3.3.0-alpha.19**. See
 [Upstream documentation](../../reference/upstream-docs).

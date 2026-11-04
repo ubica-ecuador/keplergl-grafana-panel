@@ -37,9 +37,21 @@ nothing of Grafana's roles. What it writes is only what the query already sent t
 which Grafana's own **Inspect → Data** offers too. So the way to keep data from a dashboard's
 readers is the query: leave out the rows and columns the map does not need.
 
+## Export Map
+
+The same menu has **Export Image**, **Export Video** and **Export Map**. Export Map writes the whole
+map, its data included, as a JSON file or as a single HTML page. The JSON is the
+`{ datasets, config, info }` shape that **Import configuration** reads; an import keeps the
+configuration and drops the rows. See [Map configuration](../map/map-configuration#importing).
+
+The HTML page is not drawn by this plugin. It loads kepler.gl from unpkg.com when it is opened, so
+it needs that host, and it knows none of the layer types the plugin adds: symbols, markers, photos,
+Zarr tiles and the others. Its **Map details** set the name, link, icon and name colour that the
+page shows as its logo; the icon and the colour are new in kepler 3.3.0-alpha.19.
+
 ---
 
 **Upstream:** [Save and export](https://docs.kepler.gl/docs/user-guides/k-save-and-export)
 
-Written against **kepler.gl 3.3.0-alpha.17**. See
+Written against **kepler.gl 3.3.0-alpha.19**. See
 [Upstream documentation](../../reference/upstream-docs).

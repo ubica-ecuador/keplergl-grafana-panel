@@ -1,8 +1,8 @@
 # Map settings
 
 kepler's map controls sit at the top right of the map: 3D, split view, legend, layer visibility, and
-— added by this plugin — effects. They work as documented upstream; what changes in a dashboard is
-the space you have to spend on them.
+— added by this plugin — charts and effects. They work as documented upstream; what changes in a
+dashboard is the space you have to spend on them.
 
 ## A panel is not a full window
 
@@ -37,16 +37,23 @@ Shows the colour and size encodings for the visible layers. It is part of the sa
 so a provisioned dashboard can open with it already on. Which layers it lists is chosen under
 **Interactions → Legend**, where a layer can be left out of the legend and stay on the map — see
 [Interactions](./interactions#legend). It can be resized from its top edge as well as its bottom,
-so one sitting in a bottom corner grows without being moved first.
+so one sitting in a bottom corner grows without being moved first, and it moves by its title.
 
 On a small tile it covers a meaningful share of the map. A stat panel or a text panel beside the map
 is often a better legend than the legend.
+
+## Bookmarks
+
+Switched on under **Interactions → Bookmarks**, the list of saved views sits beside the map control
+and takes room as the legend does; it moves and resizes the same way. See
+[Interactions](./interactions#bookmarks).
 
 ## Split maps
 
 Two synchronised views of the same data with different layers visible in each. Genuinely useful for
 before/after comparisons, and expensive: a split map is **two sets of WebGL contexts**, which brings
-the budget below into play sooner.
+the budget below into play sooner. Bookmarks and the camera animation are not available on a split
+map, nor on the globe.
 
 ## The WebGL context budget
 
@@ -71,5 +78,5 @@ with more layers each.
 **Upstream:** [Map settings](https://docs.kepler.gl/docs/user-guides/m-map-settings) ·
 [Map styles](https://docs.kepler.gl/docs/user-guides/f-map-styles)
 
-Written against **kepler.gl 3.3.0-alpha.17**. See
+Written against **kepler.gl 3.3.0-alpha.19**. See
 [Upstream documentation](../../reference/upstream-docs).
