@@ -59,6 +59,7 @@ describe('geomapToKepler', () => {
     expect(layer.visualChannels.sizeField).toEqual({ name: 'magnitude', type: 'real' });
     expect(layer.config.textLabel[0].field).toEqual({ name: 'name', type: 'string' });
     expect(result.mapConfig.config.mapState).toMatchObject({ latitude: -1.5, longitude: -78.5, zoom: 6 });
+    expect(result.routeQueries).toBeUndefined();
   });
 
   it('maps the columns Geomap was told, on the query it was told', () => {

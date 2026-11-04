@@ -15,8 +15,8 @@ import type { GeomapImport, ImportedColorField, ImportedLayer } from './fromGeom
 export interface GeomapConversion {
   mapConfig: SavedMapConfig;
   fieldMappings: Record<string, FieldRoleOverrides>;
-  /** The queries a route layer is drawn on, for the panel's `routeQueries`. */
-  routeQueries: string[];
+  /** The queries a route layer is drawn on, for the panel's `routeQueries`; absent when none, as the editor stores it. */
+  routeQueries?: string[];
   /** The import's own notes and what this step could not place. */
   dropped: string[];
 }
@@ -143,7 +143,7 @@ export function geomapToKepler(
   return {
     mapConfig: { version: KEPLER_CONFIG_VERSION, config },
     fieldMappings: mappings,
-    routeQueries: [...routes],
+    routeQueries: routes.size ? [...routes] : undefined,
     dropped,
   };
 }
