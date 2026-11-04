@@ -1,17 +1,19 @@
 # Layers configured with a URL
 
-kepler.gl 3.3.0-alpha.17 registers twenty-two layer types. Thirteen are in [the gallery](./), and
+kepler.gl 3.3.0-alpha.19 registers twenty-three layer types. Thirteen are in [the gallery](./), and
 three more the panel does not build from a column: `a5` and `geohash`, kepler's other two grid-index
 layers, and `flowField`, which kepler would create for a grid of `u`/`v` columns and the panel
-replaces with its own Streamlines layer. Those are added by hand like the ones below. The other six are
+replaces with its own Streamlines layer. Those are added by hand like the ones below. The other seven are
 configured with a **URL** rather than with data, so a Grafana query cannot describe one the way it
 describes a table of points.
 
-Two of the six are exceptions now, and they are covered elsewhere: a query that returns a link to a
-cloud-optimised GeoTIFF produces a `rasterTile` layer, and one that names a WMS service produces a
-`wms` layer. See [Satellite imagery and other rasters](../guide/data/rasters) and
-[WMS services](../guide/data/wms). This page is about the four that are still added by hand — and
-about adding any of the six by hand, which stays possible whatever your query does.
+Three of the seven are exceptions now, and they are covered elsewhere: a query that returns a link
+to a cloud-optimised GeoTIFF produces a `rasterTile` layer, one that names a WMS service produces a
+`wms` layer, and one that names a Zarr store produces the panel's own `zarrTiles` layer, drawn
+through a tile server rather than by kepler's `zarr`. See
+[Satellite imagery and other rasters](../guide/data/rasters), [WMS services](../guide/data/wms) and
+[Zarr stores](../guide/data/zarr). This page is about the four that are still added by hand — and
+about adding any of the seven by hand, which stays possible whatever your query does.
 
 | Layer        | What it takes                                                        | deck.gl layer            |
 | ------------ | -------------------------------------------------------------------- | ------------------------ |
@@ -21,6 +23,7 @@ about adding any of the six by hand, which stays possible whatever your query do
 | `tile3d`     | a 3D Tiles / Cesium ion endpoint                                     | `Tile3DLayer`            |
 | `bitmap`     | one image plus its corner coordinates                                | `BitmapLayer`            |
 | `3D`         | a glTF model URL                                                     | `ScenegraphLayer`        |
+| `zarr`       | a Zarr store URL, read in the browser — **or a query**, as `zarrTiles` | `deck.gl-zarr`         |
 
 ## Why the other four are out of scope
 

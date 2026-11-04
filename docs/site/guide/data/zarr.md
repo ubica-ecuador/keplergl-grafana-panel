@@ -38,8 +38,10 @@ ramp, so what reaches the browser is an ordinary PNG.
 
 That division of labour is what makes this work at all:
 
-- **Compression.** Practically every Zarr in the wild is written by xarray with `blosc`. Nothing in
-  the browser or in DuckDB's raster extension reads it; `zarr-python`, which TiTiler uses, does.
+- **Compression.** Practically every Zarr in the wild is written by xarray with `blosc`. DuckDB's
+  raster extension does not read it; `zarr-python`, which TiTiler uses, does. (kepler's own Zarr
+  layer reads it in the browser too — see [below](#kepler-s-own-zarr-layer-in-the-browser) for what
+  that costs.)
 - **CORS.** Many public stores send no CORS headers whatsoever, which would put them out of a
   browser's reach entirely. It does not matter here: the one fetching chunks is the server.
 
@@ -47,7 +49,38 @@ TiTiler 2.2.1 ships the `/zarr` router already, so a deployment that already ren
 nothing new — with one exception, below.
 
 What the query produces is a dataset with no rows — `grafana-<refId>-zarr` — holding the store, the
-variable and the colouring, alongside the ordinary table dataset your rows make.
+variable and the colouring, alongside the ordinary table dataset your rows make. It is drawn by a
+layer of type `zarrTiles`, **Zarr (TiTiler)** in the layer list.
+
+::: warning Saved maps from before the rename
+Until kepler.gl 3.3.0-alpha.19 added a Zarr layer of its own under the type `zarr`, this panel's layer
+was called `zarr` too. A saved map configuration that still says `"type": "zarr"` for the layer on a
+`grafana-<refId>-zarr` dataset has to say `"type": "zarrTiles"`: edit it in the dashboard JSON, or
+delete the layer and let the panel add it again.
+:::
+
+## kepler's own Zarr layer, in the browser
+
+kepler.gl 3.3.0-alpha.19 brought an experimental Zarr layer that reads the store **in the browser**,
+with no tile server: **Add Data → Tileset → Zarr**, then a store URL. It reads GeoZarr, CF and GDAL
+metadata and both pyramid layouts, lets you pick the variable and the colour range, and animates any
+dimension with kepler's own time slider. The panel turns it on. It is a different layer from this
+page's: it is not fed by a query, and it does not follow the dashboard's clock.
+
+What it costs is the store's own chunk layout, downloaded as is. Measured on one global view:
+
+| Store                                            | kepler's layer, in the browser                 | This panel's layer, through TiTiler  |
+| ------------------------------------------------ | ---------------------------------------------- | ------------------------------------ |
+| CarbonPlan monthly climate (2 bands × 12 months) | 6–7 s, ~50 requests, **24 MB** for each month  | 16 tiles, **~160 KB** for each month |
+| NOAA GFS forecast, 0.25° (dynamical.org)         | 76 MB in a minute, and nothing drawn yet       | drawn                                |
+
+A chunk of the CarbonPlan store holds every band and every month, so one month brings all
+twenty-four; going back to a month downloads it again. It also needs a store that sends CORS headers,
+and it does not read Icechunk repositories.
+
+So: kepler's layer for a small store with CORS, added by hand, and on a Grafana with no tile server
+(Grafana Cloud, for one). This page's layer for anything large, for a store without CORS, for
+Icechunk, and for a picture that follows the dashboard.
 
 ## Icechunk repositories
 

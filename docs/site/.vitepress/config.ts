@@ -16,7 +16,7 @@ import { PLUS_SIDEBAR } from './plusSidebar';
  * the sentence that sent them there was true of.
  */
 export const VERSIONS = {
-  kepler: '3.3.0-alpha.17',
+  kepler: '3.3.0-alpha.19',
   deck: '9.3.11',
   maplibre: '6.11.1',
 };
@@ -173,6 +173,7 @@ export default defineConfig({
             { text: 'Temporal cursor', link: '/guide/dashboard/temporal-cursor' },
             { text: 'Cross-filtering', link: '/guide/dashboard/cross-filtering' },
             { text: 'Data links and actions', link: '/guide/dashboard/data-links-and-actions' },
+            { text: 'Annotations', link: '/guide/dashboard/annotations' },
             { text: 'Publishing viewport and areas', link: '/guide/dashboard/publishing' },
             { text: 'Explorer results on the map', link: '/guide/dashboard/explorer-results' },
             { text: 'Grafana Assistant', link: '/guide/dashboard/grafana-assistant' },

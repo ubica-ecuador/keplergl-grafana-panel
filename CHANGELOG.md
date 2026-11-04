@@ -6,6 +6,24 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Grafana annotations on the map.** The dashboard's annotations that carry a place — a
+  `geo:<lng>,<lat>` tag, or a callout saved in their data — are drawn as notes on the map while their
+  time is in the map's window. A new option under *Map*, *Grafana annotations*, turns this off, or to
+  **Show and save**: a note made on the map with right-click → *Add Annotation* is then saved as a
+  Grafana annotation over the map's window, which every time chart of the dashboard draws, and
+  editing, restyling or deleting it on the map changes the annotation. Saving needs the viewer's own
+  annotation permissions. See *Annotations* in the guide.
+- **kepler's annotation list.** The **Aa** button opens the list of the map's notes, with their kind
+  (text, point, arrow, circle, ruler), line, colour and text placement, duplicate and delete. A click
+  on the bare map, or Escape, puts down the note being edited.
+- **kepler.gl 3.3.0-alpha.19**, from 3.3.0-alpha.17: the annotation list and ruler, camera bookmarks
+  and tours, timeline charts for numeric filters, and many fixes to filters, exports and Arrow data.
+- **kepler's own Zarr layer**, which reads a store in the browser, is on: *Add Data → Tileset → Zarr*.
+  Fine for a small store that sends CORS headers; a large one is far faster through the panel's own
+  layer. See *Zarr stores* in the guide for the comparison.
+- **Breaking: the panel's Zarr layer is now `zarrTiles`** (*Zarr (TiTiler)* in the layer list),
+  because kepler's new layer took the type `zarr`. A saved map whose layer on a
+  `grafana-<refId>-zarr` dataset still says `"type": "zarr"` must say `"type": "zarrTiles"`.
 - **Data links on the map.** Grafana's data links, set under **Data links and actions** as on any
   other panel, show in the popup of a clicked entity, filled from the row that was clicked. A link
   marked **One click** is followed on the click itself, unless the click selects the entity for the

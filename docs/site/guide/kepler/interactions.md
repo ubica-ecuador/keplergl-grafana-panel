@@ -46,7 +46,9 @@ If you have no Coordinates mapping, the switch behaves exactly as it does in sto
 
 With the coordinate display on, a right-click on empty map opens a small menu at the pointer with
 **Copy coordinates**, which puts `lat, lng` on the clipboard. The same menu offers **Add
-Annotation**, whether or not the coordinate display is on, to anyone who can see the map.
+Annotation**, whether or not the coordinate display is on, to anyone who can see the map. Map notes,
+the **Aa** annotation list and how they meet Grafana's own annotations are in
+[Annotations](../dashboard/annotations).
 
 ## Clicks, and who gets them
 
