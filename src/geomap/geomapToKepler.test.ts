@@ -298,4 +298,23 @@ describe('geomapToKepler', () => {
     expect(layers[1].config.color).toEqual([0, 0, 0]);
     expect(layers[1].config.visConfig.opacity).toBeCloseTo(0.5, 2);
   });
+
+  it('draws Geomap’s photos from the first text column when none is named, framed as configured', () => {
+    const options = fromGeomapPanel(
+      'geomap',
+      { layers: [{ type: 'photos', name: 'Pictures', config: { kind: 'circle', radius: 15, border: 3 } }] },
+      { defaults: {}, overrides: [] },
+      theme
+    );
+    const [layer] = (geomapToKepler(options.geomapImport!, [stations])!.mapConfig.config.visState as { layers: any[] })
+      .layers;
+
+    expect(layer).toMatchObject({
+      type: 'photos',
+      config: {
+        dataId: 'grafana-A',
+        visConfig: { photoField: 'name', photoSize: 30, photoKind: 'circle', photoBorder: 3 },
+      },
+    });
+  });
 });

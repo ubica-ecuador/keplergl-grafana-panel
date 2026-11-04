@@ -67,6 +67,10 @@ export interface GeomapLayer {
     theme?: string;
     server?: string;
     url?: string;
+    /** Photos only: the picture column, its shape, radius, frame width and colour. */
+    kind?: string;
+    border?: number;
+    color?: string;
     /** XYZ only: the zoom range the server answers. */
     minZoom?: number;
     maxZoom?: number;
@@ -100,7 +104,7 @@ export interface ImportedColorField {
 }
 
 export interface ImportedLayer {
-  type: 'point' | 'heatmap' | 'route' | 'geojson' | 'dayNight' | 'xyz';
+  type: 'point' | 'heatmap' | 'route' | 'geojson' | 'dayNight' | 'xyz' | 'photos';
   label: string;
   /** The query the layer reads; absent means the first one, as in Geomap. */
   refId?: string;
@@ -132,6 +136,10 @@ export interface ImportedLayer {
   ruleColors?: RuleColors;
   /** Night / Day only: whether the sun is drawn. */
   sun?: boolean;
+  /** Photos only: the column of picture addresses (Geomap's first text column when absent), the frame's shape and width. */
+  photoField?: string;
+  photoKind?: 'square' | 'circle';
+  photoBorder?: number;
   /** XYZ only: the tile template and the zoom range it answers. */
   tileUrl?: string;
   minZoom?: number;
@@ -311,7 +319,7 @@ function convertLayer(
     }
     return tile;
   }
-  if (layer.type !== 'markers' && layer.type !== 'heatmap' && layer.type !== 'route') {
+  if (layer.type !== 'markers' && layer.type !== 'heatmap' && layer.type !== 'route' && layer.type !== 'photos') {
     dropped.push(`the ${layer.type ?? 'unknown'} layer “${label}”`);
     return null;
   }
@@ -343,6 +351,26 @@ function convertLayer(
       heatRadius: (layer.config?.radius ?? DEFAULT_HEAT_RADIUS) + (layer.config?.blur ?? DEFAULT_HEAT_BLUR),
       colorField: { name: weightField ?? '', colors, scale: 'quantize' },
       ...(weightField ? { weightField } : {}),
+    };
+  }
+
+  if (layer.type === 'photos') {
+    const config = layer.config ?? {};
+    const kind = config.kind ?? 'square';
+    if (kind !== 'square' && kind !== 'circle') {
+      dropped.push(`the ${kind} shape of “${label}” (drawn square)`);
+    }
+    return {
+      ...base,
+      type: 'photos',
+      opacity: layer.opacity ?? 1,
+      // Geomap's radius is half the picture's side.
+      radius: 2 * (config.radius ?? DEFAULT_PHOTO_RADIUS),
+      radiusRange: DEFAULT_SIZE_RANGE,
+      color: toRgb(theme.visualization.getColorByName(config.color ?? DEFAULT_PHOTO_FRAME)),
+      ...(config.src ? { photoField: config.src } : {}),
+      photoKind: kind === 'circle' ? 'circle' : 'square',
+      photoBorder: config.border ?? 2,
     };
   }
 
@@ -384,6 +412,10 @@ function convertLayer(
       : {}),
   };
 }
+
+/** Geomap's photo defaults. */
+const DEFAULT_PHOTO_RADIUS = 20;
+const DEFAULT_PHOTO_FRAME = 'rgb(200, 200, 200)';
 
 /** Geomap's default GeoJSON file, Grafana's own world countries. */
 const DEFAULT_GEOJSON_SRC = 'public/maps/countries.geojson';

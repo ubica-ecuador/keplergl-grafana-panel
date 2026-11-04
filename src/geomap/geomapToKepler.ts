@@ -4,6 +4,7 @@ import { detectFields, type FieldRoleOverrides, resolveRoles } from '../data/det
 import { isEdgeFrame } from '../data/buildNetwork';
 import { dayNightDatasets } from '../data/dayNight';
 import { XYZ_TILE_TYPE, xyzSavedDataset } from '../data/xyzTiles';
+import { PHOTOS_TYPE } from '../panel/photosLayer';
 import { ROUTE_COLUMNS, routeDatasetId } from '../data/buildRoute';
 import { datasetId } from '../data/framesToDatasets';
 import type { SavedMapConfig, SavedRemoteDataset } from '../data/mapConfig';
@@ -193,6 +194,10 @@ export function geomapToKepler(
     if (placed && layer.location.mode === 'coords') {
       mappings[refId] = overrides;
     }
+    // Geomap's photos read the first text column when none is named.
+    if (layer.type === 'photos' && !layer.photoField) {
+      layer = { ...layer, photoField: frame.fields.find((f) => f.type === FieldType.string)?.name };
+    }
     const column = (name: string | undefined) => {
       const field = name ? frame.fields.find((f) => f.name === name) : undefined;
       return field ? { name: keplerColumnName(roles, field.name), type: keplerType(field.type) } : undefined;
@@ -247,6 +252,10 @@ function toKeplerLayer(
 
   if (layer.type === 'route') {
     return routeLayer(layer, id, dataId, column);
+  }
+
+  if (layer.type === 'photos') {
+    return photosLayer(layer, id, dataId, column);
   }
 
   if (layer.type === 'heatmap') {
@@ -464,5 +473,29 @@ function labelPlacement([x, y]: [number, number]): { anchor: string; alignment: 
   return {
     anchor: x > 0 ? 'start' : x < 0 ? 'end' : 'middle',
     alignment: y < 0 ? 'top' : y > 0 ? 'bottom' : 'center',
+  };
+}
+
+/** Geomap's Photos as the panel's photos layer (`photosLayer.ts`), framed in the layer's colour. */
+function photosLayer(layer: ImportedLayer, id: string, dataId: string, column: ColumnOf): Record<string, unknown> {
+  return {
+    id,
+    type: PHOTOS_TYPE,
+    config: {
+      dataId,
+      label: layer.label,
+      color: layer.color,
+      columnMode: 'points',
+      columns: { lat: KEPLER_COLUMN.latitude, lng: KEPLER_COLUMN.longitude },
+      isVisible: true,
+      visConfig: {
+        opacity: layer.opacity,
+        photoField: column(layer.photoField)?.name,
+        photoSize: layer.radius,
+        photoKind: layer.photoKind ?? 'square',
+        photoBorder: layer.photoBorder ?? 2,
+      },
+    },
+    visualChannels: {},
   };
 }
