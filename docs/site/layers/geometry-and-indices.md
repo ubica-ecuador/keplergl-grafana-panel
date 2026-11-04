@@ -1,7 +1,7 @@
 # Geometry and spatial indices
 
-Three layers whose shape comes from the data rather than from a coordinate pair: an explicit
-geometry, and two global grids addressed by identifier.
+Five layers whose shape comes from the data rather than from a coordinate pair: an explicit
+geometry, and four global grids addressed by identifier.
 
 ## geojson
 
@@ -74,6 +74,73 @@ the column to `s2` and it works without one.
 
 Backed by deck.gl's `S2Layer`.
 
+## geohash
+
+![The GeoHash layer](/img/layer-geohash.jpg)
+
+```sql
+SELECT geohash, count(*) AS readings
+FROM readings
+GROUP BY geohash;
+```
+
+The rectangles of the geohash grid. Each cell is drawn from its identifier, and the identifier's
+length is its precision: the cells above have six characters, about 1.2 by 0.6 km.
+
+**Built automatically, twice.** kepler creates a GeoHash layer for a column named `geohash`,
+`geo_hash` or `geohash_id`. The panel reads a column named `geohash` as well, places each row at the
+centre of its cell and lets kepler draw those as a Point layer, when the query has no latitude and
+longitude of its own (see [Places by geohash or by name](../guide/data/places-by-name#geohash)). So
+a `geohash` column gives you both, cells and dots, one above the other. Hide or delete the one you
+do not want and [save the map](../guide/map/map-configuration).
+
+The two do not listen to the same names:
+
+| Column                                           | Cells (kepler's layer) | Dots (the panel's placing) |
+| ------------------------------------------------ | ---------------------- | -------------------------- |
+| `geohash`                                        | yes                    | yes                        |
+| `geo_hash`, `geohash_id`                         | yes                    | no                         |
+| any other, chosen in **Field mapping → Geohash** | no                     | yes                        |
+
+A value must be text of 1 to 12 characters from the geohash alphabet; case does not matter. Rows
+whose value is not a geohash are left out of the layer.
+
+In the layer's panel: fill colour by a column, outline colour and width by a column, and height by
+a column with the 3D control on.
+
+Backed by deck.gl's `GeohashLayer`.
+
+## a5
+
+![The A5 layer](/img/layer-a5.jpg)
+
+```sql
+-- DuckDB, with the a5 extension loaded
+SELECT a5_u64_to_hex(a5_lonlat_to_cell(lon, lat, 14)) AS a5, count(*) AS readings
+FROM readings
+GROUP BY 1;
+```
+
+A5 is a global grid of pentagons. Like H3 and S2, the cell identifier is the geometry and carries
+its own resolution, 0 to 30.
+
+**Built automatically** by kepler for a column named `a5`, `a5_token` or `a5_id`. There is no A5
+role in Field mapping: alias the column to one of those names, or add the layer by hand from
+**Add Layer → A5** and point its column at yours.
+
+::: warning Send the cell as hexadecimal text
+An A5 cell is a 64-bit integer, and a JavaScript number holds integers exactly only up to 2⁵³.
+kepler accepts a number only below that limit, and cells lie far above it: the one at the centre of
+the image is about 3 × 10¹⁸. A query that returns the cell as an unsigned 64-bit number still gets
+an A5 layer, and it draws nothing. Return the cell as its hexadecimal string instead —
+`a5_u64_to_hex` in DuckDB — as the query above does.
+:::
+
+The controls are the same as GeoHash's. Under the layer's name kepler's panel shows
+`Layer.Type.A5` where the other layers show their type: kepler ships no English name for this one.
+
+Backed by deck.gl's `A5Layer`.
+
 ## Choosing between them
 
 | Your data is                                      | Use                                         |
@@ -81,6 +148,8 @@ Backed by deck.gl's `S2Layer`.
 | Real boundaries — administrative, parcels, routes | geojson                                     |
 | Already aggregated to H3 cells                    | h3                                          |
 | Already aggregated to S2 cells                    | s2                                          |
+| Already aggregated to geohashes                   | geohash                                     |
+| Already aggregated to A5 cells                    | a5                                          |
 | Raw points you want binned                        | [hexagon or grid](./points-and-aggregation) |
 
 Between H3 and S2, prefer **H3** if you have a choice: it is a panel role, it is detected from
