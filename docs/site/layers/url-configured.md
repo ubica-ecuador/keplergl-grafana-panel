@@ -31,7 +31,7 @@ A Grafana panel's input is a **table of rows**. These layers do not have one: th
 a URL that the browser fetches directly, and the only thing a query could contribute is the URL
 itself.
 
-Which, for imagery, turned out to be enough — hence the two exceptions. It is not enough for a 3D
+Which, for imagery, turned out to be enough — hence the three exceptions. It is not enough for a 3D
 model or a pair of corner coordinates, where the layer needs describing rather than locating.
 
 They are also why the plugin's own layer gallery dashboard stops at thirteen. Demonstrating them
