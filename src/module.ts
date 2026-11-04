@@ -1,4 +1,4 @@
-import { PanelPlugin } from '@grafana/data';
+import { FieldConfigProperty, PanelPlugin } from '@grafana/data';
 
 import { KeplerPanelOptions } from './types';
 import { KeplerPanel } from './panel/KeplerPanel';
@@ -417,3 +417,11 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       editor: MapConfigEditor,
     })
 );
+
+plugin.useFieldConfig({
+  // The field options the map honours: data links, followed from the popup of
+  // a clicked entity (panel/dataLinks.ts). Grafana shows every standard option a
+  // panel does not disable, and the rest (unit, colour, thresholds…) would sit
+  // in the editor doing nothing on a map that colours its layers itself.
+  disableStandardOptions: Object.values(FieldConfigProperty).filter((p) => p !== FieldConfigProperty.Links),
+});

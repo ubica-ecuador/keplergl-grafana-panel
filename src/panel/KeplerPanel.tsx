@@ -48,6 +48,7 @@ export function KeplerPanel(props: Props) {
     timeRange,
     onChangeTimeRange,
     replaceVariables,
+    timeZone,
     width,
     height,
     id,
@@ -209,6 +210,9 @@ export function KeplerPanel(props: Props) {
         width={width}
         height={height}
         datasets={datasets}
+        frames={data.series}
+        replaceVariables={replaceVariables}
+        timeZone={timeZone}
         rasters={rasters}
         wmsLayers={wmsLayers}
         zarrLayers={zarrLayers}

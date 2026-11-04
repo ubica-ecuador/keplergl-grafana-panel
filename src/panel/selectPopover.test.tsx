@@ -1,9 +1,17 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
 import { KEPLER_INSTANCE_ID } from './constants';
-import { offersSelection, selectApi, SelectContext, withSelectButton, type SelectApi } from './selectPopover';
+import {
+  LinksContext,
+  offersSelection,
+  selectApi,
+  SelectContext,
+  withSelectButton,
+  type SelectApi,
+} from './selectPopover';
+import type { LinksApi } from './useDataLinks';
 import type { VariableMapping } from './variableSync';
 
 /**
@@ -189,5 +197,52 @@ describe('in compare mode', () => {
   it('still offers it on the pinned popup', () => {
     mountWith({ data: { _rowIndex: 0 } });
     expect(screen.getByRole('button', { name: 'Select' })).toBeInTheDocument();
+  });
+});
+
+describe('data links in the popup', () => {
+  const usgs = { title: 'USGS event', href: 'https://earthquake.usgs.gov/e/1', target: '_blank' as const, origin: {} };
+
+  function mountLinks(clicked: unknown, links: LinksApi | null, select: SelectApi | null = null) {
+    const Content = withSelectButton(StockContent);
+    return render(
+      <Provider store={makeStore(clicked) as never}>
+        <SelectContext.Provider value={select}>
+          <LinksContext.Provider value={links}>
+            <Content />
+          </LinksContext.Provider>
+        </SelectContext.Provider>
+      </Provider>
+    );
+  }
+
+  const linksApi = (links = [usgs]): LinksApi => ({ links: () => links, follow: jest.fn() });
+
+  it('lists the clicked entity’s links in the pinned popup', () => {
+    mountLinks(pinned, linksApi());
+    const link = screen.getByRole('link', { name: 'USGS event' });
+    expect(link.getAttribute('href')).toBe('https://earthquake.usgs.gov/e/1');
+    expect(link.getAttribute('target')).toBe('_blank');
+  });
+
+  it('shows no link in the hover popup, which cannot be clicked', () => {
+    mountLinks(undefined, linksApi());
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+
+  it('shows links whether or not the panel asks to confirm a selection', () => {
+    mountLinks(pinned, linksApi(), api());
+    expect(screen.getByRole('link', { name: 'USGS event' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Select' })).toBeTruthy();
+  });
+
+  it('follows a plain click itself and leaves a Ctrl+click to the browser', () => {
+    const api = linksApi();
+    mountLinks(pinned, api);
+    const link = screen.getByRole('link', { name: 'USGS event' });
+    fireEvent.click(link, { button: 0, ctrlKey: true });
+    expect(api.follow).not.toHaveBeenCalled();
+    fireEvent.click(link, { button: 0 });
+    expect(api.follow).toHaveBeenCalledWith(usgs, expect.anything());
   });
 });

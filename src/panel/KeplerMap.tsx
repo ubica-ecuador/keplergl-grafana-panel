@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Provider } from 'react-redux';
 import { StyleSheetManager } from 'styled-components';
-import type { EventBus } from '@grafana/data';
+import type { DataFrame, EventBus, InterpolateFunction } from '@grafana/data';
 import { injectComponents } from '@kepler.gl/components';
 import { messages as keplerMessages } from '@kepler.gl/localization';
 
@@ -48,7 +48,8 @@ import { useFlowFieldContext } from './useFlowFieldContext';
 import { usePeerTimeSync } from './usePeerTimeSync';
 import { readVariable, useVariableSync } from './useVariableSync';
 import { useClickSync } from './useClickSync';
-import { offersSelection, selectApi, SelectContext } from './selectPopover';
+import { LinksContext, offersSelection, selectApi, SelectContext } from './selectPopover';
+import { useDataLinks } from './useDataLinks';
 import { HaloContext, HaloDimContext, HaloStyleContext } from './haloMapContainer';
 import { withFlaggedRows } from './selectionHalo';
 import { PanelMappingsContext, type PanelMappings } from './panelMappingsContext';
@@ -113,11 +114,19 @@ const KeplerGl = injectComponents(keplerRecipes() as unknown as never[]);
  */
 const DECK_GL_PROPS = { eventRecognizerOptions: { click: { time: 2000 } } };
 
+const NO_FRAMES: readonly DataFrame[] = [];
+
 /** kepler's catalogue with this plugin's layer names in it — see `localeMessages.ts`. */
 const localeMessages = withOwnLayerLabels(keplerMessages as unknown as Record<string, Record<string, string>>);
 
 export interface KeplerMapProps {
   eventBus?: EventBus;
+  /** The query results as Grafana handed them, field config applied: where the data links live. */
+  frames?: readonly DataFrame[];
+  /** Grafana's template interpolation, for the data links. */
+  replaceVariables?: InterpolateFunction;
+  /** The dashboard's time zone, for the time range a data link carries. */
+  timeZone?: string;
   hoverSync?: boolean;
   hoverPublishSpike?: boolean;
   hoverLayerId?: string;
@@ -225,6 +234,9 @@ export interface KeplerMapProps {
  */
 export function KeplerMap({
   eventBus,
+  frames = NO_FRAMES,
+  replaceVariables,
+  timeZone,
   hoverSync,
   hoverPublishSpike,
   hoverLayerId,
@@ -627,6 +639,19 @@ export function KeplerMap({
     [clickConfirm, variableMappings, clicksArea, clickVariables, clickSquare, store]
   );
 
+  // Grafana's data links, in the pinned popup and, for a "one click" link, on
+  // the click itself when it selects nothing (useDataLinks.ts).
+  const links = useDataLinks({
+    store,
+    isReady,
+    frames,
+    datasets,
+    replaceVariables,
+    timeZone,
+    mappings: variableMappings,
+    clickArea: clicksArea,
+  });
+
   // One-way: publishes the bbox of what the map shows once it comes to rest,
   // and once on load so a consuming panel never opens without one.
   useViewportSync({ store, isReady, variables: viewportVariables });
@@ -675,41 +700,43 @@ export function KeplerMap({
                 <HaloDimContext.Provider value={dimUnselected}>
                   <HaloStyleContext.Provider value={haloStyle}>
                     <SelectContext.Provider value={selection}>
-                      <PanelMappingsContext.Provider value={panelMappings}>
-                        <KeplerGl
-                          id={KEPLER_INSTANCE_ID}
-                          width={width}
-                          height={height}
-                          /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
+                      <LinksContext.Provider value={links}>
+                        <PanelMappingsContext.Provider value={panelMappings}>
+                          <KeplerGl
+                            id={KEPLER_INSTANCE_ID}
+                            width={width}
+                            height={height}
+                            /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
                      required by the type but unused unless a Mapbox style is picked. */
-                          mapboxApiAccessToken=""
-                          /* `appName` is deliberately left at kepler's own default: the
+                            mapboxApiAccessToken=""
+                            /* `appName` is deliberately left at kepler's own default: the
                      side panel names the library the map comes from, and calling
                      it "Grafana" claimed credit for someone else's work. */
-                          theme={theme}
-                          /* kepler ships translations for its own layer types only, so the
+                            theme={theme}
+                            /* kepler ships translations for its own layer types only, so the
                      four this plugin adds showed as `Layer.Type.Esriimage` and the
                      like wherever a layer is named. */
-                          localeMessages={localeMessages}
-                          mapStyles={mapStyles}
-                          /* Drops kepler's own list, which is half Mapbox styles that
+                            localeMessages={localeMessages}
+                            mapStyles={mapStyles}
+                            /* Drops kepler's own list, which is half Mapbox styles that
                      cannot load without an account — see REPLACES_DEFAULT_MAP_STYLES. */
-                          mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
-                          /* kepler hands it to MapLibre in place of its own, which passes
+                            mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
+                            /* kepler hands it to MapLibre in place of its own, which passes
                      URLs through untouched: the CARTO key on every style, sprite,
                      glyph and tile URL. */
-                          transformRequest={transformRequest}
-                          /* No right-to-left text plugin. On a Mapbox base map
+                            transformRequest={transformRequest}
+                            /* No right-to-left text plugin. On a Mapbox base map
                      react-map-gl would load one from api.mapbox.com and run it in
                      the map's workers, which is code from a third-party host;
                      this plugin's MapLibre maps never ask for one. */
-                          RTLTextPlugin={false}
-                          /* kepler renders one commit late and silently discards actions
+                            RTLTextPlugin={false}
+                            /* kepler renders one commit late and silently discards actions
                      addressed to an instance that has not registered yet. */
-                          onKeplerGlInitialized={() => setIsReady(true)}
-                          deckGlProps={DECK_GL_PROPS}
-                        />
-                      </PanelMappingsContext.Provider>
+                            onKeplerGlInitialized={() => setIsReady(true)}
+                            deckGlProps={DECK_GL_PROPS}
+                          />
+                        </PanelMappingsContext.Provider>
+                      </LinksContext.Provider>
                     </SelectContext.Provider>
                   </HaloStyleContext.Provider>
                 </HaloDimContext.Provider>

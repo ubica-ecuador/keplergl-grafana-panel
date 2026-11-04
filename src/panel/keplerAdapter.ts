@@ -1667,6 +1667,45 @@ export function readClickedEntity(store: Store, fields: string[]): Record<string
   return values;
 }
 
+/** The entity last clicked, whole: which dataset it came from, and every column of its row. */
+export interface ClickedRow {
+  dataId: string;
+  /** kepler column name → value; a column with no value on this row is absent. */
+  values: Record<string, unknown>;
+}
+
+/**
+ * Every column of the entity last clicked, with the dataset it belongs to.
+ *
+ * What a data link needs: the link is configured on the query's fields, so it
+ * has to know which query the entity came from, and its template can name any
+ * column, not only the ones a click mapping publishes. Same tri-state and same
+ * resolution as `readClickedEntity`, which it asks for all of the dataset's
+ * columns. A WMS click resolves no dataset row and answers `undefined`.
+ */
+export function readClickedRow(store: Store): ClickedRow | null | undefined {
+  const visState = getVisState(store);
+  const clicked = visState?.clicked;
+  if (!visState || clicked === undefined) {
+    return undefined;
+  }
+  if (clicked === null) {
+    return null;
+  }
+  const layerIdx = clicked.layer?.props?.idx;
+  const layer = typeof layerIdx === 'number' ? (visState.layers ?? [])[layerIdx] : undefined;
+  const dataId = layer?.config?.dataId;
+  const dataset = dataId ? visState.datasets[dataId] : undefined;
+  if (!dataId || !dataset || wmsFeatureValues(clicked.object)) {
+    return undefined;
+  }
+  const values = readClickedEntity(
+    store,
+    dataset.fields.map((f) => f.name)
+  );
+  return values ? { dataId, values } : values;
+}
+
 type KeplerLayerLike = VisStateLike['layers'][number];
 
 /**
