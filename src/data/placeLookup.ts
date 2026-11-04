@@ -186,6 +186,36 @@ export function placeFrame(
   };
 }
 
+/** kepler's GeoHash layer for a dataset, drawn on its geohash column. */
+export interface GeohashLayerConfig {
+  id: string;
+  type: 'geohash';
+  config: { dataId: string; label: string; columns: { token: string }; isVisible: boolean };
+  visualChannels: Record<string, unknown>;
+}
+
+/**
+ * The GeoHash layer of a frame placed by its geohash column and nothing else,
+ * or null. Such a frame is a table of cells: kepler draws each cell, where the
+ * placed centres alone would be a Point layer of dots. Built by the panel so
+ * that it can stand in for both of kepler's guesses on that dataset — the Point
+ * on the placed centres, and since 3.3.0-alpha.19 a GeoHash of its own whenever
+ * a column is named `geohash` — and so that a geohash column under another
+ * name, mapped by hand, draws its cells too. The centres stay in the dataset:
+ * click variables, framing and a Point or Heatmap added by hand read them.
+ */
+export function buildGeohashLayer(roles: FieldRoles, dataId: string, label: string): GeohashLayerConfig | null {
+  if (!roles.geohash || roles.latitude !== PLACED_LATITUDE || roles.longitude !== PLACED_LONGITUDE) {
+    return null;
+  }
+  return {
+    id: `${dataId}-geohash`,
+    type: 'geohash',
+    config: { dataId, label, columns: { token: roles.geohash }, isVisible: true },
+    visualChannels: {},
+  };
+}
+
 function findPlace(gazetteer: Gazetteer, value: unknown): [number, number] | undefined {
   if (value === null || value === undefined) {
     return undefined;

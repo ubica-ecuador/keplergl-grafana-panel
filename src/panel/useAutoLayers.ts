@@ -57,6 +57,7 @@ export function useAutoLayers({ store, isReady, datasets, enabled, onLayerAdded 
         dataset.symbolLayer,
         dataset.lineLayer,
         dataset.fixedLayer,
+        dataset.geohashLayer,
       ]) {
         if (!layer || added.current.has(layer.id)) {
           continue;

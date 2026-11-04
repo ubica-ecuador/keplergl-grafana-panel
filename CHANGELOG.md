@@ -77,6 +77,10 @@ release documents what changed since the one before it.
   *Add Data* by URL is saved with the map as its address and fetched again on load, like a
   tileset. A file Grafana serves itself keeps a path relative to Grafana, so the dashboard works on
   any instance.
+- **Geohash queries drawn as cells.** A query placed by geohash alone, with no saved map, gets one
+  GeoHash layer, the panel's, instead of kepler's GeoHash (new in 3.3.0-alpha.19) and a Point layer
+  of dots on the cell centres, one above the other. A geohash column chosen in *Field mapping* under
+  another name draws its cells too. A map converted from Geomap keeps its markers at the centres.
 - **Layers on every world copy** (#57). Past ±180° the base map repeats and the layers now repeat
   with it: zoomed out, every copy of the world has its points, and over the antimeridian (Fiji,
   Tonga, the Aleutians) the far side keeps them. Map notes stay on the copy in view, and a note

@@ -1,8 +1,9 @@
 # Places by geohash or by name
 
 A query does not need a latitude and a longitude to be drawn as points. It can give a **geohash**,
-or a **place name or code** the panel looks up. Either way the rows become ordinary points: a Point
-layer, a heatmap, an aggregation, anything a pair of coordinates allows.
+or a **place name or code** the panel looks up. Either way the rows gain a position, and with it
+anything a pair of coordinates allows: a Point layer, a heatmap, an aggregation. A geohash query is
+drawn as its cells to begin with.
 
 Both are used only when the query has no coordinates of its own.
 
@@ -18,9 +19,9 @@ SELECT geohash, count(*) AS events FROM readings GROUP BY geohash;
 
 A value that is not a geohash gives the row no position.
 
-kepler draws the same column a second time, as the cells themselves: it creates a GeoHash layer for
-a column named `geohash`, `geo_hash` or `geohash_id`. See
-[geohash](../../layers/geometry-and-indices#geohash).
+With no saved map, such a query is drawn as its cells: a GeoHash layer, one rectangle per geohash,
+and no dots. The centres stay in the dataset, so a Point or Heatmap layer added by hand draws them,
+and click variables read them. See [geohash](../../layers/geometry-and-indices#geohash).
 
 ## Place names and codes
 

@@ -124,4 +124,18 @@ describe('supersededLayerIds: symbols', () => {
       ['arc', 'dots']
     );
   });
+
+  it("drops kepler's Point on the decoded centres and its own GeoHash for the panel's GeoHash layer", () => {
+    const layers = [
+      { id: 'auto1', type: 'point', config: { dataId: 'grafana-A' } },
+      { id: 'auto2', type: 'geohash', config: { dataId: 'grafana-A' } },
+      { id: 'auto3', type: 'point', config: { dataId: 'grafana-B' } },
+      { id: 'grafana-A-geohash', type: 'geohash', config: { dataId: 'grafana-A' } },
+    ];
+
+    expect(supersededLayerIds(layers, { id: 'grafana-A-geohash', type: 'geohash', dataId: 'grafana-A' })).toEqual([
+      'auto1',
+      'auto2',
+    ]);
+  });
 });

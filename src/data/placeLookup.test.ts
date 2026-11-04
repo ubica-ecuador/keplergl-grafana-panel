@@ -85,4 +85,35 @@ describe('rows placed by geohash or by name', () => {
     });
     expect(placeFrame(frame, detectFields(frame), null).frame).toBe(frame);
   });
+
+  it('draws a query placed by geohash alone as GeoHash cells, on its own column name', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'cell', type: FieldType.string, values: ['6rbny'] },
+        { name: 'count', type: FieldType.number, values: [3] },
+      ],
+    });
+    const [dataset] = framesToDatasets([frame], { A: { geohash: 'cell' } });
+    expect(dataset.geohashLayer).toMatchObject({
+      type: 'geohash',
+      config: { dataId: dataset.id, columns: { token: 'cell' }, isVisible: true },
+    });
+    // The centres stay, for click variables, framing and layers added by hand.
+    expect(dataset.rows[0].latitude).toBeCloseTo(-0.2, 1);
+  });
+
+  it('adds no GeoHash layer to a query with coordinates of its own, or placed by name', () => {
+    const withCoords = toDataFrame({
+      fields: [
+        { name: 'lat', type: FieldType.number, values: [1] },
+        { name: 'lon', type: FieldType.number, values: [2] },
+        { name: 'geohash', type: FieldType.string, values: ['6rbny'] },
+      ],
+    });
+    const byName = toDataFrame({ fields: [{ name: 'lookup', type: FieldType.string, values: ['EC'] }] });
+    const gazetteer = parseGazetteer([{ keys: ['EC'], latitude: -1.8, longitude: -78.2, name: 'Ecuador' }]);
+    expect(framesToDatasets([withCoords])[0].geohashLayer).toBeUndefined();
+    expect(framesToDatasets([byName], {}, { gazetteer })[0].geohashLayer).toBeUndefined();
+  });
 });

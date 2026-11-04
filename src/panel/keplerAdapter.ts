@@ -37,6 +37,7 @@ import type { Dispatch, Store } from 'redux';
 import { FieldType } from '@grafana/data';
 
 import type { FixedLayerConfig, PanelDataset } from '../data/framesToDatasets';
+import type { GeohashLayerConfig } from '../data/placeLookup';
 import type { KeplerColumn } from '../data/toKeplerDataset';
 import { keepLeadingZeroIds } from '../data/leadingZeroIds';
 import { isGrafanaBacked } from '../data/grafanaAnnotations';
@@ -2544,7 +2545,13 @@ export function addAutoLayer(
   store: Store,
   dispatch: Dispatch,
   layer:
-    FlowLayerConfig | TripLayerConfig | FlowFieldLayerConfig | SymbolLayerConfig | LineLayerConfig | FixedLayerConfig,
+    | FlowLayerConfig
+    | TripLayerConfig
+    | FlowFieldLayerConfig
+    | SymbolLayerConfig
+    | LineLayerConfig
+    | FixedLayerConfig
+    | GeohashLayerConfig,
   dataId: string
 ): MapBounds | null {
   dispatch(wrapTo(KEPLER_INSTANCE_ID, addLayer(layer, dataId)));

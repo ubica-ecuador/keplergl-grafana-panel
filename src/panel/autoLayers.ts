@@ -41,6 +41,11 @@ interface AddedLayer {
  * A route's segments carry both ends and the starting row's own coordinates,
  * so kepler guesses an Arc (or Line) from the ends and a Point from the rest:
  * the second draws the query's points again, over the query's own layer.
+ *
+ * A query placed by geohash alone gets a Point layer on the centres the panel
+ * decodes, and since 3.3.0-alpha.19 kepler's own GeoHash layer too when the
+ * column is named `geohash`: the panel's GeoHash layer replaces both, so the
+ * cells are drawn once and the dots not at all.
  */
 const SUPERSEDES: Record<string, string[]> = {
   trip: ['trip'],
@@ -50,6 +55,7 @@ const SUPERSEDES: Record<string, string[]> = {
   // The panel's own night shading and sun: kepler guesses the same layer types, unstyled.
   geojson: ['geojson'],
   point: ['point'],
+  geohash: ['point', 'geohash'],
 };
 
 export function supersededLayerIds(layers: LayerLike[], added: AddedLayer): string[] {

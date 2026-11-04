@@ -87,20 +87,22 @@ GROUP BY geohash;
 The rectangles of the geohash grid. Each cell is drawn from its identifier, and the identifier's
 length is its precision: the cells above have six characters, about 1.2 by 0.6 km.
 
-**Built automatically, twice.** kepler creates a GeoHash layer for a column named `geohash`,
-`geo_hash` or `geohash_id`. The panel reads a column named `geohash` as well, places each row at the
-centre of its cell and lets kepler draw those as a Point layer, when the query has no latitude and
-longitude of its own (see [Places by geohash or by name](../guide/data/places-by-name#geohash)). So
-a `geohash` column gives you both, cells and dots, one above the other. Hide or delete the one you
-do not want and [save the map](../guide/map/map-configuration).
+**Built automatically.** kepler creates a GeoHash layer for a column named `geohash`, `geo_hash` or
+`geohash_id`. The panel reads a column named `geohash` as well, or the one chosen in **Field mapping
+→ Geohash**, and places each row at the centre of its cell when the query has no latitude and
+longitude of its own (see [Places by geohash or by name](../guide/data/places-by-name#geohash)).
+Such a query then gets one GeoHash layer, the panel's, in place of kepler's GeoHash and a Point layer
+of dots on the centres. The centres stay in the dataset: a Point or Heatmap layer added by hand
+draws them, and click variables read them.
 
-The two do not listen to the same names:
+| Column                                           | Cells | Centres |
+| ------------------------------------------------ | ----- | ------- |
+| `geohash`                                        | yes   | yes     |
+| `geo_hash`, `geohash_id`                         | yes   | no      |
+| any other, chosen in **Field mapping → Geohash** | yes   | yes     |
 
-| Column                                           | Cells (kepler's layer) | Dots (the panel's placing) |
-| ------------------------------------------------ | ---------------------- | -------------------------- |
-| `geohash`                                        | yes                    | yes                        |
-| `geo_hash`, `geohash_id`                         | yes                    | no                         |
-| any other, chosen in **Field mapping → Geohash** | no                     | yes                        |
+A query with coordinates of its own keeps them: there, a `geohash` column gets kepler's GeoHash
+layer beside the Point layer on the query's coordinates.
 
 A value must be text of 1 to 12 characters from the geohash alphabet; case does not matter. Rows
 whose value is not a geohash are left out of the layer.

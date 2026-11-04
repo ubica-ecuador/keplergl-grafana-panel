@@ -3,7 +3,7 @@ import { DataFrame, FieldType } from '@grafana/data';
 import { buildFlowField, FlowFieldLayerConfig } from './buildFlowField';
 import { buildFlows, FlowLayerConfig, FlowRenderMode } from './buildFlows';
 import { isEdgeFrame, nodePositions, placeEdges } from './buildNetwork';
-import { type Gazetteer, placeFrame } from './placeLookup';
+import { buildGeohashLayer, type Gazetteer, type GeohashLayerConfig, placeFrame } from './placeLookup';
 import { buildLineLayer, buildRouteSegments, routeColumns, routeDatasetId, LineLayerConfig } from './buildRoute';
 import { buildSymbolLayer, SymbolLayerConfig } from './buildSymbolLayer';
 import { buildTripLayer, TripLayerConfig, TripLayerMode } from './buildTripLayer';
@@ -75,6 +75,8 @@ export interface PanelDataset {
   lineLayer?: LineLayerConfig;
   /** The layer of a dataset the panel makes itself (`dayNight.ts`). */
   fixedLayer?: FixedLayerConfig;
+  /** The cells of a query placed by geohash alone (`placeLookup.ts`). */
+  geohashLayer?: GeohashLayerConfig;
 }
 
 /**
@@ -147,6 +149,7 @@ export function framesToDatasets(
       tripLayer: buildTripLayer(roles, id) ?? undefined,
       flowLayer: buildFlows(roles, id, { renderingMode: opts.flowRenderMode }) ?? undefined,
       symbolLayer: pointsSymbols(symbolRoles) ? (buildSymbolLayer(symbolRoles, id) ?? undefined) : undefined,
+      geohashLayer: buildGeohashLayer(roles, id, label) ?? undefined,
     };
   });
 
