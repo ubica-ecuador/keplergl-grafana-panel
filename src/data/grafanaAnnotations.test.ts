@@ -26,6 +26,11 @@ describe('placeFromTags', () => {
   it('round-trips with geoTag', () => {
     expect(placeFromTags([geoTag(-79.004567891, -2.9001234)])).toEqual([-79.00457, -2.90012]);
   });
+  it('tags a place on a copy of the world past the antimeridian within ±180°, which it reads back', () => {
+    expect(geoTag(190, -18)).toBe('geo:-170,-18');
+    expect(geoTag(-541.5, 10)).toBe('geo:178.5,10');
+    expect(placeFromTags([geoTag(181.56, -18.14)])).toEqual([-178.44, -18.14]);
+  });
 });
 
 describe('readGeoAnnotations', () => {
@@ -99,6 +104,20 @@ describe('kepler callouts', () => {
     expect(w.text).toBe('Landfall');
     expect(w.tags).toEqual(['map', 'geo:-80.12346,-1.5']);
     expect(w.data.kepler).toEqual({ kind: 'ARROW', label: 'Landfall', anchorPoint: [-80.12345678, -1.5] });
+  });
+
+  it('writes a note made on the copy east of the world at its place within ±180°, tag and anchor alike', () => {
+    const w = annotationWrite({
+      id: 'f',
+      kind: 'POINT',
+      label: 'Suva',
+      anchorPoint: [538.44, -18.14],
+      isVisible: true,
+    });
+    expect(w.tags).toEqual(['map', 'geo:178.44,-18.14']);
+    const [lng, lat] = w.data.kepler.anchorPoint as number[];
+    expect(lng).toBeCloseTo(178.44);
+    expect(lat).toBe(-18.14);
   });
 
   it("counts a style edit from kepler's list as a change, and the rich text not", () => {

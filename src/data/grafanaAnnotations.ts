@@ -1,5 +1,7 @@
 import type { DataFrame } from '@grafana/data';
 
+import { wrapLongitude } from './longitude';
+
 /**
  * Grafana annotations ↔ kepler's own map annotations.
  *
@@ -84,9 +86,13 @@ function joinSplitGeo(tags: readonly string[]): string[] {
   return out;
 }
 
-/** The tag that carries a place, rounded to about a metre. */
+/**
+ * The tag that carries a place, rounded to about a metre. The longitude within
+ * ±180°: a callout made or dragged on a copy of the world past the antimeridian
+ * has kepler's longitude for that copy, 190° for -170°.
+ */
 export function geoTag(lng: number, lat: number): string {
-  return `geo:${round(lng)},${round(lat)}`;
+  return `geo:${round(wrapLongitude(lng))},${round(lat)}`;
 }
 
 function round(v: number): number {
@@ -261,12 +267,14 @@ export function annotationWrite(
   note: KeplerAnnotationLike,
   previousTags: readonly string[] = [MAP_NOTE_TAG]
 ): AnnotationWrite {
-  const [lng, lat] = note.anchorPoint ?? [0, 0];
+  const [lng, lat, ...rest] = note.anchorPoint ?? [0, 0];
   const tags = joinSplitGeo(previousTags).filter((t) => !GEO_TAG.test(t));
+  const shape = shapeOf(note);
   return {
     text: plainText(note.label),
     tags: [...tags, geoTag(lng, lat)],
-    data: { kepler: shapeOf(note) },
+    // The callout's own anchor within ±180° too, so the place saved twice is one place.
+    data: { kepler: note.anchorPoint ? { ...shape, anchorPoint: [wrapLongitude(lng), lat, ...rest] } : shape },
   };
 }
 
