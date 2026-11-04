@@ -58,7 +58,10 @@ describe('PaintedTilesetConfig', () => {
     // takes the whole side panel down with it.
     const bare = { ...layerOf(ESRI_IMAGE_TYPE), visConfigSettings: {} };
     const { container } = renderConfig(
-      <PaintedTilesetConfig layer={bare as never} visConfiguratorProps={{ layer: bare, onChange: jest.fn() } as never} />
+      <PaintedTilesetConfig
+        layer={bare as never}
+        visConfiguratorProps={{ layer: bare, onChange: jest.fn() } as never}
+      />
     );
 
     expect(container).toBeTruthy();
