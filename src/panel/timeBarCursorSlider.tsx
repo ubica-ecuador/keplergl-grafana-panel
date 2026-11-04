@@ -80,6 +80,12 @@ interface RangeSliderProps {
   /** Only the time slider gets an x axis (kepler's `TimeSliderMarker`). */
   xAxis?: unknown;
   timeFormat?: unknown;
+  /**
+   * Whether the bar is over time. kepler 3.3.0-alpha.18 turned a numeric range
+   * filter into a timeline too, drawn by the same slider with the same x axis,
+   * and says which it is here.
+   */
+  isTime?: boolean;
 }
 
 /**
@@ -106,14 +112,26 @@ export function withRangeSliderCursor<P extends RangeSliderProps>(Slider: React.
       },
       []
     );
-    const isTime = Boolean(props.xAxis) || typeof props.timeFormat === 'string';
+    // A numeric timeline's position is a magnitude, not a time: publishing it
+    // would move every graph's cursor to 1970.
+    const isTime =
+      typeof props.isTime === 'boolean' ? props.isTime : Boolean(props.xAxis) || typeof props.timeFormat === 'string';
     return enabled && isTime ? <TimeBarCursor bar={bar} measure={measure} /> : bar;
   }
   return TimeBarCursorRangeSlider;
 }
 
 interface TimelineSliderProps {
-  timeline?: { domain?: number[] | null } | null;
+  timeline?: { domain?: number[] | null; defaultTimeFormat?: unknown; timeFormat?: unknown } | null;
+}
+
+/**
+ * Whether a minified bar walks time. kepler builds its `timeline` from a time
+ * filter or a layer's animation, both of which carry a time format, or — since
+ * 3.3.0-alpha.18 — from a numeric range filter, which carries none.
+ */
+function walksTime(timeline: TimelineSliderProps['timeline']): boolean {
+  return Boolean(timeline?.defaultTimeFormat || timeline?.timeFormat);
 }
 
 /**
@@ -137,7 +155,7 @@ export function withTimelineSliderCursor<P extends TimelineSliderProps>(Slider: 
       },
       [domain]
     );
-    return enabled ? <TimeBarCursor bar={bar} measure={measure} /> : bar;
+    return enabled && walksTime(props.timeline) ? <TimeBarCursor bar={bar} measure={measure} /> : bar;
   }
   return TimeBarCursorTimelineSlider;
 }

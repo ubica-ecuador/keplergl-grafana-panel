@@ -11,7 +11,7 @@ import { TimelineSliderFactory, withRangeSliderCursor, withTimelineSliderCursor 
  * DOM, so its track reports a box.
  */
 let renders = 0;
-class FakeRangeSlider extends React.Component<{ xAxis?: unknown }> {
+class FakeRangeSlider extends React.Component<{ xAxis?: unknown; isTime?: boolean }> {
   state = { width: 212 };
   _getDisplayRange = () => [1000, 2000];
   render() {
@@ -19,7 +19,7 @@ class FakeRangeSlider extends React.Component<{ xAxis?: unknown }> {
     return <div data-testid="bar" />;
   }
 }
-function FakeTimeline(_: { timeline?: { domain?: number[] } }) {
+function FakeTimeline(_: { timeline?: { domain?: number[]; defaultTimeFormat?: string | null } }) {
   renders++;
   return (
     <div data-testid="bar" className="animation-control__slider">
@@ -27,7 +27,9 @@ function FakeTimeline(_: { timeline?: { domain?: number[] } }) {
     </div>
   );
 }
-const RangeSlider = withRangeSliderCursor(FakeRangeSlider as unknown as React.ComponentType<{ xAxis?: unknown }>);
+const RangeSlider = withRangeSliderCursor(
+  FakeRangeSlider as unknown as React.ComponentType<{ xAxis?: unknown; isTime?: boolean }>
+);
 const Timeline = withTimelineSliderCursor(FakeTimeline);
 
 function setup(element: React.ReactElement, options: TemporalCursorOptions = {}) {
@@ -95,13 +97,25 @@ describe('the enlarged time bar', () => {
     const off = setup(<RangeSlider xAxis={() => null} />, { enabled: false });
     expect(off.line()).toBeNull();
   });
+
+  it('leaves a numeric filter’s timeline alone, though it has the same x axis', () => {
+    // kepler 3.3.0-alpha.18+: a range filter played as a timeline is drawn by the
+    // time slider, x axis included, with `isTime: false`.
+    const { events, wrapper, line, step } = setup(<RangeSlider xAxis={() => null} isTime={false} />, {
+      publishMapHover: true,
+    });
+    step(() => fireEvent.mouseMove(wrapper, { clientX: 206, buttons: 0 }));
+    expect(events).toHaveLength(0);
+    expect(line()).toBeNull();
+  });
 });
 
 describe('the minified time bar', () => {
   it('maps the pointer across the measured track', () => {
-    const { events, view, wrapper, line, step } = setup(<Timeline timeline={{ domain: [1000, 2000] }} />, {
-      publishMapHover: true,
-    });
+    const { events, view, wrapper, line, step } = setup(
+      <Timeline timeline={{ domain: [1000, 2000], defaultTimeFormat: 'L LT' }} />,
+      { publishMapHover: true }
+    );
     view.getByTestId('track').getBoundingClientRect = () => ({ left: 150, width: 100 }) as DOMRect;
     step(() => fireEvent.mouseMove(wrapper, { clientX: 175, buttons: 0 }));
     const hover = events.find((e): e is DataHoverEvent => e instanceof DataHoverEvent);
@@ -109,6 +123,15 @@ describe('the minified time bar', () => {
     expect(line()?.style.left).toBe('74px');
     step(() => fireEvent.mouseMove(wrapper, { clientX: 120, buttons: 0 }));
     expect(events.at(-1)).toBeInstanceOf(DataHoverClearEvent);
+  });
+
+  it('leaves a numeric filter’s timeline alone: it has no time format', () => {
+    const { events, wrapper, line, step } = setup(<Timeline timeline={{ domain: [1000, 2000] }} />, {
+      publishMapHover: true,
+    });
+    step(() => fireEvent.mouseMove(wrapper, { clientX: 175, buttons: 0 }));
+    expect(events).toHaveLength(0);
+    expect(line()).toBeNull();
   });
 });
 
