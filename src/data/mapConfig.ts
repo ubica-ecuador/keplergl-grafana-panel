@@ -39,6 +39,9 @@ export const REMOTE_DATASET_TYPES = [
   'raster-tile',
   'wms-tile',
   'tile-3d',
+  // kepler's own Zarr layer (3.3.0-alpha.19), read in the browser: a store
+  // added from Add Data → Tileset is saved with the map.
+  'zarr',
   'bitmap',
   'externally-hosted',
   // The panel's own `{z}/{x}/{y}` tiles (`xyzTiles.ts`): a template, no rows.

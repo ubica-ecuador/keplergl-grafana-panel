@@ -15,6 +15,13 @@ import { shownInPane } from './paneVisibility';
  * panel's whole job is deciding which url to ask for.
  */
 
+/**
+ * The type of this layer and of the datasets it draws. Not kepler's `zarr`:
+ * since kepler 3.3.0-alpha.19 that is kepler's own Zarr layer, which reads the
+ * store in the browser. This one has a tiler read it on the server.
+ */
+export const ZARR_TILES_TYPE = 'zarrTiles';
+
 /** Where a Zarr variable lives and how it should be painted. */
 export interface ZarrTileMetadata {
   serverUrl: string;
@@ -138,11 +145,11 @@ export function makeZarrLayer<C extends Constructor<object>>(
     }
 
     get type(): string {
-      return 'zarr';
+      return ZARR_TILES_TYPE;
     }
 
     get name(): string {
-      return 'Zarr';
+      return 'Zarr (TiTiler)';
     }
 
     get requiredLayerColumns(): string[] {
@@ -150,7 +157,7 @@ export function makeZarrLayer<C extends Constructor<object>>(
     }
 
     get supportedDatasetTypes(): string[] {
-      return ['zarr'];
+      return [ZARR_TILES_TYPE];
     }
 
     /** A Zarr dataset has no rows, and asking for them would hide the layer. */
@@ -168,7 +175,7 @@ export function makeZarrLayer<C extends Constructor<object>>(
     static findDefaultLayerProps(dataset: { type?: string; id?: string; label?: string }): {
       props: Array<Record<string, unknown>>;
     } {
-      if (dataset?.type !== 'zarr') {
+      if (dataset?.type !== ZARR_TILES_TYPE) {
         return { props: [] };
       }
       // A deterministic id, derived from the dataset. kepler mints a random

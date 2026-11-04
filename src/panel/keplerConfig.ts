@@ -62,14 +62,11 @@ export function configureKepler(): void {
     // editors on the layer, filter and effect cards stay: the side panel is
     // where a map is edited already.
     enableAnimationJsonEditor: false,
-    // kepler 3.3.0-alpha.19 added an experimental Zarr layer, on by default,
-    // under the same `zarr` type as this plugin's own (`zarrTileLayer.ts`,
-    // registered over kepler's in the store). Its Add Data → Tileset → Zarr
-    // form would hand kepler's kind of dataset to this plugin's layer, which
-    // reads a titiler-served store from a query instead. Off: the form is
-    // gone, and the type leaves the layer picker, where a Zarr layer was never
-    // something to pick by hand.
-    enableZarrLayer: false,
+    // kepler 3.3.0-alpha.19's experimental Zarr layer, read in the browser
+    // (Add Data → Tileset → Zarr). It is kepler's `zarr`; this plugin's own,
+    // drawn by a tiler from a query, is `zarrTiles`. Stated, as the Flow layer
+    // is, so an upstream default cannot remove it silently.
+    enableZarrLayer: true,
   });
 
   // The flow field is a layer kepler does not ship, so its words are in no

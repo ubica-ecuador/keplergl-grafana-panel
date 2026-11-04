@@ -311,7 +311,9 @@ function CustomLayerConfiguratorFactory(...deps: Parameters<typeof LayerConfigur
       return <PaintedTilesetConfig {...args} />;
     }
 
-    _renderZarrLayerConfig(args: ConfiguratorArgs) {
+    // `zarrTiles`, not kepler's `zarr`: kepler ships `_renderZarrLayerConfig`
+    // for its own Zarr layer, and a method of that name here would replace it.
+    _renderZarrTilesLayerConfig(args: ConfiguratorArgs) {
       return <PaintedTilesetConfig {...args} />;
     }
 

@@ -35,7 +35,7 @@ describe('withOwnLayerLabels', () => {
     // the same label goes everywhere rather than leaving other locales with the
     // raw id.
     for (const locale of Object.keys(keplerMessages)) {
-      expect(merged[locale]['layer.type.zarr']).toBe(OWN_LAYER_LABELS.zarr);
+      expect(merged[locale]['layer.type.zarrtiles']).toBe(OWN_LAYER_LABELS.zarrtiles);
     }
   });
 

@@ -28,7 +28,7 @@ import { withWmsPicking } from './wmsPicking';
 import { withWmsTime } from './wmsTimeLayer';
 import { withPresentLayerGroups } from './loadedLayerGroups';
 import { buildZarrDeckLayer } from './zarrDeckLayer';
-import { makeZarrLayer } from './zarrTileLayer';
+import { makeZarrLayer, ZARR_TILES_TYPE } from './zarrTileLayer';
 
 /**
  * The icon a stock layer shows, borrowed for one of ours.
@@ -93,7 +93,7 @@ const layerClasses = {
   // wrap. Built on the base `Layer` rather than on a concrete one, which is
   // where `RasterTileLayer` starts from too: a tileset has no rows, so every
   // concrete layer's column handling would be dead weight at best.
-  zarr: makeZarrLayer(Layer as never, buildZarrDeckLayer, RASTER_ICON),
+  [ZARR_TILES_TYPE]: makeZarrLayer(Layer as never, buildZarrDeckLayer, RASTER_ICON),
   // A third addition, and the narrowest: it draws the same COGs kepler's own
   // raster layer draws, but asks the server for a finished picture instead of
   // raw arrays. kepler's layer cannot colour a *classified* raster — it rescales

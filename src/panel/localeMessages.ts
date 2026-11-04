@@ -35,7 +35,7 @@ export const STREAMLINES_LABEL = 'Stream\u00ADlines';
  * the layer menu, and the one `layerPanelHeader.tsx` sends its card to.
  */
 export const OWN_LAYER_LABELS: Record<string, string> = {
-  zarr: 'Zarr',
+  zarrtiles: 'Zarr (TiTiler)',
   cogpainted: 'Raster (painted)',
   esriimage: 'ArcGIS Image Service',
   streamlines: STREAMLINES_LABEL,

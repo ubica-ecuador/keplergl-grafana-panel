@@ -79,7 +79,7 @@ describe('the configurator kepler will actually look up', () => {
   it.each([
     ['painted COG', COG_PAINTED_TYPE],
     ['Image Service', ESRI_IMAGE_TYPE],
-    ['Zarr', 'zarr'],
+    ['Zarr', 'zarrTiles'],
   ])('grows the method kepler looks for on a %s layer', (_name, type) => {
     // Derived from the layer's own type rather than written out, so renaming a
     // type breaks this test instead of silently emptying its panel — the exact

@@ -79,6 +79,7 @@ import { COG_PAINTED_TYPE } from './cogPaintedLayer';
 import { ESRI_IMAGE_TYPE } from './esriImageLayer';
 import { splitEsriRefresh, splitRasterRefresh, splitRefresh, splitWmsRefresh, splitZarrRefresh } from './loadDecision';
 import { KEPLER_INSTANCE_ID } from './constants';
+import { ZARR_TILES_TYPE } from './zarrTileLayer';
 import { MarkerSpec, readMarkers } from './markers';
 import { MARKERS_TYPE } from './markersLayer';
 import { holdTilesetFraming } from './tile3dFraming';
@@ -2680,7 +2681,7 @@ export function setSidePanel(dispatch: Dispatch, visible: boolean): void {
  * `refreshRemoteData` falls through to `null` for a type it does not recognise —
  * so kepler will not try to refresh metadata the panel owns.
  */
-const ZARR_TILE_TYPE = 'zarr';
+const ZARR_TILE_TYPE = ZARR_TILES_TYPE;
 
 /**
  * A Zarr variable in the shape the panel's own layer reads.

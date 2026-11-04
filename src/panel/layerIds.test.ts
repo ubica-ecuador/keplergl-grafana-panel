@@ -31,7 +31,7 @@ const build = () => ({});
 const CASOS: Array<[string, any, string]> = [
   ['painted COG', makeCogPaintedLayer(FakeBaseLayer, build), 'cogPainted'],
   ['Image Service', makeEsriImageLayer(FakeBaseLayer, build), 'esriImage'],
-  ['Zarr', makeZarrLayer(FakeBaseLayer, build), 'zarr'],
+  ['Zarr', makeZarrLayer(FakeBaseLayer, build), 'zarrTiles'],
 ];
 
 describe('the id each own layer proposes', () => {

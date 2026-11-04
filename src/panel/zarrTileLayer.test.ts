@@ -185,7 +185,7 @@ describe('makeZarrLayer', () => {
   }
 
   it('answers to the type the dataset asks for', () => {
-    expect(new (ZarrLayer as never as new (p?: unknown) => any)().type).toBe('zarr');
+    expect(new (ZarrLayer as never as new (p?: unknown) => any)().type).toBe('zarrTiles');
   });
 
   it('renders one deck layer when it knows a store', () => {
@@ -234,7 +234,9 @@ describe('makeZarrLayer', () => {
       findDefaultLayerProps(dataset: unknown): { props: unknown[] };
     };
 
-    expect(claims.findDefaultLayerProps({ type: 'zarr', id: 'd1' }).props).toHaveLength(1);
+    expect(claims.findDefaultLayerProps({ type: 'zarrTiles', id: 'd1' }).props).toHaveLength(1);
+    // kepler's own Zarr datasets are its own layer's.
+    expect(claims.findDefaultLayerProps({ type: 'zarr', id: 'd1' }).props).toEqual([]);
     expect(claims.findDefaultLayerProps({ type: 'raster-tile', id: 'd1' }).props).toEqual([]);
   });
 });

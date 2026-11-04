@@ -99,13 +99,13 @@ describe('the layer registry', () => {
       keplerGl: Record<string, { visState: { layerClasses: Record<string, unknown> } }>;
     };
     const registry = state.keplerGl[KEPLER_INSTANCE_ID].visState.layerClasses;
-    const own = ['flowfield', 'vectorfield', 'symbol', 'markers', 'zarr', 'cogPainted', 'esriImage'];
+    const own = ['flowfield', 'vectorfield', 'symbol', 'markers', 'zarrTiles', 'cogPainted', 'esriImage'];
 
     for (const type of own) {
       expect((shownIcon(registry[type]) as { displayName?: string }).displayName).toMatch(/^OwnLayerIcon/);
     }
-    // A type both define is the plugin's: since kepler 3.3.0-alpha.19 kepler
-    // has a `zarr` layer of its own, which this plugin's is registered over.
+    // A type both define would be the plugin's; none does since this plugin's
+    // Zarr layer became `zarrTiles`, beside kepler's own `zarr`.
     for (const type of Object.keys(LayerClasses).filter((t) => !own.includes(t))) {
       expect(shownIcon(registry[type])).toBe(shownIcon((LayerClasses as Record<string, unknown>)[type]));
     }
