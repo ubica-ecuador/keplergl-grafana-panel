@@ -39,6 +39,7 @@ import { FieldType } from '@grafana/data';
 import type { PanelDataset } from '../data/framesToDatasets';
 import type { KeplerColumn } from '../data/toKeplerDataset';
 import { keepLeadingZeroIds } from '../data/leadingZeroIds';
+import { isGrafanaBacked } from '../data/grafanaAnnotations';
 import type { LiveLayer, SavedSplitPane } from './splitMapsGuard';
 import type { ClickedPosition, Figure, PolygonGeometry } from './clickArea';
 import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
@@ -1086,13 +1087,32 @@ export function restoredDatasets(savedConfig?: SavedMapConfig | null): ProtoData
  * Returns null before kepler has registered its instance, which is what happens
  * if the user hits save on a panel whose map has not finished mounting.
  */
+/**
+ * The saved config without the callouts drawn from Grafana annotations: those
+ * live in Grafana and come back with the panel's data, so a copy in the
+ * dashboard would show twice, and stay after the annotation was deleted.
+ */
+function withoutGrafanaAnnotations(config: SavedMapConfig): SavedMapConfig {
+  const visState = config.config?.visState as { annotations?: Array<{ id?: string }> } | undefined;
+  if (!visState?.annotations?.some((a) => isGrafanaBacked(String(a.id ?? '')))) {
+    return config;
+  }
+  return {
+    ...config,
+    config: {
+      ...config.config,
+      visState: { ...visState, annotations: visState.annotations.filter((a) => !isGrafanaBacked(String(a.id ?? ''))) },
+    },
+  } as SavedMapConfig;
+}
+
 export function captureMapConfig(store: Store): SavedMapConfig | null {
   const state = store.getState() as { keplerGl?: Record<string, unknown> };
   const instance = state.keplerGl?.[KEPLER_INSTANCE_ID];
   if (!instance) {
     return null;
   }
-  const config = KeplerGlSchema.getConfigToSave(instance) as unknown as SavedMapConfig;
+  const config = withoutGrafanaAnnotations(KeplerGlSchema.getConfigToSave(instance) as unknown as SavedMapConfig);
   const datasets = captureRemoteDatasets(store);
   const info = keepMapInfo(KeplerGlSchema.getMapInfo(instance));
   return {

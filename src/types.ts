@@ -185,6 +185,15 @@ export interface KeplerPanelOptions {
    */
   peerTimeSync?: boolean;
 
+  /**
+   * Grafana annotations on the map. `show` draws every annotation with a place
+   * (a `geo:<lng>,<lat>` tag, or a callout saved in its data) as a kepler
+   * callout while its time overlaps the map's window; `both` also writes a
+   * note made with the map's right-click "Add Annotation" to Grafana, for a
+   * viewer allowed to create annotations. `show` by default.
+   */
+  grafanaAnnotations?: 'off' | 'show' | 'both';
+
   /** Show GPS positions at the time under a Grafana graph's shared cursor. */
   hoverSync?: boolean;
   /** Experimental reverse cursor: Point layer hover publishes to Grafana graphs. */
