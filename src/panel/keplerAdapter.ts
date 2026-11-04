@@ -48,6 +48,7 @@ import { isPanelWmsId, wmsCalendarDatasetId, type WmsDataset } from '../data/wms
 import { type EsriDataset } from '../data/esriDataset';
 import { zarrCalendarDatasetId, type ZarrDataset } from '../data/zarrDataset';
 import { rowFieldValue, wmsFeatureValues } from './clickSync';
+import { withParkedParts, type ParkedState } from './parkedConfig';
 import type { FlowFieldLayerConfig } from '../data/buildFlowField';
 import type { FlowLayerConfig } from '../data/buildFlows';
 import type { SymbolLayerConfig } from '../data/buildSymbolLayer';
@@ -1091,6 +1092,11 @@ export function restoredDatasets(savedConfig?: SavedMapConfig | null): ProtoData
  * And the map's name and description, which `getConfigToSave` leaves out; see
  * `SavedMapConfig.info`.
  *
+ * And the layers kepler holds parked until their data arrives, with their
+ * filters, split sides and tooltip fields, which `getConfigToSave` also leaves
+ * out: a save made before a click-driven scene or a slow query had answered
+ * wrote a map without them. See `parkedConfig.ts`.
+ *
  * Returns null before kepler has registered its instance, which is what happens
  * if the user hits save on a panel whose map has not finished mounting.
  */
@@ -1119,7 +1125,12 @@ export function captureMapConfig(store: Store): SavedMapConfig | null {
   if (!instance) {
     return null;
   }
-  const config = withoutGrafanaAnnotations(KeplerGlSchema.getConfigToSave(instance) as unknown as SavedMapConfig);
+  // `getConfigToSave` writes the live map only: layers still waiting for their
+  // data, and what waits with them, are put back (`parkedConfig.ts`).
+  const parked = (instance as { visState?: ParkedState }).visState ?? {};
+  const config = withoutGrafanaAnnotations(
+    withParkedParts(KeplerGlSchema.getConfigToSave(instance) as unknown as SavedMapConfig, parked)
+  );
   const datasets = captureRemoteDatasets(store);
   const info = keepMapInfo(KeplerGlSchema.getMapInfo(instance));
   return {

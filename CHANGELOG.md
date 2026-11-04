@@ -6,6 +6,10 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Saving the map keeps the layers still waiting for their data.** A save made before every query
+  had answered, or before a click had picked the scene a raster layer shows, left those layers out,
+  with their filters, their side of a split map and their tooltip fields, and the next load drew
+  without them (or with kepler's own default layers). They are now saved as they were loaded.
 - **Grafana annotations on the map.** The dashboard's annotations that carry a place — a
   `geo:<lng>,<lat>` tag, or a callout saved in their data — are drawn as notes on the map while their
   time is in the map's window. A new option under *Map*, *Grafana annotations*, turns this off, or to
