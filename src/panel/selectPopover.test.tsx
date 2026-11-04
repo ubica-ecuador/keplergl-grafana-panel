@@ -12,6 +12,7 @@ import {
   type SelectApi,
 } from './selectPopover';
 import type { LinksApi } from './useDataLinks';
+import type { MapAction } from './mapActions';
 import type { VariableMapping } from './variableSync';
 
 /**
@@ -216,7 +217,32 @@ describe('data links in the popup', () => {
     );
   }
 
-  const linksApi = (links = [usgs]): LinksApi => ({ links: () => links, follow: jest.fn() });
+  const linksApi = (links = [usgs], actions: MapAction[] = []): LinksApi => ({
+    links: () => links,
+    follow: jest.fn(),
+    actions: () => actions,
+    run: jest.fn(),
+  });
+
+  const dispatch: MapAction = {
+    title: 'Dispatch a unit',
+    oneClick: false,
+    variables: [],
+    confirmation: () => 'Dispatch?',
+    request: () => ({ url: 'https://ops.example/dispatch', method: 'POST', data: '{}', headers: {} }),
+  };
+
+  it('offers the entity’s actions as buttons, and runs one through the panel', () => {
+    const api = linksApi([], [dispatch]);
+    mountLinks(pinned, api);
+    fireEvent.click(screen.getByRole('button', { name: 'Dispatch a unit' }));
+    expect(api.run).toHaveBeenCalledWith(dispatch);
+  });
+
+  it('offers no action in the hover popup', () => {
+    mountLinks(undefined, linksApi([], [dispatch]));
+    expect(screen.queryByRole('button', { name: 'Dispatch a unit' })).toBeNull();
+  });
 
   it('lists the clicked entity’s links in the pinned popup', () => {
     mountLinks(pinned, linksApi());

@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { PanelProps } from '@grafana/data';
-import { useTheme2 } from '@grafana/ui';
+import { usePanelContext, useTheme2 } from '@grafana/ui';
 
 import { KeplerPanelOptions } from '../types';
 import { AssistantContext } from '../assistant/AssistantContext';
@@ -54,6 +54,12 @@ export function KeplerPanel(props: Props) {
     id,
   } = props;
   const grafanaTheme = useTheme2();
+
+  // Grafana shows a field's actions only to a viewer who can edit the
+  // dashboard, and says so through the panel context; a Grafana without the
+  // hook (before 11.x) answers no, as its own panels do.
+  const panelContext = usePanelContext() as { canExecuteActions?: () => boolean };
+  const canExecuteActions = panelContext.canExecuteActions?.() ?? false;
 
   // kepler and the sync hook work in epoch ms; Grafana hands DateTime objects.
   const grafanaRange = useMemo(() => ({ from: timeRange.from.valueOf(), to: timeRange.to.valueOf() }), [timeRange]);
@@ -213,6 +219,7 @@ export function KeplerPanel(props: Props) {
         frames={data.series}
         replaceVariables={replaceVariables}
         timeZone={timeZone}
+        canExecuteActions={canExecuteActions}
         rasters={rasters}
         wmsLayers={wmsLayers}
         zarrLayers={zarrLayers}

@@ -50,6 +50,8 @@ import { readVariable, useVariableSync } from './useVariableSync';
 import { useClickSync } from './useClickSync';
 import { LinksContext, offersSelection, selectApi, SelectContext } from './selectPopover';
 import { useDataLinks } from './useDataLinks';
+import { ActionDialog } from './ActionDialog';
+import type { MapAction } from './mapActions';
 import { HaloContext, HaloDimContext, HaloStyleContext } from './haloMapContainer';
 import { withFlaggedRows } from './selectionHalo';
 import { PanelMappingsContext, type PanelMappings } from './panelMappingsContext';
@@ -127,6 +129,8 @@ export interface KeplerMapProps {
   replaceVariables?: InterpolateFunction;
   /** The dashboard's time zone, for the time range a data link carries. */
   timeZone?: string;
+  /** Whether this viewer may run the fields' actions: Grafana's `canExecuteActions`. */
+  canExecuteActions?: boolean;
   hoverSync?: boolean;
   hoverPublishSpike?: boolean;
   hoverLayerId?: string;
@@ -237,6 +241,7 @@ export function KeplerMap({
   frames = NO_FRAMES,
   replaceVariables,
   timeZone,
+  canExecuteActions = false,
   hoverSync,
   hoverPublishSpike,
   hoverLayerId,
@@ -639,8 +644,10 @@ export function KeplerMap({
     [clickConfirm, variableMappings, clicksArea, clickVariables, clickSquare, store]
   );
 
-  // Grafana's data links, in the pinned popup and, for a "one click" link, on
-  // the click itself when it selects nothing (useDataLinks.ts).
+  // Grafana's data links and actions, in the pinned popup and, for a "one
+  // click" one, on the click itself when it selects nothing (useDataLinks.ts).
+  // An action waits here for its dialog, which renders outside kepler's tree.
+  const [pendingAction, setPendingAction] = useState<MapAction | null>(null);
   const links = useDataLinks({
     store,
     isReady,
@@ -650,6 +657,8 @@ export function KeplerMap({
     timeZone,
     mappings: variableMappings,
     clickArea: clicksArea,
+    canExecuteActions,
+    onAction: setPendingAction,
   });
 
   // One-way: publishes the bbox of what the map shows once it comes to rest,
@@ -747,6 +756,7 @@ export function KeplerMap({
       )}
       {/* Outside the Provider, where @grafana/ui finds Grafana's own context.
           Only once kepler is there to capture, and only in the panel editor. */}
+      <ActionDialog action={pendingAction} onClose={() => setPendingAction(null)} />
       {isReady && (
         <SaveMapConfigButton panelId={panelId} width={width} sidePanelOpen={sidePanelOpen} onSave={saveMapConfig} />
       )}

@@ -5,6 +5,7 @@ import {
   type Field,
   type InterpolateFunction,
   type LinkModel,
+  type ScopedVars,
 } from '@grafana/data';
 
 import { datasetId } from '../data/framesToDatasets';
@@ -39,12 +40,48 @@ export function framesHaveLinks(frames: readonly DataFrame[]): boolean {
 }
 
 /**
- * The links of the clicked entity, interpolated, one per distinct title and
- * URL.
+ * The clicked entity as a one-row frame of its query: every field, its config,
+ * display and state carried over, its one value read from kepler's row.
  *
  * `values` is keyed the way kepler names the columns; `renames` (query name →
  * kepler name) translates the ones a field role renamed, so `${__data.fields.lat}`
  * finds the `lat` kepler reads as `latitude`.
+ */
+export function clickedRowFrame(
+  frame: DataFrame,
+  values: Record<string, unknown>,
+  renames?: Record<string, string>
+): DataFrame {
+  const valueOf = (field: Field) => {
+    const value = values[renames?.[field.name] ?? field.name] ?? values[field.name];
+    return value === undefined ? null : value;
+  };
+  return {
+    ...frame,
+    length: 1,
+    fields: frame.fields.map((field) => ({ ...field, values: [valueOf(field)] })),
+  };
+}
+
+/**
+ * The scoped variables a template on `field` of the one-row frame is filled
+ * with: the field's own, and a data context on that row.
+ *
+ * Grafana's field override pass leaves a `__dataContext` on every field that
+ * points at the query's whole frame, and the link and action builders clone it
+ * when it is there: row 0 would then be the query's first row, not the one
+ * clicked. The context is this one-row frame's, as the pass would have set it.
+ */
+export function rowScopedVars(row: DataFrame, field: Field): ScopedVars {
+  return {
+    ...field.state?.scopedVars,
+    __dataContext: { value: { data: [row], frame: row, field, frameIndex: 0, rowIndex: 0 } },
+  };
+}
+
+/**
+ * The links of the clicked entity, interpolated, one per distinct title and
+ * URL.
  *
  * A link on the field defaults sits on every field, and Grafana's own tooltip
  * shows it once: so does this. A template Grafana cannot fill throws; that link
@@ -68,15 +105,7 @@ export function entityLinks({
     return [];
   }
 
-  const valueOf = (field: Field) => {
-    const value = values[renames?.[field.name] ?? field.name] ?? values[field.name];
-    return value === undefined ? null : value;
-  };
-  const row: DataFrame = {
-    ...frame,
-    length: 1,
-    fields: frame.fields.map((field) => ({ ...field, values: [valueOf(field)] })),
-  };
+  const row = clickedRowFrame(frame, values, renames);
 
   const seen = new Set<string>();
   const links: LinkModel[] = [];
@@ -84,14 +113,7 @@ export function entityLinks({
     if (!field.config?.links?.length) {
       continue;
     }
-    // Grafana's field override pass leaves a `__dataContext` on every field
-    // that points at the query's whole frame, and the supplier clones it when
-    // it is there: row 0 would then be the query's first row, not the one
-    // clicked. The context is this one-row frame's, as the pass would have set it.
-    const scopedVars = {
-      ...field.state?.scopedVars,
-      __dataContext: { value: { data: [row], frame: row, field, frameIndex: 0 } },
-    };
+    const scopedVars = rowScopedVars(row, field);
     let supplied: LinkModel[];
     try {
       supplied = getLinksSupplier(

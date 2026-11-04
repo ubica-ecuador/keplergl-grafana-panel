@@ -164,6 +164,13 @@ const StyledLink = styled.a`
   }
 `;
 
+const StyledActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+`;
+
 /** A plain left click, the one the panel follows itself; a modified click is the browser's. */
 function isPlainClick(event: React.MouseEvent): boolean {
   return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
@@ -180,8 +187,8 @@ function usePinned(): boolean {
 }
 
 /**
- * kepler's popup content, with the entity's data links and the panel's Select
- * button under it.
+ * kepler's popup content, with the entity's data links, its actions and the
+ * panel's Select button under it.
  *
  * Links show in the pinned popup only, as in Grafana's own tooltips: the hover
  * popup follows the pointer and cannot be clicked. Each is an anchor, so a
@@ -204,6 +211,8 @@ export function withSelectButton<P extends object>(Content: React.ComponentType<
     const selected = offer && api ? api.isSelected() : false;
     const linksApi = useContext(LinksContext);
     const links = linksApi && pinned && !comparing ? linksApi.links() : [];
+    // Empty for a viewer who may not run actions: useDataLinks asks Grafana.
+    const actions = linksApi && pinned && !comparing ? linksApi.actions() : [];
 
     return (
       <>
@@ -228,6 +237,15 @@ export function withSelectButton<P extends object>(Content: React.ComponentType<
               </StyledLink>
             ))}
           </StyledLinks>
+        ) : null}
+        {actions.length && linksApi ? (
+          <StyledActions className="panel-entity-actions">
+            {actions.map((action, i) => (
+              <StyledSelect key={`${i}:${action.title}`} type="button" onClick={() => linksApi.run(action)}>
+                {action.title}
+              </StyledSelect>
+            ))}
+          </StyledActions>
         ) : null}
         {offer && api ? (
           <StyledSelect type="button" className="panel-select-entity" onClick={selected ? api.clear : api.select}>
