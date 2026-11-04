@@ -36,7 +36,7 @@ import type { Dispatch, Store } from 'redux';
 
 import { FieldType } from '@grafana/data';
 
-import type { PanelDataset } from '../data/framesToDatasets';
+import type { FixedLayerConfig, PanelDataset } from '../data/framesToDatasets';
 import type { KeplerColumn } from '../data/toKeplerDataset';
 import { keepLeadingZeroIds } from '../data/leadingZeroIds';
 import { isGrafanaBacked } from '../data/grafanaAnnotations';
@@ -52,6 +52,7 @@ import type { FlowFieldLayerConfig } from '../data/buildFlowField';
 import type { FlowLayerConfig } from '../data/buildFlows';
 import type { SymbolLayerConfig } from '../data/buildSymbolLayer';
 import type { TripLayerConfig } from '../data/buildTripLayer';
+import type { LineLayerConfig } from '../data/buildRoute';
 import {
   keepMapInfo,
   keepRemoteDatasets,
@@ -59,6 +60,8 @@ import {
   type SavedMapConfig,
   type SavedRemoteDataset,
 } from '../data/mapConfig';
+import { savedViewportOf } from './viewportGuard';
+import { documentBase, relativeRemoteSource, resolveRemoteSource } from '../data/remoteSource';
 import { viewportFromMapState, type MapStateLike } from './windViewport';
 import type { ViewportBounds } from './viewportSync';
 import { MULTI_SELECT_FILTER_TYPE, type LinkableFilter } from './mosaicLink';
@@ -178,8 +181,9 @@ export function loadDatasets(
     : null;
 
   // A saved config already positions the map; re-framing it around the data
-  // would throw away the viewport the user deliberately saved.
-  const centerMap = options.centerMap ?? !config;
+  // would throw away the viewport the user deliberately saved. One that holds
+  // no viewport, as a Geomap set to "Fit to data" converts to, is framed.
+  const centerMap = options.centerMap ?? (!config || savedViewportOf(savedConfig) === null);
 
   dispatch(
     wrapTo(
@@ -1058,8 +1062,9 @@ export function applyWmsTime(store: Store, dispatch: Dispatch, dataId: string, t
  * including ones the filter cannot act on.
  */
 export function restoredDatasets(savedConfig?: SavedMapConfig | null): ProtoDataset[] {
+  const base = documentBase();
   return (savedConfig?.datasets ?? []).map((saved) => {
-    const parsed = datasetSchema[VERSIONS.v1].load(saved.data as SavedDatasetV1['data']);
+    const parsed = datasetSchema[VERSIONS.v1].load(withResolvedSource(saved, base).data as SavedDatasetV1['data']);
     return saved.data.type === VECTOR_TILE_TYPE
       ? { ...parsed, supportedFilterTypes: VECTOR_TILE_FILTER_TYPES }
       : parsed;
@@ -1122,6 +1127,28 @@ export function captureMapConfig(store: Store): SavedMapConfig | null {
   };
 }
 
+/** A file kepler fetches by URL, with a source relative to Grafana made absolute for kepler. */
+function withResolvedSource(saved: SavedRemoteDataset, base: string | undefined): SavedRemoteDataset {
+  const source = saved.data.metadata?.source;
+  return typeof source === 'string'
+    ? {
+        ...saved,
+        data: { ...saved.data, metadata: { ...saved.data.metadata, source: resolveRemoteSource(source, base) } },
+      }
+    : saved;
+}
+
+/** The reverse, on save: a file under Grafana's root keeps a path that works on any Grafana. */
+function withRelativeSource(saved: SavedRemoteDataset, base: string | undefined): SavedRemoteDataset {
+  const source = saved.data.metadata?.source;
+  return typeof source === 'string'
+    ? {
+        ...saved,
+        data: { ...saved.data, metadata: { ...saved.data.metadata, source: relativeRemoteSource(source, base) } },
+      }
+    : saved;
+}
+
 /** The saved form of every URL-backed dataset the map currently holds. */
 function captureRemoteDatasets(store: Store): SavedRemoteDataset[] {
   const datasets = Object.entries(getVisState(store)?.datasets ?? {});
@@ -1141,7 +1168,8 @@ function captureRemoteDatasets(store: Store): SavedRemoteDataset[] {
       // The state object is kepler's own `KeplerTable`; only this module's view
       // of it is narrowed, hence the cast.
       data: schema.save(dataset as unknown as Parameters<typeof schema.save>[0]),
-    }));
+    }))
+    .map((saved) => withRelativeSource(saved as SavedRemoteDataset, documentBase()));
   // Back through the same filter the import path uses, so what a save writes and
   // what a paste accepts can never drift apart.
   return keepRemoteDatasets(saved);
@@ -2500,7 +2528,8 @@ export function autoLayerStatus(
 export function addAutoLayer(
   store: Store,
   dispatch: Dispatch,
-  layer: FlowLayerConfig | TripLayerConfig | FlowFieldLayerConfig | SymbolLayerConfig,
+  layer:
+    FlowLayerConfig | TripLayerConfig | FlowFieldLayerConfig | SymbolLayerConfig | LineLayerConfig | FixedLayerConfig,
   dataId: string
 ): MapBounds | null {
   dispatch(wrapTo(KEPLER_INSTANCE_ID, addLayer(layer, dataId)));

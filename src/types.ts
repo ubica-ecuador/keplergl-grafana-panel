@@ -6,6 +6,8 @@ import { TimeSyncMode } from './panel/timeSync';
 import { TimeVariableMapping } from './panel/timeVariableSync';
 import { VariableMapping } from './panel/variableSync';
 import { ViewportVariables } from './panel/viewportSync';
+import type { GeomapImport } from './geomap/fromGeomap';
+import type { DayNightMode } from './data/dayNight';
 
 /**
  * Base maps offered in the panel options.
@@ -44,6 +46,37 @@ export interface KeplerPanelOptions {
    * Written by the panel when the user asks for a save, and applied on load.
    */
   mapConfig?: SavedMapConfig | null;
+
+  /**
+   * A Geomap panel's layers, view and tooltip, waiting for the first rows.
+   *
+   * Written when the visualization is changed from Geomap (`fromGeomap.ts`) and
+   * replaced by `mapConfig` as soon as the queries answer, since a kepler layer
+   * names its columns and Geomap's usual location mode names none.
+   */
+  geomapImport?: GeomapImport | null;
+
+  /**
+   * Queries also drawn as a route: each row joined to the next, in query order,
+   * as kepler line segments in a dataset beside the query's (`buildRoute.ts`).
+   * Written by the Geomap conversion for its route layers.
+   */
+  routeQueries?: string[];
+
+  /**
+   * Shades the night side of the Earth at the end of the dashboard range (`to`)
+   * or at its start (`from`), as Geomap's Night / Day layer does; `dayNightSun`
+   * adds the point the sun stands over. See `dayNight.ts`.
+   */
+  dayNight?: DayNightMode;
+  dayNightSun?: boolean;
+
+  /**
+   * Where a query's place names and codes are looked up (the `lookup` role):
+   * Grafana's countries, US states or airports, or a file of one's own. Read
+   * as Geomap reads it; see `placeLookup.ts`.
+   */
+  gazetteer?: string;
 
   /**
    * Save request counter.

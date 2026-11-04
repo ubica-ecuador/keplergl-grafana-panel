@@ -24,7 +24,9 @@ export interface SavedRemoteDataset {
 
 /**
  * The dataset types whose whole content is a URL — kepler's Add Data → Tileset
- * form produces exactly these five.
+ * form produces the first five, and a file loaded by URL (Add Data → URL, or a
+ * Geomap's GeoJSON) is `externally-hosted`: kepler saves only its address and
+ * fetches it again on load (see `remoteSource.ts` for relative addresses).
  *
  * Mirrors `DatasetType` in `@kepler.gl/constants`, minus `local`. A dataset the
  * panel built from a query has `type: ''` and a file dropped into Add Data has
@@ -32,7 +34,16 @@ export interface SavedRemoteDataset {
  * the first because the queries rebuild it, the second because persisting it
  * would mean embedding its rows.
  */
-export const REMOTE_DATASET_TYPES = ['vector-tile', 'raster-tile', 'wms-tile', 'tile-3d', 'bitmap'];
+export const REMOTE_DATASET_TYPES = [
+  'vector-tile',
+  'raster-tile',
+  'wms-tile',
+  'tile-3d',
+  'bitmap',
+  'externally-hosted',
+  // The panel's own `{z}/{x}/{y}` tiles (`xyzTiles.ts`): a template, no rows.
+  'xyz-tiles',
+];
 
 /** The map's name and description, as kepler's `info` carries them. */
 export interface SavedMapInfo {

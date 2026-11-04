@@ -1,0 +1,365 @@
+import { createTheme, FieldType, toDataFrame } from '@grafana/data';
+import KeplerGlSchema from '@kepler.gl/schemas';
+
+import { fromGeomapPanel, type GeomapImport, type GeomapOptions } from './fromGeomap';
+import { geomapToKepler } from './geomapToKepler';
+
+const theme = createTheme({ colors: { mode: 'dark' } });
+
+function importOf(options: GeomapOptions): GeomapImport {
+  return fromGeomapPanel('geomap', options as Record<string, unknown>, { defaults: {}, overrides: [] }, theme)
+    .geomapImport!;
+}
+
+const stations = toDataFrame({
+  refId: 'A',
+  fields: [
+    { name: 'name', type: FieldType.string, values: ['Quito', 'Cuenca'] },
+    { name: 'lat', type: FieldType.number, values: [-0.18, -2.9] },
+    { name: 'lon', type: FieldType.number, values: [-78.47, -79] },
+    { name: 'magnitude', type: FieldType.number, values: [3, 5] },
+  ],
+});
+
+const sites = toDataFrame({
+  refId: 'B',
+  fields: [
+    { name: 'y', type: FieldType.number, values: [1] },
+    { name: 'x', type: FieldType.number, values: [2] },
+  ],
+});
+
+const markers: GeomapOptions = {
+  view: { id: 'coords', lat: -1.5, lon: -78.5, zoom: 7 },
+  layers: [
+    {
+      type: 'markers',
+      name: 'Stations',
+      location: { mode: 'auto' },
+      config: {
+        style: { size: { fixed: 5, min: 2, max: 15, field: 'magnitude' }, text: { field: 'name', mode: 'field' } },
+      },
+    },
+  ],
+};
+
+describe('geomapToKepler', () => {
+  it('waits for rows before converting', () => {
+    expect(geomapToKepler(importOf(markers), [])).toBeNull();
+  });
+
+  it('builds a point layer on the detected coordinates of the first query', () => {
+    const result = geomapToKepler(importOf(markers), [stations])!;
+    const [layer] = (result.mapConfig.config.visState as { layers: any[] }).layers;
+
+    expect(layer.type).toBe('point');
+    expect(layer.config.dataId).toBe('grafana-A');
+    // The panel renames the coordinate columns it detected.
+    expect(layer.config.columns).toEqual({ lat: 'latitude', lng: 'longitude' });
+    expect(layer.visualChannels.sizeField).toEqual({ name: 'magnitude', type: 'real' });
+    expect(layer.config.textLabel[0].field).toEqual({ name: 'name', type: 'string' });
+    expect(layer.config.textLabel[0]).toMatchObject({
+      anchor: 'middle',
+      alignment: 'center',
+      color: layer.config.color,
+    });
+    expect(result.mapConfig.config.mapState).toMatchObject({ latitude: -1.5, longitude: -78.5, zoom: 6 });
+    expect(result.routeQueries).toBeUndefined();
+  });
+
+  it('maps the columns Geomap was told, on the query it was told', () => {
+    const result = geomapToKepler(
+      importOf({
+        ...markers,
+        layers: [
+          {
+            type: 'markers',
+            name: 'Sites',
+            filterData: { id: 'byRefId', options: 'B' },
+            location: { mode: 'coords', latitude: 'y', longitude: 'x' },
+          },
+        ],
+      }),
+      [stations, sites]
+    )!;
+    const [layer] = (result.mapConfig.config.visState as { layers: any[] }).layers;
+
+    expect(layer.config.dataId).toBe('grafana-B');
+    expect(result.fieldMappings).toEqual({ B: { latitude: 'y', longitude: 'x' } });
+  });
+
+  it('leaves the viewport out for fit-to-data, so the panel frames the rows', () => {
+    const result = geomapToKepler(importOf({ ...markers, view: { id: 'fit' } }), [stations])!;
+    expect(result.mapConfig.config.mapState).toBeUndefined();
+  });
+
+  it('notes a layer whose rows have no coordinates', () => {
+    const noCoords = toDataFrame({ refId: 'A', fields: [{ name: 'v', type: FieldType.number, values: [1] }] });
+    const result = geomapToKepler(importOf(markers), [noCoords])!;
+
+    expect((result.mapConfig.config.visState as { layers: unknown[] }).layers).toHaveLength(0);
+    expect(result.dropped).toEqual(['“Stations”: no latitude and longitude columns found']);
+  });
+
+  it('produces a config kepler parses with its layers and tooltip intact', () => {
+    const imported = importOf({
+      ...markers,
+      tooltip: { mode: 'none' },
+      layers: [...markers.layers!, { type: 'heatmap', name: 'Heat', config: { weight: { field: 'magnitude' } } }],
+    });
+    const parsed = KeplerGlSchema.parseSavedConfig(geomapToKepler(imported, [stations])!.mapConfig);
+
+    expect(parsed?.visState?.layers?.map((l: { type: string }) => l.type)).toEqual(['heatmap', 'point']);
+    expect(parsed?.visState?.interactionConfig?.tooltip?.enabled).toBe(false);
+  });
+
+  it('sizes points and heat as Geomap drew them on screen', () => {
+    const imported = importOf({
+      view: { id: 'coords', lat: -1.5, lon: -78.5, zoom: 7 },
+      layers: [
+        { type: 'markers', name: 'Dots', config: { style: { size: { fixed: 10, min: 2, max: 20 } } } },
+        { type: 'heatmap', name: 'Heat', config: { radius: 5, blur: 15 } },
+      ],
+    });
+    // Geomap's first layer is its bottom one; kepler's is its top one.
+    const [heat, points] = (geomapToKepler(imported, [stations])!.mapConfig.config.visState as { layers: any[] })
+      .layers;
+
+    // About 0.21 px per kepler radius unit.
+    expect(points.config.visConfig.radius).toBeCloseTo(47.8, 0);
+    expect(points.config.visConfig.radiusRange).toEqual([9.6, 95.5]);
+    // 20 px at the opening zoom 6, on kepler's 2 px (zoom 0) to radius (zoom 18) ramp.
+    expect(heat.config.visConfig.radius).toBe(56);
+  });
+
+  it('opens the legend when a markers layer is coloured or sized by a field', () => {
+    const legendOf = (options: GeomapOptions) =>
+      (geomapToKepler(importOf(options), [stations])!.mapConfig.config.uiState as any).mapControls.mapLegend.active;
+
+    expect(legendOf(markers)).toBe(true);
+    expect(legendOf({ ...markers, layers: [{ type: 'markers', name: 'Plain' }] })).toBe(false);
+  });
+
+  it('draws a route as a line layer on the query’s segments, arrows and width included', () => {
+    const imported = importOf({
+      view: { id: 'fit' },
+      layers: [
+        {
+          type: 'route',
+          name: 'Track',
+          config: { arrow: 1, style: { color: { field: 'magnitude' }, size: { fixed: 4 }, lineWidth: 2 } },
+        },
+      ],
+    });
+    const result = geomapToKepler(imported, [stations])!;
+    const [line] = (result.mapConfig.config.visState as { layers: any[] }).layers;
+
+    expect(result.routeQueries).toEqual(['A']);
+    expect(line.type).toBe('line');
+    expect(line.config.dataId).toBe('grafana-A-route');
+    expect(line.config.columns).toEqual({ lat0: 'lat0', lng0: 'lng0', lat1: 'lat1', lng1: 'lng1' });
+    // 4 px at kepler's 2/3 px per unit of thickness.
+    expect(line.config.visConfig.thickness).toBe(6);
+    expect(line.config.visConfig).toMatchObject({ targetArrowEnabled: true, targetArrowSize: 12 });
+    expect(line.visualChannels.colorField).toEqual({ name: 'magnitude', type: 'real' });
+
+    const parsed = KeplerGlSchema.parseSavedConfig(result.mapConfig);
+    expect(parsed?.visState?.layers?.[0]).toMatchObject({ type: 'line' });
+  });
+
+  it('reverses the segments for arrows at their start', () => {
+    const imported = importOf({ layers: [{ type: 'route', name: 'Back', config: { arrow: -1 } }] });
+    const [line] = (geomapToKepler(imported, [stations])!.mapConfig.config.visState as { layers: any[] }).layers;
+
+    expect(line.config.columns).toEqual({ lat0: 'lat1', lng0: 'lng1', lat1: 'lat0', lng1: 'lng0' });
+  });
+
+  it('loads a GeoJSON file by its address, without waiting for rows a map of files never gets', () => {
+    const imported = importOf({
+      view: { id: 'zero' },
+      layers: [
+        {
+          type: 'geojson',
+          name: 'States',
+          config: {
+            src: 'public/maps/usa-states.geojson',
+            style: { color: { fixed: 'green' }, opacity: 0.4 },
+            rules: [
+              { check: { property: 'density', operation: 'gt', value: 100 }, style: { color: { fixed: 'red' } } },
+            ],
+          },
+        },
+      ],
+    });
+    const result = geomapToKepler(imported, [])!;
+    const [layer] = (result.mapConfig.config.visState as { layers: any[] }).layers;
+
+    expect(result.mapConfig.datasets).toEqual([
+      {
+        version: 'v1',
+        data: {
+          id: 'geomap-geojson-0',
+          label: 'usa-states.geojson',
+          type: 'externally-hosted',
+          metadata: { source: 'public/maps/usa-states.geojson', format: 'geojson' },
+          fields: [],
+          allData: [],
+        },
+      },
+    ]);
+    expect(layer).toMatchObject({
+      type: 'geojson',
+      config: { dataId: 'geomap-geojson-0', columns: { geojson: '_geojson' } },
+      visualChannels: { colorField: { name: 'density', type: 'real' }, colorScale: 'custom' },
+    });
+    expect(KeplerGlSchema.parseSavedConfig(result.mapConfig)?.visState?.layers?.[0]).toMatchObject({ type: 'geojson' });
+  });
+
+  it('draws equality rules over the layer’s own style, which colours every other value', () => {
+    const imported = importOf({
+      layers: [
+        {
+          type: 'geojson',
+          name: 'Countries',
+          config: {
+            src: 'public/maps/countries.geojson',
+            rules: [
+              { check: { property: 'name', operation: 'eq', value: 'Ecuador' }, style: { color: { fixed: 'red' } } },
+            ],
+          },
+        },
+      ],
+    });
+    const layers = (geomapToKepler(imported, [])!.mapConfig.config.visState as { layers: any[] }).layers;
+
+    expect(layers.map((l) => [l.config.label, l.visualChannels.colorScale])).toEqual([
+      ['Countries · rules', 'customOrdinal'],
+      ['Countries', undefined],
+    ]);
+    expect(layers.every((l) => l.config.dataId === 'geomap-geojson-0')).toBe(true);
+  });
+
+  it('draws a network’s nodes as points over its edges as lines, each on its part of the graph', () => {
+    const graphNodes = toDataFrame({
+      refId: 'N',
+      fields: [
+        { name: 'id', type: FieldType.string, values: ['a', 'b'] },
+        { name: 'lat', type: FieldType.number, values: [0, 1] },
+        { name: 'lon', type: FieldType.number, values: [0, 1] },
+      ],
+    });
+    const graphEdges = toDataFrame({
+      refId: 'E',
+      fields: [
+        { name: 'source', type: FieldType.string, values: ['a'] },
+        { name: 'target', type: FieldType.string, values: ['b'] },
+        { name: 'traffic', type: FieldType.number, values: [3] },
+      ],
+    });
+    const imported = importOf({
+      layers: [
+        {
+          type: 'network',
+          name: 'Links',
+          config: {
+            arrow: 1,
+            style: { size: { fixed: 6 } },
+            edgeStyle: { color: { field: 'traffic' }, size: { fixed: 2 } },
+          },
+        },
+      ],
+    });
+    const result = geomapToKepler(imported, [graphEdges, graphNodes])!;
+    const layers = (result.mapConfig.config.visState as { layers: any[] }).layers;
+
+    expect(layers.map((l) => [l.type, l.config.dataId, l.config.label])).toEqual([
+      ['point', 'grafana-N', 'Links · nodes'],
+      ['line', 'grafana-E', 'Links · edges'],
+    ]);
+    expect(layers[1].visualChannels.colorField).toEqual({ name: 'traffic', type: 'real' });
+    expect(layers[1].config.visConfig.targetArrowEnabled).toBe(true);
+    expect(result.routeQueries).toBeUndefined();
+  });
+
+  it('turns a Night / Day layer into the panel’s night shading, styled as Geomap drew it', () => {
+    const options = fromGeomapPanel(
+      'geomap',
+      { layers: [{ type: 'dayNight', name: 'Night', config: { show: 'from', sun: true, nightColor: '#00000080' } }] },
+      { defaults: {}, overrides: [] },
+      theme
+    );
+    expect(options).toMatchObject({ dayNight: 'from', dayNightSun: true });
+
+    const layers = (geomapToKepler(options.geomapImport!, [])!.mapConfig.config.visState as { layers: any[] }).layers;
+    expect(layers.map((l) => [l.type, l.config.dataId])).toEqual([
+      ['point', 'day-night-sun'],
+      ['geojson', 'day-night'],
+    ]);
+    expect(layers[1].config.color).toEqual([0, 0, 0]);
+    expect(layers[1].config.visConfig.opacity).toBeCloseTo(0.5, 2);
+  });
+
+  it('draws Geomap’s photos from the first text column when none is named, framed as configured', () => {
+    const options = fromGeomapPanel(
+      'geomap',
+      { layers: [{ type: 'photos', name: 'Pictures', config: { kind: 'circle', radius: 15, border: 3 } }] },
+      { defaults: {}, overrides: [] },
+      theme
+    );
+    const [layer] = (geomapToKepler(options.geomapImport!, [stations])!.mapConfig.config.visState as { layers: any[] })
+      .layers;
+
+    expect(layer).toMatchObject({
+      type: 'photos',
+      config: {
+        dataId: 'grafana-A',
+        visConfig: { photoField: 'name', photoSize: 30, photoKind: 'circle', photoBorder: 3 },
+      },
+    });
+  });
+
+  it('places Geomap layers by geohash or by name, with the gazetteer it named', () => {
+    const options = fromGeomapPanel(
+      'geomap',
+      {
+        layers: [
+          {
+            type: 'markers',
+            name: 'Countries',
+            location: { mode: 'lookup', lookup: 'iso', gazetteer: 'public/build/gazetteer/countries.json' },
+          },
+        ],
+      },
+      { defaults: {}, overrides: [] },
+      theme
+    );
+    // The build prefix of the Grafana it was saved on gives way to the portable path.
+    expect(options.gazetteer).toBe('public/gazetteer/countries.json');
+
+    const byName = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'iso', type: FieldType.string, values: ['EC'] },
+        { name: 'lat', type: FieldType.number, values: [9] },
+        { name: 'lon', type: FieldType.number, values: [9] },
+      ],
+    });
+    const result = geomapToKepler(options.geomapImport!, [byName])!;
+    expect(result.fieldMappings).toEqual({ A: { latitude: null, longitude: null, lookup: 'iso' } });
+    expect((result.mapConfig.config.visState as { layers: any[] }).layers[0].config.columns).toEqual({
+      lat: 'latitude',
+      lng: 'longitude',
+    });
+
+    const byHash = fromGeomapPanel(
+      'geomap',
+      { layers: [{ type: 'heatmap', name: 'Cells', location: { mode: 'geohash' } }] },
+      { defaults: {}, overrides: [] },
+      theme
+    );
+    const cells = toDataFrame({ refId: 'A', fields: [{ name: 'geohash', type: FieldType.string, values: ['6rbny'] }] });
+    expect(
+      (geomapToKepler(byHash.geomapImport!, [cells])!.mapConfig.config.visState as { layers: any[] }).layers
+    ).toHaveLength(1);
+  });
+});

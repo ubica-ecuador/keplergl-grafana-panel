@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { PanelProps } from '@grafana/data';
 import { usePanelContext, useTheme2 } from '@grafana/ui';
 
@@ -25,6 +25,10 @@ import { useStableValue } from './useStableValue';
 import { publishIntervalOf } from './timeVariableSync';
 import { withKeplerFields, type VariableMapping } from './variableSync';
 import { parseViewportColumns } from './mosaicLink';
+import { dayNightDatasets, NIGHT_COLOR } from '../data/dayNight';
+import { namesPlaces, useGazetteer } from './useGazetteer';
+import { geomapToKepler } from '../geomap/geomapToKepler';
+import { GeomapImportNotice } from '../geomap/GeomapImportNotice';
 
 interface Props extends PanelProps<KeplerPanelOptions> {}
 
@@ -73,7 +77,37 @@ export function KeplerPanel(props: Props) {
   // Grafana deep-clones the options on every options change, so without this
   // any click in the panel editor would arrive as "new" field mappings, rebuild
   // the datasets and push a needless — and destructive — refresh into kepler.
-  const fieldMappings = useStableValue(options.fieldMappings);
+  //
+  // A panel just switched from Geomap finishes its conversion on the first rows
+  // (`geomapToKepler.ts`); until the converted options are back from Grafana,
+  // its map and mappings stand in for them, so the map never shows the layers
+  // kepler would have guessed instead.
+  const geomapConversion = useMemo(
+    () => (options.geomapImport ? geomapToKepler(options.geomapImport, data.series, options.fieldMappings) : null),
+    [options.geomapImport, data.series, options.fieldMappings]
+  );
+  const fieldMappings = useStableValue(geomapConversion?.fieldMappings ?? options.fieldMappings);
+  const routeQueries = useStableValue(geomapConversion?.routeQueries ?? options.routeQueries);
+  // What did not carry over outlives the conversion, which the saved options
+  // clear: kept from the render that converted, for the notice.
+  const [geomapDropped, setGeomapDropped] = useState<string[] | null>(null);
+  if (geomapConversion && geomapConversion.dropped !== geomapDropped) {
+    setGeomapDropped(geomapConversion.dropped);
+  }
+  useEffect(() => {
+    if (!geomapConversion) {
+      return;
+    }
+    onOptionsChange({
+      ...options,
+      mapConfig: geomapConversion.mapConfig,
+      fieldMappings: geomapConversion.fieldMappings,
+      routeQueries: geomapConversion.routeQueries,
+      geomapImport: null,
+    });
+    // Once per conversion: the options it writes are what clears it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geomapConversion]);
 
   // Same reason: the viewport channel's effect re-subscribes — and republishes
   // — whenever this identity moves, which a clone would do on every click in
@@ -91,13 +125,33 @@ export function KeplerPanel(props: Props) {
   // mapping is configured, so all four tore down and re-subscribed constantly.
   const variableMappings = useStableValue(options.variableMappings ?? EMPTY_MAPPINGS);
 
-  const datasets = useMemo(
+  // The night shading's moment: the end or the start of the dashboard range.
+  const dayNight = options.dayNight ?? 'off';
+  const nightAt = dayNight === 'off' ? null : dayNight === 'from' ? grafanaRange.from : grafanaRange.to;
+  const dayNightSun = Boolean(options.dayNightSun);
+
+  // Place names wait for their gazetteer, fetched only when a query names places.
+  const gazetteer = useGazetteer(
+    options.gazetteer,
+    useMemo(() => namesPlaces(data.series, fieldMappings), [data.series, fieldMappings])
+  );
+
+  const queryDatasets = useMemo(
     () =>
       framesToDatasets(data.series, fieldMappings, {
         flowRenderMode: options.flowRenderMode,
         tripLayerMode: options.tripLayerMode,
+        routeQueries,
+        gazetteer,
       }),
-    [data.series, fieldMappings, options.flowRenderMode, options.tripLayerMode]
+    [data.series, fieldMappings, options.flowRenderMode, options.tripLayerMode, routeQueries, gazetteer]
+  );
+  const datasets = useMemo(
+    () =>
+      nightAt === null
+        ? queryDatasets
+        : [...queryDatasets, ...dayNightDatasets(new Date(nightAt), dayNightSun, NIGHT_COLOR)],
+    [queryDatasets, nightAt, dayNightSun]
   );
 
   // The mappings name the query's columns, as the editor lists them; kepler knows a column with a role by the role's
@@ -230,7 +284,7 @@ export function KeplerPanel(props: Props) {
         wmsLayers={wmsLayers}
         zarrLayers={zarrLayers}
         esriLayers={esriLayers}
-        mapConfig={options.mapConfig}
+        mapConfig={geomapConversion?.mapConfig ?? options.mapConfig}
         theme={followTheme ? keplerTheme : undefined}
         basemapId={basemapId}
         customBasemapUrl={customBasemapUrl}
@@ -272,6 +326,7 @@ export function KeplerPanel(props: Props) {
       />
       {/* After the map, so it stacks over it. */}
       <RasterServerNotice queries={serverMissing} top={editing ? SAVE_BUTTON_CLEARANCE_PX : undefined} />
+      <GeomapImportNotice dropped={geomapDropped} top={editing ? SAVE_BUTTON_CLEARANCE_PX : undefined} />
     </div>
   );
 }

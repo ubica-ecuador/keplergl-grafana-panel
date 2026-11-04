@@ -37,11 +37,19 @@ interface AddedLayer {
  * A symbol layer collides with the same guessed Point layer, for the same
  * reason: the coordinates are real, but a plain dot says nothing about the
  * bearing the symbol layer turns by.
+ *
+ * A route's segments carry both ends and the starting row's own coordinates,
+ * so kepler guesses an Arc (or Line) from the ends and a Point from the rest:
+ * the second draws the query's points again, over the query's own layer.
  */
 const SUPERSEDES: Record<string, string[]> = {
   trip: ['trip'],
   flowfield: ['point', 'flowField'],
   symbol: ['point'],
+  line: ['arc', 'line', 'point'],
+  // The panel's own night shading and sun: kepler guesses the same layer types, unstyled.
+  geojson: ['geojson'],
+  point: ['point'],
 };
 
 export function supersededLayerIds(layers: LayerLike[], added: AddedLayer): string[] {

@@ -50,7 +50,14 @@ export function useAutoLayers({ store, isReady, datasets, enabled, onLayerAdded 
       return;
     }
     for (const dataset of datasetsRef.current) {
-      for (const layer of [dataset.tripLayer, dataset.flowLayer, dataset.flowFieldLayer, dataset.symbolLayer]) {
+      for (const layer of [
+        dataset.tripLayer,
+        dataset.flowLayer,
+        dataset.flowFieldLayer,
+        dataset.symbolLayer,
+        dataset.lineLayer,
+        dataset.fixedLayer,
+      ]) {
         if (!layer || added.current.has(layer.id)) {
           continue;
         }

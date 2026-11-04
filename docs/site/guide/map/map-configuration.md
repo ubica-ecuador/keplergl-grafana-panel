@@ -45,7 +45,11 @@ it on the next load. The save writes its **descriptor** instead: the name, the f
 URLs. No rows, so it stays a few lines of JSON. See
 [Layers configured with a URL](../../layers/url-configured).
 
-A CSV or GeoJSON you drop into **Add Data** is _not_ saved. Persisting it would mean putting every
+A file **loaded by URL** in **Add Data** — a GeoJSON or CSV on a web server — is saved the same way:
+its address, which kepler fetches again on every load. A file served by Grafana itself keeps a path
+relative to Grafana, so the dashboard still finds it on another instance.
+
+A CSV or GeoJSON you **drop** into **Add Data** is _not_ saved. Persisting it would mean putting every
 row of the file in the dashboard JSON. Load such data through a query instead — see
 [How a query becomes a map](../data/how-a-query-becomes-a-map).
 

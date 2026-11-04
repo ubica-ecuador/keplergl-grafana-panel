@@ -47,6 +47,8 @@ each trip.
 
 A query that produced one long polyline elsewhere will therefore produce _n_ separate animated
 trajectories here — which is almost always what you actually wanted, but it is a visible change.
+If you did want the one line, static, **Map → Draw as a route** joins a query's rows in order; see
+[Routes and networks](./data/routes-and-networks).
 A trip id plus time plus a position **is** an animated Trip layer; there is no animation toggle to
 find. If your table genuinely has no trip id, add a constant one:
 

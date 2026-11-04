@@ -8,6 +8,11 @@ import { buildCogPaintedDeckLayer } from './cogPaintedDeckLayer';
 import { makeCogPaintedLayer } from './cogPaintedLayer';
 import { buildEsriImageDeckLayer } from './esriImageDeckLayer';
 import { makeEsriImageLayer } from './esriImageLayer';
+import { makeXyzTileLayer } from './xyzTileLayer';
+import { buildXyzTileDeckLayer } from './xyzTileDeckLayer';
+import { XYZ_TILE_TYPE } from '../data/xyzTiles';
+import { makePhotosLayer, PHOTOS_TYPE } from './photosLayer';
+import { buildPhotosDeckLayers } from './photosDeckLayer';
 import { buildFlowFieldDeckLayer, makeScreenCamera } from './flowFieldDeckLayer';
 import { makeFlowFieldLayer } from './flowFieldLayer';
 import { buildMarkersDeckLayer } from './markersDeckLayer';
@@ -103,6 +108,12 @@ const layerClasses = {
   // it answers for any extent at any zoom. Where the COG paths need one query
   // per file — 200 of them for a global 10 m collection — this needs one.
   esriImage: makeEsriImageLayer(Layer as never, buildEsriImageDeckLayer, RASTER_ICON),
+  // Plain web map tiles, `{z}/{x}/{y}`: kepler's own raster layer reads only
+  // PMTiles and STAC. What a Geomap XYZ layer, or an Esri cache, becomes.
+  // A picture at each point, Geomap's Photos: kepler's point layer drawn with
+  // deck's IconLayer from a column of image addresses.
+  [PHOTOS_TYPE]: makePhotosLayer(LayerClasses.point as never, buildPhotosDeckLayers),
+  [XYZ_TILE_TYPE]: makeXyzTileLayer(Layer as never, buildXyzTileDeckLayer, RASTER_ICON),
   // Also an addition, and for a stranger reason than the Zarr one: what this
   // layer draws is in no dataset. The rows are a lattice of velocity samples and
   // what is painted are the paths a particle would take through them — geometry

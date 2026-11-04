@@ -2,12 +2,26 @@ import { DataFrame, FieldType } from '@grafana/data';
 
 import { buildFlowField, FlowFieldLayerConfig } from './buildFlowField';
 import { buildFlows, FlowLayerConfig, FlowRenderMode } from './buildFlows';
+import { isEdgeFrame, nodePositions, placeEdges } from './buildNetwork';
+import { type Gazetteer, placeFrame } from './placeLookup';
+import { buildLineLayer, buildRouteSegments, routeColumns, routeDatasetId, LineLayerConfig } from './buildRoute';
 import { buildSymbolLayer, SymbolLayerConfig } from './buildSymbolLayer';
 import { buildTripLayer, TripLayerConfig, TripLayerMode } from './buildTripLayer';
 import { buildTrips } from './buildTrips';
 import { describesLattice, earliestTimestepRows } from './buildWindField';
 import { detectFields, FieldRoleOverrides, FieldRoles, resolveRoles } from './detectFields';
 import { KeplerColumn, KeplerRow, keplerRenamesOf, toKeplerColumns, toKeplerRows } from './toKeplerDataset';
+
+/**
+ * A layer whose whole style the panel decides, for a dataset the panel makes
+ * itself rather than from a query: the night shading and the sun.
+ */
+export interface FixedLayerConfig {
+  id: string;
+  type: 'geojson' | 'point';
+  config: { dataId: string; label: string; [key: string]: unknown };
+  visualChannels: Record<string, unknown>;
+}
 
 /** One kepler dataset per Grafana query. */
 export interface PanelDataset {
@@ -54,6 +68,13 @@ export interface PanelDataset {
    * built a flow field that drew nothing and explained nothing.
    */
   symbolLayer?: SymbolLayerConfig;
+  /**
+   * A line layer to add on segments: a route (`routeQueries`, the query's rows
+   * joined in order) or a network's edges (`buildNetwork.ts`).
+   */
+  lineLayer?: LineLayerConfig;
+  /** The layer of a dataset the panel makes itself (`dayNight.ts`). */
+  fixedLayer?: FixedLayerConfig;
 }
 
 /**
@@ -72,14 +93,19 @@ export function framesToDatasets(
   opts: {
     flowRenderMode?: FlowRenderMode;
     tripLayerMode?: TripLayerMode;
+    /** Queries also drawn as a route, row to row in order (`buildRoute.ts`). */
+    routeQueries?: string[];
+    /** Places for rows located by name or code (`placeLookup.ts`), once loaded. */
+    gazetteer?: Gazetteer | null;
   } = {}
 ): PanelDataset[] {
   const resolved = frames.map((frame, index) => {
     const refId = frame.refId ?? `${index}`;
-    return { frame, refId, roles: resolveRoles(detectFields(frame), overrides[refId]) };
+    // A row placed by geohash or by name gains coordinates before anything reads them.
+    return { refId, ...placeFrame(frame, resolveRoles(detectFields(frame), overrides[refId]), opts.gazetteer) };
   });
 
-  return resolved.map(({ frame, refId, roles }) => {
+  const datasets = resolved.map(({ frame, refId, roles }): PanelDataset => {
     const id = datasetId(refId);
     const label = frame.name ?? `Query ${refId}`;
 
@@ -122,6 +148,57 @@ export function framesToDatasets(
       flowLayer: buildFlows(roles, id, { renderingMode: opts.flowRenderMode }) ?? undefined,
       symbolLayer: pointsSymbols(symbolRoles) ? (buildSymbolLayer(symbolRoles, id) ?? undefined) : undefined,
     };
+  });
+
+  // A network's edges take their ends from the nodes (`buildNetwork.ts`).
+  const nodes = resolved
+    .filter(({ frame }) => !isEdgeFrame(frame))
+    .map(({ frame, roles }) => nodePositions(frame, roles))
+    .find((positions) => positions !== null);
+  if (nodes) {
+    resolved.forEach(({ frame, roles }, index) => {
+      if (!isEdgeFrame(frame) || (roles.latitude && roles.longitude)) {
+        return;
+      }
+      const dataset = datasets[index];
+      const rows = placeEdges(frame, dataset.rows, nodes);
+      datasets[index] = {
+        ...dataset,
+        rows,
+        columns: rows.length === 0 ? routeColumns(toKeplerColumns(frame, roles)) : undefined,
+        lineLayer: buildLineLayer(dataset.id, dataset.label),
+      };
+    });
+  }
+
+  const routes = new Set(opts.routeQueries ?? []);
+  if (!routes.size) {
+    return datasets;
+  }
+  // A route rides beside its query's dataset, built from the same rows, so the
+  // query's own layers keep the dataset they were saved on.
+  return datasets.flatMap((dataset, index) => {
+    const { refId, roles } = resolved[index];
+    if (!routes.has(refId) || !roles.latitude || !roles.longitude || dataset.flowFieldLayer) {
+      return [dataset];
+    }
+    // A trajectory folded into one row per trip has no rows left to join.
+    const source =
+      opts.tripLayerMode === 'geojson' && isTripFrame(roles)
+        ? toKeplerRows(resolved[index].frame, roles)
+        : dataset.rows;
+    const rows = buildRouteSegments(source);
+    const id = routeDatasetId(dataset.id);
+    const label = `${dataset.label} · route`;
+    const route: PanelDataset = {
+      id,
+      label,
+      rows,
+      columns: rows.length === 0 ? routeColumns(toKeplerColumns(resolved[index].frame, roles)) : undefined,
+      renames: dataset.renames,
+      lineLayer: buildLineLayer(id, label),
+    };
+    return [dataset, route];
   });
 }
 

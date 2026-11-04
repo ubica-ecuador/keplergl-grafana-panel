@@ -15,6 +15,14 @@ export interface FieldRoles {
   altitude?: string;
   geometry?: string;
   h3?: string;
+  /**
+   * A place given by something other than coordinates: a geohash, decoded to
+   * its cell's centre, or a name or code looked up in a gazetteer (the panel's
+   * `gazetteer` option). Geomap's two other location modes; see `placeLookup.ts`.
+   * Used only when the query has no latitude and longitude of its own.
+   */
+  geohash?: string;
+  lookup?: string;
   /** Origin/destination pairs feeding the flow layer. */
   originLat?: string;
   originLng?: string;
@@ -182,6 +190,9 @@ export const NAME_CANDIDATES: Record<string, string[]> = {
   // `altitude` is deliberately absent: see the note below.
   geometry: ['geom', 'geometry', 'the_geom', 'wkb_geometry', 'geojson', 'wkt', 'shape'],
   h3: ['h3', 'h3_index', 'hex_id', 'hexagon', 'h3index'],
+  // The names Geomap's automatic location reads.
+  geohash: ['geohash'],
+  lookup: ['lookup'],
   // Wind. `ugrd`/`vgrd` are the GRIB2 short names GFS ships, so a table loaded
   // straight from a GRIB conversion is recognised without renaming anything.
   u: ['u', 'u10', 'u_wind', 'wind_u', 'ugrd', 'u_component'],

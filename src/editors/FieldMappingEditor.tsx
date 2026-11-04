@@ -23,6 +23,8 @@ const ROLES: Array<{ key: keyof FieldRoles; label: string; help: string }> = [
   { key: 'altitude', label: 'Altitude', help: 'Optional height for trip paths; defaults to 0' },
   { key: 'geometry', label: 'Geometry', help: 'GeoJSON, WKT or PostGIS EWKB' },
   { key: 'h3', label: 'H3 index', help: 'Hexagon identifier' },
+  { key: 'geohash', label: 'Geohash', help: 'Places the row at its cell, when there is no latitude and longitude' },
+  { key: 'lookup', label: 'Place name', help: 'A code or name looked up in the gazetteer (Map → Place names)' },
   { key: 'originLat', label: 'Origin lat', help: 'Flow layer' },
   { key: 'originLng', label: 'Origin lng', help: 'Flow layer' },
   { key: 'destLat', label: 'Destination lat', help: 'Flow layer' },

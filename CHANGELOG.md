@@ -15,6 +15,38 @@ release documents what changed since the one before it.
   for the values they declare, ask for confirmation, then send their request.
 - The panel editor no longer lists unit, colour scheme, thresholds and the other field options the
   map never used.
+- **Draw a query as a route.** A new option under *Map*, *Draw as a route*, joins a query's rows
+  in the order it returns them into one line: a dataset of its own, “… · route”, with one segment
+  per pair of rows, drawn as a Line layer that can be coloured and sized by any column. On a map
+  without a saved configuration the layer appears by itself.
+- **From Geomap in one click.** "Change visualization" from a Geomap panel to Kepler keeps its
+  markers, heatmap, route, network, photos, GeoJSON, XYZ / Esri tile and night / day layers (colour
+  and size by field, thresholds and colour schemes, labels, route arrows, GeoJSON style rules), the
+  columns it was told, its view, its layer
+  order and its base map, with the legend on when Geomap showed one. Like Geomap, the converted map
+  draws every row its queries return, without coupling its clock to the dashboard. What has no
+  counterpart yet is named in a notice right after the switch. Layers placed by geohash or by place
+  name come across too.
+- **Places by geohash or by name.** A query without coordinates is placed by a `geohash` column
+  (decoded to its cell's centre) or by a column of place names and codes (*Place name* in *Field
+  mapping*), looked up in Grafana's countries, US states or airports, or a file of your own (*Map →
+  Place names*). Rows with an unknown place stay in the table and are not drawn.
+- **Photos.** A new layer type draws the picture at each point from a column of image addresses,
+  in a square or round frame of the layer's colour. Built on the point layer, so filters, tooltips
+  and clicks work as on points. A wide picture is not cropped to its frame.
+- **XYZ tiles.** A new layer type draws any `{z}/{x}/{y}` raster tile server (OpenStreetMap-style
+  servers, ArcGIS MapServer caches, radar overlays), saved with the map as its template. Geomap's
+  XYZ and Esri layers become one, and so does a tiled Geomap base map the panel has no style for.
+- **Night shading.** A new option under *Map* shades the side of the Earth in darkness at the end
+  or the start of the dashboard time range, with the sun's position if wanted. It moves with the
+  range.
+- **Networks on the map.** A query of edges with `source` and `target` columns is drawn as lines
+  between the nodes of another query that has an `id` and coordinates, Grafana's node graph shape:
+  each edge takes the positions of its two nodes and keeps its own columns for colour and width.
+- **Files added by URL stay on the map.** A GeoJSON, CSV or other file loaded through kepler's
+  *Add Data* by URL is saved with the map as its address and fetched again on load, like a
+  tileset. A file Grafana serves itself keeps a path relative to Grafana, so the dashboard works on
+  any instance.
 
 ## 1.6.2 (2026-10-27)
 

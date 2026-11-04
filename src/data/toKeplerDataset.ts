@@ -29,6 +29,9 @@ export type KeplerRow = Record<string, unknown>;
  */
 type RenamedRole = Exclude<
   keyof FieldRoles,
+  // Read to place the row (`placeLookup.ts`), and kept under their own names.
+  | 'geohash'
+  | 'lookup'
   | 'u'
   | 'v'
   | 'speed'

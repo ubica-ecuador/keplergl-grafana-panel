@@ -42,6 +42,8 @@ export const OWN_LAYER_LABELS: Record<string, string> = {
   vectorfield: 'Vector field',
   symbol: 'Symbols',
   markers: 'Markers',
+  photos: 'Photos',
+  'xyz-tiles': 'XYZ tiles',
 };
 
 /**

@@ -1,11 +1,15 @@
 import { FieldConfigProperty, PanelPlugin } from '@grafana/data';
+import { config } from '@grafana/runtime';
+import { GAZETTEERS } from './data/placeLookup';
 
 import { KeplerPanelOptions } from './types';
 import { KeplerPanel } from './panel/KeplerPanel';
+import { fromGeomapPanel } from './geomap/fromGeomap';
 import { SaveMapConfigEditor } from './editors/SaveMapConfigEditor';
 import { MapConfigEditor } from './editors/MapConfigEditor';
 import { HoverLayerEditor } from './editors/HoverLayerEditor';
 import { FieldMappingEditor } from './editors/FieldMappingEditor';
+import { RouteQueriesEditor } from './editors/RouteQueriesEditor';
 import { VariableSyncEditor } from './editors/VariableSyncEditor';
 import { TimeVariableEditor } from './editors/TimeVariableEditor';
 import { AreaVariableEditor } from './editors/AreaVariableEditor';
@@ -163,6 +167,52 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
           { value: 'geojson', label: 'GeoJSON' },
         ],
       },
+    })
+    .addSelect({
+      path: 'gazetteer',
+      name: 'Place names',
+      description:
+        'Where a query that names places instead of giving coordinates (a Place name column in Field mapping) finds them. A URL of your own works too.',
+      category: ['Map'],
+      defaultValue: GAZETTEERS.countries,
+      settings: {
+        allowCustomValue: true,
+        options: [
+          { value: GAZETTEERS.countries, label: 'Countries (name, 2- or 3-letter code)' },
+          { value: GAZETTEERS.usaStates, label: 'US states (name or code)' },
+          { value: GAZETTEERS.airports, label: 'Airports (IATA or ICAO code)' },
+        ],
+      },
+    })
+    .addSelect({
+      path: 'dayNight',
+      name: 'Night shading',
+      description: 'Shades the side of the Earth in darkness, at the end or the start of the dashboard time range.',
+      category: ['Map'],
+      defaultValue: 'off',
+      settings: {
+        options: [
+          { value: 'off', label: 'Off' },
+          { value: 'to', label: 'At the end of the range' },
+          { value: 'from', label: 'At the start of the range' },
+        ],
+      },
+    })
+    .addBooleanSwitch({
+      path: 'dayNightSun',
+      name: 'Show the sun',
+      description: 'The point on Earth the sun stands over.',
+      category: ['Map'],
+      defaultValue: false,
+      showIf: (config) => (config.dayNight ?? 'off') !== 'off',
+    })
+    .addCustomEditor({
+      id: 'routeQueries',
+      path: 'routeQueries',
+      name: 'Draw as a route',
+      description: 'Queries whose rows are joined in order into one line.',
+      category: ['Map'],
+      editor: RouteQueriesEditor,
     })
     .addSelect({
       path: 'flowRenderMode',
@@ -454,3 +504,8 @@ plugin.useFieldConfig({
 // Grafana hands a panel the dashboard's annotations only when it asks for them:
 // the map draws the ones with a place (see useGrafanaAnnotations).
 plugin.setDataSupport({ annotations: true, alertStates: false });
+
+// "Change visualization" from Geomap keeps its layers, view and base map.
+plugin.setPanelChangeHandler((_panel, prevPluginId, prevOptions, prevFieldConfig) =>
+  fromGeomapPanel(prevPluginId, prevOptions, prevFieldConfig, config.theme2)
+);
