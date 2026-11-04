@@ -270,8 +270,16 @@ export function annotationWrite(
   };
 }
 
-/** The fields a user edit can change; what decides whether a write is due. */
+/**
+ * What a user edit can change — place, shape, words and style alike (kepler's
+ * list edits colour, line and text placement) — and so what decides whether a
+ * write is due. The rich text is left out: the label carries its words.
+ */
 export function noteFingerprint(note: KeplerAnnotationLike): string {
-  const { label, anchorPoint, kind, endPoint, radiusInMeters, angle, armLength } = note;
-  return JSON.stringify([label, anchorPoint, kind, endPoint, radiusInMeters, angle, armLength]);
+  const { editorState: _editorState, ...shape } = shapeOf(note);
+  return JSON.stringify(
+    Object.keys(shape)
+      .sort()
+      .map((k) => [k, shape[k]])
+  );
 }

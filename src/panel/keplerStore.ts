@@ -162,6 +162,28 @@ if (!EDITOR_AVAILABLE_LAYERS.includes(SYMBOL_TYPE)) {
  * blocked request. With no base map named it starts on No Basemap, which
  * fetches nothing.
  */
+/** Called with every action the map's store dispatches, before its reducer runs. */
+export type KeplerActionListener = (action: { type: string; payload?: unknown }) => void;
+
+const actionListeners = new WeakMap<Store, Set<KeplerActionListener>>();
+
+/**
+ * Hears every action of one map's store, kepler's own included — what
+ * `store.subscribe` cannot tell, since it reports only that the state changed.
+ * The annotation sync tells the user deleting a note from kepler's list apart
+ * from kepler swapping its notes when a config is applied this way.
+ * Returns the function that stops listening.
+ */
+export function onKeplerAction(store: Store, listener: KeplerActionListener): () => void {
+  let set = actionListeners.get(store);
+  if (!set) {
+    set = new Set();
+    actionListeners.set(store, set);
+  }
+  set.add(listener);
+  return () => set.delete(listener);
+}
+
 export function createKeplerStore(styleType: string = NO_MAP_ID): Store {
   // kepler.gl's components look their state up at `state.keplerGl` by default.
   // Mounting the reducer at the store root instead makes every one of them fail
@@ -181,5 +203,16 @@ export function createKeplerStore(styleType: string = NO_MAP_ID): Store {
     ),
   });
 
-  return legacy_createStore(reducer, {}, applyMiddleware(...enhanceReduxMiddleware([])));
+  let store: Store | null = null;
+  const tellListeners = () => (next: (action: unknown) => unknown) => (action: unknown) => {
+    const listeners = store ? actionListeners.get(store) : undefined;
+    if (listeners && action && typeof action === 'object' && 'type' in action) {
+      for (const listener of listeners) {
+        listener(action as { type: string; payload?: unknown });
+      }
+    }
+    return next(action);
+  };
+  store = legacy_createStore(reducer, {}, applyMiddleware(...enhanceReduxMiddleware([tellListeners as never])));
+  return store;
 }

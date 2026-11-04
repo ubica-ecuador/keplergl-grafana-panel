@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import {
+  AnnotationManagerFactory,
   ChartControlFactory,
   EffectControlFactory,
   EffectManagerFactory,
@@ -10,22 +11,22 @@ import { ChartManagerFactory } from '@kepler.gl/components/charts';
 import { getApplicationConfig } from '@kepler.gl/utils';
 
 /**
- * The map control, with the two features kepler ships complete but never
- * mounts: **effects** and **charts**.
+ * The map control, with the three features kepler ships complete but never
+ * mounts: **effects**, **charts** and the **annotation list**.
  *
  * For both, kepler provides the button, the manager panel, the reducer state and
  * the rendering, but its stock MapControl puts neither button in the toolbar
  * and nothing in the core mounts either manager. Both are wired by the host app
  * replacing MapControlFactory, which is exactly what kepler's own demo app does
  * (`examples/demo-app/src/factories/map-control.js`). This factory is that
- * wiring, minus the demo-only extras (SQL panel, AI assistant, sample panels,
- * the annotation list).
+ * wiring, minus the demo-only extras (SQL panel, AI assistant, sample panels).
  *
- * Annotations themselves are on, and not from here: since kepler 3.3.0-alpha.17
- * the stock MapControl carries the "Aa" annotation button, the map's right-click
- * menu offers "Add Annotation" (on an empty spot; on a feature with a tooltip it
- * pins the tooltip instead), and `enableAnnotations` defaults to true. What
- * stays unmounted is the demo's annotation list (`AnnotationPanel`). Grafana
+ * The annotations themselves come from kepler's stock parts: the "Aa" button is
+ * in the stock MapControl, the map's right-click menu offers "Add Annotation"
+ * (on an empty spot; on a feature with a tooltip it pins the tooltip instead),
+ * and `enableAnnotations` defaults to true. The list (`AnnotationManager`:
+ * every note with its eye, kind, colour, line and text placement, duplicate
+ * and delete) is mounted here while "Aa" is on, as the demo mounts it. Grafana
  * annotations reach the map, and map notes reach Grafana, through
  * `useGrafanaAnnotations`.
  *
@@ -51,6 +52,14 @@ const StyledMapControlContextPanel = styled.div`
   pointer-events: none !important;
   & > * {
     pointer-events: all;
+  }
+
+  /* kepler's annotation list is a scrolling flex column whose rows may shrink:
+     with more notes than fit, every row is squeezed (its second line, the kind,
+     cut off) instead of the list scrolling. Rows keep their height here. The
+     list is the panel's second child, after its header. */
+  .annotation-manager > div > div:nth-child(2) > * {
+    flex-shrink: 0;
   }
 `;
 
@@ -78,6 +87,7 @@ const StyledMapControlOverlay = styled.div<{ top?: number; rightPanelVisible: bo
 CustomMapControlFactory.deps = [
   EffectControlFactory,
   EffectManagerFactory,
+  AnnotationManagerFactory,
   ChartControlFactory,
   ChartManagerFactory,
   ...MapControlFactory.deps,
@@ -86,6 +96,7 @@ CustomMapControlFactory.deps = [
 function CustomMapControlFactory(
   EffectControl: ReturnType<typeof EffectControlFactory>,
   EffectManager: ReturnType<typeof EffectManagerFactory>,
+  AnnotationManager: ReturnType<typeof AnnotationManagerFactory>,
   ChartControl: ReturnType<typeof ChartControlFactory>,
   ChartManager: ReturnType<typeof ChartManagerFactory>,
   ...deps: Parameters<typeof MapControlFactory>
@@ -96,6 +107,7 @@ function CustomMapControlFactory(
   // withState / injectIntl, reading the store for itself. The effect manager
   // mounts with no props; the chart manager takes `panelActive` and `isExport`.
   const MountedEffectManager = EffectManager as unknown as React.FC;
+  const MountedAnnotationManager = AnnotationManager as unknown as React.FC;
   const MountedChartManager = ChartManager as unknown as React.FC<{ panelActive?: boolean; isExport?: boolean }>;
 
   const CustomMapControl: React.FC<React.ComponentProps<typeof MapControl>> = (props) => {
@@ -109,6 +121,8 @@ function CustomMapControlFactory(
       EffectControl,
     ];
     const showEffects = Boolean(props.mapControls?.effect?.active);
+    // "Aa" on: kepler's annotation mode, where notes can be picked and edited.
+    const showAnnotations = !isExport && Boolean(props.mapControls?.annotation?.active);
     const chartPanelActive = chartsEnabled && Boolean(props.mapControls?.chart?.active);
     // A pinned chart stays on the map with the panel closed, like a pinned
     // legend. `pinned` undefined counts as pinned: kepler's loader reads older
@@ -118,12 +132,13 @@ function CustomMapControlFactory(
     const showCharts = chartPanelActive || hasPinnedCharts;
 
     return (
-      <StyledMapControlOverlay top={props.top} rightPanelVisible={showEffects || showCharts}>
+      <StyledMapControlOverlay top={props.top} rightPanelVisible={showEffects || showAnnotations || showCharts}>
         <StyledMapControlPanel>
           {/* top is consumed by the overlay; the inner toolbar starts at 0. */}
           <MapControl {...props} top={0} actionComponents={actionComponents} />
         </StyledMapControlPanel>
         <StyledMapControlContextPanel>
+          {showAnnotations ? <MountedAnnotationManager /> : null}
           {showCharts ? <MountedChartManager panelActive={chartPanelActive} isExport={isExport} /> : null}
           {showEffects ? <MountedEffectManager /> : null}
         </StyledMapControlContextPanel>
