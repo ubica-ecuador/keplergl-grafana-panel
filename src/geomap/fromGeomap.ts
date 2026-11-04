@@ -66,6 +66,10 @@ export interface GeomapLayer {
     theme?: string;
     server?: string;
     url?: string;
+    /** Night / Day only: the moment shown, the sun, and the night's colour. */
+    show?: string;
+    sun?: boolean;
+    nightColor?: string;
     /** GeoJSON only: the file, and the style rules checked feature by feature. */
     src?: string;
     rules?: Array<{ style?: GeomapStyle; check?: GeomapRule['check'] }>;
@@ -92,7 +96,7 @@ export interface ImportedColorField {
 }
 
 export interface ImportedLayer {
-  type: 'point' | 'heatmap' | 'route' | 'geojson';
+  type: 'point' | 'heatmap' | 'route' | 'geojson' | 'dayNight';
   label: string;
   /** The query the layer reads; absent means the first one, as in Geomap. */
   refId?: string;
@@ -122,6 +126,8 @@ export interface ImportedLayer {
   lineWidth?: number;
   /** GeoJSON only: the style rules, as one colour channel on a feature property. */
   ruleColors?: RuleColors;
+  /** Night / Day only: whether the sun is drawn. */
+  sun?: boolean;
 }
 
 export interface GeomapImport {
@@ -187,7 +193,14 @@ export function fromGeomapPanel(
   const dropped: string[] = [];
   const basemap = convertBasemap(geomap.basemap, dropped);
   const layers: ImportedLayer[] = [];
+  let dayNight: Pick<KeplerPanelOptions, 'dayNight' | 'dayNightSun'> = {};
   for (const layer of geomap.layers ?? []) {
+    if (layer.type === 'dayNight') {
+      const night = convertDayNight(layer, theme);
+      dayNight = { dayNight: layer.config?.show === 'from' ? 'from' : 'to', dayNightSun: Boolean(night.sun) };
+      layers.push(night);
+      continue;
+    }
     if (layer.type === 'network') {
       layers.push(...convertNetwork(layer, prevFieldConfig, theme, dropped));
       continue;
@@ -206,6 +219,7 @@ export function fromGeomapPanel(
     // it only through the queries. Coupling the map's clock is a choice to make
     // afterwards, not a change the switch should bring.
     timeSync: 'off',
+    ...dayNight,
     geomapImport: {
       version: 1,
       layers,
@@ -425,6 +439,40 @@ function convertNetwork(
     ...(edges ? [{ ...edges, graph: 'edges' as const, ...(arrow === 2 ? { arrow: 'end' as const } : {}) }] : []),
     ...(nodes ? [{ ...nodes, graph: 'nodes' as const }] : []),
   ];
+}
+
+/** Geomap's night, `#a7a6ba4D`: a grey at 30 %. */
+const DEFAULT_NIGHT_COLOR = '#a7a6ba4D';
+
+/**
+ * Geomap's Night / Day layer, drawn by the panel's own night shading
+ * (`dayNight.ts`): this keeps its colour, its opacity and its sun.
+ */
+function convertDayNight(layer: GeomapLayer, theme: GrafanaTheme2): ImportedLayer {
+  const night = layer.config?.nightColor ?? DEFAULT_NIGHT_COLOR;
+  const { color, alpha } = rgba(theme.visualization.getColorByName(night));
+  return {
+    type: 'dayNight',
+    label: layer.name || 'Night',
+    location: { mode: 'auto' },
+    color,
+    opacity: alpha * (layer.opacity ?? 1),
+    radius: DEFAULT_SIZE,
+    radiusRange: DEFAULT_SIZE_RANGE,
+    sun: Boolean(layer.config?.sun),
+  };
+}
+
+/** A colour and its alpha, from any CSS form Grafana hands back, `#rrggbbaa` included. */
+function rgba(color: string): { color: [number, number, number]; alpha: number } {
+  const hex = /^#([0-9a-f]{6})([0-9a-f]{2})$/i.exec(color);
+  if (hex) {
+    return { color: toRgb(`#${hex[1]}`), alpha: parseInt(hex[2], 16) / 255 };
+  }
+  const { values } = colorManipulator.decomposeColor(
+    color.startsWith('#') ? color : colorManipulator.asHexString(color)
+  );
+  return { color: toRgb(color), alpha: values.length > 3 ? values[3] : 1 };
 }
 
 function convertLocation(location: GeomapLayer['location']): ImportedLocation | null {

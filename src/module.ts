@@ -152,6 +152,28 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
         ],
       },
     })
+    .addSelect({
+      path: 'dayNight',
+      name: 'Night shading',
+      description: 'Shades the side of the Earth in darkness, at the end or the start of the dashboard time range.',
+      category: ['Map'],
+      defaultValue: 'off',
+      settings: {
+        options: [
+          { value: 'off', label: 'Off' },
+          { value: 'to', label: 'At the end of the range' },
+          { value: 'from', label: 'At the start of the range' },
+        ],
+      },
+    })
+    .addBooleanSwitch({
+      path: 'dayNightSun',
+      name: 'Show the sun',
+      description: 'The point on Earth the sun stands over.',
+      category: ['Map'],
+      defaultValue: false,
+      showIf: (config) => (config.dayNight ?? 'off') !== 'off',
+    })
     .addCustomEditor({
       id: 'routeQueries',
       path: 'routeQueries',

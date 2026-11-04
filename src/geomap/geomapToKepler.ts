@@ -2,6 +2,7 @@ import { type DataFrame, FieldType } from '@grafana/data';
 
 import { detectFields, type FieldRoleOverrides, resolveRoles } from '../data/detectFields';
 import { isEdgeFrame } from '../data/buildNetwork';
+import { dayNightDatasets } from '../data/dayNight';
 import { ROUTE_COLUMNS, routeDatasetId } from '../data/buildRoute';
 import { datasetId } from '../data/framesToDatasets';
 import type { SavedMapConfig, SavedRemoteDataset } from '../data/mapConfig';
@@ -91,7 +92,7 @@ export function geomapToKepler(
   fieldMappings: Record<string, FieldRoleOverrides> = {}
 ): GeomapConversion | null {
   // A map of files alone, a GeoJSON over the base map, has no rows to wait for.
-  if (!frames.length && imported.layers.some((layer) => layer.type !== 'geojson')) {
+  if (!frames.length && imported.layers.some((layer) => layer.type !== 'geojson' && layer.type !== 'dayNight')) {
     return null;
   }
   const dropped = [...imported.dropped];
@@ -103,6 +104,26 @@ export function geomapToKepler(
   const zoom = imported.view === 'fit' ? FIT_ZOOM_GUESS : imported.view.zoom;
   let legend = false;
   imported.layers.forEach((layer, index) => {
+    if (layer.type === 'dayNight') {
+      // The panel makes the night and the sun itself (`dayNightSun`); the saved
+      // map only styles them, so it needs no dataset of its own.
+      for (const dataset of dayNightDatasets(new Date(), Boolean(layer.sun), layer.color)) {
+        const fixed = dataset.fixedLayer!;
+        layers.push(
+          fixed.type === 'geojson'
+            ? {
+                ...fixed,
+                config: {
+                  ...fixed.config,
+                  label: layer.label,
+                  visConfig: { ...(fixed.config.visConfig as object), opacity: layer.opacity },
+                },
+              }
+            : fixed
+        );
+      }
+      return;
+    }
     if (layer.type === 'geojson') {
       const dataId = `geomap-geojson-${index}`;
       files.push(geojsonDataset(dataId, layer));

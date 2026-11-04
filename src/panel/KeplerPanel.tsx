@@ -25,6 +25,7 @@ import { useStableValue } from './useStableValue';
 import { publishIntervalOf } from './timeVariableSync';
 import { withKeplerFields, type VariableMapping } from './variableSync';
 import { parseViewportColumns } from './mosaicLink';
+import { dayNightDatasets, NIGHT_COLOR } from '../data/dayNight';
 import { geomapToKepler } from '../geomap/geomapToKepler';
 import { GeomapImportNotice } from '../geomap/GeomapImportNotice';
 
@@ -110,7 +111,12 @@ export function KeplerPanel(props: Props) {
   // mapping is configured, so all four tore down and re-subscribed constantly.
   const variableMappings = useStableValue(options.variableMappings ?? EMPTY_MAPPINGS);
 
-  const datasets = useMemo(
+  // The night shading's moment: the end or the start of the dashboard range.
+  const dayNight = options.dayNight ?? 'off';
+  const nightAt = dayNight === 'off' ? null : dayNight === 'from' ? grafanaRange.from : grafanaRange.to;
+  const dayNightSun = Boolean(options.dayNightSun);
+
+  const queryDatasets = useMemo(
     () =>
       framesToDatasets(data.series, fieldMappings, {
         flowRenderMode: options.flowRenderMode,
@@ -118,6 +124,13 @@ export function KeplerPanel(props: Props) {
         routeQueries,
       }),
     [data.series, fieldMappings, options.flowRenderMode, options.tripLayerMode, routeQueries]
+  );
+  const datasets = useMemo(
+    () =>
+      nightAt === null
+        ? queryDatasets
+        : [...queryDatasets, ...dayNightDatasets(new Date(nightAt), dayNightSun, NIGHT_COLOR)],
+    [queryDatasets, nightAt, dayNightSun]
   );
 
   // The mappings name the query's columns, as the editor lists them; kepler knows a column with a role by the role's

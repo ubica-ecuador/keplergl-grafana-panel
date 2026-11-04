@@ -11,6 +11,17 @@ import { describesLattice, earliestTimestepRows } from './buildWindField';
 import { detectFields, FieldRoleOverrides, FieldRoles, resolveRoles } from './detectFields';
 import { KeplerColumn, KeplerRow, keplerRenamesOf, toKeplerColumns, toKeplerRows } from './toKeplerDataset';
 
+/**
+ * A layer whose whole style the panel decides, for a dataset the panel makes
+ * itself rather than from a query: the night shading and the sun.
+ */
+export interface FixedLayerConfig {
+  id: string;
+  type: 'geojson' | 'point';
+  config: { dataId: string; label: string; [key: string]: unknown };
+  visualChannels: Record<string, unknown>;
+}
+
 /** One kepler dataset per Grafana query. */
 export interface PanelDataset {
   id: string;
@@ -61,6 +72,8 @@ export interface PanelDataset {
    * joined in order) or a network's edges (`buildNetwork.ts`).
    */
   lineLayer?: LineLayerConfig;
+  /** The layer of a dataset the panel makes itself (`dayNight.ts`). */
+  fixedLayer?: FixedLayerConfig;
 }
 
 /**

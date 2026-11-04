@@ -12,11 +12,14 @@ release documents what changed since the one before it.
   without a saved configuration the layer appears by itself.
 
 - **From Geomap in one click.** "Change visualization" from a Geomap panel to Kepler keeps its
-  markers, heatmap, route, network and GeoJSON layers (colour and size by field, thresholds and colour
+  markers, heatmap, route, network, GeoJSON and night / day layers (colour and size by field, thresholds and colour
   schemes, labels, route arrows, GeoJSON style rules), the columns it was told, its view, its layer
   order and its base map, with the legend on when Geomap showed one. Like Geomap, the converted map
   draws every row its queries return, without coupling its clock to the dashboard. What has no
   counterpart yet is named in a notice right after the switch.
+- **Night shading.** A new option under *Map* shades the side of the Earth in darkness at the end
+  or the start of the dashboard time range, with the sun's position if wanted. It moves with the
+  range.
 - **Networks on the map.** A query of edges with `source` and `target` columns is drawn as lines
   between the nodes of another query that has an `id` and coordinates, Grafana's node graph shape:
   each edge takes the positions of its two nodes and keeps its own columns for colour and width.

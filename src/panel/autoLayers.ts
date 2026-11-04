@@ -47,6 +47,9 @@ const SUPERSEDES: Record<string, string[]> = {
   flowfield: ['point', 'flowField'],
   symbol: ['point'],
   line: ['arc', 'line', 'point'],
+  // The panel's own night shading and sun: kepler guesses the same layer types, unstyled.
+  geojson: ['geojson'],
+  point: ['point'],
 };
 
 export function supersededLayerIds(layers: LayerLike[], added: AddedLayer): string[] {

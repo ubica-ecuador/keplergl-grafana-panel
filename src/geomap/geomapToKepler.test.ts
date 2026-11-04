@@ -280,4 +280,22 @@ describe('geomapToKepler', () => {
     expect(layers[1].config.visConfig.targetArrowEnabled).toBe(true);
     expect(result.routeQueries).toBeUndefined();
   });
+
+  it('turns a Night / Day layer into the panel’s night shading, styled as Geomap drew it', () => {
+    const options = fromGeomapPanel(
+      'geomap',
+      { layers: [{ type: 'dayNight', name: 'Night', config: { show: 'from', sun: true, nightColor: '#00000080' } }] },
+      { defaults: {}, overrides: [] },
+      theme
+    );
+    expect(options).toMatchObject({ dayNight: 'from', dayNightSun: true });
+
+    const layers = (geomapToKepler(options.geomapImport!, [])!.mapConfig.config.visState as { layers: any[] }).layers;
+    expect(layers.map((l) => [l.type, l.config.dataId])).toEqual([
+      ['point', 'day-night-sun'],
+      ['geojson', 'day-night'],
+    ]);
+    expect(layers[1].config.color).toEqual([0, 0, 0]);
+    expect(layers[1].config.visConfig.opacity).toBeCloseTo(0.5, 2);
+  });
 });

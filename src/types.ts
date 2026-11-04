@@ -7,6 +7,7 @@ import { TimeVariableMapping } from './panel/timeVariableSync';
 import { VariableMapping } from './panel/variableSync';
 import { ViewportVariables } from './panel/viewportSync';
 import type { GeomapImport } from './geomap/fromGeomap';
+import type { DayNightMode } from './data/dayNight';
 
 /**
  * Base maps offered in the panel options.
@@ -61,6 +62,14 @@ export interface KeplerPanelOptions {
    * Written by the Geomap conversion for its route layers.
    */
   routeQueries?: string[];
+
+  /**
+   * Shades the night side of the Earth at the end of the dashboard range (`to`)
+   * or at its start (`from`), as Geomap's Night / Day layer does; `dayNightSun`
+   * adds the point the sun stands over. See `dayNight.ts`.
+   */
+  dayNight?: DayNightMode;
+  dayNightSun?: boolean;
 
   /**
    * Save request counter.

@@ -56,6 +56,7 @@ export function useAutoLayers({ store, isReady, datasets, enabled, onLayerAdded 
         dataset.flowFieldLayer,
         dataset.symbolLayer,
         dataset.lineLayer,
+        dataset.fixedLayer,
       ]) {
         if (!layer || added.current.has(layer.id)) {
           continue;

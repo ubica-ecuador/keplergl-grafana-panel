@@ -36,7 +36,7 @@ import type { Dispatch, Store } from 'redux';
 
 import { FieldType } from '@grafana/data';
 
-import type { PanelDataset } from '../data/framesToDatasets';
+import type { FixedLayerConfig, PanelDataset } from '../data/framesToDatasets';
 import type { KeplerColumn } from '../data/toKeplerDataset';
 import { keepLeadingZeroIds } from '../data/leadingZeroIds';
 import type { LiveLayer, SavedSplitPane } from './splitMapsGuard';
@@ -2469,7 +2469,8 @@ export function autoLayerStatus(
 export function addAutoLayer(
   store: Store,
   dispatch: Dispatch,
-  layer: FlowLayerConfig | TripLayerConfig | FlowFieldLayerConfig | SymbolLayerConfig | LineLayerConfig,
+  layer:
+    FlowLayerConfig | TripLayerConfig | FlowFieldLayerConfig | SymbolLayerConfig | LineLayerConfig | FixedLayerConfig,
   dataId: string
 ): MapBounds | null {
   dispatch(wrapTo(KEPLER_INSTANCE_ID, addLayer(layer, dataId)));
