@@ -74,6 +74,7 @@ import { useViewportSync } from './useViewportSync';
 import { useMosaicSelection } from './useMosaicSelection';
 import type { ViewportVariables } from './viewportSync';
 import { useAreaSync } from './useAreaSync';
+import { useGrafanaAnnotations, type AnnotationsMode } from './useGrafanaAnnotations';
 import { useMarkerSync } from './useMarkerSync';
 import { scopeLabelClicks } from './scopedLabelClicks';
 import { useClickArea } from './useClickArea';
@@ -218,6 +219,12 @@ export interface KeplerMapProps {
    * are ignored, and the save button shows only while this panel is edited.
    */
   panelId?: number;
+  /** `PanelData.annotations`, drawn on the map when they have a place. */
+  annotations?: DataFrame[];
+  /** Whether Grafana annotations are drawn, and whether map notes are saved as ones. */
+  grafanaAnnotations?: AnnotationsMode;
+  /** The dashboard's uid, which a saved annotation belongs to; '' on an unsaved dashboard. */
+  dashboardUid?: string;
 }
 
 /**
@@ -284,6 +291,9 @@ export function KeplerMap({
   peerTimeSync,
   playheadVariable,
   panelId,
+  annotations,
+  grafanaAnnotations = 'show',
+  dashboardUid = '',
 }: KeplerMapProps) {
   // A link that carries a center mapping's pair opens the map there: the
   // config the panel mounts with is loaded with that viewport, so the guard
@@ -609,6 +619,17 @@ export function KeplerMap({
   // One-way and silent on its first pass — it adopts whatever figures a saved
   // config restored without publishing — so it contends with nothing on load.
   useAreaSync({ store, isReady, variable: areaVariable });
+
+  // Grafana annotations with a place as map notes, and map notes into Grafana.
+  useGrafanaAnnotations({
+    store,
+    isReady,
+    annotations,
+    mode: grafanaAnnotations,
+    dashboardUid,
+    grafanaRange,
+    element: styleTarget,
+  });
 
   // Both ways: a dropped marker writes its lat/lng pair once, and a pair changed
   // from outside moves its marker. Never writes on load.

@@ -101,6 +101,21 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       category: ['Map'],
       defaultValue: false,
     })
+    .addRadio({
+      path: 'grafanaAnnotations',
+      name: 'Grafana annotations',
+      description:
+        'Draw the dashboard annotations that have a place (a geo:<lng>,<lat> tag) as notes on the map, shown while their time is in the map window. Show and save also turns a note made with right-click "Add Annotation" into a Grafana annotation over the map window, which the time charts draw.',
+      category: ['Map'],
+      defaultValue: 'show',
+      settings: {
+        options: [
+          { value: 'off', label: 'Off' },
+          { value: 'show', label: 'Show' },
+          { value: 'both', label: 'Show and save' },
+        ],
+      },
+    })
     .addBooleanSwitch({
       path: 'hoverSync',
       name: 'Show position on graph hover',
@@ -435,3 +450,7 @@ plugin.useFieldConfig({
     [FieldConfigProperty.Actions]: { hideFromDefaults: false, settings: { showOneClick: true } },
   },
 });
+
+// Grafana hands a panel the dashboard's annotations only when it asks for them:
+// the map draws the ones with a place (see useGrafanaAnnotations).
+plugin.setDataSupport({ annotations: true, alertStates: false });

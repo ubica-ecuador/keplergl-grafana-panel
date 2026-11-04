@@ -19,7 +19,15 @@ import { getApplicationConfig } from '@kepler.gl/utils';
  * replacing MapControlFactory, which is exactly what kepler's own demo app does
  * (`examples/demo-app/src/factories/map-control.js`). This factory is that
  * wiring, minus the demo-only extras (SQL panel, AI assistant, sample panels,
- * annotations).
+ * the annotation list).
+ *
+ * Annotations themselves are on, and not from here: since kepler 3.3.0-alpha.17
+ * the stock MapControl carries the "Aa" annotation button, the map's right-click
+ * menu offers "Add Annotation" (on an empty spot; on a feature with a tooltip it
+ * pins the tooltip instead), and `enableAnnotations` defaults to true. What
+ * stays unmounted is the demo's annotation list (`AnnotationPanel`). Grafana
+ * annotations reach the map, and map notes reach Grafana, through
+ * `useGrafanaAnnotations`.
  *
  * `ChartManagerFactory` comes from `@kepler.gl/components/charts`, a subpath
  * kepler keeps apart so its main barrel does not load `@kepler.gl/charts`.

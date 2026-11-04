@@ -39,6 +39,12 @@ const EMPTY_FIT_VARIABLES: string[] = [];
  * dynamic import in LazyKeplerMap, so a dashboard that merely has the plugin
  * installed does not pay for deck.gl and MapLibre.
  */
+/** The dashboard's uid, or '' where the variable does not resolve (a new, unsaved dashboard). */
+function dashboardUidOf(replaceVariables: Props['replaceVariables']): string {
+  const uid = replaceVariables('${__dashboard.uid}');
+  return uid.startsWith('$') ? '' : uid;
+}
+
 export function KeplerPanel(props: Props) {
   const {
     options,
@@ -260,6 +266,9 @@ export function KeplerPanel(props: Props) {
         hoverLayerId={options.hoverLayerId}
         hoverMaxAgeSeconds={options.hoverMaxAgeSeconds}
         panelId={id}
+        annotations={data.annotations}
+        grafanaAnnotations={options.grafanaAnnotations ?? 'show'}
+        dashboardUid={dashboardUidOf(replaceVariables)}
       />
       {/* After the map, so it stacks over it. */}
       <RasterServerNotice queries={serverMissing} top={editing ? SAVE_BUTTON_CLEARANCE_PX : undefined} />
