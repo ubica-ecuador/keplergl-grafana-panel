@@ -3,6 +3,7 @@ import { toDataFrame } from '@grafana/data';
 import {
   annotationWrite,
   geoTag,
+  noteFingerprint,
   overlapsWindow,
   placeFromTags,
   plainText,
@@ -98,6 +99,12 @@ describe('kepler callouts', () => {
     expect(w.text).toBe('Landfall');
     expect(w.tags).toEqual(['map', 'geo:-80.12346,-1.5']);
     expect(w.data.kepler).toEqual({ kind: 'ARROW', label: 'Landfall', anchorPoint: [-80.12345678, -1.5] });
+  });
+
+  it("counts a style edit from kepler's list as a change, and the rich text not", () => {
+    const note = { id: 'a', kind: 'POINT', label: 'x', anchorPoint: [1, 2], lineColor: '#FFFFFF', isVisible: true };
+    expect(noteFingerprint({ ...note, lineColor: '#FF0000' })).not.toBe(noteFingerprint(note));
+    expect(noteFingerprint({ ...note, isVisible: false, editorState: { root: {} } })).toBe(noteFingerprint(note));
   });
 
   it('strips HTML from Grafana text', () => {

@@ -1,7 +1,14 @@
 import { useEffect, useRef } from 'react';
 import type { DataFrame } from '@grafana/data';
 import { getBackendSrv, hasPermission } from '@grafana/runtime';
-import { addAnnotation, removeAnnotation, setSelectedAnnotation, updateAnnotation, wrapTo } from '@kepler.gl/actions';
+import {
+  ActionTypes,
+  addAnnotation,
+  removeAnnotation,
+  setSelectedAnnotation,
+  updateAnnotation,
+  wrapTo,
+} from '@kepler.gl/actions';
 import type { Store } from 'redux';
 
 import {
@@ -18,6 +25,7 @@ import {
   type KeplerAnnotationLike,
 } from '../data/grafanaAnnotations';
 import { KEPLER_INSTANCE_ID } from './constants';
+import { onKeplerAction } from './keplerStore';
 import type { TimeRangeMs } from './timeSync';
 
 export type AnnotationsMode = 'off' | 'show' | 'both';
@@ -137,6 +145,15 @@ export function useGrafanaAnnotations({
   const pending = useRef(new Set<string>());
   /** The selection on the previous pass: its end is when a note is written. */
   const lastSelected = useRef<string | null>(null);
+  /** Grafana-backed notes this hook takes off the map itself: not a user's delete. */
+  const selfRemoving = useRef(new Set<string>());
+  /**
+   * Notes the user deleted from kepler's list. Kept off the map while the data
+   * still carries them: until Grafana's delete lands and the dashboard
+   * refreshes, or for the session when the annotation is not one this viewer
+   * can delete (an annotation query's, or no permission).
+   */
+  const dismissed = useRef(new Set<string>());
   /** The note whose text was being edited on the previous pass. */
   const lastEditing = useRef<string | null>(null);
   const writing = useRef(new Set<string>());
@@ -162,8 +179,16 @@ export function useGrafanaAnnotations({
     const onMap = new Map(slices.annotations.map((n) => [n.id, n]));
     let added = false;
 
+    for (const id of dismissed.current) {
+      if (!wanted.has(id)) {
+        dismissed.current.delete(id);
+      }
+    }
     for (const [id, a] of wanted) {
       pending.current.delete(id);
+      if (dismissed.current.has(id)) {
+        continue;
+      }
       const visible = overlapsWindow(a, window);
       const note = onMap.get(id);
       const fromGrafana = noteFingerprint(toKeplerAnnotation(a, visible));
@@ -185,6 +210,7 @@ export function useGrafanaAnnotations({
     // note written from here stays until the data brings it back.
     for (const note of slices.annotations) {
       if (isGrafanaBacked(note.id) && !wanted.has(note.id) && !pending.current.has(note.id)) {
+        selfRemoving.current.add(note.id);
         dispatch(wrapTo(KEPLER_INSTANCE_ID, removeAnnotation(note.id)));
         synced.current.delete(note.id);
         seenFromGrafana.current.delete(note.id);
@@ -323,6 +349,44 @@ export function useGrafanaAnnotations({
       schedule.current();
     }
   }, [annotations, isReady, mode, grafanaRange.from, grafanaRange.to]);
+
+  // Deleting a note in kepler's list: a Grafana-backed one is deleted in Grafana
+  // too (mode 'both', a stored annotation, a viewer allowed to), or else only
+  // dismissed for the session — never brought straight back by the next pass.
+  // Heard as the action itself: a note vanishing from the state could as well be
+  // kepler applying a config.
+  useEffect(() => {
+    if (!isReady || mode === 'off') {
+      return;
+    }
+    return onKeplerAction(store, (action) => {
+      if (action.type !== ActionTypes.REMOVE_ANNOTATION) {
+        return;
+      }
+      const inner = (action.payload ?? action) as { id?: unknown };
+      const id = typeof inner.id === 'string' ? inner.id : '';
+      if (!isGrafanaBacked(id)) {
+        return;
+      }
+      if (selfRemoving.current.delete(id)) {
+        return;
+      }
+      dismissed.current.add(id);
+      const grafanaId = grafanaIdOf(id);
+      if (params.current.mode !== 'both' || !/^\d+$/.test(grafanaId) || !hasPermission('annotations:delete')) {
+        return;
+      }
+      getBackendSrv()
+        .delete(`/api/annotations/${grafanaId}`, undefined, { showErrorAlert: false })
+        .then(() => refreshDashboard())
+        .catch((e: unknown) => {
+          console.warn('kepler panel: could not delete the annotation', e);
+          // Still in Grafana: back on the map at the next pass.
+          dismissed.current.delete(id);
+          schedule.current();
+        });
+    });
+  }, [store, isReady, mode]);
 
   // kepler ends a note's editing only from its annotation list, which the panel
   // does not mount: a click on the bare map or Escape puts the note down, which
