@@ -58,6 +58,15 @@ const POI_SWITCH_LABELS: Record<string, string> = {
   pt: 'Pontos de interesse',
 };
 
+/**
+ * kepler's own layer types that its catalogues leave unnamed, so the layer list
+ * shows react-intl's fallback (`Layer.Type.A5`). Given only where a catalogue
+ * has no name: kepler's wins once it ships one.
+ */
+const KEPLER_UNNAMED_LAYER_LABELS: Record<string, string> = {
+  a5: 'A5',
+};
+
 /** kepler's message catalogue: locale → flat id → text. */
 type Messages = Record<string, Record<string, string>>;
 
@@ -80,10 +89,14 @@ export function withOwnLayerLabels(messages: Messages): Messages {
     Object.entries(OWN_LAYER_LABELS).map(([type, label]) => [`layer.type.${type}`, label])
   );
 
+  const unnamed = Object.fromEntries(
+    Object.entries(KEPLER_UNNAMED_LAYER_LABELS).map(([type, label]) => [`layer.type.${type}`, label])
+  );
+
   return Object.fromEntries(
     Object.entries(messages).map(([locale, catalogue]) => [
       locale,
-      { ...catalogue, ...own, 'mapLayers.poi': POI_SWITCH_LABELS[locale] ?? POI_SWITCH_LABELS.en },
+      { ...unnamed, ...catalogue, ...own, 'mapLayers.poi': POI_SWITCH_LABELS[locale] ?? POI_SWITCH_LABELS.en },
     ])
   );
 }

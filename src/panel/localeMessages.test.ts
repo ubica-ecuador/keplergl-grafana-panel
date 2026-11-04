@@ -59,6 +59,14 @@ describe('withOwnLayerLabels', () => {
     expect(Object.keys(merged.en).length).toBeGreaterThan(Object.keys(keplerMessages.en).length);
   });
 
+  it('names kepler’s A5 layer, which kepler leaves unnamed, without overriding a name it has', () => {
+    for (const locale of Object.keys(keplerMessages)) {
+      expect(merged[locale]['layer.type.a5']).toBe(keplerMessages[locale]['layer.type.a5'] ?? 'A5');
+    }
+    const named = withOwnLayerLabels({ en: { 'layer.type.a5': 'A5 grid' } });
+    expect(named.en['layer.type.a5']).toBe('A5 grid');
+  });
+
   it('does not mutate the messages kepler exported', () => {
     // They are module state, shared with anything else that imports them. A
     // type kepler has no name for (since 3.3.0-alpha.19 it names `zarr` itself).
