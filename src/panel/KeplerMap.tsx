@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Provider } from 'react-redux';
 import { StyleSheetManager } from 'styled-components';
-import type { DataFrame, EventBus, InterpolateFunction } from '@grafana/data';
+import type { AdHocVariableFilter, DataFrame, EventBus, InterpolateFunction } from '@grafana/data';
 import { injectComponents } from '@kepler.gl/components';
 import { messages as keplerMessages } from '@kepler.gl/localization';
 
@@ -48,8 +48,10 @@ import { useFlowFieldContext } from './useFlowFieldContext';
 import { usePeerTimeSync } from './usePeerTimeSync';
 import { readVariable, useVariableSync } from './useVariableSync';
 import { useClickSync } from './useClickSync';
-import { LinksContext, offersSelection, selectApi, SelectContext } from './selectPopover';
+import { AdHocContext, LinksContext, offersSelection, selectApi, SelectContext } from './selectPopover';
 import { useDataLinks } from './useDataLinks';
+import { useAdHocFilters } from './useAdHocFilters';
+import type { AdHocFilterItem } from './adHocFilters';
 import { ActionDialog } from './ActionDialog';
 import type { MapAction } from './mapActions';
 import { HaloContext, HaloDimContext, HaloStyleContext } from './haloMapContainer';
@@ -132,6 +134,12 @@ export interface KeplerMapProps {
   timeZone?: string;
   /** Whether this viewer may run the fields' actions: Grafana's `canExecuteActions`. */
   canExecuteActions?: boolean;
+  /** The query fields the popup offers as ad hoc filters (adHocFilters.ts). */
+  adHocFilterFields?: readonly string[];
+  /** `data.request.filters`: set only when the dashboard has an ad hoc variable for this panel's datasource. */
+  requestFilters?: readonly AdHocVariableFilter[];
+  /** The panel context's `onAddAdHocFilter`. */
+  onAddAdHocFilter?: (item: AdHocFilterItem) => void;
   hoverSync?: boolean;
   hoverPublishSpike?: boolean;
   hoverLayerId?: string;
@@ -249,6 +257,9 @@ export function KeplerMap({
   replaceVariables,
   timeZone,
   canExecuteActions = false,
+  adHocFilterFields,
+  requestFilters,
+  onAddAdHocFilter,
   hoverSync,
   hoverPublishSpike,
   hoverLayerId,
@@ -682,6 +693,17 @@ export function KeplerMap({
     onAction: setPendingAction,
   });
 
+  // Grafana's ad hoc filters, from the pinned popup, where the dashboard has a
+  // variable for this panel's datasource (useAdHocFilters.ts).
+  const adHoc = useAdHocFilters({
+    store,
+    frames,
+    datasets,
+    fields: adHocFilterFields,
+    requestFilters,
+    onAddAdHocFilter,
+  });
+
   // One-way: publishes the bbox of what the map shows once it comes to rest,
   // and once on load so a consuming panel never opens without one.
   useViewportSync({ store, isReady, variables: viewportVariables });
@@ -731,41 +753,43 @@ export function KeplerMap({
                   <HaloStyleContext.Provider value={haloStyle}>
                     <SelectContext.Provider value={selection}>
                       <LinksContext.Provider value={links}>
-                        <PanelMappingsContext.Provider value={panelMappings}>
-                          <KeplerGl
-                            id={KEPLER_INSTANCE_ID}
-                            width={width}
-                            height={height}
-                            /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
+                        <AdHocContext.Provider value={adHoc}>
+                          <PanelMappingsContext.Provider value={panelMappings}>
+                            <KeplerGl
+                              id={KEPLER_INSTANCE_ID}
+                              width={width}
+                              height={height}
+                              /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
                      required by the type but unused unless a Mapbox style is picked. */
-                            mapboxApiAccessToken=""
-                            /* `appName` is deliberately left at kepler's own default: the
+                              mapboxApiAccessToken=""
+                              /* `appName` is deliberately left at kepler's own default: the
                      side panel names the library the map comes from, and calling
                      it "Grafana" claimed credit for someone else's work. */
-                            theme={theme}
-                            /* kepler ships translations for its own layer types only, so the
+                              theme={theme}
+                              /* kepler ships translations for its own layer types only, so the
                      four this plugin adds showed as `Layer.Type.Esriimage` and the
                      like wherever a layer is named. */
-                            localeMessages={localeMessages}
-                            mapStyles={mapStyles}
-                            /* Drops kepler's own list, which is half Mapbox styles that
+                              localeMessages={localeMessages}
+                              mapStyles={mapStyles}
+                              /* Drops kepler's own list, which is half Mapbox styles that
                      cannot load without an account — see REPLACES_DEFAULT_MAP_STYLES. */
-                            mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
-                            /* kepler hands it to MapLibre in place of its own, which passes
+                              mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
+                              /* kepler hands it to MapLibre in place of its own, which passes
                      URLs through untouched: the CARTO key on every style, sprite,
                      glyph and tile URL. */
-                            transformRequest={transformRequest}
-                            /* No right-to-left text plugin. On a Mapbox base map
+                              transformRequest={transformRequest}
+                              /* No right-to-left text plugin. On a Mapbox base map
                      react-map-gl would load one from api.mapbox.com and run it in
                      the map's workers, which is code from a third-party host;
                      this plugin's MapLibre maps never ask for one. */
-                            RTLTextPlugin={false}
-                            /* kepler renders one commit late and silently discards actions
+                              RTLTextPlugin={false}
+                              /* kepler renders one commit late and silently discards actions
                      addressed to an instance that has not registered yet. */
-                            onKeplerGlInitialized={() => setIsReady(true)}
-                            deckGlProps={DECK_GL_PROPS}
-                          />
-                        </PanelMappingsContext.Provider>
+                              onKeplerGlInitialized={() => setIsReady(true)}
+                              deckGlProps={DECK_GL_PROPS}
+                            />
+                          </PanelMappingsContext.Provider>
+                        </AdHocContext.Provider>
                       </LinksContext.Provider>
                     </SelectContext.Provider>
                   </HaloStyleContext.Provider>

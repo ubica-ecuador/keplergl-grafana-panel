@@ -326,6 +326,16 @@ export interface KeplerPanelOptions {
   clickConfirm?: boolean;
 
   /**
+   * Query fields the popup of a clicked entity offers as Grafana ad hoc
+   * filters, as the table offers a cell's value: "Filter for value" adds
+   * `field = value` to the dashboard's ad hoc filter variable, "Filter out
+   * value" adds `field != value`. Offered only when the dashboard has an ad hoc
+   * filter variable for this panel's datasource, which is what decides whether
+   * the queries are filtered at all (`panel/adHocFilters.ts`). Empty for none.
+   */
+  adHocFilterFields?: string[];
+
+  /**
    * A column of the query whose true (or 1) rows the map marks as selected, as
    * it marks what a click published: amber rings, and the veil of
    * `dimUnselected`. The selection then never travels in the URL, however many

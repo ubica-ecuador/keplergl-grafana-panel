@@ -8,6 +8,7 @@ import { isClickMapping, type VariableMapping } from './variableSync';
 import type { ClickSelectActions } from './useClickSync';
 import type { ClickAreaActions } from './useClickArea';
 import type { LinksApi } from './useDataLinks';
+import type { AdHocApi } from './useAdHocFilters';
 
 type Factory = typeof MapPopoverContentFactory;
 
@@ -58,6 +59,13 @@ export const SelectContext = createContext<SelectApi | null>(null);
  * crosses kepler's floating portal.
  */
 export const LinksContext = createContext<LinksApi | null>(null);
+
+/**
+ * The clicked entity's ad hoc filters, null in a panel that offers none: no
+ * field named, or no ad hoc variable for its datasource (useAdHocFilters.ts).
+ * Same channel again.
+ */
+export const AdHocContext = createContext<AdHocApi | null>(null);
 
 /**
  * Whether this panel's popup should carry the button at all.
@@ -171,6 +179,63 @@ const StyledActions = styled.div`
   margin-top: 4px;
 `;
 
+const StyledFilters = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid ${(props) => props.theme?.panelBorderColor ?? 'rgba(127, 127, 127, 0.3)'};
+  font-size: 11px;
+`;
+
+const StyledFilterRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+`;
+
+const StyledFilterLabel = styled.span`
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: ${(props) => props.theme?.textColor ?? 'inherit'};
+
+  & > b {
+    color: ${(props) => props.theme?.textColorHl ?? 'inherit'};
+    font-weight: 500;
+  }
+`;
+
+// Square, like the table's filter icons; the glyph is the operator the button adds.
+const StyledFilterButton = styled.button`
+  flex: 0 0 auto;
+  width: 20px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid ${(props) => props.theme?.textColor ?? 'currentColor'};
+  border-radius: 2px;
+  background: transparent;
+  color: ${(props) => props.theme?.textColorHl ?? 'inherit'};
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: ${(props) => props.theme?.activeColor ?? props.theme?.linkBtnColor ?? 'inherit'};
+    border-color: ${(props) => props.theme?.activeColor ?? props.theme?.linkBtnColor ?? 'currentColor'};
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+`;
+
 /** A plain left click, the one the panel follows itself; a modified click is the browser's. */
 function isPlainClick(event: React.MouseEvent): boolean {
   return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
@@ -187,8 +252,8 @@ function usePinned(): boolean {
 }
 
 /**
- * kepler's popup content, with the entity's data links, its actions and the
- * panel's Select button under it.
+ * kepler's popup content, with the entity's data links, its actions, its ad
+ * hoc filters and the panel's Select button under it.
  *
  * Links show in the pinned popup only, as in Grafana's own tooltips: the hover
  * popup follows the pointer and cannot be clicked. Each is an anchor, so a
@@ -213,6 +278,9 @@ export function withSelectButton<P extends object>(Content: React.ComponentType<
     const links = linksApi && pinned && !comparing ? linksApi.links() : [];
     // Empty for a viewer who may not run actions: useDataLinks asks Grafana.
     const actions = linksApi && pinned && !comparing ? linksApi.actions() : [];
+    // Null unless the dashboard has an ad hoc variable for this panel's datasource.
+    const adHoc = useContext(AdHocContext);
+    const filters = adHoc && pinned && !comparing ? adHoc.filters() : [];
 
     return (
       <>
@@ -246,6 +314,37 @@ export function withSelectButton<P extends object>(Content: React.ComponentType<
               </StyledSelect>
             ))}
           </StyledActions>
+        ) : null}
+        {filters.length && adHoc ? (
+          <StyledFilters className="panel-entity-filters">
+            {filters.map((filter) => (
+              <StyledFilterRow key={filter.key}>
+                <StyledFilterLabel title={`${filter.key} = ${filter.value}`}>
+                  {filter.key} = <b>{filter.value}</b>
+                </StyledFilterLabel>
+                <StyledFilterButton
+                  type="button"
+                  className="panel-filter-for"
+                  title="Filter for value"
+                  aria-label={`Filter for ${filter.key} = ${filter.value}`}
+                  disabled={filter.filteredFor}
+                  onClick={() => adHoc.add(filter, '=')}
+                >
+                  =
+                </StyledFilterButton>
+                <StyledFilterButton
+                  type="button"
+                  className="panel-filter-out"
+                  title="Filter out value"
+                  aria-label={`Filter out ${filter.key} = ${filter.value}`}
+                  disabled={filter.filteredOut}
+                  onClick={() => adHoc.add(filter, '!=')}
+                >
+                  ≠
+                </StyledFilterButton>
+              </StyledFilterRow>
+            ))}
+          </StyledFilters>
         ) : null}
         {offer && api ? (
           <StyledSelect type="button" className="panel-select-entity" onClick={selected ? api.clear : api.select}>

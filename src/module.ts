@@ -16,6 +16,7 @@ import { AreaVariableEditor } from './editors/AreaVariableEditor';
 import { DEFAULT_CLICK_AREA_METRES } from './panel/clickArea';
 import { ViewportVariablesEditor } from './editors/ViewportVariablesEditor';
 import { FitVariablesEditor } from './editors/FitVariablesEditor';
+import { AdHocFieldsEditor } from './editors/AdHocFieldsEditor';
 import { PlayheadVariableEditor } from './editors/PlayheadVariableEditor';
 import { RASTER_SERVER_PLACEHOLDER } from './panel/constants';
 import { DEFAULT_PUBLISH_INTERVAL_MS, MIN_PUBLISH_INTERVAL_MS } from './panel/timeVariableSync';
@@ -377,6 +378,15 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       showIf: (config) =>
         (config.variableMappings ?? []).some((mapping) => mapping.source === 'click') ||
         (Boolean(config.areaVariable) && Boolean(config.clickArea)),
+    })
+    .addCustomEditor({
+      id: 'adHocFilterFields',
+      path: 'adHocFilterFields',
+      name: 'Ad hoc filters from the popup',
+      description:
+        'Fields whose value the popup of a clicked entity adds to the dashboard’s ad hoc filters, for or out, as a table cell does.',
+      category: ['Cross-filtering'],
+      editor: AdHocFieldsEditor,
     })
     .addFieldNamePicker({
       path: 'selectionField',

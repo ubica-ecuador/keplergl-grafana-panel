@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 
 import { KEPLER_INSTANCE_ID } from './constants';
 import {
+  AdHocContext,
   LinksContext,
   offersSelection,
   selectApi,
@@ -12,6 +13,8 @@ import {
   type SelectApi,
 } from './selectPopover';
 import type { LinksApi } from './useDataLinks';
+import type { AdHocApi } from './useAdHocFilters';
+import type { EntityFilter } from './adHocFilters';
 import type { MapAction } from './mapActions';
 import type { VariableMapping } from './variableSync';
 
@@ -270,5 +273,53 @@ describe('data links in the popup', () => {
     expect(api.follow).not.toHaveBeenCalled();
     fireEvent.click(link, { button: 0 });
     expect(api.follow).toHaveBeenCalledWith(usgs, expect.anything());
+  });
+});
+
+describe('ad hoc filters in the popup', () => {
+  const kind: EntityFilter = { key: 'kind', value: 'shop', filteredFor: false, filteredOut: false };
+
+  function mountFilters(clicked: unknown, adHoc: AdHocApi | null, layerHoverProp?: unknown) {
+    const Content = withSelectButton(StockContent as React.ComponentType<{ layerHoverProp?: unknown }>);
+    return render(
+      <Provider store={makeStore(clicked) as never}>
+        <AdHocContext.Provider value={adHoc}>
+          <Content layerHoverProp={layerHoverProp} />
+        </AdHocContext.Provider>
+      </Provider>
+    );
+  }
+
+  const adHocApi = (filters: EntityFilter[] = [kind]): AdHocApi => ({ filters: () => filters, add: jest.fn() });
+
+  it('offers to filter for and filter out each field’s value, as a table cell does', () => {
+    const api = adHocApi();
+    mountFilters(pinned, api);
+    expect(screen.getByText('shop')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Filter for kind = shop' }));
+    expect(api.add).toHaveBeenCalledWith(kind, '=');
+    fireEvent.click(screen.getByRole('button', { name: 'Filter out kind = shop' }));
+    expect(api.add).toHaveBeenCalledWith(kind, '!=');
+  });
+
+  it('greys out the filter the dashboard already applies, and leaves the other to swap it', () => {
+    mountFilters(pinned, adHocApi([{ ...kind, filteredFor: true }]));
+    expect(screen.getByRole('button', { name: 'Filter for kind = shop' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Filter out kind = shop' })).toBeEnabled();
+  });
+
+  it('offers nothing in the hover popup', () => {
+    mountFilters(undefined, adHocApi());
+    expect(screen.queryByRole('button', { name: /Filter/ })).toBeNull();
+  });
+
+  it('offers nothing in the compare popup, which shows another entity than the pinned one', () => {
+    mountFilters(pinned, adHocApi(), { primaryData: {} });
+    expect(screen.queryByRole('button', { name: /Filter/ })).toBeNull();
+  });
+
+  it('offers nothing in a panel without ad hoc filters', () => {
+    mountFilters(pinned, null);
+    expect(screen.queryByRole('button', { name: /Filter/ })).toBeNull();
   });
 });

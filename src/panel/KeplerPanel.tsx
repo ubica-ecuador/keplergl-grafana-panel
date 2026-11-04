@@ -29,12 +29,14 @@ import { dayNightDatasets, NIGHT_COLOR } from '../data/dayNight';
 import { namesPlaces, useGazetteer } from './useGazetteer';
 import { geomapToKepler } from '../geomap/geomapToKepler';
 import { GeomapImportNotice } from '../geomap/GeomapImportNotice';
+import type { AdHocFilterItem } from './adHocFilters';
 
 interface Props extends PanelProps<KeplerPanelOptions> {}
 
 /** Stable empty list, so an unconfigured panel has nothing new to react to. */
 const EMPTY_MAPPINGS: VariableMapping[] = [];
 const EMPTY_FIT_VARIABLES: string[] = [];
+const EMPTY_AD_HOC_FIELDS: string[] = [];
 
 /**
  * Translates Grafana concerns into props for the map.
@@ -68,8 +70,15 @@ export function KeplerPanel(props: Props) {
   // Grafana shows a field's actions only to a viewer who can edit the
   // dashboard, and says so through the panel context; a Grafana without the
   // hook (before 11.x) answers no, as its own panels do.
-  const panelContext = usePanelContext() as { canExecuteActions?: () => boolean };
+  const panelContext = usePanelContext() as {
+    canExecuteActions?: () => boolean;
+    onAddAdHocFilter?: (item: AdHocFilterItem) => void;
+  };
   const canExecuteActions = panelContext.canExecuteActions?.() ?? false;
+  // Grafana's table adds ad hoc filters through this; the map does from its
+  // popup, when the dashboard has a variable for this panel's datasource.
+  const onAddAdHocFilter = panelContext.onAddAdHocFilter;
+  const adHocFilterFields = useStableValue(options.adHocFilterFields ?? EMPTY_AD_HOC_FIELDS);
 
   // kepler and the sync hook work in epoch ms; Grafana hands DateTime objects.
   const grafanaRange = useMemo(() => ({ from: timeRange.from.valueOf(), to: timeRange.to.valueOf() }), [timeRange]);
@@ -280,6 +289,9 @@ export function KeplerPanel(props: Props) {
         replaceVariables={replaceVariables}
         timeZone={timeZone}
         canExecuteActions={canExecuteActions}
+        adHocFilterFields={adHocFilterFields}
+        requestFilters={data.request?.filters}
+        onAddAdHocFilter={onAddAdHocFilter}
         rasters={rasters}
         wmsLayers={wmsLayers}
         zarrLayers={zarrLayers}
