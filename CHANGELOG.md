@@ -73,6 +73,10 @@ release documents what changed since the one before it.
   *Add Data* by URL is saved with the map as its address and fetched again on load, like a
   tileset. A file Grafana serves itself keeps a path relative to Grafana, so the dashboard works on
   any instance.
+- **Layers on every world copy** (#57). Past ±180° the base map repeats and the layers now repeat
+  with it: zoomed out, every copy of the world has its points, and over the antimeridian (Fiji,
+  Tonga, the Aleutians) the far side keeps them. Map notes stay on the copy in view, and a note
+  made or a coordinate pinned on a copy is saved at its place within ±180°.
 
 ## 1.6.2 (2026-10-27)
 

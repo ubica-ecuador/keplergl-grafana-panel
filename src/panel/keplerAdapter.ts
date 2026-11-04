@@ -79,6 +79,7 @@ import { COG_PAINTED_TYPE } from './cogPaintedLayer';
 import { ESRI_IMAGE_TYPE } from './esriImageLayer';
 import { splitEsriRefresh, splitRasterRefresh, splitRefresh, splitWmsRefresh, splitZarrRefresh } from './loadDecision';
 import { KEPLER_INSTANCE_ID } from './constants';
+import { wrapLongitude } from '../data/longitude';
 import { ZARR_TILES_TYPE } from './zarrTileLayer';
 import { MarkerSpec, readMarkers } from './markers';
 import { MARKERS_TYPE } from './markersLayer';
@@ -2057,7 +2058,9 @@ export function readPinnedCoordinate(store: Store): [number, number] | null | un
     return undefined;
   }
   const [lng, lat] = coordinate;
-  return typeof lng === 'number' && typeof lat === 'number' ? [lng, lat] : undefined;
+  // Within ±180°: a click on a copy of the world past the antimeridian
+  // unprojects to that copy's longitude, 190° for -170°.
+  return typeof lng === 'number' && typeof lat === 'number' ? [wrapLongitude(lng), lat] : undefined;
 }
 
 /**
