@@ -1,6 +1,7 @@
 import { type DataFrame, FieldType } from '@grafana/data';
 
 import { detectFields, type FieldRoleOverrides, resolveRoles } from '../data/detectFields';
+import { isEdgeFrame } from '../data/buildNetwork';
 import { ROUTE_COLUMNS, routeDatasetId } from '../data/buildRoute';
 import { datasetId } from '../data/framesToDatasets';
 import type { SavedMapConfig, SavedRemoteDataset } from '../data/mapConfig';
@@ -116,25 +117,38 @@ export function geomapToKepler(
       }
       return;
     }
-    const position = layer.refId ? frames.findIndex((f) => f.refId === layer.refId) : 0;
+    const position =
+      layer.graph === 'edges'
+        ? frames.findIndex(isEdgeFrame)
+        : layer.graph === 'nodes'
+          ? frames.findIndex((f) => !isEdgeFrame(f))
+          : layer.refId
+            ? frames.findIndex((f) => f.refId === layer.refId)
+            : 0;
     if (position < 0) {
-      dropped.push(`“${layer.label}”: query ${layer.refId} returned nothing`);
+      dropped.push(
+        layer.graph
+          ? `“${layer.label}”: no ${layer.graph} frame (a node graph has a frame named edges, or with source and target columns, and one of nodes)`
+          : `“${layer.label}”: query ${layer.refId} returned nothing`
+      );
       return;
     }
     const frame = frames[position];
     const refId = frame.refId ?? `${position}`;
     const overrides: FieldRoleOverrides = { ...mappings[refId] };
-    if (layer.location.mode === 'coords') {
+    // An edge's position comes from its nodes; the layer's location is theirs.
+    const placed = layer.graph !== 'edges';
+    if (placed && layer.location.mode === 'coords') {
       overrides.latitude = layer.location.latitude;
       overrides.longitude = layer.location.longitude;
     }
     const roles = resolveRoles(detectFields(frame), overrides);
-    if (!roles.latitude || !roles.longitude) {
+    if (placed && (!roles.latitude || !roles.longitude)) {
       dropped.push(`“${layer.label}”: no latitude and longitude columns found`);
       return;
     }
     legend ||= Boolean(layer.legend && (layer.colorField || layer.sizeField));
-    if (layer.location.mode === 'coords') {
+    if (placed && layer.location.mode === 'coords') {
       mappings[refId] = overrides;
     }
     const column = (name: string | undefined) => {
@@ -142,7 +156,7 @@ export function geomapToKepler(
       return field ? { name: keplerColumnName(roles, field.name), type: keplerType(field.type) } : undefined;
     };
     let dataId = datasetId(refId);
-    if (layer.type === 'route') {
+    if (layer.type === 'route' && !layer.graph) {
       routes.add(refId);
       dataId = routeDatasetId(dataId);
     }
@@ -239,11 +253,12 @@ function toKeplerLayer(
             textLabel: [
               {
                 field: textField,
-                color: [255, 255, 255],
-                size: layer.textSize ?? 12,
-                offset: layer.textOffset ?? [0, 0],
-                anchor: 'middle',
-                alignment: 'center',
+                // Geomap writes a marker's label in the marker's colour.
+                color: layer.color,
+                // kepler draws a label at 2/3 of its size (PROJECTED_PIXEL_SIZE_MULTIPLIER).
+                size: Math.round(((layer.textSize ?? 12) / LINE_PIXELS_PER_THICKNESS) * 10) / 10,
+                offset: [0, 0],
+                ...labelPlacement(layer.textOffset ?? [0, 0]),
               },
             ],
           }
@@ -394,5 +409,18 @@ function geojsonLayer(layer: ImportedLayer, id: string, dataId: string): Record<
     visualChannels: field
       ? { colorField: field, colorScale: rules!.scale, strokeColorField: field, strokeColorScale: rules!.scale }
       : {},
+  };
+}
+
+/**
+ * Where a label sits around its point. Geomap shifts it by a pixel offset;
+ * kepler's point layer ignores a label's offset and places it beside the point
+ * by anchor (left, centre, right) and alignment (above, centre, below) instead,
+ * clear of the point's radius. So an offset becomes the side it points to.
+ */
+function labelPlacement([x, y]: [number, number]): { anchor: string; alignment: string } {
+  return {
+    anchor: x > 0 ? 'start' : x < 0 ? 'end' : 'middle',
+    alignment: y < 0 ? 'top' : y > 0 ? 'bottom' : 'center',
   };
 }

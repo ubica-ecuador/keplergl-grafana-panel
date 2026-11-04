@@ -56,6 +56,8 @@ export interface GeomapLayer {
   config?: {
     style?: GeomapStyle;
     weight?: GeomapDimension<number>;
+    /** Network only: how the edges are drawn; `style` is the nodes'. */
+    edgeStyle?: GeomapStyle;
     radius?: number;
     showLegend?: boolean;
     /** Route only: an arrow at each segment's end (1), at its start (-1), or none (0). */
@@ -94,6 +96,8 @@ export interface ImportedLayer {
   label: string;
   /** The query the layer reads; absent means the first one, as in Geomap. */
   refId?: string;
+  /** A network's part: its nodes or its edges, found by Grafana's node graph shape rather than by query. */
+  graph?: 'nodes' | 'edges';
   location: ImportedLocation;
   color: [number, number, number];
   colorField?: ImportedColorField;
@@ -184,6 +188,10 @@ export function fromGeomapPanel(
   const basemap = convertBasemap(geomap.basemap, dropped);
   const layers: ImportedLayer[] = [];
   for (const layer of geomap.layers ?? []) {
+    if (layer.type === 'network') {
+      layers.push(...convertNetwork(layer, prevFieldConfig, theme, dropped));
+      continue;
+    }
     const imported = convertLayer(layer, prevFieldConfig, theme, dropped);
     if (imported) {
       layers.push(imported);
@@ -383,6 +391,40 @@ function convertGeojson(layer: GeomapLayer, label: string, theme: GrafanaTheme2,
     radiusRange: DEFAULT_SIZE_RANGE,
     ...(ruleColors ? { ruleColors } : {}),
   };
+}
+
+/**
+ * A Geomap network: its nodes as markers and its edges as a route's segments,
+ * each on its part of the node graph (`buildNetwork.ts` places the edges).
+ * Geomap draws the nodes over the edges.
+ */
+function convertNetwork(
+  layer: GeomapLayer,
+  fieldConfig: FieldConfigSource | undefined,
+  theme: GrafanaTheme2,
+  dropped: string[]
+): ImportedLayer[] {
+  const label = layer.name || 'Network';
+  const { edgeStyle, style, showLegend, arrow } = layer.config ?? {};
+  const edges = convertLayer(
+    { ...layer, type: 'route', name: `${label} · edges`, filterData: undefined, config: { style: edgeStyle, arrow } },
+    fieldConfig,
+    theme,
+    dropped
+  );
+  const nodes = convertLayer(
+    { ...layer, type: 'markers', name: `${label} · nodes`, filterData: undefined, config: { style, showLegend } },
+    fieldConfig,
+    theme,
+    dropped
+  );
+  if (arrow === 2) {
+    dropped.push(`the arrows at both ends of “${label}” (kepler draws them at the target only)`);
+  }
+  return [
+    ...(edges ? [{ ...edges, graph: 'edges' as const, ...(arrow === 2 ? { arrow: 'end' as const } : {}) }] : []),
+    ...(nodes ? [{ ...nodes, graph: 'nodes' as const }] : []),
+  ];
 }
 
 function convertLocation(location: GeomapLayer['location']): ImportedLocation | null {

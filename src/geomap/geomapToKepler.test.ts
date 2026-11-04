@@ -58,6 +58,11 @@ describe('geomapToKepler', () => {
     expect(layer.config.columns).toEqual({ lat: 'latitude', lng: 'longitude' });
     expect(layer.visualChannels.sizeField).toEqual({ name: 'magnitude', type: 'real' });
     expect(layer.config.textLabel[0].field).toEqual({ name: 'name', type: 'string' });
+    expect(layer.config.textLabel[0]).toMatchObject({
+      anchor: 'middle',
+      alignment: 'center',
+      color: layer.config.color,
+    });
     expect(result.mapConfig.config.mapState).toMatchObject({ latitude: -1.5, longitude: -78.5, zoom: 6 });
     expect(result.routeQueries).toBeUndefined();
   });
@@ -232,5 +237,47 @@ describe('geomapToKepler', () => {
       ['Countries', undefined],
     ]);
     expect(layers.every((l) => l.config.dataId === 'geomap-geojson-0')).toBe(true);
+  });
+
+  it('draws a network’s nodes as points over its edges as lines, each on its part of the graph', () => {
+    const graphNodes = toDataFrame({
+      refId: 'N',
+      fields: [
+        { name: 'id', type: FieldType.string, values: ['a', 'b'] },
+        { name: 'lat', type: FieldType.number, values: [0, 1] },
+        { name: 'lon', type: FieldType.number, values: [0, 1] },
+      ],
+    });
+    const graphEdges = toDataFrame({
+      refId: 'E',
+      fields: [
+        { name: 'source', type: FieldType.string, values: ['a'] },
+        { name: 'target', type: FieldType.string, values: ['b'] },
+        { name: 'traffic', type: FieldType.number, values: [3] },
+      ],
+    });
+    const imported = importOf({
+      layers: [
+        {
+          type: 'network',
+          name: 'Links',
+          config: {
+            arrow: 1,
+            style: { size: { fixed: 6 } },
+            edgeStyle: { color: { field: 'traffic' }, size: { fixed: 2 } },
+          },
+        },
+      ],
+    });
+    const result = geomapToKepler(imported, [graphEdges, graphNodes])!;
+    const layers = (result.mapConfig.config.visState as { layers: any[] }).layers;
+
+    expect(layers.map((l) => [l.type, l.config.dataId, l.config.label])).toEqual([
+      ['point', 'grafana-N', 'Links · nodes'],
+      ['line', 'grafana-E', 'Links · edges'],
+    ]);
+    expect(layers[1].visualChannels.colorField).toEqual({ name: 'traffic', type: 'real' });
+    expect(layers[1].config.visConfig.targetArrowEnabled).toBe(true);
+    expect(result.routeQueries).toBeUndefined();
   });
 });

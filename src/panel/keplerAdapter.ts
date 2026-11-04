@@ -51,7 +51,7 @@ import type { FlowFieldLayerConfig } from '../data/buildFlowField';
 import type { FlowLayerConfig } from '../data/buildFlows';
 import type { SymbolLayerConfig } from '../data/buildSymbolLayer';
 import type { TripLayerConfig } from '../data/buildTripLayer';
-import type { RouteLayerConfig } from '../data/buildRoute';
+import type { LineLayerConfig } from '../data/buildRoute';
 import {
   keepMapInfo,
   keepRemoteDatasets,
@@ -2469,7 +2469,7 @@ export function autoLayerStatus(
 export function addAutoLayer(
   store: Store,
   dispatch: Dispatch,
-  layer: FlowLayerConfig | TripLayerConfig | FlowFieldLayerConfig | SymbolLayerConfig | RouteLayerConfig,
+  layer: FlowLayerConfig | TripLayerConfig | FlowFieldLayerConfig | SymbolLayerConfig | LineLayerConfig,
   dataId: string
 ): MapBounds | null {
   dispatch(wrapTo(KEPLER_INSTANCE_ID, addLayer(layer, dataId)));

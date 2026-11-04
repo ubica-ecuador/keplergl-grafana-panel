@@ -2,7 +2,8 @@ import { DataFrame, FieldType } from '@grafana/data';
 
 import { buildFlowField, FlowFieldLayerConfig } from './buildFlowField';
 import { buildFlows, FlowLayerConfig, FlowRenderMode } from './buildFlows';
-import { buildRouteLayer, buildRouteSegments, routeColumns, routeDatasetId, RouteLayerConfig } from './buildRoute';
+import { isEdgeFrame, nodePositions, placeEdges } from './buildNetwork';
+import { buildLineLayer, buildRouteSegments, routeColumns, routeDatasetId, LineLayerConfig } from './buildRoute';
 import { buildSymbolLayer, SymbolLayerConfig } from './buildSymbolLayer';
 import { buildTripLayer, TripLayerConfig, TripLayerMode } from './buildTripLayer';
 import { buildTrips } from './buildTrips';
@@ -55,8 +56,11 @@ export interface PanelDataset {
    * built a flow field that drew nothing and explained nothing.
    */
   symbolLayer?: SymbolLayerConfig;
-  /** A line layer to add on a route dataset (`routeQueries`): the query's rows joined in order. */
-  routeLayer?: RouteLayerConfig;
+  /**
+   * A line layer to add on segments: a route (`routeQueries`, the query's rows
+   * joined in order) or a network's edges (`buildNetwork.ts`).
+   */
+  lineLayer?: LineLayerConfig;
 }
 
 /**
@@ -129,6 +133,27 @@ export function framesToDatasets(
     };
   });
 
+  // A network's edges take their ends from the nodes (`buildNetwork.ts`).
+  const nodes = resolved
+    .filter(({ frame }) => !isEdgeFrame(frame))
+    .map(({ frame, roles }) => nodePositions(frame, roles))
+    .find((positions) => positions !== null);
+  if (nodes) {
+    resolved.forEach(({ frame, roles }, index) => {
+      if (!isEdgeFrame(frame) || (roles.latitude && roles.longitude)) {
+        return;
+      }
+      const dataset = datasets[index];
+      const rows = placeEdges(frame, dataset.rows, nodes);
+      datasets[index] = {
+        ...dataset,
+        rows,
+        columns: rows.length === 0 ? routeColumns(toKeplerColumns(frame, roles)) : undefined,
+        lineLayer: buildLineLayer(dataset.id, dataset.label),
+      };
+    });
+  }
+
   const routes = new Set(opts.routeQueries ?? []);
   if (!routes.size) {
     return datasets;
@@ -154,7 +179,7 @@ export function framesToDatasets(
       rows,
       columns: rows.length === 0 ? routeColumns(toKeplerColumns(resolved[index].frame, roles)) : undefined,
       renames: dataset.renames,
-      routeLayer: buildRouteLayer(id, label),
+      lineLayer: buildLineLayer(id, label),
     };
     return [dataset, route];
   });

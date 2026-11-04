@@ -12,11 +12,14 @@ release documents what changed since the one before it.
   without a saved configuration the layer appears by itself.
 
 - **From Geomap in one click.** "Change visualization" from a Geomap panel to Kepler keeps its
-  markers, heatmap, route and GeoJSON layers (colour and size by field, thresholds and colour
+  markers, heatmap, route, network and GeoJSON layers (colour and size by field, thresholds and colour
   schemes, labels, route arrows, GeoJSON style rules), the columns it was told, its view, its layer
   order and its base map, with the legend on when Geomap showed one. Like Geomap, the converted map
   draws every row its queries return, without coupling its clock to the dashboard. What has no
   counterpart yet is named in a notice right after the switch.
+- **Networks on the map.** A query of edges with `source` and `target` columns is drawn as lines
+  between the nodes of another query that has an `id` and coordinates, Grafana's node graph shape:
+  each edge takes the positions of its two nodes and keeps its own columns for colour and width.
 - **Files added by URL stay on the map.** A GeoJSON, CSV or other file loaded through kepler's
   *Add Data* by URL is saved with the map as its address and fetched again on load, like a
   tileset. A file Grafana serves itself keeps a path relative to Grafana, so the dashboard works on

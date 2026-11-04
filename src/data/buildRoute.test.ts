@@ -43,7 +43,7 @@ describe('framesToDatasets with routes', () => {
 
     expect(datasets.map((d) => d.id)).toEqual(['grafana-A', 'grafana-A-route']);
     expect(datasets[0].rows).toHaveLength(4);
-    expect(datasets[1].routeLayer).toMatchObject({
+    expect(datasets[1].lineLayer).toMatchObject({
       type: 'line',
       config: { dataId: 'grafana-A-route', columns: { lat0: 'lat0', lng0: 'lng0', lat1: 'lat1', lng1: 'lng1' } },
     });

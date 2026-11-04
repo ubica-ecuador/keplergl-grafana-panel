@@ -19,8 +19,11 @@ export const ROUTE_COLUMNS = { lat0: 'lat0', lng0: 'lng0', lat1: 'lat1', lng1: '
 
 const ROUTE_THICKNESS = 4.5;
 
-/** The line layer the panel adds for a route when no saved map governs the layers. */
-export interface RouteLayerConfig {
+/**
+ * The line layer the panel adds on segments (a route, a network's edges) when no
+ * saved map governs the layers.
+ */
+export interface LineLayerConfig {
   id: string;
   type: 'line';
   config: {
@@ -34,7 +37,7 @@ export interface RouteLayerConfig {
   visualChannels: Record<string, unknown>;
 }
 
-export function buildRouteLayer(dataId: string, label: string): RouteLayerConfig {
+export function buildLineLayer(dataId: string, label: string): LineLayerConfig {
   return {
     id: `line-${dataId}`,
     type: 'line',
