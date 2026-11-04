@@ -3,7 +3,7 @@ import { type DataFrame, FieldType } from '@grafana/data';
 import { detectFields, type FieldRoleOverrides, resolveRoles } from '../data/detectFields';
 import { ROUTE_COLUMNS, routeDatasetId } from '../data/buildRoute';
 import { datasetId } from '../data/framesToDatasets';
-import type { SavedMapConfig } from '../data/mapConfig';
+import type { SavedMapConfig, SavedRemoteDataset } from '../data/mapConfig';
 import { KEPLER_COLUMN, keplerColumnName } from '../data/toKeplerDataset';
 import type { GeomapImport, ImportedColorField, ImportedLayer } from './fromGeomap';
 
@@ -34,6 +34,12 @@ const KEPLER_CONFIG_VERSION = 'v1';
  * point at 60° is drawn twice as large as one at 0°.
  */
 const PIXELS_PER_RADIUS_UNIT = 2 ** 14 / (40075016.686 / 512);
+
+/**
+ * kepler's GeoJSON outlines are metres too, eight per unit of thickness at the
+ * same zoom scaling: about 1.67 px per unit at the equator.
+ */
+const PIXELS_PER_GEOJSON_THICKNESS = 8 * PIXELS_PER_RADIUS_UNIT;
 
 /**
  * kepler's heatmap radius grows with the zoom, from 2 px at zoom 0 to the
@@ -83,17 +89,33 @@ export function geomapToKepler(
   frames: DataFrame[],
   fieldMappings: Record<string, FieldRoleOverrides> = {}
 ): GeomapConversion | null {
-  if (!frames.length) {
+  // A map of files alone, a GeoJSON over the base map, has no rows to wait for.
+  if (!frames.length && imported.layers.some((layer) => layer.type !== 'geojson')) {
     return null;
   }
   const dropped = [...imported.dropped];
   const mappings: Record<string, FieldRoleOverrides> = { ...fieldMappings };
   const layers: unknown[] = [];
   const routes = new Set<string>();
+  const files: SavedRemoteDataset[] = [];
 
   const zoom = imported.view === 'fit' ? FIT_ZOOM_GUESS : imported.view.zoom;
   let legend = false;
   imported.layers.forEach((layer, index) => {
+    if (layer.type === 'geojson') {
+      const dataId = `geomap-geojson-${index}`;
+      files.push(geojsonDataset(dataId, layer));
+      // kepler leaves a value outside a per-value colour map transparent, where
+      // Geomap gives it the layer's own style: that style is drawn as a layer
+      // of its own, under the rules.
+      if (layer.ruleColors?.scale === 'customOrdinal') {
+        layers.push(geojsonLayer({ ...layer, ruleColors: undefined }, `geomap-${index}`, dataId));
+        layers.push(geojsonLayer({ ...layer, label: `${layer.label} · rules` }, `geomap-${index}-rules`, dataId));
+      } else {
+        layers.push(geojsonLayer(layer, `geomap-${index}`, dataId));
+      }
+      return;
+    }
     const position = layer.refId ? frames.findIndex((f) => f.refId === layer.refId) : 0;
     if (position < 0) {
       dropped.push(`“${layer.label}”: query ${layer.refId} returned nothing`);
@@ -129,7 +151,8 @@ export function geomapToKepler(
 
   const config: Record<string, unknown> = {
     visState: {
-      layers,
+      // Geomap lists its layers bottom up; kepler draws its first layer on top.
+      layers: [...layers].reverse(),
       interactionConfig: { tooltip: { enabled: imported.tooltip } },
     },
     // Geomap draws a legend for a markers layer coloured or sized by a field.
@@ -141,7 +164,7 @@ export function geomapToKepler(
     config.mapState = { ...imported.view, bearing: 0, pitch: 0, dragRotate: false };
   }
   return {
-    mapConfig: { version: KEPLER_CONFIG_VERSION, config },
+    mapConfig: { version: KEPLER_CONFIG_VERSION, config, ...(files.length ? { datasets: files } : {}) },
     fieldMappings: mappings,
     routeQueries: routes.size ? [...routes] : undefined,
     dropped,
@@ -303,5 +326,73 @@ function routeLayer(layer: ImportedLayer, id: string, dataId: string, column: Co
       ...(colorField ? { colorField, colorScale: layer.colorField?.scale ?? 'quantize' } : {}),
       ...(sizeField ? { sizeField, sizeScale: 'linear' } : {}),
     },
+  };
+}
+
+/**
+ * A GeoJSON file as kepler's own remote dataset: kepler fetches it by URL on
+ * every load and the dashboard holds only the address (`externally-hosted`,
+ * restored like a tileset; see REMOTE_DATASET_TYPES). Grafana's own maps keep
+ * their relative path, resolved against Grafana when the map loads.
+ */
+function geojsonDataset(id: string, layer: ImportedLayer): SavedRemoteDataset {
+  const file = (layer.src ?? '').split(/[?#]/)[0].split('/').pop() || layer.label;
+  return {
+    version: KEPLER_CONFIG_VERSION,
+    data: {
+      id,
+      label: file,
+      type: 'externally-hosted',
+      metadata: { source: layer.src, format: 'geojson' },
+      fields: [],
+      allData: [],
+    },
+  };
+}
+
+/**
+ * Geomap fills a polygon in its style's colour at the style's opacity and
+ * outlines it in the same colour; rules recolour both.
+ */
+function geojsonLayer(layer: ImportedLayer, id: string, dataId: string): Record<string, unknown> {
+  const rules = layer.ruleColors;
+  const field = rules
+    ? {
+        name: rules.property,
+        type: rules.scale === 'custom' ? 'real' : typeof rules.colorMap[0]?.[0] === 'number' ? 'real' : 'string',
+      }
+    : undefined;
+  const range = rules
+    ? {
+        name: `Geomap · ${rules.property}`,
+        type: 'custom',
+        category: 'Custom',
+        colors: rules.colors,
+        colorMap: rules.colorMap,
+      }
+    : undefined;
+  return {
+    id,
+    type: 'geojson',
+    config: {
+      dataId,
+      label: layer.label,
+      color: layer.color,
+      columns: { geojson: '_geojson' },
+      isVisible: true,
+      visConfig: {
+        opacity: layer.opacity,
+        strokeOpacity: 1,
+        thickness: Math.round(((layer.lineWidth ?? 1) / PIXELS_PER_GEOJSON_THICKNESS) * 100) / 100,
+        strokeColor: layer.color,
+        filled: true,
+        stroked: true,
+        radius: layer.radius,
+        ...(range ? { colorRange: range, strokeColorRange: range } : {}),
+      },
+    },
+    visualChannels: field
+      ? { colorField: field, colorScale: rules!.scale, strokeColorField: field, strokeColorScale: rules!.scale }
+      : {},
   };
 }

@@ -104,7 +104,7 @@ describe('geomapToKepler', () => {
     });
     const parsed = KeplerGlSchema.parseSavedConfig(geomapToKepler(imported, [stations])!.mapConfig);
 
-    expect(parsed?.visState?.layers?.map((l: { type: string }) => l.type)).toEqual(['point', 'heatmap']);
+    expect(parsed?.visState?.layers?.map((l: { type: string }) => l.type)).toEqual(['heatmap', 'point']);
     expect(parsed?.visState?.interactionConfig?.tooltip?.enabled).toBe(false);
   });
 
@@ -116,7 +116,8 @@ describe('geomapToKepler', () => {
         { type: 'heatmap', name: 'Heat', config: { radius: 5, blur: 15 } },
       ],
     });
-    const [points, heat] = (geomapToKepler(imported, [stations])!.mapConfig.config.visState as { layers: any[] })
+    // Geomap's first layer is its bottom one; kepler's is its top one.
+    const [heat, points] = (geomapToKepler(imported, [stations])!.mapConfig.config.visState as { layers: any[] })
       .layers;
 
     // About 0.21 px per kepler radius unit.
@@ -166,5 +167,70 @@ describe('geomapToKepler', () => {
     const [line] = (geomapToKepler(imported, [stations])!.mapConfig.config.visState as { layers: any[] }).layers;
 
     expect(line.config.columns).toEqual({ lat0: 'lat1', lng0: 'lng1', lat1: 'lat0', lng1: 'lng0' });
+  });
+
+  it('loads a GeoJSON file by its address, without waiting for rows a map of files never gets', () => {
+    const imported = importOf({
+      view: { id: 'zero' },
+      layers: [
+        {
+          type: 'geojson',
+          name: 'States',
+          config: {
+            src: 'public/maps/usa-states.geojson',
+            style: { color: { fixed: 'green' }, opacity: 0.4 },
+            rules: [
+              { check: { property: 'density', operation: 'gt', value: 100 }, style: { color: { fixed: 'red' } } },
+            ],
+          },
+        },
+      ],
+    });
+    const result = geomapToKepler(imported, [])!;
+    const [layer] = (result.mapConfig.config.visState as { layers: any[] }).layers;
+
+    expect(result.mapConfig.datasets).toEqual([
+      {
+        version: 'v1',
+        data: {
+          id: 'geomap-geojson-0',
+          label: 'usa-states.geojson',
+          type: 'externally-hosted',
+          metadata: { source: 'public/maps/usa-states.geojson', format: 'geojson' },
+          fields: [],
+          allData: [],
+        },
+      },
+    ]);
+    expect(layer).toMatchObject({
+      type: 'geojson',
+      config: { dataId: 'geomap-geojson-0', columns: { geojson: '_geojson' } },
+      visualChannels: { colorField: { name: 'density', type: 'real' }, colorScale: 'custom' },
+    });
+    expect(KeplerGlSchema.parseSavedConfig(result.mapConfig)?.visState?.layers?.[0]).toMatchObject({ type: 'geojson' });
+  });
+
+  it('draws equality rules over the layer’s own style, which colours every other value', () => {
+    const imported = importOf({
+      layers: [
+        {
+          type: 'geojson',
+          name: 'Countries',
+          config: {
+            src: 'public/maps/countries.geojson',
+            rules: [
+              { check: { property: 'name', operation: 'eq', value: 'Ecuador' }, style: { color: { fixed: 'red' } } },
+            ],
+          },
+        },
+      ],
+    });
+    const layers = (geomapToKepler(imported, [])!.mapConfig.config.visState as { layers: any[] }).layers;
+
+    expect(layers.map((l) => [l.config.label, l.visualChannels.colorScale])).toEqual([
+      ['Countries · rules', 'customOrdinal'],
+      ['Countries', undefined],
+    ]);
+    expect(layers.every((l) => l.config.dataId === 'geomap-geojson-0')).toBe(true);
   });
 });

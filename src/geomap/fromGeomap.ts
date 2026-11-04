@@ -8,6 +8,7 @@ import {
 } from '@grafana/data';
 
 import type { BasemapChoice, KeplerPanelOptions } from '../types';
+import { type GeomapRule, type RuleColors, rulesToColors } from './geojsonRules';
 
 /**
  * Converting a Geomap panel, step one: what can be read from its options alone.
@@ -63,6 +64,9 @@ export interface GeomapLayer {
     theme?: string;
     server?: string;
     url?: string;
+    /** GeoJSON only: the file, and the style rules checked feature by feature. */
+    src?: string;
+    rules?: Array<{ style?: GeomapStyle; check?: GeomapRule['check'] }>;
   };
 }
 
@@ -86,7 +90,7 @@ export interface ImportedColorField {
 }
 
 export interface ImportedLayer {
-  type: 'point' | 'heatmap' | 'route';
+  type: 'point' | 'heatmap' | 'route' | 'geojson';
   label: string;
   /** The query the layer reads; absent means the first one, as in Geomap. */
   refId?: string;
@@ -108,6 +112,12 @@ export interface ImportedLayer {
   weightField?: string;
   /** Route only: which end of each segment carries an arrow. */
   arrow?: 'end' | 'start';
+  /** GeoJSON only: the file as Geomap names it (relative to Grafana for its own maps). */
+  src?: string;
+  /** GeoJSON only: the outline width, in pixels. */
+  lineWidth?: number;
+  /** GeoJSON only: the style rules, as one colour channel on a feature property. */
+  ruleColors?: RuleColors;
 }
 
 export interface GeomapImport {
@@ -264,6 +274,9 @@ function convertLayer(
   dropped: string[]
 ): ImportedLayer | null {
   const label = layer.name || layer.type || 'Layer';
+  if (layer.type === 'geojson') {
+    return convertGeojson(layer, label, theme, dropped);
+  }
   if (layer.type !== 'markers' && layer.type !== 'heatmap' && layer.type !== 'route') {
     dropped.push(`the ${layer.type ?? 'unknown'} layer “${label}”`);
     return null;
@@ -335,6 +348,40 @@ function convertLayer(
           textOffset: [style.textConfig?.offsetX ?? 0, style.textConfig?.offsetY ?? 0] as [number, number],
         }
       : {}),
+  };
+}
+
+/** Geomap's default GeoJSON file, Grafana's own world countries. */
+const DEFAULT_GEOJSON_SRC = 'public/maps/countries.geojson';
+
+function convertGeojson(layer: GeomapLayer, label: string, theme: GrafanaTheme2, dropped: string[]): ImportedLayer {
+  const style = layer.config?.style ?? {};
+  const toHex = (c: string) => colorManipulator.asHexString(theme.visualization.getColorByName(c));
+  const defaultColor = toHex(style.color?.fixed ?? DEFAULT_COLOR);
+  const rules = (layer.config?.rules ?? []).map((r) => ({
+    check: r.check,
+    color: toHex(r.style?.color?.fixed ?? style.color?.fixed ?? DEFAULT_COLOR),
+  }));
+  const ruleColors = rules.length ? rulesToColors(rules, defaultColor) : null;
+  if (rules.length && !ruleColors) {
+    dropped.push(
+      `the style rules of “${label}” (kept only when they all check one property, all equal or all compare)`
+    );
+  }
+  if (style.color?.field) {
+    dropped.push(`the colour by field of “${label}” (a GeoJSON file has no query field)`);
+  }
+  return {
+    type: 'geojson',
+    label,
+    location: { mode: 'auto' },
+    src: layer.config?.src || DEFAULT_GEOJSON_SRC,
+    color: toRgb(defaultColor),
+    opacity: (style.opacity ?? DEFAULT_OPACITY) * (layer.opacity ?? 1),
+    lineWidth: style.lineWidth ?? 1,
+    radius: style.size?.fixed ?? DEFAULT_SIZE,
+    radiusRange: DEFAULT_SIZE_RANGE,
+    ...(ruleColors ? { ruleColors } : {}),
   };
 }
 
