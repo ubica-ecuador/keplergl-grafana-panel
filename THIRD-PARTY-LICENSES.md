@@ -7,7 +7,7 @@ compiled third-party code and vendored assets. Their notices follow.
 
 | Library                                                                                                                                                                                                                                          | Version         | Licence              | Copyright                                                                                                           |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| kepler.gl and its `@kepler.gl/*` packages                                                                                                                                                                                                        | 3.3.0-alpha.17  | MIT                  | Copyright contributors to the kepler.gl project                                                                     |
+| kepler.gl and its `@kepler.gl/*` packages                                                                                                                                                                                                        | 3.3.0-alpha.19  | MIT                  | Copyright contributors to the kepler.gl project                                                                     |
 | @grafana/assistant                                                                                                                                                                                                                               | 0.1.34          | Apache-2.0           | Copyright Grafana Labs                                                                                              |
 | @deck.gl/core, /layers, /geo-layers and the rest                                                                                                                                                                                                 | 9.3.11          | MIT                  | Copyright Vis.gl contributors.                                                                                      |
 | @luma.gl/core and the rest                                                                                                                                                                                                                       | 9.3.6           | MIT                  | Copyright (c) 2020 vis.gl contributors                                                                              |
@@ -85,10 +85,15 @@ was read from its own file rather than assumed from its neighbours). On 2026-09-
 `sql.js`, for GeoPackage, which kepler loads from cdn.jsdelivr.net and the plugin bundles instead
 (`src/panel/exportSqlJs.ts`); its row was read from its own `LICENSE`. The rest of what the bump
 added — six more `@turf/*` packages and `geojson-equality-ts`, all MIT, for kepler's dataset
-operations — joins the turf family already bundled below the table's line.
+operations — joins the turf family already bundled below the table's line. The 3.3.0-alpha.19 bump
+on 2026-11-04 moved kepler's row again; its experimental Zarr layer brought in `zarrita`,
+`@zarrita/storage`, `numcodecs`, `reference-spec-reader`, `unzipit` and the
+`@developmentseed/*` raster packages (deck.gl-raster, deck.gl-zarr, geozarr, affine, morecantile,
+proj, raster-reproject), all MIT, read from their package.json `license` fields; the plugin turns
+that layer off (`enableZarrLayer: false`) but kepler imports it statically.
 
 `mapbox-gl` is the only package name in this table with two unrelated copies historically in the
-dependency tree: a top-level copy (3.33.0 as of the kepler.gl 3.3.0-alpha.17 bump) under Mapbox's
+dependency tree: a top-level copy (3.34.2 as of the kepler.gl 3.3.0-alpha.19 bump) under Mapbox's
 proprietary Terms of Service, and this 1.13.1 BSD-3-Clause copy nested under `@kepler.gl/utils`. The
 top-level copy is excluded from the build (see
 `webpack.config.ts`); only the 1.13.1 copy above ships, in `dist/32.js`.

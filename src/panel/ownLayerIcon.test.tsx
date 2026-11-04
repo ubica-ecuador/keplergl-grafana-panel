@@ -104,7 +104,9 @@ describe('the layer registry', () => {
     for (const type of own) {
       expect((shownIcon(registry[type]) as { displayName?: string }).displayName).toMatch(/^OwnLayerIcon/);
     }
-    for (const type of Object.keys(LayerClasses)) {
+    // A type both define is the plugin's: since kepler 3.3.0-alpha.19 kepler
+    // has a `zarr` layer of its own, which this plugin's is registered over.
+    for (const type of Object.keys(LayerClasses).filter((t) => !own.includes(t))) {
       expect(shownIcon(registry[type])).toBe(shownIcon((LayerClasses as Record<string, unknown>)[type]));
     }
   });

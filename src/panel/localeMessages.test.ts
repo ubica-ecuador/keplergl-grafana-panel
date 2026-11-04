@@ -60,8 +60,9 @@ describe('withOwnLayerLabels', () => {
   });
 
   it('does not mutate the messages kepler exported', () => {
-    // They are module state, shared with anything else that imports them.
-    expect(keplerMessages.en['layer.type.zarr']).toBeUndefined();
+    // They are module state, shared with anything else that imports them. A
+    // type kepler has no name for (since 3.3.0-alpha.19 it names `zarr` itself).
+    expect(keplerMessages.en['layer.type.esriimage']).toBeUndefined();
   });
 });
 
