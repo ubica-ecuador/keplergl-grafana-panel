@@ -11,6 +11,9 @@ would on any other panel, and they show in the popup of the entity the reader cl
 | **Data link** | opens a URL built from the clicked row: a dashboard, a page, a tool | everyone who can see the dashboard     |
 | **Action**    | sends an HTTP request built from the clicked row, after a prompt    | only people who can edit the dashboard |
 
+The same popup can also add the clicked value to the dashboard's
+[ad hoc filters](#ad-hoc-filters), as a table cell does.
+
 ## Where to configure them
 
 In the panel editor, **Data links and actions** sits near the end of the options, with **Add link**
@@ -121,6 +124,38 @@ Grafana refuses a POST or PUT from an action to its own address unless the path 
 `[security] actions_allow_post_url` (`GF_SECURITY_ACTIONS_ALLOW_POST_URL=/api/annotations` here).
 Requests to other sites are not limited by it.
 
+## Ad hoc filters
+
+Grafana's table adds a cell's value to the dashboard's ad hoc filters: _Filter for value_ adds
+`column = value`, _Filter out value_ adds `column != value`, and every query of that data source
+on the dashboard is filtered by it. The map does the same from the popup of a clicked entity.
+
+![The popup of a clicked park, offering kind = park and its name as filters, each with = and ≠](/img/guide-adhoc-filters-popup.jpg)
+
+Pick the columns under **Cross-filtering → Ad hoc filters from the popup**. The popup of a clicked
+entity then lists each one with its value and two buttons, **=** (filter for) and **≠** (filter
+out). The filter lands in the dashboard's filter bar, where it is removed like any other, and the
+popup closes while the queries run again. A button is greyed out when the dashboard already applies
+that filter; the other one swaps it.
+
+The buttons show only when the dashboard has an **ad hoc filters variable for the panel's data
+source** (Settings → Variables → New variable → Ad hoc filters, with the same data source as the
+panel). Without one they stay hidden: the map does not create a variable, as the table does, for a
+data source that might ignore it. A panel on the _Mixed_ data source shows none either.
+
+The data source decides what a filter does, and not every one applies ad hoc filters:
+
+| Data source                            | Applies ad hoc filters                                                                                     |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Chaski (DuckDB in the browser)         | yes: each panel's result is filtered on the columns it has; a panel without that column is left as it is |
+| DuckDB (MotherDuck plugin, the server) | no: the filter shows in the bar and changes no query; use a [click mapping](./cross-filtering) instead     |
+| Infinity                               | no                                                                                                         |
+| Prometheus, Loki, Elasticsearch       | yes, each in its own way (labels, fields); for another, see its documentation                             |
+
+The key is the query's column name, also for a column kepler reads under another name, and the
+value is the clicked value as text, as the table writes it. A column with no value on the entity,
+or a geometry, offers no filter.
+
 ## What has no links
 
 - **Aggregated layers** (hexbin, grid, cluster): a cell is many rows, not one, so there is no row to
@@ -128,7 +163,7 @@ Requests to other sites are not limited by it.
 - **WMS and raster layers**: the values of a clicked pixel come from the image service, not from a
   query's rows.
 - **A layer with its tooltip off**: kepler resolves no row for a click on it, so it opens no popup
-  and has neither links nor actions, one-click ones included.
+  and has neither links, actions nor ad hoc filters, one-click ones included.
 - **Actions sent through the Infinity data source** (newer Grafana versions, credentials kept on the
   server) are not offered on the map; only the plain HTTP kind is.
 

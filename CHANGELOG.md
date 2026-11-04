@@ -31,6 +31,11 @@ release documents what changed since the one before it.
   other panel, show in the popup of a clicked entity, filled from the row that was clicked. A link
   marked **One click** is followed on the click itself, unless the click selects the entity for the
   dashboard's variables; then it waits in the popup.
+- **Ad hoc filters from the map.** A new option under *Cross-filtering*, *Ad hoc filters from the
+  popup*, names columns whose value the popup of a clicked entity adds to the dashboard's ad hoc
+  filters, for (`=`) or out (`!=`), as Grafana's table does from a cell. Offered only when the
+  dashboard has an ad hoc filters variable for the panel's data source; Chaski applies them, the
+  DuckDB server plugin and Infinity do not. See *Data links and actions* in the guide.
 - **Actions on the map.** Grafana's actions show as buttons in the same popup, for the people who can
   edit the dashboard (as on Grafana's own panels; viewers and anonymous visitors see none). They ask
   for the values they declare, ask for confirmation, then send their request.
