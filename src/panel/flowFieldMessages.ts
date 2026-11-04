@@ -44,6 +44,13 @@ export const FLOW_FIELD_MESSAGES: Record<string, string> = {
   'flowfield.group.field': 'Field',
 
   'flowfield.density': 'Lines per screen',
+  // The photos layer (photosLayer.ts).
+  'photos.photoField': 'Picture column',
+  'photos.photoSize': 'Picture size (px)',
+  'photos.photoKind': 'Frame',
+  'photos.photoKind.square': 'Square',
+  'photos.photoKind.circle': 'Round',
+  'photos.photoBorder': 'Frame width (px)',
   'flowfield.lineLength': 'Line length',
   'flowfield.thickness': 'Line width',
   'flowfield.trailShare': 'Trail length (% of cycle)',

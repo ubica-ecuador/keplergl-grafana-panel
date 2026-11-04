@@ -10,6 +10,7 @@ import {
 } from '@kepler.gl/components';
 
 import { PaintedTilesetConfig } from './paintedTilesetConfigurator';
+import { PhotosLayerConfig } from './photosConfigurator';
 import { MarkersLayerConfig } from './markersConfigurator';
 import { SelectKnob } from './selectKnob';
 import { SymbolLayerConfig } from './symbolConfigurator';
@@ -263,9 +264,7 @@ function VectorFieldLayerConfig({ layer, visConfiguratorProps, layerConfigurator
 CustomLayerConfiguratorFactory.deps = LayerConfiguratorFactory.deps;
 
 function CustomLayerConfiguratorFactory(...deps: Parameters<typeof LayerConfiguratorFactory>) {
-  const LayerConfigurator = LayerConfiguratorFactory(...deps) as unknown as new (
-    props: unknown
-  ) => React.Component;
+  const LayerConfigurator = LayerConfiguratorFactory(...deps) as unknown as new (props: unknown) => React.Component;
 
   class LayerConfiguratorWithFlowField extends LayerConfigurator {
     // Named for kepler's lookup, not for us: `_render` + the capitalised layer
@@ -314,6 +313,16 @@ function CustomLayerConfiguratorFactory(...deps: Parameters<typeof LayerConfigur
 
     _renderZarrLayerConfig(args: ConfiguratorArgs) {
       return <PaintedTilesetConfig {...args} />;
+    }
+
+    // `xyz-tiles` capitalises to a name no method can be declared under, so it
+    // is a computed one; the picture arrives drawn, so it is a painted tileset.
+    ['_renderXyz-tilesLayerConfig'](args: ConfiguratorArgs) {
+      return <PaintedTilesetConfig {...args} />;
+    }
+
+    _renderPhotosLayerConfig(args: ConfiguratorArgs) {
+      return <PhotosLayerConfig {...(args as unknown as React.ComponentProps<typeof PhotosLayerConfig>)} />;
     }
 
     // The one layer here that kepler does ship a panel for. Overridden rather

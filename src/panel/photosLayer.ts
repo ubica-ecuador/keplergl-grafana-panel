@@ -29,7 +29,7 @@ export const PHOTOS_VIS_CONFIGS = {
   photoField: {
     type: 'select',
     defaultValue: '',
-    label: 'Photo column',
+    label: 'photos.photoField',
     property: 'photoField',
     group: 'display',
     options: [],
@@ -37,7 +37,7 @@ export const PHOTOS_VIS_CONFIGS = {
   photoSize: {
     type: 'number',
     defaultValue: 40,
-    label: 'Photo size',
+    label: 'photos.photoSize',
     property: 'photoSize',
     group: 'display',
     range: [8, 200],
@@ -47,7 +47,7 @@ export const PHOTOS_VIS_CONFIGS = {
   photoKind: {
     type: 'select',
     defaultValue: 'square',
-    label: 'Frame',
+    label: 'photos.photoKind',
     property: 'photoKind',
     group: 'display',
     options: ['square', 'circle'],
@@ -55,7 +55,7 @@ export const PHOTOS_VIS_CONFIGS = {
   photoBorder: {
     type: 'number',
     defaultValue: 2,
-    label: 'Frame width',
+    label: 'photos.photoBorder',
     property: 'photoBorder',
     group: 'display',
     range: [0, 20],
