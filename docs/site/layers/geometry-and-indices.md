@@ -136,8 +136,8 @@ an A5 layer, and it draws nothing. Return the cell as its hexadecimal string ins
 `a5_u64_to_hex` in DuckDB — as the query above does.
 :::
 
-The controls are the same as GeoHash's. Under the layer's name kepler's panel shows
-`Layer.Type.A5` where the other layers show their type: kepler ships no English name for this one.
+The controls are the same as GeoHash's. kepler ships no name for this layer type; the panel names it
+**A5** in the layer list.
 
 Backed by deck.gl's `A5Layer`.
 
