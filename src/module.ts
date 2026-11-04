@@ -1,4 +1,4 @@
-import { PanelPlugin } from '@grafana/data';
+import { FieldConfigProperty, PanelPlugin } from '@grafana/data';
 import { config } from '@grafana/runtime';
 import { GAZETTEERS } from './data/placeLookup';
 
@@ -467,6 +467,24 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       editor: MapConfigEditor,
     })
 );
+
+plugin.useFieldConfig({
+  // The field options the map honours: data links and actions, offered in the
+  // popup of a clicked entity (panel/dataLinks.ts, panel/mapActions.ts).
+  // Grafana shows every standard option a panel does not disable, and the rest
+  // (unit, colour, thresholds…) would sit in the editor doing nothing on a map
+  // that colours its layers itself.
+  disableStandardOptions: Object.values(FieldConfigProperty).filter(
+    (p) => p !== FieldConfigProperty.Links && p !== FieldConfigProperty.Actions
+  ),
+  // Grafana keeps Actions out of a panel's defaults until the panel says it
+  // runs them, and hides the "one click" switch of both until the panel says
+  // it follows one; the map does both (panel/useDataLinks.ts).
+  standardOptions: {
+    [FieldConfigProperty.Links]: { settings: { showOneClick: true } },
+    [FieldConfigProperty.Actions]: { hideFromDefaults: false, settings: { showOneClick: true } },
+  },
+});
 
 // "Change visualization" from Geomap keeps its layers, view and base map.
 plugin.setPanelChangeHandler((_panel, prevPluginId, prevOptions, prevFieldConfig) =>

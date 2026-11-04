@@ -6,14 +6,23 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Data links on the map.** Grafana's data links, set under **Data links and actions** as on any
+  other panel, show in the popup of a clicked entity, filled from the row that was clicked. A link
+  marked **One click** is followed on the click itself, unless the click selects the entity for the
+  dashboard's variables; then it waits in the popup.
+- **Actions on the map.** Grafana's actions show as buttons in the same popup, for the people who can
+  edit the dashboard (as on Grafana's own panels; viewers and anonymous visitors see none). They ask
+  for the values they declare, ask for confirmation, then send their request.
+- The panel editor no longer lists unit, colour scheme, thresholds and the other field options the
+  map never used.
 - **Draw a query as a route.** A new option under *Map*, *Draw as a route*, joins a query's rows
   in the order it returns them into one line: a dataset of its own, “… · route”, with one segment
   per pair of rows, drawn as a Line layer that can be coloured and sized by any column. On a map
   without a saved configuration the layer appears by itself.
-
 - **From Geomap in one click.** "Change visualization" from a Geomap panel to Kepler keeps its
-  markers, heatmap, route, network, photos, GeoJSON, XYZ / Esri tile and night / day layers (colour and size by field, thresholds and colour
-  schemes, labels, route arrows, GeoJSON style rules), the columns it was told, its view, its layer
+  markers, heatmap, route, network, photos, GeoJSON, XYZ / Esri tile and night / day layers (colour
+  and size by field, thresholds and colour schemes, labels, route arrows, GeoJSON style rules), the
+  columns it was told, its view, its layer
   order and its base map, with the legend on when Geomap showed one. Like Geomap, the converted map
   draws every row its queries return, without coupling its clock to the dashboard. What has no
   counterpart yet is named in a notice right after the switch. Layers placed by geohash or by place

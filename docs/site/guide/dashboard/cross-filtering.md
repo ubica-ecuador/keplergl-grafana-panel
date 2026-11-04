@@ -183,6 +183,9 @@ The popup knows whether the entity showing is the one the variables already hold
 reads as a selection rather than as a suggestion.
 :::
 
+The same popup carries the entity's [data links and actions](./data-links-and-actions), above the
+**Select** button.
+
 ## Seeing what is selected
 
 Whatever the click channels have published is **ringed on the map in amber**: a ring around a

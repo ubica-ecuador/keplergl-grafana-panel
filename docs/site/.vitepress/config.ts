@@ -172,6 +172,7 @@ export default defineConfig({
             { text: 'Peer time sync', link: '/guide/dashboard/peer-time-sync' },
             { text: 'Temporal cursor', link: '/guide/dashboard/temporal-cursor' },
             { text: 'Cross-filtering', link: '/guide/dashboard/cross-filtering' },
+            { text: 'Data links and actions', link: '/guide/dashboard/data-links-and-actions' },
             { text: 'Publishing viewport and areas', link: '/guide/dashboard/publishing' },
             { text: 'Explorer results on the map', link: '/guide/dashboard/explorer-results' },
             { text: 'Grafana Assistant', link: '/guide/dashboard/grafana-assistant' },

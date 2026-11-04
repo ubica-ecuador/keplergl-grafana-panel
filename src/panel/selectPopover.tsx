@@ -7,6 +7,7 @@ import { KEPLER_INSTANCE_ID } from './constants';
 import { isClickMapping, type VariableMapping } from './variableSync';
 import type { ClickSelectActions } from './useClickSync';
 import type { ClickAreaActions } from './useClickArea';
+import type { LinksApi } from './useDataLinks';
 
 type Factory = typeof MapPopoverContentFactory;
 
@@ -49,6 +50,14 @@ export interface SelectApi {
  * since the portal moves the DOM node and not the element tree.
  */
 export const SelectContext = createContext<SelectApi | null>(null);
+
+/**
+ * The clicked entity's data links, null in a panel whose queries carry none.
+ *
+ * Same channel as `SelectContext`, for the same reasons: one per panel, and it
+ * crosses kepler's floating portal.
+ */
+export const LinksContext = createContext<LinksApi | null>(null);
 
 /**
  * Whether this panel's popup should carry the button at all.
@@ -127,6 +136,46 @@ const StyledSelect = styled.button`
   }
 `;
 
+const StyledLinks = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid ${(props) => props.theme?.panelBorderColor ?? 'rgba(127, 127, 127, 0.3)'};
+`;
+
+// The dashboard's primary colour, as on the pin above: kepler's link grey reads
+// as one more label in the popup, not as something to click. Doubled class
+// (`&&`) because the popup's own `<container> a { color }` outranks one class.
+const StyledLink = styled.a`
+  && {
+    align-self: flex-start;
+    color: ${(props) => props.theme?.activeColor ?? props.theme?.linkBtnColor ?? 'inherit'};
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  &&:hover {
+    text-decoration: underline;
+  }
+`;
+
+const StyledActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+`;
+
+/** A plain left click, the one the panel follows itself; a modified click is the browser's. */
+function isPlainClick(event: React.MouseEvent): boolean {
+  return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+}
+
 /** Whether kepler is holding a clicked entity — that is, this popup is pinned. */
 function usePinned(): boolean {
   return useSelector((state: unknown) =>
@@ -137,7 +186,15 @@ function usePinned(): boolean {
   );
 }
 
-/** kepler's popup content, with the panel's Select button under it. */
+/**
+ * kepler's popup content, with the entity's data links, its actions and the
+ * panel's Select button under it.
+ *
+ * Links show in the pinned popup only, as in Grafana's own tooltips: the hover
+ * popup follows the pointer and cannot be clicked. Each is an anchor, so a
+ * middle click or Ctrl+click opens it in a new tab as anywhere else; a plain
+ * click is followed by the panel, the way Grafana's link buttons do it.
+ */
 export function withSelectButton<P extends object>(Content: React.ComponentType<P>): React.FC<P> {
   const ContentWithSelect: React.FC<P> = (props) => {
     const api = useContext(SelectContext);
@@ -152,10 +209,44 @@ export function withSelectButton<P extends object>(Content: React.ComponentType<
     );
     const offer = Boolean(api?.armed) && pinned && !comparing;
     const selected = offer && api ? api.isSelected() : false;
+    const linksApi = useContext(LinksContext);
+    const links = linksApi && pinned && !comparing ? linksApi.links() : [];
+    // Empty for a viewer who may not run actions: useDataLinks asks Grafana.
+    const actions = linksApi && pinned && !comparing ? linksApi.actions() : [];
 
     return (
       <>
         <Content {...props} />
+        {links.length && linksApi ? (
+          <StyledLinks className="panel-entity-links">
+            {links.map((link, i) => (
+              <StyledLink
+                key={`${i}:${link.title}`}
+                href={link.href || undefined}
+                target={link.target}
+                rel={link.target === '_blank' ? 'noopener noreferrer' : undefined}
+                onClick={(event: React.MouseEvent) => {
+                  if (!isPlainClick(event) && !link.onClick) {
+                    return;
+                  }
+                  event.preventDefault();
+                  linksApi.follow(link, event);
+                }}
+              >
+                {link.title}
+              </StyledLink>
+            ))}
+          </StyledLinks>
+        ) : null}
+        {actions.length && linksApi ? (
+          <StyledActions className="panel-entity-actions">
+            {actions.map((action, i) => (
+              <StyledSelect key={`${i}:${action.title}`} type="button" onClick={() => linksApi.run(action)}>
+                {action.title}
+              </StyledSelect>
+            ))}
+          </StyledActions>
+        ) : null}
         {offer && api ? (
           <StyledSelect type="button" className="panel-select-entity" onClick={selected ? api.clear : api.select}>
             {selected ? 'Clear selection' : 'Select'}
