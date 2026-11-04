@@ -91,6 +91,8 @@ heatmap or cluster, all of which are in the [layer gallery](../../layers/points-
 
 ## When it is not points you want
 
+- Rows have a geohash, or a country, state or airport code, instead of coordinates → [Places by geohash or by name](./places-by-name)
+- Rows are one path in order, or edges between nodes → [Routes and networks](./routes-and-networks)
 - Rows have a geometry column rather than a coordinate pair → [Geometry](./geometry)
 - Rows have a vehicle or trip id and a time → [Trajectories](./trajectories)
 - Rows are an origin and a destination → [Origin–destination flows](./flows)

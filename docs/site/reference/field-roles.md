@@ -3,7 +3,7 @@
 A **role** is the part a column plays. Roles are detected from the column's name — case-insensitively
 and **exactly** — except for time, which is detected from its type.
 
-There are **thirty-five** roles. The Field mapping editor exposes **fourteen** of them; the other
+There are **thirty-seven** roles. The Field mapping editor exposes **sixteen** of them; the other
 twenty-one are autodetect-only and are marked below.
 
 ## The full table
@@ -17,6 +17,8 @@ twenty-one are autodetect-only and are marked below.
 | Altitude        | ✅     | **nothing** — opt-in only                                                                                                                                                                                       | `altitude`  |
 | Geometry        | ✅     | `geom`, `geometry`, `the_geom`, `wkb_geometry`, `geojson`, `wkt`, `shape`                                                                                                                                       | `_geojson`  |
 | H3 index        | ✅     | `h3`, `h3_index`, `hex_id`, `hexagon`, `h3index`                                                                                                                                                                | `h3`        |
+| Geohash         | ✅     | `geohash` — used only without a latitude and longitude; see [Places by geohash or by name](../guide/data/places-by-name)                                                                                        | not renamed |
+| Place name      | ✅     | `lookup` — looked up in the **Place names** gazetteer, only without a latitude and longitude                                                                                                                  | not renamed |
 | Origin lat      | ✅     | `origin_lat`, `origin_latitude`, `from_lat`, `start_lat`, `source_lat`, `pickup_lat`, `lat0`                                                                                                                    | `lat0`      |
 | Origin lng      | ✅     | `origin_lon`, `origin_lng`, `origin_long`, `origin_longitude`, `from_lon`, `from_lng`, `start_lon`, `start_lng`, `source_lon`, `source_lng`, `pickup_lon`, `pickup_lng`, `lng0`, `lon0`                         | `lng0`      |
 | Destination lat | ✅     | `dest_lat`, `dest_latitude`, `destination_lat`, `to_lat`, `end_lat`, `target_lat`, `dropoff_lat`, `lat1`                                                                                                        | `lat1`      |
@@ -47,7 +49,7 @@ twenty-one are autodetect-only and are marked below.
 | Zarr range      | ❌     | `zarr_rescale`, `zarr_range`                                                                                                                                                                                    | not renamed |
 
 ::: warning Some roles cannot be mapped by hand
-The editor offers the fourteen roles a table of rows needs. The other twenty-one — `originH3`,
+The editor offers the sixteen roles a table of rows needs. The other twenty-one — `originH3`,
 `destH3`, `u`, `v`, `speed`, `direction`, and every `raster*`, `wms*`, `esri*` and `zarr*` role —
 are detected but have no entry in it. If your columns are named something the lists do not cover,
 **alias them in the query**:

@@ -113,6 +113,7 @@ export default defineConfig({
             { text: 'Install', link: '/guide/install' },
             { text: 'Quickstart', link: '/guide/quickstart' },
             { text: 'Coming from another kepler.gl tool', link: '/guide/coming-from-another-kepler-tool' },
+            { text: 'Coming from Geomap', link: '/guide/coming-from-geomap' },
           ],
         },
         {
@@ -121,8 +122,10 @@ export default defineConfig({
           items: [
             { text: 'How a query becomes a map', link: '/guide/data/how-a-query-becomes-a-map' },
             { text: 'Points', link: '/guide/data/points' },
+            { text: 'Places by geohash or by name', link: '/guide/data/places-by-name' },
             { text: 'Geometry', link: '/guide/data/geometry' },
             { text: 'Trajectories', link: '/guide/data/trajectories' },
+            { text: 'Routes and networks', link: '/guide/data/routes-and-networks' },
             { text: 'Origin–destination flows', link: '/guide/data/flows' },
             { text: 'H3 and S2', link: '/guide/data/h3-and-s2' },
             { text: 'Symbols', link: '/guide/data/symbols' },
@@ -141,6 +144,7 @@ export default defineConfig({
             { text: 'Base maps and relief', link: '/guide/map/basemaps-and-relief' },
             { text: 'Theme', link: '/guide/map/theme' },
             { text: 'Markers', link: '/guide/map/markers' },
+            { text: 'Night shading', link: '/guide/map/night-shading' },
             { text: 'Map configuration', link: '/guide/map/map-configuration' },
           ],
         },

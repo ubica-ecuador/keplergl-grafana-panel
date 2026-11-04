@@ -83,6 +83,52 @@ your own server from this form, paste the STAC URL it exposes, `<server>/cog/sta
 path does not trigger that branch. A query does not go through this form and is unaffected.
 :::
 
+## XYZ tiles
+
+kepler's `rasterTile` reads PMTiles and STAC, not the plain `{z}/{x}/{y}` scheme most tile servers
+publish. The panel adds a layer type for it, **XYZ tiles**: OpenStreetMap-style servers, ArcGIS
+MapServer caches, radar overlays. `{-y}` (rows counted from the south) and `{s}` or `{a-c}`
+subdomains are understood.
+
+There is no form for it in **Add Data**. It comes from a converted Geomap XYZ or ArcGIS layer (see
+[Coming from Geomap](../guide/coming-from-geomap)), or from a configuration pasted under **Import
+configuration**, which names the template as a dataset and draws it with a layer:
+
+```json
+{
+  "version": "v1",
+  "config": {
+    "visState": {
+      "layers": [
+        {
+          "id": "seamarks",
+          "type": "xyz-tiles",
+          "config": { "dataId": "seamarks", "label": "Seamarks", "isVisible": true, "visConfig": { "opacity": 1 } }
+        }
+      ]
+    }
+  },
+  "datasets": [
+    {
+      "version": "v1",
+      "data": {
+        "id": "seamarks",
+        "label": "Seamarks",
+        "type": "xyz-tiles",
+        "metadata": { "url": "https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", "maxZoom": 18 },
+        "fields": [],
+        "allData": []
+      }
+    }
+  ]
+}
+```
+
+The two warnings above apply: the template is saved in the dashboard, and a hardened Grafana needs
+the tile host in its Content Security Policy (`img-src` here, as the tiles are images). The tile
+server's attribution is not shown on the map; credit it in the panel's description where its terms
+ask for it.
+
 ## Base maps are a different thing
 
 Do not reach for `rasterTile` or `vectorTile` to change the background. The base map is a **panel

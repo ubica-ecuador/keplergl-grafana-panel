@@ -5,8 +5,9 @@ kepler's twenty-two registered layer types can be driven by data — and the pan
 types of its own, shown with amber icons in kepler's layer menu: among them
 [Streamlines](../guide/data/velocity-fields) and a [vector field](../guide/data/velocity-fields#arrows-and-wind-barbs)
 for a grid of velocities, [Symbols](../guide/data/symbols) for anything with a bearing,
-[Markers](../guide/map/markers) for points you drag, and a
-[Zarr tileset](../guide/data/zarr) for a store of arrays.
+[Markers](../guide/map/markers) for points you drag, a
+[Zarr tileset](../guide/data/zarr) for a store of arrays, **Photos** for a picture at each point,
+and [XYZ tiles](./url-configured#xyz-tiles) for a `{z}/{x}/{y}` tile server.
 
 Two of kepler's own, `a5` and `geohash`, are grid-index layers like H3 and S2 but are not detected
 from a column; they can still be added by hand. See
@@ -81,6 +82,8 @@ choosing the dataset and pointing the layer's columns at it.
 | vectorfield         | never guessed — switch a Streamlines layer's type, or add it from **Add Layer**. Arrows and wind barbs over the same grid. See [Velocity fields](../guide/data/velocity-fields#arrows-and-wind-barbs). |
 | symbol              | a position **and** a numeric bearing, **and no trip id** — a layer type this plugin adds, named **Symbols**. The Point layer kepler would guess from the same coordinates is removed. See [Symbols](../guide/data/symbols). |
 | markers             | never guessed — add it from **Add Layer**. Draggable reference points bound to dashboard variables; it draws nothing from its dataset. See [Markers](../guide/map/markers). |
+| line                | a query chosen in **Draw as a route**, or edges with `source` and `target` beside a query of nodes. See [Routes and networks](../guide/data/routes-and-networks). |
+| photos              | never guessed — add it from **Add Layer** on a dataset with coordinates and a column of picture addresses, and pick that column in its panel. A converted Geomap Photos layer is one. |
 
 See [How a query becomes a map](../guide/data/how-a-query-becomes-a-map).
 
