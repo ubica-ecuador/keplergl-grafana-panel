@@ -26,6 +26,7 @@ import { publishIntervalOf } from './timeVariableSync';
 import { withKeplerFields, type VariableMapping } from './variableSync';
 import { parseViewportColumns } from './mosaicLink';
 import { dayNightDatasets, NIGHT_COLOR } from '../data/dayNight';
+import { namesPlaces, useGazetteer } from './useGazetteer';
 import { geomapToKepler } from '../geomap/geomapToKepler';
 import { GeomapImportNotice } from '../geomap/GeomapImportNotice';
 
@@ -116,14 +117,21 @@ export function KeplerPanel(props: Props) {
   const nightAt = dayNight === 'off' ? null : dayNight === 'from' ? grafanaRange.from : grafanaRange.to;
   const dayNightSun = Boolean(options.dayNightSun);
 
+  // Place names wait for their gazetteer, fetched only when a query names places.
+  const gazetteer = useGazetteer(
+    options.gazetteer,
+    useMemo(() => namesPlaces(data.series, fieldMappings), [data.series, fieldMappings])
+  );
+
   const queryDatasets = useMemo(
     () =>
       framesToDatasets(data.series, fieldMappings, {
         flowRenderMode: options.flowRenderMode,
         tripLayerMode: options.tripLayerMode,
         routeQueries,
+        gazetteer,
       }),
-    [data.series, fieldMappings, options.flowRenderMode, options.tripLayerMode, routeQueries]
+    [data.series, fieldMappings, options.flowRenderMode, options.tripLayerMode, routeQueries, gazetteer]
   );
   const datasets = useMemo(
     () =>

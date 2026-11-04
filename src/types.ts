@@ -72,6 +72,13 @@ export interface KeplerPanelOptions {
   dayNightSun?: boolean;
 
   /**
+   * Where a query's place names and codes are looked up (the `lookup` role):
+   * Grafana's countries, US states or airports, or a file of one's own. Read
+   * as Geomap reads it; see `placeLookup.ts`.
+   */
+  gazetteer?: string;
+
+  /**
    * Save request counter.
    *
    * Grafana gives panel option editors no channel to the panel component, and

@@ -181,17 +181,30 @@ export function geomapToKepler(
     const overrides: FieldRoleOverrides = { ...mappings[refId] };
     // An edge's position comes from its nodes; the layer's location is theirs.
     const placed = layer.graph !== 'edges';
-    if (placed && layer.location.mode === 'coords') {
-      overrides.latitude = layer.location.latitude;
-      overrides.longitude = layer.location.longitude;
+    const location = layer.location;
+    if (placed && location.mode === 'coords') {
+      overrides.latitude = location.latitude;
+      overrides.longitude = location.longitude;
+    }
+    // Placed by geohash or by name, as Geomap was told, even where the query
+    // also has coordinates: those are switched off.
+    if (placed && (location.mode === 'geohash' || location.mode === 'lookup')) {
+      overrides.latitude = null;
+      overrides.longitude = null;
+      if (location.mode === 'geohash' && location.geohash) {
+        overrides.geohash = location.geohash;
+      }
+      if (location.mode === 'lookup' && location.lookup) {
+        overrides.lookup = location.lookup;
+      }
     }
     const roles = resolveRoles(detectFields(frame), overrides);
-    if (placed && (!roles.latitude || !roles.longitude)) {
+    if (placed && !(roles.latitude && roles.longitude) && !roles.geohash && !roles.lookup) {
       dropped.push(`“${layer.label}”: no latitude and longitude columns found`);
       return;
     }
     legend ||= Boolean(layer.legend && (layer.colorField || layer.sizeField));
-    if (placed && layer.location.mode === 'coords') {
+    if (placed && location.mode !== 'auto') {
       mappings[refId] = overrides;
     }
     // Geomap's photos read the first text column when none is named.
@@ -295,8 +308,12 @@ function toKeplerLayer(
         outline: true,
         thickness: 1,
         strokeColor: layer.color,
+        // The outline follows the fill's field, as Geomap strokes each marker in its own colour.
         ...(colorField && layer.colorField
-          ? { colorRange: colorRangeOf(layer.colorField, `Geomap · ${layer.colorField.name}`) }
+          ? {
+              colorRange: colorRangeOf(layer.colorField, `Geomap · ${layer.colorField.name}`),
+              strokeColorRange: colorRangeOf(layer.colorField, `Geomap · ${layer.colorField.name}`),
+            }
           : {}),
       },
       ...(textField
@@ -316,7 +333,14 @@ function toKeplerLayer(
         : {}),
     },
     visualChannels: {
-      ...(colorField ? { colorField, colorScale: layer.colorField?.scale ?? 'quantize' } : {}),
+      ...(colorField
+        ? {
+            colorField,
+            colorScale: layer.colorField?.scale ?? 'quantize',
+            strokeColorField: colorField,
+            strokeColorScale: layer.colorField?.scale ?? 'quantize',
+          }
+        : {}),
       ...(sizeField ? { sizeField, sizeScale: 'sqrt' } : {}),
     },
   };

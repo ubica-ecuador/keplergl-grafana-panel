@@ -16,7 +16,12 @@ release documents what changed since the one before it.
   schemes, labels, route arrows, GeoJSON style rules), the columns it was told, its view, its layer
   order and its base map, with the legend on when Geomap showed one. Like Geomap, the converted map
   draws every row its queries return, without coupling its clock to the dashboard. What has no
-  counterpart yet is named in a notice right after the switch.
+  counterpart yet is named in a notice right after the switch. Layers placed by geohash or by place
+  name come across too.
+- **Places by geohash or by name.** A query without coordinates is placed by a `geohash` column
+  (decoded to its cell's centre) or by a column of place names and codes (*Place name* in *Field
+  mapping*), looked up in Grafana's countries, US states or airports, or a file of your own (*Map →
+  Place names*). Rows with an unknown place stay in the table and are not drawn.
 - **Photos.** A new layer type draws the picture at each point from a column of image addresses,
   in a square or round frame of the layer's colour. Built on the point layer, so filters, tooltips
   and clicks work as on points. A wide picture is not cropped to its frame.

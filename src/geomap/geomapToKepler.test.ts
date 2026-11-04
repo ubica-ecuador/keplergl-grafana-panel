@@ -317,4 +317,49 @@ describe('geomapToKepler', () => {
       },
     });
   });
+
+  it('places Geomap layers by geohash or by name, with the gazetteer it named', () => {
+    const options = fromGeomapPanel(
+      'geomap',
+      {
+        layers: [
+          {
+            type: 'markers',
+            name: 'Countries',
+            location: { mode: 'lookup', lookup: 'iso', gazetteer: 'public/build/gazetteer/countries.json' },
+          },
+        ],
+      },
+      { defaults: {}, overrides: [] },
+      theme
+    );
+    // The build prefix of the Grafana it was saved on gives way to the portable path.
+    expect(options.gazetteer).toBe('public/gazetteer/countries.json');
+
+    const byName = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'iso', type: FieldType.string, values: ['EC'] },
+        { name: 'lat', type: FieldType.number, values: [9] },
+        { name: 'lon', type: FieldType.number, values: [9] },
+      ],
+    });
+    const result = geomapToKepler(options.geomapImport!, [byName])!;
+    expect(result.fieldMappings).toEqual({ A: { latitude: null, longitude: null, lookup: 'iso' } });
+    expect((result.mapConfig.config.visState as { layers: any[] }).layers[0].config.columns).toEqual({
+      lat: 'latitude',
+      lng: 'longitude',
+    });
+
+    const byHash = fromGeomapPanel(
+      'geomap',
+      { layers: [{ type: 'heatmap', name: 'Cells', location: { mode: 'geohash' } }] },
+      { defaults: {}, overrides: [] },
+      theme
+    );
+    const cells = toDataFrame({ refId: 'A', fields: [{ name: 'geohash', type: FieldType.string, values: ['6rbny'] }] });
+    expect(
+      (geomapToKepler(byHash.geomapImport!, [cells])!.mapConfig.config.visState as { layers: any[] }).layers
+    ).toHaveLength(1);
+  });
 });

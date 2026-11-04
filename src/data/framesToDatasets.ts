@@ -3,6 +3,7 @@ import { DataFrame, FieldType } from '@grafana/data';
 import { buildFlowField, FlowFieldLayerConfig } from './buildFlowField';
 import { buildFlows, FlowLayerConfig, FlowRenderMode } from './buildFlows';
 import { isEdgeFrame, nodePositions, placeEdges } from './buildNetwork';
+import { type Gazetteer, placeFrame } from './placeLookup';
 import { buildLineLayer, buildRouteSegments, routeColumns, routeDatasetId, LineLayerConfig } from './buildRoute';
 import { buildSymbolLayer, SymbolLayerConfig } from './buildSymbolLayer';
 import { buildTripLayer, TripLayerConfig, TripLayerMode } from './buildTripLayer';
@@ -94,11 +95,14 @@ export function framesToDatasets(
     tripLayerMode?: TripLayerMode;
     /** Queries also drawn as a route, row to row in order (`buildRoute.ts`). */
     routeQueries?: string[];
+    /** Places for rows located by name or code (`placeLookup.ts`), once loaded. */
+    gazetteer?: Gazetteer | null;
   } = {}
 ): PanelDataset[] {
   const resolved = frames.map((frame, index) => {
     const refId = frame.refId ?? `${index}`;
-    return { frame, refId, roles: resolveRoles(detectFields(frame), overrides[refId]) };
+    // A row placed by geohash or by name gains coordinates before anything reads them.
+    return { refId, ...placeFrame(frame, resolveRoles(detectFields(frame), overrides[refId]), opts.gazetteer) };
   });
 
   const datasets = resolved.map(({ frame, refId, roles }): PanelDataset => {

@@ -10,6 +10,7 @@ import {
 import type { KeplerPanelOptions } from '../types';
 import { type GeomapRule, type RuleColors, rulesToColors } from './geojsonRules';
 import { ESRI_SERVICES, esriTileTemplate } from '../data/xyzTiles';
+import { GAZETTEERS } from '../data/placeLookup';
 
 /**
  * Converting a Geomap panel, step one: what can be read from its options alone.
@@ -52,7 +53,15 @@ export interface GeomapLayer {
   name?: string;
   opacity?: number;
   tooltip?: boolean;
-  location?: { mode?: string; latitude?: string; longitude?: string; geohash?: string; wkt?: string };
+  location?: {
+    mode?: string;
+    latitude?: string;
+    longitude?: string;
+    geohash?: string;
+    wkt?: string;
+    lookup?: string;
+    gazetteer?: string;
+  };
   filterData?: { id?: string; options?: unknown };
   config?: {
     style?: GeomapStyle;
@@ -92,7 +101,12 @@ export interface GeomapOptions {
 }
 
 /** How an imported layer finds its coordinates. */
-export type ImportedLocation = { mode: 'auto' } | { mode: 'coords'; latitude: string; longitude: string };
+export type ImportedLocation =
+  | { mode: 'auto' }
+  | { mode: 'coords'; latitude: string; longitude: string }
+  /** A column of geohashes, or of place names looked up in the panel's gazetteer; absent, the panel's detection finds it. */
+  | { mode: 'geohash'; geohash?: string }
+  | { mode: 'lookup'; lookup?: string };
 
 /** A colour read from a field: kepler's range and scale, from the field's Grafana colour scheme. */
 export interface ImportedColorField {
@@ -210,6 +224,13 @@ export function fromGeomapPanel(
   const layers: ImportedLayer[] = [];
   const basemap = convertBasemap(geomap.basemap, dropped, layers);
   let dayNight: Pick<KeplerPanelOptions, 'dayNight' | 'dayNightSun'> = {};
+  // The panel looks place names up in one gazetteer: the first layer's that names one.
+  const gazetteers = (geomap.layers ?? [])
+    .filter((layer) => layer.location?.mode === 'lookup')
+    .map((layer) => portableGazetteer(layer.location?.gazetteer));
+  if (new Set(gazetteers).size > 1) {
+    dropped.push(`place names from ${gazetteers.slice(1).join(', ')} (one gazetteer per panel: ${gazetteers[0]})`);
+  }
   for (const layer of geomap.layers ?? []) {
     if (layer.type === 'dayNight') {
       const night = convertDayNight(layer, theme);
@@ -236,6 +257,7 @@ export function fromGeomapPanel(
     // afterwards, not a change the switch should bring.
     timeSync: 'off',
     ...dayNight,
+    ...(gazetteers.length ? { gazetteer: gazetteers[0] } : {}),
     geomapImport: {
       version: 1,
       layers,
@@ -325,7 +347,7 @@ function convertLayer(
   }
   const location = convertLocation(layer.location);
   if (!location) {
-    dropped.push(`“${label}”, located by ${layer.location?.mode} (only coordinates carry over)`);
+    dropped.push(`“${label}”, located by ${layer.location?.mode}`);
     return null;
   }
   const refId = refIdOf(layer.filterData);
@@ -547,6 +569,19 @@ function convertXyz(layer: GeomapLayer, label: string): ImportedLayer | null {
   };
 }
 
+/**
+ * Geomap's gazetteer path, written so it works on any Grafana: its countries
+ * default carries the build prefix of the Grafana it was saved on, while the
+ * same three files are also served from `public/gazetteer/`.
+ */
+function portableGazetteer(path: string | undefined): string {
+  if (!path) {
+    return GAZETTEERS.countries;
+  }
+  const own = Object.values(GAZETTEERS).find((g) => path.endsWith(g.slice(g.indexOf('gazetteer/'))));
+  return own ?? path;
+}
+
 function convertLocation(location: GeomapLayer['location']): ImportedLocation | null {
   const mode = location?.mode ?? 'auto';
   if (mode === 'auto') {
@@ -554,6 +589,12 @@ function convertLocation(location: GeomapLayer['location']): ImportedLocation | 
   }
   if (mode === 'coords' && location?.latitude && location?.longitude) {
     return { mode: 'coords', latitude: location.latitude, longitude: location.longitude };
+  }
+  if (mode === 'geohash') {
+    return { mode: 'geohash', ...(location?.geohash ? { geohash: location.geohash } : {}) };
+  }
+  if (mode === 'lookup') {
+    return { mode: 'lookup', ...(location?.lookup ? { lookup: location.lookup } : {}) };
   }
   return null;
 }

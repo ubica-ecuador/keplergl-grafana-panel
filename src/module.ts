@@ -1,5 +1,6 @@
 import { PanelPlugin } from '@grafana/data';
 import { config } from '@grafana/runtime';
+import { GAZETTEERS } from './data/placeLookup';
 
 import { KeplerPanelOptions } from './types';
 import { KeplerPanel } from './panel/KeplerPanel';
@@ -149,6 +150,22 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
         options: [
           { value: 'table', label: 'Table columns' },
           { value: 'geojson', label: 'GeoJSON' },
+        ],
+      },
+    })
+    .addSelect({
+      path: 'gazetteer',
+      name: 'Place names',
+      description:
+        'Where a query that names places instead of giving coordinates (a Place name column in Field mapping) finds them. A URL of your own works too.',
+      category: ['Map'],
+      defaultValue: GAZETTEERS.countries,
+      settings: {
+        allowCustomValue: true,
+        options: [
+          { value: GAZETTEERS.countries, label: 'Countries (name, 2- or 3-letter code)' },
+          { value: GAZETTEERS.usaStates, label: 'US states (name or code)' },
+          { value: GAZETTEERS.airports, label: 'Airports (IATA or ICAO code)' },
         ],
       },
     })

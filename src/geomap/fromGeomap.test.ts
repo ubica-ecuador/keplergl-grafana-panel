@@ -158,7 +158,7 @@ describe('fromGeomapPanel', () => {
       layers: [
         ...markersPanel.layers!,
         { type: 'last-point-tracker', name: 'Last point' },
-        { type: 'markers', name: 'By hash', location: { mode: 'geohash', geohash: 'gh' } },
+        { type: 'markers', name: 'By cell', location: { mode: 'h3' } },
         { type: 'xyz', name: 'Nothing', config: {} },
       ],
     });
