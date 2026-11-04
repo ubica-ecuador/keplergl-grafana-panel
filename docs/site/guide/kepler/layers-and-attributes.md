@@ -21,6 +21,12 @@ See [How a query becomes a map](../data/how-a-query-becomes-a-map). Everything e
 hexbin, cluster, icon, arc, line, S2 — you create by hand here, choosing the dataset and pointing
 the layer's columns at it.
 
+On a map with no saved configuration, the GeoJSON layer starts coloured (its fill, or its stroke
+for lines) by one of the query's decimal columns whose values vary, on a quantile scale: `mag` on a
+map of earthquake footprints. kepler 3.3.0-alpha.19 does this for the GeoJSON layers it builds.
+Integer columns are not candidates, and a dataset of more than a million rows stays one colour. A
+saved map keeps the colours it was saved with.
+
 ## Adding a layer by hand
 
 **+ Add Layer** → pick a type → pick the dataset → assign its columns. The columns offered are the
@@ -44,7 +50,7 @@ points can read as an empty map. This is the first thing to change, not the last
 
 **High-precision rendering when zooming in closely.** kepler's documentation lists this on point,
 arc, line, icon, geojson, hexagon and grid layers. **It is not there in the version this plugin
-ships.** The setting survives as a constant and a type in kepler 3.3.0-alpha.17, but no layer
+ships.** The setting survives as a constant and a type in kepler 3.3.0-alpha.19, but no layer
 declares or reads it — deck.gl retired the separate 64-bit path years ago and its current
 precision handling is always on. Do not go looking for the switch. See
 [Under the hood](../../reference/under-the-hood).
@@ -85,12 +91,13 @@ any other query.
 
 ## Layers configured with a URL
 
-Six of kepler's layer types are configured with a URL rather than with data: vector tile, raster
-tile, WMS, 3D tiles, bitmap, and 3D models.
+Seven of kepler's layer types are configured with a URL rather than with data: vector tile, raster
+tile, WMS, 3D tiles, bitmap, 3D models and, since kepler 3.3.0-alpha.19, Zarr.
 
-Two of those a query can reach after all, because a URL is a string like any other: a `raster_url`
-column draws a raster tile layer, and a `wms_url`/`wms_layer` pair draws a WMS. See
-[Rasters](../data/rasters) and [WMS services](../data/wms).
+Three of those a query can reach after all, because a URL is a string like any other: a `raster_url`
+column draws a raster tile layer, a `wms_url`/`wms_layer` pair draws a WMS, and a Zarr store named
+by a query is drawn by the panel's own `zarrTiles` layer rather than by kepler's `zarr`. See
+[Rasters](../data/rasters), [WMS services](../data/wms) and [Zarr stores](../data/zarr).
 
 The other four you add by hand — and on a hardened Grafana you will need the host in `connect-src`
 either way. See [Layers configured with a URL](../../layers/url-configured).
@@ -101,6 +108,6 @@ either way. See [Layers configured with a URL](../../layers/url-configured).
 [Layer attributes](https://docs.kepler.gl/docs/user-guides/d-layer-attributes) ·
 [The kepler.gl workflow](https://docs.kepler.gl/docs/user-guides/b-kepler-gl-workflow)
 
-Written against **kepler.gl 3.3.0-alpha.17**, which is what this plugin bundles. kepler's public
+Written against **kepler.gl 3.3.0-alpha.19**, which is what this plugin bundles. kepler's public
 documentation describes the 3.2 stable line and lists fifteen layer types; the pre-release registers
-twenty-two, the Flow layer among them. See [Upstream documentation](../../reference/upstream-docs).
+twenty-three, the Flow layer among them. See [Upstream documentation](../../reference/upstream-docs).

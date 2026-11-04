@@ -18,6 +18,8 @@ release documents what changed since the one before it.
   on the bare map, or Escape, puts down the note being edited.
 - **kepler.gl 3.3.0-alpha.19**, from 3.3.0-alpha.17: the annotation list and ruler, camera bookmarks
   and tours, timeline charts for numeric filters, and many fixes to filters, exports and Arrow data.
+- On a map with no saved configuration, a query's GeoJSON layer now starts coloured by one of its
+  decimal columns, as kepler 3.3.0-alpha.19 colours the GeoJSON layers it builds.
 - **kepler's own Zarr layer**, which reads a store in the browser, is on: *Add Data → Tileset → Zarr*.
   Fine for a small store that sends CORS headers; a large one is far faster through the panel's own
   layer. See *Zarr stores* in the guide for the comparison.

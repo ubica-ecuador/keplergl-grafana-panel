@@ -1,8 +1,8 @@
 # Interactions
 
 kepler's Interactions menu has a section for each of the features below — tooltip, brush,
-coordinate display, legend, fading on zoom, the map's name and description, geocoder — and the
-panel manages one of them for you.
+coordinate display, legend, fading on zoom, the map's name and description, bookmarks, camera
+animation, geocoder — and the panel manages one of them for you.
 
 ## Tooltip
 
@@ -92,6 +92,30 @@ can carry links written as `[label](https://…)`. Both are saved with the map. 
 apart from the configuration it exports, so the panel saves them beside it, the way kepler's own
 **Export map** does.
 
+## Bookmarks
+
+Saved views of the map. **Add Bookmark** keeps the current centre, zoom, bearing and pitch under a
+name you can edit. Each bookmark has **Go to**, **Update view** (replace it with the current view),
+**Copy coordinates** and **Delete**, and bookmarks reorder by dragging.
+
+The section's switch, off by default, puts a **Bookmarks** list on the map beside the map control.
+A click on a name flies the map there, so a dashboard's viewers can move between places with the
+side panel hidden. Like the legend, the list moves by its title and resizes from its top or bottom
+edge; closing it turns the switch off. The bookmarks and the switch are saved with the map.
+
+## Camera animation
+
+A tour through views. **Add stop** takes the current view or one of the bookmarks. Each stop
+**holds** for a while, then **travels** to the next (2 and 3 seconds to begin with), and stops
+reorder by dragging along the track. Play, pause, restart and a scrubber sit at the bottom of the
+section, and the stops are saved with the map.
+
+The tour plays from this section only; nothing on the map starts it. On a dashboard it therefore
+needs the side panel (**Show side panel**).
+
+Neither bookmarks nor the tour work on a split map or on the globe: the sections ask for a single
+2D or 3D map, and the list leaves the map.
+
 ## Geocoder
 
 kepler's geocoder needs a Mapbox token and is therefore not usable here, which is consistent with
@@ -102,5 +126,5 @@ programmatically instead — a text box or a table data link becomes the search 
 
 **Upstream:** [Interactions](https://docs.kepler.gl/docs/user-guides/g-interactions)
 
-Written against **kepler.gl 3.3.0-alpha.17**. See
+Written against **kepler.gl 3.3.0-alpha.19**. See
 [Upstream documentation](../../reference/upstream-docs).
