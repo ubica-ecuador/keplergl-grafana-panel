@@ -203,6 +203,7 @@ export default defineConfig({
             { text: 'Origin–destination', link: '/layers/origin-destination' },
             { text: 'Symbols and markers', link: '/layers/symbols-and-markers' },
             { text: 'Time', link: '/layers/time' },
+            { text: 'Velocity fields', link: '/layers/velocity-fields' },
             { text: 'Layers configured with a URL', link: '/layers/url-configured' },
           ],
         },

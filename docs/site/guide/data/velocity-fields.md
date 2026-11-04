@@ -144,6 +144,10 @@ Round the coordinates back to the lattice you asked for, and space that lattice 
 snapping error. See [Tutorial 6](../../tutorials/wind-field).
 :::
 
+Rows that are not a lattice at all — stations, buoys — are a different case. When their columns are
+named exactly `u` and `v`, kepler's own Flow Field draws them instead, by binning and blurring them
+into a grid of its own. See [kepler's Flow Field](../../layers/velocity-fields#kepler-flow-field).
+
 Rows are cells. The grid itself is **inferred**, so the query may return them in any order —
 `ORDER BY lat, lon` is for your own benefit when you inspect the rows, not the panel's.
 

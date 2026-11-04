@@ -18,6 +18,10 @@ SELECT geohash, count(*) AS events FROM readings GROUP BY geohash;
 
 A value that is not a geohash gives the row no position.
 
+kepler draws the same column a second time, as the cells themselves: it creates a GeoHash layer for
+a column named `geohash`, `geo_hash` or `geohash_id`. See
+[geohash](../../layers/geometry-and-indices#geohash).
+
 ## Place names and codes
 
 A column named `lookup`, or the one chosen in **Field mapping → Place name**, is looked up in a
