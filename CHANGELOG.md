@@ -23,6 +23,7 @@ release documents what changed since the one before it.
 - **kepler's own Zarr layer**, which reads a store in the browser, is on: *Add Data → Tileset → Zarr*.
   Fine for a small store that sends CORS headers; a large one is far faster through the panel's own
   layer. See *Zarr stores* in the guide for the comparison.
+- kepler's A5 layer is named **A5** in the layer list, where it showed `Layer.Type.A5`.
 - **Breaking: the panel's Zarr layer is now `zarrTiles`** (*Zarr (TiTiler)* in the layer list),
   because kepler's new layer took the type `zarr`. A saved map whose layer on a
   `grafana-<refId>-zarr` dataset still says `"type": "zarr"` must say `"type": "zarrTiles"`.
