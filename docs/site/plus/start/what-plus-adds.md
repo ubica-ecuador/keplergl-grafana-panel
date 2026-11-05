@@ -17,7 +17,7 @@ Plus adds.
 | Cloud-native imagery: COG, PMTiles, Zarr, WMS, ArcGIS Image Service, STAC                                                 |     ✓      |  ✓   |
 | Dashboard time sync, cross-filtering, draggable markers, Grafana Assistant context                                        |     ✓      |  ✓   |
 | OpenFreeMap, CARTO and Esri public base maps, with relief                                                                 |     ✓      |  ✓   |
-| [Gauge, 3D Shape, Coverage, Surface, Sparkline, Traffic, Pipeline and Fleet layers](/plus/layers/)                        |            |  ✓   |
+| [Gauge, 3D Shape, Coverage, Surface, Sparkline, Traffic, Pipeline, Fleet and 4D Model layers](/plus/layers/)              |            |  ✓   |
 | [Places without coordinates](/plus/data/places): regions, zones, airports, PoPs, geohashes, countries, IPs                |            |  ✓   |
 | [States, provinces, counties and cantons](/plus/data/regions) placed by name or ISO 3166-2 code                           |            |  ✓   |
 | [Network links](/plus/data/network-links) between named sites, coloured by Grafana thresholds                             |            |  ✓   |

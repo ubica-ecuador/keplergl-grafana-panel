@@ -12,7 +12,7 @@ run side by side on the same Grafana and the same dashboard.
 
 ## What it adds
 
-- [Eight layer types](/plus/layers/): Gauge, 3D Shape, Coverage, Surface, Sparkline, Traffic, Pipeline and Fleet.
+- [Nine layer types](/plus/layers/): Gauge, 3D Shape, Coverage, Surface, Sparkline, Traffic, Pipeline, Fleet and 4D Model.
 - [Places without coordinates](/plus/data/places): cloud regions, airports, PoPs, geohashes, countries and client IPs
   placed from their names, and [states, provinces and municipalities](/plus/data/regions) placed by name or
   ISO 3166-2 code.

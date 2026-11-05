@@ -48,6 +48,7 @@ export const PLUS_SIDEBAR: DefaultTheme.SidebarItem[] = [
       { text: 'Traffic', link: '/plus/layers/traffic' },
       { text: 'Pipeline', link: '/plus/layers/pipeline' },
       { text: 'Fleet', link: '/plus/layers/fleet' },
+      { text: '4D Model', link: '/plus/layers/model-4d' },
     ],
   },
   {

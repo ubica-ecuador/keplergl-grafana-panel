@@ -1,6 +1,6 @@
 # Plus layers
 
-Plus adds eight layer types to kepler's layer list. Each one is a kepler layer like any other: you pick it as the
+Plus adds nine layer types to kepler's layer list. Each one is a kepler layer like any other: you pick it as the
 layer type, style it in kepler's layer panel, and it is saved with the map. Most of them you add yourself, with
 **Add Layer** or by switching the type of a layer the panel already built; each layer page says when the panel adds
 one for you.
@@ -17,6 +17,7 @@ one for you.
 | [Traffic](./traffic)                   | Link lines with comets running along them                      | Links, from a source to a target |
 | [Pipeline](./pipeline)                 | The same flow along a real route                               | Line geometry                    |
 | [Fleet](./fleet)                       | Each vehicle or device once, where it is now, with a trail     | Positions with an asset column   |
+| [4D Model](./model-4d)                 | A 3D model whose parts are built in time, or coloured by state | One row per part of a glTF model |
 
 Points can come from latitude and longitude columns, or from a name that [Places](/plus/data/places) turns into
 coordinates: a cloud region, an airport code, a country, a province.
