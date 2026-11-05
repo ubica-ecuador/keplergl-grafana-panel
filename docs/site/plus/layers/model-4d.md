@@ -5,7 +5,9 @@ finish. At the map's instant, a part is still to build (a faint outline), under 
 (the model's own colours, or a colour from a column). For construction schedules (BIM 4D), phased works, and digital
 twins of a site whose parts have a state.
 
-![An apartment block in Nijmegen half built: the ground floor in amber under construction, the brickwork and windows below it built, the floors to come as a faint outline](/img/plus/model-4d.jpg)
+[![An apartment block in Nijmegen half built: the ground floor in amber under construction, the brickwork and windows below it built, the floors to come as a faint outline](/img/plus/model-4d.jpg)](https://pacha.ubica.dev/d/schependomlaan-4d)
+
+[Open this dashboard live →](https://pacha.ubica.dev/d/schependomlaan-4d)
 
 ::: info Since Plus 1.6.0
 The 4D Model layer is new in Plus 1.6.0.
@@ -119,7 +121,7 @@ by a column, and the model shows that column: the trade of each element, the con
 time. A text column takes a custom ordinal range, each value with its own colour (see
 [Colour palettes and scales](/guide/kepler/colour-palettes-and-scales)).
 
-The Schependomlaan dashboard colours by trade or, with its **Colour** variable, by whether the as-built record has the
+The [Schependomlaan dashboard](https://pacha.ubica.dev/d/schependomlaan-4d) colours by trade or, with its **Colour** variable, by whether the as-built record has the
 element late. The query picks the column the layer colours by:
 
 ```sql
@@ -134,9 +136,11 @@ Rows with no start are always built, so the layer also draws a model whose parts
 a plant's units, a building's floors, a substation's bays. Give each row its part's id and its current state, colour
 the layer by the state, and set **Built parts** to **Layer colour**. Every refresh repaints the parts.
 
-![Eraring Power Station with its four units coloured by what each is doing now, blue at low load and grey offline, a sparkline card over each unit with its output over the day](/img/plus/model-4d-live.jpg)
+[![Eraring Power Station with its four units coloured by what each is doing now, blue at low load and grey offline, a sparkline card over each unit with its output over the day](/img/plus/model-4d-live.jpg)](https://pacha.ubica.dev/d/aemo-eraring-live)
 
-The Eraring dashboard does this with one row per unit:
+[Open this dashboard live →](https://pacha.ubica.dev/d/aemo-eraring-live)
+
+The [Eraring dashboard](https://pacha.ubica.dev/d/aemo-eraring-live) does this with one row per unit:
 
 ```sql
 SELECT u.duid,                                 -- the unit's node in model.glb
