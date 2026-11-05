@@ -44,8 +44,10 @@ Each measurement is a channel, `stream/<stream>/<measurement>` — here `stream/
 panel, pick the **-- Grafana --** datasource, *Live measurements*, and that channel.
 
 The vehicle's id can be a field (`id="b07"`, a string) or a tag (`bus,id=b07 …`): the map reads both
-as a column `id`. Grafana keeps about the last thousand rows of a channel in the browser, so a trail
-is as long as a thousand rows allow: 50 seconds of 20 vehicles reporting every second.
+as a column `id`. Grafana keeps a streaming query's newest rows in the browser, as many as the
+query's **Max data points**: about the panel's width in pixels unless set, so a thousand or so,
+which is 50 seconds of 20 vehicles reporting every second. Raise it under the query options for
+longer trails, or for a busier feed.
 
 ## MQTT
 
@@ -65,6 +67,11 @@ Helsinki's public transport (HSL) publishes every vehicle's position once a seco
 
 A vehicle number is unique within its operator; for a trip per vehicle, map *Field mapping →
 Trip ID* to `veh` (or to a column that joins `oper` and `veh`).
+
+See it live at [pacha.ubica.dev/d/hsl-live](https://pacha.ubica.dev/d/hsl-live): the same feed on
+a Kepler Plus [Fleet layer](/plus/layers/fleet#streamed-positions-grafana-live-and-mqtt), one kind
+of vehicle at a time, keeping 20000 rows (**Max data points**, above) for hundreds of vehicles a
+second.
 
 ## Options
 

@@ -241,6 +241,30 @@ need, such as the route. From there the Fleet layer takes the vehicle, not the t
 and **Remember positions** gives each vehicle a trail, a heading and a speed chart from one
 position per refresh.
 
+## Streamed positions: Grafana Live and MQTT
+
+A query can stream instead of being refreshed: Grafana Live push, the MQTT datasource, or any
+datasource that streams (see [Live data](/guide/data/live-data)). Each message adds rows, and the
+Fleet layer moves each asset as its reports arrive, with no dashboard refresh. Keep **Time
+reference** on **Live**: now is then the newest report, even after the dashboard's own end.
+
+- **Trail and history.** Grafana keeps a streaming query's rows in the browser, as many as the
+  query's **Max data points** (by default about the panel's width in pixels, so a thousand or so).
+  That is the whole history the layer sees: 200 vehicles reporting every second fill a thousand
+  rows in five seconds. Raise **Max data points** under the query options, for instance to 20000.
+- **One asset id from two columns.** When an id is only unique together with another column (a
+  vehicle number per operator), make one with **Add field from calculation**, for instance
+  `oper * 100000 + veh`, and pick it as the asset.
+- **A JSON payload.** MQTT messages often arrive as one column holding a JSON object. Add **Extract
+  fields** (format JSON) first. Extract fields hands on frames without their query letter, so the
+  dataset is named by position (`grafana-0`, not `grafana-A`): add the Fleet layer after the
+  transformation, or a map saved before it loses the layer.
+- **Updates.** The map takes at most one update per **Live update interval** (*Live data* options,
+  1 s by default), so a datasource that sends many messages a second costs one redraw a second.
+
+Helsinki's public transport is a working example: every tram, metro, train, ferry or bus of HSL
+over MQTT, live at [pacha.ubica.dev/d/hsl-live](https://pacha.ubica.dev/d/hsl-live).
+
 ## When it does not draw
 
 - **You get dots or a Trip layer instead.** One of asset, time or position was not recognised.
