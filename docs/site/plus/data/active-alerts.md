@@ -20,10 +20,17 @@ appear once it is on.
 | **Folders**            | the folders of Grafana-managed rules to read; the list holds the folders you can see that have rules                 | empty: all folders |
 | **Data sources**       | **Grafana-managed** and each data source whose rules are read; see [Where alerts come from](#where-alerts-come-from) | all                |
 | **Place label**        | **Auto**, or one label that places every alert; see [How an alert is placed](#how-an-alert-is-placed)                | Auto               |
+| **Entity label**       | a label that names what the alert is about (`vehicle_id`): the alert is drawn on it; see [Geofences](#geofences)     | none               |
+| **Entity column**      | the column of the panel's data that holds that entity                                                                | the label's name   |
+| **Zones**              | draws the zone of every rule with a `geofence` annotation; see [Geofences](#geofences)                               | on                 |
+| **Zone label**         | a label that names the zone an alert is about (`fence`): each zone takes the state of its own alerts                 | none               |
+| **Zone column**        | the column of the panel's data that holds the zone, for fences that come from a query                                | the label's name   |
 
 Under the options, a status line sums up the last read:
 
 > 12 alerts · 9 placed by region, 1 by coordinates · 2 without a place (labels: instance, job, severity)
+
+With zones, it also counts them: `3 alerts · 3 placed by vehicle_id · 4 zones`.
 
 ## Where alerts come from
 
@@ -75,6 +82,9 @@ others are still drawn:
 
 ## How an alert is placed
 
+With **Entity label** set, an alert whose label names an entity of the panel's own data is drawn on that entity
+first, whatever its other labels say; see [Geofences](#geofences). Every other alert is placed by its own labels.
+
 Each alert instance is placed by its own labels, so a rule needs no change as long as its labels name a place. With
 **Place label** on **Auto**, the first of these that gives a position wins:
 
@@ -112,18 +122,114 @@ corner.
 
 ## What the layer shows
 
-Each placed alert is a point in the **Active alerts** layer, red when firing and amber when pending. The layer is
-kept above the map's other layers, so an alert is never hidden under a choropleth or a line. Several alerts at the
-same place draw on top of each other.
+Each placed alert is a point in the **Active alerts** layer, red when firing and amber when pending, outlined in
+white. The layer is kept above the map's other layers, so an alert is never hidden under a choropleth, a line or
+the entity it sits on. Several alerts at the same place draw on top of each other. The layer is added to a map whose
+configuration was saved before **Show active alerts** was switched on, too.
 
-The tooltip shows, in this order: `alertname`, `state`, `severity`, `since` (when the instance became active),
-`folder` (the folder of a Grafana-managed rule, the namespace of a data source rule), `place` and `rule_url`, a link
-to the rule in Grafana. Every label of the alert is also a column of the dataset, available to kepler's tooltip,
-filters and colours; a label named like one of the columns above gets a `label_` prefix.
+The tooltip shows, in this order: `alertname`, `state`, `severity`, `since` (when the instance became active, in
+UTC, such as `5 Nov 2026, 16:53 UTC`), `folder` (the folder of a Grafana-managed rule, the namespace of a data
+source rule), `place` and `rule_url`, a link to the rule in Grafana. Every label of the alert is also a column of the
+dataset, available to kepler's tooltip, filters and colours. A label named like one of the columns above, or like a
+column the map reads by its name (`vehicle_id`, `trip_id`, `lat`, `geom`…), gets a `label_` prefix, so it never
+turns the alerts into trips or a fleet.
 
 The map draws at most **5,000 alerts**: firing before pending, then by `severity` (`critical`, `high`, `warning`,
 `info`, then any other), then the newest. When more pass the filter, the corner says
 `5,000 of 7,250 alerts shown`.
+
+## Geofences
+
+::: info Since Plus 1.6.0
+Entity label, Zones and Zone label are new in Plus 1.6.0.
+:::
+
+A geofence alert fires while a moving thing (a vehicle, a vessel, an animal) is inside an area, or outside it. The
+rule lives in Grafana Alerting, as any other: it is evaluated on the server, with nobody looking, and notifies
+through your contact points. The map shows the result: each alert on the thing it is about, and the areas
+coloured by what is inside them.
+
+### The alert, on the entity it names
+
+An instance of a geofence rule names its entity in a label (`vehicle_id=bus-1`); it cannot carry the entity's
+coordinates, since a new position would make a new instance. Set **Entity label** to that label, and **Entity
+column** to the column of the panel's data that holds the same ids (by default, the column named as the label). Each
+alert is then drawn at its entity's latest position in the panel's own data: the row with the newest time, or the
+last row when the query has no time. It is placed again on every refresh of the panel's data, so it follows the
+entity between reads of the rules.
+
+An alert whose entity is not in the panel's data is counted as `without a place` in the map's corner.
+
+### The zones
+
+**From the rule.** Put the zone in an annotation named `geofence` on the rule, as GeoJSON (a geometry, a Feature or
+a FeatureCollection) or as WKT. Each rule with one has its zone drawn under the map's other layers, whatever the
+state of its instances:
+
+| Zone  | When                                       |
+| ----- | ------------------------------------------ |
+| red   | at least one of its alerts is firing       |
+| amber | none is firing and at least one is pending |
+| blue  | none is active                             |
+
+The zones follow **Label filter** and **Folders**, matched on the rule's own labels, and not **States**. Their
+tooltip shows `zone`, `alertname`, `state`, how many alerts are `firing` and `pending`, and `rule_url`. A zone that
+is neither GeoJSON nor WKT is named in the map's corner. Turn **Zones** off to hide them.
+
+**One zone per fence.** A rule can watch many fences at once, with one instance per entity and fence, labelled
+`vehicle_id` and `fence`. Set **Zone label** to `fence`, and each zone takes the state of the alerts that name it,
+rather than of its whole rule:
+
+- a feature of the rule's `geofence` FeatureCollection is named by its property called as the zone label, or else
+  `name`;
+- every row of the panel's own data that has a geometry and the **Zone column** is drawn as a zone too. That is the
+  way for fences kept in a database: query them in the map (geometry as WKB, WKT or GeoJSON, as PostGIS returns it),
+  and nothing is copied into the rule. On a new map, the fences query's own layer is switched off, so the fences are
+  not drawn twice; on a saved map, hide its layer yourself.
+
+### Writing a geofence rule
+
+Create an alert rule whose query returns, for every entity, one row with the entity's id and a number that is not 0
+while it is inside the zone. Grafana makes one alert instance per row, labelled by the text columns.
+
+**With a spatial database** such as PostGIS, the query does the test:
+
+```sql
+SELECT v.vehicle_id, f.name AS fence, 1 AS inside
+FROM vehicle_positions v
+JOIN fences f ON ST_Within(v.geom, f.geom)
+```
+
+**With any other data source** (TestData, Infinity, MySQL, Elasticsearch…), let the query return the positions
+(`vehicle_id`, `lat`, `lon`) and add a **SQL expression** that tests each row against the polygon's edges; spatial
+functions are not allowed in SQL expressions, so the test is written by hand (ray casting: a point is inside when a
+ray from it crosses the edges an odd number of times). Use the SQL expression itself as the rule's condition:
+
+```sql
+WITH e AS (
+  -- One row per edge: (x1, y1) to (x2, y2), longitude and latitude, the last back to the first.
+  SELECT -79.05 AS x1, -2.95 AS y1, -78.95 AS x2, -2.95 AS y2 UNION ALL
+  SELECT -78.95, -2.95, -78.95, -2.85 UNION ALL
+  SELECT -78.95, -2.85, -79.05, -2.85 UNION ALL
+  SELECT -79.05, -2.85, -79.05, -2.95
+)
+SELECT A.vehicle_id AS vehicle_id,
+  MOD(SUM(CASE WHEN (e.y1 > A.lat) <> (e.y2 > A.lat)
+    AND A.lon < (e.x2 - e.x1) * (A.lat - e.y1) / (e.y2 - e.y1) + e.x1 THEN 1 ELSE 0 END), 2) AS inside
+FROM A CROSS JOIN e
+GROUP BY A.vehicle_id
+```
+
+Any polygon works, concave ones included; for one with holes or several parts, list the edges of every ring. For
+many fences, add a `fence` column to the edges and group by it too. The cost grows with the number of entities times
+the number of edges: past a few thousand of each, test in the database instead. The test treats degrees as flat,
+which is right for a city or a region, not for a zone across the antimeridian.
+
+Add the zone as the rule's `geofence` annotation, and the map draws it. A rule created through the provisioning API
+needs `"format": "alerting"` in the SQL expression's model; the rule editor sets it for you.
+
+A state is as fresh as the rule's last evaluation: with the rule evaluated every 10 seconds, an entity that has just
+left a zone may stay red for up to 10 seconds.
 
 ## The label filter
 
@@ -200,6 +306,8 @@ Work through these in order:
    `geohash` or `latitude` and `longitude` label to the rule, or choose a **Place label** whose values Plus knows.
    A site name of your own, such as `lab-west`, is not a place; put a cloud region, an airport code or coordinates
    next to it.
-5. **Check the filter.** A matcher with a typo keeps nothing. Clear **Label filter** and **Folders** to see whether
+5. **For alerts on entities**, check that **Entity column** holds the same ids as the **Entity label**, as text:
+   `bus-1` and `bus-1`, not `bus-1` and `HSL:bus-1`.
+6. **Check the filter.** A matcher with a typo keeps nothing. Clear **Label filter** and **Folders** to see whether
    the alert comes back.
-6. **Wait for the next read.** A new alert appears within a minute, or sooner when the dashboard refreshes.
+7. **Wait for the next read.** A new alert appears within a minute, or sooner when the dashboard refreshes.
