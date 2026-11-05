@@ -22,6 +22,7 @@ Plus adds.
 | [States, provinces, counties and cantons](/plus/data/regions) placed by name or ISO 3166-2 code                           |            |  ✓   |
 | [Network links](/plus/data/network-links) between named sites, coloured by Grafana thresholds                             |            |  ✓   |
 | [Active alerts](/plus/data/active-alerts) on the map, with only the rules the viewer can read                             |            |  ✓   |
+| [Geofence alerts](/plus/data/geofences): each alert on the entity it names, each fence coloured by its alerts             |            |  ✓   |
 | [Azure Maps and Google base maps](/plus/maps/basemaps), with keys no browser sees, Relief on Azure Maps, sky              |            |  ✓   |
 | [Google Photorealistic 3D Tiles](/plus/maps/3d-tiles) layers                                                              |            |  ✓   |
 | Clicks and drawn polygons that also select and filter the Plus layers, and reach the other panels                         |            |  ✓   |

@@ -33,6 +33,7 @@ export const PLUS_SIDEBAR: DefaultTheme.SidebarItem[] = [
       { text: 'States, provinces and municipalities', link: '/plus/data/regions' },
       { text: 'Network links', link: '/plus/data/network-links' },
       { text: 'Active alerts and service health', link: '/plus/data/active-alerts' },
+      { text: 'Geofence alerts', link: '/plus/data/geofences' },
     ],
   },
   {

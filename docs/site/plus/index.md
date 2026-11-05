@@ -18,6 +18,8 @@ run side by side on the same Grafana and the same dashboard.
   ISO 3166-2 code.
 - [Network links](/plus/data/network-links) between named sites, and the
   [active alerts](/plus/data/active-alerts) the viewer can read, on the same map as your data.
+- [Geofence alerts](/plus/data/geofences): each alert drawn on the vehicle or vessel it names, and each fence
+  coloured by the alerts inside it, from a rule on any data source.
 - [Base maps](/plus/maps/basemaps) from Azure Maps and Google, and [3D tiles](/plus/maps/3d-tiles) from Google,
   with keys set once for the organisation and kept where no browser sees them.
 - Three [tour](/plus/start/templates) dashboards installed with the app, on synthetic data that needs no setup.

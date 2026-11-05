@@ -12,19 +12,19 @@ which the Service health templates use for Synthetic Monitoring.
 Open the panel's options and find the **Active alerts** category. Turn on **Show active alerts**; the other options
 appear once it is on.
 
-| Option                 | What it does                                                                                                         | Default            |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| **Show active alerts** | adds the **Active alerts** layer to the map                                                                          | off                |
-| **States**             | **Firing**, **Pending**, or both                                                                                     | both               |
-| **Label filter**       | Grafana matchers that every alert shown must satisfy; see [The label filter](#the-label-filter)                      | empty: every alert |
-| **Folders**            | the folders of Grafana-managed rules to read; the list holds the folders you can see that have rules                 | empty: all folders |
-| **Data sources**       | **Grafana-managed** and each data source whose rules are read; see [Where alerts come from](#where-alerts-come-from) | all                |
-| **Place label**        | **Auto**, or one label that places every alert; see [How an alert is placed](#how-an-alert-is-placed)                | Auto               |
-| **Entity label**       | a label that names what the alert is about (`vehicle_id`): the alert is drawn on it; see [Geofences](#geofences)     | none               |
-| **Entity column**      | the column of the panel's data that holds that entity                                                                | the label's name   |
-| **Zones**              | draws the zone of every rule with a `geofence` annotation; see [Geofences](#geofences)                               | on                 |
-| **Zone label**         | a label that names the zone an alert is about (`fence`): each zone takes the state of its own alerts                 | none               |
-| **Zone column**        | the column of the panel's data that holds the zone, for fences that come from a query                                | the label's name   |
+| Option                 | What it does                                                                                                               | Default            |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| **Show active alerts** | adds the **Active alerts** layer to the map                                                                                | off                |
+| **States**             | **Firing**, **Pending**, or both                                                                                           | both               |
+| **Label filter**       | Grafana matchers that every alert shown must satisfy; see [The label filter](#the-label-filter)                            | empty: every alert |
+| **Folders**            | the folders of Grafana-managed rules to read; the list holds the folders you can see that have rules                       | empty: all folders |
+| **Data sources**       | **Grafana-managed** and each data source whose rules are read; see [Where alerts come from](#where-alerts-come-from)       | all                |
+| **Place label**        | **Auto**, or one label that places every alert; see [How an alert is placed](#how-an-alert-is-placed)                      | Auto               |
+| **Entity label**       | a label that names what the alert is about (`vehicle_id`): the alert is drawn on it; see [Geofences](/plus/data/geofences) | none               |
+| **Entity column**      | the column of the panel's data that holds that entity                                                                      | the label's name   |
+| **Zones**              | draws the zone of every rule with a `geofence` annotation; see [Geofences](/plus/data/geofences)                           | on                 |
+| **Zone label**         | a label that names the zone an alert is about (`fence`): each zone takes the state of its own alerts                       | none               |
+| **Zone column**        | the column of the panel's data that holds the zone, for fences that come from a query                                      | the label's name   |
 
 Under the options, a status line sums up the last read:
 
@@ -144,92 +144,10 @@ The map draws at most **5,000 alerts**: firing before pending, then by `severity
 Entity label, Zones and Zone label are new in Plus 1.6.0.
 :::
 
-A geofence alert fires while a moving thing (a vehicle, a vessel, an animal) is inside an area, or outside it. The
-rule lives in Grafana Alerting, as any other: it is evaluated on the server, with nobody looking, and notifies
-through your contact points. The map shows the result: each alert on the thing it is about, and the areas
-coloured by what is inside them.
-
-### The alert, on the entity it names
-
-An instance of a geofence rule names its entity in a label (`vehicle_id=bus-1`); it cannot carry the entity's
-coordinates, since a new position would make a new instance. Set **Entity label** to that label, and **Entity
-column** to the column of the panel's data that holds the same ids (by default, the column named as the label). Each
-alert is then drawn at its entity's latest position in the panel's own data: the row with the newest time, or the
-last row when the query has no time. It is placed again on every refresh of the panel's data, so it follows the
-entity between reads of the rules.
-
-An alert whose entity is not in the panel's data is counted as `without a place` in the map's corner.
-
-### The zones
-
-**From the rule.** Put the zone in an annotation named `geofence` on the rule, as GeoJSON (a geometry, a Feature or
-a FeatureCollection) or as WKT. Each rule with one has its zone drawn under the map's other layers, whatever the
-state of its instances:
-
-| Zone  | When                                       |
-| ----- | ------------------------------------------ |
-| red   | at least one of its alerts is firing       |
-| amber | none is firing and at least one is pending |
-| blue  | none is active                             |
-
-The zones follow **Label filter** and **Folders**, matched on the rule's own labels, and not **States**. Their
-tooltip shows `zone`, `alertname`, `state`, how many alerts are `firing` and `pending`, and `rule_url`. A zone that
-is neither GeoJSON nor WKT is named in the map's corner. Turn **Zones** off to hide them.
-
-**One zone per fence.** A rule can watch many fences at once, with one instance per entity and fence, labelled
-`vehicle_id` and `fence`. Set **Zone label** to `fence`, and each zone takes the state of the alerts that name it,
-rather than of its whole rule:
-
-- a feature of the rule's `geofence` FeatureCollection is named by its property called as the zone label, or else
-  `name`;
-- every row of the panel's own data that has a geometry and the **Zone column** is drawn as a zone too. That is the
-  way for fences kept in a database: query them in the map (geometry as WKB, WKT or GeoJSON, as PostGIS returns it),
-  and nothing is copied into the rule. On a new map, the fences query's own layer is switched off, so the fences are
-  not drawn twice; on a saved map, hide its layer yourself.
-
-### Writing a geofence rule
-
-Create an alert rule whose query returns, for every entity, one row with the entity's id and a number that is not 0
-while it is inside the zone. Grafana makes one alert instance per row, labelled by the text columns.
-
-**With a spatial database** such as PostGIS, the query does the test:
-
-```sql
-SELECT v.vehicle_id, f.name AS fence, 1 AS inside
-FROM vehicle_positions v
-JOIN fences f ON ST_Within(v.geom, f.geom)
-```
-
-**With any other data source** (TestData, Infinity, MySQL, Elasticsearch…), let the query return the positions
-(`vehicle_id`, `lat`, `lon`) and add a **SQL expression** that tests each row against the polygon's edges; spatial
-functions are not allowed in SQL expressions, so the test is written by hand (ray casting: a point is inside when a
-ray from it crosses the edges an odd number of times). Use the SQL expression itself as the rule's condition:
-
-```sql
-WITH e AS (
-  -- One row per edge: (x1, y1) to (x2, y2), longitude and latitude, the last back to the first.
-  SELECT -79.05 AS x1, -2.95 AS y1, -78.95 AS x2, -2.95 AS y2 UNION ALL
-  SELECT -78.95, -2.95, -78.95, -2.85 UNION ALL
-  SELECT -78.95, -2.85, -79.05, -2.85 UNION ALL
-  SELECT -79.05, -2.85, -79.05, -2.95
-)
-SELECT A.vehicle_id AS vehicle_id,
-  MOD(SUM(CASE WHEN (e.y1 > A.lat) <> (e.y2 > A.lat)
-    AND A.lon < (e.x2 - e.x1) * (A.lat - e.y1) / (e.y2 - e.y1) + e.x1 THEN 1 ELSE 0 END), 2) AS inside
-FROM A CROSS JOIN e
-GROUP BY A.vehicle_id
-```
-
-Any polygon works, concave ones included; for one with holes or several parts, list the edges of every ring. For
-many fences, add a `fence` column to the edges and group by it too. The cost grows with the number of entities times
-the number of edges: past a few thousand of each, test in the database instead. The test treats degrees as flat,
-which is right for a city or a region, not for a zone across the antimeridian.
-
-Add the zone as the rule's `geofence` annotation, and the map draws it. A rule created through the provisioning API
-needs `"format": "alerting"` in the SQL expression's model; the rule editor sets it for you.
-
-A state is as fresh as the rule's last evaluation: with the rule evaluated every 10 seconds, an entity that has just
-left a zone may stay red for up to 10 seconds.
+A geofence alert fires while a moving thing is inside an area. With **Entity label**, each alert is drawn on the
+thing it names and follows it; with **Zones**, each area is drawn under the map, red, amber or blue by its alerts.
+How to set it up and write the rule, on PostGIS or on any data source, with a live example:
+[Geofence alerts](/plus/data/geofences).
 
 ## The label filter
 
