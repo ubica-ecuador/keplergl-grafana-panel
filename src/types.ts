@@ -219,6 +219,20 @@ export interface KeplerPanelOptions {
   peerTimeSync?: boolean;
 
   /**
+   * While a query streams (Grafana Live, MQTT), keep the map's clocks on the
+   * newest rows: the trip playhead at the last instant, and a time filter
+   * window not driven by the dashboard range ending there. A clock the user
+   * moves away stays put until it is brought back to the end. On by default.
+   */
+  liveFollow?: boolean;
+
+  /**
+   * While a query streams, the least time between two updates of the map, in
+   * ms. Defaults to 1000; each update rebuilds the query's dataset in kepler.
+   */
+  liveIntervalMs?: number;
+
+  /**
    * Grafana annotations on the map. `show` draws every annotation with a place
    * (a `geo:<lng>,<lat>` tag, or a callout saved in its data) as a kepler
    * callout while its time overlaps the map's window; `both` also writes a

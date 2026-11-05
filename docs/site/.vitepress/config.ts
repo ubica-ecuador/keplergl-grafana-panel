@@ -135,6 +135,7 @@ export default defineConfig({
             { text: 'ArcGIS Image Services', link: '/guide/data/arcgis-image-service' },
             { text: 'Zarr stores', link: '/guide/data/zarr' },
             { text: 'Imagery over time', link: '/guide/data/imagery-over-time' },
+            { text: 'Live data', link: '/guide/data/live-data' },
           ],
         },
         {

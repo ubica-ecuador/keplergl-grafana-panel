@@ -6,6 +6,15 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Live data.** A query that streams through Grafana Live — the built-in datasource's *Live
+  measurements* fed by `/api/live/push`, the MQTT datasource, any streaming datasource — now keeps
+  the map on its newest rows: the trip playhead goes to the last instant with every update, and a time
+  window not driven by the dashboard range slides along, until you move either away from the end.
+  The map takes at most one update per *Live update interval* (1 s by default, under the new *Live
+  data* options): on Helsinki's public transport over MQTT, which updates the panel five times a second, that cut
+  the browser's busy time about fifteen-fold. A series that arrives with labels (line protocol
+  tags) is read as a row per series, with each label as a column, where the map used to draw the
+  first series alone. See *Live data* in the guide.
 - **Saving the map keeps the layers still waiting for their data.** A save made before every query
   had answered, or before a click had picked the scene a raster layer shows, left those layers out,
   with their filters, their side of a split map and their tooltip fields, and the next load drew

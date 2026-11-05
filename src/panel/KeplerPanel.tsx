@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { PanelProps } from '@grafana/data';
+import { type DataFrame, LoadingState, PanelProps } from '@grafana/data';
 import { usePanelContext, useTheme2 } from '@grafana/ui';
 
 import { KeplerPanelOptions } from '../types';
@@ -30,6 +30,8 @@ import { namesPlaces, useGazetteer } from './useGazetteer';
 import { geomapToKepler } from '../geomap/geomapToKepler';
 import { GeomapImportNotice } from '../geomap/GeomapImportNotice';
 import type { AdHocFilterItem } from './adHocFilters';
+import { labelledToLong } from '../data/labelledToLong';
+import { DEFAULT_LIVE_INTERVAL_MS, MIN_LIVE_INTERVAL_MS, useLiveSeries } from './useLiveSeries';
 
 interface Props extends PanelProps<KeplerPanelOptions> {}
 
@@ -37,6 +39,12 @@ interface Props extends PanelProps<KeplerPanelOptions> {}
 const EMPTY_MAPPINGS: VariableMapping[] = [];
 const EMPTY_FIT_VARIABLES: string[] = [];
 const EMPTY_AD_HOC_FIELDS: string[] = [];
+
+/** Each frame whose series are told apart by labels as a row per series (`labelledToLong.ts`); the same list when none is. */
+function longFrames(series: DataFrame[]): DataFrame[] {
+  const long = series.map((frame) => labelledToLong(frame) ?? frame);
+  return long.some((frame, i) => frame !== series[i]) ? long : series;
+}
 
 /**
  * Translates Grafana concerns into props for the map.
@@ -67,6 +75,16 @@ export function KeplerPanel(props: Props) {
   } = props;
   const grafanaTheme = useTheme2();
 
+  // A streaming query (Grafana Live, MQTT) hands new frames with every message;
+  // the map takes them at most once per interval. See `useLiveSeries.ts`.
+  const streaming = data.state === LoadingState.Streaming;
+  const liveSeries = useLiveSeries(
+    data.series,
+    streaming,
+    Math.max(MIN_LIVE_INTERVAL_MS, options.liveIntervalMs ?? DEFAULT_LIVE_INTERVAL_MS)
+  );
+  const series = useMemo(() => longFrames(liveSeries), [liveSeries]);
+
   // Grafana shows a field's actions only to a viewer who can edit the
   // dashboard, and says so through the panel context; a Grafana without the
   // hook (before 11.x) answers no, as its own panels do.
@@ -92,8 +110,8 @@ export function KeplerPanel(props: Props) {
   // its map and mappings stand in for them, so the map never shows the layers
   // kepler would have guessed instead.
   const geomapConversion = useMemo(
-    () => (options.geomapImport ? geomapToKepler(options.geomapImport, data.series, options.fieldMappings) : null),
-    [options.geomapImport, data.series, options.fieldMappings]
+    () => (options.geomapImport ? geomapToKepler(options.geomapImport, series, options.fieldMappings) : null),
+    [options.geomapImport, series, options.fieldMappings]
   );
   const fieldMappings = useStableValue(geomapConversion?.fieldMappings ?? options.fieldMappings);
   const routeQueries = useStableValue(geomapConversion?.routeQueries ?? options.routeQueries);
@@ -142,18 +160,18 @@ export function KeplerPanel(props: Props) {
   // Place names wait for their gazetteer, fetched only when a query names places.
   const gazetteer = useGazetteer(
     options.gazetteer,
-    useMemo(() => namesPlaces(data.series, fieldMappings), [data.series, fieldMappings])
+    useMemo(() => namesPlaces(series, fieldMappings), [series, fieldMappings])
   );
 
   const queryDatasets = useMemo(
     () =>
-      framesToDatasets(data.series, fieldMappings, {
+      framesToDatasets(series, fieldMappings, {
         flowRenderMode: options.flowRenderMode,
         tripLayerMode: options.tripLayerMode,
         routeQueries,
         gazetteer,
       }),
-    [data.series, fieldMappings, options.flowRenderMode, options.tripLayerMode, routeQueries, gazetteer]
+    [series, fieldMappings, options.flowRenderMode, options.tripLayerMode, routeQueries, gazetteer]
   );
   const datasets = useMemo(
     () =>
@@ -187,7 +205,7 @@ export function KeplerPanel(props: Props) {
   // that needs one is then left off the map and named in `rasterServerMissing`.
   const { rasters, rasterServerMissing } = useMemo(() => {
     const missing: string[] = [];
-    const rasters = framesToRasters(data.series, fieldMappings, {
+    const rasters = framesToRasters(series, fieldMappings, {
       tileServerUrls: rasterServerUrlsOf(options.rasterServerUrl),
       colormap: options.rasterColormap || undefined,
       painted: options.rasterPainted,
@@ -195,17 +213,17 @@ export function KeplerPanel(props: Props) {
       onMissingServer: (label) => missing.push(label),
     });
     return { rasters, rasterServerMissing: missing };
-  }, [data.series, fieldMappings, options.rasterServerUrl, options.rasterColormap, options.rasterPainted, bands]);
+  }, [series, fieldMappings, options.rasterServerUrl, options.rasterColormap, options.rasterPainted, bands]);
 
   // A WMS travels the same separate road, and for the same reason: what the
   // query describes is a service, not rows. Nothing about it needs a tile
   // server — the service renders its own pictures.
-  const wmsLayers = useMemo(() => framesToWms(data.series, fieldMappings), [data.series, fieldMappings]);
+  const wmsLayers = useMemo(() => framesToWms(series, fieldMappings), [series, fieldMappings]);
 
   // An ArcGIS Image Service travels the same separate road, and needs no tile
   // server at all: it is a mosaic dataset that renders its own pictures, for
   // any extent, out of however many rasters it holds.
-  const esriLayers = useMemo(() => framesToEsri(data.series, fieldMappings), [data.series, fieldMappings]);
+  const esriLayers = useMemo(() => framesToEsri(series, fieldMappings), [series, fieldMappings]);
 
   // A Zarr travels that same road again, and needs the tile server the raster
   // path needs — the same option, deliberately. Both mean "the TiTiler this
@@ -215,14 +233,14 @@ export function KeplerPanel(props: Props) {
   // speaks.
   const { zarrLayers, zarrServerMissing } = useMemo(() => {
     const missing: string[] = [];
-    const zarrLayers = framesToZarr(data.series, fieldMappings, {
+    const zarrLayers = framesToZarr(series, fieldMappings, {
       serverUrl: resolveRasterServerUrl(options.rasterServerUrl),
       colormap: options.rasterColormap || undefined,
       rescale: options.zarrRescale || undefined,
       onMissingServer: (label) => missing.push(label),
     });
     return { zarrLayers, zarrServerMissing: missing };
-  }, [data.series, fieldMappings, options.rasterServerUrl, options.rasterColormap, options.zarrRescale]);
+  }, [series, fieldMappings, options.rasterServerUrl, options.rasterColormap, options.zarrRescale]);
 
   // The queries waiting for a tile server, each named once: a query can carry
   // both a raster and a Zarr store.
@@ -285,7 +303,7 @@ export function KeplerPanel(props: Props) {
         width={width}
         height={height}
         datasets={datasets}
-        frames={data.series}
+        frames={series}
         replaceVariables={replaceVariables}
         timeZone={timeZone}
         canExecuteActions={canExecuteActions}
@@ -325,6 +343,7 @@ export function KeplerPanel(props: Props) {
         publishWhilePlaying={options.publishWhilePlaying ?? false}
         publishIntervalMs={publishIntervalOf(options.publishIntervalMs)}
         peerTimeSync={options.peerTimeSync ?? false}
+        liveFollow={streaming && (options.liveFollow ?? true)}
         playheadVariable={options.playheadVariable ?? ''}
         eventBus={eventBus}
         hoverSync={options.hoverSync}

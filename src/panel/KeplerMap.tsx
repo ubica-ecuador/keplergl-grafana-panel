@@ -46,6 +46,7 @@ import { useTimeRangeSync } from './useTimeRangeSync';
 import { useAutoLayers } from './useAutoLayers';
 import { useFlowFieldContext } from './useFlowFieldContext';
 import { usePeerTimeSync } from './usePeerTimeSync';
+import { useLiveFollow } from './useLiveFollow';
 import { readVariable, useVariableSync } from './useVariableSync';
 import { useClickSync } from './useClickSync';
 import { AdHocContext, LinksContext, offersSelection, selectApi, SelectContext } from './selectPopover';
@@ -220,6 +221,8 @@ export interface KeplerMapProps {
   publishIntervalMs: number;
   /** Whether this map shares its clock with the other maps on the dashboard. */
   peerTimeSync: boolean;
+  /** The query streams and the map keeps its clocks on the newest rows (`useLiveFollow`). */
+  liveFollow?: boolean;
   /** Variable the trip playhead is written to; empty for none. */
   playheadVariable: string;
   /**
@@ -300,6 +303,7 @@ export function KeplerMap({
   publishWhilePlaying,
   publishIntervalMs,
   peerTimeSync,
+  liveFollow = false,
   playheadVariable,
   panelId,
   annotations,
@@ -585,6 +589,10 @@ export function KeplerMap({
   // Declared after the dashboard sync so the dashboard range wins on load and
   // the maps only trade the clock between themselves afterwards.
   usePeerTimeSync({ store, isReady, enabled: peerTimeSync });
+
+  // After the dashboard sync, which owns the window in `toMap`: a streaming query
+  // moves the clocks to its newest rows, until the user moves them away.
+  useLiveFollow({ store, isReady, enabled: liveFollow, timeSync });
 
   useVariableSync({ store, isReady, mappings: variableMappings });
 

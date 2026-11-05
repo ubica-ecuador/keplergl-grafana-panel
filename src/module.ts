@@ -20,6 +20,7 @@ import { AdHocFieldsEditor } from './editors/AdHocFieldsEditor';
 import { PlayheadVariableEditor } from './editors/PlayheadVariableEditor';
 import { RASTER_SERVER_PLACEHOLDER } from './panel/constants';
 import { DEFAULT_PUBLISH_INTERVAL_MS, MIN_PUBLISH_INTERVAL_MS } from './panel/timeVariableSync';
+import { DEFAULT_LIVE_INTERVAL_MS, MIN_LIVE_INTERVAL_MS } from './panel/useLiveSeries';
 
 export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelOptions((builder) =>
   builder
@@ -105,6 +106,23 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
         "Share this map's time filter and trip playhead with the other maps on the dashboard that have this on. Runs in the browser, so animating one map moves the rest without re-running any query.",
       category: ['Map'],
       defaultValue: false,
+    })
+    .addBooleanSwitch({
+      path: 'liveFollow',
+      name: 'Follow live data',
+      description:
+        'While a query streams (Grafana Live, MQTT), keep the trip playhead and the time window on the newest rows. Move either away from the end and it stays there until you bring it back.',
+      category: ['Live data'],
+      defaultValue: true,
+    })
+    .addNumberInput({
+      path: 'liveIntervalMs',
+      name: 'Live update interval (ms)',
+      description:
+        'While a query streams, update the map at most this often. Every update rebuilds the dataset, so a datasource that sends several messages a second is cheaper to draw at one update a second.',
+      category: ['Live data'],
+      defaultValue: DEFAULT_LIVE_INTERVAL_MS,
+      settings: { min: MIN_LIVE_INTERVAL_MS, integer: true },
     })
     .addRadio({
       path: 'grafanaAnnotations',

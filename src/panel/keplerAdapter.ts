@@ -1584,6 +1584,15 @@ export function readSyncSlices(store: Store): unknown[] {
   return visState ? [visState.filters, visState.datasets, visState.animationConfig, visState.editor] : [];
 }
 
+/**
+ * kepler's datasets object, as an identity token: kepler builds a new one
+ * whenever rows are added, replaced or removed, and keeps it otherwise. What
+ * tells a refresh from a hand on a clock in `useLiveFollow`.
+ */
+export function readDatasetsSlice(store: Store): unknown {
+  return getVisState(store)?.datasets;
+}
+
 /** A figure drawn on the map, wherever kepler is keeping it. */
 export interface DrawnArea {
   /** kepler's feature id — assigned once when the figure is finished, stable across vertex edits. */
