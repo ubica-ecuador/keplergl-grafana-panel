@@ -1,0 +1,100 @@
+{
+  "uid": "kepler-annotations",
+  "title": "Kepler.gl — Grafana annotations",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "title": "Notes",
+      "type": "ubica-keplergl-panel",
+      "options": {
+        "showSidePanel": false,
+        "timeSync": "off",
+        "grafanaAnnotations": "both",
+        "mapConfig": {
+          "version": "v1",
+          "config": {
+            "mapState": {
+              "latitude": -2.9,
+              "longitude": -79.0,
+              "zoom": 12,
+              "bearing": 0,
+              "pitch": 0,
+              "dragRotate": false
+            },
+            "mapStyle": {
+              "styleType": "no_map"
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\": {\"fields\": [{\"name\": \"latitude\", \"type\": \"number\"}, {\"name\": \"longitude\", \"type\": \"number\"}, {\"name\": \"value\", \"type\": \"number\"}]}, \"data\": {\"values\": [[-2.897, -2.902, -2.905], [-79.004, -79.0, -78.99], [1, 2, 3]]}}]"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 2,
+      "title": "A time chart",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "random_walk"
+        }
+      ]
+    }
+  ]
+}

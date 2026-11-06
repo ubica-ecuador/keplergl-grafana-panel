@@ -93,22 +93,20 @@ function onNoteOrControl(target: Element): boolean {
 }
 
 /**
- * Re-runs the dashboard so every chart picks the new annotation up, the way
- * Grafana's own annotation editor does. A kiosk view has no button and waits
- * for its next refresh; the map shows the note already.
- */
-function refreshDashboard(): void {
-  const button = document.querySelector<HTMLButtonElement>('[data-testid="data-testid RefreshPicker run button"]');
-  button?.click();
-}
-
-/**
  * Grafana annotations on the map, and map notes into Grafana.
  *
  * In: every annotation of the panel's data that has a place (see
  * `readGeoAnnotations`) is drawn as a kepler callout with id `grafana-<id>`,
  * shown while its time overlaps the map's time filter window, or the dashboard
  * range when the map has no time filter.
+ *
+ * The dashboard is not refreshed after a write: the map shows the note already,
+ * and the other panels draw it at their next refresh. Grafana re-runs its
+ * annotation layer only from its own annotation editor (the panel context's
+ * `onAnnotationCreate`, which ties the annotation to one panel, so it cannot
+ * carry a note meant for every time chart) or from its refresh picker; a
+ * `RefreshEvent` published by a panel re-runs nothing on a scenes dashboard,
+ * Grafana 12 and 13 alike.
  *
  * Out (`mode: 'both'`, and only for a viewer allowed to create annotations): a
  * note made with kepler's right-click "Add Annotation" is written to Grafana
@@ -279,7 +277,6 @@ export function useGrafanaAnnotations({
       try {
         await getBackendSrv().patch(`/api/annotations/${grafanaIdOf(note.id)}`, body, { showErrorAlert: false });
         synced.current.set(note.id, noteFingerprint(note));
-        refreshDashboard();
       } catch (e) {
         console.warn('kepler panel: could not update the annotation', e);
       } finally {
@@ -307,7 +304,6 @@ export function useGrafanaAnnotations({
       dispatch(wrapTo(KEPLER_INSTANCE_ID, addAnnotation({ ...note, id } as never)));
       dispatch(wrapTo(KEPLER_INSTANCE_ID, setSelectedAnnotation(null)));
       synced.current.set(id, noteFingerprint(note));
-      refreshDashboard();
     } catch (e) {
       console.warn('kepler panel: could not save the map note as an annotation', e);
     } finally {
@@ -378,7 +374,6 @@ export function useGrafanaAnnotations({
       }
       getBackendSrv()
         .delete(`/api/annotations/${grafanaId}`, undefined, { showErrorAlert: false })
-        .then(() => refreshDashboard())
         .catch((e: unknown) => {
           console.warn('kepler panel: could not delete the annotation', e);
           // Still in Grafana: back on the map at the next pass.

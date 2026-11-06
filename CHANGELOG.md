@@ -49,8 +49,9 @@ release documents what changed since the one before it.
   time is in the map's window. A new option under *Map*, *Grafana annotations*, turns this off, or to
   **Show and save**: a note made on the map with right-click → *Add Annotation* is then saved as a
   Grafana annotation over the map's window, which every time chart of the dashboard draws, and
-  editing, restyling or deleting it on the map changes the annotation. Saving needs the viewer's own
-  annotation permissions. See *Annotations* in the guide.
+  editing, restyling or deleting it on the map changes the annotation. The time charts draw it at
+  their next refresh. Saving needs the viewer's own annotation permissions. See *Annotations* in the
+  guide.
 - **kepler's annotation list.** The **Aa** button opens the list of the map's notes, with their kind
   (text, point, arrow, circle, ruler), line, colour and text placement, duplicate and delete. A click
   on the bare map, or Escape, puts down the note being edited.

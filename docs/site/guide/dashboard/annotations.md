@@ -96,8 +96,11 @@ is put down. It is saved with:
 | data  | the callout itself, so it comes back with the same kind and style     |
 | panel | none: the note belongs to the dashboard, so every time chart draws it |
 
-The dashboard is refreshed after the save, so the charts show the new band at once (in kiosk mode,
-on its next refresh).
+The map shows the note at once. The time charts draw the new band at their next refresh: press
+the dashboard's **Refresh** button, or wait for its auto-refresh. The panel does not refresh the
+dashboard itself: Grafana offers a panel no way to re-run the dashboard's annotations short of its
+own annotation editor, which ties an annotation to one panel. The same goes for an edit or a
+deletion made on the map.
 
 From then on the note is the annotation. Editing its text, moving it, or changing its kind or style
 in the list writes the change to Grafana when the note is put down. **Deleting it in the list deletes
