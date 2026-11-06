@@ -4,7 +4,9 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
-## Unreleased
+## 1.7.0 (unreleased)
+
+Not released yet: it waits for the next kepler.gl release.
 
 - **Export Map writes JSON only.** kepler's HTML export, the dialog's default, is a page that loads
   React, Redux and styled-components from esm.sh, kepler.gl from unpkg.com and fonts from
