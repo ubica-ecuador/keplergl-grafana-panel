@@ -18,10 +18,10 @@ import { namesBasemap, type SavedMapConfig } from '../data/mapConfig';
 import type { KeplerThemeOverride } from '../data/keplerTheme';
 import { KEPLER_INSTANCE_ID } from './constants';
 import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES, startingStyleType } from './basemaps';
-import { configureKepler } from './keplerConfig';
+import { configureKepler, configureRasterServers, isAddDataModalOpening } from './keplerConfig';
 import { configureLoaders } from './loaderOptions';
 import { configureMaplibreWorker } from './maplibreWorker';
-import { createKeplerStore } from './keplerStore';
+import { createKeplerStore, onKeplerAction } from './keplerStore';
 import {
   capturePlayingTimeFilter,
   closeMapPopover,
@@ -170,6 +170,11 @@ export interface KeplerMapProps {
   /** Resolved base map style id, or null to leave kepler's default alone. */
   basemapId?: string | null;
   customBasemapUrl?: string;
+  /**
+   * The panel's raster tile servers (its *Raster tile server* option), for
+   * kepler's own Add Data → Tileset → Raster Tile form; empty when none is set.
+   */
+  rasterServerUrls?: readonly string[];
   showSidePanel: boolean;
   /**
    * Bumped by the options editor to request a configuration snapshot. The
@@ -275,6 +280,7 @@ export function KeplerMap({
   theme,
   basemapId,
   customBasemapUrl,
+  rasterServerUrls,
   showSidePanel,
   saveRequest,
   onMapConfigCaptured,
@@ -356,6 +362,22 @@ export function KeplerMap({
   // what makes the panel usable in air-gapped installs where the Carto base
   // maps are unreachable.
   const mapStyles = useMemo(() => registeredMapStyles(customBasemapUrl), [customBasemapUrl]);
+
+  // kepler's Add Data form starts from the page's one list of raster servers:
+  // this map's own goes there as its dialog opens, before the form reads it.
+  const rasterServersRef = useRef<readonly string[]>(rasterServerUrls ?? []);
+  useEffect(() => {
+    rasterServersRef.current = rasterServerUrls ?? [];
+  }, [rasterServerUrls]);
+  useEffect(
+    () =>
+      onKeplerAction(store, (action) => {
+        if (isAddDataModalOpening(action)) {
+          configureRasterServers(rasterServersRef.current);
+        }
+      }),
+    [store]
+  );
 
   // A query that named a service but no dates still gets a timeline: the
   // service publishes its own. Everything below works with the filled-in list,

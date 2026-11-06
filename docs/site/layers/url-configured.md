@@ -80,11 +80,14 @@ return one. A tileset added by hand is written into the dashboard; a raster a qu
 rebuilt from the query on every load and never saved, so it is the query — with whatever
 authentication the data source already has — that decides what is reachable.
 
-::: tip Pasting a COG by hand takes the STAC URL, not the file
-kepler decides a URL is a COG by looking at its path, and then wires its own public tile server for
-both the metadata and the tiles — ignoring the **Raster tile server** panel option entirely. To use
-your own server from this form, paste the STAC URL it exposes, `<server>/cog/stac?url=<cog>`, whose
-path does not trigger that branch. A query does not go through this form and is unaffected.
+::: tip A COG pasted by hand is read by the panel's raster tile server
+The form's **Raster tile servers** field starts from the panel's **Raster tile server** option. A
+Cloud Optimized GeoTIFF's description is asked of the first server in that field, as
+`<server>/cog/stac?url=<cog>` (TiTiler's STAC extension), and the tileset keeps those servers for its
+tiles. With no server in the field the form asks no one, and says that a COG needs a server: set
+the panel option, or type one in the field. Up to 1.6 the form sent every COG to Development Seed's
+public demo, `https://titiler.xyz`, whatever the option said, as kepler's own form does. A query
+does not go through this form and is unaffected.
 :::
 
 ## vectorTile {#vectortile}

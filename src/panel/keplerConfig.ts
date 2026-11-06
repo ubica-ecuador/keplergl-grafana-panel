@@ -1,4 +1,5 @@
 import { messages } from '@kepler.gl/localization';
+import { ADD_DATA_ID } from '@kepler.gl/constants';
 import { initApplicationConfig } from '@kepler.gl/utils';
 
 import { DEFAULT_RASTER_SERVER_URL, rasterServerUrlsOf } from './constants';
@@ -26,6 +27,32 @@ import { registerTile3dMessages } from './tile3dMessages';
 export function assetBaseUrl(): string {
   const publicPath = typeof __webpack_public_path__ === 'string' ? __webpack_public_path__ : '';
   return publicPath.replace(/\/$/, '');
+}
+
+/**
+ * The raster tile servers kepler's Add Data → Tileset → Raster Tile form starts
+ * from: the panel's own *Raster tile server* option, or none.
+ *
+ * kepler keeps one application config for the page, and a dashboard can hold
+ * maps with different servers, so each map sets its own the moment its Add
+ * Data dialog opens (`isAddDataModalOpening`), before the form reads it. With
+ * no server, the form asks no one about a COG and says what to set; see
+ * scripts/kepler-raster-form-loader.cjs, which takes the public server kepler
+ * hard-codes out of the form.
+ */
+export function configureRasterServers(urls: readonly string[]): void {
+  initApplicationConfig({ rasterServerUrls: [...urls] });
+}
+
+/** Whether `action`, as a map's store hears it (see `onKeplerAction`), opens kepler's Add Data dialog. */
+export function isAddDataModalOpening(action: { type: string; payload?: unknown }): boolean {
+  if (!/TOGGLE_MODAL$/.test(action.type)) {
+    return false;
+  }
+  // An action addressed to the map arrives wrapped, its own payload inside.
+  const inner = action.payload as { type?: unknown; payload?: unknown } | string | undefined;
+  const id = inner && typeof inner === 'object' && 'type' in inner ? inner.payload : inner;
+  return id === ADD_DATA_ID;
 }
 
 /**

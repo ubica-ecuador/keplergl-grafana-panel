@@ -248,6 +248,9 @@ export function KeplerPanel(props: Props) {
     [rasterServerMissing, zarrServerMissing]
   );
 
+  // For kepler's own Add Data → Tileset → Raster Tile form.
+  const rasterServerUrls = useMemo(() => rasterServerUrlsOf(options.rasterServerUrl), [options.rasterServerUrl]);
+
   const keplerTheme = useMemo(() => toKeplerTheme(grafanaTheme), [grafanaTheme]);
   const followTheme = options.followGrafanaTheme ?? true;
 
@@ -313,6 +316,7 @@ export function KeplerPanel(props: Props) {
         theme={followTheme ? keplerTheme : undefined}
         basemapId={basemapId}
         customBasemapUrl={customBasemapUrl}
+        rasterServerUrls={rasterServerUrls}
         showSidePanel={options.showSidePanel ?? true}
         saveRequest={options.saveRequest ?? 0}
         onMapConfigCaptured={handleMapConfigCaptured}

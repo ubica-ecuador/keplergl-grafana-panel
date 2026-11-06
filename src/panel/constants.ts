@@ -52,10 +52,11 @@ export const TOPOGRAPHIC_TERRAIN_BASEMAP_ID = 'grafana-topographic-terrain';
  *
  * Two things worth knowing before debugging a tile that never arrives:
  *
- *  - Pasting a bare `.tif` into kepler's own Add Data → Tileset form ignores
- *    this setting entirely. kepler decides a URL is a COG from its pathname and
- *    hardcodes `titiler.xyz` for both metadata and tiles, with no form override.
- *    Workaround: paste the STAC URL instead — `<server>/cog/stac?url=<cog>`.
+ *  - kepler's own Add Data → Tileset → Raster Tile form hard-codes
+ *    `titiler.xyz` for a COG's metadata and tiles; the build takes it out
+ *    (scripts/kepler-raster-form-loader.cjs) and the form starts from this
+ *    option instead (keplerConfig.ts, `configureRasterServers`): with none set
+ *    it asks no one about a COG and says what to set.
  *  - Grafana's strict CSP must allow the server's host under `connect-src`,
  *    not `img-src`. The tiles are NumPy arrays fetched over XHR, not images.
  *

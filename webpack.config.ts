@@ -6,6 +6,12 @@ import { merge } from 'webpack-merge';
 
 import grafanaConfig, { type Env } from './.config/webpack/webpack.config';
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const rasterForm = require('./scripts/kepler-raster-form-loader.cjs') as {
+  RASTER_FORM: RegExp;
+  NoPublicTitilerPlugin: new () => webpack.WebpackPluginInstance;
+};
+
 /*
  * Walks up from `context` (the directory of the file issuing a bare
  * `require('mapbox-gl')` / `import('mapbox-gl')`) the same way Node's
@@ -261,6 +267,12 @@ const config = async (env: Env): Promise<Configuration> => {
       new webpack.IgnorePlugin({
         checkResource: (resource, context) => resource === 'mapbox-gl' && resolvesToProprietaryMapboxGl(context),
       }),
+      /*
+       * The second line behind the raster form's loader (module rule below):
+       * fails the build if any kepler module still names Development Seed's
+       * public TiTiler as a value once the loaders have run.
+       */
+      new rasterForm.NoPublicTitilerPlugin(),
     ],
     resolve: {
       fallback: {
@@ -343,6 +355,15 @@ const config = async (env: Env): Promise<Configuration> => {
         {
           test: /[\\/]@kepler\.gl[\\/]utils[\\/]dist[\\/](esm|cjs)[\\/]filter-utils\.js$/,
           use: [path.resolve(process.cwd(), 'scripts', 'kepler-polygon-filter-loader.cjs')],
+        },
+        /*
+         * kepler's Add Data → Tileset → Raster Tile form sends every COG to
+         * https://titiler.xyz, hard-coded; this makes it use the panel's raster
+         * tile server and ask no one when there is none. See the loader.
+         */
+        {
+          test: rasterForm.RASTER_FORM,
+          use: [path.resolve(process.cwd(), 'scripts', 'kepler-raster-form-loader.cjs')],
         },
         // The text of a `?raw` stylesheet; see `leaveRawStylesheetsAlone`.
         {

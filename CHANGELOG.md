@@ -6,6 +6,14 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **kepler's Raster Tile form no longer sends COGs to titiler.xyz.** *Add Data → Tileset → Raster
+  Tile* asked Development Seed's public server, `https://titiler.xyz`, about every Cloud Optimized
+  GeoTIFF typed into it (its URL, signature included) about 300 ms after it was typed, and saved
+  that server as the tileset's, whatever the panel's *Raster tile server* said. The form's *Raster
+  tile servers* field now starts from the panel's option; a COG is described by the first server in
+  it (`<server>/cog/stac`) and drawn by those servers; with none, the form asks no one and says a
+  COG needs a server. The build fails if a kepler release changes the form so that this no longer
+  holds.
 - **Saving the map leaves tileset access tokens out.** The token typed into *Add Data → Tileset →
   3D Tile* (a Cesium ion or Google key) was saved with the tileset into the dashboard's JSON, where
   every viewer could read it. The save, and a configuration pasted into *Import configuration*, now
