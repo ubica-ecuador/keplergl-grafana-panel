@@ -42,7 +42,8 @@ configuration rather than in it, as kepler's own **Export map** keeps them. See
 **With one exception: tilesets.** A layer you added through kepler's own **Add Data → Tileset** —
 vector tile, raster tile, WMS, 3D tiles, bitmap — has no query behind it, so nothing would rebuild
 it on the next load. The save writes its **descriptor** instead: the name, the field list, and the
-URLs. No rows, so it stays a few lines of JSON. See
+URLs. No rows, so it stays a few lines of JSON, and no access token: a 3D tileset's token is left
+out, as kepler's own **Export map** leaves it out. See
 [Layers configured with a URL](../../layers/url-configured).
 
 A file **loaded by URL** in **Add Data** — a GeoJSON or CSV on a web server — is saved the same way:
@@ -79,7 +80,7 @@ bring a map across from somewhere else — including from the tools this plugin 
 | `{ datasets, config, info }` | kepler's **Export map**, and Dekart |
 
 From the second, the `config` half is kept along with any **tileset descriptors** among its
-datasets — so a map built over someone's vector tiles arrives with those tiles — and the map's name
+datasets, without their access tokens — so a map built over someone's vector tiles arrives with those tiles — and the map's name
 and description from `info`. Everything else in `datasets` is dropped: the data comes from your
 panel's own queries, and importing a map does not import someone else's rows.
 

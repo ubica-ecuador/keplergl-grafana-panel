@@ -6,6 +6,12 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Saving the map leaves tileset access tokens out.** The token typed into *Add Data → Tileset →
+  3D Tile* (a Cesium ion or Google key) was saved with the tileset into the dashboard's JSON, where
+  every viewer could read it. The save, and a configuration pasted into *Import configuration*, now
+  leave out the fields kepler's own *Export map* leaves out unless asked to include layer API keys;
+  the token lasts for the session. A dashboard saved with one still loads with it, and its next save
+  drops it.
 - **Breaking: the *CARTO API key* option is gone.** A panel option is saved in the dashboard's JSON,
   where everyone who can view the dashboard can read it, so the panel no longer takes a key: Dark
   Matter, Positron and Voyager are asked of CARTO without one, as when the option was empty (their

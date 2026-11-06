@@ -141,8 +141,36 @@ export function keepMapInfo(value: unknown): SavedMapInfo | undefined {
 }
 
 /**
- * The URL-backed datasets among `value`, with their rows dropped and their field
- * list guaranteed.
+ * Dataset metadata that holds an access token: what kepler's own export leaves
+ * out unless asked to include layer API keys (`LAYER_API_KEY_METADATA_FIELDS`
+ * in @kepler.gl/utils' export-utils, which a unit test reads to keep the two
+ * lists equal). Today the one field is the 3D Tiles form's token, a Cesium ion
+ * or Google key.
+ *
+ * The panel saves the map in the dashboard's JSON, which everyone who can view
+ * the dashboard can read, so a token typed into Add Data → Tileset lasts for
+ * the session and is never written there. A dashboard that already carries one
+ * still loads with it; its next save leaves it out.
+ */
+export const LAYER_API_KEY_METADATA_FIELDS = ['tile3dAccessToken'];
+
+/** `metadata` without its access tokens, or itself when it has none. */
+function withoutApiKeys(metadata: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  if (!isRecord(metadata) || !LAYER_API_KEY_METADATA_FIELDS.some((field) => field in metadata)) {
+    return metadata;
+  }
+  const kept = { ...metadata };
+  for (const field of LAYER_API_KEY_METADATA_FIELDS) {
+    delete kept[field];
+  }
+  return kept;
+}
+
+/**
+ * The URL-backed datasets among `value`, with their rows dropped, their field
+ * list guaranteed and their access tokens left out (see
+ * {@link LAYER_API_KEY_METADATA_FIELDS}): what a save writes and what a paste
+ * into **Import configuration** keeps.
  *
  * The `allData: []` is not cosmetic: an exported map carries every dataset's
  * rows, and a tileset that somehow arrived with some would otherwise write them
@@ -158,7 +186,11 @@ export function keepRemoteDatasets(value: unknown): SavedRemoteDataset[] {
   for (const entry of value) {
     if (isRemoteDataset(entry)) {
       const fields = Array.isArray(entry.data.fields) ? entry.data.fields : [];
-      kept.push({ ...entry, data: { ...entry.data, fields, allData: [] } });
+      const metadata = withoutApiKeys(entry.data.metadata);
+      kept.push({
+        ...entry,
+        data: { ...entry.data, fields, allData: [], ...(metadata ? { metadata } : {}) },
+      });
     }
   }
   return kept;

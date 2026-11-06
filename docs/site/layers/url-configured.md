@@ -153,9 +153,13 @@ its own saved view instead.
 
 Nothing in a tileset can be hovered: it shows no tooltip.
 
-::: warning The access token is saved with the map
-The token is part of the tileset's dataset, and saving the map writes that dataset into the
-dashboard JSON as it is. Anyone who can read the dashboard can read the token.
+::: warning The access token is not saved with the map
+Anyone who can read a dashboard can read its JSON, so saving the map leaves the **Access Token**
+out, as kepler's own **Export map** does. The tileset's URL and name are saved; the token lasts for
+the session: after a reload, a tileset that needs one draws only once it is added again through
+**Add Data** with its token. A dashboard saved with a token by an earlier version still loads with it, and its
+next save leaves the token out. A key written into the tileset's URL itself is part of the URL,
+and is saved (see above).
 :::
 
 ## bitmap {#bitmap}

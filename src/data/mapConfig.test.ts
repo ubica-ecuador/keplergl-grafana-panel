@@ -1,4 +1,13 @@
-import { keepMapInfo, keepRemoteDatasets, namesBasemap, parseMapConfigJson } from './mapConfig';
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
+
+import {
+  keepMapInfo,
+  keepRemoteDatasets,
+  LAYER_API_KEY_METADATA_FIELDS,
+  namesBasemap,
+  parseMapConfigJson,
+} from './mapConfig';
 import savedByThePanel from '../../testdata/kepler-configs/kepler-v1-saved-config.json';
 
 /** A tileset descriptor as kepler's DatasetSchema saves one. */
@@ -134,6 +143,50 @@ describe('keepRemoteDatasets', () => {
     const entries = [{ version: 'v1', data: { id: 'ab12', type: 'vector-tile' } }];
 
     expect(keepRemoteDatasets(entries)[0].data.fields).toEqual([]);
+  });
+
+  it("leaves out a tileset's access token, and keeps the rest of its metadata", () => {
+    const metadata = { tile3dUrl: 'https://assets.ion.cesium.com/1/tileset.json', tile3dAccessToken: 'secret' };
+    const entries = [{ version: 'v1', data: { id: 'ion', type: 'tile-3d', fields: [], metadata } }];
+
+    const [kept] = keepRemoteDatasets(entries);
+
+    expect(kept.data.metadata).toEqual({ tile3dUrl: 'https://assets.ion.cesium.com/1/tileset.json' });
+    expect(JSON.stringify(kept)).not.toContain('secret');
+    // The map kepler holds keeps its token for the session.
+    expect(metadata.tile3dAccessToken).toBe('secret');
+  });
+
+  it('leaves out a token pasted into Import configuration too', () => {
+    const pasted = JSON.stringify({
+      datasets: [
+        {
+          version: 'v1',
+          data: {
+            id: 'g',
+            type: 'tile-3d',
+            fields: [],
+            metadata: { tile3dUrl: 'https://x/t.json', tile3dAccessToken: 'k' },
+          },
+        },
+      ],
+      config: { version: 'v1', config: {} },
+    });
+
+    expect(parseMapConfigJson(pasted)?.datasets?.[0].data.metadata).toEqual({ tile3dUrl: 'https://x/t.json' });
+  });
+
+  it("strips exactly the fields kepler's own export strips", () => {
+    // kepler leaves these out of an exported map unless asked to include layer
+    // API keys. Read from its source, so a field kepler adds fails here.
+    const source = readFileSync(
+      join(dirname(require.resolve('@kepler.gl/utils')), '..', 'esm', 'export-utils.js'),
+      'utf8'
+    );
+    const list = /LAYER_API_KEY_METADATA_FIELDS\s*=\s*(\[[^\]]*\])/.exec(source)?.[1];
+
+    expect(list).toBeDefined();
+    expect(JSON.parse((list as string).replace(/'/g, '"'))).toEqual(LAYER_API_KEY_METADATA_FIELDS);
   });
 
   it('tolerates junk where a dataset list should be', () => {
