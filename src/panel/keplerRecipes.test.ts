@@ -7,6 +7,7 @@ import {
   MapControlFactory,
   MapPopoverContentFactory,
   ModalDialogFactory,
+  ExportMapModalFactory,
   PanelHeaderFactory,
   RangeSliderFactory,
 } from '@kepler.gl/components';
@@ -53,6 +54,7 @@ describe('the recipes the panel injects', () => {
     ['the map container', MapContainerFactory, 'MapContainerWithHalo'],
     ['the enlarged time bar', RangeSliderFactory, 'TimeBarCursorRangeSlider'],
     ['the minified time bar', TimelineSliderFactory, 'TimeBarCursorTimelineSlider'],
+    ['the Export Map dialog', ExportMapModalFactory, 'ExportMapModalJsonOnly'],
   ])('still replaces %s when the whole list is provided', (_name, stock, expected) => {
     expect(nameOf(resolve().get(stock as never))).toBe(expected);
   });

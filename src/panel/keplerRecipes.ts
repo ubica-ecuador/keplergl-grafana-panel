@@ -6,6 +6,7 @@ import { replacePanelHeader } from './panelHeader';
 import { replaceModalDialog } from './modalOnBody';
 import { replaceMapPopoverContent } from './selectPopover';
 import { replaceRangeSlider, replaceTimelineSlider } from './timeBarCursorSlider';
+import { replaceExportMapModal } from './exportMapJsonOnly';
 
 /**
  * The component replacements the panel hands `injectComponents`, in the order
@@ -50,5 +51,7 @@ export function keplerRecipes(): Array<[unknown, unknown]> {
     // The smallest trees here (the time bars of the two widget sizes), so last.
     replaceRangeSlider(),
     replaceTimelineSlider(),
+    // Share → Export Map as JSON only: its tree is kepler's JSON panel alone.
+    replaceExportMapModal(),
   ] as Array<[unknown, unknown]>;
 }

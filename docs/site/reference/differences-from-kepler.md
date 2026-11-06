@@ -175,6 +175,12 @@ Content-Security-Policy would refuse it anyway. The plugin bundles sql.js and sh
 WebAssembly files in its `loaders/` folder, and kepler's writers are handed those instead, so an
 export calls no host but Grafana. See [Exporting data](../guide/kepler/export-data).
 
+**Export Map** writes JSON only. kepler's HTML export, its default, is a page that loads React,
+Redux and styled-components from esm.sh, kepler.gl from unpkg.com and fonts from CloudFront, and
+its part of the dialog fetches three preview pictures from CloudFront as the dialog opens. The panel
+swaps in kepler's own dialog built without that part (an injected `ExportMapModalFactory`), with
+JSON its one format. See [Export Map](../guide/kepler/export-data#export-map).
+
 ## Scene changes happen on the layer, not to it
 
 Walking a series of rasters could be done by replacing the dataset for each date, and that is what

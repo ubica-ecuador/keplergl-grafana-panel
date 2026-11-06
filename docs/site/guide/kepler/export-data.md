@@ -40,14 +40,17 @@ readers is the query: leave out the rows and columns the map does not need.
 ## Export Map
 
 The same menu has **Export Image**, **Export Video** and **Export Map**. Export Map writes the whole
-map, its data included, as a JSON file or as a single HTML page. The JSON is the
-`{ datasets, config, info }` shape that **Import configuration** reads; an import keeps the
-configuration and drops the rows. See [Map configuration](../map/map-configuration#importing).
+map, its data included, as a JSON file: the `{ datasets, config, info }` shape that kepler.gl
+reopens and that **Import configuration** reads; an import keeps the configuration and drops the
+rows. See [Map configuration](../map/map-configuration#importing). Its **Map details** set the map's
+name and description.
 
-The HTML page is not drawn by this plugin. It loads kepler.gl from unpkg.com when it is opened, so
-it needs that host, and it knows none of the layer types the plugin adds: symbols, markers, photos,
-Zarr tiles and the others. Its **Map details** set the name, link, icon and name colour that the
-page shows as its logo; the icon and the colour are new in kepler 3.3.0-alpha.19.
+kepler's own dialog also offers a single HTML page, and makes it the default. The panel leaves it
+out since 1.7.0: that page loads React, Redux and styled-components from esm.sh, kepler.gl from
+unpkg.com and its fonts from CloudFront wherever it is opened, and it knows none of the layer types
+the plugin adds (symbols, markers, photos, Zarr tiles and the others). Leaving it out also stops the
+dialog fetching the three preview pictures kepler shows for it from its documentation bucket on
+CloudFront.
 
 ---
 

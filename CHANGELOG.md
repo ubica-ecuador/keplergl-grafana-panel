@@ -6,6 +6,11 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Export Map writes JSON only.** kepler's HTML export, the dialog's default, is a page that loads
+  React, Redux and styled-components from esm.sh, kepler.gl from unpkg.com and fonts from
+  CloudFront wherever it is opened, and the dialog fetched three preview pictures for it from
+  kepler's documentation bucket on CloudFront as it opened, even with JSON chosen. The dialog is now
+  kepler's own without its HTML part, with JSON as its one format, and fetches nothing.
 - **kepler's Raster Tile form no longer sends COGs to titiler.xyz.** *Add Data → Tileset → Raster
   Tile* asked Development Seed's public server, `https://titiler.xyz`, about every Cloud Optimized
   GeoTIFF typed into it (its URL, signature included) about 300 ms after it was typed, and saved
