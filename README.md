@@ -73,8 +73,8 @@ tutorials, a layer gallery and a complete option reference.
   Foursquare Studio or Dekart are accepted.
 - **Follows the dashboard theme**, base map included.
 - **No account needed for the base maps.** OpenFreeMap's five by default — Positron, Bright,
-  Liberty, Dark, Fiord — with no key at all; CARTO's three, with an optional CARTO API key (without
-  one their tiles may carry a watermark since 23 Sep 2026); and Esri's three — flat satellite imagery,
+  Liberty, Dark, Fiord — with no key at all; CARTO's three, asked for without a key (their raster
+  tiles carry a watermark without one since 23 Sep 2026); and Esri's three — flat satellite imagery,
   plus satellite and topographic with **real elevation**: tilt the camera and the ground has relief.
   Topographic exists only in this relief form; there is no flat version. Every one can be swapped for
   a self-hosted `style.json`; kepler's icon library ships with the plugin.

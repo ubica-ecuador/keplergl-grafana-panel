@@ -173,18 +173,12 @@ describe('registeredMapStyles', () => {
     expect(satellite?.layerGroups?.map((g) => g.slug)).toEqual(['label', 'road']);
   });
 
-  it('asks CARTO with the key when there is one, and only CARTO', () => {
-    const styles = registeredMapStyles(undefined, 'k');
+  it('asks CARTO without a key: the panel keeps none in a dashboard', () => {
+    const styles = registeredMapStyles('https://tiles.internal/style.json');
     for (const id of ['dark-matter', 'positron', 'voyager']) {
-      expect(styles.find((s) => s.id === id)?.url).toMatch(/\?key=k$/);
+      expect(styles.find((s) => s.id === id)?.url).toMatch(/^https:\/\/basemaps\.cartocdn\.com\//);
     }
-    expect(
-      styles
-        .filter((s) => s.url.includes('key='))
-        .map((s) => s.id)
-        .sort()
-    ).toEqual(['dark-matter', 'positron', 'voyager']);
-    expect(registeredMapStyles().find((s) => s.id === 'positron')?.url).not.toContain('key=');
+    expect(styles.filter((s) => /[?&]key=/.test(s.url))).toEqual([]);
   });
 });
 

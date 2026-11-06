@@ -11,7 +11,6 @@ import {
   SATELLITE_TERRAIN_BASEMAP_ID,
   TOPOGRAPHIC_TERRAIN_BASEMAP_ID,
 } from './constants';
-import { withCartoKey } from './cartoKey';
 import { assetBaseUrl } from './keplerConfig';
 import { SATELLITE_LAYER_GROUPS, STYLE_LAYER_GROUPS, type LayerGroup } from './layerGroups';
 
@@ -49,7 +48,7 @@ const shippedIcon = (id: string) => `${assetBaseUrl()}/images/basemaps/${id}.png
 /**
  * OpenFreeMap's styles: OpenMapTiles over OpenStreetMap, served with no key
  * and no account (https://openfreemap.org). The defaults since CARTO began
- * asking for a key — see `cartoKey.ts`. OpenFreeMap's "3D" is Liberty with the
+ * asking for a key (they still answer without one). OpenFreeMap's "3D" is Liberty with the
  * camera tilted, which is the map's business in kepler, not the base map's;
  * Liberty's own extrusions carry the 3D Building switch.
  */
@@ -96,8 +95,9 @@ export const REPLACES_DEFAULT_MAP_STYLES = true;
  * The map styles this panel offers.
  *
  * OpenFreeMap's five come first and need nothing at all. CARTO's three keep
- * kepler's ids, so dashboards saved on them still open there, and take the
- * optional `cartoApiKey`; without one their tiles may carry a watermark. Four
+ * kepler's ids, so dashboards saved on them still open there, and are asked
+ * for without a key: a key in a panel option is saved in the dashboard, where
+ * every viewer reads it, so the panel offers none. Four
  * more are the plugin's own documents, served from its assets: flat
  * satellite imagery, the same imagery over real elevation, a topographic map
  * over real elevation, and — once configured — a self-hosted `style.json`.
@@ -105,7 +105,7 @@ export const REPLACES_DEFAULT_MAP_STYLES = true;
  * reads straight from the style; kepler passes it through untouched, which is
  * the whole reason elevation is possible here at all.
  */
-export function registeredMapStyles(customBasemapUrl?: string, cartoApiKey?: string): RegisteredMapStyle[] {
+export function registeredMapStyles(customBasemapUrl?: string): RegisteredMapStyle[] {
   const styles: RegisteredMapStyle[] = [
     // Replacing kepler's list drops its "No Basemap" entry along with the
     // Mapbox ones, and that one earns its place: it is how a dashboard shows
@@ -120,12 +120,11 @@ export function registeredMapStyles(customBasemapUrl?: string, cartoApiKey?: str
       colorMode,
     })),
     // kepler's own CARTO entries: their ids stay, so a dashboard saved on Dark
-    // Matter opens on it, with or without a key. The switches' filters here
+    // Matter opens on it. The switches' filters here
     // ignore case (layerGroups.ts).
     ...DEFAULT_MAPLIBRE_STYLES.map((style) => ({
       ...style,
       label: CARTO_LABELS[style.id] ?? style.label,
-      url: cartoApiKey ? withCartoKey(style.url, cartoApiKey) : style.url,
       icon: shippedIcon(style.id),
       layerGroups: STYLE_LAYER_GROUPS,
     })),

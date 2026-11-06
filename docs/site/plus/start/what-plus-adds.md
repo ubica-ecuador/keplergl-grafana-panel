@@ -1,9 +1,9 @@
 # What Plus adds
 
 Plus is built from the free panel's source. Every feature of the free panel is in Plus, and every free option keeps
-the same name and the same path in the panel's options and in the saved map, but one: the **CARTO API key**, which
-would save a key in the dashboard, is not offered in Plus (see
-[CARTO without a key](/plus/maps/basemaps#carto-without-a-key)). Everything else on the free site, from
+the same name and the same path in the panel's options and in the saved map. (The free panel's **CARTO API key** of
+1.6 and earlier, which saved a key in the dashboard, is offered by neither; see
+[CARTO without a key](/plus/maps/basemaps#carto-without-a-key).) Everything else on the free site, from
 [What it is](/guide/what-it-is) to the option reference, stays true of a Plus panel. These pages cover only what
 Plus adds.
 
@@ -33,7 +33,7 @@ Plus adds.
 ## Same options, same saved map
 
 Because the options are the same, a free panel can be switched to Plus without losing anything: its options and its
-saved map carry over, all but a CARTO API key. See [Move a dashboard to Plus](/plus/start/upgrade-a-dashboard).
+saved map carry over (a CARTO API key saved by the free panel up to 1.6 is dropped). See [Move a dashboard to Plus](/plus/start/upgrade-a-dashboard).
 
 Plus adds its own settings next to the free ones:
 

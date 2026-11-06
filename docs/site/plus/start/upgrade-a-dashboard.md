@@ -14,8 +14,8 @@ the variables it reads and writes. Plus has the same options under the same path
 Only options carried over from the free panel are kept; switching from any other visualization, such as Geomap,
 starts the Plus panel from its defaults.
 
-The one option left behind is the free panel's **CARTO API key**, which Plus does not offer because it saves the key
-in the dashboard. CARTO's base maps are then asked for without a key; see
+The one option left behind is the **CARTO API key** of the free panel up to 1.6, which neither panel offers any more
+because it saves the key in the dashboard. CARTO's base maps are asked for without a key; see
 [CARTO without a key](/plus/maps/basemaps#carto-without-a-key).
 
 Once switched, the panel shows the Plus settings as well: the **Places** and **Active alerts** groups in the panel

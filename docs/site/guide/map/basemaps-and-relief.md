@@ -13,9 +13,9 @@ not a coincidence, and it is the reason the picker looks different from stock ke
 | Liberty (OpenFreeMap)     | OpenFreeMap       | with its own 3D buildings                 |
 | Dark (OpenFreeMap)        | OpenFreeMap       | no key, no account                        |
 | Fiord (OpenFreeMap)       | OpenFreeMap       | no key, no account                        |
-| Dark Matter (CARTO)       | CARTO             | kepler's own entry; optional key          |
-| Positron (CARTO)          | CARTO             | kepler's own entry; optional key          |
-| Voyager (CARTO)           | CARTO             | kepler's own entry; optional key          |
+| Dark Matter (CARTO)       | CARTO             | kepler's own entry; no key                |
+| Positron (CARTO)          | CARTO             | kepler's own entry; no key                |
+| Voyager (CARTO)           | CARTO             | kepler's own entry; no key                |
 | Satellite (Esri)          | Esri              | flat imagery                              |
 | Satellite + relief        | Esri + Mapterhorn | imagery over real elevation               |
 | Topographic + relief      | Esri + Mapterhorn | topographic map over real elevation       |
@@ -36,15 +36,20 @@ styles first, and re-registers the three that work without a Mapbox token — CA
 own definitions rather than by copying them, so an upstream rename surfaces as a test failure
 instead of a silently broken entry.
 
-## CARTO and its key
+## CARTO without a key
 
-Since 23 September 2026 CARTO asks for an API key, and without one its tiles may come back with an
-"API key required" watermark. That is why _Match theme_ now uses OpenFreeMap rather than CARTO's Dark
-Matter and Positron. CARTO's entries keep their ids, so a dashboard saved on one still opens there.
-To use them cleanly, get a free key at [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/)
-and paste it into **CARTO API key**: the panel adds it to every CARTO style, sprite, glyph and tile
-URL. The key is public by design — it travels in every tile URL — and dashboard variables are
-interpolated. Keys registered before 23 September 2026 work until 30 November 2026.
+The panel asks CARTO for Dark Matter, Positron and Voyager without a key. Their vector styles and
+tiles still draw without one; since 23 September 2026 CARTO asks for a key, and its raster tiles
+carry an "API key required" watermark without one. That is why _Match theme_ uses OpenFreeMap
+rather than CARTO's Dark Matter and Positron. CARTO's entries keep their ids, so a dashboard saved on
+one still opens there.
+
+Up to 1.6, the panel had a **CARTO API key** option. It is gone since 1.7.0: a panel option is saved
+in the dashboard's JSON, where everyone who can view the dashboard can read it. A dashboard saved
+with a key opens without it, and its next save leaves the key out. To draw CARTO with your own key,
+serve a copy of its style whose sources list the tile URLs with your key (CARTO's own style points at
+a TileJSON whose tile URLs carry none) and choose **Base map** → _Self-hosted style.json_ (see
+below); for a new map, prefer the OpenFreeMap styles, which need no key.
 
 ## Map Layers switches
 

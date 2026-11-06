@@ -13,7 +13,7 @@ import type { DayNightMode } from './data/dayNight';
  * Base maps offered in the panel options.
  *
  * All of them work without a Mapbox token: five OpenFreeMap styles that need no
- * key at all, kepler's three CARTO styles (keyed by `cartoApiKey`), and the
+ * key at all, kepler's three CARTO styles (asked for without a key), and the
  * plugin's own Esri imagery and relief styles. The value is the kepler style id, so `KeplerPanel` can pass it
  * straight through.
  */
@@ -99,13 +99,6 @@ export interface KeplerPanelOptions {
    * internet, which air-gapped Grafana installs do not have.
    */
   customBasemapUrl?: string;
-
-  /**
-   * CARTO's API key, for the Dark Matter, Positron and Voyager base maps. Public
-   * by design — it travels in every tile URL. Without it CARTO's raster tiles
-   * carry an "API key required" watermark since 2026-09-23.
-   */
-  cartoApiKey?: string;
 
   /**
    * Colour ramp for rasters the queries produce.

@@ -101,8 +101,8 @@ What is left to pick from:
 
 ### CARTO without a key
 
-CARTO's Dark Matter, Positron and Voyager stay, asked without a key, as the free panel asks for them when its own
-**CARTO API key** option is empty. Plus does not offer that option either; see
+CARTO's Dark Matter, Positron and Voyager stay, asked without a key, as the free panel asks for them. Neither panel
+offers the free panel's former **CARTO API key** option; see
 [CARTO without a key](/plus/maps/basemaps#carto-without-a-key) on the Base maps page.
 
 ## Upgrading from 1.2 or earlier

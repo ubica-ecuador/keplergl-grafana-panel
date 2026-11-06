@@ -1,4 +1,4 @@
-import { FieldConfigProperty, PanelPlugin } from '@grafana/data';
+import { FieldConfigProperty, PanelPlugin, type PanelModel } from '@grafana/data';
 import { config } from '@grafana/runtime';
 import { GAZETTEERS } from './data/placeLookup';
 
@@ -19,6 +19,7 @@ import { FitVariablesEditor } from './editors/FitVariablesEditor';
 import { AdHocFieldsEditor } from './editors/AdHocFieldsEditor';
 import { PlayheadVariableEditor } from './editors/PlayheadVariableEditor';
 import { RASTER_SERVER_PLACEHOLDER } from './panel/constants';
+import { hasRemovedOptions, migrateRemovedOptions } from './panel/removedOptions';
 import { DEFAULT_PUBLISH_INTERVAL_MS, MIN_PUBLISH_INTERVAL_MS } from './panel/timeVariableSync';
 import { DEFAULT_LIVE_INTERVAL_MS, MIN_LIVE_INTERVAL_MS } from './panel/useLiveSeries';
 
@@ -281,14 +282,6 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       showIf: (config) => config.basemap === 'custom',
     })
     .addTextInput({
-      path: 'cartoApiKey',
-      name: 'CARTO API key',
-      description:
-        'Only for the CARTO base maps (Dark Matter, Positron, Voyager). Free at carto.com/basemaps/apikey; public by design, it travels in every tile URL. Dashboard variables are interpolated.',
-      category: ['Map'],
-      settings: { placeholder: 'Optional' },
-    })
-    .addTextInput({
       path: 'rasterServerUrl',
       name: 'Raster tile server',
       description:
@@ -537,3 +530,10 @@ plugin.setDataSupport({ annotations: true, alertStates: false });
 plugin.setPanelChangeHandler((_panel, prevPluginId, prevOptions, prevFieldConfig) =>
   fromGeomapPanel(prevPluginId, prevOptions, prevFieldConfig, config.theme2)
 );
+
+// A panel saved with an option the panel no longer offers (the CARTO API key of
+// 1.6 and earlier) loses it, so the next save of the dashboard leaves it out.
+// Grafana migrates a panel saved by another version; `shouldMigrate` also
+// catches one saved by this version with the option pasted back into its JSON.
+// Grafana types its argument as a component, but hands it the saved panel.
+plugin.setMigrationHandler(migrateRemovedOptions, (panel) => hasRemovedOptions(panel as unknown as PanelModel));

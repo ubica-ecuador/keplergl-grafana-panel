@@ -13,7 +13,6 @@ import { framesToZarr } from '../data/zarrDataset';
 import { toKeplerTheme } from '../data/keplerTheme';
 import { SavedMapConfig } from '../data/mapConfig';
 import { CUSTOM_BASEMAP_ID, rasterServerUrlsOf, resolveRasterServerUrl } from './constants';
-import { resolveCartoKey } from './cartoKey';
 import { resolveCustomBasemapUrl } from './customBasemapUrl';
 import { DEFAULT_CLICK_AREA_METRES } from './clickArea';
 import { LazyKeplerMap } from './LazyKeplerMap';
@@ -268,10 +267,6 @@ export function KeplerPanel(props: Props) {
       ),
     [options.customBasemapUrl, replaceVariables]
   );
-  const cartoApiKey = useMemo(
-    () => resolveCartoKey(options.cartoApiKey, replaceVariables),
-    [options.cartoApiKey, replaceVariables]
-  );
 
   // `auto` tracks the dashboard theme so a light dashboard does not carry a
   // black map. `custom` is ignored until a URL is actually supplied — resolved
@@ -318,7 +313,6 @@ export function KeplerPanel(props: Props) {
         theme={followTheme ? keplerTheme : undefined}
         basemapId={basemapId}
         customBasemapUrl={customBasemapUrl}
-        cartoApiKey={cartoApiKey}
         showSidePanel={options.showSidePanel ?? true}
         saveRequest={options.saveRequest ?? 0}
         onMapConfigCaptured={handleMapConfigCaptured}

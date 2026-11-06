@@ -4,8 +4,8 @@ The map is stored in the panel option 'mapConfig' ('config.mapStyle', 'config.vi
 Base map: set 'config.mapStyle.styleType'. Free ids: no_map, openfreemap-positron,
 openfreemap-bright, openfreemap-liberty, openfreemap-dark, openfreemap-fiord, dark-matter,
 positron, voyager, grafana-satellite, grafana-satellite-terrain, grafana-topographic-terrain.
-dark-matter, positron and voyager are CARTO's: they need the panel option 'cartoApiKey' to
-avoid watermarked tiles, so prefer the openfreemap-* ids. Colour ramp:
+dark-matter, positron and voyager are CARTO's, asked for without a key; prefer the
+openfreemap-* ids. Colour ramp:
 'layer.config.visConfig.colorRange'. Filters: 'config.visState.filters'.
 Cross-filter: this panel filters other panels via 'clickArea' (click a point for a circular
 area) and can publish the viewport to dashboard variables ('viewportVariables'); it does not

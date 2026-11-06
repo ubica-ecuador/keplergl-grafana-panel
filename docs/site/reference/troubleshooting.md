@@ -49,11 +49,11 @@ signature of this problem.
 _Dark Matter (CARTO)_, _Positron (CARTO)_ and _Voyager (CARTO)_ base maps, including dashboards
 saved on them before OpenFreeMap became the default.
 
-Either switch **Base map** to one of the OpenFreeMap styles, which need no key, or get a free key at
-[carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/) and paste it into **CARTO API key**.
-The panel adds it to every CARTO style, sprite, glyph and tile URL; dashboard variables are
-interpolated, so one variable can carry it for a whole dashboard. Keys registered before
-23 September 2026 work until 30 November 2026.
+Switch **Base map** to one of the OpenFreeMap styles, which need no key. The panel no longer takes a
+CARTO key (its **CARTO API key** option, up to 1.6, saved the key in the dashboard for every viewer
+to read); to use your own, serve a copy of CARTO's style whose sources list the tile URLs with your
+key and choose _Self-hosted style.json_. See
+[CARTO without a key](../guide/map/basemaps-and-relief#carto-without-a-key).
 
 ## Maps go black when several are open
 

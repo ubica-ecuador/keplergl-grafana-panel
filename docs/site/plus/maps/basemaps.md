@@ -57,17 +57,16 @@ A few things differ by provider:
 
 ## CARTO without a key
 
-Plus asks CARTO for Dark Matter, Positron and Voyager without a key, as the free panel does when its **CARTO API
-key** option is empty. The entries keep their names and ids, so a dashboard saved on one opens on it as before.
+Plus asks CARTO for Dark Matter, Positron and Voyager without a key, as the free panel does. The entries keep their names and ids, so a dashboard saved on one opens on it as before.
 
-Plus takes no CARTO key at all. The free panel's **CARTO API key** option, which saves its key in the dashboard, is
-not offered in Plus: the editor leaves it out, a key a dashboard still carries (saved by the free panel or by an
+Plus takes no CARTO key at all, nor does the free panel since 1.7.0. The **CARTO API key** option of earlier
+versions saved its key in the dashboard: a key a dashboard still carries (saved by the free panel up to 1.6 or by an
 earlier Plus) is never used, and the next save of the dashboard drops it.
 
 Since 23 September 2026 CARTO asks for a key, and without one its raster tiles carry a watermark. The vector styles
 of Dark Matter, Positron and Voyager still draw, and their thumbnails in the picker are files shipped with the
 plugin. For a new map, prefer the OpenFreeMap styles, which need no key; see
-[Base maps and relief](/guide/map/basemaps-and-relief#carto-and-its-key).
+[Base maps and relief](/guide/map/basemaps-and-relief#carto-without-a-key).
 
 ## Map Layers switches
 

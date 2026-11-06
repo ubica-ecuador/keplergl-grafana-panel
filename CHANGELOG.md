@@ -6,6 +6,12 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Breaking: the *CARTO API key* option is gone.** A panel option is saved in the dashboard's JSON,
+  where everyone who can view the dashboard can read it, so the panel no longer takes a key: Dark
+  Matter, Positron and Voyager are asked of CARTO without one, as when the option was empty (their
+  vector styles and tiles draw; CARTO's raster tiles carry a watermark without a key). A panel saved
+  with a key opens without it and its next save leaves the key out. To use a key of your own, serve
+  a copy of CARTO's style that carries it and choose *Base map → Self-hosted style.json*.
 - **Live data.** A query that streams through Grafana Live — the built-in datasource's *Live
   measurements* fed by `/api/live/push`, the MQTT datasource, any streaming datasource — now keeps
   the map on its newest rows: the trip playhead goes to the last instant with every update, and a time

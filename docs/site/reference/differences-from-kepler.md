@@ -91,8 +91,8 @@ What replaces them:
 - OpenFreeMap's five styles — Positron, Bright, Liberty, Dark, Fiord — which need no key; the
   defaults.
 - kepler's three CARTO styles, re-registered **from kepler's own definitions** rather than copied, so
-  an upstream rename fails a test instead of producing an inert entry. They keep kepler's ids and take
-  an optional CARTO API key.
+  an upstream rename fails a test instead of producing an inert entry. They keep kepler's ids and are
+  asked for without a key.
 - kepler's "No Basemap" entry, re-added deliberately — replacing the list would otherwise drop it.
 - Esri satellite and topographic, and two relief styles, as the plugin's own style documents.
 - A self-hosted `style.json`, when configured.
