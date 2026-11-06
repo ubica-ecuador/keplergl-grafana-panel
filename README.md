@@ -38,7 +38,13 @@ tutorials, a layer gallery and a complete option reference.
   where the altitude varies.
 - **Cloud-native imagery** — a query that returns the address of a COG, a PMTiles archive, a Zarr
   store, a WMS or an ArcGIS Image Service draws it, and the dashboard clock walks the series without
-  re-running the query. Band combinations and false colour come from the scene's STAC item.
+  re-running the query. Band combinations and false colour come from the scene's STAC item. A small
+  Zarr store can also be read straight in the browser, with kepler's own Zarr layer.
+- **Places without coordinates** — a query that has only a geohash is drawn as its cells, and a
+  country, US state or airport code or name, or one from a list of your own, is placed at its centre.
+- **Routes, networks, photos, tiles and night** — a query's rows joined in order as a route, nodes and
+  edges as a network, a photo per row on the map, any XYZ tile service as a layer, and the side of
+  the Earth in darkness shaded at the start or end of the dashboard's time range.
 - **Draggable markers** bound to dashboard variables, for the origin and destination of an
   isochrone or the point a radius is measured from.
 - **Dashboard time range synced with the map** — one-way, both ways, or published to variables so
@@ -48,6 +54,16 @@ tutorials, a layer gallery and a complete option reference.
   that variable filters the map. Clicks, the viewport and drawn areas publish too, a click can be
   made to confirm from the popup first, and whatever is selected is ringed on the map — on a shared
   link as well.
+- **Part of the dashboard, not just on it.** The dashboard's annotations that carry a place are
+  drawn as notes on the map, and a note made on the map can be saved as a Grafana annotation that
+  every time chart draws. A clicked entity's popup lists its data links and actions, and adds
+  `field = value` as an ad hoc filter. *Change visualization* from Geomap keeps its layers, columns
+  and view.
+- **Live data** — a query that streams through Grafana Live (the MQTT data source,
+  `/api/live/push`) moves on the map as its rows arrive, with no refresh: the map keeps to the newest
+  rows and updates at most once a second.
+- **Layers on every world copy** — pan past the date line and the points, symbols and notes are still
+  there, on the copy of the world in view.
 - **Works with Grafana Assistant** — the panel tells the Assistant live what the map is showing,
   so it can answer about the map, restyle it, and build whole dashboards around it from a prompt.
   More in the Grafana Assistant section below. Without the Assistant, nothing changes.
@@ -269,7 +285,8 @@ documentation screenshots are regenerated.
 
 The commercial edition, for operations maps: every sensor, site and vehicle on the map with its own
 time series, as gauges, sparkline cards, live fleets, network links and surfaces, over Google 3D
-Tiles if you like, with a Time Brush to drive the dashboard. It is a separate, closed-source plugin
+Tiles if you like, with a Time Brush to drive the dashboard, geofence alerts drawn on the vehicles
+they name, and 4D models of a building going up task by task. It is a separate, closed-source plugin
 in the [Grafana plugin catalog](https://grafana.com/grafana/plugins/ubica-keplerplus-app/); this panel does not need it, and everything in this
 repository stays free. What it adds: [docs.ubica.dev/plus](https://docs.ubica.dev/plus/).
 
