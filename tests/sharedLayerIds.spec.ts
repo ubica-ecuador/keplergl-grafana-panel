@@ -54,13 +54,15 @@ test('a switch in one panel changes that panel, not another with the same layer 
   }
 
   // Layer panels are opened by dispatch (see `symbols.spec.ts`); the switch is
-  // flipped by its label, which is what a person clicks.
+  // flipped by its label, which is what a person clicks. Since kepler
+  // 3.3.0-alpha.19 the label wraps its input and has no `for`, so it is found
+  // by the input it holds.
   // Both layer panels open: with the upper one closed its input is not in the
   // page, and the id is not ambiguous at all.
   await upper.locator('.layer-panel__header__content').first().dispatchEvent('click');
-  await expect(upper.locator('label[for$="-upright-switch"]')).toBeVisible({ timeout: 30_000 });
+  await expect(upper.locator('label:has(> input[id$="-upright-switch"])')).toBeVisible({ timeout: 30_000 });
   await lower.locator('.layer-panel__header__content').first().dispatchEvent('click');
-  const label = lower.locator('label[for$="-upright-switch"]');
+  const label = lower.locator('label:has(> input[id$="-upright-switch"])');
   await expect(label).toBeVisible({ timeout: 30_000 });
   await label.click();
   await settle(page);

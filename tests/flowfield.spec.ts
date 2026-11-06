@@ -190,7 +190,8 @@ test('shows its colour ramp in the legend, and follows a range set by hand', asy
   // Switched on, the range starts at the field's own, rounded outwards to the
   // slider's step: 3.84 to 8.44.
   await page.locator('.layer-panel__header__content').first().dispatchEvent('click');
-  const fixedRange = page.locator('label[for$="-fixedSpeedRange-switch"]');
+  // The label wraps its input since kepler 3.3.0-alpha.19, with no `for`.
+  const fixedRange = page.locator('label:has(> input[id$="-fixedSpeedRange-switch"])');
   await expect(fixedRange).toBeVisible({ timeout: 30_000 });
   await fixedRange.click();
 
