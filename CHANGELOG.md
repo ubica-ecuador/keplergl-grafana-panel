@@ -6,8 +6,6 @@ release documents what changed since the one before it.
 
 ## 1.7.0 (unreleased)
 
-Not released yet: it waits for the next kepler.gl release.
-
 - **Export Map writes JSON only.** kepler's HTML export, the dialog's default, is a page that loads
   React, Redux and styled-components from esm.sh, kepler.gl from unpkg.com and fonts from
   CloudFront wherever it is opened, and the dialog fetched three preview pictures for it from
@@ -57,8 +55,14 @@ Not released yet: it waits for the next kepler.gl release.
 - **kepler's annotation list.** The **Aa** button opens the list of the map's notes, with their kind
   (text, point, arrow, circle, ruler), line, colour and text placement, duplicate and delete. A click
   on the bare map, or Escape, puts down the note being edited.
-- **kepler.gl 3.3.0-alpha.19**, from 3.3.0-alpha.17: the annotation list and ruler, camera bookmarks
-  and tours, timeline charts for numeric filters, and many fixes to filters, exports and Arrow data.
+- **kepler.gl 3.3.0-alpha.20**, from 3.3.0-alpha.17 (by way of alpha.19): the annotation list and
+  ruler, camera bookmarks and tours, timeline charts for numeric filters; new **Contour** and
+  **Voronoi** layers, a 3D density surface for the heatmap, glow and pulse effects on points, a
+  rotation per icon; and many fixes to filters, exports, Arrow data, rasters, Trip and vector tile
+  layers. A saved tooltip compare mode and the layers on every world copy are now kepler's own
+  (fixes sent upstream from this plugin, as was the zoom fade that a replaced dataset lost), so the
+  panel's workarounds for them are gone. A query's new answer is drawn once its rows are built: until
+  then the map keeps the previous rows, filters included, where it used to drop them for a moment.
 - On a map with no saved configuration, a query's GeoJSON layer now starts coloured by one of its
   decimal columns, as kepler 3.3.0-alpha.19 colours the GeoJSON layers it builds.
 - **kepler's own Zarr layer**, which reads a store in the browser, is on: *Add Data → Tileset → Zarr*.

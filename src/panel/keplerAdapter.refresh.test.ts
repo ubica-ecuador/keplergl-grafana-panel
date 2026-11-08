@@ -142,7 +142,9 @@ function refresh(store: Store, datasets: PanelDataset[], giveUpMs?: number): () 
 function pushOnceBack(store: Store, window: [number, number]): void {
   let parked = false;
   const unsubscribe = store.subscribe(() => {
-    if (visStateOf(store).filterToBeMerged?.length) {
+    // Parked, or (kepler 3.3.0-alpha.20) its dataset still being replaced.
+    const visState = visStateOf(store);
+    if (visState.filterToBeMerged?.length || Object.keys(visState.pendingDatasetReplacements ?? {}).length) {
       parked = true;
       return;
     }
@@ -274,13 +276,27 @@ describe('a data refresh while the time filter plays', () => {
     const store = await mapWithTimeFilter([answer('A')], STICKING_OUT);
     play(store);
 
-    const { id } = timeFilter(store)!;
-    const stop = refresh(store, [answer('A', 0.01)]);
+    // What the resume sends, apart from the rest. The rebuild here has no
+    // saved config, which leaves a live filter as it is (since kepler
+    // 3.3.0-alpha.20 this one is still on the old rows, playing, rather than
+    // parked by the refresh), so it is paused by hand, as a rebuild from a
+    // config leaves it.
+    const sent: string[] = [];
+    const resumeDispatch = ((action: { payload?: { type?: string } }) => {
+      sent.push(action.payload?.type ?? '');
+      return store.dispatch(action as never);
+    }) as typeof store.dispatch;
+    const datasets = [answer('A', 0.01)];
+    const playing = capturePlayingTimeFilter(store, datasets)!;
+    refreshDatasets(store, store.dispatch, datasets);
+    const stop = resumeTimeFilter(store, resumeDispatch, playing);
     stop();
     loadDatasets(store, store.dispatch, [answer('A', 0.02)]);
+    store.dispatch(wrapTo(KEPLER_INSTANCE_ID, toggleFilterAnimation(timeFilterIndex(store))) as never);
     await settle();
 
-    expect(timeFilter(store)).toMatchObject({ id, isAnimating: false });
+    expect(sent).toEqual([]);
+    expect(timeFilter(store)?.isAnimating).toBe(false);
   });
 
   it('gives up without throwing when the filter never comes back', async () => {
@@ -313,14 +329,14 @@ describe('a dashboard range pushed while a refresh has the time filter parked', 
   // A new range re-runs the queries, so the push and the refresh arrive together. Pushed into the gap, it found
   // no time filter and made a second one on a dataset still loaded; the parked one then came back with the old
   // window, first in the list, and the range sync, taking its push as done, never put the new window on it.
-  it('waits for the filter to come back, then lands on it', async () => {
+  // Since kepler 3.3.0-alpha.20 there is no gap: the filter stays on the old rows until the new ones are built,
+  // the push lands on it, and kepler carries it over to the new rows.
+  it('lands on the one filter, which keeps it once the new rows are in', async () => {
     const store = await mapWithTimeFilter([answer('A'), answer('B')], DOMAIN);
     const { id } = timeFilter(store)!;
 
     // A's new rows are still on their way; B is loaded, as it is when its own rows landed first.
     refreshDatasets(store, store.dispatch, [answer('A', 0.01)]);
-    expect(pushTimeRange(store, store.dispatch, { from: NARROWED[0], to: NARROWED[1] })).toBe(false);
-    await settle();
     expect(pushTimeRange(store, store.dispatch, { from: NARROWED[0], to: NARROWED[1] })).toBe(true);
     await settle();
 
@@ -337,10 +353,13 @@ describe('the time variables while a refresh has the time filter parked', () => 
   it('makes no time filter in the gap', async () => {
     const store = await mapWithTimeFilter([answer('A'), answer('B')], NARROWED);
     refreshDatasets(store, store.dispatch, [answer('A', 0.01)]);
-    expect(ensureTimeFilter(store, store.dispatch)).toBe(false);
+    // kepler 3.3.0-alpha.20 keeps the filter while A's new rows are built: it is found, and none is made.
+    expect(ensureTimeFilter(store, store.dispatch)).toBe(true);
     await settle();
     expect(ensureTimeFilter(store, store.dispatch)).toBe(true);
-    expect(visStateOf(store).filters.filter((f: { type?: string }) => f.type === 'timeRange')).toHaveLength(1);
+    const timeFilters = visStateOf(store).filters.filter((f: { type?: string }) => f.type === 'timeRange');
+    expect(timeFilters).toHaveLength(1);
+    expect(timeFilters[0].value).toEqual(NARROWED);
   });
 
   it('publishes nothing, and the window the variables hold stays on the map', async () => {

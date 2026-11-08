@@ -67,7 +67,7 @@ export function configureKepler(): void {
     rasterServerUrls: rasterServerUrlsOf(DEFAULT_RASTER_SERVER_URL),
     // A "new release" banner has no place inside a dashboard panel.
     showReleaseBanner: false,
-    // The Flow layer is the reason this plugin pins kepler.gl 3.3.0-alpha.19
+    // The Flow layer is the reason this plugin pins kepler.gl 3.3.0-alpha.20
     // rather than the 3.2.6 stable. Stated explicitly so a change in the
     // upstream default cannot silently remove it.
     enableFlowLayer: true,
@@ -94,6 +94,14 @@ export function configureKepler(): void {
     // drawn by a tiler from a query, is `zarrTiles`. Stated, as the Flow layer
     // is, so an upstream default cannot remove it silently.
     enableZarrLayer: true,
+    // The layers on every world copy the base map shows, as MapLibre repeats
+    // the world past ±180°: zoomed out, the copies either side are no longer
+    // bare, and a view across the antimeridian keeps the points on its far
+    // side. kepler 3.3.0-alpha.20 draws them so (deck's `MapView({repeat})`,
+    // keplergl/kepler.gl#3992, which this panel did through its own
+    // MapContainer wrapper until then) but only when asked (#3993). Its
+    // annotations are placed on the copy nearest the view's centre either way.
+    enableMapRepeat: true,
   });
 
   // The flow field is a layer kepler does not ship, so its words are in no

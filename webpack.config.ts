@@ -191,20 +191,6 @@ const config = async (env: Env): Promise<Configuration> => {
         }
       }),
       /*
-       * kepler draws its annotation callouts in an overlay of its own, placed
-       * through a viewport its MapContainer builds, and imports that overlay
-       * straight from its annotations folder — not an injectable factory
-       * either. Swapped the same way, for kepler's request only, with
-       * src/panel/annotationOverlayOnWorldCopies.tsx, which places each callout
-       * on the world copy nearest the view's centre.
-       */
-      new webpack.NormalModuleReplacementPlugin(/[\\/]annotation-overlay(\.js)?$/, (resource) => {
-        const issuer: string = resource.contextInfo?.issuer ?? '';
-        if (issuer.includes('@kepler.gl')) {
-          resource.request = path.resolve(process.cwd(), 'src', 'panel', 'annotationOverlayOnWorldCopies.tsx');
-        }
-      }),
-      /*
        * kepler's Export data writes a GeoPackage with sql.js and GeoParquet with
        * parquet-wasm, and fetches both from a CDN: its `sql-js` module adds a
        * script from cdn.jsdelivr.net, and its GeoParquet writer starts

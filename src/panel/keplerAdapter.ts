@@ -27,11 +27,11 @@ import {
   updateVisData,
   wrapTo,
 } from '@kepler.gl/actions';
-import { ALL_FIELD_TYPES, COMPARE_TYPES, PMTilesType, REMOTE_TILE, RemoteTileFormat } from '@kepler.gl/constants';
+import { ALL_FIELD_TYPES, PMTilesType, REMOTE_TILE, RemoteTileFormat } from '@kepler.gl/constants';
 import { adjustValueToFilterDomain, getApplicationConfig } from '@kepler.gl/utils';
 import { processRowObject } from '@kepler.gl/processors';
 import KeplerGlSchema, { datasetSchema, VERSIONS, type SavedDatasetV1 } from '@kepler.gl/schemas';
-import type { ParsedConfig, ProtoDataset } from '@kepler.gl/types';
+import type { ProtoDataset } from '@kepler.gl/types';
 import type { Dispatch, Store } from 'redux';
 
 import { FieldType } from '@grafana/data';
@@ -95,7 +95,7 @@ import { chartFilterIds, onlyChartFilters, withoutChartFilters, type ChartLike }
 /**
  * The ONLY module that talks to the kepler.gl API.
  *
- * kepler.gl is pinned to a pre-release (3.3.0-alpha.19) because the Flow layer
+ * kepler.gl is pinned to a pre-release (3.3.0-alpha.20) because the Flow layer
  * exists nowhere else. Funnelling every kepler call through here means the
  * alpha -> stable upgrade touches one file instead of the whole tree.
  */
@@ -202,65 +202,6 @@ export function loadDatasets(
       })
     )
   );
-
-  // A saved compare mode goes back on the store here, after both of kepler's
-  // own steps inside `addDataToMap` above: its reset of the tooltip to the
-  // default, then the synchronous merge of the saved config, which keeps only
-  // `fieldsToShow` — for datasets already there, none on a first load. The
-  // async merge that runs once the payload's datasets settle then finds
-  // compareMode/compareType in the live config and keeps them; see
-  // `savedTooltipCompare`. Only `true` is worth a dispatch: `false` is kepler's
-  // default, and every map saved from kepler states it.
-  const compare = savedTooltipCompare(config);
-  const liveTooltip = getVisState(store)?.interactionConfig?.tooltip;
-  if (compare?.compareMode && liveTooltip) {
-    // The live item, not the saved one: a saved `fieldsToShow` entry for a
-    // dataset that never loads would stay in the store for good (the async
-    // merge spreads the current `fieldsToShow` first) and crash kepler's
-    // Interactions -> Tooltip, which reads `datasets[dataId].fields`.
-    dispatch(
-      wrapTo(
-        KEPLER_INSTANCE_ID,
-        interactionConfigChange({
-          ...liveTooltip,
-          config: {
-            ...liveTooltip.config,
-            compareMode: true,
-            compareType: compare.compareType ?? COMPARE_TYPES.ABSOLUTE,
-          },
-        } as Parameters<typeof interactionConfigChange>[0])
-      )
-    );
-  }
-}
-
-/**
- * The saved config's own tooltip compare setting, when it states one.
- *
- * Upstream cause: kepler.gl 3.3.0-alpha.17's `mergeInteractions`
- * (`@kepler.gl/reducers`, `vis-state-merger.ts` ~484 — which `addDataToMap`
- * runs twice: synchronously, inside `receiveMapConfigUpdater` right after it
- * resets the config, and again once the saved config's datasets have settled)
- * rebuilds the tooltip's `config` as `{fieldsToShow}` and, since alpha.17, the
- * time zone, nothing else, so `compareMode` and `compareType` never reach the
- * store through that merge alone — even though kepler's own "Save current map"
- * writes them (`InteractionSchemaV1.save` spreads the whole tooltip config).
- * `KeplerGlSchema.parseSavedConfig` keeps them, though: `InteractionSchemaV1.load`
- * is a plain `cloneDeep`, so they land flat on `interactionConfig.tooltip`,
- * beside `fieldsToShow` — which is what this reads. Delete this once kepler's
- * own merge keeps the saved tooltip config.
- */
-export function savedTooltipCompare(
-  config: ParsedConfig | null
-): { compareMode: boolean; compareType?: string } | null {
-  const tooltip = config?.visState?.interactionConfig?.tooltip;
-  if (typeof tooltip?.compareMode !== 'boolean') {
-    return null;
-  }
-  return {
-    compareMode: tooltip.compareMode,
-    ...(typeof tooltip.compareType === 'string' ? { compareType: tooltip.compareType } : {}),
-  };
 }
 
 /** kepler's `DatasetType.VECTOR_TILE`, the one type that needs the filter hint. */
@@ -1271,14 +1212,17 @@ export function capturePlayingTimeFilter(store: Store, datasets: PanelDataset[])
  * `isAnimating`, so the filter comes back paused — and a window whose end had
  * run past the data comes back clamped to it. Every answer to the map's own
  * queries used to stop playback that way: a variable they read, Refresh,
- * auto-refresh.
+ * auto-refresh. Since kepler 3.3.0-alpha.20 (keplergl/kepler.gl#3972) the old
+ * dataset and its filter stay on the map, playing, until the new rows are
+ * built, with the dataset listed in `pendingDatasetReplacements`; the parking
+ * and the rebuild then happen in one step, and the filter comes back paused
+ * all the same.
  *
- * Watches the store until the filter is back under the same id and no longer
- * parked, then sends what a user would: the window, if kepler clamped it, and
- * a press of play, if it came back paused. Nobody can pause it in between —
- * the time widget is not even mounted while its filter is parked. On a
- * microtask, like every store-driven reconcile here, so nothing is dispatched
- * from inside the dispatch that set it off.
+ * Watches the store until the filter is back under the same id, no longer
+ * parked and its dataset no longer being replaced, then sends what a user
+ * would: the window, if kepler clamped it, and a press of play, if it came
+ * back paused. On a microtask, like every store-driven reconcile here, so
+ * nothing is dispatched from inside the dispatch that set it off.
  *
  * Only a clamp is undone, and only while the window still has data under it.
  * A refresh can move the domain away from the window altogether, and putting
@@ -1305,7 +1249,7 @@ export function resumeTimeFilter(
       return;
     }
     const idx = visState.filters.findIndex((f) => f.id === playing.id);
-    if (idx < 0) {
+    if (idx < 0 || awaitsReplacement(visState, visState.filters[idx].dataId)) {
       return;
     }
     stop();
@@ -1342,6 +1286,23 @@ export function resumeTimeFilter(
   // A refresh that parked nothing leaves no change to wait for.
   schedule();
   return stop;
+}
+
+/**
+ * Whether kepler is still building the new rows for one of `dataId`'s datasets
+ * (`pendingDatasetReplacements`, keyed by the dataset being replaced, since
+ * kepler 3.3.0-alpha.20). Until they land, the old dataset and what is built
+ * on it stay as they were.
+ */
+function awaitsReplacement(visState: VisStateLike, dataId: string[] | string | undefined): boolean {
+  const pending = visState.pendingDatasetReplacements;
+  if (!pending) {
+    return false;
+  }
+  const ids = new Set(([] as string[]).concat(dataId ?? []));
+  return Object.entries(pending).some(
+    ([original, entry]) => ids.has(original) || (entry?.targetId !== undefined && ids.has(entry.targetId))
+  );
 }
 
 function isWindow(value: unknown): value is [number, number] {
@@ -1439,6 +1400,11 @@ interface VisStateLike {
     /** The datasets it filters: an array in kepler 3. */
     dataId?: string[] | string;
   }>;
+  /**
+   * The datasets whose replacement rows kepler is still building, by the id
+   * being replaced (kepler 3.3.0-alpha.20). See `awaitsReplacement`.
+   */
+  pendingDatasetReplacements?: Record<string, { requestId?: string; targetId?: string } | undefined>;
   /** Filters parked by a dataset replace, waiting to be merged back — in their saved form. */
   filterToBeMerged?: Array<{ id?: string; type?: string; name?: string[] | string; dataId?: string[] | string }>;
   /** kepler's charts; a chart's cross-filters live among `filters`. See `chartFilters.ts`. */

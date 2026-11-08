@@ -7,7 +7,7 @@ compiled third-party code and vendored assets. Their notices follow.
 
 | Library                                                                                                                                                                                                                                          | Version         | Licence              | Copyright                                                                                                           |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| kepler.gl and its `@kepler.gl/*` packages                                                                                                                                                                                                        | 3.3.0-alpha.19  | MIT                  | Copyright contributors to the kepler.gl project                                                                     |
+| kepler.gl and its `@kepler.gl/*` packages                                                                                                                                                                                                        | 3.3.0-alpha.20  | MIT                  | Copyright contributors to the kepler.gl project                                                                     |
 | @grafana/assistant                                                                                                                                                                                                                               | 0.1.34          | Apache-2.0           | Copyright Grafana Labs                                                                                              |
 | @deck.gl/core, /layers, /geo-layers and the rest                                                                                                                                                                                                 | 9.3.11          | MIT                  | Copyright Vis.gl contributors.                                                                                      |
 | @luma.gl/core and the rest                                                                                                                                                                                                                       | 9.3.6           | MIT                  | Copyright (c) 2020 vis.gl contributors                                                                              |
@@ -34,6 +34,9 @@ compiled third-party code and vendored assets. Their notices follow.
 | d3-ease                                                                                                                                                                                                                                          | 3.0.1           | BSD-3-Clause         | Copyright 2010-2021 Mike Bostock; Copyright 2001 Robert Penner                                                      |
 | d3-array, d3-axis, d3-dsv, d3-format, d3-geo, d3-interpolate, d3-path, d3-scale, d3-scale-chromatic, d3-selection, d3-shape, d3-time, d3-time-format — the older majors nested under `@kepler.gl/*`, `@hubble.gl/react` and others (13 packages) | 1.0.9 – 3.3.0   | BSD-3-Clause         | Copyright 2010–20XX Mike Bostock (end year varies; d3-selection 2.0.0 says "Michael Bostock")                       |
 | internmap                                                                                                                                                                                                                                        | 1.0.1, 2.0.3    | ISC                  | Copyright 2021 Mike Bostock                                                                                         |
+| d3-delaunay | 6.0.4 | ISC | Copyright 2018-2021 Observable, Inc.; Copyright 2021 Mapbox |
+| delaunator | 5.1.0 | ISC | Copyright (c) 2026, Mapbox |
+| robust-predicates | 3.0.3 | Unlicense | Public domain (Vladimir Agafonkin) |
 
 `lodash` is the single heaviest package in the bundle by sourcemap reference count (1051, ahead of
 `@kepler.gl/components` at 421); `lodash-es`'s `LICENSE` is byte-identical to `lodash`'s, confirmed by
@@ -90,10 +93,13 @@ on 2026-11-04 moved kepler's row again; its experimental Zarr layer brought in `
 `@zarrita/storage`, `numcodecs`, `reference-spec-reader`, `unzipit` and the
 `@developmentseed/*` raster packages (deck.gl-raster, deck.gl-zarr, geozarr, affine, morecantile,
 proj, raster-reproject), all MIT, read from their package.json `license` fields. The plugin keeps
-that layer on (Add Data → Tileset → Zarr), so they are bundled.
+that layer on (Add Data → Tileset → Zarr), so they are bundled. The 3.3.0-alpha.20 bump on
+2026-11-08 moved kepler's row again; its Voronoi layer brought in `d3-delaunay`, which has a row of
+its own (ISC like the d3 family, but its `LICENSE` adds Mapbox to the copyright), and through it
+`delaunator` (ISC) and `robust-predicates` (Unlicense), each read from its own `LICENSE`.
 
 `mapbox-gl` is the only package name in this table with two unrelated copies historically in the
-dependency tree: a top-level copy (3.34.2 as of the kepler.gl 3.3.0-alpha.19 bump) under Mapbox's
+dependency tree: a top-level copy (3.34.2 as of the kepler.gl 3.3.0-alpha.20 bump) under Mapbox's
 proprietary Terms of Service, and this 1.13.1 BSD-3-Clause copy nested under `@kepler.gl/utils`. The
 top-level copy is excluded from the build (see
 `webpack.config.ts`); only the 1.13.1 copy above ships, in `dist/32.js`.

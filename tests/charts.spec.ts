@@ -150,9 +150,8 @@ test('compare mode: pinned and hovered sites each draw their series, and only th
   const map = await gotoChartsPanel(gotoDashboardPage, readProvisionedDashboard, page);
   const { north, south } = await sitePoints(map);
 
-  // The fixture's `interactionConfig.tooltip.compareMode: true` — this is the
-  // product fix under test, not test setup: see `savedTooltipCompare` and
-  // `loadDatasets` in `keplerAdapter.ts`.
+  // The fixture's `interactionConfig.tooltip.compareMode: true`, kept by
+  // kepler's own merge since 3.3.0-alpha.20 (keplerAdapter.compareMode.test.ts).
   expect((await readCharts(map)).compareMode).toBe(true);
 
   await page.mouse.click(north.x, north.y);

@@ -13,11 +13,29 @@ hosted service rendering your map.
 **📖 [Full documentation](https://docs.ubica.dev/)** — guides,
 tutorials, a layer gallery and a complete option reference.
 
-> **Status: 1.6.2 is the latest release; 1.7.0 is in preparation** and waits for the next kepler.gl
-> release. The plugin is submitted to the Grafana plugin catalog and awaiting review; until it is
+> **Status: 1.6.2 is the latest release; 1.7.0 is in preparation**, on kepler.gl 3.3.0-alpha.20.
+> The plugin is submitted to the Grafana plugin catalog and awaiting review; until it is
 > listed, install it from a GitHub release (see [Install](https://docs.ubica.dev/guide/install.html)).
 > Pinned to a kepler.gl pre-release because the Flow layer exists nowhere else — see
 > [Compatibility](https://docs.ubica.dev/reference/compatibility.html).
+
+## Already on Geomap? Switch in one click
+
+Edit a Geomap panel, choose **Kepler Geospatial Maps** in the visualization picker, and save the
+dashboard. That is the whole migration: the map comes across as it was, with nothing to rebuild.
+
+- **Its layers**: markers, heatmaps, routes, networks, GeoJSON, photos, XYZ and ArcGIS tiles and
+  night/day become kepler layers, with their colours, thresholds, sizes, labels and legend, in the
+  same order.
+- **The same queries and columns**: location by coordinates, geohash or lookup works unchanged.
+- **The same view and base map**: the same centre, at the zoom that shows the same area (or *Fit
+  to data*), and the closest base map the panel offers.
+- **Nothing hidden**: anything without a counterpart is named in a notice right after the switch.
+
+From there the map has everything kepler adds: trips that animate, flows, filters, playback, 3D and
+cross-filtering with the rest of the dashboard. [Coming from
+Geomap](https://docs.ubica.dev/guide/coming-from-geomap.html) lists what converts, what looks
+different and why.
 
 ## What it does today
 

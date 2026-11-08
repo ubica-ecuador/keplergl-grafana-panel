@@ -1,9 +1,10 @@
 # Layers configured with a URL
 
-kepler.gl 3.3.0-alpha.19 registers twenty-three layer types. Sixteen draw rows: thirteen are in [the
-gallery](./), and three more have sections of their own — `a5` and `geohash`, kepler's other two
+kepler.gl 3.3.0-alpha.20 registers twenty-five layer types. Eighteen draw rows: thirteen are in [the
+gallery](./), three more have sections of their own — `a5` and `geohash`, kepler's other two
 grid-index layers, in [Geometry and spatial indices](./geometry-and-indices#geohash), and kepler's
-`flowField` in [Velocity fields](./velocity-fields#kepler-flow-field). The other seven are
+`flowField` in [Velocity fields](./velocity-fields#kepler-flow-field) — and two are new in
+3.3.0-alpha.20, `contour` and `voronoi`, which take points like the aggregation layers. The other seven are
 configured with a **URL** rather than with data, so a Grafana query cannot describe one the way it
 describes a table of points.
 

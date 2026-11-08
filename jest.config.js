@@ -27,6 +27,9 @@ const keplerESModules = [
   'react-fit',
   'update-input-width',
   'detect-element-overflow',
+  // kepler 3.3.0-alpha.20's Voronoi layer: d3-delaunay (matched above) on these.
+  'delaunator',
+  'robust-predicates',
 ];
 
 module.exports = {

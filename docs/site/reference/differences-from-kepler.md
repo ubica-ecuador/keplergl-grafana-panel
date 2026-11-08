@@ -15,7 +15,7 @@ settings it passes:
 enableFlowLayer: true
 ```
 
-The Flow layer is why this plugin pins **kepler.gl 3.3.0-alpha.19** rather than the 3.2.6 stable
+The Flow layer is why this plugin pins **kepler.gl 3.3.0-alpha.20** rather than the 3.2.6 stable
 release: it exists nowhere else. Stating it explicitly rather than relying on the upstream default
 means a change in that default cannot silently remove the feature the plugin is partly built around.
 

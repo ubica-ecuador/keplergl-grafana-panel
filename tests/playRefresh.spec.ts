@@ -44,17 +44,21 @@ async function timeWindow(map: Locator): Promise<unknown> {
 }
 
 /**
- * How many times a dataset replace has parked the map's filters so far.
+ * How many dataset replaces the map has gone through so far.
  *
  * The one sure sign that an answer reached kepler: testdata answers a raw frame
- * in the browser, so there is no request to wait for. Counted from a store
- * subscription installed on the first call — observing only, since replacing
- * the store's `dispatch` makes kepler re-register and wipe the map.
+ * in the browser, so there is no request to wait for. A replace shows as the
+ * filters parked in `filterToBeMerged` or, since kepler 3.3.0-alpha.20, as the
+ * dataset listed in `pendingDatasetReplacements` until its new rows are built
+ * (the parking then happens within one step and is never seen). Each start of
+ * either counts. Counted from a store subscription installed on the first
+ * call — observing only, since replacing the store's `dispatch` makes kepler
+ * re-register and wipe the map.
  */
-async function parks(map: Locator): Promise<number> {
+async function replaces(map: Locator): Promise<number> {
   return map.evaluate((node) => {
-    const counter = window as unknown as { __filterParks?: number };
-    if (counter.__filterParks === undefined) {
+    const counter = window as unknown as { __datasetReplaces?: number };
+    if (counter.__datasetReplaces === undefined) {
       const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
       let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
       while (fiber && typeof fiber.memoizedProps?.store?.getState !== 'function') {
@@ -64,27 +68,32 @@ async function parks(map: Locator): Promise<number> {
         throw new Error('kepler store not found from map node');
       }
       const store = fiber.memoizedProps.store;
-      const parked = () =>
-        ((Object.values(store.getState().keplerGl ?? {})[0] as any)?.visState?.filterToBeMerged?.length ?? 0) > 0;
-      let wasParked = parked();
-      counter.__filterParks = 0;
+      const replacing = () => {
+        const visState = (Object.values(store.getState().keplerGl ?? {})[0] as any)?.visState;
+        return (
+          (visState?.filterToBeMerged?.length ?? 0) > 0 ||
+          Object.keys(visState?.pendingDatasetReplacements ?? {}).length > 0
+        );
+      };
+      let wasReplacing = replacing();
+      counter.__datasetReplaces = 0;
       store.subscribe(() => {
-        const isParked = parked();
-        if (isParked && !wasParked) {
-          counter.__filterParks! += 1;
+        const isReplacing = replacing();
+        if (isReplacing && !wasReplacing) {
+          counter.__datasetReplaces! += 1;
         }
-        wasParked = isParked;
+        wasReplacing = isReplacing;
       });
     }
-    return counter.__filterParks;
+    return counter.__datasetReplaces;
   });
 }
 
 /** Runs `trigger`, waits for its answer to replace the map's rows, then lets the clock run on. */
 async function answered(map: Locator, trigger: () => Promise<void>): Promise<void> {
-  const before = await parks(map);
+  const before = await replaces(map);
   await trigger();
-  await expect.poll(() => parks(map), { timeout: 15_000 }).toBeGreaterThan(before);
+  await expect.poll(() => replaces(map), { timeout: 15_000 }).toBeGreaterThan(before);
   await map.page().waitForTimeout(2000);
 }
 
