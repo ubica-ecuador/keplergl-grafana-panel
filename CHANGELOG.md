@@ -4,7 +4,7 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
-## 1.7.0 (unreleased)
+## 1.7.0 (2026-11-09)
 
 - **Export Map writes JSON only.** kepler's HTML export, the dialog's default, is a page that loads
   React, Redux and styled-components from esm.sh, kepler.gl from unpkg.com and fonts from
