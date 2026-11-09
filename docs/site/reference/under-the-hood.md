@@ -6,7 +6,7 @@ otherwise mysterious — why a layer tolerates a million rows and another does n
 over terrain, why clicking works the way it does.
 
 ::: info Extracted, not recalled
-The mapping below was read out of the **installed** `@kepler.gl/layers` 3.3.0-alpha.19 and
+The mapping below was read out of the **installed** `@kepler.gl/layers` 3.3.0-alpha.20 and
 cross-checked against deck.gl's own catalogue. Bundled deck.gl is **9.3.11**.
 :::
 
@@ -17,10 +17,12 @@ cross-checked against deck.gl's own catalogue. Bundled deck.gl is **9.3.11**.
 | kepler layer   | deck.gl layer                                                   | Package                                       |
 | -------------- | --------------------------------------------------------------- | --------------------------------------------- |
 | point          | `ScatterplotLayer`                                              | `@deck.gl/layers`                             |
-| heatmap        | `HeatmapLayer`                                                  | `@deck.gl/aggregation-layers`                 |
-| grid           | `GridLayer` (via kepler's `EnhancedCpuGridLayer`)               | `@deck.gl/aggregation-layers`                 |
+| heatmap        | `HeatmapLayer`, plus kepler's mesh for the 3D surface           | `@deck.gl/aggregation-layers`                 |
+| contour        | `GeoJsonLayer`, the contours traced by kepler in the browser    | `@deck.gl/layers`                             |
+| grid           | `GridLayer` (via kepler's `EnhancedGridLayer`)                  | `@deck.gl/aggregation-layers`                 |
 | hexagon        | `HexagonLayer` (via kepler's `EnhancedHexagonLayer`)            | `@deck.gl/aggregation-layers`                 |
 | cluster        | `ScatterplotLayer` inside a kepler `CompositeLayer`             | `@deck.gl/layers`                             |
+| voronoi        | `PolygonLayer`, the cells computed with `d3-delaunay`           | `@deck.gl/layers`                             |
 | icon           | kepler's own `SvgIconLayer`, a `CompositeLayer`                 | `@deck.gl/core`                               |
 | geojson        | `GeoJsonLayer`                                                  | `@deck.gl/layers`                             |
 | hexagonId (H3) | `H3HexagonLayer`, plus `ColumnLayer` when extruded              | `@deck.gl/geo-layers`, `@deck.gl/layers`      |
@@ -118,7 +120,7 @@ See [Cross-filtering](../guide/dashboard/cross-filtering).
 
 kepler's documentation lists a **High-precision rendering when zooming in closely** switch on seven
 layer types. In the version this plugin bundles it is **not wired to anything**: it survives as a
-constant and a TypeScript type in kepler 3.3.0-alpha.19, and no layer declares or reads it.
+constant and a TypeScript type in kepler 3.3.0-alpha.20, and no layer declares or reads it.
 
 deck.gl retired the separate 64-bit code path years ago; its current handling shifts coordinates
 relative to the viewport centre and is always on. There is nothing to enable, and nothing to pay

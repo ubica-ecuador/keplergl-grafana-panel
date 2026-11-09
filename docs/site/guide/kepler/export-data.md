@@ -56,5 +56,5 @@ CloudFront.
 
 **Upstream:** [Save and export](https://docs.kepler.gl/docs/user-guides/k-save-and-export)
 
-Written against **kepler.gl 3.3.0-alpha.19**. See
+Written against **kepler.gl 3.3.0-alpha.20**. See
 [Upstream documentation](../../reference/upstream-docs).

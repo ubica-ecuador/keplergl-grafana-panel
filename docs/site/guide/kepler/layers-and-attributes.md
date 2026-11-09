@@ -21,11 +21,12 @@ See [How a query becomes a map](../data/how-a-query-becomes-a-map). Everything e
 hexbin, cluster, icon, arc, line, S2 — you create by hand here, choosing the dataset and pointing
 the layer's columns at it.
 
-On a map with no saved configuration, the GeoJSON layer starts coloured (its fill, or its stroke
-for lines) by one of the query's decimal columns whose values vary, on a quantile scale: `mag` on a
-map of earthquake footprints. kepler 3.3.0-alpha.19 does this for the GeoJSON layers it builds.
-Integer columns are not candidates, and a dataset of more than a million rows stays one colour. A
-saved map keeps the colours it was saved with.
+On a map with no saved configuration, the layers kepler builds — point, GeoJSON (its fill, or its
+stroke for lines), H3, S2, A5, GeoHash and icon — start coloured by one of the query's numeric
+columns: `mag` on a map of earthquakes. kepler 3.3.0-alpha.20 takes a decimal column before an
+integer one, prefers names such as `score`, `value`, `count` or `mean`, and passes over ids, codes
+and coordinates (`id`, `zip`, `lat`, `h3`…). Up to a million rows it takes only a column whose values
+vary; beyond that, the first candidate. A saved map keeps the colours it was saved with.
 
 ## Adding a layer by hand
 
@@ -50,7 +51,7 @@ points can read as an empty map. This is the first thing to change, not the last
 
 **High-precision rendering when zooming in closely.** kepler's documentation lists this on point,
 arc, line, icon, geojson, hexagon and grid layers. **It is not there in the version this plugin
-ships.** The setting survives as a constant and a type in kepler 3.3.0-alpha.19, but no layer
+ships.** The setting survives as a constant and a type in kepler 3.3.0-alpha.20, but no layer
 declares or reads it — deck.gl retired the separate 64-bit path years ago and its current
 precision handling is always on. Do not go looking for the switch. See
 [Under the hood](../../reference/under-the-hood).
@@ -108,6 +109,6 @@ either way. See [Layers configured with a URL](../../layers/url-configured).
 [Layer attributes](https://docs.kepler.gl/docs/user-guides/d-layer-attributes) ·
 [The kepler.gl workflow](https://docs.kepler.gl/docs/user-guides/b-kepler-gl-workflow)
 
-Written against **kepler.gl 3.3.0-alpha.19**, which is what this plugin bundles. kepler's public
+Written against **kepler.gl 3.3.0-alpha.20**, which is what this plugin bundles. kepler's public
 documentation describes the 3.2 stable line and lists fifteen layer types; the pre-release registers
 twenty-three, the Flow layer among them. See [Upstream documentation](../../reference/upstream-docs).

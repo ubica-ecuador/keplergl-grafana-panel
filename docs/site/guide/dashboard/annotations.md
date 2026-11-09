@@ -134,6 +134,6 @@ Grafana has no page that lists every annotation. To see and manage them:
 
 ---
 
-Written against **kepler.gl 3.3.0-alpha.19**. See
+Written against **kepler.gl 3.3.0-alpha.20**. See
 [Differences from kepler.gl](../../reference/differences-from-kepler) for what changes inside a
 Grafana panel.

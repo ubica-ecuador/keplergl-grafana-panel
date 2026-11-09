@@ -73,6 +73,9 @@ const SHOTS = [
     ['arc', 'panel-20'],
     ['line', 'panel-22'],
     ['flow', 'panel-24'],
+    // kepler 3.3.0-alpha.20's two layers on points, in the gallery's last row.
+    ['contour', 'panel-28'],
+    ['voronoi', 'panel-30'],
   ].map(([name, panel]) => ({
     name: `layer-${name}`,
     base: MAIN,

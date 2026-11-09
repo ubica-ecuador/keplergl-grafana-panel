@@ -37,8 +37,7 @@ Turn on **compare mode** in kepler's tooltip settings (**Interactions → Toolti
 entity to pin its popup, then hover another: both popups show, each with its own chart. When the
 panel is set to confirm selections from the popup, only the pinned popup offers **Select**.
 
-Compare mode is saved with the map, so a provisioned dashboard can open with it already on — kepler
-itself forgets it when loading a saved map, and the plugin puts it back.
+Compare mode is saved with the map, so a provisioned dashboard can open with it already on.
 
 ## Pinned charts
 
@@ -76,5 +75,5 @@ scripting time during playback was within the noise of the measurement.
 
 **Upstream:** kepler documents the charts panel in its repository rather than on the docs site.
 
-Written against **kepler.gl 3.3.0-alpha.19**. See
+Written against **kepler.gl 3.3.0-alpha.20**. See
 [Upstream documentation](../../reference/upstream-docs).

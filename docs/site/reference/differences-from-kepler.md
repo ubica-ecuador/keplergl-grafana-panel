@@ -70,14 +70,6 @@ A chart's cross-filters are ordinary kepler filters, but the panel's variable an
 them out: they narrow the map and its charts and reach the dashboard only through a mapping whose
 source is **Chart cross-filter**. See [Charts](../guide/kepler/charts).
 
-## A saved compare mode is kept
-
-kepler.gl 3.3.0-alpha.19's `mergeInteractions` keeps only `fieldsToShow` and the time zone when it
-merges a saved config onto a freshly loaded map, so a saved tooltip `compareMode`/`compareType` never reaches the
-store through `addDataToMap` alone. The panel reads the saved value itself and dispatches it right
-after loading the map, before that merge runs. See
-[Charts](../guide/kepler/charts#comparing-two-entities).
-
 ## Base maps
 
 The panel **replaces** kepler's list of base map styles rather than adding to it.
@@ -210,11 +202,11 @@ re-runs.
 ## Where upstream documentation is behind this plugin
 
 kepler.gl's public documentation describes the **3.2 stable line**. This plugin bundles
-**3.3.0-alpha.19**. Two consequences when you follow an outbound link:
+**3.3.0-alpha.20**. Two consequences when you follow an outbound link:
 
-- Upstream lists **fifteen** layer types. The bundled pre-release registers **twenty-three** — the
-  Flow layer, the Flow Field and the browser-side Zarr layer among them, none of which upstream
-  documents at all.
+- Upstream lists **fifteen** layer types. The bundled pre-release registers **twenty-five** — the
+  Flow layer, the Flow Field, Contour, Voronoi and the browser-side Zarr layer among them, none of
+  which upstream documents at all.
 - Some layer attributes exist in the UI without an upstream entry. `Trail Length` on Trip layers is
   the one you are most likely to want; it is deck.gl's `trailLength`, covered in
   [Under the hood](./under-the-hood).

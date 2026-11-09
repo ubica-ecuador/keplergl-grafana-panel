@@ -84,6 +84,6 @@ Under *Live data*:
 
 ---
 
-Written against **kepler.gl 3.3.0-alpha.19**. See
+Written against **kepler.gl 3.3.0-alpha.20**. See
 [Differences from kepler.gl](../../reference/differences-from-kepler) for what changes inside a
 Grafana panel.

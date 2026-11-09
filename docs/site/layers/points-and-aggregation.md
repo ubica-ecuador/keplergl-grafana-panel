@@ -1,6 +1,6 @@
 # Points and aggregation
 
-Seven ways to read the same 123 rows. Every image on this page comes from a single query returning
+Nine ways to read the same 123 rows. Every image on this page comes from a single query returning
 `latitude`, `longitude`, a numeric `value` and a categorical `zona` — the difference is entirely in
 which layer you point at it.
 
@@ -12,7 +12,7 @@ SELECT lat AS latitude,
 FROM readings;
 ```
 
-Only the first is built for you. The other six you add in kepler's layer panel: **+ Add Layer**,
+Only the first is built for you. The other eight you add in kepler's layer panel: **+ Add Layer**,
 pick the type, pick the dataset.
 
 ## point
@@ -30,6 +30,20 @@ The default radius is small. On a country-sized view a few thousand points can l
 map; raise **Radius** before concluding nothing rendered.
 :::
 
+Two effects under **Visual**, both off by default:
+
+- **Glow** puts a soft halo round each point: **Extent** is its radius as a multiple of the point's
+  (2 by default), **Strength** how bright it is.
+- **Pulse / Ripple** animates each point: **Pulse** swells and shrinks it, **Ripple** sends a ring
+  out from it, at **Speed** cycles a second and out to **Expansion** times its radius. With
+  **Trigger** set to **Continuous** every point pulses all the time; with **At event time** a point
+  pulses when the end of the map's time window reaches the time in its **Event timestamp** column,
+  and for **Duration** of timeline time after it. That needs an enabled time filter on the same
+  column: the one [Time range sync](../guide/dashboard/time-range-sync) puts on the map is one, as
+  is one added in kepler's filter panel; without it the layer panel says what is missing. The
+  pulses follow the window as it plays or is dragged, which makes events stand out: earthquakes,
+  alarms, sales.
+
 ## heatmap
 
 ![The heatmap layer](/img/layer-heatmap.jpg)
@@ -39,7 +53,37 @@ there is no legend that makes a heatmap quantitative, and the apparent intensity
 
 **Weight** can be driven by a column; left alone it counts rows.
 
-Backed by deck.gl's `HeatmapLayer` from `@deck.gl/aggregation-layers`.
+**3D Surface** lifts the heatmap into a relief whose height is the density, up to **Maximum height**
+in metres; tilt the map to see it. **Surface shading** lights it, and **Surface contours** draws
+lines across it every **Contour step** of density. The height is density, not terrain: it does not
+follow the base map's relief.
+
+Backed by deck.gl's `HeatmapLayer` from `@deck.gl/aggregation-layers`; the surface is a mesh kepler
+builds from the same density.
+
+## contour
+
+![The contour layer](/img/layer-contour.jpg)
+
+Lines of equal density, the way a topographic map draws equal height. The points are counted into a
+grid, smoothed, and traced at a number of levels, each band filled in a colour of its own; the
+legend lists the levels. Where a heatmap only says "more here", a contour says "at least this much
+inside this line" — hover a band and it reads, for instance, `value ≥ 12`.
+
+- **Weight**: a numeric column, averaged within each cell. Left empty, the contours are of the
+  number of points per cell.
+- **Number of levels** (7), **Grid resolution** (cells along the longer side of the data, 64) and
+  **Smoothing** (in cells, 3) shape the lines: more cells follow the points closely, more smoothing
+  rounds them off.
+- **Fill below each level** turns the bands inside out, to enclose the lows instead of the peaks.
+  **Custom level range** sets the lowest and highest level yourself, so two maps can share them.
+- **Fill**, **Color by level**, **Opacity** of the fill and **Outline width**.
+
+It takes a latitude/longitude pair or a GeoJSON column (the centre of each shape). New in kepler.gl
+3.3.0-alpha.20. The contours are computed in the browser, again with every filter change; keep the
+rows to tens of thousands.
+
+Backed by deck.gl's `GeoJsonLayer`.
 
 ## grid
 
@@ -79,6 +123,23 @@ to compare.
 
 Backed by a kepler `CompositeLayer` over deck.gl's `ScatterplotLayer`.
 
+## voronoi
+
+![The Voronoi layer](/img/layer-voronoi.jpg)
+
+**Voronoi Mosaic** in the layer menu. Each point gets the part of the map that is nearer to it than
+to any other point, so every place on the map takes the colour of its nearest point: stations
+becoming the areas they stand for, without interpolating between them. Colour it by a column as you
+would a point layer; the cells have an outline, dark by default.
+
+The cells stop at the data's bounding box, widened on each side by **Bounds Padding** (10 % by
+default). Nearness is measured on the map, not along streets: a cell is not a catchment area.
+
+It takes a latitude/longitude pair or a GeoJSON column (the centre of each shape). New in kepler.gl
+3.3.0-alpha.20, never built for you; switching a point layer's type to it keeps its columns.
+
+Backed by deck.gl's `PolygonLayer`, the cells computed in the browser with `d3-delaunay`.
+
 ## icon
 
 ![The icon layer](/img/layer-icon.jpg)
@@ -96,6 +157,10 @@ picker in the layer panel lists them.
 
 Useful for a small number of meaningful things — stations, incidents, depots. At a few hundred rows
 it becomes noise.
+
+An **angle** column turns each icon by its own number of degrees, **counter-clockwise** (since
+kepler.gl 3.3.0-alpha.20). A compass bearing runs clockwise from north, so pass `360 - heading`, or
+use the [symbol](#symbol) layer, which reads a bearing as it is.
 
 ## symbol
 
@@ -140,8 +205,10 @@ are not drawn; the panel says which.
 | ---------------------------------- | --------------- |
 | Every row, individually            | point           |
 | Where the concentration is         | heatmap         |
+| Lines you can read a level off     | contour         |
 | Counts you can compare and extrude | grid or hexagon |
 | A readable count at every zoom     | cluster         |
+| The area each point stands for     | voronoi         |
 | Categorical symbols                | icon            |
 | Turned shapes, or pictures         | symbol          |
 
