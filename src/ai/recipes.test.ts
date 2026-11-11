@@ -30,8 +30,8 @@ const vehicles = table(
 
 /** 400 distinct events. */
 const events = table(
-  [['latitude', 'real'], ['longitude', 'real'], ['mag', 'real'], ['type', 'string']],
-  Array.from({ length: 400 }, (_, i) => [-30 + (i % 40), -70 + Math.floor(i / 40) * 3, 4 + (i % 30) / 10, i % 3 ? 'earthquake' : 'explosion']),
+  [['latitude', 'real'], ['longitude', 'real'], ['depth', 'real'], ['mag', 'real'], ['type', 'string']],
+  Array.from({ length: 400 }, (_, i) => [-30 + (i % 40), -70 + Math.floor(i / 40) * 3, 10 + i, 4 + (i % 30) / 10, i % 3 ? 'earthquake' : 'explosion']),
   [['latitude', 'longitude']]
 );
 
@@ -54,7 +54,7 @@ describe('profileTable', () => {
     const e = profileTable(events);
     expect(e.shapes).toEqual(expect.arrayContaining(['dense-events', 'categories']));
     expect(e.categoryFields).toEqual(['type']);
-    expect(e.valueFields[0]).toBe('mag');
+    expect(e.valueFields).toEqual(['mag', 'depth']);
 
     expect(profileTable(od)).toMatchObject({ od: { lat0: 'origin_lat', lng0: 'origin_lon', lat1: 'dest_lat', lng1: 'dest_lon' } });
   });

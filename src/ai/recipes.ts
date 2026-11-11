@@ -75,7 +75,12 @@ export const AskMapComposition = createContext<AskMapCompositionValue>({});
 const LAT = /^(lat|latitude|y|.*_lat|.*_latitude)$/i;
 const LNG = /^(lon|lng|long|longitude|x|.*_lon|.*_lng|.*_longitude)$/i;
 const ID_NAMES = /(^|_)(id|name|station|sensor|site|device|vehicle|asset|imei|mmsi|icao24|callsign|unit|code)s?$/i;
-const VALUE_HINT = /value|temp|pm|mag|level|speed|count|flow|rain|precip|depth|pressure|humid|aqi|load|power|kw|price|total/i;
+/** What a column is most likely worth showing, first first: "mag" before "depth" for earthquakes. */
+const VALUE_PRIORITY = [/value/i, /temp/i, /pm\d|aqi|no2|o3/i, /^mag|magnitude/i, /level/i, /speed/i, /count|total/i, /flow|rain|precip/i, /load|power|kw/i, /price/i, /pressure|humid/i, /depth/i];
+const valueRank = (name: string) => {
+  const i = VALUE_PRIORITY.findIndex((re) => re.test(name));
+  return i < 0 ? VALUE_PRIORITY.length : i;
+};
 
 const isNumeric = (type: string) => type === 'real' || type === 'integer';
 const isTime = (type: string) => type === 'timestamp' || type === 'date';
@@ -152,7 +157,7 @@ export function profileTable(table: TableView): DatasetProfile {
   const valueFields = table.fields
     .filter((f) => isNumeric(f.type) && !coordinateNames.has(f.name) && f.name !== idField)
     .map((f) => f.name)
-    .sort((a, b) => Number(VALUE_HINT.test(b)) - Number(VALUE_HINT.test(a)));
+    .sort((a, b) => valueRank(a) - valueRank(b));
   const categoryFields = table.fields
     .filter((f) => f.type === 'string' && f.name !== idField)
     .filter((f) => {
