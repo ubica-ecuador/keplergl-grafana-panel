@@ -1,7 +1,7 @@
 {
   "name": "ubica-keplergl-panel",
   "version": "1.7.0",
-  "description": "Spatio-temporal maps for Grafana dashboards \u2014 trajectories, origin-destination flows and velocity fields from any data source. Runs kepler.gl inside the panel.",
+  "description": "Spatio-temporal maps for Grafana dashboards — trajectories, origin-destination flows and velocity fields from any data source. Runs kepler.gl inside the panel.",
   "scripts": {
     "build": "webpack -c ./webpack.config.ts --env production",
     "dev": "webpack -w -c ./webpack.config.ts --env development",
@@ -91,6 +91,7 @@
     "@emotion/css": "11.13.5",
     "@grafana/assistant": "0.1.34",
     "@grafana/data": "12.0.0",
+    "@grafana/llm": "1.0.9",
     "@grafana/runtime": "12.0.0",
     "@grafana/ui": "12.0.0",
     "@loaders.gl/excel": "file:stubs/loaders-gl-excel",

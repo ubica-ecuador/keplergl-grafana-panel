@@ -62,6 +62,7 @@ import { useSelectionValues } from './useSelectionValues';
 import { useCoordinateSync } from './useCoordinateSync';
 import { useCenterSync } from './useCenterSync';
 import { useFitOnVariables } from './useFitOnVariables';
+import { AskMap } from '../ai/AskMap';
 import { centerOnLoad, withLoadCenter } from './centerSync';
 import { useRasterTimeline } from './useRasterTimeline';
 import { useWmsCalendar } from './useWmsCalendar';
@@ -818,6 +819,7 @@ export function KeplerMap({
       {/* Outside the Provider, where @grafana/ui finds Grafana's own context.
           Only once kepler is there to capture, and only in the panel editor. */}
       <ActionDialog action={pendingAction} onClose={() => setPendingAction(null)} />
+      {isReady && <AskMap store={store} />}
       {isReady && (
         <SaveMapConfigButton panelId={panelId} width={width} sidePanelOpen={sidePanelOpen} onSave={saveMapConfig} />
       )}
