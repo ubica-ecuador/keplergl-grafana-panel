@@ -1,6 +1,6 @@
 # Plus layers
 
-Plus adds nine layer types to kepler's layer list. Each one is a kepler layer like any other: you pick it as the
+Plus adds ten layer types to kepler's layer list. Each one is a kepler layer like any other: you pick it as the
 layer type, style it in kepler's layer panel, and it is saved with the map. Most of them you add yourself, with
 **Add Layer** or by switching the type of a layer the panel already built; each layer page says when the panel adds
 one for you.
@@ -14,6 +14,7 @@ one for you.
 | [Coverage and Coverage 3D](./coverage) | Sectors from an azimuth, a beamwidth and a range; domes in 3D  | Points, one row per sector       |
 | [Surface](./surface)                   | Coloured bands and isolines between points, or a density count | Points                           |
 | [Sparkline](./sparkline)               | A card with each station's series and its current value        | Points, many rows per station    |
+| [3D Callout](./callout)                | A Sparkline card on a stem above each place, at its height     | Points, many rows per place      |
 | [Traffic](./traffic)                   | Link lines with comets running along them                      | Links, from a source to a target |
 | [Pipeline](./pipeline)                 | The same flow along a real route                               | Line geometry                    |
 | [Fleet](./fleet)                       | Each vehicle or device once, where it is now, with a trail     | Positions with an asset column   |
@@ -42,19 +43,31 @@ Gauge, 3D Shape, Coverage, Traffic and Pipeline have a **History** setting in th
 mark then shows its readings over the dashboard's time range under kepler's own fields, and a click pins the popup
 with a larger chart. The chart draws the colour field by default, any other numeric field, or nothing (**Off**).
 
+### Cards instead of the popup
+
+The same layers and the 4D Model have a **Cards** group: a card per object with its reading at the map's instant and
+its series, shown on hover in place of the popup, or all the time, beside the object or above it on a stem. See
+[Cards on any layer](./cards).
+
 ### Clicks and drawn polygons
 
 A click on a Plus layer reaches the panel's click variables and is ringed on the map, as on kepler's layers. See
 [Cross-filtering](/guide/dashboard/cross-filtering).
 
-kepler's draw tool offers Gauge, 3D Shape, Coverage, Surface, Sparkline and Fleet next to its own layer types, and a
+kepler's draw tool offers Gauge, 3D Shape, Coverage, Surface, Sparkline, 3D Callout and Fleet next to its own layer types, and a
 polygon drawn with it filters them. Fleet filters per asset: an asset that is inside the polygon now keeps its whole
 trail.
 
 ### Cards on top
 
-Sparkline and Fleet cards are drawn above every layer, the map's labels included, so the data they describe never
-hides them.
+Sparkline, 3D Callout and Fleet cards, and the [cards of any layer](./cards), are drawn above every layer, the map's
+labels included, so the data they describe never hides them. The cards of several layers keep off each other: the
+layer higher in kepler's list places its cards first.
+
+### Data in a 3D model's frame
+
+Every layer can draw a query written in the coordinates of a [4D Model](./model-4d) on the same map, by part or in
+metres from its origin, instead of in latitude and longitude. See [Data in a model's frame](/plus/data/model-frame).
 
 ## The layer tour
 

@@ -12,7 +12,10 @@ run side by side on the same Grafana and the same dashboard.
 
 ## What it adds
 
-- [Nine layer types](/plus/layers/): Gauge, 3D Shape, Coverage, Surface, Sparkline, Traffic, Pipeline, Fleet and 4D Model.
+- [Ten layer types](/plus/layers/): Gauge, 3D Shape, Coverage, Surface, Sparkline, 3D Callout, Traffic, Pipeline, Fleet
+  and 4D Model, most of them with [cards](/plus/layers/cards) of their own.
+- [Data in a 3D model's own frame](/plus/data/model-frame), for digital twins: sensors by part, people indoors, pipes
+  and rooms placed where the model stands.
 - [Places without coordinates](/plus/data/places): cloud regions, airports, PoPs, geohashes, countries and client IPs
   placed from their names, and [states, provinces and municipalities](/plus/data/regions) placed by name or
   ISO 3166-2 code.

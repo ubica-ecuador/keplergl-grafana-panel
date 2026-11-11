@@ -34,6 +34,7 @@ export const PLUS_SIDEBAR: DefaultTheme.SidebarItem[] = [
       { text: 'Network links', link: '/plus/data/network-links' },
       { text: 'Active alerts and service health', link: '/plus/data/active-alerts' },
       { text: 'Geofence alerts', link: '/plus/data/geofences' },
+      { text: "Data in a model's frame", link: '/plus/data/model-frame' },
     ],
   },
   {
@@ -41,11 +42,13 @@ export const PLUS_SIDEBAR: DefaultTheme.SidebarItem[] = [
     collapsed: false,
     items: [
       { text: 'Plus layers', link: '/plus/layers/' },
+      { text: 'Cards on any layer', link: '/plus/layers/cards' },
       { text: 'Gauge', link: '/plus/layers/gauge' },
       { text: '3D Shape', link: '/plus/layers/shape-3d' },
       { text: 'Coverage and Coverage 3D', link: '/plus/layers/coverage' },
       { text: 'Surface', link: '/plus/layers/surface' },
       { text: 'Sparkline', link: '/plus/layers/sparkline' },
+      { text: '3D Callout', link: '/plus/layers/callout' },
       { text: 'Traffic', link: '/plus/layers/traffic' },
       { text: 'Pipeline', link: '/plus/layers/pipeline' },
       { text: 'Fleet', link: '/plus/layers/fleet' },

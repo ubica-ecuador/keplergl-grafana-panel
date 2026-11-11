@@ -66,7 +66,8 @@ under dashes, dots or a pulse than under comets.
 Text labels from kepler's **Label** panel sit at the middle of each link, or of each lane in Lanes
 and Split. Under **Interaction**, **Allow hover** turns the tooltip on or off, and **History** adds
 a chart of the hovered link's readings over time to the tooltip: the colour field by default,
-another numeric field, or **Off**.
+another numeric field, or **Off**. The **Cards** group gives each link a card halfway along it instead, on hover or
+all the time; see [Cards on any layer](./cards).
 
 ## Two-way links
 

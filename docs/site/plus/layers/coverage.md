@@ -124,6 +124,9 @@ kepler's **Allow hover** switch, and **History**: hovering a sector shows its re
 dashboard's time range under the popup's fields. It charts the **Color field** by default, any
 numeric column, or nothing (**Off**). See [what the Plus layers share](/plus/layers/).
 
+The **Cards** group gives each sector a card with its reading and its series at its site, on hover in place of the
+popup or all the time. See [Cards on any layer](./cards).
+
 ## Behaviour worth knowing
 
 - **Per place.** A query that returns a time series gives each sector many rows. A sector is its

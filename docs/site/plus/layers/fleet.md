@@ -153,7 +153,7 @@ The settings below kepler's colour group, as labelled in the layer panel.
 |                  | Smooth updates, Smooth duration (ms)  | On a refresh, each asset glides to its new position                                                 | on, 1000                    |
 | Label            | Label                                 | **None**, **Name** or **Name, and age when silent**                                                 | Name, and age when silent   |
 |                  | Label size, colour, outline, distance | A distance of −1 follows the mark's size                                                            | 12, white, on, −1           |
-| Types            | Shape, Model                          | Per value of the type column; see [3D models](#3d-models)                                           | Auto                        |
+| Types            | Shape, Model                          | Per value of the type column; see [3D models](#_3d-models)                                           | Auto                        |
 
 The label shows the field set as kepler's text label, else the asset column.
 
@@ -230,6 +230,26 @@ built-in shape, and the settings panel lists it.
 The same group picks the **Shape** for each value: **Auto (by name)**, one of twelve silhouettes
 (Truck, Van, Car, Bus, Motorbike, Bicycle, Drone, Boat, Plane, Person, Animal, Generic), or
 **Catalogue symbol…**.
+
+## Indoors
+
+People, robots and forklifts inside a building or a plant are tracked in its own coordinates, in metres, not in
+latitude and longitude. With a [4D Model](./model-4d) of the building on the map, a query that returns `model_x`,
+`model_y` and `model_z` (and `model_heading`, a heading against the building's axes) is placed where the model stands;
+see [Data in a model's frame](/plus/data/model-frame#people-and-forklifts-indoors).
+
+![Two forklifts on the ground floor and two workers on the 24 and 36 metre levels, drawn inside the see-through units of Eraring Power Station with their trails](/img/plus/model-frame-indoor.jpg)
+
+For assets on several levels:
+
+- set **Altitude (above ground)** to `altitude` and **Display** to **3D**, so each asset stands on its level;
+- turn **Altitude line** off: a line down to the ground means little inside a building;
+- set **Time reference** to **History** to replay a shift, so the newest position in the data is now;
+- give the 4D Model an **Opacity** under 1, or its walls hide the assets.
+
+::: info Since Plus 1.7.0
+Data in a model's frame, with `model_heading`, is new in Plus 1.7.0, not released yet.
+:::
 
 ## GTFS-realtime
 

@@ -84,6 +84,9 @@ setting needs them.
 | Background colour       | Colour of that disc                                                                                | dark blue-grey            |
 | Background opacity      | 0 to 1                                                                                             | 0.6                       |
 
+A **Cards** group gives each place a card with its reading and its series, beside the gauge, on hover in place of
+the popup or all the time. See [Cards on any layer](./cards).
+
 ### Minimum and maximum
 
 The gauge fills to `(value − Minimum) / (Maximum − Minimum)`, held between empty and full. With the

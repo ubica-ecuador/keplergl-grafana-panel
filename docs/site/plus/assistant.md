@@ -28,7 +28,7 @@ The app adds three skills to the Assistant, next to the free panel's own knowled
 | Skill                                    | What it covers                                                                                                                                              |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Configure a Kepler Plus map              | The Plus base maps by their real names, the Relief and other Map Layers switches, Places and active alerts options, and linking the map to the other panels |
-| Kepler Plus layer types                  | The eight [Plus layers](/plus/layers/): the columns each one reads, its settings, and what it is for                                                        |
+| Kepler Plus layer types                  | The ten [Plus layers](/plus/layers/): the columns each one reads, its settings, and what it is for                                                          |
 | Author dashboards with a Kepler Plus map | Writing a dashboard around a Plus map: the saved map, its layers, the variables and the other panels' queries                                               |
 
 Because the skills list the base maps Plus can draw, the Assistant does not invent a style the panel cannot show. The

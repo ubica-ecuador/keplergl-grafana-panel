@@ -17,7 +17,9 @@ Plus adds.
 | Cloud-native imagery: COG, PMTiles, Zarr, WMS, ArcGIS Image Service, STAC                                                 |     ✓      |  ✓   |
 | Dashboard time sync, cross-filtering, draggable markers, Grafana Assistant context                                        |     ✓      |  ✓   |
 | OpenFreeMap, CARTO and Esri public base maps, with relief                                                                 |     ✓      |  ✓   |
-| [Gauge, 3D Shape, Coverage, Surface, Sparkline, Traffic, Pipeline, Fleet and 4D Model layers](/plus/layers/)              |            |  ✓   |
+| [Gauge, 3D Shape, Coverage, Surface, Sparkline, 3D Callout, Traffic, Pipeline, Fleet and 4D Model layers](/plus/layers/)  |            |  ✓   |
+| [Cards](/plus/layers/cards) with each object's reading and series on the Plus layers, and Grafana alerts on them          |            |  ✓   |
+| [Data in a 3D model's own frame](/plus/data/model-frame): sensors by part, people indoors, pipes and rooms                |            |  ✓   |
 | [Places without coordinates](/plus/data/places): regions, zones, airports, PoPs, geohashes, countries, IPs                |            |  ✓   |
 | [States, provinces, counties and cantons](/plus/data/regions) placed by name or ISO 3166-2 code                           |            |  ✓   |
 | [Network links](/plus/data/network-links) between named sites, coloured by Grafana thresholds                             |            |  ✓   |
@@ -39,7 +41,7 @@ Plus adds its own settings next to the free ones:
 
 - in the panel options, the **Places** and **Active alerts** groups, and the **Thresholds**, **Unit** and
   **Decimals** standard options, which colour and label [network links](/plus/data/network-links);
-- in kepler's side panel, the eight Plus layer types in the layer type list, the Plus base maps in the base map
+- in kepler's side panel, the ten Plus layer types in the layer type list, the Plus base maps in the base map
   picker, and a **3D (Plus)** tab in **Add Data**.
 
 Plus steps aside wherever the free panel already draws a query. A query with coordinates, a geometry or an H3 index

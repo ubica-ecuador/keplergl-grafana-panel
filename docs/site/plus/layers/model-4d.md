@@ -11,7 +11,8 @@ building or a machine, live or replayed.
 [Open this dashboard live →](https://pacha.ubica.dev/d/schependomlaan-4d)
 
 ::: info Since Plus 1.6.0
-The 4D Model layer is new in Plus 1.6.0. **State** mode is new in Plus 1.7.0, not released yet.
+The 4D Model layer is new in Plus 1.6.0. **State** mode, the parts' cards, the see-through model and data in the
+model's frame are new in Plus 1.7.0, not released yet.
 :::
 
 ## See it at work
@@ -187,13 +188,29 @@ Up to 256 parts named by the rows, each part is drawn on its own and its hover s
 parts of one colour are drawn together, which keeps a model of thousands of parts as fast as a few, and are not
 picked on hover.
 
-A [Sparkline](./sparkline) layer on the same map, lifted by an altitude column, puts each part's series in a card over
-it.
+### A card on each part
+
+The same query gives each part a card with its reading at the instant and its series: set the layer's **Cards** to
+**Card on hover** or **Cards always**. Each card stands on a stem above the top of its part, and shows the layer's
+colour field when it holds numbers, or the column you pick under **Value**. A Grafana alert on a part can mark its
+card. See [Cards on any layer](./cards).
+
+![Eraring Power Station's four units coloured by their output, each with a card above it giving its output in MW and the day's series](/img/plus/cards.jpg)
 
 ## Placing the model
 
 The model's origin stands at the rows' latitude and longitude. **Heading** turns it clockwise from north about that
 origin, and **Altitude** lifts it, in metres. Turn the heading until the model sits on the base map's footprint.
+
+Other queries on the same map can be written in the model's own coordinates, by part or in metres from its origin:
+sensors, people and forklifts indoors, pipes and rooms. They are placed where the model stands and follow it when it
+is turned. See [Data in a model's frame](/plus/data/model-frame).
+
+## Seeing inside the model
+
+With its **Opacity** under 1, in kepler's **Color** group, the model is drawn see-through, and what stands inside it
+shows: a [Fleet](./fleet)'s people and forklifts on a floor, a callout's anchor, a room. At full opacity it hides what
+is behind its walls, as a building does.
 
 ## Options
 
@@ -217,12 +234,15 @@ kepler's **Color** group.
 | **Parts with no reading yet** | State mode: **Outline** or **Hidden**.                                                     | Outline         |
 | **Reading stale after (min)** | State mode: a reading older than this at the instant counts as none; 0, never.             | 0               |
 
-**Opacity**, in the **Color** group, applies to the whole model.
+**Opacity**, in the **Color** group, applies to the whole model; under 1, the model is see-through (see
+[Seeing inside the model](#seeing-inside-the-model)). The **Cards** group is described in
+[Cards on any layer](./cards).
 
 ## Hover and tooltip
 
 Hovering a part shows its row in kepler's tooltip: the task, the dates, the trade, any column the query returns. Pick
 the fields under **Tooltip** in kepler's interactions panel; the layer's **Interaction** group turns hovering off.
+With **Cards** at **Card on hover**, the part's card shows in place of the tooltip.
 Parts still to build are not picked, so the pointer reaches the built ones behind their outline.
 
 ## When it does not draw
@@ -250,5 +270,6 @@ Plus layers share more behaviour, such as clicks and drawn polygons: see [Plus l
 - Construction schedules: what should stand on a given day, what is late, which trade is on site.
 - Phased works: a road, a rail line or a pipeline built section by section.
 - Digital twins: the units of a plant, the floors of a building or the bays of a substation coloured by their live
-  readings (State mode), and replayed with a Time Brush.
+  readings (State mode), each with its card, and replayed with a Time Brush.
+- Indoor maps: a see-through building with its people, robots and sensors placed in its own coordinates.
 - Maintenance campaigns: the parts of an asset coloured by their last inspection.

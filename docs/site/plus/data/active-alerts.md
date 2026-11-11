@@ -85,6 +85,11 @@ others are still drawn:
 With **Entity label** set, an alert whose label names an entity of the panel's own data is drawn on that entity
 first, whatever its other labels say; see [Geofences](#geofences). Every other alert is placed by its own labels.
 
+An alert placed on an entity can also mark that entity's card: a [3D Callout](/plus/layers/callout#grafana-alerts-on-a-callout)
+or a [layer's cards](/plus/layers/cards#grafana-alerts-on-the-cards) with **Alert label** set to the same label show
+the rule's name in red on the card and keep it on top. Rows written in a [3D model's frame](/plus/data/model-frame)
+are placed before the alerts read them, so their entities take alerts too.
+
 Each alert instance is placed by its own labels, so a rule needs no change as long as its labels name a place. With
 **Place label** on **Auto**, the first of these that gives a position wins:
 

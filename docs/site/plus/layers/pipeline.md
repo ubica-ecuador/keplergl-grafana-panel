@@ -59,7 +59,9 @@ Pipeline shows kepler's **Stroke Color**, **Stroke Width** and **Elevation Scale
 
 **Style**, **Laps per cycle**, **Cycle (s)**, **Comet length**, **Spacing (px)**, **Dash length**,
 **Animate** and **Glow** follow, and work as in [Traffic](/plus/layers/traffic#options). So do
-labels, **Allow hover** and **History**. Pipeline has no Split and no Arc.
+labels, **Allow hover** and **History**. Pipeline has no Split and no Arc. The **Cards** group gives each line a
+card halfway along it, at its height there, on hover in place of the popup or all the time; see
+[Cards on any layer](./cards).
 
 ## Direction
 
@@ -86,6 +88,21 @@ A new layer takes **Altitude** from the first numeric column named `altitude`, `
 `height`. Heights are measured from the ground, not from sea level: a column of elevations above
 sea level lifts the line hundreds of metres up, and it disappears when you zoom in below it. Clear
 the field when that is what the column holds.
+
+## Lines that rise
+
+A line whose vertices change height, such as a vertical riser or a pipe climbing a level, is drawn with its width
+facing the screen, so it shows from every side. A line that keeps one height still lies flat, as a network on the
+ground does.
+
+![Steam pipes inside Eraring Power Station: a header along the four units and a riser from each unit up to it, each pipe with a card giving its flow in MW halfway along it](/img/plus/pipeline-risers.jpg)
+
+Pipes known in a building's or a plant's own coordinates can be drawn where its 3D model stands: see
+[Data in a model's frame](/plus/data/model-frame#pipes-and-rooms).
+
+::: info Since Plus 1.7.0
+Lines that rise drew nothing before Plus 1.7.0, not released yet.
+:::
 
 ## Long lines
 

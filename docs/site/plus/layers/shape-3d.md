@@ -106,6 +106,9 @@ Rotation shows on boxes and prisms; a cylinder looks the same at any angle.
 popup charts for the hovered place: the colour column (**Color field**, the default), any numeric
 column, or **Off**.
 
+The **Cards** group gives each place a card with its reading and its series instead, on hover or all the time. With
+the shape sized in metres, the card stands on top of it. See [Cards on any layer](./cards).
+
 ## Behaviour worth knowing
 
 - **Per place.** A query that returns a time series per site would stack every reading on the same

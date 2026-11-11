@@ -4,6 +4,10 @@ A card over each station with its series across the dashboard's time range, its 
 its band's colour, and its name. For places where the trend matters as much as the place: river
 gauges, weather stations, meters, the endpoints of each region.
 
+For cards on stems above their places in 3D, see the [3D Callout](./callout), a Sparkline that stands its cards up.
+Gauge, 3D Shape, Coverage, Traffic, Pipeline and 4D Model layers can show cards of their own: see
+[Cards on any layer](./cards).
+
 ![River stations in Cuenca drawn as sparkline cards with their turbidity over the day, each value in its band's colour, and one station in red with No data and a blinking button](/img/plus/sparkline.jpg)
 
 ## See it in the layer tour
@@ -84,6 +88,9 @@ Cards are placed the way a map places its labels: worst band first and, within a
 value first. Each card tries the four corners around its dot and takes the first that covers no
 other card or dot and stays inside the map. A card that does not fit stays a dot and shows its
 card while the pointer is on it. Cards keep clear of kepler's side panel when it is open.
+
+The cards of several layers on one map keep off each other: the layer higher in kepler's layer list places its cards
+first, and the layers below place theirs around them. Since Plus 1.7.0, not released yet.
 
 **Overlap** relaxes that: **Some** lets a card cover up to 30% of another, and **Allow** places one
 for every station on the map. At most 60 cards are placed at once, not counting cards in alert or
