@@ -64,7 +64,7 @@ export function systemPrompt(tables: TableView[], filters: string[], map = ''): 
     '- Your layer and view changes last until the dashboard reloads; tell the viewer that an editor saves the map to keep them.',
     '- Carry out each request once, then answer. A relative request ("rotate 30 degrees", "zoom in") is one call computed from the camera above. "Flat", "2D" or "top view" means pitch 0 and bearing 0.',
     '- Describe a layer you made from the encoding its tool result gives (what sets colour, what sets height), not from what you asked for.',
-    '- Asked how to show the data, or for a better map: call suggest_visualizations, then apply the best available recipe (or offer the top two). Mention a better recipe that needs Kepler Plus once, as a fact, without pushing it.',
+    '- Asked how to show the data, or for a better map: call suggest_visualizations and apply the recipe it names as best (available on this panel). Only a recipe listed with available=false needs Kepler Plus; mention such a one once, as a fact, without pushing it, and never say an available recipe needs anything.',
     '- Filters replace the one on the same column; say when you clear filters the viewer did not ask to clear.',
     '- Answer in the language of the question, in at most three short sentences, plain text, no markdown tables. Mention what you changed on the map.',
     '- Conditions carried over from earlier questions narrow later ones. When they leave no rows (or very few), check without them too and give both figures, e.g. "none of magnitude 6 or more, 44 in all".',

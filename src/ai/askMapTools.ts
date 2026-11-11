@@ -827,6 +827,8 @@ function suggestVisualizations(ctx: ToolContext, args: Record<string, unknown>):
         dataset,
         label,
         shape: { rows, places, rowsPerPlace, idField, positionsPerId, time, valueFields, categoryFields, shapes },
+        // The recipe to apply when asked for "the best": the top one this panel can build.
+        best: fits.find((f) => f.available)?.recipe ?? null,
         recipes: fits,
       };
     }),

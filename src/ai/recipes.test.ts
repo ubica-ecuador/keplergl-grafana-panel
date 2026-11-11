@@ -91,6 +91,7 @@ describe('recipes', () => {
 
   it('ranks Plus surface + sparklines first for sensors, marked unavailable in the free panel', () => {
     const out = runTool('suggest_visualizations', {}, { tables: [sensors], actions: actions() }).result as Array<{ recipes: Array<{ recipe: string; available: boolean }> }>;
+    expect((out[0] as unknown as { best: string }).best).toBe('sensor-points');
     expect(out[0].recipes.map((r) => [r.recipe, r.available])).toEqual([
       ['sensor-surface-sparklines', false],
       ['sensor-points', true],
