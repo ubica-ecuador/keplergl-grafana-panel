@@ -4,7 +4,7 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
-## Unreleased
+## 1.8.0 (2026-11-12)
 
 - **A Cells layer: points counted in H3, A5, S2 or geohash cells whose level follows the zoom.** The
   hexagon layer bins points in hexagons of a fixed radius in kilometres, the same at every zoom, and

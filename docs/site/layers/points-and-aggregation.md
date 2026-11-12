@@ -115,7 +115,7 @@ browser_, while [hexagonId](./geometry-and-indices#h3) draws cells your data alr
 ![The cells layer: a day of fire detections over the Sahel, counted in H3 cells](/img/layer-cells.jpg)
 
 ::: info Since 1.8.0
-The cells layer is new in 1.8.0, not released yet; the edge build has it.
+The cells layer is new in 1.8.0.
 :::
 
 Points counted in the cells of a global grid, **H3**, **A5**, **S2** or **geohash**, at the level
