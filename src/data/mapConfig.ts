@@ -245,6 +245,54 @@ export function namesBasemap(config: SavedMapConfig | null | undefined): boolean
   return isRecord(mapStyle) && typeof mapStyle.styleType === 'string' && mapStyle.styleType !== '';
 }
 
+/**
+ * The datasets whose saved layers, filters or tooltips name a field: a layer's
+ * columns or any channel of it (`{name}`), a filter's `name`, a tooltip's field.
+ * What a dataset's columns must keep calling it for the saved map to bind.
+ */
+export function datasetsNaming(config: SavedMapConfig | null | undefined, field: string): Set<string> {
+  const found = new Set<string>();
+  const visState = isRecord(config?.config) ? config.config.visState : undefined;
+  if (!isRecord(visState)) {
+    return found;
+  }
+  const idsOf = (value: unknown): string[] =>
+    (Array.isArray(value) ? value : [value]).filter((id): id is string => typeof id === 'string');
+  for (const layer of Array.isArray(visState.layers) ? visState.layers : []) {
+    const layerConfig = isRecord(layer) && isRecord(layer.config) ? layer.config : undefined;
+    const columns = isRecord(layerConfig?.columns) ? Object.values(layerConfig.columns) : [];
+    if (columns.includes(field) || namesField(layer, field)) {
+      idsOf(layerConfig?.dataId).forEach((id) => found.add(id));
+    }
+  }
+  for (const filter of Array.isArray(visState.filters) ? visState.filters : []) {
+    if (isRecord(filter) && idsOf(filter.name).includes(field)) {
+      idsOf(filter.dataId).forEach((id) => found.add(id));
+    }
+  }
+  const tooltip = isRecord(visState.interactionConfig) ? visState.interactionConfig.tooltip : undefined;
+  const shown = isRecord(tooltip) && isRecord(tooltip.config) ? tooltip.config.fieldsToShow : undefined;
+  if (isRecord(shown)) {
+    for (const [id, fields] of Object.entries(shown)) {
+      if (namesField(fields, field)) {
+        found.add(id);
+      }
+    }
+  }
+  return found;
+}
+
+/** Whether anything inside `value` is an object whose `name` is `field`, the way kepler names a column. */
+function namesField(value: unknown, field: string): boolean {
+  if (Array.isArray(value)) {
+    return value.some((item) => namesField(item, field));
+  }
+  if (!isRecord(value)) {
+    return false;
+  }
+  return value.name === field || Object.values(value).some((item) => namesField(item, field));
+}
+
 function isSavedConfig(value: unknown): value is SavedMapConfig {
   return isRecord(value) && typeof value.version === 'string' && isRecord(value.config);
 }

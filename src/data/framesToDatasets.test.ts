@@ -479,4 +479,38 @@ describe('framesToDatasets: stations versus grids', () => {
     expect(dataset.symbolLayer!.visualChannels.angleField).toMatchObject({ name: 'wind_direction' });
     expect(dataset.symbolLayer!.config.visConfig.directionConvention).toBe('from');
   });
+
+  it('keeps the name of a column named like a count on a query that is no flow', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'geometry', type: FieldType.string, values: ['{"type":"LineString","coordinates":[[0,0],[1,1]]}'] },
+        { name: 'flow', type: FieldType.number, values: [-8000] },
+      ],
+    });
+
+    const [dataset] = framesToDatasets([frame]);
+
+    expect(dataset.rows[0]).toMatchObject({ flow: -8000 });
+    expect(dataset.rows[0]).not.toHaveProperty('count');
+    expect(dataset.renames).toEqual({ geometry: '_geojson' });
+  });
+
+  it('renames it count for a dataset whose saved map names count, as 1.7.0 and earlier did', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'latitude', type: FieldType.number, values: [1] },
+        { name: 'longitude', type: FieldType.number, values: [2] },
+        { name: 'weight', type: FieldType.number, values: [5] },
+      ],
+    });
+
+    const [legacy] = framesToDatasets([frame], {}, { savedCount: new Set(['grafana-A']) });
+    const [other] = framesToDatasets([frame], {}, { savedCount: new Set(['grafana-B']) });
+
+    expect(legacy.rows[0]).toEqual({ latitude: 1, longitude: 2, count: 5 });
+    expect(legacy.renames).toMatchObject({ weight: 'count' });
+    expect(other.rows[0]).toEqual({ latitude: 1, longitude: 2, weight: 5 });
+  });
 });

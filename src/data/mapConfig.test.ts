@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 
 import {
+  datasetsNaming,
   keepMapInfo,
   keepRemoteDatasets,
   LAYER_API_KEY_METADATA_FIELDS,
@@ -241,5 +242,42 @@ describe('namesBasemap', () => {
     // The guard rail on the fix's scope: a captured config names a style, and
     // must go on winning. Only configs that name none change behaviour.
     expect(namesBasemap(savedByThePanel as never)).toBe(true);
+  });
+});
+
+describe('datasetsNaming', () => {
+  const saved = {
+    version: 'v1',
+    config: {
+      visState: {
+        layers: [
+          {
+            config: { dataId: 'grafana-A', columns: { lat: 'latitude' } },
+            visualChannels: { sizeField: { name: 'count' } },
+          },
+          { config: { dataId: 'grafana-B', textLabel: [{ field: { name: 'count', type: 'integer' } }] } },
+          { config: { dataId: 'grafana-C', columns: { count: 'count' } } },
+          { config: { dataId: 'grafana-D' }, visualChannels: { colorField: { name: 'flow' } } },
+        ],
+        filters: [{ dataId: ['grafana-E'], name: ['count'] }],
+        interactionConfig: { tooltip: { config: { fieldsToShow: { 'grafana-F': [{ name: 'count' }] } } } },
+      },
+    },
+  };
+
+  it('finds the datasets whose layers, filters or tooltips name a field', () => {
+    expect([...datasetsNaming(saved, 'count')].sort()).toEqual([
+      'grafana-A',
+      'grafana-B',
+      'grafana-C',
+      'grafana-E',
+      'grafana-F',
+    ]);
+    expect([...datasetsNaming(saved, 'flow')]).toEqual(['grafana-D']);
+  });
+
+  it('finds none in no map, or one without a vis state', () => {
+    expect(datasetsNaming(null, 'count').size).toBe(0);
+    expect(datasetsNaming({ version: 'v1', config: {} }, 'count').size).toBe(0);
   });
 });

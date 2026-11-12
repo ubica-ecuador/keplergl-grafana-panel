@@ -4,6 +4,17 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## Unreleased
+
+- **A column named like a count keeps its name unless the query is an origin–destination one.** A
+  column called `trips`, `weight`, `flow`, `total` or `volume` reached kepler as `count` on every
+  query, though only the flow layer reads a count by that name. A layer coloured, sized or animated by
+  such a column under its own name, a pipe's `flow` on Kepler Plus's Pipeline, found no column of that
+  name and dropped the channel without a word, and the column was missing from kepler's field lists
+  under its name. Only an origin–destination query (both ends by latitude and longitude, or by H3
+  cell) now renames its count. A map saved before, whose layers, filters or tooltips name `count` on
+  such a query, keeps it named `count`, so it draws as it did.
+
 ## 1.7.0 (2026-11-09)
 
 - **Export Map writes JSON only.** kepler's HTML export, the dialog's default, is a page that loads

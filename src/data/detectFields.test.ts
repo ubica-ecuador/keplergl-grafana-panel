@@ -1,6 +1,6 @@
 import { FieldType, toDataFrame } from '@grafana/data';
 
-import { detectFields, NAME_CANDIDATES, resolveRoles } from './detectFields';
+import { detectFields, legacyCountColumn, NAME_CANDIDATES, resolveRoles } from './detectFields';
 
 describe('NAME_CANDIDATES', () => {
   /**
@@ -274,7 +274,7 @@ describe('detectFields — zarr', () => {
 });
 
 describe('detectFields: rotation and magnitude', () => {
-  it('finds a vehicle\'s heading and its speed', () => {
+  it("finds a vehicle's heading and its speed", () => {
     const frame = toDataFrame({
       fields: [
         { name: 'lat', type: FieldType.number, values: [] },
@@ -321,5 +321,36 @@ describe('detectFields: rotation and magnitude', () => {
 
     expect(roles.magnitude).toBe('magnitude');
     expect(roles.count).toBeUndefined();
+  });
+
+  it('gives the count role only to an origin-destination query: elsewhere a column named like a count keeps its name', () => {
+    // A pipe's flow, a sensor's total or a heatmap's weight is read by a layer under its own name: renamed `count`, a
+    // layer coloured by `flow` lost its colour without a word.
+    for (const name of ['flow', 'weight', 'total', 'volume', 'trips', 'count']) {
+      const frame = toDataFrame({
+        fields: [
+          { name: 'geometry', type: FieldType.string, values: [] },
+          { name, type: FieldType.number, values: [] },
+        ],
+      });
+      expect(detectFields(frame).count).toBeUndefined();
+    }
+    const cells = toDataFrame({
+      fields: [
+        { name: 'origin_h3', type: FieldType.string, values: [] },
+        { name: 'dest_h3', type: FieldType.string, values: [] },
+        { name: 'flow', type: FieldType.number, values: [] },
+      ],
+    });
+    expect(detectFields(cells).count).toBe('flow');
+  });
+
+  it('names the column a map saved by 1.7.0 knew as count, unless it is called count already', () => {
+    const named = (name: string) =>
+      legacyCountColumn(toDataFrame({ fields: [{ name, type: FieldType.number, values: [] }] }));
+    expect(named('Flow')).toBe('Flow');
+    expect(named('weight')).toBe('weight');
+    expect(named('count')).toBeUndefined();
+    expect(named('people')).toBeUndefined();
   });
 });

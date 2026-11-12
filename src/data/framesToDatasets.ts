@@ -9,7 +9,7 @@ import { buildSymbolLayer, SymbolLayerConfig } from './buildSymbolLayer';
 import { buildTripLayer, TripLayerConfig, TripLayerMode } from './buildTripLayer';
 import { buildTrips } from './buildTrips';
 import { describesLattice, earliestTimestepRows } from './buildWindField';
-import { detectFields, FieldRoleOverrides, FieldRoles, resolveRoles } from './detectFields';
+import { detectFields, FieldRoleOverrides, FieldRoles, legacyCountColumn, resolveRoles } from './detectFields';
 import { KeplerColumn, KeplerRow, keplerRenamesOf, toKeplerColumns, toKeplerRows } from './toKeplerDataset';
 
 /**
@@ -99,12 +99,19 @@ export function framesToDatasets(
     routeQueries?: string[];
     /** Places for rows located by name or code (`placeLookup.ts`), once loaded. */
     gazetteer?: Gazetteer | null;
+    /**
+     * The datasets whose saved map names a field `count` (`datasetsNaming`): on a query that is no flow, the column
+     * 1.7.0 and earlier renamed `count` keeps that name for them, so a map saved then keeps its colours and sizes.
+     */
+    savedCount?: ReadonlySet<string>;
   } = {}
 ): PanelDataset[] {
   const resolved = frames.map((frame, index) => {
     const refId = frame.refId ?? `${index}`;
+    const roles = resolveRoles(detectFields(frame), overrides[refId]);
+    const legacy = !roles.count && opts.savedCount?.has(datasetId(refId)) ? legacyCountColumn(frame) : undefined;
     // A row placed by geohash or by name gains coordinates before anything reads them.
-    return { refId, ...placeFrame(frame, resolveRoles(detectFields(frame), overrides[refId]), opts.gazetteer) };
+    return { refId, ...placeFrame(frame, legacy ? { ...roles, count: legacy } : roles, opts.gazetteer) };
   });
 
   const datasets = resolved.map(({ frame, refId, roles }): PanelDataset => {

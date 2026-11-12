@@ -11,7 +11,7 @@ import { resolveBandCombination } from '../data/bandCombination';
 import { framesToWms } from '../data/wmsDataset';
 import { framesToZarr } from '../data/zarrDataset';
 import { toKeplerTheme } from '../data/keplerTheme';
-import { SavedMapConfig } from '../data/mapConfig';
+import { datasetsNaming, SavedMapConfig } from '../data/mapConfig';
 import { CUSTOM_BASEMAP_ID, rasterServerUrlsOf, resolveRasterServerUrl } from './constants';
 import { resolveCustomBasemapUrl } from './customBasemapUrl';
 import { DEFAULT_CLICK_AREA_METRES } from './clickArea';
@@ -162,6 +162,13 @@ export function KeplerPanel(props: Props) {
     useMemo(() => namesPlaces(series, fieldMappings), [series, fieldMappings])
   );
 
+  // A map saved while every column named like a count reached kepler as `count` keeps it so (framesToDatasets.ts):
+  // the datasets its layers, filters or tooltips name `count` on. Sorted, so a save that names the same ones moves
+  // nothing.
+  const savedCountIds = useStableValue(
+    [...datasetsNaming(geomapConversion?.mapConfig ?? options.mapConfig, 'count')].sort()
+  );
+  const savedCount = useMemo(() => new Set(savedCountIds), [savedCountIds]);
   const queryDatasets = useMemo(
     () =>
       framesToDatasets(series, fieldMappings, {
@@ -169,8 +176,9 @@ export function KeplerPanel(props: Props) {
         tripLayerMode: options.tripLayerMode,
         routeQueries,
         gazetteer,
+        savedCount,
       }),
-    [series, fieldMappings, options.flowRenderMode, options.tripLayerMode, routeQueries, gazetteer]
+    [series, fieldMappings, options.flowRenderMode, options.tripLayerMode, routeQueries, gazetteer, savedCount]
   );
   const datasets = useMemo(
     () =>

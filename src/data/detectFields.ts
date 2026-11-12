@@ -305,7 +305,38 @@ export function detectFields(frame: DataFrame): FieldRoles {
     roles.time = timeField.name;
   }
 
+  // A count is a flow's weight, which the flow layer reads by kepler's name for
+  // it: a column with the role reaches kepler renamed `count`
+  // (toKeplerDataset.ts). Anywhere else the column keeps the query's name, so a
+  // pipe's `flow`, a sensor's `total` or a heatmap's `weight` is where the
+  // layers and the panel's options that name it look for it.
+  if (!describesFlow(roles)) {
+    delete roles.count;
+  }
+
   return roles;
+}
+
+/**
+ * Whether the roles describe origin–destination flows: both ends, by latitude
+ * and longitude or by H3 cell. What `buildFlows` draws, and the only query whose
+ * count the panel renames.
+ */
+export function describesFlow(roles: FieldRoles): boolean {
+  return Boolean(
+    (roles.originH3 && roles.destH3) || (roles.originLat && roles.originLng && roles.destLat && roles.destLng)
+  );
+}
+
+/**
+ * The column a map saved by 1.7.0 or earlier knew as `count` on a query that is
+ * no flow: a column named like a count (`trips`, `weight`, `flow`, `total`,
+ * `volume`), which those versions renamed `count` on every query. Not one named
+ * `count` already, which needs no rename.
+ */
+export function legacyCountColumn(frame: DataFrame): string | undefined {
+  const column = findByName(frame, NAME_CANDIDATES.count);
+  return column && column.toLowerCase() !== 'count' ? column : undefined;
 }
 
 function findByName(frame: DataFrame, candidates: string[]): string | undefined {
