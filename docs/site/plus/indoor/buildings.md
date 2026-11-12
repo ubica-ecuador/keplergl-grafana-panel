@@ -13,6 +13,8 @@ Buildings and sites on an indoor map are new in Plus 1.7.0, not released yet.
 
 The map above is the Technical University of Munich's campus in Garching: the rooms of two buildings from
 OpenStreetMap's indoor tagging, each coloured by whether a lecture is on in it, from the university's room calendar.
+It is live: [TUM Garching through a day of lectures](https://pacha.ubica.dev/d/tum-garching-lectures), public and
+read-only. Zoom in on a building, or pick a lecture in the table beside the map.
 
 ## A building column
 

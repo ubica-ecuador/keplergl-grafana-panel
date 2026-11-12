@@ -12,6 +12,10 @@ database.
 Floor plans and rooms are new in Plus 1.7.0, not released yet.
 :::
 
+The map above is live: [Audimax Hamburg from its evacuation plans](https://pacha.ubica.dev/d/audimax-evacuation-plans),
+public and read-only. Its three plans are photographs from Wikimedia Commons (Minderbinder, CC BY-SA 4.0), carried in the
+dashboard; the people and the CO₂ in its rooms are simulated. Drag or play the Time Brush under it to go through the day.
+
 Plans and rooms are set in the **Indoor** tab of kepler's side panel: a floor's name in the tab opens its window, whose
 **Plan** and **Rooms** tabs hold them. They are saved with the panel, so the dashboard carries them.
 

@@ -23,6 +23,11 @@ The app installs **Kepler Plus tour — Indoor maps**, two indoor maps on synthe
 building of three floors with its plans, rooms coloured by CO₂, sensors on 3D callouts and a table that picks a room,
 and a bottling plant as a digital twin through a shift. See [Template dashboards](/plus/start/templates#indoor-maps).
 
+Two more run on real buildings among the [live demos](https://pacha.ubica.dev/dashboards/f/dashboards/?orgId=1),
+public and read-only: [Audimax Hamburg from its evacuation plans](https://pacha.ubica.dev/d/audimax-evacuation-plans)
+(see [Floor plans and rooms](./plans)) and [TUM Garching through a day of lectures](https://pacha.ubica.dev/d/tum-garching-lectures)
+(see [Buildings and sites](./buildings)).
+
 ## What it needs
 
 One column holding each row's floor, in any of the shapes indoor data comes in:
