@@ -21,8 +21,8 @@ From the top:
   its rooms, each opening where it is edited. **+ floor** adds a floor to a building, **Add a building** a building.
   **Data…** opens the settings on where the floors come from.
 - With no floor yet, a start: **Add a floor**, **Add a building**, or **Choose the floor column**.
-- **Spread between floors** and **Other floors**, what the map opens with (the picker's own controls are the viewer's
-  and are not saved).
+- **Spread between floors** and **Other floors**, what the map opens with (the picker's controls write the same
+  settings).
 - **Layers**: the layers of the plans and rooms (Floor plans, Floors drawn, Rooms, Walls, Room names, Dials), each with
   its eye; one not on the map yet is added. See [What the rooms draw](./plans#what-the-rooms-draw).
 - **All settings…**: the settings window.

@@ -85,8 +85,9 @@ The lift panel at the left of the map, top floor first:
 - **Stack** and **Flatten** glide the floors apart and back onto the ground. **Spread** sets how far apart they stand,
   in metres.
 
-The picker's controls are the viewer's own: they change the map for whoever is looking, until the dashboard is opened
-again. What the map opens with (the spread, the other floors, the mode) is saved from the Indoor tab.
+Besides the floor, what the picker sets (**and below**, **Other floors** and how faint, the spread) is saved with the
+dashboard: change it, save, and the map opens that way. A viewer who cannot save changes it for their own look only.
+The floor picked is not saved: the map opens on the floor its variable names, else on the one set to open the map.
 
 Picking a floor flies the map to it, framed and at its height, unless **Fly to the floor picked** is off in the
 settings. Seen through, the floors above the one picked fade out as the map zooms in on it, so they no longer hide it;
