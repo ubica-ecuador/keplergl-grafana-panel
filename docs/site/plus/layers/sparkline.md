@@ -76,7 +76,10 @@ the worst. Grafana's thresholds do not reach the map; set the bands in the layer
   reading, or the place's newest value before it when that reading has none. Up to four; new in Plus 1.7.0, not
   released yet. They work the same on [cards on other layers](./cards#more-than-one-value).
 - **Chart**: the series over the dashboard's time range, with its minimum and maximum on the left
-  and the start and end times underneath. The current reading is a dot on the line.
+  and the start and end times underneath. The current reading is a dot on the line. With **Chart over** at
+  **The data**, the chart runs from the first reading the query returns to the last instead: on a dashboard whose
+  range is a short window (a quarter hour the [Time Brush](../time-brush) moves), a query returning the readings
+  before it too draws the day so far, the value still the window's. New in Plus 1.7.0, not released yet.
 
 The current reading is the last one at the time filter's cursor. Press play and the cursor walks
 across every card: the line after it is dimmed, and the value and colour are those at the cursor.
@@ -116,6 +119,7 @@ Under **Sparkline** in the layer's settings, below kepler's colour group.
 | **Name field**                 | The text column shown as the card's name.                                                                                                                        | first text column       |
 | **Time field**                 | The time column the chart runs along.                                                                                                                            | Auto (first time field) |
 | **Scale**                      | **Common** to all cards, or **Per site**.                                                                                                                        | Common                  |
+| **Chart over**                 | **The dashboard's range**, or **The data**: from the first reading the query returns to the last.                                                                | The dashboard's range   |
 | **Asset**                      | The column that names a moving asset; **None (by position)** groups by coordinates only.                                                                         | Auto                    |
 | **Minimum**, **Maximum**       | Fix the chart's vertical range. Empty means from the data.                                                                                                       | auto                    |
 | **Unit**                       | Text after the value, kept as typed: a leading space separates it from the number (` NTU`).                                                                      | empty                   |

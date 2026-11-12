@@ -69,7 +69,7 @@ keeps its stem.
 
 The card is a Sparkline's: the header with the id and the name, the value in its band's colour, and the series with
 its cursor. Every other setting works as on the [Sparkline](./sparkline): **Cards** on **Auto** or **On hover** with
-pins, **Card size**, **Scale**, **Unit**, the alerts for no data, and Grafana's shared crosshair.
+pins, **Card size**, **Scale**, **Chart over**, **Unit**, the alerts for no data, and Grafana's shared crosshair.
 
 Callouts keep off the cards of the map's other card layers: the layer higher in kepler's list places its cards
 first.
