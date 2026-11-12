@@ -74,6 +74,15 @@ and cards that would overlap gather into one. A click flies one level in: a site
 floor. The breadcrumb over the map names where you are, _All sites › Quito › Hospital North › Floor 4_, and each of
 its names goes back out to it.
 
+### From one building to the next
+
+Indoors, the other buildings keep a small card with their name and figure, so you can go from one to the next without
+zooming out: those of the site of the building you look at or, with no sites, those within a kilometre, the six
+nearest. A building in view has its card over it; one out of view is pinned to the edge of the map where the way to it
+leaves the view, with an arrow. A click on a card flies in to that building, on its default floor, and lets a
+[selection](#go-to-a-room-or-a-sensor) in the building you leave go. **Settings** → **Picker** → **Their cards
+indoors** → **Hidden** turns them off.
+
 ## Floors shown together
 
 Some floors are seen together: a mezzanine with its hall, the galleries round an atrium. In a floor's window, on
