@@ -71,6 +71,10 @@ the worst. Grafana's thresholds do not reach the map; set the bands in the layer
 
 - **Header**: the id and the name, cut with an ellipsis when they do not fit.
 - **Value**: the current reading, large, in its band's colour, followed by the **Unit**.
+- **More values**: further numbers of the place, one row each under the value, with a label and a unit: a
+  station's humidity, wind and particles under its temperature. A row shows the column on the card's current
+  reading, or the place's newest value before it when that reading has none. Up to four; new in Plus 1.7.0, not
+  released yet. They work the same on [cards on other layers](./cards#more-than-one-value).
 - **Chart**: the series over the dashboard's time range, with its minimum and maximum on the left
   and the start and end times underneath. The current reading is a dot on the line.
 
@@ -115,6 +119,7 @@ Under **Sparkline** in the layer's settings, below kepler's colour group.
 | **Asset**                      | The column that names a moving asset; **None (by position)** groups by coordinates only.                                                                         | Auto                    |
 | **Minimum**, **Maximum**       | Fix the chart's vertical range. Empty means from the data.                                                                                                       | auto                    |
 | **Unit**                       | Text after the value, kept as typed: a leading space separates it from the number (` NTU`).                                                                      | empty                   |
+| **More values**                | Up to four further numeric columns, a row each under the value: column, label, unit.                                                                             | none                    |
 | **Card size**                  | Small, Medium or Large.                                                                                                                                          | Medium                  |
 | **Cards**                      | **Auto** places cards by itself; **On hover** shows only hovered and pinned cards.                                                                               | Auto                    |
 | **Overlap**                    | How much cards may cover each other: **Don't allow**, **Some**, **Allow**.                                                                                       | Don't allow             |

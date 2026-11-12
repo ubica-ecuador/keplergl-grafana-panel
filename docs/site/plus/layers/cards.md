@@ -53,6 +53,9 @@ them; the time filter does not, as it sets the instant instead (see below).
 - **Header**: the **Name**; on a 4D Model, the part's id before it when the two differ. **Name** on **Auto** is the
   layer's label field, else the first text column.
 - **Value**: the reading at the map's instant, in the object's colour on the map, followed by the **Unit**.
+- **More values**: further numbers of the same object, one row each under the value, with a label on the left and the
+  value and its unit on the right: a room's temperature and humidity under its CO2, a unit's voltage under its
+  output. See [More than one value](#more-than-one-value).
 - **Chart**: the object's readings along the **Time** column over the dashboard's time range, with a dot on the
   current reading. With **Time** at **None (value only)**, the card is smaller and shows the value alone.
 
@@ -69,6 +72,29 @@ fix the range's ends.
 
 An object whose readings stop goes into alert as a [Sparkline](./sparkline#no-data-and-alerts) card does: after
 three of its usual intervals without one, the card shows **No data** in red with how long it has been silent.
+
+## More than one value
+
+Under **More values**, **Add a value** adds a row to every card of the layer: pick a numeric column, and write its
+label (the column's name when left empty) and its unit. Up to four rows; × removes one. The rows go under the value
+and above the chart, and every card of the layer grows by the same height, so the cards stay aligned.
+
+A row shows the column on the row the card reads, at the map's instant. When that row has no value there, the row
+shows the object's newest value before it: a sensor that sends a reading only when it changes keeps showing its last
+one. An object with no value at all in that column shows a dash.
+
+A Gauge of rooms coloured by CO2, with a temperature and a humidity column in the same query:
+
+```sql
+SELECT room, latitude, longitude, co2_ppm, temp_c, rh_pct FROM ...
+```
+
+**Value** `co2_ppm` with **Unit** `ppm`, and two rows under **More values**: `temp_c`, Temperature, °C, and `rh_pct`,
+Humidity, %. Hovering a gauge then shows the room, its CO2, and its temperature and humidity under it.
+
+::: info Since Plus 1.7.0
+**More values** is new in Plus 1.7.0, not released yet.
+:::
 
 ## Where the cards go
 
@@ -113,6 +139,7 @@ In the layer's **Cards** group. Everything but **Show** appears once **Show** is
 | **Time**         | The time column the series runs along; **None (value only)** shows the value alone.                        | Auto (first time field) |
 | **Name**         | The text column in the header.                                                                             | Auto                    |
 | **Unit**         | Text after the value, kept as typed: a leading space sets it apart (` MW`).                                | empty                   |
+| **More values**  | Up to four more numeric columns, a row each: column, label, unit. See [above](#more-than-one-value).       | none                    |
 | **Alert label**  | A Grafana alert label naming the objects; see [Grafana alerts on the cards](#grafana-alerts-on-the-cards). | empty                   |
 | **Size**         | **Small**, **Medium** or **Large**.                                                                        | Small                   |
 | **Scale**        | **Common** to all cards, or **Per card**.                                                                  | Common                  |
