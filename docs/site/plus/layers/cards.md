@@ -12,6 +12,11 @@ Cards on these layers are new in Plus 1.7.0, not released yet. **Show** is **Too
 keeps kepler's popup until you change it.
 :::
 
+## See it in the layer tour
+
+The **Digital twin** map of the [layer tour](/plus/start/templates#digital-twin), installed with the app, shows a 4D Model in State mode with a card on each storey (**Cards always**) and a chilled-water riser whose card shows on hover,
+on the app's sample building, on synthetic data. Open it and press ▶ on its time filter to replay the day.
+
 ## Turning them on
 
 Each of these layers has a **Cards** group among its settings, next to **Allow hover**. Its **Show** setting picks

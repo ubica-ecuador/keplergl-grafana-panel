@@ -10,6 +10,11 @@ places in 3D, at a height you give them, instead of beside them on the ground.
 The 3D Callout layer is new in Plus 1.7.0, not released yet.
 :::
 
+## See it in the layer tour
+
+The **Digital twin** map of the [layer tour](/plus/start/templates#digital-twin), installed with the app, shows two CO₂ sensors as 3D Callouts, placed in metres on their floors, beside the storeys' own cards,
+on the app's sample building, on synthetic data. Open it and press ▶ on its time filter to replay the day.
+
 ## What the query needs
 
 The same rows as a [Sparkline](./sparkline#what-the-query-needs): one row per reading, with the place's latitude and

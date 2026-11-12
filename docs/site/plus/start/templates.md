@@ -26,16 +26,17 @@ app is disabled. Save a copy with **Save as** before changing one.
 
 ## Plus layers
 
-The layer tour: six maps, one per scenario.
+The layer tour: seven maps, one per scenario.
 
-| Map                                | Shows                                                                                 | Documented in                                                                                                                              |
-| ---------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| [Power grid — Europe](#power-grid) | Renewable share as gauges, demand as cylinders, interconnector flows as Traffic lines | [Gauge](/plus/layers/gauge), [3D Shape](/plus/layers/shape-3d), [Traffic](/plus/layers/traffic), [Network links](/plus/data/network-links) |
-| [City — Cuenca](#city)             | A fleet in 3D at its last position, over cell site domes and camera and radar cones   | [Fleet](/plus/layers/fleet), [Coverage 3D](/plus/layers/coverage#coverage-3d)                                                              |
-| [Rivers — Cuenca](#rivers)         | A sparkline card per river station, with a no-data alert and a shared crosshair       | [Sparkline](/plus/layers/sparkline)                                                                                                        |
-| [Weather — Madrid](#weather)       | Temperature estimated between weather stations, as bands and isolines                 | [Surface](/plus/layers/surface)                                                                                                            |
-| [Regions — Ecuador](#regions)      | Ecuador's provinces placed by name, as a choropleth                                   | [States, provinces and municipalities](/plus/data/regions)                                                                                 |
-| [Networks — Iberia](#networks)     | A gas line, a two-way power line and a river, animated along their routes             | [Pipeline](/plus/layers/pipeline)                                                                                                          |
+| Map                                | Shows                                                                                  | Documented in                                                                                                                                         |
+| ---------------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Power grid — Europe](#power-grid) | Renewable share as gauges, demand as cylinders, interconnector flows as Traffic lines  | [Gauge](/plus/layers/gauge), [3D Shape](/plus/layers/shape-3d), [Traffic](/plus/layers/traffic), [Network links](/plus/data/network-links)            |
+| [City — Cuenca](#city)             | A fleet in 3D at its last position, over cell site domes and camera and radar cones    | [Fleet](/plus/layers/fleet), [Coverage 3D](/plus/layers/coverage#coverage-3d)                                                                         |
+| [Rivers — Cuenca](#rivers)         | A sparkline card per river station, with a no-data alert and a shared crosshair        | [Sparkline](/plus/layers/sparkline)                                                                                                                   |
+| [Weather — Madrid](#weather)       | Temperature estimated between weather stations, as bands and isolines                  | [Surface](/plus/layers/surface)                                                                                                                       |
+| [Regions — Ecuador](#regions)      | Ecuador's provinces placed by name, as a choropleth                                    | [States, provinces and municipalities](/plus/data/regions)                                                                                            |
+| [Networks — Iberia](#networks)     | A gas line, a two-way power line and a river, animated along their routes              | [Pipeline](/plus/layers/pipeline)                                                                                                                     |
+| [Digital twin](#digital-twin)      | A building's storeys in the colour of their power draw, with cards, sensors and people | [4D Model](/plus/layers/model-4d), [3D Callout](/plus/layers/callout), [Cards](/plus/layers/cards), [Data in a model's frame](/plus/data/model-frame) |
 
 The dashboard's **About this dashboard** panel repeats what each map shows and what to change to use your own data.
 
@@ -106,6 +107,27 @@ A gas line, a power line that carries load both ways and a river across Spain an
 
 **Your data:** one row per line, with a line geometry column (GeoJSON, WKT or WKB) and the metric that drives the
 flow; two metrics for a line that carries load both ways.
+
+### Digital twin
+
+::: info Since Plus 1.7.0
+The Digital twin map is new in Plus 1.7.0, not released yet.
+:::
+
+![The app's sample building drawn see-through: its top storey in red at 68 kW, the middle in green and the ground floor in blue, each with a card of its power draw over the day, two CO₂ sensors on stems above it, the meeting room's in red at 1,234 ppm, and two people and a robot on their floors](/img/plus/digital-twin.jpg)
+
+The app's sample building as a digital twin. The **4D Model** in State mode colours each storey by its power draw every
+15 minutes and gives it a card with its day; the labs go red in their afternoon peak. Two CO₂ sensors stand on
+**3D Callout** stems inside their floors, the meeting room's turning red during a meeting. A chilled-water riser climbs
+the corner to the roof, drawn by **Pipeline**, its card on hover. Two people and a cleaning robot move on their floors,
+drawn by **Fleet** in 3D inside the see-through model. The sensors, the riser and the people have no coordinates: they
+are written in the building's own metres and placed where the model stands. One time filter sets the instant for all
+of them; it opens at 15:30, and ▶ replays the day.
+
+**Your data:** the model's readings, one row per storey and time with the storey's node name and the model's origin
+(see [4D Model](/plus/layers/model-4d#parts-in-the-colour-of-their-readings)); everything else in the model's frame,
+with `model_x`, `model_y` and `model_z`, or `model_geometry` for a line (see
+[Data in a model's frame](/plus/data/model-frame)). Your own model goes in the 4D Model's **Model URL**.
 
 ## Map layers
 

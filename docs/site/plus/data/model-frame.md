@@ -11,6 +11,11 @@ model, so every layer draws them, and they follow the model when it is moved or 
 Data in a model's frame is new in Plus 1.7.0, not released yet.
 :::
 
+## See it in the layer tour
+
+The **Digital twin** map of the [layer tour](/plus/start/templates#digital-twin), installed with the app, shows CO₂ sensors, a chilled-water riser and two people and a cleaning robot written in the building's own metres,
+on the app's sample building, on synthetic data. Open it and press ▶ on its time filter to replay the day.
+
 ## What it needs
 
 - A [4D Model](/plus/layers/model-4d) layer on the same map. Its rows' latitude and longitude place the model's
