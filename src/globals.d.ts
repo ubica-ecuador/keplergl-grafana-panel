@@ -37,3 +37,14 @@ declare module 'sql.js/dist/sql-wasm.js' {
   const initSqlJs: (settings: Record<string, unknown>) => Promise<Record<string, unknown>>;
   export default initSqlJs;
 }
+
+/**
+ * s2-geometry, which ships no types: the two functions the Cells layer uses to
+ * place a point in its S2 cell (see `panel/cellsGrid.ts`).
+ */
+declare module 's2-geometry' {
+  export const S2: {
+    latLngToKey(lat: number, lng: number, level: number): string;
+    keyToId(key: string): string;
+  };
+}

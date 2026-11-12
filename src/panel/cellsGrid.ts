@@ -1,12 +1,6 @@
 import { cellArea as a5CellArea, cellToParent as a5Parent, lonLatToCell } from 'a5-js';
 import { cellArea as h3CellArea, cellToParent as h3Parent, getHexagonAreaAvg, latLngToCell } from 'h3-js';
-// @ts-expect-error -- s2-geometry ships no types; the two functions used are typed below.
-import { S2 as S2Untyped } from 's2-geometry';
-
-const S2 = S2Untyped as {
-  latLngToKey(lat: number, lng: number, level: number): string;
-  keyToId(key: string): string;
-};
+import { S2 } from 's2-geometry';
 
 /**
  * The discrete global grids a Cells layer bins points into.
