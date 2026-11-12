@@ -1,7 +1,7 @@
 # Template dashboards
 
-Enabling the Plus app installs three dashboards, the **Kepler Plus tour**: every Plus layer, kepler's own layers and
-the free panel's, and the ways a map talks to the rest of a dashboard. Find them in Grafana's **Dashboards** list
+Enabling the Plus app installs four dashboards, the **Kepler Plus tour**: every Plus layer, kepler's own layers and
+the free panel's, the ways a map talks to the rest of a dashboard, and indoor maps. Find them in Grafana's **Dashboards** list
 (tag `kepler-plus-tour`), through the **Tours** menu at the top of each, or on the app's **Dashboards** tab under
 **Administration → Plugins and data → Plugins**.
 
@@ -10,13 +10,15 @@ the free panel's, and the ways a map talks to the rest of a dashboard. Find them
 | [Kepler Plus tour — Plus layers](#plus-layers) | Gauge, 3D Shape, Traffic, Pipeline, Fleet, Coverage 3D, Sparkline, Surface and regions placed by name |
 | [Kepler Plus tour — Map layers](#map-layers)   | Streamlines, wind barbs, Symbol, Markers and kepler's layers, with keyless imagery                    |
 | [Kepler Plus tour — Interaction](#interaction) | The Time Brush, click selection, fit to data and a drawn area, all through dashboard variables        |
+| [Kepler Plus tour — Indoor maps](#indoor-maps) | An office building's floors, plans and sensors, and a plant's digital twin through a shift            |
 
 Every map reads synthetic rows carried inside its dashboard by Grafana's built-in **-- Grafana --** data source,
 which every Grafana has, Grafana Cloud included, so the tours draw the moment the app is enabled, with nothing to set
 up. The one place they cannot work is a public (shared) dashboard: Grafana runs a public dashboard's queries on the
 server, and the server has no rows to give.
 
-The data is a fixed day, 1 September 2026 in UTC, and each dashboard's time range is set to that day. Each map keeps
+The data is a fixed day, 1 September 2026 in UTC, and each dashboard's time range is set to that day (the indoor
+tour's to its morning, 07:00 to 12:30). Each map keeps
 its own time filter: press ▶ on it to replay the scenario.
 
 ::: tip Copy before you customise
@@ -158,6 +160,48 @@ Four ways a map talks to the rest of a dashboard, all through dashboard variable
 | Transit — Quito       | An area drawn on the map is written to a variable as WKT, and a WKT typed in the variable is drawn on the map | [Drawn areas](/guide/dashboard/publishing#drawn-areas)                                                                                                                           |
 
 A table under the maps shows what each variable holds as you try them.
+
+## Indoor maps
+
+::: info Since Plus 1.7.0
+The indoor tour is new in Plus 1.7.0, not released yet.
+:::
+
+Two indoor maps with [Floors](/plus/indoor/), each beside a table that drives it, and a Time Brush across the bottom.
+
+| Map                                 | Shows                                                                                                   | Documented in                                                                                                                                 |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Office building](#office-building) | Three floors with their plans, rooms by CO₂, sensors on 3D callouts, a room picked from a table         | [Floors](/plus/indoor/), [Floor plans and rooms](/plus/indoor/plans), [Go to a room](/plus/indoor/buildings#go-to-a-room-or-a-sensor)         |
+| [Bottling plant](#bottling-plant)   | A 4D model coloured by each machine's status, its sensors, forklifts and compressed air through a shift | [Floors with a 4D Model](/plus/indoor/#with-a-4d-model), [4D Model](/plus/layers/model-4d), [Data in a model's frame](/plus/data/model-frame) |
+
+### Office building
+
+![The office building's first floor, rooms coloured by CO₂ with five sensors on 3D callouts, Meeting 105 picked from the table and ringed, the ground floor and the car park seen through below](/img/plus/floors.jpg)
+
+Three floors (a car park, the ground floor with an auditorium and a café, offices on the first), each with its plan,
+an SVG the app ships, laid over its floor. The rooms are polygons coloured by their latest CO₂, and the sensors stand
+on **3D Callout** stems with their morning's readings. The lift panel's figure is each floor's worst room. Pick a room
+in the table beside the map, or click one: it goes to the `room` variable, the map flies to its floor and rings it,
+and the breadcrumb over the map (Office building › First › Meeting 105) goes back out. The site around the building
+shows only with the ground floor.
+
+**Your data:** rooms as polygons and sensors as points, each with a `level` column; a plan per floor, by address or
+uploaded in the map's **Indoor** tab. See [Floors](/plus/indoor/).
+
+### Bottling plant
+
+![The bottling plant at 10:29: its machines in the colour of their status, the depalletiser blocked and the palletiser starved with red cards, the filler drive's vibration on a callout, two forklifts on the production floor, the mezzanine listed above it in the lift panel](/img/plus/floors-plant.jpg)
+
+A fictional plant as a digital twin through a morning shift. The **4D Model** in State mode colours each machine by
+its status at the Time Brush's instant (running, starved, blocked, fault, maintenance); callouts read the line's
+speed and the filler drive's vibration; **Fleet** moves two forklifts and the maintenance technician; **Pipeline**
+runs the compressed air by its flow; the control room, the lab and the office stand on the mezzanine, floor 1. Drag or
+play the Time Brush: the filler's bearing wears from 09:10, the filler stops at 10:05, the line stops upstream and
+downstream, the technician comes, and the line starts again at 10:52. An event of the shift log moves the brush to its
+moment and picks its machine (`$machine`).
+
+**Your data:** the model's readings by part, as in the [Digital twin](#digital-twin) map; everything else in the
+model's own metres, each row with its `level`. See [Floors with a 4D Model](/plus/indoor/#with-a-4d-model).
 
 ## Your own data
 

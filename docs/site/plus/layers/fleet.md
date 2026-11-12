@@ -247,8 +247,11 @@ For assets on several levels:
 - set **Time reference** to **History** to replay a shift, so the newest position in the data is now;
 - give the 4D Model an **Opacity** under 1, or its walls hide the assets.
 
+On an indoor map with [Floors](/plus/indoor/), give the query a floor column too: the assets then follow the floor
+picked. Without a 4D Model, set **Altitude (above ground)** to `floor_z` instead, the height of each asset's floor.
+
 ::: info Since Plus 1.7.0
-Data in a model's frame, with `model_heading`, is new in Plus 1.7.0, not released yet.
+Data in a model's frame, with `model_heading`, and Floors are new in Plus 1.7.0, not released yet.
 :::
 
 ## GTFS-realtime

@@ -9,28 +9,29 @@ Plus adds.
 
 ## The free panel and Plus side by side
 
-| Feature                                                                                                                   | Free panel | Plus |
-| ------------------------------------------------------------------------------------------------------------------------- | :--------: | :--: |
-| kepler.gl layers, filters, time playback, saved map configuration                                                         |     ✓      |  ✓   |
-| Column autodetection, GeoJSON, WKT and WKB geometry, H3                                                                   |     ✓      |  ✓   |
-| Trips, origin–destination flows, symbols, streamlines, vector fields                                                      |     ✓      |  ✓   |
-| Cloud-native imagery: COG, PMTiles, Zarr, WMS, ArcGIS Image Service, STAC                                                 |     ✓      |  ✓   |
-| Dashboard time sync, cross-filtering, draggable markers, Grafana Assistant context                                        |     ✓      |  ✓   |
-| OpenFreeMap, CARTO and Esri public base maps, with relief                                                                 |     ✓      |  ✓   |
-| [Gauge, 3D Shape, Coverage, Surface, Sparkline, 3D Callout, Traffic, Pipeline, Fleet and 4D Model layers](/plus/layers/)  |            |  ✓   |
-| [Cards](/plus/layers/cards) with each object's reading and series on the Plus layers, and Grafana alerts on them          |            |  ✓   |
-| [Data in a 3D model's own frame](/plus/data/model-frame): sensors by part, people indoors, pipes and rooms                |            |  ✓   |
-| [Places without coordinates](/plus/data/places): regions, zones, airports, PoPs, geohashes, countries, IPs                |            |  ✓   |
-| [States, provinces, counties and cantons](/plus/data/regions) placed by name or ISO 3166-2 code                           |            |  ✓   |
-| [Network links](/plus/data/network-links) between named sites, coloured by Grafana thresholds                             |            |  ✓   |
-| [Active alerts](/plus/data/active-alerts) on the map, with only the rules the viewer can read                             |            |  ✓   |
-| [Geofence alerts](/plus/data/geofences): each alert on the entity it names, each fence coloured by its alerts             |            |  ✓   |
-| [Azure Maps and Google base maps](/plus/maps/basemaps), with keys no browser sees, Relief on Azure Maps, sky              |            |  ✓   |
-| [Google Photorealistic 3D Tiles](/plus/maps/3d-tiles) layers                                                              |            |  ✓   |
-| Clicks and drawn polygons that also select and filter the Plus layers, and reach the other panels                         |            |  ✓   |
-| Sparkline and Fleet cards that follow Grafana's shared crosshair from the other panels                                    |            |  ✓   |
-| [Tour dashboards](/plus/start/templates) and [Grafana Assistant skills](/plus/assistant) for the Plus map                 |            |  ✓   |
-| A second panel, [Time Brush](/plus/time-brush): one time brush for the whole dashboard, pinned to the top while scrolling |            |  ✓   |
+| Feature                                                                                                                    | Free panel | Plus |
+| -------------------------------------------------------------------------------------------------------------------------- | :--------: | :--: |
+| kepler.gl layers, filters, time playback, saved map configuration                                                          |     ✓      |  ✓   |
+| Column autodetection, GeoJSON, WKT and WKB geometry, H3                                                                    |     ✓      |  ✓   |
+| Trips, origin–destination flows, symbols, streamlines, vector fields                                                       |     ✓      |  ✓   |
+| Cloud-native imagery: COG, PMTiles, Zarr, WMS, ArcGIS Image Service, STAC                                                  |     ✓      |  ✓   |
+| Dashboard time sync, cross-filtering, draggable markers, Grafana Assistant context                                         |     ✓      |  ✓   |
+| OpenFreeMap, CARTO and Esri public base maps, with relief                                                                  |     ✓      |  ✓   |
+| [Gauge, 3D Shape, Coverage, Surface, Sparkline, 3D Callout, Traffic, Pipeline, Fleet, 4D Model, Floor plan](/plus/layers/) |            |  ✓   |
+| [Cards](/plus/layers/cards) with each object's reading and series on the Plus layers, and Grafana alerts on them           |            |  ✓   |
+| [Data in a 3D model's own frame](/plus/data/model-frame): sensors by part, people indoors, pipes and rooms                 |            |  ✓   |
+| [Indoor maps](/plus/indoor/): a floor picker, floors stacked in 3D, floor plans and rooms, buildings and sites             |            |  ✓   |
+| [Places without coordinates](/plus/data/places): regions, zones, airports, PoPs, geohashes, countries, IPs                 |            |  ✓   |
+| [States, provinces, counties and cantons](/plus/data/regions) placed by name or ISO 3166-2 code                            |            |  ✓   |
+| [Network links](/plus/data/network-links) between named sites, coloured by Grafana thresholds                              |            |  ✓   |
+| [Active alerts](/plus/data/active-alerts) on the map, with only the rules the viewer can read                              |            |  ✓   |
+| [Geofence alerts](/plus/data/geofences): each alert on the entity it names, each fence coloured by its alerts              |            |  ✓   |
+| [Azure Maps and Google base maps](/plus/maps/basemaps), with keys no browser sees, Relief on Azure Maps, sky               |            |  ✓   |
+| [Google Photorealistic 3D Tiles](/plus/maps/3d-tiles) layers                                                               |            |  ✓   |
+| Clicks and drawn polygons that also select and filter the Plus layers, and reach the other panels                          |            |  ✓   |
+| Sparkline and Fleet cards that follow Grafana's shared crosshair from the other panels                                     |            |  ✓   |
+| [Tour dashboards](/plus/start/templates) and [Grafana Assistant skills](/plus/assistant) for the Plus map                  |            |  ✓   |
+| A second panel, [Time Brush](/plus/time-brush): one time brush for the whole dashboard, pinned to the top while scrolling  |            |  ✓   |
 
 ## Same options, same saved map
 
@@ -39,10 +40,10 @@ saved map carry over (a CARTO API key saved by the free panel up to 1.6 is dropp
 
 Plus adds its own settings next to the free ones:
 
-- in the panel options, the **Places** and **Active alerts** groups, and the **Thresholds**, **Unit** and
+- in the panel options, the **Places**, **Active alerts** and **Floors** groups, and the **Thresholds**, **Unit** and
   **Decimals** standard options, which colour and label [network links](/plus/data/network-links);
-- in kepler's side panel, the ten Plus layer types in the layer type list, the Plus base maps in the base map
-  picker, and a **3D (Plus)** tab in **Add Data**.
+- in kepler's side panel, the eleven Plus layer types in the layer type list, the Plus base maps in the base map
+  picker, a **3D (Plus)** tab in **Add Data**, and an [Indoor](/plus/indoor/settings) tab.
 
 Plus steps aside wherever the free panel already draws a query. A query with coordinates, a geometry or an H3 index
 is drawn exactly as the free panel draws it; [Places](/plus/data/places) only acts on queries that name places

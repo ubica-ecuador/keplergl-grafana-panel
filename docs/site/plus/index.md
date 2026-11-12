@@ -12,8 +12,10 @@ run side by side on the same Grafana and the same dashboard.
 
 ## What it adds
 
-- [Ten layer types](/plus/layers/): Gauge, 3D Shape, Coverage, Surface, Sparkline, 3D Callout, Traffic, Pipeline, Fleet
-  and 4D Model, most of them with [cards](/plus/layers/cards) of their own.
+- [Eleven layer types](/plus/layers/): Gauge, 3D Shape, Coverage, Surface, Sparkline, 3D Callout, Traffic, Pipeline,
+  Fleet, 4D Model and Floor plan, most of them with [cards](/plus/layers/cards) of their own.
+- [Indoor maps](/plus/indoor/): a floor picker over the map, the floors stacked in 3D and seen through, floor plans and
+  rooms traced on them, and buildings and sites from the world down to a room.
 - [Data in a 3D model's own frame](/plus/data/model-frame), for digital twins: sensors by part, people indoors, pipes
   and rooms placed where the model stands.
 - [Places without coordinates](/plus/data/places): cloud regions, airports, PoPs, geohashes, countries and client IPs
@@ -25,7 +27,7 @@ run side by side on the same Grafana and the same dashboard.
   coloured by the alerts inside it, from a rule on any data source.
 - [Base maps](/plus/maps/basemaps) from Azure Maps and Google, and [3D tiles](/plus/maps/3d-tiles) from Google,
   with keys set once for the organisation and kept where no browser sees them.
-- Three [tour](/plus/start/templates) dashboards installed with the app, on synthetic data that needs no setup.
+- Four [tour](/plus/start/templates) dashboards installed with the app, on synthetic data that needs no setup.
 - [Grafana Assistant skills](/plus/assistant) that explain a Plus map, edit it and build dashboards around it.
 - A second panel, [Time Brush](/plus/time-brush): a histogram with a window to drag, step and play, written to
   variables or to the dashboard time range, pinned to the top of the page while you scroll.

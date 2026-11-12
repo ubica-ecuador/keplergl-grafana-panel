@@ -90,6 +90,9 @@ its level, and turn **Altitude line** off. For a replay of past positions, set *
 Then give the 4D Model an **Opacity** under 1: drawn see-through, the model no longer hides what stands inside it.
 Opaque, it hides the assets behind its walls, as a building does.
 
+For a building of several floors, give the rows a floor column and turn on [Floors](/plus/indoor/#with-a-4d-model):
+a floor picker then shows one floor at a time inside the model.
+
 ## Pipes and rooms
 
 ![Eraring's units drawn see-through, with a steam header running along them, a riser from each unit up to it, and a control room on a floor of each unit coloured by its temperature](/img/plus/model-frame-geometry.jpg)

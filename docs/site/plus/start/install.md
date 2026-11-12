@@ -14,7 +14,7 @@ patch, or 12.2.5 and later.
    Grafana's plugin catalogue, and install it. Its listing is
    [Kepler Geospatial Maps Plus](https://grafana.com/grafana/plugins/ubica-keplerplus-app/) on grafana.com.
 2. On the app's page, choose **Enable**. Enabling the app installs the
-   [template dashboard](#the-template-dashboard) and makes the panel available.
+   [template dashboards](#the-template-dashboards) and makes the panel available.
 3. Open the app's **Configuration** tab and add the keys of the map services you use. Every key is optional.
 
 The panel then appears as **Kepler Geospatial Maps Plus** in the visualization picker of every dashboard in the
@@ -64,8 +64,8 @@ On a Grafana with a Content Security Policy, the hosts of each provider you enab
 
 ## The template dashboards
 
-Enabling the app installs three dashboards, the **Kepler Plus tour**: the Plus layers, kepler's and the free panel's
-layers, and the map's interactions, on synthetic rows each dashboard carries through Grafana's built-in data source, so
+Enabling the app installs four dashboards, the **Kepler Plus tour**: the Plus layers, kepler's and the free panel's
+layers, the map's interactions, and indoor maps, on synthetic rows each dashboard carries through Grafana's built-in data source, so
 they draw with nothing set up. They are listed on the app's **Dashboards** tab and described in
 [Template dashboards](/plus/start/templates).
 

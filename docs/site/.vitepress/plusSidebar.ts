@@ -53,6 +53,17 @@ export const PLUS_SIDEBAR: DefaultTheme.SidebarItem[] = [
       { text: 'Pipeline', link: '/plus/layers/pipeline' },
       { text: 'Fleet', link: '/plus/layers/fleet' },
       { text: '4D Model', link: '/plus/layers/model-4d' },
+      { text: 'Floor plan', link: '/plus/indoor/plans#the-floor-plan-layer' },
+    ],
+  },
+  {
+    text: 'Indoor maps',
+    collapsed: false,
+    items: [
+      { text: 'Floors', link: '/plus/indoor/' },
+      { text: 'Floor plans and rooms', link: '/plus/indoor/plans' },
+      { text: 'Buildings and sites', link: '/plus/indoor/buildings' },
+      { text: 'Indoor tab and settings', link: '/plus/indoor/settings' },
     ],
   },
   {
