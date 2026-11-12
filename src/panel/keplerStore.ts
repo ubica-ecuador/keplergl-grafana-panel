@@ -4,6 +4,7 @@ import { keplerGlReducer, enhanceReduxMiddleware } from '@kepler.gl/reducers';
 import type { ComponentType } from 'react';
 import { applyMiddleware, combineReducers, legacy_createStore, Store } from 'redux';
 
+import { makeCellsLayer, CELLS_TYPE } from './cellsLayer';
 import { buildCogPaintedDeckLayer } from './cogPaintedDeckLayer';
 import { makeCogPaintedLayer } from './cogPaintedLayer';
 import { buildEsriImageDeckLayer } from './esriImageDeckLayer';
@@ -65,6 +66,9 @@ const ICON_LAYER_ICON = own(iconOf(LayerClasses.icon));
 
 /** The point layer's icon, which the markers borrow: both draw dots. */
 const POINT_LAYER_ICON = own(iconOf(LayerClasses.point));
+
+/** kepler's H3 layer's icon, which the Cells layer borrows: both draw cells of a grid. */
+const H3_ICON = own(iconOf(LayerClasses.hexagonId));
 
 /** kepler's raster tile icon, which the three tileset layers borrow. */
 const RASTER_ICON = own(RasterTileIcon);
@@ -135,6 +139,10 @@ const layerClasses = {
   // dashboard variables — an isochrone's origin and destination. Nothing from
   // the dataset is drawn; see `markersLayer.ts`.
   markers: makeMarkersLayer(Layer as never, buildMarkersDeckLayer, POINT_LAYER_ICON),
+  // Points counted in the cells of a global grid (H3, A5, S2 or geohash) whose level follows the zoom. Built on
+  // kepler's Hexbin, whose aggregation, colour and height channels, legend and popup it keeps; only the binning
+  // and the drawing are its own (`cellsLayer.ts`, `cellsDeckLayer.ts`).
+  [CELLS_TYPE]: makeCellsLayer(LayerClasses.hexagon, H3_ICON),
 };
 
 /*

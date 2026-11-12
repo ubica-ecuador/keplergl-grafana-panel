@@ -29,6 +29,7 @@ tiles, a bitmap, 3D models and kepler's own Zarr layer — and adding any of the
   <a href="./points-and-aggregation.html#heatmap"><img src="/img/layer-heatmap.jpg" alt="Heatmap layer"><span>heatmap</span></a>
   <a href="./points-and-aggregation.html#grid"><img src="/img/layer-grid.jpg" alt="Grid layer"><span>grid</span></a>
   <a href="./points-and-aggregation.html#hexagon"><img src="/img/layer-hexagon.jpg" alt="Hexagon layer"><span>hexagon</span></a>
+  <a href="./points-and-aggregation.html#cells"><img src="/img/layer-cells.jpg" alt="Cells layer"><span>cells</span></a>
   <a href="./points-and-aggregation.html#contour"><img src="/img/layer-contour.jpg" alt="Contour layer"><span>contour</span></a>
   <a href="./points-and-aggregation.html#cluster"><img src="/img/layer-cluster.jpg" alt="Cluster layer"><span>cluster</span></a>
   <a href="./points-and-aggregation.html#voronoi"><img src="/img/layer-voronoi.jpg" alt="Voronoi layer"><span>voronoi</span></a>
@@ -97,6 +98,7 @@ choosing the dataset and pointing the layer's columns at it.
 | symbol              | a position **and** a numeric bearing, **and no trip id** — a layer type this plugin adds, named **Symbols**. The Point layer kepler would guess from the same coordinates is removed. See [Symbols](../guide/data/symbols). |
 | markers             | never guessed — add it from **Add Layer**. Draggable reference points bound to dashboard variables; it draws nothing from its dataset. See [Markers](../guide/map/markers). |
 | line                | a query chosen in **Draw as a route**, or edges with `source` and `target` beside a query of nodes. See [Routes and networks](../guide/data/routes-and-networks). |
+| cells               | never guessed — add it from **Add Layer** on a dataset with coordinates. Points counted in H3, A5, S2 or geohash cells at a level that follows the zoom. See [cells](./points-and-aggregation#cells). |
 | photos              | never guessed — add it from **Add Layer** on a dataset with coordinates and a column of picture addresses, and pick that column in its panel. A converted Geomap Photos layer is one. |
 
 See [How a query becomes a map](../guide/data/how-a-query-becomes-a-map).

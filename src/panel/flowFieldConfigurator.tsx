@@ -9,6 +9,7 @@ import {
   VisConfigSwitch,
 } from '@kepler.gl/components';
 
+import { CellsGridGroup } from './cellsConfigurator';
 import { PaintedTilesetConfig } from './paintedTilesetConfigurator';
 import { PhotosLayerConfig } from './photosConfigurator';
 import { MarkersLayerConfig } from './markersConfigurator';
@@ -321,6 +322,19 @@ function CustomLayerConfiguratorFactory(...deps: Parameters<typeof LayerConfigur
     // is a computed one; the picture arrives drawn, so it is a painted tileset.
     ['_renderXyz-tilesLayerConfig'](args: ConfiguratorArgs) {
       return <PaintedTilesetConfig {...args} />;
+    }
+
+    // The grid group, then kepler's own aggregation panel, the Hexbin's, which the Cells layer keeps
+    // (`cellsLayer.ts` points its Radius slider at the cell size).
+    _renderCellsLayerConfig(args: ConfiguratorArgs) {
+      const aggregation = (this as unknown as { _renderAggregationLayerConfig: (a: unknown) => React.ReactNode })
+        ._renderAggregationLayerConfig;
+      return (
+        <div>
+          <CellsGridGroup {...(args as unknown as React.ComponentProps<typeof CellsGridGroup>)} />
+          {aggregation.call(this, args)}
+        </div>
+      );
     }
 
     _renderPhotosLayerConfig(args: ConfiguratorArgs) {

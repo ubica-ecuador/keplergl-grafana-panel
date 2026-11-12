@@ -44,6 +44,7 @@ export const OWN_LAYER_LABELS: Record<string, string> = {
   markers: 'Markers',
   photos: 'Photos',
   'xyz-tiles': 'XYZ tiles',
+  cells: 'Cells',
 };
 
 /**

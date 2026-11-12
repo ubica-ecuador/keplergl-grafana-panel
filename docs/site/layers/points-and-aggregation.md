@@ -1,8 +1,8 @@
 # Points and aggregation
 
-Nine ways to read the same 123 rows. Every image on this page comes from a single query returning
-`latitude`, `longitude`, a numeric `value` and a categorical `zona` — the difference is entirely in
-which layer you point at it.
+Ten ways to read the same rows. Every image on this page but the Cells one comes from a single query
+returning `latitude`, `longitude`, a numeric `value` and a categorical `zona` — the difference is
+entirely in which layer you point at it.
 
 ```sql
 SELECT lat AS latitude,
@@ -12,7 +12,7 @@ SELECT lat AS latitude,
 FROM readings;
 ```
 
-Only the first is built for you. The other eight you add in kepler's layer panel: **+ Add Layer**,
+Only the first is built for you. The others you add in kepler's layer panel: **+ Add Layer**,
 pick the type, pick the dataset.
 
 ## point
@@ -109,6 +109,48 @@ prefer them for movement data.
 
 Backed by deck.gl's `HexagonLayer`. Distinct from the H3 layer: this bins raw points _in the
 browser_, while [hexagonId](./geometry-and-indices#h3) draws cells your data already carries.
+
+## cells
+
+![The cells layer: a day of fire detections over the Sahel, counted in H3 cells](/img/layer-cells.jpg)
+
+::: info Since 1.8.0
+The cells layer is new in 1.8.0, not released yet; the edge build has it.
+:::
+
+Points counted in the cells of a global grid, **H3**, **A5**, **S2** or **geohash**, at the level
+that suits the zoom: each cell is about **Cell size** pixels across, so the map refines as you zoom
+in and coarsens as you zoom out, where a hexagon layer keeps its radius in kilometres at every zoom.
+A layer type this plugin adds, named **Cells**, built on kepler's hexagon layer: the colour and
+height channels, Count, Sum, Average and the other aggregations, the legend, the popup, the count
+labels and the filters are the hexagon layer's.
+
+- **Cell system** picks the grid. A5 and S2 split each cell in four, so their level changes once
+  per zoom level; H3 splits in seven, every 1.4 zoom levels or so, and geohash in 32, every 2.5,
+  with bigger jumps. A5's cells all have the same area, H3's and S2's vary by about two times
+  between places, and geohash's shrink towards the poles.
+- **Cell size** (in the Radius group, where the hexagon layer has its radius) is how many pixels
+  across a cell should be; the level is the one closest to it.
+- **Per km²** divides each cell's value by its area, so a colour means the same density at every
+  zoom and latitude.
+- **Transition** eases the cells to their new colours and heights when the level changes, a filter
+  moves or the data refreshes: zooming in, the new cells come out of their parent's colour; zooming
+  out, a cell starts from the mean of its children's. 0 switches it off.
+- The colours are those of the cells around the view, not of the whole dataset, so the legend is
+  the view's: zoomed in on a dense region, its cells spread over every class instead of all landing
+  in the top one. Panning far recolours.
+- **Color Scale** adds **Log** and **Sqrt** to the hexagon layer's scales: classes evenly spaced on
+  that axis, which suits counts running from one to thousands per cell.
+
+Each point is placed once, at a fine level, and every coarser cell is its parent, so a zoom costs
+little. Placing is the slow part for A5, about 25,000 points a second; H3, S2 and geohash place
+hundreds of thousands. Cells far outside the view are not drawn until you pan towards them.
+
+Unlike [hexagonId](./geometry-and-indices#h3) and the other index layers, this one takes points:
+the cells are worked out in the browser. With more rows than the browser should receive, count in
+SQL instead and draw the cells with those layers.
+
+Backed by deck.gl's `H3HexagonLayer`, `A5Layer`, `S2Layer` and `GeohashLayer`.
 
 ## cluster
 
@@ -207,6 +249,7 @@ are not drawn; the panel says which.
 | Where the concentration is         | heatmap         |
 | Lines you can read a level off     | contour         |
 | Counts you can compare and extrude | grid or hexagon |
+| Counts that refine as you zoom     | cells           |
 | A readable count at every zoom     | cluster         |
 | The area each point stands for     | voronoi         |
 | Categorical symbols                | icon            |

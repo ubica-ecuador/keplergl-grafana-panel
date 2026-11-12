@@ -6,6 +6,7 @@ import { DEFAULT_RASTER_SERVER_URL, rasterServerUrlsOf } from './constants';
 import { registerFlowFieldMessages } from './flowFieldMessages';
 import { registerSymbolMessages } from './symbolMessages';
 import { registerMarkersMessages } from './markersMessages';
+import { registerCellsMessages } from './cellsMessages';
 import { registerTile3dMessages } from './tile3dMessages';
 
 /**
@@ -114,6 +115,9 @@ export function configureKepler(): void {
 
   // And the markers layer, for the same reason again.
   registerMarkersMessages(messages);
+
+  // And the Cells layer's grid group.
+  registerCellsMessages(messages);
 
   // The 3D tile layer is kepler's, but the two altitude knobs are not, so its
   // panel would show them as their own message ids.

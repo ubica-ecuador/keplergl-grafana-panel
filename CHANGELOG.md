@@ -6,6 +6,15 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **A Cells layer: points counted in H3, A5, S2 or geohash cells whose level follows the zoom.** The
+  hexagon layer bins points in hexagons of a fixed radius in kilometres, the same at every zoom, and
+  the H3, A5, S2 and geohash layers draw cells the data already carries, at one level. **Cells**
+  gives every point its cell in the browser and draws the level whose cells are about **Cell size**
+  pixels across, so the map refines as you zoom in. It keeps the hexagon layer's aggregations,
+  colour and height channels, legend, popup and filters; its colours are those of the cells around
+  the view, so the legend is the view's. **Per km²** divides each cell by its area; **Transition**
+  eases cells to their new colour when the level changes, the new ones coming out of their parent's
+  colour; **Log** and **Sqrt** join its colour scales.
 - **A column named like a count keeps its name unless the query is an origin–destination one.** A
   column called `trips`, `weight`, `flow`, `total` or `volume` reached kepler as `count` on every
   query, though only the flow layer reads a count by that name. A layer coloured, sized or animated by
