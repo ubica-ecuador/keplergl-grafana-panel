@@ -4,7 +4,7 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
-## Unreleased
+## 1.9.0 (2026-11-13)
 
 - **kepler.gl 3.3.0-alpha.21**, from 3.3.0-alpha.20, with **deck.gl 9.4** and luma.gl 9.4 under it.
   A new **Donut** layer: a ring at each point split into the shares of up to six numeric columns
