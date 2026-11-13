@@ -11,13 +11,13 @@ import { PLUS_SIDEBAR } from './plusSidebar';
  * They are surfaced on the page rather than kept here as a comment because
  * upstream is, in places, *behind* what this plugin ships: kepler.gl's public
  * documentation covers the 3.2 stable line and lists fifteen layer types, while
- * the plugin pins a 3.3.0 pre-release that registers twenty-five — the Flow layer
+ * the plugin pins a 3.3.0 pre-release that registers twenty-six — the Flow layer
  * among them. A reader following an outbound link needs to know which version
  * the sentence that sent them there was true of.
  */
 export const VERSIONS = {
-  kepler: '3.3.0-alpha.20',
-  deck: '9.3.11',
+  kepler: '3.3.0-alpha.21',
+  deck: '9.4.1',
   maplibre: '6.11.1',
 };
 

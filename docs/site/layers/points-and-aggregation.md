@@ -1,8 +1,8 @@
 # Points and aggregation
 
-Ten ways to read the same rows. Every image on this page but the Cells one comes from a single query
-returning `latitude`, `longitude`, a numeric `value` and a categorical `zona` — the difference is
-entirely in which layer you point at it.
+Twelve ways to read the same rows. Every image on this page but the Cells and Donut ones comes from a
+single query returning `latitude`, `longitude`, a numeric `value` and a categorical `zona` — the
+difference is entirely in which layer you point at it.
 
 ```sql
 SELECT lat AS latitude,
@@ -77,10 +77,14 @@ inside this line" — hover a band and it reads, for instance, `value ≥ 12`.
   rounds them off.
 - **Fill below each level** turns the bands inside out, to enclose the lows instead of the peaks.
   **Custom level range** sets the lowest and highest level yourself, so two maps can share them.
-- **Fill**, **Color by level**, **Opacity** of the fill and **Outline width**.
+- **Fill**, **Color by level**, **Opacity** of the fill and **Outline width**. **Custom outline
+  color** gives the lines a colour of their own, apart from the fill's.
+- **3D surface** drapes the fills and outlines over the smoothed surface, raised by **Elevation
+  multiplier**: at 1× the relief from the lowest to the highest value is a tenth of the grid's
+  longest side. The levels stay in the data's units. Tilt the map to see it.
 
 It takes a latitude/longitude pair or a GeoJSON column (the centre of each shape). New in kepler.gl
-3.3.0-alpha.20. The contours are computed in the browser, again with every filter change; keep the
+3.3.0-alpha.20, its 3D surface and outline colour in 3.3.0-alpha.21. The contours are computed in the browser, again with every filter change; keep the
 rows to tens of thousands.
 
 Backed by deck.gl's `GeoJsonLayer`.
@@ -182,6 +186,30 @@ It takes a latitude/longitude pair or a GeoJSON column (the centre of each shape
 
 Backed by deck.gl's `PolygonLayer`, the cells computed in the browser with `d3-delaunay`.
 
+## donut
+
+![The donut layer: trips to each point by walk, bike and bus, near points grouped](/img/layer-donut.jpg)
+
+A ring at each point, split into the shares of up to six numeric columns that are parts of one whole:
+trips by mode, votes by party, a building's energy by source. Pick the columns under
+**Composition**, each with its own colour and label; with one column the ring is filled in its
+colour. **Show total in center** writes the sum of the columns inside the ring.
+
+Near points are grouped as you zoom out, within **Cluster radius** pixels of each other: the columns
+are summed before the shares are taken, so a group's ring is the mix of all its points, and filters
+apply before the grouping. **Radius** is the ring's size in pixels. Hover a ring for each column's
+value and share, the total and how many points it groups.
+
+The columns must be zero or more: a missing value counts as zero, a negative one is left out and
+counted in the tooltip, and a ring whose total is zero is not drawn. Colour comes from the columns,
+so there is no colour channel to set.
+
+It takes a latitude/longitude pair. New in kepler.gl 3.3.0-alpha.21, never built for you. The
+gallery's map is the same points as the others with three columns, `walk`, `bike` and `bus`, mixed
+differently in each `zona`.
+
+Backed by deck.gl's `ScatterplotLayer` drawn as rings, and a `TextLayer` for the totals.
+
 ## icon
 
 ![The icon layer](/img/layer-icon.jpg)
@@ -279,6 +307,7 @@ Under **Picture column**, the layer panel names each picture that could not load
 | Counts that refine as you zoom     | cells           |
 | A readable count at every zoom     | cluster         |
 | The area each point stands for     | voronoi         |
+| The parts of a whole at each point | donut           |
 | Categorical symbols                | icon            |
 | Turned shapes, or pictures         | symbol          |
 

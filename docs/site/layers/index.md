@@ -1,7 +1,7 @@
 # Layer gallery
 
-Every layer type the panel can build from query rows, with the query that produces it. Eighteen of
-kepler's twenty-five registered layer types can be driven by data — and the panel registers layer
+Every layer type the panel can build from query rows, with the query that produces it. Nineteen of
+kepler's twenty-six registered layer types can be driven by data — and the panel registers layer
 types of its own, shown with amber icons in kepler's layer menu: among them
 [Streamlines](../guide/data/velocity-fields) and a [vector field](../guide/data/velocity-fields#arrows-and-wind-barbs)
 for a grid of velocities, [Symbols](../guide/data/symbols) for anything with a bearing,
@@ -33,6 +33,7 @@ tiles, a bitmap, 3D models and kepler's own Zarr layer — and adding any of the
   <a href="./points-and-aggregation.html#contour"><img src="/img/layer-contour.jpg" alt="Contour layer"><span>contour</span></a>
   <a href="./points-and-aggregation.html#cluster"><img src="/img/layer-cluster.jpg" alt="Cluster layer"><span>cluster</span></a>
   <a href="./points-and-aggregation.html#voronoi"><img src="/img/layer-voronoi.jpg" alt="Voronoi layer"><span>voronoi</span></a>
+  <a href="./points-and-aggregation.html#donut"><img src="/img/layer-donut.jpg" alt="Donut layer"><span>donut</span></a>
   <a href="./points-and-aggregation.html#icon"><img src="/img/layer-icon.jpg" alt="Icon layer"><span>icon</span></a>
   <a href="./geometry-and-indices.html#geojson"><img src="/img/layer-geojson.jpg" alt="GeoJSON layer"><span>geojson</span></a>
   <a href="./geometry-and-indices.html#h3"><img src="/img/layer-h3.jpg" alt="H3 hexagon layer"><span>hexagonId (H3)</span></a>

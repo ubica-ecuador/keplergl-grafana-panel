@@ -17,7 +17,7 @@
       "id": 1,
       "options": {
         "mode": "markdown",
-        "content": "Every kepler.gl layer type this panel can build from query rows, on synthetic data around Cuenca. Each map is pinned to exactly one layer by a saved map configuration, and the table beside it shows the rows behind that layer — read from the map panel itself, not queried twice.\n\n**Narrow `zona` in a map's own filter panel**, on the left, and the whole gallery follows — every other map and every table. The `Zona` picker at the top does the same from the other side.\n\nDashboard time sync is off except on the trip panel, whose time filter is there on purpose — see `timesync` and `timevars` for what time coupling can do.\n\n**Open at most two rows at a time.** Each map holds two WebGL contexts and browsers cap them at around sixteen; all six rows at once blanks the oldest maps.\n\nNot shown: `vectorTile`, `rasterTile`, `wms`, `tile3d`, `bitmap` and `3D`. Those are configured with a URL rather than with data, so no query can drive them."
+        "content": "Every kepler.gl layer type this panel can build from query rows, on synthetic data around Cuenca. Each map is pinned to exactly one layer by a saved map configuration, and the table beside it shows the rows behind that layer — read from the map panel itself, not queried twice.\n\n**Narrow `zona` in a map's own filter panel**, on the left, and the whole gallery follows — every other map and every table. The `Zona` picker at the top does the same from the other side.\n\nDashboard time sync is off except on the trip panel, whose time filter is there on purpose — see `timesync` and `timevars` for what time coupling can do.\n\n**Open at most two rows at a time.** Each map holds two WebGL contexts and browsers cap them at around sixteen; all seven rows at once blanks the oldest maps.\n\nNot shown: `vectorTile`, `rasterTile`, `wms`, `tile3d`, `bitmap` and `3D`. Those are configured with a URL rather than with data, so no query can drive them."
       },
       "title": "Kepler.gl layer gallery",
       "type": "text"
@@ -2748,6 +2748,210 @@
           "type": "table"
         }
       ]
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 222
+      },
+      "id": 106,
+      "panels": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 16,
+            "x": 0,
+            "y": 223
+          },
+          "id": 32,
+          "options": {
+            "showSidePanel": true,
+            "timeSync": "off",
+            "mapConfig": {
+              "version": "v1",
+              "config": {
+                "visState": {
+                  "layers": [
+                    {
+                      "id": "gallery-donut",
+                      "type": "donut",
+                      "config": {
+                        "dataId": "grafana-A",
+                        "label": "Donut",
+                        "columns": {
+                          "lat": "latitude",
+                          "lng": "longitude"
+                        },
+                        "columnMode": "points",
+                        "isVisible": true,
+                        "visConfig": {
+                          "opacity": 0.9,
+                          "radius": 16,
+                          "clusterRadius": 28,
+                          "showTotal": true,
+                          "composition": {
+                            "categories": [
+                              {
+                                "field": "walk",
+                                "label": "Walk"
+                              },
+                              {
+                                "field": "bike",
+                                "label": "Bike"
+                              },
+                              {
+                                "field": "bus",
+                                "label": "Bus"
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "visualChannels": {}
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "dataId": ["grafana-A"],
+                      "id": "zona-donut",
+                      "name": ["zona"],
+                      "type": "multiSelect",
+                      "value": ["norte", "centro", "sur"],
+                      "enabled": true
+                    }
+                  ],
+                  "interactionConfig": {},
+                  "splitMaps": []
+                },
+                "mapState": {
+                  "latitude": -2.902,
+                  "longitude": -79.004,
+                  "zoom": 12,
+                  "bearing": 0,
+                  "pitch": 0,
+                  "dragRotate": false
+                },
+                "mapStyle": {
+                  "styleType": "dark-matter"
+                }
+              }
+            },
+            "variableMappings": [
+              {
+                "field": "zona",
+                "variable": "zona"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-testdata-datasource",
+                "uid": "trlxrdZVk"
+              },
+              "refId": "A",
+              "scenarioId": "raw_frame",
+              "rawFrameContent": "[{\"schema\":{\"fields\":[{\"name\":\"latitude\",\"type\":\"number\"},{\"name\":\"longitude\",\"type\":\"number\"},{\"name\":\"walk\",\"type\":\"number\"},{\"name\":\"bike\",\"type\":\"number\"},{\"name\":\"bus\",\"type\":\"number\"},{\"name\":\"zona\",\"type\":\"string\"}]},\"data\":{\"values\":[[-2.873056,-2.871438,-2.870221,-2.87216,-2.875571,-2.877567,-2.876492,-2.87206,-2.872176,-2.873838,-2.873518,-2.869348,-2.87858,-2.878427,-2.878372,-2.873386,-2.871055,-2.875042,-2.874497,-2.872767,-2.871045,-2.875261,-2.873447,-2.875027,-2.873848,-2.87802,-2.873134,-2.877389,-2.875887,-2.876154,-2.879389,-2.871206,-2.872611,-2.87541,-2.874083,-2.874759,-2.874555,-2.87332,-2.87413,-2.876565,-2.876584,-2.871353,-2.902615,-2.900851,-2.900868,-2.900252,-2.902361,-2.900346,-2.907598,-2.900949,-2.899688,-2.904561,-2.901493,-2.900489,-2.903665,-2.90319,-2.906116,-2.901838,-2.902633,-2.901818,-2.90004,-2.900011,-2.898266,-2.900062,-2.900389,-2.898406,-2.897476,-2.904824,-2.900286,-2.900759,-2.902913,-2.901302,-2.901242,-2.902622,-2.902375,-2.902416,-2.903519,-2.901778,-2.902379,-2.904805,-2.901986,-2.906489,-2.907192,-2.903555,-2.899017,-2.90249,-2.906595,-2.927813,-2.926949,-2.927631,-2.925675,-2.926938,-2.926639,-2.928582,-2.9269,-2.92335,-2.928641,-2.925995,-2.932285,-2.924738,-2.929552,-2.933534,-2.93142,-2.930767,-2.928037,-2.927688,-2.929631,-2.926966,-2.926579,-2.929758,-2.926576,-2.93142,-2.931985,-2.930433,-2.928037,-2.92696,-2.925668,-2.923866,-2.928207,-2.92547,-2.927747,-2.931146,-2.930235],[-78.998668,-78.997968,-78.997063,-79.000399,-78.998335,-78.997896,-79.000749,-78.999086,-79.001598,-78.997036,-79.002693,-79.000979,-78.999292,-79.005312,-79.007195,-79.000402,-79.001442,-78.998254,-78.998585,-79.002656,-78.995302,-78.99312,-79.00003,-79.002532,-78.999139,-78.998284,-78.997954,-79.001259,-79.00037,-79.002613,-78.996411,-78.994855,-79.006642,-79.001034,-79.003771,-79.004349,-78.998452,-79.003033,-78.996047,-78.99835,-79.000894,-79.00378,-79.00821,-79.011923,-79.010632,-79.010126,-79.008843,-79.011246,-79.008189,-79.009162,-79.00847,-79.002513,-79.008157,-79.012082,-79.005407,-79.004054,-79.006899,-79.009555,-79.010478,-79.006145,-79.005861,-79.004336,-79.003939,-79.006964,-79.005077,-79.003316,-79.003458,-79.00518,-79.010953,-79.006258,-79.00699,-79.008625,-79.006443,-79.003905,-79.008887,-79.008532,-79.007689,-79.014709,-79.012603,-79.006299,-79.006737,-79.007878,-79.007313,-79.009255,-79.012412,-79.005974,-79.00232,-78.996886,-78.996949,-78.991764,-78.990059,-78.990006,-78.989473,-78.991071,-78.999074,-78.995325,-78.993924,-78.996805,-78.994292,-78.99439,-78.99802,-78.993935,-78.992945,-78.991375,-78.992845,-78.998081,-78.988479,-78.993671,-78.996669,-78.995478,-78.992302,-78.992766,-78.995084,-78.986505,-78.992704,-78.993863,-78.998548,-78.997019,-78.996309,-78.994224,-78.994939,-78.987693,-78.992874],[15,29,21,10,36,27,27,24,17,10,21,31,39,37,31,37,23,13,20,22,23,44,17,17,32,44,34,53,35,16,19,32,20,49,37,31,17,22,10,26,48,10,32,65,74,76,60,23,65,78,34,64,64,60,65,37,32,87,25,66,31,69,45,105,62,55,89,63,79,37,35,72,35,70,45,102,35,38,68,68,24,54,65,107,67,66,26,17,44,11,46,33,51,19,18,43,13,23,33,34,26,42,24,45,39,20,40,21,15,22,37,42,33,13,41,31,14,31,19,28,15,23,23],[9,28,16,7,27,15,25,29,5,7,19,29,24,9,11,17,23,4,10,18,21,17,8,8,22,30,23,16,28,10,12,23,10,13,15,21,14,23,6,19,14,9,11,18,20,29,22,10,28,30,16,19,21,24,26,11,11,26,9,21,6,25,13,21,23,22,36,17,31,11,10,26,8,27,11,22,15,11,25,18,9,21,21,24,14,26,8,33,74,24,56,49,61,34,21,72,18,37,50,49,49,48,49,64,49,37,73,33,31,47,62,78,51,19,59,52,26,44,38,48,18,33,36],[37,91,68,24,78,53,67,75,37,25,63,83,80,68,69,98,58,26,73,66,75,85,54,37,71,83,96,90,79,50,61,66,70,94,94,86,48,87,27,69,81,33,7,25,25,26,22,7,19,20,10,21,25,22,20,18,11,30,8,18,8,21,12,31,17,20,23,21,35,12,13,21,10,28,17,36,15,11,25,33,11,13,31,30,17,21,12,20,41,14,35,25,30,23,10,31,13,31,25,24,29,30,29,47,34,23,28,18,15,23,41,36,26,11,25,25,15,25,15,26,10,22,28],[\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"norte\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"centro\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\",\"sur\"]]}}]"
+            }
+          ],
+          "title": "donut — lat/lng + walk, bike, bus",
+          "type": "ubica-keplergl-panel"
+        },
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "minWidth": 70
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "latitude"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "longitude"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 4
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 8,
+            "x": 16,
+            "y": 223
+          },
+          "id": 33,
+          "options": {
+            "showHeader": true,
+            "footer": {
+              "show": false
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "datasource",
+                "uid": "-- Dashboard --"
+              },
+              "refId": "A",
+              "panelId": 32
+            }
+          ],
+          "title": "donut — rows",
+          "transformations": [
+            {
+              "id": "filterByValue",
+              "options": {
+                "type": "include",
+                "match": "any",
+                "filters": [
+                  {
+                    "fieldName": "zona",
+                    "config": {
+                      "id": "regex",
+                      "options": {
+                        "value": "${zona:regex}"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "title": "Donut",
+      "type": "row"
     }
   ],
   "refresh": "",

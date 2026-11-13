@@ -7,7 +7,8 @@ import { S2 } from 's2-geometry';
  *
  * Each row is given its cell once, at the system's finest level here (FINE), and every coarser cell is its parent:
  * a zoom change then costs a parent per row (a bit operation or a string prefix), not a new cell per row. That
- * matters most for A5, whose a5-js 0.7.3 places only about 25,000 points a second (H3 about 660,000).
+ * matters most for A5, whose a5-js 0.7.3 placed only about 25,000 points a second (H3 about 660,000); 0.10.1, which
+ * deck.gl 9.4 brings, places about three times as many, with the same cells.
  */
 export type CellSystem = 'h3' | 'a5' | 's2' | 'geohash';
 export const CELL_SYSTEMS: CellSystem[] = ['h3', 'a5', 's2', 'geohash'];

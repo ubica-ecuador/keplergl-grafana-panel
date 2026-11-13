@@ -99,7 +99,7 @@ its own (ISC like the d3 family, but its `LICENSE` adds Mapbox to the copyright)
 `delaunator` (ISC) and `robust-predicates` (Unlicense), each read from its own `LICENSE`.
 
 `mapbox-gl` is the only package name in this table with two unrelated copies historically in the
-dependency tree: a top-level copy (3.34.2 as of the kepler.gl 3.3.0-alpha.20 bump) under Mapbox's
+dependency tree: a top-level copy (3.35.0 as of the kepler.gl 3.3.0-alpha.21 bump) under Mapbox's
 proprietary Terms of Service, and this 1.13.1 BSD-3-Clause copy nested under `@kepler.gl/utils`. The
 top-level copy is excluded from the build (see
 `webpack.config.ts`); only the 1.13.1 copy above ships, in `dist/32.js`.

@@ -66,9 +66,7 @@ export function configureKepler(): void {
     // kepler's own Add Data → Tileset form starts from this list. Empty by
     // default, like the panel option: see DEFAULT_RASTER_SERVER_URL.
     rasterServerUrls: rasterServerUrlsOf(DEFAULT_RASTER_SERVER_URL),
-    // A "new release" banner has no place inside a dashboard panel.
-    showReleaseBanner: false,
-    // The Flow layer is the reason this plugin pins kepler.gl 3.3.0-alpha.20
+    // The Flow layer is the reason this plugin pins kepler.gl 3.3.0-alpha.21
     // rather than the 3.2.6 stable. Stated explicitly so a change in the
     // upstream default cannot silently remove it.
     enableFlowLayer: true,
@@ -95,6 +93,10 @@ export function configureKepler(): void {
     // drawn by a tiler from a query, is `zarrTiles`. Stated, as the Flow layer
     // is, so an upstream default cannot remove it silently.
     enableZarrLayer: true,
+    // kepler 3.3.0-alpha.21's Donut layer: a ring of shares of up to six
+    // numeric columns at each point, near points grouped as the map zooms out.
+    // On by default upstream; stated for the same reason.
+    enableDonutLayer: true,
     // The layers on every world copy the base map shows, as MapLibre repeats
     // the world past ±180°: zoomed out, the copies either side are no longer
     // bare, and a view across the antimeridian keeps the points on its far

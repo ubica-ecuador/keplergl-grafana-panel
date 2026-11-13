@@ -6,6 +6,14 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **kepler.gl 3.3.0-alpha.21**, from 3.3.0-alpha.20, with **deck.gl 9.4** and luma.gl 9.4 under it.
+  A new **Donut** layer: a ring at each point split into the shares of up to six numeric columns
+  (trips by mode, votes by party), near points grouped as you zoom out with their columns summed.
+  The Contour layer gains a **3D surface** and an outline colour of its own; the heatmap's 3D
+  surface pans more smoothly; a tileset can show its bounds; a camera tour shows its stops on the
+  map, where they can be dragged; and fixes to filters on vector tiles, 3D tiles, unambiguous
+  day-first dates, GeoJSON imports and very detailed polygons. The Cells layer's A5 cells are the same
+  cells, placed about three times faster.
 - **The photos layer loads its pictures as the symbol layer does.** It handed each row's address
   straight to deck, which fetched whatever it was given, of any scheme, with no limit on how many,
   and through `connect-src`, which a strict Content-Security-Policy keeps to Grafana's own host. It
