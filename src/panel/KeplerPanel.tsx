@@ -333,6 +333,7 @@ export function KeplerPanel(props: Props) {
         onChangeGrafanaRange={onChangeTimeRange}
         variableMappings={keplerMappings}
         areaVariable={options.areaVariable ?? ''}
+        lineVariable={options.lineVariable ?? ''}
         clickArea={Boolean(options.clickArea)}
         clickAreaSizeMetres={options.clickAreaSizeMetres ?? DEFAULT_CLICK_AREA_METRES}
         clickConfirm={Boolean(options.clickConfirm)}

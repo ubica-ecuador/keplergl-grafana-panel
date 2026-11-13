@@ -88,6 +88,27 @@ pass only ever adopts what it finds. A link's area is drawn once the map has a l
 figure restored from the saved configuration with the same WKT is kept as it was saved, and nothing
 is drawn over it; an empty variable on load leaves a restored figure alone.
 
+## Drawn lines
+
+The draw tool's **Line** draws a line. **Cross-filtering → Publish drawn line** writes it to a
+dashboard variable as `LINESTRING (lng lat, …)` in EPSG:4326, for queries along it: the rows near
+the line, how far along it each one lies, a vertical section through a 3D grid under it, a profile.
+
+```sql
+-- Cells within ~1 km of the line, and how far along it each one lies, in km.
+WITH line AS (SELECT ST_GeomFromText($line) AS g WHERE $line != '')
+SELECT ST_LineLocatePoint(line.g, ST_Point(lon, lat)) * ST_Length_Spheroid(ST_FlipCoordinates(line.g)) / 1000 AS km,
+       level, value
+FROM cells, line
+WHERE ST_Distance(ST_Point(lon, lat), line.g) < 0.01
+```
+
+The rules are the area's: **unquoted**, with a guard for the empty value, a **text box** variable,
+the most recent line published once it rests, the variable emptied when it is deleted, nothing
+written on dashboard load, and never this panel's own query. Areas and lines are apart: a polygon
+goes to the area's variable, a line to the line's. It is map to variable only: a line arriving in
+the variable from elsewhere is not drawn on the map.
+
 ### What counts as a figure
 
 Anything kepler's editor holds that serialises to WKT — a polygon or a rectangle. A shape that has

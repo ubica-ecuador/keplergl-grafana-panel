@@ -76,6 +76,7 @@ import { useViewportSync } from './useViewportSync';
 import { useMosaicSelection } from './useMosaicSelection';
 import type { ViewportVariables } from './viewportSync';
 import { useAreaSync } from './useAreaSync';
+import { useLineSync } from './useLineSync';
 import { useGrafanaAnnotations, type AnnotationsMode } from './useGrafanaAnnotations';
 import { useMarkerSync } from './useMarkerSync';
 import { scopeLabelClicks } from './scopedLabelClicks';
@@ -192,6 +193,8 @@ export interface KeplerMapProps {
   variableMappings: VariableMapping[];
   /** Variable the drawn polygon/rectangle is published to as WKT; empty for none. */
   areaVariable: string;
+  /** Variable the drawn line is published to as WKT; empty for none. */
+  lineVariable?: string;
   /** Clicking an entity sets the area to a square around it; needs `areaVariable`. */
   clickArea: boolean;
   /** Side of that square, in metres. */
@@ -289,6 +292,7 @@ export function KeplerMap({
   onChangeGrafanaRange,
   variableMappings,
   areaVariable,
+  lineVariable = '',
   clickArea,
   clickAreaSizeMetres,
   clickConfirm,
@@ -650,6 +654,7 @@ export function KeplerMap({
   // One-way and silent on its first pass — it adopts whatever figures a saved
   // config restored without publishing — so it contends with nothing on load.
   useAreaSync({ store, isReady, variable: areaVariable });
+  useLineSync({ store, isReady, variable: lineVariable });
 
   // Grafana annotations with a place as map notes, and map notes into Grafana.
   useGrafanaAnnotations({

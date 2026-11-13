@@ -12,7 +12,7 @@ import { FieldMappingEditor } from './editors/FieldMappingEditor';
 import { RouteQueriesEditor } from './editors/RouteQueriesEditor';
 import { VariableSyncEditor } from './editors/VariableSyncEditor';
 import { TimeVariableEditor } from './editors/TimeVariableEditor';
-import { AreaVariableEditor } from './editors/AreaVariableEditor';
+import { AreaVariableEditor, LineVariableEditor } from './editors/AreaVariableEditor';
 import { DEFAULT_CLICK_AREA_METRES } from './panel/clickArea';
 import { ViewportVariablesEditor } from './editors/ViewportVariablesEditor';
 import { FitVariablesEditor } from './editors/FitVariablesEditor';
@@ -360,6 +360,14 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       description: 'Write the polygon or rectangle drawn on the map to a dashboard variable as WKT.',
       category: ['Cross-filtering'],
       editor: AreaVariableEditor,
+    })
+    .addCustomEditor({
+      id: 'lineVariable',
+      path: 'lineVariable',
+      name: 'Publish drawn line',
+      description: 'Write the line drawn on the map to a dashboard variable as WKT, for queries along it.',
+      category: ['Cross-filtering'],
+      editor: LineVariableEditor,
     })
     .addBooleanSwitch({
       path: 'clickArea',

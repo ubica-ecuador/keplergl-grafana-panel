@@ -1,4 +1,4 @@
-import { geoJsonToWkt } from '../data/geoJsonToWkt';
+import { geoJsonToWkt, lineToWkt } from '../data/geoJsonToWkt';
 import { wktToGeoJson, type ArealGeometry } from '../data/wktToGeoJson';
 import type { DrawnArea } from './keplerAdapter';
 
@@ -35,6 +35,8 @@ export type AreaDecision = { action: 'publish'; id: string; wkt: string } | { ac
 
 interface AreaState {
   candidates: DrawnArea[];
+  /** id → WKT of the figures that count: the areas by default; the line sync passes the lines'. */
+  fingerprintsOf?: (candidates: DrawnArea[]) => Record<string, string>;
   /**
    * id → fingerprint last observed, or null on the very first pass — which is
    * dashboard load, where a saved config may restore figures. Publishing then
@@ -53,8 +55,13 @@ interface AreaState {
  * candidates arrive in a deterministic order (filters first, editor features
  * last — see `readDrawnAreas`) and the last new-or-changed one wins.
  */
-export function decideAreaPublish({ candidates, lastSeen, publishedId }: AreaState): AreaDecision {
-  const fingerprints = areaFingerprints(candidates);
+export function decideAreaPublish({
+  candidates,
+  lastSeen,
+  publishedId,
+  fingerprintsOf = areaFingerprints,
+}: AreaState): AreaDecision {
+  const fingerprints = fingerprintsOf(candidates);
 
   if (lastSeen === null) {
     return { action: 'none' };
@@ -125,4 +132,16 @@ export function decideAreaInbound({ value, previous, fingerprints }: InboundStat
     return { action: 'none' };
   }
   return { action: 'draw', geometry, wkt };
+}
+
+/** id → WKT for every drawn line that serializes (useLineSync.ts: the line variable); areas do not count. */
+export function lineFingerprints(candidates: DrawnArea[]): Record<string, string> {
+  const fingerprints: Record<string, string> = {};
+  for (const { id, geometry } of candidates) {
+    const wkt = lineToWkt(geometry);
+    if (wkt !== null) {
+      fingerprints[id] = wkt;
+    }
+  }
+  return fingerprints;
 }

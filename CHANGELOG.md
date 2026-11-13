@@ -14,6 +14,11 @@ release documents what changed since the one before it.
   map, where they can be dragged; and fixes to filters on vector tiles, 3D tiles, unambiguous
   day-first dates, GeoJSON imports and very detailed polygons. The Cells layer's A5 cells are the same
   cells, placed about three times faster.
+- **Publish drawn line.** A line drawn with the draw tool's Line goes to a dashboard variable as
+  `LINESTRING` WKT, as a drawn area does: the most recent once it rests, emptied when deleted,
+  nothing written on load. For the other panels' queries along it: a vertical section through a 3D
+  grid under it (`ST_LineLocatePoint`), a profile, the rows near the line. Cross-filtering → Publish
+  drawn line.
 - **The photos layer loads its pictures as the symbol layer does.** It handed each row's address
   straight to deck, which fetched whatever it was given, of any scheme, with no limit on how many,
   and through `connect-src`, which a strict Content-Security-Policy keeps to Grafana's own host. It

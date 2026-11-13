@@ -51,3 +51,43 @@ export function AreaVariableEditor({ value, onChange }: Props) {
     </Stack>
   );
 }
+
+/**
+ * Picks the variable the drawn line is published to, as WKT: for the other panels' queries along it, a vertical
+ * section or a profile. The same two rules as the area's: unquoted in SQL, and never in this panel's own query.
+ */
+export function LineVariableEditor({ value, onChange }: Props) {
+  const variables: Array<ComboboxOption<string>> = getTemplateSrv()
+    .getVariables()
+    .map((v) => ({ label: `$${v.name}`, value: v.name }));
+
+  const name = value || 'line';
+
+  return (
+    <Stack direction="column" gap={1}>
+      {variables.length === 0 ? (
+        <Text variant="bodySmall" color="secondary">
+          Add a text box variable to the dashboard first.
+        </Text>
+      ) : (
+        <Text variant="bodySmall" color="secondary">
+          The line arrives as WKT (EPSG:4326), so other panels can measure along it:{' '}
+          <code>{`WHERE $${name} != '' AND ST_DWithin(geom, ST_GeomFromText($${name}), 0.01)`}</code>, and{' '}
+          <code>{`ST_LineLocatePoint(ST_GeomFromText($${name}), geom)`}</code> for how far along — unquoted: the SQL
+          data sources add the quotes themselves. Keep it out of this panel&apos;s own query.
+        </Text>
+      )}
+
+      <InlineField label="Variable" labelWidth={10}>
+        <Combobox
+          options={variables}
+          value={value || null}
+          placeholder="variable"
+          width={20}
+          isClearable
+          onChange={(o) => onChange(o?.value || undefined)}
+        />
+      </InlineField>
+    </Stack>
+  );
+}

@@ -88,3 +88,21 @@ function pointText(position: unknown): string | null {
 function round6(value: number): string {
   return String(Number(value.toFixed(6)));
 }
+
+/**
+ * Serializes a drawn line into canonical WKT, `LINESTRING (x y, …)`, in the same micro-format as the areas: for a
+ * dashboard variable another panel reads along the line (`ST_LineLocatePoint`, a vertical section, a profile). Null
+ * for anything that is not a LineString of at least two finite positions; consecutive repeated positions are dropped
+ * (a double click leaves one).
+ */
+export function lineToWkt(geometry: GeoJsonGeometryLike): string | null {
+  if (geometry.type !== 'LineString' || !Array.isArray(geometry.coordinates)) {
+    return null;
+  }
+  const points = geometry.coordinates.map(pointText);
+  if (points.some((p) => p === null)) {
+    return null;
+  }
+  const distinct = points.filter((p, i) => i === 0 || p !== points[i - 1]);
+  return distinct.length >= 2 ? `LINESTRING (${distinct.join(', ')})` : null;
+}

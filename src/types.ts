@@ -308,6 +308,14 @@ export interface KeplerPanelOptions {
   areaVariable?: string;
 
   /**
+   * Dashboard variable the line drawn on the map (the draw tool's Line) is
+   * published to, as WKT `LINESTRING (lng lat, …)`, for the other panels'
+   * queries along it: a vertical section, a profile, the rows near it. Same
+   * rules as `areaVariable`; map to variable only.
+   */
+  lineVariable?: string;
+
+  /**
    * Clicking an entity on the map sets the drawn area to a square around it,
    * instead of having to draw one. Needs `areaVariable`: the square is handed
    * to kepler as a drawn figure and published by the same path as a drawing.
