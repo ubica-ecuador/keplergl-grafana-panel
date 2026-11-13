@@ -114,6 +114,34 @@ export function checkPictureUrl(url: string, pageHref: string): PictureProblem |
 }
 
 /**
+ * Whether a picture is fetched without the viewer's Grafana session.
+ *
+ * A picture's URL comes from the dashboard or from a query's rows, and every
+ * viewer's browser loads it. One on another origin carries no cookies anyway:
+ * it is loaded by an anonymous `<img>`. One on Grafana's own origin would
+ * carry the viewer's session to whatever path the data names — `/logout`, or
+ * any `/api/` route that answers a GET — so it is fetched without it. Except
+ * Grafana's static files, under its sub-path's `/public/` (its own images, the
+ * plugins' files), which an authenticating proxy in front of Grafana may want
+ * the session for. Resolved first, so `..` cannot step out of `/public/`; a
+ * `data:` URL has no origin to share.
+ */
+export function loadsWithoutSession(url: string, pageHref: string, appSubUrl = ''): boolean {
+  let resolved: URL;
+  let page: URL;
+  try {
+    resolved = new URL(url.trim(), pageHref);
+    page = new URL(pageHref);
+  } catch {
+    return false;
+  }
+  if (resolved.origin !== page.origin) {
+    return false;
+  }
+  return !resolved.pathname.startsWith(`${appSubUrl.replace(/\/+$/, '')}/public/`);
+}
+
+/**
  * Where a picture is drawn inside its cell: as large as fits, keeping its
  * proportions, and pushed against the sides its anchor names — centred across
  * for the top and the bottom, resting on the bottom for the bottom, in the

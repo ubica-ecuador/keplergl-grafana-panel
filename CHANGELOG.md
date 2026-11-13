@@ -4,6 +4,20 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## Unreleased
+
+- **The photos layer loads its pictures as the symbol layer does.** It handed each row's address
+  straight to deck, which fetched whatever it was given, of any scheme, with no limit on how many,
+  and through `connect-src`, which a strict Content-Security-Policy keeps to Grafana's own host. It
+  now asks only for `https:`, `http:` (on a Grafana served over `http:`) and `data:image/`
+  addresses, by `<img>` as the symbol layer does, and draws at most 96 different pictures. The rows
+  beyond them, and those whose picture could not load, draw their frame alone. Its panel names each
+  picture that could not load, and why, under **Picture column**. The frames load the same way.
+- **A picture on Grafana's own address is fetched without the viewer's session**, in the photos and
+  the symbol layer alike. An address in a query's rows can no longer act for the viewer (`/logout`,
+  or an `/api/` route that answers a GET). Grafana's static files, under `/public/`, still load as
+  any image on the page does.
+
 ## 1.8.0 (2026-11-12)
 
 - **A Cells layer: points counted in H3, A5, S2 or geohash cells whose level follows the zoom.** The

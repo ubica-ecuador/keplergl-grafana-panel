@@ -1,4 +1,11 @@
-import { createPictureFetch, PictureError, PictureFetchDeps, pictureFetch } from './pictureFetch';
+import {
+  createPictureFetch,
+  loadPictureImage,
+  PictureError,
+  PictureFetchDeps,
+  pictureFetch,
+  PictureImageDeps,
+} from './pictureFetch';
 import { pictureKey } from './pictureKeys';
 import { readPictureOutcomes, resetPictureStateForTests } from './pictureState';
 
@@ -112,5 +119,63 @@ describe('pictureFetch', () => {
     await expect(pictureFetch(key)).rejects.toMatchObject({ problem: 'scheme' });
 
     expect(readPictureOutcomes().get(key)).toBe('scheme');
+  });
+});
+
+describe('loadPictureImage', () => {
+  function imageDeps(overrides: Partial<PictureImageDeps> = {}) {
+    const deps: PictureImageDeps = {
+      pageHref: 'https://grafana.example/d/abc/map',
+      appSubUrl: '',
+      fetchImpl: jest.fn(async () => ({
+        ok: true,
+        blob: async () => new Blob(['<svg xmlns="http://www.w3.org/2000/svg"/>'], { type: 'image/svg+xml' }),
+      })),
+      loadElement: jest.fn(async () => ({ naturalWidth: 10, naturalHeight: 10 })),
+      ...overrides,
+    };
+    return deps;
+  }
+
+  it('hands a picture on another origin to the image element as it is', async () => {
+    const deps = imageDeps();
+
+    await loadPictureImage('https://images.example/a.png', deps);
+
+    expect(deps.fetchImpl).not.toHaveBeenCalled();
+    expect(deps.loadElement).toHaveBeenCalledWith('https://images.example/a.png');
+  });
+
+  it('hands one of Grafana’s static files to the image element as it is', async () => {
+    const deps = imageDeps();
+
+    await loadPictureImage('/public/img/grafana_icon.svg', deps);
+
+    expect(deps.fetchImpl).not.toHaveBeenCalled();
+    expect(deps.loadElement).toHaveBeenCalledWith('/public/img/grafana_icon.svg');
+  });
+
+  it('fetches any other picture on Grafana’s origin without cookies, and hands it over as a data: URL of its type', async () => {
+    const deps = imageDeps();
+
+    const image = await loadPictureImage('/datasets/sites/logo.svg', deps);
+
+    expect(deps.fetchImpl).toHaveBeenCalledWith('/datasets/sites/logo.svg', { credentials: 'omit' });
+    const [handed] = (deps.loadElement as jest.Mock).mock.calls[0];
+    expect(handed).toMatch(/^data:image\/svg\+xml;base64,/);
+    expect(image).toEqual({ naturalWidth: 10, naturalHeight: 10 });
+  });
+
+  it('fails as a load when Grafana answers with an error or the request fails', async () => {
+    const refused = imageDeps({ fetchImpl: jest.fn(async () => ({ ok: false, blob: async () => new Blob() })) });
+    await expect(loadPictureImage('/api/user', refused)).rejects.toEqual(new PictureError('load'));
+    expect(refused.loadElement).not.toHaveBeenCalled();
+
+    const offline = imageDeps({
+      fetchImpl: jest.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    });
+    await expect(loadPictureImage('/api/user', offline)).rejects.toEqual(new PictureError('load'));
   });
 });

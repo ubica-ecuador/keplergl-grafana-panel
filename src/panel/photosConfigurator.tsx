@@ -1,11 +1,13 @@
 import React from 'react';
 import { ConfigGroupCollapsibleContent, LayerConfigGroup, VisConfigSlider } from '@kepler.gl/components';
 
+import { PictureNotices } from './pictureNotices';
 import { SelectKnob } from './selectKnob';
 
 /**
  * The layer panel for the photos layer (`photosLayer.ts`): which column holds
- * the pictures, their size, the frame's shape and width, and the opacity.
+ * the pictures and which of them could not load, their size, the frame's
+ * shape and width, and the opacity.
  * The frame's colour is the layer's colour, at the top of the panel as for any
  * layer. Wired in `flowFieldConfigurator.tsx` like the plugin's other panels.
  */
@@ -37,6 +39,8 @@ export function PhotosLayerConfig({ layer, dataset, visConfiguratorProps }: Phot
           displayOption={(name) => name}
           keepChosen
         />
+        {/* A row past the cap draws its frame alone: the layer has no picture of its own. */}
+        <PictureNotices layer={layer} hasFallback={false} />
       </LayerConfigGroup>
       <LayerConfigGroup label={'layer.color'} collapsible>
         {slider('opacity')}

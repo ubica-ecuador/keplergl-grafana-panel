@@ -1,6 +1,9 @@
+import { config } from '@grafana/runtime';
+
 import {
   checkPictureUrl,
   fitPicture,
+  loadsWithoutSession,
   parsePictureKey,
   PICTURE_CELL,
   PictureAnchor,
@@ -9,7 +12,9 @@ import {
 import { PictureLoad, recordPictureOutcome } from './pictureState';
 
 /**
- * The fetch loaders.gl calls for a symbol picture, which never fetches.
+ * The fetch loaders.gl calls for a picture — a symbol layer's or a photos
+ * layer's — which fetches only on Grafana's own origin, and then without the
+ * viewer's session.
  *
  * deck's auto-packing `IconLayer` loads each icon with `load(url, loadOptions)`,
  * and loaders.gl `fetch`es every URL it is given — `data:` ones included. Under
@@ -17,7 +22,10 @@ import { PictureLoad, recordPictureOutcome } from './pictureState';
  * need every picture host listed. Handed this function as `core.fetch`,
  * loaders.gl calls it instead: the picture is loaded by an `<img>`, which only
  * `img-src * data:` governs, painted into its cell, and answered as a PNG that
- * loaders.gl decodes with `createImageBitmap` — no URL, so no CSP either.
+ * loaders.gl decodes with `createImageBitmap` — no URL, so no CSP either. A
+ * picture on Grafana's own origin is fetched first, without cookies (see
+ * `loadsWithoutSession`), which `connect-src 'self'` allows, and handed to the
+ * `<img>` as a `data:` URL.
  */
 
 export const PICTURE_TIMEOUT_MS = 15_000;
@@ -105,7 +113,58 @@ export function createPictureFetch(deps: PictureFetchDeps) {
   };
 }
 
+/** What `loadPictureImage` needs from a browser, injected so the choice can be tested in jsdom. */
+export interface PictureImageDeps {
+  pageHref: string;
+  appSubUrl: string;
+  fetchImpl(url: string, init: RequestInit): Promise<Pick<Response, 'ok' | 'blob'>>;
+  loadElement(url: string): Promise<PictureImage>;
+}
+
+/**
+ * Loads a picture as an image the canvas can paint: by its URL, or, for one
+ * on Grafana's own origin outside its static files, fetched without the
+ * session and handed over as a `data:` URL — not a `blob:` one, which
+ * Grafana's `img-src * data:` does not allow. The `data:` URL keeps the type
+ * the server gave, so an SVG still reads as one.
+ */
+export async function loadPictureImage(url: string, deps: PictureImageDeps): Promise<PictureImage> {
+  if (!loadsWithoutSession(url, deps.pageHref, deps.appSubUrl)) {
+    return deps.loadElement(url);
+  }
+  let blob: Blob;
+  try {
+    const response = await deps.fetchImpl(url, { credentials: 'omit' });
+    if (!response.ok) {
+      throw new PictureError('load');
+    }
+    blob = await response.blob();
+  } catch {
+    throw new PictureError('load');
+  }
+  return deps.loadElement(await dataUrlOf(blob));
+}
+
+function dataUrlOf(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      typeof reader.result === 'string' ? resolve(reader.result) : reject(new PictureError('decode'));
+    reader.onerror = () => reject(new PictureError('load'));
+    reader.readAsDataURL(blob);
+  });
+}
+
 function loadImageInBrowser(url: string): Promise<PictureImage> {
+  return loadPictureImage(url, {
+    pageHref: typeof location === 'undefined' ? 'https://localhost/' : location.href,
+    appSubUrl: config.appSubUrl ?? '',
+    fetchImpl: (target, init) => fetch(target, init),
+    loadElement: loadImageElement,
+  });
+}
+
+function loadImageElement(url: string): Promise<PictureImage> {
   const image = new Image();
   // Anonymous, so a server that allows cross-origin use gives WebGL a picture
   // it may upload, and one that does not fails here — rather than tainting the

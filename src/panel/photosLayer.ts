@@ -1,13 +1,21 @@
+import { PictureAnchor } from './pictureKeys';
+import { assignPictures, PictureAssignment } from './pictureRows';
+import { recordPictureAssignment } from './pictureState';
+
 /**
  * The kepler layer that draws a picture at each point: Geomap's Photos layer.
  *
  * Built on kepler's own point layer, so the rows, the coordinate columns,
  * filters, the tooltip and clicks are all the point layer's; only the drawing
  * differs. Each row's picture is read from a column of image addresses
- * (`visConfig.photoField`) and handed to deck's IconLayer, which fetches and
- * packs them itself. A frame in the layer's colour sits behind each picture,
- * square or round. Pure, like the other layers here: the base class and the
- * deck factory come in as arguments (`photosDeckLayer.ts`).
+ * (`visConfig.photoField`) and goes the way a symbol layer's pictures go
+ * (`pictureRows.ts`): an address that cannot load on this page is not asked
+ * for, at most `MAX_PICTURES` different ones are drawn, and the layer panel
+ * says which were not and why. They load through the plugin's picture fetch
+ * (`pictureFetch.ts`), not loaders.gl's. A frame in the layer's colour sits
+ * behind each point, square or round, with or without its picture. Pure, like
+ * the other layers here: the base class and the deck factory come in as
+ * arguments (`photosDeckLayer.ts`).
  */
 
 export const PHOTOS_TYPE = 'photos';
@@ -64,9 +72,19 @@ export const PHOTOS_VIS_CONFIGS = {
   },
 };
 
+/** A row of kepler's point layer, as `formatLayerData` hands it to deck. */
+export interface PhotoRow {
+  index: number;
+}
+
+/** A picture is centred on its point, as in Geomap. */
+const PHOTO_ANCHOR: PictureAnchor = 'center';
+
 export type PhotosDeckLayersFactory = (args: {
+  /** Every row's props: each one draws a frame. */
   shared: Record<string, unknown>;
-  getPhoto: (d: { index: number }) => string | null;
+  /** The rows that draw a picture, and each one's icon by row index. */
+  pictured: Pick<PictureAssignment<PhotoRow>, 'rows' | 'icons' | 'keys'>;
   size: number;
   kind: PhotoKind;
   border: number;
@@ -108,6 +126,13 @@ export function makePhotosLayer<C extends Constructor<object>>(
   buildDeckLayers: PhotosDeckLayersFactory
 ): C {
   class PhotosLayer extends (PointLayer as Constructor<PointLayerLike>) {
+    private pictureMemo: {
+      rows: PhotoRow[];
+      field: string | undefined;
+      origin: string;
+      result: PictureAssignment<PhotoRow>;
+    } | null = null;
+
     constructor(...args: any[]) {
       super(...args);
       // kepler copies a saved layer's visConfig onto the keys the layer
@@ -149,6 +174,12 @@ export function makePhotosLayer<C extends Constructor<object>>(
     }): unknown[] {
       const { data, gpuFilter } = opts;
       const visConfig = this.config.visConfig;
+      const rows = Array.isArray(data.data) ? (data.data as PhotoRow[]) : [];
+      // Recorded against this layer object on every render, which the memo
+      // makes an identity check: kept by id, it would mix with a repeated
+      // panel's (see `pictureState.ts`).
+      const pictured = this.picturesFor(rows, data.getPhoto, visConfig.photoField);
+      recordPictureAssignment(this, pictured);
       const defaults = this.getDefaultDeckLayerProps(opts);
       const shared = {
         ...defaults,
@@ -161,17 +192,43 @@ export function makePhotosLayer<C extends Constructor<object>>(
         updateTriggers: {
           getPosition: this.config.columns,
           getFilterValue: gpuFilter?.filterValueUpdateTriggers,
-          getIcon: visConfig.photoField,
         },
       };
       return buildDeckLayers({
         shared,
-        getPhoto: (data.getPhoto as (d: { index: number }) => string | null) ?? (() => null),
+        pictured,
         size: visConfig.photoSize ?? 40,
         kind: visConfig.photoKind === 'circle' ? 'circle' : 'square',
         border: visConfig.photoBorder ?? 2,
         borderColor: this.config.color,
       });
+    }
+
+    /**
+     * Which picture each row draws — the same object while nothing that
+     * decides it changed, so deck neither walks the rows for icons again nor
+     * repacks on every hover and move of the map. Keyed on the rows, which
+     * kepler hands back anew whenever the data, the columns or the filtered
+     * index change, and on the picture column, which can change while the
+     * rows stay the same. Keyed on the page's origin, not its address: only
+     * the scheme matters, for mixed content, and the address changes with
+     * every time range and variable.
+     */
+    picturesFor(rows: PhotoRow[], getPhoto: unknown, field: string | undefined): PictureAssignment<PhotoRow> {
+      const origin = typeof location === 'undefined' ? 'https://localhost' : location.origin;
+      const memo = this.pictureMemo;
+      if (memo && memo.rows === rows && memo.field === field && memo.origin === origin) {
+        return memo.result;
+      }
+      const result = assignPictures(rows, {
+        urlOf: typeof getPhoto === 'function' ? (row: PhotoRow) => (getPhoto as (d: PhotoRow) => unknown)(row) : null,
+        // No picture of the layer's own: a row without one draws its frame alone.
+        layerPicture: null,
+        anchor: PHOTO_ANCHOR,
+        pageHref: `${origin}/`,
+      });
+      this.pictureMemo = { rows, field, origin, result };
+      return result;
     }
   }
 

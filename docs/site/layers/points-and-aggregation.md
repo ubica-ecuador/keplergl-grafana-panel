@@ -234,12 +234,39 @@ nothing beyond Grafana's default `img-src * data:`. Two things still stop one:
 - **Mixed content.** A picture over `http:` on a Grafana served over `https:` is blocked by the
   browser.
 
-Pictures load in the browser of whoever views the dashboard, with their Grafana session, so a
-picture column should come from data you trust.
+Only `https:`, `http:` (on a Grafana served over `http:`) and `data:image/` addresses are asked
+for. Any other, such as `javascript:`, `file:` or `blob:`, is refused, and the layer panel names it.
+
+Pictures load in the browser of whoever views the dashboard, but not as them. A picture on another
+site goes without their cookies, as any image from another origin does. A picture on Grafana's own
+address is fetched without their Grafana session, so an address in a query's rows cannot act for the
+viewer (`/logout`, or an `/api/` route that answers a GET). Grafana's static files, under `/public/`,
+are the exception: they load as any image on the page does. A picture on Grafana's address that
+needs the session, such as one behind an authenticating proxy, does not load; upload it instead.
 
 The layer panel names each picture that could not load, and why. A layer draws at most 96 different
 pictures. Rows beyond that take the layer's picture, or, when the layer has no picture of its own,
 are not drawn; the panel says which.
+
+## photos
+
+A picture at each point, in a square or round frame in the layer's colour. It is Geomap's Photos
+layer: [Change visualization from Geomap](../guide/coming-from-geomap) converts one to this. It is
+never guessed. Add it from **+ Add Layer** on a dataset with coordinates and a column of picture
+addresses, then pick that column as **Picture column** in its panel.
+
+```sql
+SELECT lat AS latitude, lon AS longitude, photo_url AS photo, species
+FROM sightings;
+```
+
+**Picture size**, **Frame** and **Frame width** set the look. A round frame holds the square picture
+inscribed in it, and a wide picture is not cropped. A row with no address draws its frame alone.
+
+The pictures load as the [symbol](#symbol) layer's do, with the same limits: CORS, mixed content,
+the addresses it asks for, and no session on Grafana's own address. At most 96 different pictures
+are drawn; the rows beyond them, and those whose picture could not load, draw their frame alone.
+Under **Picture column**, the layer panel names each picture that could not load, and why.
 
 ## Choosing between them
 

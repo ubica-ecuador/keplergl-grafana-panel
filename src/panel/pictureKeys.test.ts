@@ -1,6 +1,7 @@
 import {
   checkPictureUrl,
   fitPicture,
+  loadsWithoutSession,
   parsePictureKey,
   PICTURE_CELL,
   pictureAnchorOf,
@@ -148,5 +149,38 @@ describe('pictures at the edges and corners', () => {
       anchorX: 64,
       anchorY: 64,
     });
+  });
+});
+
+describe('loadsWithoutSession', () => {
+  const page = 'https://grafana.example/d/abc/map?orgId=1';
+
+  it('fetches a picture on Grafana’s own origin without the session', () => {
+    expect(loadsWithoutSession('/logout', page)).toBe(true);
+    expect(loadsWithoutSession('/api/user', page)).toBe(true);
+    expect(loadsWithoutSession('https://grafana.example/datasets/a.png', page)).toBe(true);
+    expect(loadsWithoutSession('photo.png', page)).toBe(true);
+  });
+
+  it('leaves Grafana’s static files to the browser, under its sub-path when it has one', () => {
+    expect(loadsWithoutSession('/public/img/grafana_icon.svg', page)).toBe(false);
+    expect(loadsWithoutSession('/public/plugins/ubica-keplergl-panel/img/logo.svg', page)).toBe(false);
+    expect(loadsWithoutSession('/grafana/public/img/a.png', 'https://h.example/grafana/d/x', '/grafana')).toBe(false);
+    expect(loadsWithoutSession('/grafana/public/img/a.png', 'https://h.example/grafana/d/x', '/grafana/')).toBe(false);
+    // Not Grafana's static files when Grafana is served under a sub-path.
+    expect(loadsWithoutSession('/public/img/a.png', 'https://h.example/grafana/d/x', '/grafana')).toBe(true);
+  });
+
+  it('does not let a path climb out of /public/', () => {
+    expect(loadsWithoutSession('/public/../api/user', page)).toBe(true);
+    expect(loadsWithoutSession('/public/%2e%2e/logout', page)).toBe(true);
+    expect(loadsWithoutSession('/public\\..\\logout', page)).toBe(true);
+  });
+
+  it('has nothing to say about another origin or a data: URL: they carry no session', () => {
+    expect(loadsWithoutSession('https://images.example/a.png', page)).toBe(false);
+    expect(loadsWithoutSession('//images.example/a.png', page)).toBe(false);
+    expect(loadsWithoutSession('http://grafana.example/api/user', page)).toBe(false);
+    expect(loadsWithoutSession('data:image/png;base64,iVBORw0KGgo=', page)).toBe(false);
   });
 });

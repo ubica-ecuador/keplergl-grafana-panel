@@ -1,15 +1,8 @@
-import React, { useRef, useState, useSyncExternalStore } from 'react';
+import React, { useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { Button, Input, PanelLabel, SidePanelSection } from '@kepler.gl/components';
 
-import { MAX_PICTURES } from './pictureRows';
-import {
-  readPictureAssignment,
-  readPictureOutcomes,
-  readPictureVersion,
-  subscribePictures,
-  summarisePictures,
-} from './pictureState';
+import { noticeStyle, PictureNotices } from './pictureNotices';
 
 /**
  * Where a symbol layer's picture comes from, and what became of its pictures.
@@ -28,20 +21,11 @@ export const MAX_UPLOAD_CHARS = 100_000;
 
 export const UPLOAD_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp', 'image/gif'];
 
-/** Failures named one by one; the count says how many more there are. */
-const SHOWN_FAILURES = 3;
-
-function shorten(url: string): string {
-  return url.length > 60 ? `${url.slice(0, 57)}…` : url;
-}
-
 /** The size of the file behind a base64 data URI, in KB. */
 function uploadedKb(dataUri: string): number {
   const base64 = dataUri.slice(dataUri.indexOf(',') + 1);
   return Math.ceil((base64.length * 3) / 4 / 1024);
 }
-
-const noticeStyle: React.CSSProperties = { fontSize: 11, marginTop: 6, lineHeight: 1.4 };
 
 export function PictureSourceInput({
   layer,
@@ -57,11 +41,6 @@ export function PictureSourceInput({
   const [draft, setDraft] = useState(value);
   const [uploadProblem, setUploadProblem] = useState<string | null>(null);
   const picker = useRef<HTMLInputElement>(null);
-  // The version is only what tells React to render again; what is shown is
-  // read from the store itself.
-  useSyncExternalStore(subscribePictures, readPictureVersion);
-  const summary = summarisePictures(readPictureAssignment(layer), readPictureOutcomes());
-  const failedCount = summary.failed.length + summary.moreFailed;
   const uploaded = value.startsWith('data:');
 
   // What is saved wins over what was being typed when it changes from outside:
@@ -160,28 +139,8 @@ export function PictureSourceInput({
         </div>
       ) : null}
 
-      {failedCount > 0 ? (
-        <div role="status" style={noticeStyle}>
-          <div>
-            {intl.formatMessage({ id: 'symbol.picture.failed' }, { failed: failedCount, total: summary.total })}
-          </div>
-          {summary.failed.slice(0, SHOWN_FAILURES).map(({ url, problem }) => (
-            <div key={url} title={url}>
-              {`${shorten(url)} — ${intl.formatMessage({ id: `symbol.picture.problem.${problem}` })}`}
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {summary.overflow > 0 ? (
-        <div role="status" style={noticeStyle}>
-          {intl.formatMessage(
-            // A row past the cap falls back to the layer picture; with none, it is left out.
-            { id: value.trim() === '' ? 'symbol.picture.overflowNotDrawn' : 'symbol.picture.overflow' },
-            { overflow: summary.overflow, max: MAX_PICTURES }
-          )}
-        </div>
-      ) : null}
+      {/* A row past the cap falls back to the layer picture; with none, it is left out. */}
+      <PictureNotices layer={layer} hasFallback={value.trim() !== ''} />
     </SidePanelSection>
   );
 }

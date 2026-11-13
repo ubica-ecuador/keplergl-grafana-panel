@@ -73,7 +73,7 @@ function warnOnce(url: string, load: PictureLoad): void {
   }
   warned.add(note);
   const shown = url.length > 80 ? `${url.slice(0, 77)}…` : url;
-  console.warn(`[kepler panel] symbol picture not drawn (${load}): ${shown}`);
+  console.warn(`[kepler panel] picture not drawn (${load}): ${shown}`);
 }
 
 export function subscribePictures(listener: () => void): () => void {

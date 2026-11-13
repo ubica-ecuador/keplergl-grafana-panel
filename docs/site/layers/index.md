@@ -6,7 +6,7 @@ types of its own, shown with amber icons in kepler's layer menu: among them
 [Streamlines](../guide/data/velocity-fields) and a [vector field](../guide/data/velocity-fields#arrows-and-wind-barbs)
 for a grid of velocities, [Symbols](../guide/data/symbols) for anything with a bearing,
 [Markers](../guide/map/markers) for points you drag, a
-[Zarr tileset](../guide/data/zarr) for a store of arrays, **Photos** for a picture at each point,
+[Zarr tileset](../guide/data/zarr) for a store of arrays, [Photos](./points-and-aggregation#photos) for a picture at each point,
 and [XYZ tiles](./url-configured#xyz-tiles) for a `{z}/{x}/{y}` tile server.
 
 Two of kepler's own, [`a5` and `geohash`](./geometry-and-indices#geohash), are grid-index layers
@@ -99,7 +99,7 @@ choosing the dataset and pointing the layer's columns at it.
 | markers             | never guessed — add it from **Add Layer**. Draggable reference points bound to dashboard variables; it draws nothing from its dataset. See [Markers](../guide/map/markers). |
 | line                | a query chosen in **Draw as a route**, or edges with `source` and `target` beside a query of nodes. See [Routes and networks](../guide/data/routes-and-networks). |
 | cells               | never guessed — add it from **Add Layer** on a dataset with coordinates. Points counted in H3, A5, S2 or geohash cells at a level that follows the zoom. See [cells](./points-and-aggregation#cells). |
-| photos              | never guessed — add it from **Add Layer** on a dataset with coordinates and a column of picture addresses, and pick that column in its panel. A converted Geomap Photos layer is one. |
+| photos              | never guessed — add it from **Add Layer** on a dataset with coordinates and a column of picture addresses, and pick that column in its panel. A converted Geomap Photos layer is one. See [photos](./points-and-aggregation#photos). |
 
 See [How a query becomes a map](../guide/data/how-a-query-becomes-a-map).
 

@@ -1,58 +1,67 @@
-import { IconLayer } from '@deck.gl/layers';
-
-import type { PhotosDeckLayersFactory } from './photosLayer';
+import { buildPictureDeckLayer } from './pictureDeckLayer';
+import { PictureIcon, pictureIcon } from './pictureKeys';
+import type { PhotoKind, PhotoRow, PhotosDeckLayersFactory } from './photosLayer';
 
 /**
- * The deck.gl layers for `photosLayer.ts`: a frame, then the picture over it.
+ * The deck.gl layers for `photosLayer.ts`: a frame for every row, then the
+ * picture over it for the rows that have one.
  *
- * IconLayer fetches each picture by its address and packs it into its atlas,
- * so nothing here downloads anything. It cannot crop, so a round frame holds
- * the square picture inscribed in it.
+ * Both are the symbol layer's picture icon layer (`pictureDeckLayer.ts`): deck
+ * packs each icon into its own atlas, but every picture, the frames included,
+ * loads through the plugin's picture fetch — the icons are named by key, never
+ * by their URL — so nothing here asks loaders.gl to fetch a URL. An icon cannot
+ * be cropped, so a round frame holds the square picture inscribed in it.
  */
 
-const FRAMES = {
+const FRAMES: Record<PhotoKind, string> = {
   square: svg('<rect width="64" height="64"/>'),
   circle: svg('<circle cx="32" cy="32" r="32"/>'),
 };
 
-/** A transparent pixel, for a row without a picture. */
-const EMPTY = svg('');
+type FrameIcon = Omit<PictureIcon, 'mask'> & { mask: true };
 
-/** A picture is asked for at this size and scaled on the map. */
-const PHOTO_PIXELS = 128;
+/** A mask, so deck paints the frame in the layer's colour. */
+const FRAME_ICONS: Record<PhotoKind, FrameIcon> = {
+  square: { ...pictureIcon(FRAMES.square, 'center'), mask: true },
+  circle: { ...pictureIcon(FRAMES.circle, 'center'), mask: true },
+};
 
 /** The square inscribed in a circle is this much of its diameter. */
 const INSCRIBED = Math.SQRT1_2;
 
 export const buildPhotosDeckLayers: PhotosDeckLayersFactory = ({
   shared,
-  getPhoto,
+  pictured,
   size,
   kind,
   border,
   borderColor,
 }) => {
   const id = String(shared.id);
+  const triggers = (shared.updateTriggers ?? {}) as Record<string, unknown>;
   const picture = kind === 'circle' ? (size + 2 * border) * INSCRIBED : size;
+  const frame = FRAME_ICONS[kind];
   return [
-    new IconLayer({
+    buildPictureDeckLayer({
       ...shared,
       id: `${id}-frame`,
-      getIcon: () => ({ url: FRAMES[kind], width: 64, height: 64, mask: true, id: `frame-${kind}` }),
+      getIcon: () => frame,
       getColor: borderColor,
       getSize: size + 2 * border,
-      sizeUnits: 'pixels',
-    } as never),
-    new IconLayer({
+      // Facing the viewer on a tilted map, as Geomap's photos do.
+      billboard: true,
+      updateTriggers: { ...triggers, getIcon: kind },
+    }),
+    buildPictureDeckLayer({
       ...shared,
       id: `${id}-photo`,
-      getIcon: (d: { index: number }) => {
-        const url = getPhoto(d);
-        return { url: url ?? EMPTY, width: PHOTO_PIXELS, height: PHOTO_PIXELS, id: url ?? 'empty' };
-      },
+      // Only the rows with a picture that can load: deck throws on a row with no icon.
+      data: pictured.rows,
+      getIcon: (row: PhotoRow) => pictured.icons.get(row.index),
       getSize: picture,
-      sizeUnits: 'pixels',
-    } as never),
+      billboard: true,
+      updateTriggers: { ...triggers, getIcon: pictured.keys },
+    }),
   ];
 };
 
