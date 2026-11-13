@@ -51,6 +51,7 @@ export const PLUS_SIDEBAR: DefaultTheme.SidebarItem[] = [
       { text: '3D Callout', link: '/plus/layers/callout' },
       { text: 'Traffic', link: '/plus/layers/traffic' },
       { text: 'Pipeline', link: '/plus/layers/pipeline' },
+      { text: 'Route', link: '/plus/layers/route' },
       { text: 'Fleet', link: '/plus/layers/fleet' },
       { text: '4D Model', link: '/plus/layers/model-4d' },
       { text: 'Floor plan', link: '/plus/indoor/plans#the-floor-plan-layer' },
