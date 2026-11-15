@@ -32,6 +32,20 @@ export function xyzTileUrl(template: string, { x, y, z }: { x: number; y: number
     .replace(/\{([a-z])-[a-z]\}/g, '$1');
 }
 
+/**
+ * The template as MapLibre reads it (`reliefRasters.ts`): `{-y}` becomes `{y}` on the
+ * TMS scheme, and `{s}` / `{a-c}` the first subdomain, as `xyzTileUrl` picks.
+ */
+export function xyzMapLibreTemplate(template: string): { template: string; scheme: 'xyz' | 'tms' } {
+  return {
+    template: template
+      .replace(/\{-y\}/g, '{y}')
+      .replace(/\{s\}/g, 'a')
+      .replace(/\{([a-z])-[a-z]\}/g, '$1'),
+    scheme: template.includes('{-y}') ? 'tms' : 'xyz',
+  };
+}
+
 /** A tile template as a saved dataset, as `mapConfig.datasets` holds the remote ones. */
 export function xyzSavedDataset(id: string, label: string, metadata: XyzTileMetadata): SavedRemoteDataset {
   return {

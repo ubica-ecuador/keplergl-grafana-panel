@@ -3,6 +3,7 @@ import { useMap } from '@vis.gl/react-maplibre';
 import { MapView } from '@deck.gl/core';
 
 import { drapeSampler } from './reliefDrape';
+import { type NativeRaster, nativeKey, type RasterMap, splitNativeRasters, syncNativeRasters } from './reliefRasters';
 import {
   ANCHORED_TYPES,
   anchorToTerrain,
@@ -63,10 +64,20 @@ const SETTLE_MS = 150;
 /**
  * Lives inside kepler's bottom map, the one that draws the relief, and reports
  * it: the map once it exists, and a change whenever terrain is set or cleared
- * or more of its elevation tiles arrive.
+ * or more of its elevation tiles arrive. It also keeps the rasters handed to
+ * MapLibre (`reliefRasters.ts`) in its style: a new base map style drops them,
+ * and a style that was still loading refused them.
  */
-function ReliefWatch({ onMap, onChange }: { onMap: (map: ReliefMap | null) => void; onChange: () => void }) {
-  const map = useMap().current?.getMap() as unknown as ReliefMap | undefined;
+function ReliefWatch({
+  onMap,
+  onChange,
+  natives,
+}: {
+  onMap: (map: ReliefMap | null) => void;
+  onChange: () => void;
+  natives: { current: NativeRaster[] };
+}) {
+  const map = useMap().current?.getMap() as unknown as (ReliefMap & RasterMap) | undefined;
   useEffect(() => {
     if (!map) {
       return;
@@ -78,14 +89,20 @@ function ReliefWatch({ onMap, onChange }: { onMap: (map: ReliefMap | null) => vo
         onChange();
       }
     };
+    const restyled = () => {
+      syncNativeRasters(map, natives.current);
+    };
     map.on('terrain', listener);
     map.on('sourcedata', listener);
+    map.on('styledata', restyled);
     return () => {
       map.off('terrain', listener);
       map.off('sourcedata', listener);
+      map.off('styledata', restyled);
+      syncNativeRasters(map, []);
       onMap(null);
     };
-  }, [map, onMap, onChange]);
+  }, [map, onMap, onChange, natives]);
   return null;
 }
 
@@ -115,6 +132,9 @@ export function withTerrainAnchor<P extends MapContainerProps>(MapContainer: Rea
     const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
     // The ground the rasters' grids have met on this map, one object for its life, filled in by the grids.
     const [range] = useState(() => ({ low: Infinity, high: -Infinity }));
+    // The rasters MapLibre draws for deck on the relief, as last handed over, and their key.
+    const natives = useRef<NativeRaster[]>([]);
+    const nativesKey = useRef(nativeKey([]));
     const onChange = useCallback(() => {
       if (pending.current === null) {
         pending.current = setTimeout(() => {
@@ -172,7 +192,20 @@ export function withTerrainAnchor<P extends MapContainerProps>(MapContainer: Rea
         return base;
       }
       const layers = (base.layers as unknown[] | undefined) ?? [];
-      const lifted = anchorToTerrain(layers, keplerLayers ?? [], anchor);
+      // On the relief the tile templates go to MapLibre, which lays them on its own terrain.
+      const { kept, native } = anchor ? splitNativeRasters(layers) : { kept: layers, native: [] };
+      const key = nativeKey(native);
+      if (key !== nativesKey.current) {
+        nativesKey.current = key;
+        natives.current = native;
+        // Not while kepler renders: MapLibre's style changes fire events back into React.
+        queueMicrotask(() => {
+          if (map && natives.current === native) {
+            syncNativeRasters(map as unknown as RasterMap, native);
+          }
+        });
+      }
+      const lifted = anchorToTerrain(kept, keplerLayers ?? [], anchor);
       const below = anchor && Number.isFinite(range.low) ? anchor.centre - range.low : 0;
       const views = anchor ? viewsForRelief(base.views, farZMultiplierFor(below, props.mapState)) : base.views;
       return lifted === layers && views === base.views ? base : { ...base, layers: lifted, views };
@@ -184,7 +217,7 @@ export function withTerrainAnchor<P extends MapContainerProps>(MapContainer: Rea
       children: (
         <>
           {bottom?.children as React.ReactNode}
-          <ReliefWatch onMap={setMap} onChange={onChange} />
+          <ReliefWatch onMap={setMap} onChange={onChange} natives={natives} />
         </>
       ),
     };

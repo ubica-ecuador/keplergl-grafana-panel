@@ -100,6 +100,9 @@ export function zarrDeckProps(args: {
   return {
     id: `${id}-zarr-tiles`,
     data: template,
+    // What MapLibre draws instead on a relief base map (`reliefRasters.ts`): the
+    // same template, `{z}` in TiTiler's `group` included, which MapLibre fills too.
+    reliefTiles: template,
     opacity: opacity ?? 1,
     // Beyond the deepest level deck reuses the tiles it already holds. Left
     // unbounded on a pyramid, every zoom past it asks for a group the store

@@ -1,5 +1,5 @@
 import type { LayerIcon } from './cogPaintedLayer';
-import { XYZ_TILE_TYPE, type XyzTileMetadata, xyzTileUrl } from '../data/xyzTiles';
+import { XYZ_TILE_TYPE, type XyzTileMetadata, xyzMapLibreTemplate, xyzTileUrl } from '../data/xyzTiles';
 import { shownInPane } from './paneVisibility';
 
 /**
@@ -36,9 +36,13 @@ export function xyzDeckProps(args: {
   if (!template) {
     return null;
   }
+  const native = xyzMapLibreTemplate(template);
   return {
     id: `${id}-xyz-tiles`,
     getTileUrl: (index: { x: number; y: number; z: number }) => xyzTileUrl(template, index),
+    // What MapLibre draws instead on a relief base map (`reliefRasters.ts`).
+    reliefTiles: native.template,
+    reliefScheme: native.scheme,
     opacity: opacity ?? 1,
     ...(typeof metadata?.minZoom === 'number' ? { minZoom: metadata.minZoom } : {}),
     ...(typeof metadata?.maxZoom === 'number' ? { maxZoom: metadata.maxZoom } : {}),

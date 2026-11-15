@@ -18,7 +18,23 @@ const listeners = new Map<string, Set<Listener>>();
 let terrain: { source: string } | null = { source: 'terrain-dem' };
 let ground = 3000;
 
+/** The raster layers the panel hands to MapLibre, by id, in order. */
+let styleLayers: string[] = [];
+const styleSources = new Map<string, { serialize(): Record<string, unknown> }>();
+
 const reliefMap = {
+  getSource: (id: string) => styleSources.get(id),
+  addSource: (id: string, spec: Record<string, unknown>) => styleSources.set(id, { serialize: () => spec }),
+  removeSource: (id: string) => styleSources.delete(id),
+  getLayer: (id: string) => (styleLayers.includes(id) ? { id } : undefined),
+  addLayer: (layer: { id: string }) => styleLayers.push(layer.id),
+  removeLayer: (id: string) => (styleLayers = styleLayers.filter((other) => other !== id)),
+  moveLayer: (id: string) => (styleLayers = [...styleLayers.filter((other) => other !== id), id]),
+  getLayersOrder: () => styleLayers,
+  getPaintProperty: () => undefined,
+  setPaintProperty: () => undefined,
+  getLayoutProperty: () => undefined,
+  setLayoutProperty: () => undefined,
   getTerrain: () => terrain,
   queryTerrainElevation: ([lng]: [number, number]) => (terrain ? (lng === -79 ? 2500 : ground) : null),
   on: (type: string, listener: Listener) => {
@@ -36,6 +52,8 @@ jest.mock('@vis.gl/react-maplibre', () => ({
 }));
 
 let decks: Array<{ layers: unknown[] } | null> = [];
+/** More deck layers kepler hands over, after the symbols and the raster. */
+let extraLayers: unknown[] = [];
 
 const symbols = () =>
   new IconLayer({
@@ -48,7 +66,7 @@ const StandIn = (props: {
   deckRenderCallbacks?: { onDeckRender?: (p: Record<string, unknown>) => Record<string, unknown> | null };
   bottomMapContainerProps?: { children?: React.ReactNode };
 }) => {
-  const deckProps = { layers: [symbols(), 'raster'] };
+  const deckProps = { layers: [symbols(), 'raster', ...extraLayers] };
   const onDeckRender = props.deckRenderCallbacks?.onDeckRender;
   decks.push(onDeckRender ? (onDeckRender(deckProps) as never) : deckProps);
   return <>{props.bottomMapContainerProps?.children}</>;
@@ -79,6 +97,9 @@ beforeEach(() => {
   listeners.clear();
   terrain = { source: 'terrain-dem' };
   ground = 3000;
+  extraLayers = [];
+  styleLayers = [];
+  styleSources.clear();
 });
 
 afterEach(() => jest.useRealTimers());
@@ -119,6 +140,33 @@ describe('withTerrainAnchor', () => {
     mount([{ id: 'raster', type: 'geojson' }]);
     expect(listeners.size).toBe(0);
     expect(lastSymbols().props.modelMatrix).toBeFalsy();
+  });
+
+  it('hands a tile template to MapLibre on the relief, and leaves it to deck off it', () => {
+    const tiles = {
+      id: 'osm-layer-xyz-tiles',
+      props: { id: 'osm-layer-xyz-tiles', reliefTiles: 'https://t/{z}/{x}/{y}.png' },
+    };
+    extraLayers = [tiles];
+    mount([...visState.layers, { id: 'osm-layer', type: 'xyz-tiles' }]);
+    act(() => {
+      // Jest's fake timers hold queueMicrotask too.
+      jest.runAllTicks();
+    });
+    expect(decks[decks.length - 1]!.layers).not.toContain(tiles);
+    expect(styleLayers).toEqual(['kepler-relief-raster-osm-layer-xyz-tiles']);
+
+    terrain = null;
+    act(() => {
+      fire('terrain');
+      jest.runAllTimers();
+    });
+    act(() => {
+      // Jest's fake timers hold queueMicrotask too.
+      jest.runAllTicks();
+    });
+    expect(decks[decks.length - 1]!.layers).toContain(tiles);
+    expect(styleLayers).toEqual([]);
   });
 
   it('watches the relief for a map with only a raster', () => {
