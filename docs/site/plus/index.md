@@ -12,8 +12,8 @@ run side by side on the same Grafana and the same dashboard.
 
 ## What it adds
 
-- [Eleven layer types](/plus/layers/): Gauge, 3D Shape, Coverage, Surface, Sparkline, 3D Callout, Traffic, Pipeline,
-  Fleet, 4D Model and Floor plan, most of them with [cards](/plus/layers/cards) of their own.
+- [Thirteen layer types](/plus/layers/): Gauge, 3D Shape, Coverage, Viewshed, Surface, Sparkline, 3D Callout, Traffic,
+  Pipeline, Route, Fleet, 4D Model and Floor plan, most of them with [cards](/plus/layers/cards) of their own.
 - [Indoor maps](/plus/indoor/): a floor picker over the map, the floors stacked in 3D and seen through, floor plans and
   rooms traced on them, and buildings and sites from the world down to a room.
 - [Data in a 3D model's own frame](/plus/data/model-frame), for digital twins: sensors by part, people indoors, pipes
