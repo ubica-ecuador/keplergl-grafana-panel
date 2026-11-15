@@ -65,6 +65,23 @@ export interface FieldRoles {
    */
   rasterItemUrl?: string;
   /**
+   * How to draw this query's raster: its colour ramp, its band combination,
+   * and whether the tile server paints it.
+   *
+   * The panel options Raster colour ramp, Raster bands and Let the tile server
+   * paint remain the fallback, one value for every raster the panel holds. What
+   * the query adds is that two rasters on one map can differ: a classified land
+   * cover the server paints from the file's own palette, under imagery the
+   * browser colours with a ramp. A band combination is one of the ids the
+   * Raster bands option offers (`BAND_COMBINATIONS`), so `'$bands' AS
+   * raster_bands` lets a dashboard variable drive it; `raster_painted` reads
+   * true or false, 1 or 0, yes or no. Like the Zarr pair, the first row with a
+   * value wins.
+   */
+  rasterColormap?: string;
+  rasterBands?: string;
+  rasterPainted?: string;
+  /**
    * A WMS service and the one layer of it to draw.
    *
    * Both are needed: a service publishes many layers and nothing in the query
@@ -257,6 +274,9 @@ export const NAME_CANDIDATES: Record<string, string[]> = {
   // search response needs no aliasing.
   rasterUrl: ['raster_url', 'cog_url', 'cog', 'asset_href', 'href'],
   rasterItemUrl: ['raster_item_url', 'stac_item_url', 'item_url'],
+  rasterColormap: ['raster_colormap', 'raster_ramp'],
+  rasterBands: ['raster_bands', 'band_combination'],
+  rasterPainted: ['raster_painted'],
   // WMS. `wms` alone is worth accepting because a query that fixes the service
   // by hand reads better as `SELECT '…' AS wms`, and `service_url` is what the
   // OGC calls the endpoint.

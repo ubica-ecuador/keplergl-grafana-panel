@@ -25,7 +25,8 @@ import { publishIntervalOf } from './timeVariableSync';
 import { withKeplerFields, type VariableMapping } from './variableSync';
 import { parseViewportColumns } from './mosaicLink';
 import { dayNightDatasets, NIGHT_COLOR } from '../data/dayNight';
-import { namesPlaces, useGazetteer } from './useGazetteer';
+import { gazetteerPaths, useGazetteers } from './useGazetteer';
+import { resolveQueryOptions } from './queryOptions';
 import { geomapToKepler } from '../geomap/geomapToKepler';
 import { GeomapImportNotice } from '../geomap/GeomapImportNotice';
 import type { AdHocFilterItem } from './adHocFilters';
@@ -109,8 +110,11 @@ export function KeplerPanel(props: Props) {
   // its map and mappings stand in for them, so the map never shows the layers
   // kepler would have guessed instead.
   const geomapConversion = useMemo(
-    () => (options.geomapImport ? geomapToKepler(options.geomapImport, series, options.fieldMappings) : null),
-    [options.geomapImport, series, options.fieldMappings]
+    () =>
+      options.geomapImport
+        ? geomapToKepler(options.geomapImport, series, options.fieldMappings, options.queryOptions)
+        : null,
+    [options.geomapImport, series, options.fieldMappings, options.queryOptions]
   );
   const fieldMappings = useStableValue(geomapConversion?.fieldMappings ?? options.fieldMappings);
   const routeQueries = useStableValue(geomapConversion?.routeQueries ?? options.routeQueries);
@@ -129,6 +133,7 @@ export function KeplerPanel(props: Props) {
       mapConfig: geomapConversion.mapConfig,
       fieldMappings: geomapConversion.fieldMappings,
       routeQueries: geomapConversion.routeQueries,
+      queryOptions: geomapConversion.queryOptions,
       geomapImport: null,
     });
     // Once per conversion: the options it writes are what clears it.
@@ -156,10 +161,22 @@ export function KeplerPanel(props: Props) {
   const nightAt = dayNight === 'off' ? null : dayNight === 'from' ? grafanaRange.from : grafanaRange.to;
   const dayNightSun = Boolean(options.dayNightSun);
 
-  // Place names wait for their gazetteer, fetched only when a query names places.
-  const gazetteer = useGazetteer(
-    options.gazetteer,
-    useMemo(() => namesPlaces(series, fieldMappings), [series, fieldMappings])
+  // What each query is drawn with: its own options, the ones every query takes, and on a panel saved by 1.9 or
+  // earlier that the migration did not reach, the panel-wide ones it carried (`queryOptions.ts`).
+  const queryOptions = useStableValue(
+    resolveQueryOptions(
+      geomapConversion?.queryOptions ? { ...options, queryOptions: geomapConversion.queryOptions } : options,
+      series.map((frame, index) => frame.refId ?? `${index}`)
+    )
+  );
+  const tripLayerModes = useMemo(
+    () => Object.fromEntries(Object.entries(queryOptions).map(([refId, own]) => [refId, own.tripLayerMode])),
+    [queryOptions]
+  );
+
+  // Place names wait for their gazetteers, each fetched only when a query names places.
+  const gazetteers = useGazetteers(
+    useMemo(() => gazetteerPaths(series, fieldMappings, queryOptions), [series, fieldMappings, queryOptions])
   );
 
   // A map saved while every column named like a count reached kepler as `count` keeps it so (framesToDatasets.ts):
@@ -172,13 +189,12 @@ export function KeplerPanel(props: Props) {
   const queryDatasets = useMemo(
     () =>
       framesToDatasets(series, fieldMappings, {
-        flowRenderMode: options.flowRenderMode,
-        tripLayerMode: options.tripLayerMode,
+        tripLayerModes,
         routeQueries,
-        gazetteer,
+        gazetteers,
         savedCount,
       }),
-    [series, fieldMappings, options.flowRenderMode, options.tripLayerMode, routeQueries, gazetteer, savedCount]
+    [series, fieldMappings, tripLayerModes, routeQueries, gazetteers, savedCount]
   );
   const datasets = useMemo(
     () =>

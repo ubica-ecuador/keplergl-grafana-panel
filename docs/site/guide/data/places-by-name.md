@@ -26,7 +26,8 @@ and click variables read them. See [geohash](../../layers/geometry-and-indices#g
 ## Place names and codes
 
 A column named `lookup`, or the one chosen in **Field mapping → Place name**, is looked up in a
-**gazetteer**, chosen under **Map → Place names**:
+**gazetteer**, chosen for each query under **Field mapping → Drawing each query → Place names**, so
+one query's codes can be airports and another's countries:
 
 | Gazetteer           | Looked up by                                                 |
 | ------------------- | ------------------------------------------------------------ |
@@ -43,11 +44,11 @@ SELECT country_code AS lookup, sum(sales) AS sales FROM orders GROUP BY 1;
 ```
 
 The three gazetteers are the ones Grafana ships, served by your own Grafana; nothing is fetched from
-elsewhere. The file is only downloaded when a query names places, once per dashboard.
+elsewhere. Each file is only downloaded when a query names places in it, once per dashboard.
 
 ### Your own gazetteer
 
-Type its address in **Place names**. Two shapes are read, the same two Geomap reads:
+Type its address in the query's **Place names**. Two shapes are read, the same two Geomap reads:
 
 - a list of `{ "key" or "keys", "name", "latitude", "longitude" }`, matched by key, keys or name;
 - a GeoJSON FeatureCollection, matched by the properties named `id`, `uid`, `key` or `code`, or

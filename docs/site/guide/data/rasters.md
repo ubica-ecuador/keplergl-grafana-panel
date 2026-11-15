@@ -157,6 +157,32 @@ still swaps the picture in place without rebuilding the layer.
 
 Leave it **off** for imagery. A true-colour scene wants its stretch decided where you can see it.
 
+## Two rasters on one map {#per-query}
+
+**Raster colour ramp**, **Raster bands** and **Let the tile server paint** are panel options: one
+value for every raster of the panel. A query can set its own, as a column, and its value wins over
+the panel's:
+
+| Column                                 | Takes                                                                   |
+| -------------------------------------- | ----------------------------------------------------------------------- |
+| `raster_colormap` (or `raster_ramp`)   | a ramp name or a whole ramp as JSON, as the panel option does           |
+| `raster_bands` (or `band_combination`) | `forestBurn`, `infrared`, `nbr` or `ndmi`; anything else is true colour |
+| `raster_painted`                       | true or false (also 1 or 0, yes or no)                                  |
+
+So a classified land cover the server paints can sit under imagery the browser colours with a ramp:
+
+```sql
+-- Query A: the land cover, in the colours the file carries.
+SELECT 'https://example.org/landcover/2023.tif' AS raster_url, true AS raster_painted
+-- Query B: a single-band field, in viridis.
+SELECT 'https://example.org/lst/2023-07-14.tif' AS raster_url, 'viridis' AS raster_colormap
+```
+
+The first row with a value decides; an empty one leaves the panel's. A dashboard variable reaches a
+column the way it reaches any SQL, so `'$bands' AS raster_bands` lets a dropdown choose one query's
+bands and leave another's alone. A Zarr does the same with `zarr_colormap` and `zarr_rescale`
+([Zarr](./zarr)).
+
 ### What the panel offers {#open}
 
 kepler renders a layer's controls from `_render<Type>LayerConfig` on its configurator and ships none

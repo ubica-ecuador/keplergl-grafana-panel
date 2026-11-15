@@ -3,8 +3,8 @@
 A **role** is the part a column plays. Roles are detected from the column's name — case-insensitively
 and **exactly** — except for time, which is detected from its type.
 
-There are **thirty-seven** roles. The Field mapping editor exposes **sixteen** of them; the other
-twenty-one are autodetect-only and are marked below.
+There are **forty** roles. The Field mapping editor exposes **sixteen** of them; the other
+twenty-four are autodetect-only and are marked below.
 
 ## The full table
 
@@ -18,7 +18,7 @@ twenty-one are autodetect-only and are marked below.
 | Geometry        | ✅     | `geom`, `geometry`, `the_geom`, `wkb_geometry`, `geojson`, `wkt`, `shape`                                                                                                                                       | `_geojson`  |
 | H3 index        | ✅     | `h3`, `h3_index`, `hex_id`, `hexagon`, `h3index`                                                                                                                                                                | `h3`        |
 | Geohash         | ✅     | `geohash` — used only without a latitude and longitude; see [Places by geohash or by name](../guide/data/places-by-name)                                                                                        | not renamed |
-| Place name      | ✅     | `lookup` — looked up in the **Place names** gazetteer, only without a latitude and longitude                                                                                                                  | not renamed |
+| Place name      | ✅     | `lookup` — looked up in the query's gazetteer (**Drawing each query → Place names**), only without coordinates                                                                                                | not renamed |
 | Origin lat      | ✅     | `origin_lat`, `origin_latitude`, `from_lat`, `start_lat`, `source_lat`, `pickup_lat`, `lat0`                                                                                                                    | `lat0`      |
 | Origin lng      | ✅     | `origin_lon`, `origin_lng`, `origin_long`, `origin_longitude`, `from_lon`, `from_lng`, `start_lon`, `start_lng`, `source_lon`, `source_lng`, `pickup_lon`, `pickup_lng`, `lng0`, `lon0`                         | `lng0`      |
 | Destination lat | ✅     | `dest_lat`, `dest_latitude`, `destination_lat`, `to_lat`, `end_lat`, `target_lat`, `dropoff_lat`, `lat1`                                                                                                        | `lat1`      |
@@ -34,6 +34,9 @@ twenty-one are autodetect-only and are marked below.
 | Direction       | ❌     | `wind_direction`, `winddirection`, `wind_direction_10m`, `direction`, `wind_dir`, `wd`                                                                                                                          | not renamed |
 | Raster URL      | ❌     | `raster_url`, `cog_url`, `cog`, `asset_href`, `href`                                                                                                                                                            | not renamed |
 | Raster STAC item | ❌    | `raster_item_url`, `stac_item_url`, `item_url`                                                                                                                                                                  | not renamed |
+| Raster ramp      | ❌    | `raster_colormap`, `raster_ramp` — this query's, over the **Raster colour ramp** option                                                                                                                         | not renamed |
+| Raster bands     | ❌    | `raster_bands`, `band_combination` — this query's, over the **Raster bands** option                                                                                                                             | not renamed |
+| Raster painted   | ❌    | `raster_painted` — true or false, over **Let the tile server paint**                                                                                                                                            | not renamed |
 | WMS URL         | ❌     | `wms_url`, `wms`, `service_url`                                                                                                                                                                                 | not renamed |
 | WMS layer       | ❌     | `wms_layer`, `layer`, `layer_name`                                                                                                                                                                              | not renamed |
 | Esri service    | ❌     | `esri_url`, `image_service_url`, `imageserver_url`                                                                                                                              | not renamed |
@@ -49,7 +52,7 @@ twenty-one are autodetect-only and are marked below.
 | Zarr range      | ❌     | `zarr_rescale`, `zarr_range`                                                                                                                                                                                    | not renamed |
 
 ::: warning Some roles cannot be mapped by hand
-The editor offers the sixteen roles a table of rows needs. The other twenty-one — `originH3`,
+The editor offers the sixteen roles a table of rows needs. The other twenty-four — `originH3`,
 `destH3`, `u`, `v`, `speed`, `direction`, and every `raster*`, `wms*`, `esri*` and `zarr*` role —
 are detected but have no entry in it. If your columns are named something the lists do not cover,
 **alias them in the query**:

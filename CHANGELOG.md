@@ -4,6 +4,26 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## Unreleased
+
+- **Each query sets its own Trip layer shape and gazetteer.** Trip layer and Place names were panel
+  options, one value for every query, so a map could not fold one trajectory query into paths and
+  keep another's rows, or look one query's codes up among airports and another's among countries.
+  They are now under **Field mapping → Drawing each query**, shown for the queries that need them (a
+  trajectory, names to place), and saved in `queryOptions` by `refId`. A panel saved with either
+  keeps drawing as it did: on load its value moves to the `*` entry, which every query without its
+  own takes. A Geomap converted to Kepler keeps each of its layers' gazetteers, on the query the
+  layer reads, where only the first was kept.
+- **A raster query can choose its own colour ramp, bands and painting**, as a Zarr query already
+  chose its ramp and range: `raster_colormap`, `raster_bands` and `raster_painted` columns win over
+  the Raster colour ramp, Raster bands and Let the tile server paint options. A land cover the
+  server paints can lie under imagery the browser colours with a ramp; `'$bands' AS raster_bands`
+  lets a dropdown pick one query's bands.
+- **Flow line style is gone.** It styled only the flow layers the panel adds to a map not saved yet;
+  a saved map's flow layers kept their own style and the option did nothing, while it still showed
+  the style it named. Each flow layer's **Line Style** (and **Curviness**) is in kepler's layer
+  panel, and a saved map keeps it. A panel saved with the option drops it on load.
+
 ## 1.9.0 (2026-11-13)
 
 - **kepler.gl 3.3.0-alpha.21**, from 3.3.0-alpha.20, with **deck.gl 9.4** and luma.gl 9.4 under it.

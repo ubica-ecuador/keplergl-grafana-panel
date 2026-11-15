@@ -1,6 +1,5 @@
 import { FieldConfigProperty, PanelPlugin, type PanelModel } from '@grafana/data';
 import { config } from '@grafana/runtime';
-import { GAZETTEERS } from './data/placeLookup';
 
 import { KeplerPanelOptions } from './types';
 import { KeplerPanel } from './panel/KeplerPanel';
@@ -9,6 +8,7 @@ import { SaveMapConfigEditor } from './editors/SaveMapConfigEditor';
 import { MapConfigEditor } from './editors/MapConfigEditor';
 import { HoverLayerEditor } from './editors/HoverLayerEditor';
 import { FieldMappingEditor } from './editors/FieldMappingEditor';
+import { queryOptionsEditor } from './editors/QueryOptionsEditor';
 import { RouteQueriesEditor } from './editors/RouteQueriesEditor';
 import { VariableSyncEditor } from './editors/VariableSyncEditor';
 import { TimeVariableEditor } from './editors/TimeVariableEditor';
@@ -33,6 +33,7 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       category: ['Field mapping'],
       editor: FieldMappingEditor,
     })
+    .addCustomEditor(queryOptionsEditor())
     .addBooleanSwitch({
       path: 'showSidePanel',
       name: 'Show side panel',
@@ -175,36 +176,6 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       showIf: (config) => Boolean(config.hoverSync),
     })
     .addSelect({
-      path: 'tripLayerMode',
-      name: 'Trip layer',
-      description:
-        'Table columns keeps one row per point, so speed, mode and every other column stay available for colour, filters and tooltips. GeoJSON folds each trip into a single row: far less data, but only the path survives.',
-      category: ['Map'],
-      defaultValue: 'table',
-      settings: {
-        options: [
-          { value: 'table', label: 'Table columns' },
-          { value: 'geojson', label: 'GeoJSON' },
-        ],
-      },
-    })
-    .addSelect({
-      path: 'gazetteer',
-      name: 'Place names',
-      description:
-        'Where a query that names places instead of giving coordinates (a Place name column in Field mapping) finds them. A URL of your own works too.',
-      category: ['Map'],
-      defaultValue: GAZETTEERS.countries,
-      settings: {
-        allowCustomValue: true,
-        options: [
-          { value: GAZETTEERS.countries, label: 'Countries (name, 2- or 3-letter code)' },
-          { value: GAZETTEERS.usaStates, label: 'US states (name or code)' },
-          { value: GAZETTEERS.airports, label: 'Airports (IATA or ICAO code)' },
-        ],
-      },
-    })
-    .addSelect({
       path: 'dayNight',
       name: 'Night shading',
       description: 'Shades the side of the Earth in darkness, at the end or the start of the dashboard time range.',
@@ -233,20 +204,6 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       description: 'Queries whose rows are joined in order into one line.',
       category: ['Map'],
       editor: RouteQueriesEditor,
-    })
-    .addSelect({
-      path: 'flowRenderMode',
-      name: 'Flow line style',
-      description: 'How origin-destination flow layers draw their lines.',
-      category: ['Map'],
-      defaultValue: 'straight',
-      settings: {
-        options: [
-          { value: 'straight', label: 'Straight' },
-          { value: 'curved', label: 'Curved' },
-          { value: 'animated-straight', label: 'Animated' },
-        ],
-      },
     })
     .addSelect({
       path: 'basemap',
@@ -293,7 +250,7 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       path: 'rasterPainted',
       name: 'Let the tile server paint',
       description:
-        'Ask the server for finished pictures instead of raw values. Needed for a classified raster \u2014 land cover, soils \u2014 whose colours are a fact of the data: the ramp below cannot express nine named classes, and the browser rescales the class numbers over the whole data-type range, which lands every class on the same colour. The server reads the palette the file carries instead. What arrives is already drawn, so nothing about its colour can be changed afterwards. Leave off for imagery.',
+        'Ask the server for finished pictures instead of raw values. Needed for a classified raster \u2014 land cover, soils \u2014 whose colours are a fact of the data: the ramp below cannot express nine named classes, and the browser rescales the class numbers over the whole data-type range, which lands every class on the same colour. The server reads the palette the file carries instead. What arrives is already drawn, so nothing about its colour can be changed afterwards. Leave off for imagery. For every raster of the panel; a query that returns a raster_painted column (true or false) decides for its own.',
       category: ['Map'],
       defaultValue: false,
     })
@@ -301,7 +258,7 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       path: 'rasterBands',
       name: 'Raster bands',
       description:
-        'Which bands of a scene to draw, for a query that also returns a raster_item_url column pointing at its STAC item. True colour draws the composed image the query already names. The composites are built by the tile server in one request; the indices are computed in the browser from two bands and coloured with a ramp. A dashboard variable is interpolated here, so a dropdown can drive it.',
+        'Which bands of a scene to draw, for a query that also returns a raster_item_url column pointing at its STAC item. True colour draws the composed image the query already names. The composites are built by the tile server in one request; the indices are computed in the browser from two bands and coloured with a ramp. A dashboard variable is interpolated here, so a dropdown can drive it. For every raster of the panel; a query that returns a raster_bands column (forestBurn, infrared, nbr, ndmi) picks its own.',
       category: ['Map'],
       defaultValue: '',
       settings: {
@@ -319,7 +276,7 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       path: 'rasterColormap',
       name: 'Raster colour ramp',
       description:
-        "Colour ramp for rasters a query produces. kepler's default is built for drone NDVI and steps through unrelated colours, which reads as noise on a continuous field. A whole ramp can be typed in as JSON \u2014 TiTiler's own intervals \u2014 which is the only way to make the low end transparent, as a field that is mostly near zero needs.",
+        "Colour ramp for rasters a query produces. kepler's default is built for drone NDVI and steps through unrelated colours, which reads as noise on a continuous field. A whole ramp can be typed in as JSON \u2014 TiTiler's own intervals \u2014 which is the only way to make the low end transparent, as a field that is mostly near zero needs. For every raster of the panel; a query that returns a raster_colormap column (a Zarr: zarr_colormap) sets its own.",
       category: ['Map'],
       defaultValue: '',
       settings: {

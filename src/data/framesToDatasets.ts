@@ -1,7 +1,7 @@
 import { DataFrame, FieldType } from '@grafana/data';
 
 import { buildFlowField, FlowFieldLayerConfig } from './buildFlowField';
-import { buildFlows, FlowLayerConfig, FlowRenderMode } from './buildFlows';
+import { buildFlows, FlowLayerConfig } from './buildFlows';
 import { isEdgeFrame, nodePositions, placeEdges } from './buildNetwork';
 import { buildGeohashLayer, type Gazetteer, type GeohashLayerConfig, placeFrame } from './placeLookup';
 import { buildLineLayer, buildRouteSegments, routeColumns, routeDatasetId, LineLayerConfig } from './buildRoute';
@@ -93,12 +93,15 @@ export function framesToDatasets(
   frames: DataFrame[],
   overrides: Record<string, FieldRoleOverrides> = {},
   opts: {
-    flowRenderMode?: FlowRenderMode;
-    tripLayerMode?: TripLayerMode;
+    /** Each query's Trip layer shape, by refId; a query not named keeps one row per point (`table`). */
+    tripLayerModes?: Record<string, TripLayerMode | undefined>;
     /** Queries also drawn as a route, row to row in order (`buildRoute.ts`). */
     routeQueries?: string[];
-    /** Places for rows located by name or code (`placeLookup.ts`), once loaded. */
-    gazetteer?: Gazetteer | null;
+    /**
+     * Places for rows located by name or code (`placeLookup.ts`), by refId: each query's own gazetteer, once loaded.
+     * A query not named, or named with `null`, is left unplaced until its gazetteer is.
+     */
+    gazetteers?: Record<string, Gazetteer | null | undefined>;
     /**
      * The datasets whose saved map names a field `count` (`datasetsNaming`): on a query that is no flow, the column
      * 1.7.0 and earlier renamed `count` keeps that name for them, so a map saved then keeps its colours and sizes.
@@ -111,8 +114,10 @@ export function framesToDatasets(
     const roles = resolveRoles(detectFields(frame), overrides[refId]);
     const legacy = !roles.count && opts.savedCount?.has(datasetId(refId)) ? legacyCountColumn(frame) : undefined;
     // A row placed by geohash or by name gains coordinates before anything reads them.
-    return { refId, ...placeFrame(frame, legacy ? { ...roles, count: legacy } : roles, opts.gazetteer) };
+    return { refId, ...placeFrame(frame, legacy ? { ...roles, count: legacy } : roles, opts.gazetteers?.[refId]) };
   });
+
+  const folded = (refId: string, roles: FieldRoles) => opts.tripLayerModes?.[refId] === 'geojson' && isTripFrame(roles);
 
   const datasets = resolved.map(({ frame, refId, roles }): PanelDataset => {
     const id = datasetId(refId);
@@ -137,7 +142,7 @@ export function framesToDatasets(
     // kepler detects the `_geojson` column and builds the layer itself, so none
     // is supplied here — and nothing else survives the fold, which is the
     // trade the user is making by choosing this mode.
-    if (opts.tripLayerMode === 'geojson' && isTripFrame(roles)) {
+    if (folded(refId, roles)) {
       return { id, label, rows: buildTrips(frame, roles) };
     }
 
@@ -154,7 +159,7 @@ export function framesToDatasets(
       columns: rows.length === 0 ? toKeplerColumns(frame, roles) : undefined,
       renames: keplerRenamesOf(roles),
       tripLayer: buildTripLayer(roles, id) ?? undefined,
-      flowLayer: buildFlows(roles, id, { renderingMode: opts.flowRenderMode }) ?? undefined,
+      flowLayer: buildFlows(roles, id) ?? undefined,
       symbolLayer: pointsSymbols(symbolRoles) ? (buildSymbolLayer(symbolRoles, id) ?? undefined) : undefined,
       geohashLayer: buildGeohashLayer(roles, id, label) ?? undefined,
     };
@@ -193,10 +198,7 @@ export function framesToDatasets(
       return [dataset];
     }
     // A trajectory folded into one row per trip has no rows left to join.
-    const source =
-      opts.tripLayerMode === 'geojson' && isTripFrame(roles)
-        ? toKeplerRows(resolved[index].frame, roles)
-        : dataset.rows;
+    const source = folded(refId, roles) ? toKeplerRows(resolved[index].frame, roles) : dataset.rows;
     const rows = buildRouteSegments(source);
     const id = routeDatasetId(dataset.id);
     const label = `${dataset.label} · route`;
@@ -217,7 +219,7 @@ export function framesToDatasets(
  * point coordinates to trace — the three things `buildTrips` needs to fold many
  * GPS pings into one path.
  */
-function isTripFrame(roles: FieldRoles): boolean {
+export function isTripFrame(roles: FieldRoles): boolean {
   return Boolean(roles.tripId && roles.time && roles.latitude && roles.longitude);
 }
 

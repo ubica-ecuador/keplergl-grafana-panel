@@ -68,11 +68,30 @@ describe('rows placed by geohash or by name', () => {
     ]);
 
     expect(framesToDatasets([frame])[0].rows[0]).not.toHaveProperty('latitude');
-    const [dataset] = framesToDatasets([frame], {}, { gazetteer });
+    const [dataset] = framesToDatasets([frame], {}, { gazetteers: { A: gazetteer } });
     expect(dataset.rows.map((r) => [r.latitude, r.longitude])).toEqual([
       [-1.8, -78.2],
       [-9.2, -75],
     ]);
+  });
+
+  it('looks each query’s names up in its own gazetteer', () => {
+    const named = (refId: string, code: string) =>
+      toDataFrame({ refId, fields: [{ name: 'lookup', type: FieldType.string, values: [code] }] });
+    const countries = parseGazetteer([{ keys: ['UIO'], latitude: -1.8, longitude: -78.2, name: 'Ecuador' }]);
+    const airports = parseGazetteer([{ keys: ['UIO'], latitude: -0.13, longitude: -78.36, name: 'Quito' }]);
+
+    const [a, b, c] = framesToDatasets(
+      [named('A', 'UIO'), named('B', 'UIO'), named('C', 'UIO')],
+      {},
+      {
+        gazetteers: { A: countries, B: airports, C: null },
+      }
+    );
+
+    expect([a.rows[0].latitude, b.rows[0].latitude]).toEqual([-1.8, -0.13]);
+    // A gazetteer still loading leaves its query unplaced.
+    expect(c.rows[0]).not.toHaveProperty('latitude');
   });
 
   it('keeps a query’s own coordinates over its geohash', () => {
@@ -111,9 +130,9 @@ describe('rows placed by geohash or by name', () => {
         { name: 'geohash', type: FieldType.string, values: ['6rbny'] },
       ],
     });
-    const byName = toDataFrame({ fields: [{ name: 'lookup', type: FieldType.string, values: ['EC'] }] });
+    const byName = toDataFrame({ refId: 'A', fields: [{ name: 'lookup', type: FieldType.string, values: ['EC'] }] });
     const gazetteer = parseGazetteer([{ keys: ['EC'], latitude: -1.8, longitude: -78.2, name: 'Ecuador' }]);
     expect(framesToDatasets([withCoords])[0].geohashLayer).toBeUndefined();
-    expect(framesToDatasets([byName], {}, { gazetteer })[0].geohashLayer).toBeUndefined();
+    expect(framesToDatasets([byName], {}, { gazetteers: { A: gazetteer } })[0].geohashLayer).toBeUndefined();
   });
 });

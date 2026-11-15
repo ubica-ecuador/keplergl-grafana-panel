@@ -1,7 +1,8 @@
 import { DataFrame } from '@grafana/data';
 
-import { BAND_COMBINATIONS, type BandCombination } from './bandCombination';
+import { BAND_COMBINATIONS, type BandCombination, resolveBandCombination } from './bandCombination';
 import { detectFields, FieldRoleOverrides, resolveRoles } from './detectFields';
+import { firstFlag, firstText } from './frameValues';
 import { stacTileTemplate } from './stacTileUrl';
 import { pickLatestWithin, type TimeWindow } from './timeWindow';
 
@@ -214,6 +215,10 @@ export function queryName(frame: DataFrame, refId: string): string {
  * time filter picks from it — see {@link pickScene}. Either way exactly one
  * scene is drawn: a table of ten is a choice still to be made, never ten layers
  * to stack.
+ *
+ * `colormap`, `painted` and `bands` are the panel's, for every query; a query
+ * that returns `raster_colormap`, `raster_painted` or `raster_bands` sets its
+ * own (see `FieldRoles.rasterColormap`).
  */
 export function framesToRasters(
   frames: DataFrame[],
@@ -238,6 +243,12 @@ export function framesToRasters(
 
     const allScenes = readScenes(frame, roles.rasterUrl, roles.time, roles.rasterItemUrl);
 
+    // This query's own way of drawing, where it gives one; the panel's otherwise. An empty column gives none.
+    const ownBands = firstText(frame, roles.rasterBands);
+    const bands = ownBands !== undefined ? resolveBandCombination(ownBands) : opts.bands;
+    const painted = firstFlag(frame, roles.rasterPainted) ?? opts.painted;
+    const ownColormap = firstText(frame, roles.rasterColormap);
+
     // Whether this query is an archive is decided from the series itself,
     // before anything about items is considered — not from `opening`, which is
     // only chosen after the item-driven filtering below runs. An archive never
@@ -257,7 +268,7 @@ export function framesToRasters(
     // composed image, exactly as a query with no item column at all does today.
     // An archive skips all of this outright: no filtering, no degrade
     // bookkeeping, `kind` decided the way it always has been.
-    const requestedRecipe = BAND_COMBINATIONS[opts.bands ?? 'trueColor'];
+    const requestedRecipe = BAND_COMBINATIONS[bands ?? 'trueColor'];
     const needsItem = requestedRecipe.source === 'item' && !isArchive;
     const itemScenes = needsItem ? allScenes.filter((scene) => scene.itemUrl !== null) : allScenes;
     const degraded = needsItem && itemScenes.length === 0;
@@ -287,7 +298,7 @@ export function framesToRasters(
     // instead, and the panel says which query is waiting for a server. An
     // archive beside it is unaffected: it never wanted a server.
     const kind: RasterKind = !wantsItem
-      ? rasterKind(opening.sourceUrl, opts.painted)
+      ? rasterKind(opening.sourceUrl, painted)
       : recipe.renderer === 'painted'
         ? 'painted'
         : 'stac';
@@ -318,13 +329,16 @@ export function framesToRasters(
       // kinds outright, and the layer builds its request from the metadata,
       // which carries no colormap. Carried anyway it was a field nothing read,
       // which is the kind of thing the next reader spends an hour on.
+      // The query's own ramp first, then an index's (NBR's diverging ramp), then the panel's.
       ...(kind === 'painted'
         ? {}
-        : recipe.colormap
-          ? { colormap: recipe.colormap }
-          : opts.colormap
-            ? { colormap: opts.colormap }
-            : {}),
+        : ownColormap
+          ? { colormap: ownColormap }
+          : recipe.colormap
+            ? { colormap: recipe.colormap }
+            : opts.colormap
+              ? { colormap: opts.colormap }
+              : {}),
       scenes,
     });
   });

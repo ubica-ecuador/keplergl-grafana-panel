@@ -35,3 +35,33 @@ describe('the CARTO API key a panel saved up to 1.6', () => {
     expect(migrateRemovedOptions({ ...saved({}), options: undefined } as unknown as PanelModel)).toEqual({});
   });
 });
+
+describe('the options of 1.9 that go or move into each query', () => {
+  it('drops Flow line style: a saved map’s flow layers keep their own', () => {
+    const migrated = migrateRemovedOptions(saved({ flowRenderMode: 'curved', basemap: 'positron' }));
+    expect(migrated).toEqual({ basemap: 'positron' });
+  });
+
+  it('moves a panel-wide Trip layer shape and gazetteer to the entry every query takes', () => {
+    const migrated = migrateRemovedOptions(
+      saved({ tripLayerMode: 'geojson', gazetteer: 'public/gazetteer/airports.geojson', queryOptions: { B: {} } })
+    );
+    expect(migrated).toEqual({
+      queryOptions: { B: {}, '*': { tripLayerMode: 'geojson', gazetteer: 'public/gazetteer/airports.geojson' } },
+    });
+  });
+
+  it('drops the defaults Grafana saved into every panel, with nothing to carry', () => {
+    const migrated = migrateRemovedOptions(
+      saved({ tripLayerMode: 'table', gazetteer: 'public/gazetteer/countries.json', flowRenderMode: 'straight' })
+    );
+    expect(migrated).toEqual({});
+  });
+
+  it('asks for a migration whenever one of them is there', () => {
+    for (const key of ['flowRenderMode', 'tripLayerMode', 'gazetteer']) {
+      expect(hasRemovedOptions(saved({ [key]: 'x' }))).toBe(true);
+    }
+    expect(hasRemovedOptions(saved({ queryOptions: { '*': { tripLayerMode: 'geojson' } } }))).toBe(false);
+  });
+});

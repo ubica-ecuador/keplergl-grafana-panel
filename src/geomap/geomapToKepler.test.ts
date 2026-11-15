@@ -333,8 +333,9 @@ describe('geomapToKepler', () => {
       { defaults: {}, overrides: [] },
       theme
     );
-    // The build prefix of the Grafana it was saved on gives way to the portable path.
-    expect(options.gazetteer).toBe('public/gazetteer/countries.json');
+    // The build prefix of the Grafana it was saved on gives way to the portable path, which is the default: nothing
+    // to carry.
+    expect(options.geomapImport!.layers[0].location).toEqual({ mode: 'lookup', lookup: 'iso' });
 
     const byName = toDataFrame({
       refId: 'A',
@@ -346,6 +347,7 @@ describe('geomapToKepler', () => {
     });
     const result = geomapToKepler(options.geomapImport!, [byName])!;
     expect(result.fieldMappings).toEqual({ A: { latitude: null, longitude: null, lookup: 'iso' } });
+    expect(result.queryOptions).toBeUndefined();
     expect((result.mapConfig.config.visState as { layers: any[] }).layers[0].config.columns).toEqual({
       lat: 'latitude',
       lng: 'longitude',
@@ -361,5 +363,47 @@ describe('geomapToKepler', () => {
     expect(
       (geomapToKepler(byHash.geomapImport!, [cells])!.mapConfig.config.visState as { layers: any[] }).layers
     ).toHaveLength(1);
+  });
+
+  it('gives each Geomap layer placed by name its own gazetteer, on the query it reads', () => {
+    const options = fromGeomapPanel(
+      'geomap',
+      {
+        layers: [
+          {
+            type: 'markers',
+            name: 'Airports',
+            location: { mode: 'lookup', lookup: 'code', gazetteer: 'public/build/gazetteer/airports.geojson' },
+          },
+          {
+            type: 'markers',
+            name: 'Countries',
+            location: { mode: 'lookup', lookup: 'code', gazetteer: 'public/gazetteer/countries.json' },
+            filterData: { id: 'byRefId', options: 'B' },
+          },
+        ],
+      },
+      { defaults: {}, overrides: [] },
+      theme
+    );
+    // Nothing is dropped any more for a second gazetteer.
+    expect(options.geomapImport!.dropped).toEqual([]);
+    const codes = (refId: string) =>
+      toDataFrame({ refId, fields: [{ name: 'code', type: FieldType.string, values: ['UIO'] }] });
+
+    const result = geomapToKepler(
+      options.geomapImport!,
+      [codes('A'), codes('B')],
+      {},
+      {
+        B: { tripLayerMode: 'geojson' },
+      }
+    )!;
+
+    // The first layer reads the first query, as in Geomap; the second keeps the countries, the default.
+    expect(result.queryOptions).toEqual({
+      A: { gazetteer: 'public/gazetteer/airports.geojson' },
+      B: { tripLayerMode: 'geojson' },
+    });
   });
 });

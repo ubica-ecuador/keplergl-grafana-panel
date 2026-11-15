@@ -42,7 +42,8 @@ kepler exposes it in the layer panel but does not document it. It is deck.gl's `
 
 ### Table columns or GeoJSON
 
-The **Trip layer** panel option picks between kepler's two shapes. The default, _Table columns_,
+**Trip layer**, set for each trajectory query under **Field mapping → Drawing each query**, picks
+between kepler's two shapes. The default, _Table columns_,
 keeps one row per GPS ping and with it every column your query returned — so speed, mode and driver
 stay available for colour, filters and tooltips. _GeoJSON_ folds each trip into a single row
 carrying only the path: far less data, nothing else survives.

@@ -98,7 +98,7 @@ describe('framesToDatasets', () => {
       ],
     });
 
-    const [dataset] = framesToDatasets([frame], {}, { tripLayerMode: 'geojson' });
+    const [dataset] = framesToDatasets([frame], {}, { tripLayerModes: { A: 'geojson' } });
 
     expect(dataset.rows.map((r) => r.trip_id)).toEqual(['a', 'b']);
     expect(JSON.parse(dataset.rows[0]._geojson as string).geometry.coordinates).toEqual([
@@ -108,6 +108,28 @@ describe('framesToDatasets', () => {
     // kepler builds the layer itself from a `_geojson` column, so the panel
     // supplies none.
     expect(dataset.tripLayer).toBeUndefined();
+  });
+
+  it('folds one trajectory query into paths and keeps the rows of another', () => {
+    const trips = (refId: string) =>
+      toDataFrame({
+        refId,
+        fields: [
+          { name: 'trip_id', type: FieldType.string, values: ['a', 'a'] },
+          { name: 'latitude', type: FieldType.number, values: [1, 2] },
+          { name: 'longitude', type: FieldType.number, values: [10, 20] },
+          { name: 'time', type: FieldType.time, values: [1000, 2000] },
+          { name: 'speed_kmh', type: FieldType.number, values: [30, 40] },
+        ],
+      });
+
+    const [folded, kept] = framesToDatasets([trips('A'), trips('B')], {}, { tripLayerModes: { A: 'geojson' } });
+
+    expect(folded.rows).toHaveLength(1);
+    expect(folded.tripLayer).toBeUndefined();
+    expect(kept.rows).toHaveLength(2);
+    expect(kept.rows[0].speed_kmh).toBe(30);
+    expect(kept.tripLayer?.type).toBe('trip');
   });
 
   it('leaves a query without a trip id free of a trip layer', () => {
@@ -135,13 +157,14 @@ describe('framesToDatasets', () => {
       ],
     });
 
-    const [dataset] = framesToDatasets([frame], {}, { flowRenderMode: 'curved' });
+    const [dataset] = framesToDatasets([frame]);
 
     // Rows carry the flow column names, and a flow layer rides along.
     expect(dataset.rows[0]).toEqual({ lat0: 1, lng0: 2, lat1: 3, lng1: 4, count: 42 });
     expect(dataset.flowLayer?.type).toBe('flow');
     expect(dataset.flowLayer?.config.dataId).toBe('grafana-A');
-    expect(dataset.flowLayer?.config.visConfig.flowLinesRenderingMode).toBe('curved');
+    // Straight to begin with; kepler's layer panel restyles it (Rendering mode), and a saved map keeps that.
+    expect(dataset.flowLayer?.config.visConfig.flowLinesRenderingMode).toBe('straight');
   });
 
   it('leaves a plain point query without a flow layer', () => {

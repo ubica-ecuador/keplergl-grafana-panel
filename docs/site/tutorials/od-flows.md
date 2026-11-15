@@ -61,7 +61,8 @@ If yours are not on the list, alias them in the query. All four are also mappabl
 
 ## 5. Line style
 
-**Panel options → Flow line style**. Try all three:
+Open the **Flows** layer in kepler's layer panel (the side panel's first tab) and find **Line
+Style**. Try all three, then **Save map** to keep the one you pick:
 
 **Straight** is the default and reads best when flows are dense.
 

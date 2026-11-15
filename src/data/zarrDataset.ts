@@ -1,6 +1,7 @@
 import { DataFrame } from '@grafana/data';
 
 import { detectFields, FieldRoleOverrides, resolveRoles } from './detectFields';
+import { firstText } from './frameValues';
 import { queryName } from './rasterDataset';
 
 /**
@@ -256,21 +257,6 @@ function readSelectors(frame: DataFrame, column: string | undefined): string[] |
         .split(',')
         .map((part) => part.trim())
         .filter(Boolean);
-    }
-  }
-  return undefined;
-}
-
-/** The first non-empty text a column holds, or undefined. */
-function firstText(frame: DataFrame, column: string | undefined): string | undefined {
-  const field = column ? frame.fields.find((f) => f.name === column) : undefined;
-  if (!field) {
-    return undefined;
-  }
-  for (let i = 0; i < frame.length; i++) {
-    const raw = field.values[i];
-    if (typeof raw === 'string' && raw.trim()) {
-      return raw.trim();
     }
   }
   return undefined;

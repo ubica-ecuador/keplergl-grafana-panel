@@ -57,7 +57,7 @@ where arc and line are for "what connects to what".
 H3 works instead of coordinates — map `origin_h3` and `dest_h3`. See
 [Origin–destination flows](../guide/data/flows).
 
-**Flow line style** in the panel options chooses straight, curved or animated. Curved is worth
+**Line Style** in the layer's settings chooses straight, curved or animated. Curved is worth
 reaching for as soon as your data is bidirectional: straight lines between the same two points sit
 exactly on top of each other, and a strong A→B flow becomes indistinguishable from a balanced pair.
 

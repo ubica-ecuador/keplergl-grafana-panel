@@ -578,3 +578,62 @@ describe('rasterStyleKey', () => {
     expect(rasterStyleKey(bare)).toBe(rasterStyleKey(bare));
   });
 });
+
+describe('a raster that draws itself its own way', () => {
+  const withColumns = (refId: string, columns: Record<string, unknown>) =>
+    toDataFrame({
+      refId,
+      fields: [
+        { name: 'raster_url', type: FieldType.string, values: [VISUAL] },
+        { name: 'raster_item_url', type: FieldType.string, values: [ITEM] },
+        ...Object.entries(columns).map(([name, value]) => ({
+          name,
+          type: typeof value === 'boolean' ? FieldType.boolean : FieldType.string,
+          values: [value],
+        })),
+      ],
+    });
+
+  it('takes its colour ramp, its bands and its painting from its columns, the panel’s from the panel', () => {
+    const [cover, imagery, plain] = framesToRasters(
+      [
+        withColumns('A', { raster_painted: true }),
+        withColumns('B', { raster_bands: 'nbr', raster_colormap: 'viridis' }),
+        withColumns('C', {}),
+      ],
+      {},
+      { ...BAND_OPTS, colormap: 'blues', painted: false }
+    );
+
+    // A classified cover the server paints: no ramp for the browser to apply.
+    expect(cover.kind).toBe('painted');
+    expect(cover.colormap).toBeUndefined();
+    // An index the browser colours, with the query's ramp over the index's own.
+    expect(imagery).toMatchObject({ kind: 'stac', preset: 'nbr', colormap: 'viridis' });
+    // The panel's options for the rest.
+    expect(plain).toMatchObject({ kind: 'cog', colormap: 'blues' });
+  });
+
+  it('falls back to the panel where a column is empty, and to true colour for a combination it does not know', () => {
+    const [empty, unknown] = framesToRasters(
+      [withColumns('A', { raster_bands: ' ', raster_painted: '' }), withColumns('B', { raster_bands: '$bands' })],
+      {},
+      { ...BAND_OPTS, bands: 'nbr', painted: false }
+    );
+    expect(empty).toMatchObject({ kind: 'stac', preset: 'nbr' });
+    // A variable not yet resolved arrives as its own name, as on the panel option.
+    expect(unknown.kind).toBe('cog');
+    expect(unknown.preset).toBeUndefined();
+  });
+
+  it('reads painted as a yes or a no, in the spellings a query returns', () => {
+    for (const yes of ['true', 'TRUE', '1', 'yes']) {
+      expect(framesToRasters([withColumns('A', { raster_painted: yes })], {}, BAND_OPTS)[0].kind).toBe('painted');
+    }
+    for (const no of ['false', '0', 'no']) {
+      expect(
+        framesToRasters([withColumns('A', { raster_painted: no })], {}, { ...BAND_OPTS, painted: true })[0].kind
+      ).toBe('cog');
+    }
+  });
+});

@@ -71,7 +71,8 @@ thousand flows after a `GROUP BY`, and the map cannot show you the difference an
 
 ## Line style
 
-**Flow line style** in the panel options picks how the lines are drawn:
+**Line Style**, in the flow layer's own settings in kepler's layer panel, picks how the lines are
+drawn, and **Curviness** under it bends the curved ones more or less. Save the map to keep it:
 
 | Value                  | Reads as                                                                      |
 | ---------------------- | ----------------------------------------------------------------------------- |
@@ -82,6 +83,10 @@ thousand flows after a `GROUP BY`, and the map cannot show you the difference an
 Curved is worth reaching for the moment your data is bidirectional. Straight lines between the same
 two points sit exactly on top of each other and a strong A→B flow becomes indistinguishable from a
 balanced pair.
+
+Each flow layer has its own, so a map can show one query's flows curved and another's animated. Up to
+1.9 the panel options had a **Flow line style** too; it styled only the flow layers the panel adds by
+itself on a map not saved yet, did nothing once the map was saved, and is gone.
 
 ## Reading a flow map
 

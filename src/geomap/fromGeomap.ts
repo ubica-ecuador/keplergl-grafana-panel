@@ -104,9 +104,10 @@ export interface GeomapOptions {
 export type ImportedLocation =
   | { mode: 'auto' }
   | { mode: 'coords'; latitude: string; longitude: string }
-  /** A column of geohashes, or of place names looked up in the panel's gazetteer; absent, the panel's detection finds it. */
+  /** A column of geohashes; absent, the panel's detection finds it. */
   | { mode: 'geohash'; geohash?: string }
-  | { mode: 'lookup'; lookup?: string };
+  /** A column of place names, looked up in the layer's gazetteer (absent: the countries), which its query then takes. */
+  | { mode: 'lookup'; lookup?: string; gazetteer?: string };
 
 /** A colour read from a field: kepler's range and scale, from the field's Grafana colour scheme. */
 export interface ImportedColorField {
@@ -224,13 +225,6 @@ export function fromGeomapPanel(
   const layers: ImportedLayer[] = [];
   const basemap = convertBasemap(geomap.basemap, dropped, layers);
   let dayNight: Pick<KeplerPanelOptions, 'dayNight' | 'dayNightSun'> = {};
-  // The panel looks place names up in one gazetteer: the first layer's that names one.
-  const gazetteers = (geomap.layers ?? [])
-    .filter((layer) => layer.location?.mode === 'lookup')
-    .map((layer) => portableGazetteer(layer.location?.gazetteer));
-  if (new Set(gazetteers).size > 1) {
-    dropped.push(`place names from ${gazetteers.slice(1).join(', ')} (one gazetteer per panel: ${gazetteers[0]})`);
-  }
   for (const layer of geomap.layers ?? []) {
     if (layer.type === 'dayNight') {
       const night = convertDayNight(layer, theme);
@@ -257,7 +251,6 @@ export function fromGeomapPanel(
     // afterwards, not a change the switch should bring.
     timeSync: 'off',
     ...dayNight,
-    ...(gazetteers.length ? { gazetteer: gazetteers[0] } : {}),
     geomapImport: {
       version: 1,
       layers,
@@ -594,7 +587,12 @@ function convertLocation(location: GeomapLayer['location']): ImportedLocation | 
     return { mode: 'geohash', ...(location?.geohash ? { geohash: location.geohash } : {}) };
   }
   if (mode === 'lookup') {
-    return { mode: 'lookup', ...(location?.lookup ? { lookup: location.lookup } : {}) };
+    const gazetteer = portableGazetteer(location?.gazetteer);
+    return {
+      mode: 'lookup',
+      ...(location?.lookup ? { lookup: location.lookup } : {}),
+      ...(gazetteer !== GAZETTEERS.countries ? { gazetteer } : {}),
+    };
   }
   return null;
 }

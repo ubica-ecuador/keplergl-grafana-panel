@@ -88,8 +88,8 @@ every column your query returned stays available for colour, filters and tooltip
 mode folds each trip into a single row carrying only the path — far less data, and `speed_kmh`
 disappears with everything else.
 
-Switch **Panel options → Trip layer** to _GeoJSON_ and watch `speed_kmh` vanish from the colour
-options. Switch it back.
+Switch **Panel options → Field mapping → Drawing each query → Trip layer** to _GeoJSON_ and watch
+`speed_kmh` vanish from the colour options. Switch it back.
 
 ## 7. Draw it as points instead
 

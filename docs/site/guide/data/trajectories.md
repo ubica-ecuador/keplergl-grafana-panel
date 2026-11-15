@@ -50,8 +50,9 @@ actually want a 3D path, and be aware you are asking for height above terrain, n
 
 ## Table columns or GeoJSON
 
-**Trip layer** in the panel options picks between kepler's two Trip layer shapes. The default is the
-right answer almost always.
+**Trip layer**, under **Field mapping → Drawing each query**, picks between kepler's two Trip layer
+shapes, for each trajectory query of the panel: one can be folded into paths while another keeps its
+rows. The default is the right answer almost always.
 
 |                               | Table columns (default) | GeoJSON        |
 | ----------------------------- | ----------------------- | -------------- |

@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { DataFrame } from '@grafana/data';
 
 import { detectFields, type FieldRoleOverrides, resolveRoles } from '../data/detectFields';
 import { GAZETTEERS, type Gazetteer, parseGazetteer, placedByName } from '../data/placeLookup';
 import { resolveRemoteSource } from '../data/remoteSource';
+import type { QueryOptions } from '../types';
 
 /**
- * The gazetteer a panel's place names are looked up in, fetched once a query
- * needs it and shared by every panel that names the same file.
+ * The gazetteers a panel's place names are looked up in, one per query that
+ * names places, each fetched once a query needs it and shared by every query
+ * and panel that names the same file.
  *
  * Fetched only when a query places its rows by name: most maps never ask, and
  * Grafana's countries file is not small. Relative paths resolve against
@@ -38,32 +40,59 @@ function load(url: string): Promise<Gazetteer> {
   return pending;
 }
 
-/** Whether any query places its rows by name. */
-export function namesPlaces(frames: DataFrame[], mappings: Record<string, FieldRoleOverrides> | undefined): boolean {
-  return frames.some((frame, index) => {
-    const roles = resolveRoles(detectFields(frame), mappings?.[frame.refId ?? `${index}`]);
-    return placedByName(roles) && !roles.geohash && Boolean(roles.lookup);
+/**
+ * The gazetteer each query that places its rows by name looks them up in, by
+ * refId: the query's own (`queryOptions`), or Grafana's countries.
+ */
+export function gazetteerPaths(
+  frames: DataFrame[],
+  mappings: Record<string, FieldRoleOverrides> | undefined,
+  queryOptions: Record<string, QueryOptions> | undefined
+): Record<string, string> {
+  const paths: Record<string, string> = {};
+  frames.forEach((frame, index) => {
+    const refId = frame.refId ?? `${index}`;
+    const roles = resolveRoles(detectFields(frame), mappings?.[refId]);
+    if (placedByName(roles) && !roles.geohash && roles.lookup) {
+      paths[refId] = queryOptions?.[refId]?.gazetteer || GAZETTEERS.countries;
+    }
   });
+  return paths;
 }
 
-export function useGazetteer(path: string | undefined, needed: boolean): Gazetteer | null {
-  const url = needed
-    ? resolveRemoteSource(path || GAZETTEERS.countries, typeof document === 'undefined' ? undefined : document.baseURI)
-    : null;
-  const [loaded, setLoaded] = useState<{ url: string; places: Gazetteer } | null>(null);
+/**
+ * The gazetteers of {@link gazetteerPaths}, by refId, each `null` until its
+ * file has loaded. A file two queries name is fetched once.
+ */
+export function useGazetteers(paths: Record<string, string>): Record<string, Gazetteer | null> {
+  const base = typeof document === 'undefined' ? undefined : document.baseURI;
+  // Which query reads which file, as one string: a refresh that names the same files is the same signature, so
+  // nothing loads again and the datasets built from the result are not rebuilt.
+  const signature = Object.entries(paths)
+    .map(([refId, path]) => `${refId}\t${resolveRemoteSource(path, base)}`)
+    .sort()
+    .join('\n');
+  const [loaded, setLoaded] = useState<ReadonlyMap<string, Gazetteer>>(() => new Map());
   useEffect(() => {
-    if (!url) {
-      return;
-    }
+    const urls = new Set(signature ? signature.split('\n').map((line) => line.split('\t')[1]) : []);
     let live = true;
-    void load(url).then((places) => {
-      if (live) {
-        setLoaded({ url, places });
-      }
-    });
+    for (const url of urls) {
+      void load(url).then((places) => {
+        if (live) {
+          setLoaded((previous) => (previous.get(url) === places ? previous : new Map(previous).set(url, places)));
+        }
+      });
+    }
     return () => {
       live = false;
     };
-  }, [url]);
-  return url && loaded?.url === url ? loaded.places : null;
+  }, [signature]);
+  return useMemo(() => {
+    const byQuery: Record<string, Gazetteer | null> = {};
+    for (const line of signature ? signature.split('\n') : []) {
+      const [refId, url] = line.split('\t');
+      byQuery[refId] = loaded.get(url) ?? null;
+    }
+    return byQuery;
+  }, [signature, loaded]);
 }

@@ -1,5 +1,4 @@
 import { FieldRoleOverrides } from './data/detectFields';
-import { FlowRenderMode } from './data/buildFlows';
 import { TripLayerMode } from './data/buildTripLayer';
 import { SavedMapConfig } from './data/mapConfig';
 import { TimeSyncMode } from './panel/timeSync';
@@ -32,6 +31,26 @@ export type BasemapChoice =
   | 'grafana-topographic-terrain'
   | 'custom';
 
+/**
+ * What one query is drawn with, where queries of one panel need different
+ * answers (`KeplerPanelOptions.queryOptions`).
+ */
+export interface QueryOptions {
+  /**
+   * Which of kepler's two Trip layer shapes a trajectory query loads as.
+   * Defaults to `table`, which keeps one row per point and with it every column
+   * the query returned; `geojson` folds each trip into one row.
+   */
+  tripLayerMode?: TripLayerMode;
+
+  /**
+   * Where the query's place names and codes are looked up (the `lookup` role):
+   * Grafana's countries, US states or airports, or a file of one's own. Read
+   * as Geomap reads it; see `placeLookup.ts`. Defaults to the countries.
+   */
+  gazetteer?: string;
+}
+
 export interface KeplerPanelOptions {
   /**
    * Field mapping overrides, keyed by query refId. Anything absent falls back
@@ -40,6 +59,13 @@ export interface KeplerPanelOptions {
    * points rather than trips.
    */
   fieldMappings?: Record<string, FieldRoleOverrides>;
+
+  /**
+   * How each query is drawn, keyed by refId, for what differs from one query
+   * to the next: a trajectory's Trip layer shape, a gazetteer for its place
+   * names. Absent, a query takes the defaults. See `queryOptions.ts`.
+   */
+  queryOptions?: Record<string, QueryOptions>;
 
   /**
    * The saved map configuration: layers, filters, interactions, base map.
@@ -70,13 +96,6 @@ export interface KeplerPanelOptions {
    */
   dayNight?: DayNightMode;
   dayNightSun?: boolean;
-
-  /**
-   * Where a query's place names and codes are looked up (the `lookup` role):
-   * Grafana's countries, US states or airports, or a file of one's own. Read
-   * as Geomap reads it; see `placeLookup.ts`.
-   */
-  gazetteer?: string;
 
   /**
    * Save request counter.
@@ -250,16 +269,6 @@ export interface KeplerPanelOptions {
    * couples the time filter's window, this the Trip layer's clock.
    */
   playheadVariable?: string;
-
-  /** How auto-created flow layers draw their lines. Defaults to `straight`. */
-  flowRenderMode?: FlowRenderMode;
-
-  /**
-   * Which of kepler's two Trip layer shapes a trajectory query loads as.
-   * Defaults to `table`, which keeps one row per point and with it every column
-   * the query returned.
-   */
-  tripLayerMode?: TripLayerMode;
 
   /**
    * Ties kepler filters to dashboard variables: setting a select/text filter on

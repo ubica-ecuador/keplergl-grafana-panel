@@ -10,6 +10,7 @@ import { datasetId } from '../data/framesToDatasets';
 import type { SavedMapConfig, SavedRemoteDataset } from '../data/mapConfig';
 import { KEPLER_COLUMN, keplerColumnName } from '../data/toKeplerDataset';
 import type { GeomapImport, ImportedColorField, ImportedLayer } from './fromGeomap';
+import type { QueryOptions } from '../types';
 
 /**
  * Converting a Geomap panel, step two: the layers, once the rows say which
@@ -21,6 +22,11 @@ export interface GeomapConversion {
   fieldMappings: Record<string, FieldRoleOverrides>;
   /** The queries a route layer is drawn on, for the panel's `routeQueries`; absent when none, as the editor stores it. */
   routeQueries?: string[];
+  /**
+   * The panel's `queryOptions` with each query placed by name looking its names up in its layer's gazetteer, the
+   * one Geomap was given; absent when no layer names another than the countries.
+   */
+  queryOptions?: Record<string, QueryOptions>;
   /** The import's own notes and what this step could not place. */
   dropped: string[];
 }
@@ -94,7 +100,8 @@ function pointRadius(pixels: number): number {
 export function geomapToKepler(
   imported: GeomapImport,
   frames: DataFrame[],
-  fieldMappings: Record<string, FieldRoleOverrides> = {}
+  fieldMappings: Record<string, FieldRoleOverrides> = {},
+  queryOptions?: Record<string, QueryOptions>
 ): GeomapConversion | null {
   // A map of files alone, a GeoJSON over the base map, has no rows to wait for.
   if (!frames.length && imported.layers.some((layer) => !ROWLESS.has(layer.type))) {
@@ -102,6 +109,7 @@ export function geomapToKepler(
   }
   const dropped = [...imported.dropped];
   const mappings: Record<string, FieldRoleOverrides> = { ...fieldMappings };
+  let perQuery = queryOptions;
   const layers: unknown[] = [];
   const routes = new Set<string>();
   const files: SavedRemoteDataset[] = [];
@@ -197,6 +205,10 @@ export function geomapToKepler(
       if (location.mode === 'lookup' && location.lookup) {
         overrides.lookup = location.lookup;
       }
+      // Each layer's names in its own gazetteer: two Geomap layers reading airports and countries stay that way.
+      if (location.mode === 'lookup' && location.gazetteer) {
+        perQuery = { ...perQuery, [refId]: { ...perQuery?.[refId], gazetteer: location.gazetteer } };
+      }
     }
     const roles = resolveRoles(detectFields(frame), overrides);
     if (placed && !(roles.latitude && roles.longitude) && !roles.geohash && !roles.lookup) {
@@ -241,6 +253,7 @@ export function geomapToKepler(
     mapConfig: { version: KEPLER_CONFIG_VERSION, config, ...(files.length ? { datasets: files } : {}) },
     fieldMappings: mappings,
     routeQueries: routes.size ? [...routes] : undefined,
+    ...(perQuery ? { queryOptions: perQuery } : {}),
     dropped,
   };
 }
