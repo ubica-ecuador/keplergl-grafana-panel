@@ -143,6 +143,13 @@ building a camera can see a corner. Past 1,000 m it says "More than 1,000 m".
 
 After kepler's colour group come four groups of the layer's own, then **Interaction**.
 
+### Observers
+
+| Option                  | What it does                                                                          | Default |
+| ----------------------- | ------------------------------------------------------------------------------------- | ------- |
+| **Rows of the dataset** | each row of the layer's dataset is an observer                                        | on      |
+| the observers           | places set in the layer, each its own colour and settings, dragged on the map (below) | none    |
+
 ### Line of sight
 
 | Option                     | What it does                                                           | Default  |
@@ -175,8 +182,6 @@ After kepler's colour group come four groups of the layer's own, then **Interact
 | --------------------------------------- | ----------------------------------------------------------------------------- | ------- |
 | **Per place**                           | All rows, Last, Min or Max when an observer reports more than once            | Last    |
 | **Asset**                               | the column that names a moving observer: Auto, None (by position) or a column | Auto    |
-| **Rows of the dataset**                 | each row of the layer's dataset is an observer                                | on      |
-| **Points drawn on the map**             | points drawn with the draw tool are observers too (below)                     | on      |
 | **Detail**                              | Low, Medium or High: the cells across each observer's square (below)          | Medium  |
 | **Fade with distance**                  | fades the seen ground towards the edge of the range                           | off     |
 | **Shade what is hidden**                | shades the ground in range but hidden                                         | on      |
@@ -188,17 +193,64 @@ observer per place, and a moving observer (a patrol car's camera, a drone) is on
 reports and sees from wherever it is at the map's instant. kepler's filters, its time filter and a polygon drawn with
 the draw tool choose the observers, as on the other Plus layers.
 
+### Visible area
+
+| Option            | What it does                                                                   | Default |
+| ----------------- | ------------------------------------------------------------------------------ | ------- |
+| **To a variable** | the name of a dashboard variable the ground seen is written to, as WKT (below) | none    |
+| **Most vertices** | how many vertices the WKT may have before its outline is made coarser          | 300     |
+
 ### Interaction
 
 kepler's **Allow hover** switch turns the hover above, and the observers' popups, on and off.
 
-## Points drawn on the map
+## Observers set in the layer
 
-With **Points drawn on the map** on, a point drawn with the map's draw tool (**Point**, in the draw controls) is an
-observer of the first visible Viewshed layer, with the layer's fixed settings: **Eye height (m)**, **Range (metres)**,
-**Azimuth (°)** and **Field of view (°)**, and the layer's colour. Drag it in the draw tool's **Select** mode (select
-the point, then drag it) and its view follows. With **Rows of the dataset** off, only drawn points are observers: a
-layer on any dataset becomes a tool to try where a camera or a mast would see from.
+Places to look from can also be set in the layer itself, with no dataset of them: a camera to try, a lookout, a mast.
+In the **Observers** group, **+ Add observer** puts one at the centre of the map, with a letter for a label and a
+colour of its own; drag it on the map, and its view follows the pointer. Each row in the group sets an observer's
+colour and label, and its own **Eye**, **Range**, **Azimuth** and **View** (its field of view): a field left empty
+takes the layer's **Eye height (m)**, **Range (metres)**, **Azimuth (°)** or **Field of view (°)**. ✕ removes it.
+They are saved with the map.
+
+**Lat var** and **Lng var** name a pair of dashboard variables (text boxes, or any variable the other panels read): on
+each drop the observer's position is written to them, once, so a query can use it (the cameras within its range, the
+buildings it looks at); and a change from outside (a typed value, a table row's link, a shared URL) moves the
+observer there. They work as the free panel's [markers](/guide/map/markers) do, with a view.
+
+With **Rows of the dataset** off, only the observers set here look: a Viewshed layer on any dataset of the map becomes
+a tool to try where a camera or a mast would see from.
+
+## The ground seen, in the other panels
+
+**To a variable** (in **Visible area**) writes the ground every observer of the layer sees to a dashboard variable,
+so the other panels can query what is in sight: the shops a camera sees, the trees along the streets it covers, the
+incidents no camera saw. The value is a `MULTIPOLYGON` in WKT, longitude and latitude (EPSG:4326) to six decimals,
+the same ground the layer paints: seen at the **Target height**, the union of every observer's view, roofs left out.
+It is written when the views change (a refresh, a filter, an observer dragged and dropped), once they have all been
+worked out; `MULTIPOLYGON EMPTY` when the observers see nothing, and an empty value when the layer has none.
+
+Make the variable a text box (it can be hidden), and use it in the other panels' queries. On the server's DuckDB:
+
+```sql
+-- The places in sight of the layer's observers.
+SELECT name, category, longitude, latitude
+FROM places
+WHERE ST_Within(ST_Point(longitude, latitude), ST_GeomFromText(coalesce(nullif($visible, ''), 'MULTIPOLYGON EMPTY')))
+```
+
+A place inside a building (a shop's point often is) is under a roof, which is never part of the ground seen: widen
+the area a few metres to take the buildings along the seen streets, `ST_Buffer(ST_GeomFromText($visible), 0.0001)`
+(about 10 m in degrees), or move the points to the street.
+
+Never use the variable in the Viewshed layer's own query: the observers would change the area, and the area the
+observers, the way a drawn area must not filter its own map. Another query on the same map is fine: the places in
+sight can be drawn over the views.
+
+The variable travels in the dashboard's URL, and servers cut a URL at a few kilobytes (nginx at 8 KB a request line,
+by default), which a shared link or a reload would hit. **Most vertices** keeps it short: past it, the outline is
+traced on a coarser grid until it fits, and then the smallest pieces are left out. 300 vertices are about 6 KB;
+raise it for finer outlines where the server allows longer URLs.
 
 ## Detail and how far it reaches
 
