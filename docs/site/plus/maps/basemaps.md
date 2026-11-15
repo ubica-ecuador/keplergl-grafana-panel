@@ -90,8 +90,8 @@ same elevation as the free panel's **Satellite + relief** and **Topographic + re
 Google's styles have no Relief. Google's terms forbid using its maps with or near a map from another provider,
 and relief would lay Google's tiles over another provider's elevation.
 
-As on the free relief styles, your data does not drape over the terrain: it stays at its own height. See
-[Base maps and relief](/guide/map/basemaps-and-relief#relief).
+As on the free relief styles, rasters lie on the terrain and markers and symbols stand on it; kepler's other layers
+stay at their own height. See [Base maps and relief](/guide/map/basemaps-and-relief#relief).
 
 ## The sky
 

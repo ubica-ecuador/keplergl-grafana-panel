@@ -20,8 +20,10 @@ relief base maps — see [Base maps and relief](../map/basemaps-and-relief).
 
 Two things to expect on a tilted map:
 
-- **Your data does not drape over the relief.** deck.gl draws at its own altitude. This is a deck.gl
-  property, covered in [Under the hood](../../reference/under-the-hood).
+- **Only rasters, markers and symbols follow the relief.** Rasters lie on it and markers and symbols
+  stand on it; points, paths, polygons and the other layers are drawn by deck.gl at their own
+  altitude. See [Rasters on the relief](../map/basemaps-and-relief#rasters-on-the-relief) and
+  [Under the hood](../../reference/under-the-hood).
 - **Panning a tilted terrain map can make the camera jitter**, an open kepler.gl issue
   ([keplergl/kepler.gl#3394](https://github.com/keplergl/kepler.gl/issues/3394)).
 

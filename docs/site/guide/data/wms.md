@@ -65,6 +65,12 @@ switch in 3.3.0-alpha.16, turned off; the panel starts it on, so a WMS answers c
 before, in saved dashboards too. Turned off, the layer stops showing its popover and a click on it
 asks the service nothing.
 
+On a relief base map the switch also decides who draws the layer. While it answers clicks (tooltip
+on, the layer queryable, **Allow hover** on) deck draws it, as one picture of the view laid on the
+relief, since kepler asks the service about the pixel deck found in that picture. Otherwise it is
+handed to the base map as 256-pixel tiles, which lie on the relief to the horizon. See
+[Rasters on the relief](../map/basemaps-and-relief#rasters-on-the-relief).
+
 `wms_value` is the first value the service returned, under a name that is the same everywhere. The
 attributes also arrive under their own names — both as the service spells them (`GRAY_INDEX`) and as
 kepler displays them (`GRAY INDEX`) — for a vector WMS returning several.

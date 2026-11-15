@@ -6,6 +6,17 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Rasters lie on the relief.** On _Satellite + relief_, _Topographic + relief_ or any base map with
+  terrain, a raster was a flat sheet at the height of the centre of the view, cutting through hills
+  and floating over valleys. It now lies on the ground. XYZ tiles, Zarr tiles, a COG the tile server
+  paints, an ArcGIS Image Service and a WMS that answers no click are handed to the base map, which
+  lays them on its terrain as it lays its own imagery, with coarser tiles far off under a tilted
+  camera (OpenTopoMap over Chimborazo, tilted 60°: 93 tile requests, where 1.9.0 asked 187 flat); they
+  then lie under every other layer, whatever their place in kepler's list. kepler's Raster Tile and
+  Image layers, and a WMS that answers clicks, are drawn as before on a grid lifted to the ground. A
+  Zarr timeline keeps the previous picture until the next has arrived, as on a flat map. Off the
+  relief, nothing changes. See
+  [Rasters on the relief](https://docs.ubica.dev/guide/map/basemaps-and-relief#rasters-on-the-relief).
 - **A5 cells are A5 1.0's in every layer.** kepler.gl 3.3.0-alpha.21 drew its A5 layer with a5-js
   1.0, whose cell ids differ from 0.x's for the same cell, while the Cells layer placed its points
   and deck.gl drew them with a5-js 0.10.1. The panel now asks for a5-js 1.0 and holds every copy of

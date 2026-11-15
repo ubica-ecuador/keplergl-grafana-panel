@@ -82,15 +82,25 @@ The binding constraint is usually **transport**, not rendering: every row travel
 source through Grafana into the browser as JSON before deck.gl sees it. Aggregating in SQL is almost
 always cheaper than aggregating in a layer.
 
-### Nothing drapes over terrain
+### What follows the terrain
 
 deck.gl draws in its own coordinate system, at the altitude your data specifies, over whatever the
 base map happens to be showing. The relief in the two terrain base maps belongs to **MapLibre**;
-deck.gl has no knowledge of it.
+deck.gl has no knowledge of it. The panel reads MapLibre's elevation and does three things with it:
 
-So a path across a valley floats at its nominal height rather than following the ground, and a
-polygon on a mountainside cuts through it. This is not a bug in the styles and there is no setting
-for it. See [Base maps and relief](../guide/map/basemaps-and-relief).
+- **Markers and symbols** are drawn at the ground's elevation under each of them.
+- **Rasters drawn from a tile template** (XYZ, Zarr through TiTiler, a COG the server paints, an
+  ArcGIS Image Service, a WMS that answers no click) are taken from deck and handed to MapLibre as
+  raster layers of its style, which MapLibre lays on its terrain as it lays its own imagery: it paints
+  them into a texture for each terrain tile and draws the terrain's mesh with it. They then lie under
+  every deck layer.
+- **The other rasters** (kepler's Raster Tile, Image and a WMS that answers clicks) stay with deck,
+  whose flat picture of two triangles becomes a grid with every point at the ground's elevation, read
+  off MapLibre's elevation tiles.
+
+Everything else floats: a path across a valley stays at its nominal height rather than following the
+ground, and a polygon on a mountainside cuts through it. See
+[Base maps and relief](../guide/map/basemaps-and-relief#relief).
 
 ### Altitude is height above the ground
 

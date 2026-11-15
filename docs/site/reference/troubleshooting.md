@@ -150,8 +150,17 @@ reduce the tilt or use a flat base map.
 
 ## Data floats above the terrain
 
-Expected, and not fixable from here. The relief belongs to the base map; deck.gl draws your data at
-its own altitude and nothing drapes over the ground. See [Under the hood](./under-the-hood).
+Expected for points, paths, polygons and most layers: the relief belongs to the base map, and
+deck.gl draws your data at its own altitude. Rasters lie on the relief, and markers and symbols stand
+on it; nothing else does. See [Under the hood](./under-the-hood#what-follows-the-terrain).
+
+## A raster slips under my other layers on a relief map
+
+Expected. On a relief base map a raster drawn from a tile template (XYZ, Zarr, a COG the server
+paints, an ArcGIS Image Service, a WMS that answers no click) is drawn by the base map itself, so it
+lies on the terrain, and under every deck layer, whatever its place in kepler's layer list. Back on a
+flat base map it takes its place in the list again. See
+[Rasters on the relief](../guide/map/basemaps-and-relief#rasters-on-the-relief).
 
 ## A trajectory layer vanishes as I zoom in
 

@@ -78,14 +78,44 @@ elevation is possible here — kepler has no terrain feature of its own. The ele
 
 Tilt the camera with the 3D control and the ground rises.
 
-::: warning Your data does not drape over the terrain
-The relief belongs to the **base map**. deck.gl draws your data at its own altitude, so points and
-paths float at their nominal height rather than following the ground beneath them. A trail through a
-valley will not hug the valley floor.
+The relief belongs to the **base map**, and deck.gl, which draws your data, knows nothing of it. The
+panel lays three kinds of layer on it; the rest stay at their own altitude:
 
-This is a deck.gl property, not a bug in the styles — see
-[Under the hood](../../reference/under-the-hood).
-:::
+| Layer                                                  | On a relief base map                                     |
+| ------------------------------------------------------ | -------------------------------------------------------- |
+| **Rasters**                                            | lie on the ground, over hills and into valleys           |
+| **Markers** and **symbols**                            | stand on the ground, labels and shadows with them        |
+| Points, paths, arcs, polygons, hexagons and the others | float at their own height: a trail does not hug a valley |
+
+The same goes for a self-hosted `style.json` that carries a `terrain` key.
+
+### Rasters on the relief
+
+There are two ways a raster comes to lie on the relief, and which one it takes depends on the layer:
+
+- **MapLibre draws it.** XYZ tiles, Zarr tiles from TiTiler, a COG the tile server paints
+  ([Let the tile server paint](../data/rasters#painted)), an [ArcGIS Image Service](../data/arcgis-image-service)
+  and a [WMS](../data/wms) that answers no click are handed to the base map as raster layers of its
+  own: they lie on the very surface the base map lies on, and MapLibre asks for coarser tiles far off
+  under a tilted camera, as it does for its own imagery. deck draws nothing for them.
+- **deck draws it on a grid on the ground.** kepler's Raster Tile layer (a COG the browser colours, a
+  PMTiles archive), the Image layer and a WMS that answers clicks are drawn by deck as before, on a
+  grid whose every point is lifted to the ground, about one cell every 12 pixels. A WMS stays with deck
+  while it answers clicks because kepler asks the service about the pixel deck found under the
+  pointer.
+
+kepler's own [Zarr layer, read in the browser](../data/zarr#kepler-s-own-zarr-layer-in-the-browser),
+is still drawn flat.
+
+What it costs:
+
+- **A raster MapLibre draws lies under every deck layer**, whatever its place in kepler's layer
+  list: points, paths and polygons are always on top of it. Among themselves, and above the base map,
+  those rasters keep kepler's order.
+- **A raster on deck's grid asks for more tiles under a tilted camera**: deck has no coarser tiles
+  for the distance, so near the horizon it asks for as many as close by.
+- On a flat base map, or once the relief is switched off, every raster is drawn by deck flat, as
+  before.
 
 A second thing to know before leaning on it: panning a tilted terrain map can make the camera jitter,
 an open kepler.gl issue
