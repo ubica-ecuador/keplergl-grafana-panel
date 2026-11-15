@@ -4,7 +4,7 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
-## Unreleased
+## 1.10.0 (2026-11-15)
 
 - **Rasters lie on the relief.** On _Satellite + relief_, _Topographic + relief_ or any base map with
   terrain, a raster was a flat sheet at the height of the centre of the view, cutting through hills
