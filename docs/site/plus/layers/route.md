@@ -6,6 +6,8 @@ map charts its heights against the distance along it, with its length, climb, de
 and time. Point at the profile and the place shows on the map; point at the route and the place shows on the profile;
 drag across the profile to measure a section.
 
+![The Senda de la Laguna Grande in the Sierra de Gredos on Satellite + relief, coloured by grade from light orange (under 5 %) to dark brown, its profile under the map: 4.2 km, 39 m up and 412 m down between 1,766 and 2,178 m, steepest 24 %; the pointer on the chart at 1.4 km, 2,092 m and −10 % is the white dot on the trail](/img/plus/route.jpg)
+
 ## What the query needs
 
 Either of kepler's two ways of giving a line, as for its GeoJSON layer:
@@ -48,6 +50,8 @@ controls) becomes a route of the first visible Route layer, its heights read off
 its profile shows. **Cross-filtering → Publish drawn line** also writes it to a dashboard variable, for other panels'
 queries along it (see [Publishing](/guide/dashboard/publishing#drawn-lines)).
 
+![A line drawn with the draw tool across the same valley, straight and blue, and the route it becomes, Drawn line 1, laid on the ground over the ridges and the valley floor and coloured by grade; its profile under the map: 9.9 km, 821 m up and 924 m down between 1,489 and 2,130 m](/img/plus/route-drawn.jpg)
+
 ## The profile
 
 Under the map, the route shown: the one clicked on the map or chosen with the arrows, else the one last pointed at,
@@ -61,6 +65,8 @@ time; the chart fills its heights in the map's colours, with the legend under it
 - A route with times is on Grafana's [shared crosshair](/guide/dashboard/temporal-cursor) both ways: the place
   pointed at goes out as its time, and a time pointed at on another graph (a speed or altitude chart) puts the
   profile's line and the map's dot where the route was then. Set the dashboard's graph tooltip to **Shared crosshair**.
+
+![The Gredos trail with a section dragged on its profile from 999 m to 2.5 km: the section's figures under the route's (1.5 km, 213 m down between 1,931 and 2,144 m, steepest 22 %), the rest of the chart dimmed, and the section drawn brighter on the map](/img/plus/route-section.jpg)
 
 The arrow on the right folds the profile to its header.
 
