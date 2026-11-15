@@ -86,17 +86,32 @@ export function lngLatToMercator(lng: number, lat: number): [number, number] {
  * makes the answer possible.
  */
 export function esriImageUrl(spec: EsriImageSpec, bounds: TileBounds): string | null {
+  const [xmin, ymin] = lngLatToMercator(bounds.west, bounds.south);
+  const [xmax, ymax] = lngLatToMercator(bounds.east, bounds.north);
+  return exportImageUrl(spec, [xmin, ymin, xmax, ymax].map((value) => value.toFixed(4)).join(','));
+}
+
+/**
+ * The same request as a MapLibre tile template (`reliefRasters.ts`): its
+ * `{bbox-epsg-3857}` is each tile's box in Web Mercator metres, filled in by
+ * MapLibre. Appended raw: `URLSearchParams` would write the braces as `%7B`.
+ */
+export function esriImageTemplate(spec: EsriImageSpec): string | null {
+  const url = exportImageUrl(spec, null);
+  return url ? `${url}&bbox={bbox-epsg-3857}` : null;
+}
+
+/** The `exportImage` request for a box, or without one (`null`) for the caller to add. */
+function exportImageUrl(spec: EsriImageSpec, bbox: string | null): string | null {
   const serviceUrl = spec.serviceUrl.trim().replace(/\/+$/, '');
   if (!serviceUrl) {
     return null;
   }
 
-  const [xmin, ymin] = lngLatToMercator(bounds.west, bounds.south);
-  const [xmax, ymax] = lngLatToMercator(bounds.east, bounds.north);
   const size = spec.size && spec.size > 0 ? spec.size : 256;
 
   const params = new URLSearchParams({
-    bbox: [xmin, ymin, xmax, ymax].map((value) => value.toFixed(4)).join(','),
+    bbox: bbox ?? '',
     bboxSR: '3857',
     imageSR: '3857',
     size: `${size},${size}`,
@@ -104,6 +119,9 @@ export function esriImageUrl(spec: EsriImageSpec, bounds: TileBounds): string | 
     transparent: 'true',
     f: 'image',
   });
+  if (bbox === null) {
+    params.delete('bbox');
+  }
   if (spec.mosaicRule) {
     params.set('mosaicRule', spec.mosaicRule);
   }

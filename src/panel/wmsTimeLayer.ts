@@ -66,6 +66,44 @@ export function readTimeFragment(data: string): { url: string; time?: string } {
   return { url, time: decodeURIComponent(fragment.slice(TIME_KEY.length + 1)) };
 }
 
+/**
+ * A WMS as a MapLibre tile template (`reliefRasters.ts`): GetMap in Web Mercator,
+ * one 256 px square per tile, `{bbox-epsg-3857}` filled in by MapLibre. Version
+ * 1.3.0 and PNG as loaders.gl asks for the picture deck draws; in 1.3.0 the axis
+ * order of EPSG:3857 is x then y, so the box goes as MapLibre writes it. The
+ * service's own query (MapServer's `?map=…`) is kept and the moment, if any, goes
+ * as `TIME`.
+ */
+export function wmsMapLibreTemplate(args: {
+  url: string;
+  layers: string[];
+  transparent?: boolean;
+  time?: string | null;
+}): string | null {
+  const base = args.url.split('#')[0].trim();
+  const layers = args.layers.filter((name) => typeof name === 'string' && name);
+  if (!base || layers.length === 0) {
+    return null;
+  }
+  const params = new URLSearchParams({
+    SERVICE: 'WMS',
+    VERSION: '1.3.0',
+    REQUEST: 'GetMap',
+    LAYERS: layers.join(','),
+    STYLES: '',
+    CRS: 'EPSG:3857',
+    WIDTH: '256',
+    HEIGHT: '256',
+    FORMAT: 'image/png',
+    TRANSPARENT: args.transparent === false ? 'FALSE' : 'TRUE',
+  });
+  if (args.time) {
+    params.set('TIME', args.time);
+  }
+  const joiner = !base.includes('?') ? '?' : /[?&]$/.test(base) ? '' : '&';
+  return `${base}${joiner}${params}&BBOX={bbox-epsg-3857}`;
+}
+
 /** The members of kepler's WMS layer this wrapper touches. */
 interface WmsLayerLike {
   config?: { visConfig?: { wmsTime?: unknown } };
@@ -106,10 +144,7 @@ type Constructor<T> = new (...args: any[]) => T;
  * service with no timeline — or a layer that has yet to be given a date —
  * fetched the better part of a megabyte twice. Measured, not supposed.
  */
-export function withWmsTime<C extends Constructor<object>>(
-  WMSLayer: C,
-  buildTimedLayer: TimedDeckLayerFactory
-): C {
+export function withWmsTime<C extends Constructor<object>>(WMSLayer: C, buildTimedLayer: TimedDeckLayerFactory): C {
   class WMSLayerWithTime extends (WMSLayer as Constructor<WmsLayerLike>) {
     renderLayer(opts?: unknown): unknown[] {
       const layers = super.renderLayer(opts) ?? [];
@@ -125,7 +160,22 @@ export function withWmsTime<C extends Constructor<object>>(
         if (!props || typeof props.data !== 'string') {
           return layer;
         }
-        last = buildTimedLayer({ ...props, data: withTimeFragment(props.data, time) });
+        // A WMS that answers no click can be drawn by MapLibre on a relief base map
+        // (`reliefRasters.ts`); one that does stays with deck, whose picking finds the
+        // pixel the click asks the service about.
+        const reliefTiles = props.pickable
+          ? null
+          : wmsMapLibreTemplate({
+              url: props.data,
+              layers: Array.isArray(props.layers) ? (props.layers as string[]) : [],
+              transparent: props.transparent as boolean | undefined,
+              time,
+            });
+        last = buildTimedLayer({
+          ...props,
+          data: withTimeFragment(props.data, time),
+          ...(reliefTiles ? { reliefTiles } : {}),
+        });
         return last;
       });
 

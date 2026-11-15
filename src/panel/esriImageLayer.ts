@@ -1,5 +1,5 @@
 import type { LayerIcon } from './cogPaintedLayer';
-import { esriImageUrl, type TileBounds } from '../data/esriImageUrl';
+import { esriImageTemplate, esriImageUrl, type TileBounds } from '../data/esriImageUrl';
 import { shownInPane } from './paneVisibility';
 
 /**
@@ -91,6 +91,8 @@ export function esriDeckProps(args: {
   return {
     id: `${id}-esri-tiles`,
     getTileUrl: (bounds: TileBounds) => esriImageUrl(spec, bounds),
+    // What MapLibre draws instead on a relief base map (`reliefRasters.ts`).
+    reliefTiles: esriImageTemplate(spec),
     opacity: opacity ?? 1,
     updateTriggers: {
       getTileData: `${spec.serviceUrl}|${spec.mosaicRule ?? ''}|${spec.renderingRule ?? ''}`,
@@ -122,7 +124,6 @@ export function makeEsriImageLayer<C extends Constructor<object>>(
         opacity: 'opacity',
       });
     }
-
 
     get layerIcon(): unknown {
       // Left to the base class when none was handed in, rather than reported as

@@ -34,7 +34,6 @@ export interface CogPaintedMetadata {
   rescale?: string[];
 }
 
-
 /**
  * What kepler draws beside the layer's name.
  *
@@ -122,6 +121,8 @@ export function cogPaintedDeckProps(args: {
   return {
     id: `${id}-cog-tiles`,
     data: template,
+    // What MapLibre draws instead on a relief base map (`reliefRasters.ts`).
+    reliefTiles: template,
     opacity: opacity ?? 1,
     updateTriggers: { getTileData: template },
   };
@@ -150,7 +151,6 @@ export function makeCogPaintedLayer<C extends Constructor<object>>(
         opacity: 'opacity',
       });
     }
-
 
     get layerIcon(): unknown {
       // Left to the base class when none was handed in, rather than reported as

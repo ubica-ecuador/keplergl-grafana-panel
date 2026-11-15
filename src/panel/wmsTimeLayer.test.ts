@@ -1,4 +1,4 @@
-import { readTimeFragment, shareMetadata, withTimeFragment, withWmsTime } from './wmsTimeLayer';
+import { readTimeFragment, shareMetadata, withTimeFragment, withWmsTime, wmsMapLibreTemplate } from './wmsTimeLayer';
 
 const SERVICE = 'https://services.geoglows.org/geoserver/satellite_based_precipitation/wms';
 const TIME = '2026-08-20T00:00:00.000Z';
@@ -135,7 +135,15 @@ describe('withWmsTime', () => {
 describe('shareMetadata', () => {
   const source = (answer: Promise<unknown>) => {
     const calls = { count: 0 };
-    return { calls, source: { getMetadata: () => { calls.count++; return answer; } } };
+    return {
+      calls,
+      source: {
+        getMetadata: () => {
+          calls.count++;
+          return answer;
+        },
+      },
+    };
   };
 
   it('asks once however many times it is called', async () => {
@@ -183,5 +191,66 @@ describe('shareMetadata', () => {
     await Promise.resolve();
 
     expect(cache.has(SERVICE)).toBe(false);
+  });
+});
+
+describe('wmsMapLibreTemplate', () => {
+  const params = (url: string) => Object.fromEntries(new URLSearchParams(url.slice(url.indexOf('?') + 1)));
+
+  it('asks GetMap in Web Mercator, one 256 px tile at a time, at the chosen moment', () => {
+    const template = wmsMapLibreTemplate({ url: `${SERVICE}#t=x`, layers: ['a', 'b'], time: TIME })!;
+    expect(template.startsWith(`${SERVICE}?`)).toBe(true);
+    expect(template.endsWith('&BBOX={bbox-epsg-3857}')).toBe(true);
+    expect(params(template)).toMatchObject({
+      SERVICE: 'WMS',
+      VERSION: '1.3.0',
+      REQUEST: 'GetMap',
+      LAYERS: 'a,b',
+      CRS: 'EPSG:3857',
+      WIDTH: '256',
+      HEIGHT: '256',
+      FORMAT: 'image/png',
+      TRANSPARENT: 'TRUE',
+      TIME,
+    });
+  });
+
+  it('keeps the service’s own query', () => {
+    const template = wmsMapLibreTemplate({
+      url: 'https://ms.example/cgi?map=/x.map',
+      layers: ['a'],
+      transparent: false,
+    })!;
+    expect(template.startsWith('https://ms.example/cgi?map=/x.map&SERVICE=WMS')).toBe(true);
+    expect(params(template).TRANSPARENT).toBe('FALSE');
+  });
+
+  it('is null with no layer to ask for', () => {
+    expect(wmsMapLibreTemplate({ url: SERVICE, layers: [] })).toBeNull();
+  });
+});
+
+describe('withWmsTime on a relief base map', () => {
+  class Layer extends FakeWMSLayer {
+    pickable = false;
+    renderLayer(): unknown[] {
+      const [layer] = super.renderLayer() as Array<{ props: Record<string, unknown> }>;
+      return [fakeDeckLayer({ ...layer.props, pickable: this.pickable })];
+    }
+  }
+  const Relief = withWmsTime(Layer, fakeDeckLayer);
+
+  it('offers MapLibre a WMS that answers no click', () => {
+    const layer = new Relief();
+    layer.config.visConfig.wmsTime = TIME;
+    const [rendered] = layer.renderLayer() as Array<{ props: Record<string, unknown> }>;
+    expect(String(rendered.props.reliefTiles)).toContain(`TIME=${encodeURIComponent(TIME)}`);
+  });
+
+  it('keeps with deck a WMS a click asks about', () => {
+    const layer = new Relief();
+    layer.pickable = true;
+    const [rendered] = layer.renderLayer() as Array<{ props: Record<string, unknown> }>;
+    expect(rendered.props.reliefTiles).toBeUndefined();
   });
 });

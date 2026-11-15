@@ -9,6 +9,11 @@ const META: CogPaintedMetadata = {
 };
 
 describe('cogPaintedDeckProps', () => {
+  it('offers MapLibre the same template for a relief base map', () => {
+    const props = cogPaintedDeckProps({ id: 'layer-1', metadata: META });
+    expect(props?.reliefTiles).toBe(props?.data);
+  });
+
   it('hands deck the tile template as its data', () => {
     const props = cogPaintedDeckProps({ id: 'layer-1', metadata: META });
 

@@ -1,4 +1,4 @@
-import { esriImageUrl } from './esriImageUrl';
+import { esriImageTemplate, esriImageUrl } from './esriImageUrl';
 
 const SERVICE = 'https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer';
 
@@ -83,5 +83,19 @@ describe('esriImageUrl', () => {
     const url = esriImageUrl({ serviceUrl: `${SERVICE}/` }, TILE);
 
     expect(url!.startsWith(`${SERVICE}/exportImage?`)).toBe(true);
+  });
+});
+
+describe('esriImageTemplate', () => {
+  it('is the same request with MapLibre’s box placeholder, braces and all', () => {
+    const spec = { serviceUrl: SERVICE, mosaicRule: '{"where":"Year=2023"}' };
+    const template = esriImageTemplate(spec)!;
+    expect(template.endsWith('&bbox={bbox-epsg-3857}')).toBe(true);
+    const filled = template.replace('{bbox-epsg-3857}', paramsOf(esriImageUrl(spec, TILE)!).bbox);
+    expect(paramsOf(filled)).toEqual(paramsOf(esriImageUrl(spec, TILE)!));
+  });
+
+  it('is null without a service', () => {
+    expect(esriImageTemplate({ serviceUrl: ' ' })).toBeNull();
   });
 });

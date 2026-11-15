@@ -15,6 +15,11 @@ const LABEL_ONE = '1996-10-01T00:00:00.000000000';
 const LABEL_TWO = '1996-10-02T00:00:00.000000000';
 
 describe('zarrDeckProps', () => {
+  it('offers MapLibre the same template for a relief base map', () => {
+    const props = zarrDeckProps({ id: 'layer-1', metadata: META, label: LABEL_ONE });
+    expect(props?.reliefTiles).toBe(props?.data);
+  });
+
   it('hands deck the tile template as its data', () => {
     const props = zarrDeckProps({ id: 'layer-1', metadata: META, label: LABEL_ONE });
 
