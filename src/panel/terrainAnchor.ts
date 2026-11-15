@@ -1,4 +1,7 @@
+import { BitmapLayer } from '@deck.gl/layers';
+
 import { DraggableMarkersLayer } from './markersDeckLayer';
+import { RELIEF_DRAPE, reliefDrapeOf } from './reliefDrape';
 
 /**
  * Standing the markers and the symbols on the basemap's relief.
@@ -21,8 +24,9 @@ import { DraggableMarkersLayer } from './markersDeckLayer';
  * uniform, so a pan costs nothing per point. The points' own elevations are an
  * attribute, worked out again only when MapLibre loads more relief.
  *
- * Only the markers and the symbols are lifted. They are pins and signs that
- * stand on a spot, where being a few metres under the ground buries them; the
+ * The markers and the symbols are lifted. They are pins and signs that
+ * stand on a spot, where being a few metres under the ground buries them. The
+ * rasters lie on it (`reliefDrape.ts`): each bitmap a grid on the ground. The
  * rest of kepler's layers stay on z = 0 as they always have.
  */
 
@@ -34,10 +38,29 @@ export interface TerrainAnchor {
   version: number;
   /** Elevation of the ground at a point, in metres, exaggeration included; 0 where there is none. */
   elevationAt(lng: number, lat: number): number;
+  /** The same, read for the rasters' grids, thousands of points at a time (`reliefDrape.ts`); `elevationAt` if absent. */
+  drapeAt?(lng: number, lat: number): number;
+  /** The ground the rasters' grids have met on this map, kept across versions (`reliefDrape.ts`). */
+  range?: { low: number; high: number };
 }
 
 /** The kepler layer types whose deck layers stand on the relief. */
 export const ANCHORED_TYPES: ReadonlySet<string> = new Set(['markers', 'symbol']);
+
+/**
+ * The kepler layer types drawn as bitmaps, which lie on the relief: kepler's
+ * Raster Tile, WMS and Image (`bitmap`), the panel's XYZ, Zarr, COG and Esri
+ * image layers.
+ */
+export const DRAPED_TYPES: ReadonlySet<string> = new Set([
+  'rasterTile',
+  'wms',
+  'bitmap',
+  'xyz-tiles',
+  'zarrTiles',
+  'cogPainted',
+  'esriImage',
+]);
 
 /** Column-major, as deck reads it: the identity, with z lowered by the centre's elevation. */
 export function terrainModelMatrix(centre: number): number[] {
@@ -148,9 +171,37 @@ function anchored(layer: DeckLayerLike, anchor: TerrainAnchor | null): DeckLayer
 }
 
 /**
+ * A raster's deck layer lying on the relief: the drape extension, which its
+ * sublayers inherit, and the model matrix lowering it by the centre's
+ * elevation. On a flat map the extension stays, told there is no relief, so a
+ * bitmap draped a moment ago gets its flat mesh back. kepler's Image layer
+ * draws its handles and outline beside the bitmap: only the bitmap lies down.
+ */
+function draped(layer: DeckLayerLike, type: string, anchor: TerrainAnchor | null): DeckLayerLike {
+  if (type === 'bitmap' && !(layer instanceof BitmapLayer)) {
+    return layer;
+  }
+  const extensions = (layer.props.extensions as unknown[] | undefined) ?? [];
+  const withDrape = extensions.includes(RELIEF_DRAPE) ? extensions : [...extensions, RELIEF_DRAPE];
+  const drape = anchor ? reliefDrapeOf(anchor) : null;
+  // A tile layer picks its tiles as though they lay at z = 0: told how high and low the ground goes around the
+  // centre, it keeps the ones a hill raises into view or a valley drops into it.
+  const zRange =
+    drape && anchor && Number.isFinite(drape.range.low) && Number.isFinite(drape.range.high)
+      ? [Math.floor(drape.range.low - anchor.centre), Math.ceil(drape.range.high - anchor.centre)]
+      : null;
+  return layer.clone({
+    extensions: withDrape,
+    reliefDrape: drape,
+    ...(anchor ? { modelMatrix: terrainModelMatrix(anchor.centre) } : {}),
+    ...(zRange && 'zRange' in layer.props ? { zRange } : {}),
+  });
+}
+
+/**
  * kepler's deck layers, with those of its markers and symbol layers standing on
- * the relief, or marked as flat when there is none; the same array when there
- * is nothing to stand on it.
+ * the relief and its rasters lying on it, or marked as flat when there is
+ * none; the same array when there is nothing to stand on it.
  */
 export function anchorToTerrain(
   layers: unknown[],
@@ -158,10 +209,14 @@ export function anchorToTerrain(
   anchor: TerrainAnchor | null
 ): unknown[] {
   const allIds = keplerLayers.map((layer) => layer.id).filter((id): id is string => typeof id === 'string');
-  const anchoredIds = new Set(
-    keplerLayers.filter((layer) => layer.id && ANCHORED_TYPES.has(layer.type ?? '')).map((layer) => layer.id as string)
-  );
-  if (anchoredIds.size === 0) {
+  const typeOf = new Map<string, string>();
+  for (const layer of keplerLayers) {
+    const type = layer.type ?? '';
+    if (layer.id && (ANCHORED_TYPES.has(type) || DRAPED_TYPES.has(type))) {
+      typeOf.set(layer.id, type);
+    }
+  }
+  if (typeOf.size === 0) {
     return layers;
   }
   let changed = false;
@@ -170,12 +225,13 @@ export function anchorToTerrain(
       return layer;
     }
     const owner = ownerOf(layer.id, allIds);
-    if (!owner || !anchoredIds.has(owner)) {
+    const type = owner ? typeOf.get(owner) : undefined;
+    if (!type) {
       return layer;
     }
-    const lifted = anchored(layer, anchor);
-    changed ||= lifted !== layer;
-    return lifted;
+    const placed = DRAPED_TYPES.has(type) ? draped(layer, type, anchor) : anchored(layer, anchor);
+    changed ||= placed !== layer;
+    return placed;
   });
   return changed ? result : layers;
 }

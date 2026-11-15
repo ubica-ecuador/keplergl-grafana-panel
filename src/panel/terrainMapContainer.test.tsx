@@ -3,7 +3,7 @@ import { act, render } from '@testing-library/react';
 import { IconLayer } from '@deck.gl/layers';
 
 import { terrainModelMatrix } from './terrainAnchor';
-import { withTerrainAnchor } from './terrainMapContainer';
+import { farZMultiplierFor, withTerrainAnchor } from './terrainMapContainer';
 
 /**
  * The wrapper around kepler's `MapContainer` that stands the markers and the
@@ -115,9 +115,34 @@ describe('withTerrainAnchor', () => {
     expect(lastSymbols().props.modelMatrix).toBeFalsy();
   });
 
-  it('stays out of the way of a map with neither markers nor symbols', () => {
-    mount([{ id: 'raster', type: 'rasterTile' }]);
+  it('stays out of the way of a map with no markers, symbols or rasters', () => {
+    mount([{ id: 'raster', type: 'geojson' }]);
     expect(listeners.size).toBe(0);
     expect(lastSymbols().props.modelMatrix).toBeFalsy();
+  });
+
+  it('watches the relief for a map with only a raster', () => {
+    mount([{ id: 'raster', type: 'rasterTile' }]);
+    expect(listeners.get('sourcedata')?.size).toBe(1);
+  });
+});
+
+describe('farZMultiplierFor', () => {
+  const view = { zoom: 12.6, latitude: -1.47, pitch: 0, height: 765 };
+
+  it('keeps kepler’s 1.2 when nothing lies below the centre', () => {
+    expect(farZMultiplierFor(0, view)).toBeNull();
+  });
+
+  it('pushes the far plane back by the drop under the centre, in camera distances', () => {
+    // 12.6: about 12.7 m a pixel at the equator, the camera 1.5 × 765 px ≈ 14.6 km from the centre.
+    const m = farZMultiplierFor(3750, view)!;
+    expect(m).toBeGreaterThan(1.4);
+    expect(m).toBeLessThanOrEqual(1.75);
+    expect(farZMultiplierFor(3750, { ...view, pitch: 60 })!).toBeGreaterThan(m);
+  });
+
+  it('never asks past deck’s cap', () => {
+    expect(farZMultiplierFor(9000, { ...view, zoom: 17 })).toBe(10);
   });
 });

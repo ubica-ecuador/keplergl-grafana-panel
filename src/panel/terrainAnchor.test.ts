@@ -1,7 +1,9 @@
-import { IconLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
+import { TileLayer } from '@deck.gl/geo-layers';
+import { BitmapLayer, IconLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
 
 import { MarkerDrag } from './markerDrag';
 import { DraggableMarkersLayer } from './markersDeckLayer';
+import { RELIEF_DRAPE, reliefDrapeOf } from './reliefDrape';
 import {
   anchorToTerrain,
   cachedElevation,
@@ -127,5 +129,35 @@ describe('centreElevation', () => {
   it('reads the ground under the centre, or 0 without a centre', () => {
     expect(centreElevation(() => 2500, -79, -2.9)).toBe(2500);
     expect(centreElevation(() => 2500, undefined, -2.9)).toBe(0);
+  });
+});
+
+describe('anchorToTerrain, rasters', () => {
+  const tiles = () => new TileLayer({ id: 'xyz-layer', data: 'https://tiles/{z}/{x}/{y}.png' });
+  const keplerLayers = [{ id: 'xyz-layer', type: 'xyz-tiles' }];
+  const anchor = { centre: 2500, version: 3, elevationAt: () => 3000 };
+
+  it('lays a raster on the relief: the drape extension, its relief and the centre lowered', () => {
+    const [layer] = anchorToTerrain([tiles()], keplerLayers, anchor) as TileLayer[];
+    expect(layer.props.extensions).toContain(RELIEF_DRAPE);
+    expect((layer.props as { reliefDrape?: unknown }).reliefDrape).toBe(reliefDrapeOf(anchor));
+    expect(layer.props.modelMatrix).toEqual(terrainModelMatrix(2500));
+  });
+
+  it('keeps the extension on a flat map, told there is no relief, and no model matrix', () => {
+    const [layer] = anchorToTerrain([tiles()], keplerLayers, null) as TileLayer[];
+    expect(layer.props.extensions).toContain(RELIEF_DRAPE);
+    expect((layer.props as { reliefDrape?: unknown }).reliefDrape).toBeNull();
+    expect(layer.props.modelMatrix).toBeFalsy();
+  });
+
+  it('lays only the bitmap of kepler’s Image layer, not its handles', () => {
+    const image = new BitmapLayer({ id: 'img', bounds: [0, 0, 1, 1], image: 'x.png' });
+    const handles = new ScatterplotLayer({ id: 'img-handles', data: [] });
+    const [laid, left] = anchorToTerrain([image, handles], [{ id: 'img', type: 'bitmap' }], anchor) as Array<
+      BitmapLayer | ScatterplotLayer
+    >;
+    expect(laid.props.extensions).toContain(RELIEF_DRAPE);
+    expect(left).toBe(handles);
   });
 });
