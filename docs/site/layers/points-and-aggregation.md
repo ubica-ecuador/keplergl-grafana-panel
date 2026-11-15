@@ -147,8 +147,8 @@ labels and the filters are the hexagon layer's.
   that axis, which suits counts running from one to thousands per cell.
 
 Each point is placed once, at a fine level, and every coarser cell is its parent, so a zoom costs
-little. Placing is the slow part for A5, about 25,000 points a second; H3, S2 and geohash place
-hundreds of thousands. Cells far outside the view are not drawn until you pan towards them.
+little. Placing is the slow part for A5, about 130,000 points a second; H3, S2 and geohash place
+hundreds of thousands. Its A5 cells are A5 1.0's, the ids [a5](./geometry-and-indices#a5) reads. Cells far outside the view are not drawn until you pan towards them.
 
 Unlike [hexagonId](./geometry-and-indices#h3) and the other index layers, this one takes points:
 the cells are worked out in the browser. With more rows than the browser should receive, count in

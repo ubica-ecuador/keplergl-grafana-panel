@@ -6,6 +6,14 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **A5 cells are A5 1.0's in every layer.** kepler.gl 3.3.0-alpha.21 drew its A5 layer with a5-js
+  1.0, whose cell ids differ from 0.x's for the same cell, while the Cells layer placed its points
+  and deck.gl drew them with a5-js 0.10.1. The panel now asks for a5-js 1.0 and holds every copy of
+  the build to it, so the Cells layer, kepler's A5 layer and DuckDB's a5 extension (built for DuckDB
+  1.5.6 and later) read and write the same ids. A5 1.0 also places points about four times faster:
+  the Cells layer's A5 places about 130,000 a second, where it placed about 34,000. An id written by
+  A5 0.x (DuckDB's a5 extension for DuckDB 1.5.4 and earlier) lands elsewhere on the map;
+  `a5_migrate` renumbers it.
 - **Each query sets its own Trip layer shape and gazetteer.** Trip layer and Place names were panel
   options, one value for every query, so a map could not fold one trajectory query into paths and
   keep another's rows, or look one query's codes up among airports and another's among countries.

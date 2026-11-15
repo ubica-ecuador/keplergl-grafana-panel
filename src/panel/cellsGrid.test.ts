@@ -22,6 +22,13 @@ describe('cellsGrid', () => {
     expect(parentOf('geohash', geohashOf(QUITO.lat, QUITO.lng, 10), 5)).toBe(geohashOf(QUITO.lat, QUITO.lng, 5));
   });
 
+  it("numbers A5 cells as A5 1.0 does, the ids kepler's A5 layer and DuckDB's a5 extension use", () => {
+    // DuckDB 1.5.6's a5 extension: a5_lonlat_to_cell(-79.0, -2.9, 10) = 3391146197979758592. A5 0.x numbered the same
+    // cell 2955903420613001216, which A5 1.0 places in the Atlantic.
+    const fine = fineCellOf('a5', -2.9, -79.0);
+    expect(parentOf('a5', fine, 10)).toBe(3391146197979758592n);
+  });
+
   it('encodes geohash as the usual base 32', () => {
     // The textbook example: 57.64911, 10.40744 is u4pruydqqvj.
     expect(geohashOf(57.64911, 10.40744, 11)).toBe('u4pruydqqvj');

@@ -138,6 +138,20 @@ an A5 layer, and it draws nothing. Return the cell as its hexadecimal string ins
 `a5_u64_to_hex` in DuckDB — as the query above does.
 :::
 
+::: warning A5 1.0 cell ids
+The layer reads the ids of A5 1.0, as the [cells](./points-and-aggregation#cells) layer does. A5 0.x
+(a5-js 0.10 and earlier, and DuckDB's a5 extension built for DuckDB 1.5.4 and earlier) numbered the
+same cells differently: one of its ids lands elsewhere on the map, often an ocean away. DuckDB's a5
+extension writes 1.0 ids from DuckDB 1.5.6 on. Ids kept from before are renumbered with
+`a5_migrate` (`migrate` in a5-js 1.0):
+
+```sql
+SELECT a5_u64_to_hex(a5_migrate(a5_hex_to_u64(a5))) AS a5, readings
+FROM cells_from_before;
+```
+
+:::
+
 The controls are the same as GeoHash's. kepler ships no name for this layer type; the panel names it
 **A5** in the layer list.
 
