@@ -2,7 +2,8 @@
 
 A scan of Gaussian splats on each row's place: the photographic 3D a phone, a drone or a scanner captures of a room,
 a façade, a monument or a works site, trained into splats. Each row places one scan on the map, turned to the north
-and standing on the ground; a click flies to it, or puts the camera inside it at eye height.
+and standing on the ground; a click flies to it, or puts the camera inside it at eye height, and a card above it can
+show its readings.
 
 ::: info Since Plus 1.7.0
 The Gaussian Splats layer is new in Plus 1.7.0, not released yet.
@@ -104,8 +105,24 @@ up to 24.
 | **Nothing**                     | stays where it is                                                                          |
 
 **Stand inside** is for a room, a courtyard or a site seen as a visitor would. It is a place to look from, not a walk:
-the map moves as usual from there. On an object scanned from outside, the camera ends up inside the object. A click needs **Allow hover** on in
-the **Interaction** group; the popup shows the row's fields, as on any layer.
+the map moves as usual from there. On an object scanned from outside, the camera ends up inside the object. A click
+needs **Allow hover** on in the **Interaction** group; the popup shows the row's fields, as on any layer.
+
+## Cards
+
+The rows that share a scan's URL and its place are that scan's readings: a room's temperature every hour, a works
+site's progress every week. The scan is drawn once, and the **Cards** group (see [Cards on any layer](./cards)) shows
+a card above it with their series, its value at the map's instant and its alerts:
+
+```sql
+-- Each room's scan, with its air readings: one card per room, above its scan.
+SELECT r.name AS label, r.latitude, r.longitude, r.scan_url AS splat_url,
+       a.time, a.temperature
+FROM rooms r JOIN air a ON a.room = r.id
+WHERE a.time BETWEEN $__timeFrom() AND $__timeTo();
+```
+
+The card stands above the top of the scan once the scan has loaded.
 
 ## Picking a capture by time
 
