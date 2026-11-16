@@ -27,6 +27,7 @@ import { Geometry, Model } from '@luma.gl/engine';
 
 import { backToFront, needsResort } from './splatOrder';
 import { WORKER_SORT_THRESHOLD, workerSorter, type WorkerSorter } from './sortWorker';
+import { SH_GLSL, packSh } from './splatSh';
 import { COLOUR_PASS, DEPTH_PASS, layPicture, OPAQUE, passGeometry, pictureOf, releasePicture } from './splatPicture';
 import type { Splats } from './spz';
 
@@ -39,6 +40,8 @@ layout(std140) uniform gaussianSplatUniforms {
   highp int antialiased;
   highp int linearColors;
   float maxRadius;
+  highp int shDegree;
+  vec3 eye;
 } gaussianSplat;
 `;
 
@@ -51,6 +54,8 @@ const gaussianSplatUniforms = {
     antialiased: 'i32',
     linearColors: 'i32',
     maxRadius: 'f32',
+    shDegree: 'i32',
+    eye: 'vec3<f32>',
   },
 } as any;
 
@@ -66,6 +71,7 @@ in float instanceSplatIndex;
 
 uniform usampler2D splatCenters;
 uniform usampler2D splatShapes;
+${SH_GLSL}
 
 out vec4 vColor;
 out vec2 vOffset;
@@ -102,6 +108,13 @@ void main(void) {
   uvec4 b = texelFetch(splatShapes, texel, 0);
   vec3 center = uintBitsToFloat(a.xyz);
   vec4 color = unpackBytes(a.w);
+  // The colour that changes with the angle of view (splatSh.ts), seen from the eye in the splats' own space.
+  if (gaussianSplat.shDegree > 0) {
+    vec3 toSplat = center - gaussianSplat.eye;
+    if (dot(toSplat, toSplat) > 0.0) {
+      color.rgb = max(color.rgb + splatShColour(index, gaussianSplat.shDegree, normalize(toSplat)), vec3(0.0));
+    }
+  }
   vec3 scale = vec3(unpackHalf2x16(b.x), unpackHalf2x16(b.y).x);
   vec4 quaternion = vec4(unpackSnorm2x16(b.z), unpackSnorm2x16(b.w));
   float qLength = length(quaternion);
@@ -205,6 +218,10 @@ void main(void) {
 interface SplatGpu {
   centers: Texture;
   shapes: Texture;
+  /** The harmonics past degree 0 (splatSh.ts), or a 1×1 stand-in where there are none. */
+  sh: Texture;
+  /** Their degree on the GPU: 0 without them, or past the budget. */
+  shDegree: number;
   order: Buffer;
 }
 
@@ -233,6 +250,12 @@ export interface GaussianSplatLayerProps extends LayerProps {
   pictureGroup?: string | null;
   pictureFirst?: boolean;
   pictureLast?: boolean;
+  /**
+   * Draw the colour that changes with the angle of view, where the splats carry
+   * it (spherical harmonics past degree 0, splatSh.ts). On by default; off, each
+   * splat has its diffuse colour from every side.
+   */
+  viewDependentColor?: boolean;
 }
 
 /**
@@ -281,6 +304,7 @@ const defaultProps: DefaultProps<GaussianSplatLayerProps> = {
   pictureGroup: null,
   pictureFirst: true,
   pictureLast: true,
+  viewDependentColor: true,
 };
 
 /** A 4×4 column-major matrix inverted, or null if it has none. */
@@ -460,6 +484,7 @@ export class GaussianSplatLayer extends Layer<GaussianSplatLayerProps> {
     this.state.model?.destroy();
     this.state.gpu?.centers.destroy();
     this.state.gpu?.shapes.destroy();
+    this.state.gpu?.sh.destroy();
     this.state.gpu?.order.destroy();
     this.state.model = null;
     this.state.gpu = null;
@@ -497,6 +522,18 @@ export class GaussianSplatLayer extends Layer<GaussianSplatLayerProps> {
       mipmaps: false,
       sampler,
     } as any);
+    // The harmonics, within the GPU budget and the device's largest texture; else one colour a splat.
+    const maxTexture = Number((device as any).limits?.maxTextureDimension2D) || 8192;
+    const shPacked = splats.sh ? packSh(splats.sh, splats.count, maxTexture) : null;
+    const sh = device.createTexture({
+      id: `${this.id}-sh`,
+      format: 'rgba32uint',
+      width: shPacked?.width ?? 1,
+      height: shPacked?.height ?? 1,
+      data: shPacked?.data ?? new Uint32Array(4),
+      mipmaps: false,
+      sampler,
+    } as any);
     const order = new Float32Array(splats.count);
     for (let i = 0; i < splats.count; i++) {
       order[i] = i;
@@ -513,12 +550,12 @@ export class GaussianSplatLayer extends Layer<GaussianSplatLayerProps> {
       isInstanced: true,
       instanceCount: splats.count,
       attributes: { instanceSplatIndex: orderBuffer },
-      bindings: { splatCenters: centers, splatShapes: shapes },
+      bindings: { splatCenters: centers, splatShapes: shapes, splatSh: sh },
       parameters: MODEL_PARAMETERS,
     } as any);
     this.setState({
       model,
-      gpu: { centers, shapes, order: orderBuffer },
+      gpu: { centers, shapes, sh, shDegree: shPacked && splats.sh ? splats.sh.degree : 0, order: orderBuffer },
       textureWidth: packed.width,
       count: splats.count,
       order,
@@ -648,12 +685,16 @@ export class GaussianSplatLayer extends Layer<GaussianSplatLayerProps> {
       return;
     }
     this.resortIfMoved();
+    // The harmonics are read from the eye in the splats' own space, as the sort reads it.
+    const eye = this.props.viewDependentColor !== false && this.state.gpu?.shDegree ? this.eye() : null;
     model.shaderInputs.setProps({
       gaussianSplat: {
         textureWidth,
         antialiased: this.props.antialiasCompensation && this.props.splats?.antialiased ? 1 : 0,
         maxRadius: this.props.maxRadius ?? 1024,
         linearColors: this.props.linearColors ? 1 : 0,
+        shDegree: eye ? this.state.gpu!.shDegree : 0,
+        eye: eye ?? [0, 0, 0],
       },
     } as any);
     model.setInstanceCount(count);

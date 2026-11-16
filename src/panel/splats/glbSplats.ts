@@ -16,7 +16,7 @@
  * the tilesets in the wild still write.
  */
 
-import { decodeSpz, type Splats } from './spz';
+import { decodeSpz, shByte, type Splats, type SplatSh } from './spz';
 
 /** The extension a primitive of splats declares. */
 export const SPLAT_EXTENSION = 'KHR_gaussian_splatting';
@@ -252,8 +252,51 @@ function plainSplats(
     scales: scale.values,
     rotations: rotation.values,
     colors,
+    sh: plainSh(json, bin, attributes, count),
     antialiased: false,
   };
+}
+
+/**
+ * A primitive's harmonics past degree 0, from the extension's attributes
+ * (`KHR_gaussian_splatting:SH_DEGREE_l_COEF_n`, a vec3 each), up to the last
+ * degree it has whole; null without degree 1.
+ */
+function plainSh(
+  json: Record<string, any>,
+  bin: Uint8Array | null,
+  attributes: Record<string, number>,
+  count: number
+): SplatSh | null {
+  const degrees: Float32Array[][] = [];
+  for (let l = 1; l <= 3; l++) {
+    const coefficients: Float32Array[] = [];
+    for (let n = 0; n < 2 * l + 1; n++) {
+      const read = readAccessor(json, bin, attributes[`${SPLAT_EXTENSION}:SH_DEGREE_${l}_COEF_${n}`]);
+      if (!read || read.size !== 3 || read.values.length !== count * 3) {
+        break;
+      }
+      coefficients.push(read.values);
+    }
+    if (coefficients.length !== 2 * l + 1) {
+      break;
+    }
+    degrees.push(coefficients);
+  }
+  if (degrees.length === 0) {
+    return null;
+  }
+  const all = degrees.flat();
+  const perSplat = all.length * 3;
+  const bytes = new Uint8Array(count * perSplat);
+  for (let i = 0; i < count; i++) {
+    all.forEach((values, j) => {
+      for (let c = 0; c < 3; c++) {
+        bytes[i * perSplat + j * 3 + c] = shByte(values[i * 3 + c]);
+      }
+    });
+  }
+  return { degree: degrees.length as 1 | 2 | 3, coefficients: bytes };
 }
 
 /**

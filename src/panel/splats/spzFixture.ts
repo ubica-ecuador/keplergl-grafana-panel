@@ -13,6 +13,8 @@ export interface PlainSplat {
   /** 0 to 1. */
   color: [number, number, number];
   opacity: number;
+  /** Optional harmonics past degree 0: for each coefficient, red, green, blue, each in ±1. */
+  sh?: number[];
 }
 
 const COLOR_SCALE = 0.15;
@@ -53,16 +55,20 @@ function firstThree(q: [number, number, number, number]): number[] {
   return [0, 1, 2].map((i) => toByte(r[i] * sign + 127.5));
 }
 
-/** An inflated SPZ stream of these splats, version 2 or 3, with no spherical harmonics past degree 0. */
-export function packSpz(splats: PlainSplat[], { version = 3, flags = 0, fractionalBits = 12 } = {}): Uint8Array {
+/** An inflated SPZ stream of these splats, version 2 or 3, with harmonics of `shDegree` (0: none past degree 0). */
+export function packSpz(
+  splats: PlainSplat[],
+  { version = 3, flags = 0, fractionalBits = 12, shDegree = 0 } = {}
+): Uint8Array {
   const n = splats.length;
   const rotationBytes = version >= 3 ? 4 : 3;
-  const bytes = new Uint8Array(16 + n * (9 + 1 + 3 + 3 + rotationBytes));
+  const shBytes = ((shDegree + 1) * (shDegree + 1) - 1) * 3;
+  const bytes = new Uint8Array(16 + n * (9 + 1 + 3 + 3 + rotationBytes + shBytes));
   const view = new DataView(bytes.buffer);
   view.setUint32(0, 0x5053474e, true);
   view.setUint32(4, version, true);
   view.setUint32(8, n, true);
-  view.setUint8(12, 0);
+  view.setUint8(12, shDegree);
   view.setUint8(13, fractionalBits);
   view.setUint8(14, flags);
   let at = 16;
@@ -91,6 +97,11 @@ export function packSpz(splats: PlainSplat[], { version = 3, flags = 0, fraction
   for (const s of splats) {
     for (const b of version >= 3 ? smallestThree(s.rotation) : firstThree(s.rotation)) {
       bytes[at++] = b;
+    }
+  }
+  for (const s of splats) {
+    for (let k = 0; k < shBytes; k++) {
+      bytes[at++] = toByte((s.sh?.[k] ?? 0) * 128 + 128);
     }
   }
   return bytes;

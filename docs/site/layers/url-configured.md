@@ -180,8 +180,11 @@ the `tileset.json`.
   it still hides it.
 - A large scan (100,000 splats and up) is sorted in a Web Worker, so dragging the map does not
   stutter; where the page cannot start one, it is sorted on the main thread.
-- The colour is the splat's own, the same from every side: the view-dependent shine a splat can
-  carry (its spherical harmonics past the first) is not drawn.
+- The colour changes with the angle each splat is seen from, as the scan was trained, where its
+  tiles carry it (spherical harmonics up to degree 3): a shine on metal or glass, a wall lit from
+  one side. Some tilers write the harmonics' degree with every coefficient at zero; those scans
+  keep one colour a splat, from every side. A scan whose harmonics would take more than 256 MB of
+  the graphics card's memory keeps one colour too.
 - A splat scan looks right from where it was captured. One captured by drone, seen from the street,
   shows its ground edge-on, thin, and the base map through it.
 - Splats cannot be hovered or clicked.

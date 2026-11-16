@@ -14,8 +14,8 @@
  *
  * The values are taken as the glTF primitive's own: the positions of Esri's
  * tiles match the bounds their accessors state, so no axis is turned here.
- * Spherical harmonics past degree 0 are skipped: a splat keeps its diffuse
- * colour, as the glTF extension allows a renderer to do.
+ * The spherical harmonics past degree 0, the colour that changes with the
+ * angle of view, are kept as SPZ stores them (`SplatSh`).
  */
 
 /** Splats as the layer draws them. */
@@ -30,10 +30,26 @@ export interface Splats {
   /** Red, green, blue (the diffuse colour) and opacity, 0 to 255. */
   colors: Uint8Array;
   /**
+   * The spherical harmonics past degree 0, the colour that changes with the
+   * angle of view; absent, each splat has one colour from every side.
+   */
+  sh?: SplatSh | null;
+  /**
    * Trained with a screen-space filter (SPZ's antialiased flag, Mip-Splatting):
    * the drawing scales each opacity by what the 2D blur it adds takes away.
    */
   antialiased: boolean;
+}
+
+/**
+ * A set of splats' spherical harmonics past degree 0, as SPZ stores them: for
+ * each splat, for each coefficient (degree 1's three, then degree 2's five,
+ * then degree 3's seven, each in the basis order of 3D Gaussian Splatting),
+ * red, green and blue, each a byte b standing for (b − 128) / 128.
+ */
+export interface SplatSh {
+  degree: 1 | 2 | 3;
+  coefficients: Uint8Array;
 }
 
 const MAGIC = 0x5053474e; // 'NGSP'
@@ -46,7 +62,7 @@ const SH_C0 = 0.28209479177387814;
 const SQRT1_2 = Math.SQRT1_2;
 
 /** Spherical harmonic coefficients per colour channel past degree 0. */
-function shDim(degree: number): number {
+export function shDim(degree: number): number {
   return (degree + 1) * (degree + 1) - 1;
 }
 
@@ -115,8 +131,27 @@ function firstThree(bytes: Uint8Array, offset: number, out: Float32Array, at: nu
   out[at + 3] = Math.sqrt(Math.max(0, 1 - x * x - y * y - z * z));
 }
 
+/** A spherical harmonic coefficient as SPZ stores it in a byte: (b − 128) / 128, clamped to ±1. */
+export function shByte(value: number): number {
+  return Math.max(0, Math.min(255, Math.round(value * 128 + 128)));
+}
+
 function clampByte(value: number): number {
   return value <= 0 ? 0 : value >= 255 ? 255 : Math.round(value);
+}
+
+/** Each splat's harmonics up to degree 3, from the SPZ's own (degree 4's coefficients, if any, left out). */
+function shOf(raw: Uint8Array, offset: number, count: number, degree: number): Uint8Array {
+  const stored = shDim(degree) * 3;
+  const kept = shDim(Math.min(degree, 3)) * 3;
+  if (stored === kept) {
+    return raw.slice(offset, offset + count * stored);
+  }
+  const out = new Uint8Array(count * kept);
+  for (let i = 0; i < count; i++) {
+    out.set(raw.subarray(offset + i * stored, offset + i * stored + kept), i * kept);
+  }
+  return out;
 }
 
 /** An inflated SPZ stream, read into splats. Throws on anything it cannot read. */
@@ -177,8 +212,13 @@ export function parseSpz(raw: Uint8Array): Splats {
   for (let i = 0; i < count; i++, offset += rotationBytes) {
     unpack(raw, offset, rotations, i * 4);
   }
+  // The higher harmonics, already in the layout the layer reads: copied as they are.
+  const sh: SplatSh | null =
+    shDegree > 0
+      ? { degree: Math.min(shDegree, 3) as 1 | 2 | 3, coefficients: shOf(raw, offset, count, shDegree) }
+      : null;
 
-  return { count, positions, scales, rotations, colors, antialiased: (flags & FLAG_ANTIALIASED) !== 0 };
+  return { count, positions, scales, rotations, colors, sh, antialiased: (flags & FLAG_ANTIALIASED) !== 0 };
 }
 
 /** SPZ bytes, gzipped (as the glTF extension carries them) or already inflated, read into splats. */

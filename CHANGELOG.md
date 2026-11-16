@@ -4,6 +4,16 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## Unreleased
+
+- **Gaussian splats change colour with the angle they are seen from.** The spherical harmonics past
+  degree 0 that a splat carries, up to degree 3, were read and dropped: each splat had one colour
+  from every side, losing the shine and tint the scan was trained with. They are now drawn, the
+  harmonics read from SPZ and from glTF's plain attributes, summed in the vertex shader along the
+  direction from the eye, in the splats' own space. A scan whose harmonics would take more than
+  256 MB of GPU memory keeps one colour a splat. The splat layer's `viewDependentColor` (on by
+  default) turns them off.
+
 ## 1.10.1 (2026-11-16)
 
 - **The opacity of a tileset of splats.** A 3D Tile layer of Gaussian splats under an opacity of 1
