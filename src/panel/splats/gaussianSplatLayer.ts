@@ -111,10 +111,12 @@ vec4 unpackBytes(uint v) {
   return vec4(float(v & 255u), float((v >> 8u) & 255u), float((v >> 16u) & 255u), float(v >> 24u)) / 255.0;
 }
 
-// Inside the box of a finer tile drawn over this one: that tile shows this ground instead.
+// Inside the box of a finer tile drawn over this one: that tile shows this ground instead. The box is
+// taken 5 % smaller, so the two overlap in a thin band at its edge rather than leave a gap: a finer tile's
+// splats thin out towards the edge of its box.
 bool inBox(vec3 p, vec3 centre, mat3 inverse) {
   vec3 q = inverse * (p - centre);
-  return max(max(abs(q.x), abs(q.y)), abs(q.z)) <= 1.0;
+  return max(max(abs(q.x), abs(q.y)), abs(q.z)) <= 0.95;
 }
 
 bool replaced(vec3 p) {
@@ -262,10 +264,9 @@ export interface GaussianSplatLayerProps extends LayerProps {
   /**
    * For splats trained with the screen-space filter (SPZ's antialiased flag),
    * scale each opacity by what the 0.3 px² blur takes away, as Mip-Splatting
-   * and gsplat's "antialiased" mode render. Off by default: CesiumJS does not,
-   * and on Esri's Portcoast tiles (flagged antialiased) it dimmed every
-   * sub-pixel splat of the coarser levels into a grey haze that Esri's own
-   * viewer does not show.
+   * and gsplat's "antialiased" mode render. Off by default, as CesiumJS has it;
+   * to be tried again on Esri's tiles (flagged antialiased): it was judged
+   * while kepler's blending still overrode the layer's.
    */
   antialiasCompensation?: boolean;
   /**
@@ -278,6 +279,42 @@ export interface GaussianSplatLayerProps extends LayerProps {
   onFirstDraw?: () => void;
 }
 
+/**
+ * How splats are blended: premultiplied colour over what is behind (source
+ * factor one), depth tested but never written. Under both naming schemes deck
+ * reads, because kepler hands every layer its own, in WebGL's names
+ * (`blendFunc` SRC_ALPHA for "normal" blending, `depthTest`, and `depthMask`
+ * in 3D), which won over luma's names given alone: each colour was multiplied
+ * by its alpha twice (the splats came out dark) and every ellipse wrote depth
+ * and cut away the ones behind it (scales where a surface should be).
+ */
+export const SPLAT_PARAMETERS = {
+  // luma.gl's names
+  depthWriteEnabled: false,
+  depthCompare: 'less-equal',
+  blend: true,
+  blendColorSrcFactor: 'one',
+  blendColorDstFactor: 'one-minus-src-alpha',
+  blendColorOperation: 'add',
+  blendAlphaSrcFactor: 'one',
+  blendAlphaDstFactor: 'one-minus-src-alpha',
+  blendAlphaOperation: 'add',
+  cullMode: 'none',
+  // WebGL's names, as kepler gives them (ONE, ONE_MINUS_SRC_ALPHA, FUNC_ADD, LEQUAL)
+  depthMask: false,
+  depthTest: true,
+  depthFunc: 0x0203,
+  blendFunc: [1, 0x0303, 1, 0x0303],
+  blendEquation: [0x8006, 0x8006],
+} as const;
+
+/** The same, in luma.gl's names only, for the model itself. */
+const MODEL_PARAMETERS = Object.fromEntries(
+  Object.entries(SPLAT_PARAMETERS).filter(
+    ([key]) => !['depthMask', 'depthTest', 'depthFunc', 'blendFunc', 'blendEquation'].includes(key)
+  )
+);
+
 const defaultProps: DefaultProps<GaussianSplatLayerProps> = {
   splats: { type: 'object', value: null, compare: true } as any,
   maxRadius: { type: 'number', min: 1, value: 1024 },
@@ -285,18 +322,7 @@ const defaultProps: DefaultProps<GaussianSplatLayerProps> = {
   antialiasCompensation: false,
   replaced: { type: 'object', value: null, compare: false } as any,
   onFirstDraw: { type: 'function', value: () => {}, optional: true } as any,
-  parameters: {
-    depthWriteEnabled: false,
-    depthCompare: 'less-equal',
-    blend: true,
-    blendColorSrcFactor: 'one',
-    blendColorDstFactor: 'one-minus-src-alpha',
-    blendColorOperation: 'add',
-    blendAlphaSrcFactor: 'one',
-    blendAlphaDstFactor: 'one-minus-src-alpha',
-    blendAlphaOperation: 'add',
-    cullMode: 'none',
-  } as any,
+  parameters: SPLAT_PARAMETERS as any,
 };
 
 /** The most boxes of finer tiles a layer leaves out. */
@@ -535,6 +561,7 @@ export class GaussianSplatLayer extends Layer<GaussianSplatLayerProps> {
       instanceCount: splats.count,
       attributes: { instanceSplatIndex: orderBuffer },
       bindings: { splatCenters: centers, splatShapes: shapes },
+      parameters: MODEL_PARAMETERS,
     } as any);
     this.setState({
       model,

@@ -10,7 +10,7 @@
  * tiles behind it. Within a tile, the layer sorts its own splats.
  */
 
-import { GaussianSplatLayer, MAX_REPLACED, invert } from './gaussianSplatLayer';
+import { GaussianSplatLayer, MAX_REPLACED, SPLAT_PARAMETERS, invert } from './gaussianSplatLayer';
 import { multiply, type SplatChunk } from './glbSplats';
 
 /** What this module reads of a loaders.gl tile. */
@@ -55,6 +55,8 @@ export function splatTileLayers(
         coordinateOrigin: cartographicOrigin ? Array.from(cartographicOrigin) : [0, 0, 0],
         modelMatrix: multiply(placed, chunk.matrix),
         pickable: false,
+        // Over whatever kepler hands its sublayers (see SPLAT_PARAMETERS).
+        parameters: { ...((subLayerProps.parameters as object) ?? {}), ...SPLAT_PARAMETERS },
         onFirstDraw: markDrawn,
       } as any)
   );
