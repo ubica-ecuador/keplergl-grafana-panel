@@ -108,9 +108,29 @@ up to 24.
 | **Stand inside, at eye height** | stands at the scan's middle, **Eye height (m)** over its floor (1.6), tilted to look level |
 | **Nothing**                     | stays where it is                                                                          |
 
-**Stand inside** is for a room, a courtyard or a site seen as a visitor would. It is a place to look from, not a walk:
-the map moves as usual from there. On an object scanned from outside, the camera ends up inside the object. A click
-needs **Allow hover** on in the **Interaction** group; the popup shows the row's fields, as on any layer.
+**Stand inside** is for a room, a courtyard or a site seen as a visitor would. On an object scanned from outside, the
+camera ends up inside the object. A click needs **Allow hover** on in the **Interaction** group; the popup shows the
+row's fields, as on any layer.
+
+## Walking through a scan
+
+With **Walk with the keyboard** on (the **Camera** group, on by default), the keyboard moves the camera while the
+pointer is over the map:
+
+| Keys             | The camera                                 |
+| ---------------- | ------------------------------------------ |
+| **W S**, **↑ ↓** | walks ahead and back, along where it looks |
+| **A D**          | steps aside                                |
+| **Q E**, **← →** | turns about where it stands                |
+| **R F**          | rises and sinks, never under the ground    |
+| **Shift**        | runs, four times as fast                   |
+
+It walks at a person's pace, 1.4 m a second, at the height it stands, and faster the higher it is (a fifth of its
+height a second), so the same keys cross a site seen from a drone. The tilt is kept: **Stand inside** first, or tilt
+the map, to walk at eye level. W A S D are read where they sit on the keyboard, whatever its layout. While the pointer
+is over the map, these keys are the walk's: Grafana's shortcuts (`e` to edit a panel, and the rest) and the map's own
+arrow keys wait until it leaves. With the camera at the map's [Maximum zoom](/guide/kepler/map-settings#how-close-you-can-zoom),
+it stands no lower than that zoom allows.
 
 ## Cards
 
