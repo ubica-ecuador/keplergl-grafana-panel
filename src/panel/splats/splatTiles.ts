@@ -11,6 +11,7 @@
  */
 
 import { GaussianSplatLayer, MAX_REPLACED, SPLAT_PARAMETERS, invert } from './gaussianSplatLayer';
+import { cartographicOf, isIdentity } from '../tile3dAltitude';
 import { multiply, type SplatChunk } from './glbSplats';
 
 /** What this module reads of a loaders.gl tile. */
@@ -77,6 +78,89 @@ function distanceOf(layer: any, viewport: ViewportLike | null | undefined): numb
   const [x, y, z] = viewport.projectPosition(Array.from(origin as ArrayLike<number>));
   return Math.hypot(x - camera[0], y - camera[1], (z ?? 0) - camera[2]);
 }
+
+/** glTF's y up turned to 3D Tiles' z up, as loaders.gl turns a glTF tile (`rotateX(π/2)`), column-major. */
+const Y_UP_TO_Z_UP = [1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1];
+
+/** Splats sampled per tile for its base. */
+const BASE_SAMPLE = 4096;
+
+/** The share of a tile's splats taken to lie below its ground: strays under the surface. */
+const BASE_PERCENTILE = 0.02;
+
+/**
+ * How high above the ellipsoid a splat tile's lowest splats stand: the 2nd
+ * percentile of the heights of a sample of them, placed by the tile's own
+ * transforms as its tileset states them (`transform` down the tree, the glTF's
+ * y up turned z up, the node's matrix), not by the matrices the panel moves
+ * when it puts a tileset on the ground, so the answer does not follow the move.
+ * Null for a tile with no splats or no transform to place them by.
+ */
+export function splatTileBase(tile: any): number | null {
+  const chunks: SplatChunk[] | undefined = tile?.content?.splats;
+  if (!Array.isArray(chunks) || chunks.length === 0) {
+    return null;
+  }
+  let placed: number[] = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+  const chain: any[] = [];
+  for (let link = tile; link; link = link.parent) {
+    chain.unshift(link);
+  }
+  let transformed = false;
+  for (const link of chain) {
+    const transform = link.transform ?? link.header?.transform;
+    if (transform && transform.length >= 16 && !isIdentity(transform)) {
+      placed = multiply(placed, Array.from(transform as ArrayLike<number>));
+      transformed = true;
+    }
+  }
+  if (!transformed) {
+    return null;
+  }
+  if ((tile.content.gltfUpAxis ?? 'Y') === 'Y') {
+    placed = multiply(placed, Y_UP_TO_Z_UP);
+  }
+  const heights: number[] = [];
+  for (const chunk of chunks) {
+    const m = multiply(placed, chunk.matrix);
+    const { count, positions } = chunk.splats;
+    const step = Math.max(1, Math.floor((count * chunks.length) / BASE_SAMPLE));
+    for (let i = 0; i < count; i += step) {
+      const [x, y, z] = [positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]];
+      const ecef = [0, 1, 2].map((r) => m[r] * x + m[4 + r] * y + m[8 + r] * z + m[12 + r]);
+      heights.push(cartographicOf(ecef)[2]);
+    }
+  }
+  if (heights.length === 0) {
+    return null;
+  }
+  heights.sort((a, b) => a - b);
+  return heights[Math.floor(heights.length * BASE_PERCENTILE)];
+}
+
+/**
+ * Lowers the base a tileset of splats is grounded by to a newly loaded tile's,
+ * if it lies lower. True when it moved: the layer is to be updated, and the
+ * tileset put on the ground again.
+ */
+export function noteSplatBase(tileset: { splatBase?: number | null } | null | undefined, tile: any): boolean {
+  if (!tileset || !tile || noted.has(tile)) {
+    return false;
+  }
+  noted.add(tile);
+  const base = splatTileBase(tile);
+  if (base === null || !Number.isFinite(base)) {
+    return false;
+  }
+  const current = tileset.splatBase;
+  if (typeof current === 'number' && base >= current - 0.5) {
+    return false;
+  }
+  tileset.splatBase = base;
+  return true;
+}
+
+const noted = new WeakSet<object>();
 
 /** WGS 84. */
 const A = 6378137;

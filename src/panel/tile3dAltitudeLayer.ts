@@ -68,7 +68,7 @@ import {
   type VolumeTileLike,
 } from './tile3dBuildings';
 import { servesTiles3D, sturdyLoader } from './tile3dLoader';
-import { isSplatTile, orderSplatLayers, splatTileLayers, type SplatTileLike } from './splats/splatTiles';
+import { isSplatTile, noteSplatBase, orderSplatLayers, splatTileLayers, type SplatTileLike } from './splats/splatTiles';
 
 /** The knobs, in the shape `registerVisConfig` takes. */
 export const TILE3D_ALTITUDE_VIS_CONFIGS = {
@@ -473,6 +473,10 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
     /** A tile of Gaussian splats gets splat layers (`splats/splatTiles.ts`); any other, deck's own. */
     _getSubLayer(tileHeader: SplatTileLike, oldLayer?: unknown): unknown {
       if (isSplatTile(tileHeader)) {
+        // A tileset of splats is grounded by its splats (`baseAltitude`): a lower base moves it again.
+        if (noteSplatBase(this.state?.tileset3d, tileHeader)) {
+          this.setNeedsUpdate?.();
+        }
         return splatTileLayers(
           tileHeader,
           String(this.props.id),

@@ -1,5 +1,14 @@
 import { GaussianSplatLayer, invert, packSplats, toHalf } from './gaussianSplatLayer';
-import { enuToEcef, isSplatTile, orderSplatLayers, replacedBoxes, splatTileLayers } from './splatTiles';
+import { baseAltitude } from '../tile3dAltitude';
+import {
+  enuToEcef,
+  isSplatTile,
+  noteSplatBase,
+  orderSplatLayers,
+  replacedBoxes,
+  splatTileBase,
+  splatTileLayers,
+} from './splatTiles';
 import type { Splats } from './spz';
 
 const SPLATS: Splats = {
@@ -148,5 +157,67 @@ describe('one level of detail at a time', () => {
     const out = ordered.find((l) => l.id === coarse.id)!;
     expect(out.props.replaced).toHaveLength(12);
     expect(ordered.find((l) => l.id === fine.id)!.props.replaced ?? null).toBeNull();
+  });
+});
+
+describe('a tileset of splats grounded by its splats', () => {
+  /** A tile placed east-north-up at Portcoast, 21 m under the ellipsoid, with splats from 0 to 10 m up in glTF's y and a few strays 50 m down. */
+  function placedTile(height = -21) {
+    const count = 1000;
+    const positions = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      positions[i * 3] = (i % 37) - 18;
+      positions[i * 3 + 1] = i < 10 ? -50 : ((i * 7) % 100) / 10;
+      positions[i * 3 + 2] = (i % 23) - 11;
+    }
+    const splats = { ...SPLATS, count, positions };
+    return {
+      id: 't',
+      transform: enuToEcef(108.8, 15.39, height),
+      content: { splats: [{ splats, matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] }], gltfUpAxis: 'Y' },
+    } as any;
+  }
+
+  it('finds the ground under the splats, past a few strays below it', () => {
+    const base = splatTileBase(placedTile())!;
+    expect(base).toBeGreaterThan(-21.5);
+    expect(base).toBeLessThan(-20.5);
+  });
+
+  it('reads the tile as its tileset states it, whatever the panel has moved since', () => {
+    const tile = placedTile();
+    // What grounding changes: the tileset's model matrix and the content's matrices, not the tree's transforms.
+    tile.tileset = { modelMatrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 100, 200, 300, 1] };
+    tile.content.modelMatrix = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 9, 9, 9, 1];
+    expect(splatTileBase(tile)).toBeCloseTo(splatTileBase(placedTile())!, 6);
+  });
+
+  it('only ever lowers the base, and the base grounds the tileset', () => {
+    const tileset: any = {
+      cartographicCenter: [108.8, 15.39, 900],
+      root: { header: { boundingVolume: { box: [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 933] } } },
+    };
+    expect(noteSplatBase(tileset, placedTile(-21))).toBe(true);
+    expect(noteSplatBase(tileset, placedTile(-10))).toBe(false);
+    expect(noteSplatBase(tileset, placedTile(-30))).toBe(true);
+    expect(tileset.splatBase).toBeLessThan(-29.5);
+    // Not 900 − 933 from the loose box.
+    expect(baseAltitude(tileset)).toBe(tileset.splatBase);
+  });
+
+  it('leaves a tileset where it is while its only box lies along the axes of ECEF', () => {
+    // Esri's Portcoast root: a box along ECEF's axes, 933 m along Z, at 15° N.
+    const esri: any = {
+      cartographicCenter: [108.8, 15.39, -22],
+      root: { header: { boundingVolume: { box: [-1981945, 5822908, 1681477, 529, 0, 0, 0, 359, 0, 0, 0, 933] } } },
+    };
+    expect(baseAltitude(esri)).toBeNull();
+    // A box whose third axis points up there keeps its half-height.
+    const up = enuToEcef(108.8, 15.39, 0).slice(8, 11);
+    const upright: any = {
+      cartographicCenter: [108.8, 15.39, 100],
+      root: { header: { boundingVolume: { box: [0, 0, 0, 50, 0, 0, 0, 50, 0, ...up.map((v) => v * 30)] } } },
+    };
+    expect(baseAltitude(upright)).toBeCloseTo(70, 6);
   });
 });

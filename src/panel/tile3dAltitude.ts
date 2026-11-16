@@ -93,6 +93,11 @@ export interface TilesetLike {
   tiles?: readonly TileLike[] | null;
   /** Tileset3D's own: nothing asked for is still loading. */
   isLoaded?(): boolean;
+  /**
+   * Ours, for a tileset of Gaussian splats: the height above the ellipsoid of
+   * its lowest splats, read from the tiles loaded so far (`splats/splatTiles.ts`).
+   */
+  splatBase?: number | null;
 }
 
 type Vec3 = [number, number, number];
@@ -131,7 +136,7 @@ export function upAt(longitude: number, latitude: number): Vec3 {
 }
 
 /** An identity matrix says nothing about where up is. loaders.gl hands one to every tile without a transform. */
-function isIdentity(matrix: ArrayLike<number>): boolean {
+export function isIdentity(matrix: ArrayLike<number>): boolean {
   for (let i = 0; i < 16; i++) {
     if (Math.abs((matrix[i] ?? Number.NaN) - (i % 5 === 0 ? 1 : 0)) > 1e-12) {
       return false;
@@ -662,6 +667,12 @@ export function baseAltitude(tileset: TilesetLike | null | undefined): number | 
   if (spansTooWide(tileset)) {
     return null;
   }
+  // Splats say where their ground is better than any bounding volume: Esri's
+  // root boxes are drawn along ECEF's axes, hundreds of metres loose, and
+  // grounding by one lifted its splats some 950 m off the map.
+  if (typeof tileset?.splatBase === 'number' && Number.isFinite(tileset.splatBase)) {
+    return tileset.splatBase;
+  }
   const boundingVolume = tileset?.root?.header?.boundingVolume;
 
   const region = boundingVolume?.region;
@@ -673,7 +684,33 @@ export function baseAltitude(tileset: TilesetLike | null | undefined): number | 
   if (!centre || centre.length < 3 || !Number.isFinite(centre[2])) {
     return null;
   }
+  if (!boxStandsUp(boundingVolume?.box, centre, hasOwnTransform(tileset?.root))) {
+    return null;
+  }
   return centre[2] - halfHeight(boundingVolume);
+}
+
+/**
+ * Whether a root box's third half-axis points up where it stands, so that its
+ * length is the half-height `halfHeight` takes it for. A box in metres round
+ * the tileset's own origin is taken to (its frame is the tileset's to choose);
+ * one written straight in ECEF must point along the ellipsoid's normal. Esri's
+ * roots are boxes along ECEF's own axes, hundreds of metres loose: grounded by
+ * one, a site by the sea was lifted some 950 m over the camera, and nothing in
+ * it was ever asked for. Such a box says nothing of where the ground is.
+ */
+function boxStandsUp(box: ArrayLike<number> | undefined, centre: ArrayLike<number>, ownFrame: boolean): boolean {
+  if (!box || box.length < 12 || ownFrame) {
+    return true;
+  }
+  const length = Math.hypot(box[9], box[10], box[11]);
+  if (!(length > 0)) {
+    return true;
+  }
+  const longitude = (centre[0] * Math.PI) / 180;
+  const latitude = (centre[1] * Math.PI) / 180;
+  const up = [Math.cos(latitude) * Math.cos(longitude), Math.cos(latitude) * Math.sin(longitude), Math.sin(latitude)];
+  return Math.abs(box[9] * up[0] + box[10] * up[1] + box[11] * up[2]) / length > 0.99;
 }
 
 /** The knobs this feature adds to a 3D tile layer's `visConfig`. */
