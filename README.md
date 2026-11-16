@@ -97,8 +97,10 @@ different and why.
   Liberty, Dark, Fiord — with no key at all; CARTO's three, asked for without a key (their raster
   tiles carry a watermark without one since 23 Sep 2026); and Esri's three — flat satellite imagery,
   plus satellite and topographic with **real elevation**: tilt the camera and the ground has relief.
-  Topographic exists only in this relief form; there is no flat version. Every one can be swapped for
-  a self-hosted `style.json`; kepler's icon library ships with the plugin.
+  Topographic exists only in this relief form; there is no flat version. And a nautical chart, Open
+  Waters' **Seamap**: OpenStreetMap's seamarks over depths, with switches of its own (not for
+  navigation). Every one can be swapped for a self-hosted `style.json`; kepler's icon library ships
+  with the plugin.
 
 > **Esri's terms of use.** The satellite and topographic imagery come from Esri's public
 > `services.arcgisonline.com` endpoint, whose terms ask for an ArcGIS account for production use.
@@ -177,7 +179,7 @@ blocks the base map. MapLibre fetches styles, sprites, glyphs and tiles over XHR
 under that directive:
 
 ```ini
-content_security_policy_template = """...connect-src 'self' grafana.com https://tiles.openfreemap.org https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com ...;"""
+content_security_policy_template = """...connect-src 'self' grafana.com https://tiles.openfreemap.org https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com https://tiles.openwaters.io https://tiles.versatiles.org ...;"""
 ```
 
 If your template also sets `worker-src`, it has to allow `'self'`: MapLibre's worker is a file served
@@ -189,8 +191,8 @@ No code is fetched from a CDN at runtime. The decoders that 3D tiles, glTF and P
 starting workers from unpkg.com.
 
 Each host serves only what its name suggests: OpenFreeMap the five default base maps, CARTO its
-three, Esri the satellite and topographic ones, and Mapterhorn the elevation tiles behind the two
-relief styles. Leave out the ones you never use — or point **Base map** at infrastructure of your
+three, Esri the satellite and topographic ones, Mapterhorn the elevation tiles behind the two
+relief styles, and Open Waters and VersaTiles the Seamap chart. Leave out the ones you never use — or point **Base map** at infrastructure of your
 own and skip this entirely. A raster tile server, if you set one, is the one host more.
 
 > **The raster tile server.** A query that returns a COG or a Zarr store is drawn by a tile server,

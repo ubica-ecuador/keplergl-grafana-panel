@@ -87,9 +87,10 @@ What replaces them:
   asked for without a key.
 - kepler's "No Basemap" entry, re-added deliberately — replacing the list would otherwise drop it.
 - Esri satellite and topographic, and two relief styles, as the plugin's own style documents.
+- Open Waters' Seamap, a nautical chart, with Seamarks and Depths switches of its own.
 - A self-hosted `style.json`, when configured.
 
-The OpenFreeMap and CARTO thumbnails ship with the plugin, rendered once from each style, rather
+The OpenFreeMap, CARTO and Seamap thumbnails ship with the plugin, rendered once from each style, rather
 than kepler's bundled images: pointing `cdnUrl` at the plugin left every base map thumbnail
 requesting a file the plugin does not ship, and CARTO's raster tiles carry a watermark without a key.
 The Esri thumbnails are real tiles from the service.

@@ -7,6 +7,7 @@ export type LayerGroup = (typeof DEFAULT_LAYER_GROUPS)[number];
 export interface StyleLayer {
   id: string;
   type?: string;
+  source?: string;
   'source-layer'?: string;
 }
 
@@ -29,9 +30,13 @@ export function caseInsensitive(group: LayerGroup): LayerGroup {
   } as LayerGroup;
 }
 
-/** A point of interest in the OpenMapTiles schema: a symbol of the `poi` source layer. */
+/**
+ * A point of interest: a symbol of the `poi` source layer (OpenMapTiles) or of
+ * `pois` (Shortbread, which VersaTiles serves and Open Waters' Seamap draws on).
+ */
 export function isPointOfInterest(layer: StyleLayer): boolean {
-  return layer.type?.toLowerCase() === 'symbol' && layer['source-layer']?.toLowerCase() === 'poi';
+  const sourceLayer = layer['source-layer']?.toLowerCase();
+  return layer.type?.toLowerCase() === 'symbol' && (sourceLayer === 'poi' || sourceLayer === 'pois');
 }
 
 /**
@@ -98,6 +103,74 @@ export const STYLE_LAYER_GROUPS: LayerGroup[] = DEFAULT_LAYER_GROUPS.map(caseIns
       return [group];
   }
 });
+
+/**
+ * A seamark of Open Waters' Seamap: a buoy, beacon, light and its sectors, a
+ * hazard, a traffic lane, a ferry route… the `seamark` and `light` layers of
+ * its `seamap` source. Its sea area names and its own land outline stay out.
+ */
+export function isSeamark(layer: StyleLayer): boolean {
+  const sourceLayer = layer['source-layer'];
+  return layer.source === 'seamap' && (sourceLayer === 'seamark' || sourceLayer === 'light');
+}
+
+/**
+ * The sea floor of Open Waters' Seamap: shaded depths, depth areas, contours
+ * and soundings, all from its `seascape-*` sources (Open Waters' Seascape
+ * bathymetry).
+ */
+export function isDepth(layer: StyleLayer): boolean {
+  return layer.source?.startsWith('seascape') ?? false;
+}
+
+/**
+ * The Seamarks switch. kepler's label group catches every symbol, so buoys and
+ * lights went with the street names, while light sectors and traffic lanes,
+ * lines, had no switch at all. Seamarks can go on top of the data, as labels
+ * can. Named through `mapLayers.seamarks` in `localeMessages.ts`.
+ */
+export const SEAMARKS_LAYER_GROUP = {
+  slug: 'seamarks',
+  filter: (layer: StyleLayer) => isSeamark(layer),
+  defaultVisibility: true,
+  isVisibilityToggleAvailable: true,
+  isMoveToTopAvailable: true,
+  isColorPickerAvailable: false,
+} as LayerGroup;
+
+/** The Depths switch: the sea floor, under everything. Named through `mapLayers.depths`. */
+export const DEPTHS_LAYER_GROUP = {
+  slug: 'depths',
+  filter: (layer: StyleLayer) => isDepth(layer),
+  defaultVisibility: true,
+  isVisibilityToggleAvailable: true,
+  isMoveToTopAvailable: false,
+  isColorPickerAvailable: false,
+} as LayerGroup;
+
+/**
+ * A group that leaves seamarks and depths to their own switches. kepler hides a
+ * layer that any switched-off group matches, so without this a seamark symbol
+ * would also go with Labels off, the ferry route with Water, a traffic
+ * separation boundary with Borders and the depths' hillshade with Land.
+ */
+const withoutNautical = (group: LayerGroup): LayerGroup =>
+  ({
+    ...group,
+    filter: (layer: StyleLayer) => !isSeamark(layer) && !isDepth(layer) && Boolean(group.filter(layer as never)),
+  }) as LayerGroup;
+
+/**
+ * The switches of Open Waters' Seamap: Seamarks and Depths first, then the
+ * usual ones for its land, a Shortbread map from VersaTiles. They match the
+ * style's source ids, so should Open Waters rename those, the two switches
+ * drop out (`layerGroupsIn`) and the layers fall back to the usual groups.
+ */
+export const SEAMAP_LAYER_GROUPS: LayerGroup[] = [
+  SEAMARKS_LAYER_GROUP,
+  DEPTHS_LAYER_GROUP,
+  ...STYLE_LAYER_GROUPS.map(withoutNautical),
+];
 
 /**
  * The two groups the satellite overlays answer to: their roads and labels are

@@ -4,6 +4,7 @@ import { MapContainerFactory } from '@kepler.gl/components';
 import { withTemporalCursor } from './temporalCursorMapContainer';
 import { withMarkersOnTop } from './markersOnTop';
 import { withTerrainAnchor } from './terrainMapContainer';
+import { withEveryBasemapAttribution } from './basemapAttributions';
 import { selectionHalo, unselectedTargets, type HaloRing, type Selection } from './selectionHalo';
 import {
   haloDeckLayers,
@@ -153,11 +154,15 @@ export function withSelectionHalo<P extends MapContainerProps>(MapContainer: Rea
  * halo's wrapper is the outer one, so its layers are already in the list when
  * the markers are moved to the end of it. The relief's is the inner one and
  * lifts the main deck's layers last, after the copy of the markers drawn above
- * the top map has been taken from them. kepler itself draws the layers on every
+ * the top map has been taken from them. Innermost of all, kepler's own container is
+ * given a collector that credits every source of the base map
+ * (`basemapAttributions.tsx`). kepler itself draws the layers on every
  * world copy the base map repeats (`enableMapRepeat`, `keplerConfig.ts`).
  */
 export function withPanelLayers(MapContainer: React.ComponentType<MapContainerProps>): React.FC<MapContainerProps> {
-  return withSelectionHalo(withTemporalCursor(withMarkersOnTop(withTerrainAnchor(MapContainer))));
+  return withSelectionHalo(
+    withTemporalCursor(withMarkersOnTop(withTerrainAnchor(withEveryBasemapAttribution(MapContainer))))
+  );
 }
 
 CustomMapContainerFactory.deps = MapContainerFactory.deps;

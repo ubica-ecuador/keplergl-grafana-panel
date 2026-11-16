@@ -12,7 +12,7 @@ import {
   TOPOGRAPHIC_TERRAIN_BASEMAP_ID,
 } from './constants';
 import { assetBaseUrl } from './keplerConfig';
-import { SATELLITE_LAYER_GROUPS, STYLE_LAYER_GROUPS, type LayerGroup } from './layerGroups';
+import { SATELLITE_LAYER_GROUPS, SEAMAP_LAYER_GROUPS, STYLE_LAYER_GROUPS, type LayerGroup } from './layerGroups';
 
 export interface RegisteredMapStyle {
   id: string;
@@ -60,6 +60,16 @@ const OPENFREEMAP_STYLES = [
   { name: 'fiord', label: 'Fiord', colorMode: BASE_MAP_COLOR_MODES.DARK },
 ];
 
+/**
+ * Open Waters' Seamap (https://openwaters.io/charts/seamap): a nautical chart,
+ * with no key and no account, CC BY 4.0. OpenStreetMap's seamarks (buoys,
+ * lights and their sectors, hazards, traffic lanes), rebuilt weekly, over Open
+ * Waters' Seascape bathymetry and VersaTiles' land. Not for navigation. Its own
+ * Seamarks and Depths switches (`SEAMAP_LAYER_GROUPS`).
+ */
+export const SEAMAP_BASEMAP_ID = 'openwaters-seamap';
+const SEAMAP_STYLE_URL = 'https://tiles.openwaters.io/seamap/style.json';
+
 /** CARTO's entries, renamed so the picker says whose they are. */
 const CARTO_LABELS: Record<string, string> = {
   'dark-matter': 'Dark Matter (CARTO)',
@@ -97,11 +107,11 @@ export const REPLACES_DEFAULT_MAP_STYLES = true;
  * OpenFreeMap's five come first and need nothing at all. CARTO's three keep
  * kepler's ids, so dashboards saved on them still open there, and are asked
  * for without a key: a key in a panel option is saved in the dashboard, where
- * every viewer reads it, so the panel offers none. Four
+ * every viewer reads it, so the panel offers none. Three
  * more are the plugin's own documents, served from its assets: flat
- * satellite imagery, the same imagery over real elevation, a topographic map
- * over real elevation, and — once configured — a self-hosted `style.json`.
- * None needs an account. The relief pair carries a `terrain` key that MapLibre
+ * satellite imagery, the same imagery over real elevation and a topographic
+ * map over real elevation. Then Open Waters' nautical chart and — once
+ * configured — a self-hosted `style.json`. None needs an account. The relief pair carries a `terrain` key that MapLibre
  * reads straight from the style; kepler passes it through untouched, which is
  * the whole reason elevation is possible here at all.
  */
@@ -155,6 +165,14 @@ export function registeredMapStyles(customBasemapUrl?: string): RegisteredMapSty
       // hide — unlike the satellite style, whose roads and labels are their
       // own tile services.
       layerGroups: [],
+      colorMode: BASE_MAP_COLOR_MODES.LIGHT,
+    },
+    {
+      id: SEAMAP_BASEMAP_ID,
+      label: 'Seamap (Open Waters)',
+      url: SEAMAP_STYLE_URL,
+      icon: shippedIcon(SEAMAP_BASEMAP_ID),
+      layerGroups: SEAMAP_LAYER_GROUPS,
       colorMode: BASE_MAP_COLOR_MODES.LIGHT,
     },
   ];

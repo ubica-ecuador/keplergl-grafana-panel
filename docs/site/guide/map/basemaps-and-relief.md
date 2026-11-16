@@ -5,22 +5,23 @@ not a coincidence, and it is the reason the picker looks different from stock ke
 
 ## What is on offer
 
-| Choice                    | Source            | Notes                                     |
-| ------------------------- | ----------------- | ----------------------------------------- |
-| **Match theme** (default) | OpenFreeMap       | Dark in dark mode, Positron in light      |
-| Positron (OpenFreeMap)    | OpenFreeMap       | no key, no account                        |
-| Bright (OpenFreeMap)      | OpenFreeMap       | no key, no account                        |
-| Liberty (OpenFreeMap)     | OpenFreeMap       | with its own 3D buildings                 |
-| Dark (OpenFreeMap)        | OpenFreeMap       | no key, no account                        |
-| Fiord (OpenFreeMap)       | OpenFreeMap       | no key, no account                        |
-| Dark Matter (CARTO)       | CARTO             | kepler's own entry; no key                |
-| Positron (CARTO)          | CARTO             | kepler's own entry; no key                |
-| Voyager (CARTO)           | CARTO             | kepler's own entry; no key                |
-| Satellite (Esri)          | Esri              | flat imagery                              |
-| Satellite + relief        | Esri + Mapterhorn | imagery over real elevation               |
-| Topographic + relief      | Esri + Mapterhorn | topographic map over real elevation       |
-| No Basemap                | —                 | empty background, no tiles fetched at all |
-| Self-hosted `style.json`  | you               | for air-gapped installs                   |
+| Choice                    | Source            | Notes                                         |
+| ------------------------- | ----------------- | --------------------------------------------- |
+| **Match theme** (default) | OpenFreeMap       | Dark in dark mode, Positron in light          |
+| Positron (OpenFreeMap)    | OpenFreeMap       | no key, no account                            |
+| Bright (OpenFreeMap)      | OpenFreeMap       | no key, no account                            |
+| Liberty (OpenFreeMap)     | OpenFreeMap       | with its own 3D buildings                     |
+| Dark (OpenFreeMap)        | OpenFreeMap       | no key, no account                            |
+| Fiord (OpenFreeMap)       | OpenFreeMap       | no key, no account                            |
+| Dark Matter (CARTO)       | CARTO             | kepler's own entry; no key                    |
+| Positron (CARTO)          | CARTO             | kepler's own entry; no key                    |
+| Voyager (CARTO)           | CARTO             | kepler's own entry; no key                    |
+| Satellite (Esri)          | Esri              | flat imagery                                  |
+| Satellite + relief        | Esri + Mapterhorn | imagery over real elevation                   |
+| Topographic + relief      | Esri + Mapterhorn | topographic map over real elevation           |
+| Seamap (Open Waters)      | Open Waters       | nautical chart; [not for navigation](#seamap) |
+| No Basemap                | —                 | empty background, no tiles fetched at all     |
+| Self-hosted `style.json`  | you               | for air-gapped installs                       |
 
 <video src="/img/guide-basemap-relief.mp4" poster="/img/guide-basemap-relief.jpg" autoplay loop muted playsinline controls aria-label="The Satellite + relief base map: an accessibility isochrone draped over Esri imagery on real elevation, tilted so the valley around Cuenca shows" style="width:100%;height:auto;border-radius:8px"></video>
 
@@ -57,8 +58,9 @@ kepler's _Map Layers_ panel shows a switch per group of style layers — labels,
 on. In this panel:
 
 - the filters ignore case, so a style with ids such as `Water` or `Road` gets its switches too;
-- OpenMapTiles styles (OpenFreeMap, CARTO, most self-hosted ones) get a **Points of interest**
-  switch, translated where kepler has the language;
+- OpenMapTiles styles (OpenFreeMap, CARTO, most self-hosted ones) and Shortbread ones (VersaTiles,
+  the land of Seamap) get a **Points of interest** switch, translated where kepler has the language;
+- Seamap gets **Seamarks** and **Depths** switches of its own (see [Seamap](#seamap));
 - **3D Building** appears only where the style draws its own extruded buildings — Liberty, or a
   self-hosted style that has them. kepler's own 3D buildings need a Mapbox token this panel does not
   use, so on other styles the switch did nothing;
@@ -121,9 +123,39 @@ A second thing to know before leaning on it: panning a tilted terrain map can ma
 an open kepler.gl issue
 ([keplergl/kepler.gl#3394](https://github.com/keplergl/kepler.gl/issues/3394)).
 
+## Seamap
+
+**Seamap (Open Waters)** is a nautical chart from [Open Waters](https://openwaters.io/charts/seamap),
+with no key and no account. It draws OpenStreetMap's seamarks, rebuilt every week: buoys and beacons,
+lights with their characteristics and sectors, hazards and wrecks, traffic separation schemes,
+ferry routes, harbours. They lie over shaded depths, depth areas, contours and soundings from Open
+Waters' [Seascape](https://openwaters.io/charts/seascape) bathymetry, a mosaic of GEBCO, EMODnet,
+NOAA and some thirty other surveys. The land is a VersaTiles map of OpenStreetMap.
+
+Seamap is **not for navigation**: seamarks may be missing, out of date or wrong. Use official
+charts at sea.
+
+Two switches of its own sit at the top of _Map Layers_:
+
+- **Seamarks**: every buoy, light, sector, hazard, lane and route. It can go on top of your layers,
+  as labels can. kepler's own label switch would otherwise have taken the buoys and lights, and the
+  light sectors and lanes had no switch at all.
+- **Depths**: the shading, depth areas, contours and soundings.
+
+The usual switches cover the land: labels (sea area names among them), points of interest, roads,
+borders, buildings, water and land.
+
+How much it shows depends on where you look. Where OpenStreetMap maps the seamarks well, such as
+much of Europe, it reads like a paper chart. Elsewhere the depths may be coarse (GEBCO's grid only)
+and the seamarks few.
+
+The tiles are under CC BY 4.0, and the map credits Open Waters, OpenStreetMap and the elevation
+sources in its attribution. Open Waters runs the service with no stated limits and no service level;
+an install that needs one should serve its own copy as a [self-hosted style](#self-hosted-style-json).
+
 ## Thumbnails
 
-The OpenFreeMap and CARTO thumbnails **ship with the plugin**, rendered once from each real style.
+The OpenFreeMap, CARTO and Seamap thumbnails **ship with the plugin**, rendered once from each real style.
 kepler names its own thumbnails as paths under whatever asset base the host application configures,
 and this plugin points that at its own assets, so kepler's paths would 404. Raster tiles from CARTO
 stood in for a while, until CARTO began watermarking them without a key; a file in the plugin
@@ -142,6 +174,7 @@ On a hardened Grafana each choice needs its host allowed in `connect-src`:
 | CARTO's three                   | `https://basemaps.cartocdn.com` and `https://*.basemaps.cartocdn.com` |
 | Satellite, Topographic          | `https://services.arcgisonline.com`                                   |
 | Either relief style             | the above, plus `https://tiles.mapterhorn.com`                        |
+| Seamap                          | `https://tiles.openwaters.io` and `https://tiles.versatiles.org`      |
 | No Basemap                      | nothing                                                               |
 | Self-hosted                     | your own host                                                         |
 
@@ -155,6 +188,9 @@ Esri's terms.
 
 Anything MapLibre can read works, including one with its own `terrain` key — the panel does not
 special-case its own relief styles, it simply passes the document to MapLibre.
+
+The attribution credits every source of the style, including those whose credit only arrives with
+their TileJSON, after the map has started drawing.
 
 ## Esri's terms of use
 

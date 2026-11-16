@@ -1,12 +1,18 @@
 import { DEFAULT_LAYER_GROUPS } from '@kepler.gl/constants';
 import KeplerGlSchema from '@kepler.gl/schemas';
 
-import { CARTO_DARK_MATTER_LAYERS, OPENFREEMAP_LIBERTY_LAYERS, UPPER_CASE_LAYERS } from './basemapStyleFixtures';
+import {
+  CARTO_DARK_MATTER_LAYERS,
+  OPENFREEMAP_LIBERTY_LAYERS,
+  OPENWATERS_SEAMAP_LAYERS,
+  UPPER_CASE_LAYERS,
+} from './basemapStyleFixtures';
 import {
   isPointOfInterest,
   layerGroupsIn,
   poiFollowsSavedLabel,
   SATELLITE_LAYER_GROUPS,
+  SEAMAP_LAYER_GROUPS,
   STYLE_LAYER_GROUPS,
   slugsMatching,
   type StyleLayer,
@@ -68,6 +74,99 @@ describe('points of interest', () => {
 
   it('are symbols only: a circle on the poi source layer is not one', () => {
     expect(isPointOfInterest({ id: 'poi-dots', type: 'circle', 'source-layer': 'poi' })).toBe(false);
+  });
+
+  it("are found in Shortbread's pois source layer too, which VersaTiles serves", () => {
+    expect(slugsOf(OPENWATERS_SEAMAP_LAYERS, 'poi-amenity')).toEqual(['poi']);
+  });
+});
+
+describe("Open Waters' Seamap", () => {
+  const slugsOf = (id: string) =>
+    slugsMatching(
+      SEAMAP_LAYER_GROUPS,
+      OPENWATERS_SEAMAP_LAYERS.find((l) => l.id === id)!
+    );
+
+  it('puts Seamarks and Depths first, then the usual switches', () => {
+    expect(SEAMAP_LAYER_GROUPS.map((g) => g.slug)).toEqual([
+      'seamarks',
+      'depths',
+      ...STYLE_LAYER_GROUPS.map((g) => g.slug),
+    ]);
+  });
+
+  it('gives every seamark to Seamarks alone, lines and symbols alike', () => {
+    // kepler's label group catches every symbol: buoys went with the street names, and sectors had no switch.
+    for (const id of ['buoys', 'lights', 'rocks', 'sector-arc']) {
+      expect(slugsOf(id)).toEqual(['seamarks']);
+    }
+    // Neither Water (its id says ferry) nor Borders (boundary) hides a seamark.
+    expect(slugsOf('ferry')).toEqual(['seamarks']);
+    expect(slugsOf('TSS-separation-boundary')).toEqual(['seamarks']);
+  });
+
+  it('gives the sea floor to Depths alone, its hillshade included', () => {
+    for (const id of [
+      'depth-shading',
+      'depth-areas',
+      'contour-lines',
+      'soundings',
+      'depth-hillshade',
+      'source-labels',
+    ]) {
+      expect(slugsOf(id)).toEqual(['depths']);
+    }
+    // The land's hillshade stays with Land.
+    expect(slugsOf('hillshade')).toEqual(['land']);
+  });
+
+  it("leaves sea area names with labels and the chart's own land with no switch", () => {
+    expect(slugsOf('sea-areas')).toEqual(['label']);
+    expect(slugsOf('land_area')).toEqual([]);
+  });
+
+  it('keeps the usual switches for the land', () => {
+    expect(slugsOf('water-area')).toEqual(['water']);
+    expect(slugsOf('street-primary')).toEqual(['road']);
+    expect(slugsOf('boundary-country')).toEqual(['border']);
+    expect(slugsOf('building')).toEqual(['building']);
+    expect(slugsOf('label-place-city')).toEqual(['label']);
+    expect(slugsOf('poi-amenity')).toEqual(['poi']);
+  });
+
+  it('offers only the switches the document has', () => {
+    expect(layerGroupsIn(SEAMAP_LAYER_GROUPS, { layers: OPENWATERS_SEAMAP_LAYERS }).map((g) => g.slug)).toEqual([
+      'seamarks',
+      'depths',
+      'label',
+      'poi',
+      'road',
+      'border',
+      'building',
+      'water',
+      'land',
+    ]);
+  });
+
+  it('drops both switches should Open Waters rename its sources, and labels take the buoys back', () => {
+    const renamed = OPENWATERS_SEAMAP_LAYERS.map((l) => ({ ...l, source: l.source && `renamed-${l.source}` }));
+    const slugs = layerGroupsIn(SEAMAP_LAYER_GROUPS, { layers: renamed }).map((g) => g.slug);
+    expect(slugs).not.toContain('seamarks');
+    expect(slugs).not.toContain('depths');
+    expect(
+      slugsMatching(
+        SEAMAP_LAYER_GROUPS,
+        renamed.find((l) => l.id === 'buoys')!
+      )
+    ).toEqual(['label']);
+  });
+
+  it('lets seamarks, not depths, go on top of the data', () => {
+    const [seamarks, depths] = SEAMAP_LAYER_GROUPS;
+    expect(seamarks.isMoveToTopAvailable).toBe(true);
+    expect(depths.isMoveToTopAvailable).toBe(false);
+    expect([seamarks.defaultVisibility, depths.defaultVisibility]).toEqual([true, true]);
   });
 });
 

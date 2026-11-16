@@ -97,3 +97,24 @@ describe('the Points of interest switch', () => {
     }
   });
 });
+
+describe("Open Waters' Seamap switches", () => {
+  const merged = withOwnLayerLabels(keplerMessages);
+
+  it.each([
+    ['en', 'Seamarks', 'Depths'],
+    ['es', 'Señales marítimas', 'Profundidades'],
+    ['ca', 'Senyals marítims', 'Profunditats'],
+    ['pt', 'Sinais marítimos', 'Profundidades'],
+  ])('are named in %s', (locale, seamarks, depths) => {
+    expect(merged[locale]['mapLayers.seamarks']).toBe(seamarks);
+    expect(merged[locale]['mapLayers.depths']).toBe(depths);
+  });
+
+  it('fall back to English in the other languages kepler ships', () => {
+    for (const locale of Object.keys(keplerMessages).filter((l) => !['en', 'es', 'ca', 'pt'].includes(l))) {
+      expect(merged[locale]['mapLayers.seamarks']).toBe('Seamarks');
+      expect(merged[locale]['mapLayers.depths']).toBe('Depths');
+    }
+  });
+});

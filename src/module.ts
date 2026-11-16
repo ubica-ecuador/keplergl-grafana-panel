@@ -225,6 +225,7 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
           { value: 'grafana-satellite', label: 'Satellite (Esri)' },
           { value: 'grafana-satellite-terrain', label: 'Satellite + relief' },
           { value: 'grafana-topographic-terrain', label: 'Topographic + relief' },
+          { value: 'openwaters-seamap', label: 'Seamap (Open Waters)' },
           { value: 'custom', label: 'Self-hosted style.json' },
         ],
       },

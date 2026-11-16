@@ -6,8 +6,8 @@ import satelliteStyle from '../basemaps/satellite.json';
 import satelliteTerrainStyle from '../basemaps/satellite-terrain.json';
 import topographicTerrainStyle from '../basemaps/topographic-terrain.json';
 
-import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES, startingStyleType } from './basemaps';
-import { STYLE_LAYER_GROUPS } from './layerGroups';
+import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES, SEAMAP_BASEMAP_ID, startingStyleType } from './basemaps';
+import { SEAMAP_LAYER_GROUPS, STYLE_LAYER_GROUPS } from './layerGroups';
 import {
   CUSTOM_BASEMAP_ID,
   SATELLITE_BASEMAP_ID,
@@ -99,8 +99,17 @@ describe('registeredMapStyles', () => {
       SATELLITE_BASEMAP_ID,
       SATELLITE_TERRAIN_BASEMAP_ID,
       TOPOGRAPHIC_TERRAIN_BASEMAP_ID,
+      SEAMAP_BASEMAP_ID,
     ]);
     expect(registeredMapStyles('https://tiles.internal/style.json').map((s) => s.id)).toContain(CUSTOM_BASEMAP_ID);
+  });
+
+  it("offers Open Waters' nautical chart, keyless, with its Seamarks and Depths switches", () => {
+    const seamap = registeredMapStyles().find((s) => s.id === SEAMAP_BASEMAP_ID);
+    expect(SEAMAP_BASEMAP_ID).toBe('openwaters-seamap');
+    expect(seamap?.label).toBe('Seamap (Open Waters)');
+    expect(seamap?.url).toBe('https://tiles.openwaters.io/seamap/style.json');
+    expect(seamap?.layerGroups).toBe(SEAMAP_LAYER_GROUPS);
   });
 
   it('offers every OpenFreeMap style, keyless, with the candidate switches', () => {
@@ -239,10 +248,10 @@ describe('the style picker thumbnails', () => {
     }
   });
 
-  it('ships the CARTO and OpenFreeMap thumbnails with the plugin, so no provider is asked for one', () => {
+  it('ships the CARTO, OpenFreeMap and Open Waters thumbnails with the plugin, so no provider is asked for one', () => {
     // CARTO's raster tiles carry a watermark without a key; a file in the plugin carries none.
     for (const style of registeredMapStyles('https://tiles.internal/style.json')) {
-      if (/^(openfreemap-|dark-matter$|positron$|voyager$)/.test(style.id)) {
+      if (/^(openfreemap-|openwaters-|dark-matter$|positron$|voyager$)/.test(style.id)) {
         expect(style.icon).toBe(`/images/basemaps/${style.id}.png`);
         expect(existsSync(join(__dirname, '..', 'images', 'basemaps', `${style.id}.png`))).toBe(true);
       } else if (style.id !== CUSTOM_BASEMAP_ID) {

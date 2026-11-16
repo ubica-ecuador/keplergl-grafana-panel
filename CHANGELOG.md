@@ -6,6 +6,21 @@ release documents what changed since the one before it.
 
 ## 1.10.0 (2026-11-15)
 
+- **A nautical chart.** _Base map_ → _Seamap (Open Waters)_ draws OpenStreetMap's seamarks, rebuilt
+  every week (buoys, beacons, lights with their characteristics and sectors, hazards, traffic
+  separation schemes, ferry routes), over Open Waters' Seascape bathymetry: shaded depths, depth
+  areas, contours and soundings. No key, no account, CC BY 4.0; not for navigation. _Map Layers_ gets
+  two switches for it, **Seamarks** (which can go on top of the data, as labels can) and **Depths**;
+  kepler's label switch would have taken the buoys and lights with the street names. On a hardened
+  Grafana it needs `tiles.openwaters.io` and `tiles.versatiles.org` in `connect-src`. See
+  [Seamap](https://docs.ubica.dev/guide/map/basemaps-and-relief#seamap).
+- **Every source of a base map is credited.** kepler stopped collecting a style's attributions at
+  the first source that had one, so a style with some sources credited in the document and others in
+  their TileJSON showed only the first: on Seamap, OpenStreetMap without Open Waters. The panel now
+  collects them until the map has loaded every source.
+- **Points of interest on Shortbread styles.** The _Points of interest_ switch also finds the `pois`
+  layer of Shortbread styles (VersaTiles, Seamap's land), not only OpenMapTiles' `poi`.
+
 - **Rasters lie on the relief.** On _Satellite + relief_, _Topographic + relief_ or any base map with
   terrain, a raster was a flat sheet at the height of the centre of the view, cutting through hills
   and floating over valleys. It now lies on the ground. XYZ tiles, Zarr tiles, a COG the tile server

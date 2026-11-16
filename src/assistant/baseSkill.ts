@@ -3,9 +3,11 @@ The map is stored in the panel option 'mapConfig' ('config.mapStyle', 'config.vi
 'config.mapState'). Edit that JSON on the panel.
 Base map: set 'config.mapStyle.styleType'. Free ids: no_map, openfreemap-positron,
 openfreemap-bright, openfreemap-liberty, openfreemap-dark, openfreemap-fiord, dark-matter,
-positron, voyager, grafana-satellite, grafana-satellite-terrain, grafana-topographic-terrain.
+positron, voyager, grafana-satellite, grafana-satellite-terrain, grafana-topographic-terrain,
+openwaters-seamap.
 dark-matter, positron and voyager are CARTO's, asked for without a key; prefer the
-openfreemap-* ids. Colour ramp:
+openfreemap-* ids. openwaters-seamap is a nautical chart (seamarks, depths; not for
+navigation). Colour ramp:
 'layer.config.visConfig.colorRange'. Filters: 'config.visState.filters'.
 Cross-filter: this panel filters other panels via 'clickArea' (click a point for a circular
 area) and can publish the viewport to dashboard variables ('viewportVariables'); it does not

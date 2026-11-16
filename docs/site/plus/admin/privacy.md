@@ -6,7 +6,8 @@ requests to Google and Azure Maps with their keys. This page says what goes wher
 
 ## Map tiles and 3D tiles
 
-Base map requests for the free panel's styles, to OpenFreeMap, CARTO, Esri's public imagery and Mapterhorn, go from
+Base map requests for the free panel's styles, to OpenFreeMap, CARTO, Esri's public imagery, Mapterhorn, and Open Waters
+and VersaTiles for Seamap, go from
 the viewer's browser straight to each provider, with no key. Like any web request, each carries the viewer's IP
 address and the part of the world the map is showing. No request from the browser carries one of the
 organisation's keys.

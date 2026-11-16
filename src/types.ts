@@ -12,9 +12,10 @@ import type { DayNightMode } from './data/dayNight';
  * Base maps offered in the panel options.
  *
  * All of them work without a Mapbox token: five OpenFreeMap styles that need no
- * key at all, kepler's three CARTO styles (asked for without a key), and the
- * plugin's own Esri imagery and relief styles. The value is the kepler style id, so `KeplerPanel` can pass it
- * straight through.
+ * key at all, kepler's three CARTO styles (asked for without a key), the
+ * plugin's own Esri imagery and relief styles, and Open Waters' nautical chart.
+ * The value is the kepler style id, so `KeplerPanel` can pass it straight
+ * through.
  */
 export type BasemapChoice =
   | 'auto'
@@ -29,6 +30,7 @@ export type BasemapChoice =
   | 'grafana-satellite'
   | 'grafana-satellite-terrain'
   | 'grafana-topographic-terrain'
+  | 'openwaters-seamap'
   | 'custom';
 
 /**

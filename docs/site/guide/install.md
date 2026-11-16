@@ -81,7 +81,7 @@ goes blank: MapLibre fetches styles, sprites, glyphs and tiles over XHR, so ever
 under `connect-src`.
 
 ```ini
-content_security_policy_template = """… connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com …;"""
+content_security_policy_template = """… connect-src 'self' grafana.com https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com https://tiles.openwaters.io https://tiles.versatiles.org …;"""
 ```
 
 If your template also sets `worker-src`, it has to allow `'self'`: MapLibre's worker is a file served
@@ -100,6 +100,8 @@ Each host serves only what its name suggests:
 | `basemaps.cartocdn.com`     | Carto's Dark Matter, Positron and Voyager base maps   |
 | `services.arcgisonline.com` | Esri's satellite and topographic imagery              |
 | `tiles.mapterhorn.com`      | Elevation tiles behind the two relief styles          |
+| `tiles.openwaters.io`       | Open Waters' Seamap: its style, seamarks and depths   |
+| `tiles.versatiles.org`      | Seamap's land, sprites and land elevation             |
 
 Leave out the ones whose base maps you never select — or point **Base map** at a `style.json` on
 your own network and skip the list entirely. See [Base maps and relief](./map/basemaps-and-relief).

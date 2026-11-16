@@ -32,7 +32,7 @@ they all fall under `connect-src` — which `content_security_policy = true` clo
 Add the hosts for the base maps you actually use:
 
 ```ini
-content_security_policy_template = """… connect-src 'self' grafana.com https://tiles.openfreemap.org https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com …;"""
+content_security_policy_template = """… connect-src 'self' grafana.com https://tiles.openfreemap.org https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://services.arcgisonline.com https://tiles.mapterhorn.com https://tiles.openwaters.io https://tiles.versatiles.org …;"""
 ```
 
 Or set **Base map** to a self-hosted `style.json`, or to _No Basemap_, and skip it entirely. See
@@ -183,7 +183,7 @@ Both are the same control, and it is on the layer rather than in the panel optio
 field** layer and change **Streamlines → Lines per screen**, 9,000 by default. There is no value
 that suits every extent — lower it when the field looks matted, raise it when it looks sparse.
 
-A field that draws *nothing at all* is usually not the density. Press play: at the start of the
+A field that draws _nothing at all_ is usually not the density. Press play: at the start of the
 animation window every trail has zero length, so a paused field is a blank map. If it is playing and
 still blank, the grid was probably rejected — see
 [Velocity fields](../guide/data/velocity-fields).

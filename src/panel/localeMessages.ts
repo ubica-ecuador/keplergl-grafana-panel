@@ -59,6 +59,31 @@ const POI_SWITCH_LABELS: Record<string, string> = {
   pt: 'Pontos de interesse',
 };
 
+/** The Seamarks and Depths switches of Open Waters' Seamap (`layerGroups.ts`), named the same way. */
+const SEAMARKS_SWITCH_LABELS: Record<string, string> = {
+  en: 'Seamarks',
+  es: 'Señales marítimas',
+  ca: 'Senyals marítims',
+  pt: 'Sinais marítimos',
+};
+
+const DEPTHS_SWITCH_LABELS: Record<string, string> = {
+  en: 'Depths',
+  es: 'Profundidades',
+  ca: 'Profunditats',
+  pt: 'Profundidades',
+};
+
+/** Each switch the panel adds, by kepler's message id, in `locale` or else in English. */
+function ownSwitchLabels(locale: string): Record<string, string> {
+  const named = (labels: Record<string, string>) => labels[locale] ?? labels.en;
+  return {
+    'mapLayers.poi': named(POI_SWITCH_LABELS),
+    'mapLayers.seamarks': named(SEAMARKS_SWITCH_LABELS),
+    'mapLayers.depths': named(DEPTHS_SWITCH_LABELS),
+  };
+}
+
 /**
  * kepler's own layer types that its catalogues leave unnamed, so the layer list
  * shows react-intl's fallback (`Layer.Type.A5`). Given only where a catalogue
@@ -82,8 +107,8 @@ type Messages = Record<string, Record<string, string>>;
  * Zarr is Zarr, an ArcGIS Image Service is one in any language — and the
  * alternative is leaving every locale but English showing the raw id.
  *
- * The Points of interest switch is named here too, translated where there is a
- * translation and in English elsewhere.
+ * The switches the panel adds (Points of interest, Seamarks, Depths) are named
+ * here too, translated where there is a translation and in English elsewhere.
  */
 export function withOwnLayerLabels(messages: Messages): Messages {
   const own = Object.fromEntries(
@@ -97,7 +122,7 @@ export function withOwnLayerLabels(messages: Messages): Messages {
   return Object.fromEntries(
     Object.entries(messages).map(([locale, catalogue]) => [
       locale,
-      { ...unnamed, ...catalogue, ...own, 'mapLayers.poi': POI_SWITCH_LABELS[locale] ?? POI_SWITCH_LABELS.en },
+      { ...unnamed, ...catalogue, ...own, ...ownSwitchLabels(locale) },
     ])
   );
 }
