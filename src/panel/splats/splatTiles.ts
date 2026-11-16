@@ -280,7 +280,8 @@ export function tilesGivingWay(drawn: ReadonlySet<unknown>): Set<unknown> {
  */
 export function orderSplatLayers<T>(
   layers: T[] | null | undefined,
-  viewport: ViewportLike | null | undefined
+  viewport: ViewportLike | null | undefined,
+  group: string | null = null
 ): T[] | null | undefined {
   if (!Array.isArray(layers)) {
     return layers;
@@ -310,5 +311,21 @@ export function orderSplatLayers<T>(
     .map((layer) => ({ layer, distance: distanceOf(layer, viewport) ?? 0 }))
     .sort((a, b) => b.distance - a.distance)
     .map(({ layer }) => layer);
-  return [...others, ...(far as unknown as T[])];
+  if (!group) {
+    return [...others, ...(far as unknown as T[])];
+  }
+  // Under an opacity of 1 the tiles drawn share one picture (splatPicture.ts): the first drawn clears it, the last
+  // lays it on the map. Drawn means as deck draws them: shown, and selected for this viewport.
+  const drawnInOrder = far.filter((layer) => layer.props.visible !== false && drawnHere(tileOf(layer)));
+  const first = drawnInOrder[0];
+  const last = drawnInOrder[drawnInOrder.length - 1];
+  const grouped = far.map(
+    (layer) =>
+      layer.clone({
+        pictureGroup: group,
+        pictureFirst: layer === first,
+        pictureLast: layer === last,
+      }) as GaussianSplatLayer
+  );
+  return [...others, ...(grouped as unknown as T[])];
 }

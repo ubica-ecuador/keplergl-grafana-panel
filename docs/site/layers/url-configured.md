@@ -175,6 +175,9 @@ the `tileset.json`.
   under it has loaded, then gives way to them all at once.
 - Splats taken with the screen-space filter (SPZ's antialiased flag, which Esri's carry) are drawn
   with its opacity compensation, as their training did.
+- **Opacity** sees through the whole scan: its tiles are drawn together and laid on the map at the
+  layer's opacity, so at 0.5 the base map shows through it evenly, and whatever stands in front of
+  it still hides it.
 - A large scan (100,000 splats and up) is sorted in a Web Worker, so dragging the map does not
   stutter; where the page cannot start one, it is sorted on the main thread.
 - The colour is the splat's own, the same from every side: the view-dependent shine a splat can

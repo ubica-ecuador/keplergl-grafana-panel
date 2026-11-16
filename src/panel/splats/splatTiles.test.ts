@@ -174,6 +174,39 @@ describe('one level of detail at a time', () => {
   });
 });
 
+describe('a tileset of splats seen through', () => {
+  it('shares one picture among the tiles drawn: the farthest drawn clears it, the nearest lays it on the map', () => {
+    const viewport = { cameraPosition: [0, 0, 0], projectPosition: (p: number[]) => p };
+    const at = (id: string, x: number, selected = true) => {
+      const t = tile(id, [x, 0, 0]);
+      t.selected = selected;
+      return splatTileLayers(t, 'tiles', {})[0];
+    };
+    // 'off' is not selected for this frame: deck does not draw it, so it neither clears nor lays the picture.
+    const ordered = orderSplatLayers(
+      [at('near', 1), at('off', 20, false), at('mid', 5), at('far', 9)],
+      viewport,
+      'tiles-splats'
+    ) as GaussianSplatLayer[];
+    expect(
+      ordered.map((l) => [(l.props as any).tile.id, l.props.pictureGroup, l.props.pictureFirst, l.props.pictureLast])
+    ).toEqual([
+      ['off', 'tiles-splats', false, false],
+      ['far', 'tiles-splats', true, false],
+      ['mid', 'tiles-splats', false, false],
+      ['near', 'tiles-splats', false, true],
+    ]);
+  });
+
+  it('leaves the layers alone without a group', () => {
+    const viewport = { cameraPosition: [0, 0, 0], projectPosition: (p: number[]) => p };
+    const t = tile('a', [1, 0, 0]);
+    t.selected = true;
+    const [layer] = orderSplatLayers(splatTileLayers(t, 'tiles', {}), viewport) as GaussianSplatLayer[];
+    expect(layer.props.pictureGroup).toBeNull();
+  });
+});
+
 describe('a tileset of splats grounded by its splats', () => {
   /** A tile placed east-north-up at Portcoast, 21 m under the ellipsoid, with splats from 0 to 10 m up in glTF's y and a few strays 50 m down. */
   function placedTile(height = -21) {

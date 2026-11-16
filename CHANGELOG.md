@@ -4,6 +4,14 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## Unreleased
+
+- **The opacity of a tileset of splats.** A 3D Tile layer of Gaussian splats under an opacity of 1
+  looked the same as at 1: each splat's alpha was multiplied by it, and a surface of splats is
+  dozens of them deep. Its tiles are now drawn together into a picture of their own, with the depth
+  of the nearest splats, and that picture is laid on the map at the layer's opacity, so the whole
+  scan is seen through, the same where tiles meet, and what stands in front of it still hides it.
+
 ## 1.10.0 (2026-11-16)
 
 - **Gaussian splats in 3D tiles.** A 3D Tile layer given a tileset of Gaussian splats (glTF tiles

@@ -27,6 +27,7 @@ import { Geometry, Model } from '@luma.gl/engine';
 
 import { backToFront, needsResort } from './splatOrder';
 import { WORKER_SORT_THRESHOLD, workerSorter, type WorkerSorter } from './sortWorker';
+import { COLOUR_PASS, DEPTH_PASS, layPicture, OPAQUE, passGeometry, pictureOf, releasePicture } from './splatPicture';
 import type { Splats } from './spz';
 
 /** Splats drawn per row of the data textures. */
@@ -225,6 +226,13 @@ export interface GaussianSplatLayerProps extends LayerProps {
   antialiasCompensation?: boolean;
   /** Called after the first frame the splats were drawn in. */
   onFirstDraw?: () => void;
+  /**
+   * Under an opacity of 1, the layers of one group (a tileset's tiles) are drawn into one picture laid on the map
+   * once (splatPicture.ts): the first drawn clears it, the last lays it. Without a group, a layer has its own.
+   */
+  pictureGroup?: string | null;
+  pictureFirst?: boolean;
+  pictureLast?: boolean;
 }
 
 /**
@@ -270,6 +278,9 @@ const defaultProps: DefaultProps<GaussianSplatLayerProps> = {
   antialiasCompensation: true,
   onFirstDraw: { type: 'function', value: () => {}, optional: true } as any,
   parameters: SPLAT_PARAMETERS as any,
+  pictureGroup: null,
+  pictureFirst: true,
+  pictureLast: true,
 };
 
 /** A 4×4 column-major matrix inverted, or null if it has none. */
@@ -437,6 +448,10 @@ export class GaussianSplatLayer extends Layer<GaussianSplatLayerProps> {
   finalizeState(context: any): void {
     super.finalizeState(context);
     this.release();
+    // A layer's own picture goes with it; a group's stays for the group's other layers (splatTiles.ts).
+    if (!this.props.pictureGroup) {
+      releasePicture(this.context?.device ?? context?.device, this.id);
+    }
   }
 
   private release(): void {
@@ -580,7 +595,54 @@ export class GaussianSplatLayer extends Layer<GaussianSplatLayerProps> {
     this.state.sortedFrom = eye;
   }
 
-  draw(): void {
+  /**
+   * Draws the splats: straight onto the map, or under an opacity of 1 into the group's picture, which the group's
+   * last layer lays on the map (splatPicture.ts). Picking draws straight, at the splats' own alpha.
+   */
+  draw(opts?: any): void {
+    const { model, count } = this.state;
+    if (!model || !count) {
+      return;
+    }
+    const renderPass = opts?.renderPass ?? this.context.renderPass;
+    const opacity = typeof this.props.opacity === 'number' ? this.props.opacity : 1;
+    if (opacity >= OPAQUE || opts?.shaderModuleProps?.picking?.isActive || !renderPass) {
+      this.drawSplats(renderPass);
+      return;
+    }
+    const device: any = this.context.device;
+    const { width, height, viewport } = passGeometry(device, renderPass);
+    const group = this.props.pictureGroup || this.id;
+    const picture = pictureOf(device, group, width, height);
+    const own = (model as any).parameters;
+    // Full strength into the picture: the opacity is the picture's.
+    this.setShaderModuleProps({ layer: { opacity: 1 } } as any);
+    try {
+      for (const pass of [DEPTH_PASS, COLOUR_PASS]) {
+        const clear = pass === DEPTH_PASS && this.props.pictureFirst !== false;
+        const offscreen = device.beginRenderPass({
+          id: `${group}-picture`,
+          framebuffer: picture.framebuffer,
+          parameters: { viewport },
+          ...(clear ? { clearColor: [0, 0, 0, 0], clearDepth: 1 } : { clearColor: false, clearDepth: false }),
+        });
+        model.setParameters(pass.luma as any);
+        try {
+          device.withParametersWebGL(pass.gl, () => this.drawSplats(offscreen));
+        } finally {
+          offscreen.end();
+        }
+      }
+    } finally {
+      model.setParameters(own);
+      this.setShaderModuleProps({ layer: { opacity: this.props.opacity } } as any);
+    }
+    if (this.props.pictureLast !== false) {
+      layPicture(device, picture, renderPass, opacity);
+    }
+  }
+
+  private drawSplats(renderPass: any): void {
     const { model, count, textureWidth } = this.state;
     if (!model || !count) {
       return;
@@ -595,7 +657,7 @@ export class GaussianSplatLayer extends Layer<GaussianSplatLayerProps> {
       },
     } as any);
     model.setInstanceCount(count);
-    model.draw(this.context.renderPass);
+    model.draw(renderPass);
     if (!this.state.drawn) {
       this.state.drawn = true;
       this.props.onFirstDraw?.();

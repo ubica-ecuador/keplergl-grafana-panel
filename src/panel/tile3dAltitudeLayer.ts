@@ -69,6 +69,7 @@ import {
 } from './tile3dBuildings';
 import { servesTiles3D, sturdyLoader } from './tile3dLoader';
 import { isSplatTile, noteSplatBase, orderSplatLayers, splatTileLayers, type SplatTileLike } from './splats/splatTiles';
+import { releasePicture } from './splats/splatPicture';
 
 /** The knobs, in the shape `registerVisConfig` takes. */
 export const TILE3D_ALTITUDE_VIS_CONFIGS = {
@@ -158,6 +159,11 @@ interface DeckTile3DLayerLike {
  * A change of the Height adjustment always moves it (`needsMove`).
  */
 const GROUND_TOLERANCE = 30;
+
+/** The group a tileset's splat tiles share one picture in, under an opacity of 1 (splats/splatPicture.ts). */
+function splatPictureGroup(id: unknown): string {
+  return `${String(id)}-splats`;
+}
 
 /** Where the view looks and how high the camera is above the ground plane, or null while deck has no viewport. */
 function viewOf(
@@ -467,6 +473,8 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
         clearTimeout(timer);
         this.state!.groundSettleTimer = null;
       }
+      // The picture its splat tiles shared under an opacity of 1 (splats/splatPicture.ts).
+      releasePicture((context as { device?: unknown } | null)?.device, splatPictureGroup(this.props.id));
       super.finalizeState?.(context);
     }
 
@@ -491,7 +499,7 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
     /** deck's tile layers, the splat ones drawn farthest first. */
     renderLayers(): unknown {
       const layers = (super.renderLayers as () => unknown[] | null).call(this);
-      return orderSplatLayers(layers, this.context?.viewport as any);
+      return orderSplatLayers(layers, this.context?.viewport as any, splatPictureGroup(this.props.id));
     }
   }
 
