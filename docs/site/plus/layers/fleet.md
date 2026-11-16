@@ -5,6 +5,8 @@ turned to its heading, in its status colour, with a short trail behind it. An as
 reported for longer than you allow turns grey and dashed, and its label says how long ago it was
 last heard from.
 
+[![TriMet live in downtown Portland, Oregon: every bus and MAX train as a 3D model among the buildings, turned to its heading, with a beacon in the colour of its punctuality, the MAX lines drawn in their own colours; pointing at light-rail train 303 opens its card, 5 km/h and on time, with its speed over the last ten minutes](/img/plus/fleet.jpg)](https://pacha.ubica.dev/d/trimet-live-fleet)
+
 The free panel's [Trip layer](/guide/data/trajectories) answers a different question. It draws
 every path and replays it on a timeline. A Fleet layer answers "where is everything now, and is
 anything silent?":
@@ -18,9 +20,51 @@ anything silent?":
 | Short trail of fixed length, no playback  | no                      | yes          |
 | Top-down silhouettes and 3D models        | no                      | yes          |
 
-![A live fleet in a city: each vehicle at its last position with its heading, status colour and a short trail; one marked as silent](/img/plus/fleet.jpg)
+## See it live
 
-## See it in the layer tour
+Dashboards on the public demo instance, each built on a Fleet layer. Open one, point at an asset for
+its card, and click it.
+
+<div class="demos">
+  <a href="https://pacha.ubica.dev/d/trimet-live-fleet"><img src="/img/plus/fleet-demo-trimet.jpg" alt="Portland's buses and MAX trains in 3D among the buildings"><strong>TriMet, Portland</strong><span>Every bus and MAX train now, in 3D, coloured by punctuality. Click one and a second map rides behind it.</span></a>
+  <a href="https://pacha.ubica.dev/d/gtfs-rt-mbta-fleet"><img src="/img/plus/fleet-demo-mbta.jpg" alt="Boston's buses and subway in 3D with pinned cards"><strong>MBTA, Boston</strong><span>Buses, subway, commuter rail and ferries from GTFS-realtime, coloured by how fresh each position is.</span></a>
+  <a href="https://pacha.ubica.dev/d/hsl-live"><img src="/img/plus/fleet-demo-hsl.jpg" alt="Helsinki's buses as arrows on a light map"><strong>Helsinki, over MQTT</strong><span>Every HSL tram, metro, train, ferry or bus, moved as its once-a-second reports stream in.</span></a>
+  <a href="https://pacha.ubica.dev/d/f1-race-laps"><img src="/img/plus/fleet-demo-f1.jpg" alt="Formula 1 cars in team colours through a corner at Interlagos"><strong>Formula 1, lap by lap</strong><span>One lap of any race since 2023 replayed with every car, its speed card and the charts of the race.</span></a>
+  <a href="https://pacha.ubica.dev/d/tropical-cyclones"><img src="/img/plus/fleet-demo-cyclones.jpg" alt="A tropical storm followed by the camera over satellite rain and wind"><strong>Tropical cyclones</strong><span>Every storm active now as an asset, the camera following it over the rain, the wind and its curtain of wind.</span></a>
+  <a href="https://pacha.ubica.dev/d/baltic-cable-watch"><img src="/img/plus/fleet-demo-baltic.jpg" alt="Ships over the Baltic's cables and pipelines, the lingering ones in red"><strong>Baltic cable watch</strong><span>Ships from Finland's AIS network over undersea cables, with a Grafana alert on each one that lingers.</span></a>
+  <a href="https://pacha.ubica.dev/d/gps-truck-track-plus"><img src="/img/plus/fleet-demo-truck.jpg" alt="A truck seen from behind by the chase camera over satellite imagery"><strong>GPS truck, behind the wheel</strong><span>A truck's half hour on the road, driven from a Time Brush with the chase camera behind it.</span></a>
+  <a href="https://pacha.ubica.dev/d/starlink-constellation"><img src="/img/plus/fleet-demo-starlink.jpg" alt="Every Starlink satellite on the globe with its trail over the last orbit, coloured by shell"><strong>Starlink, the last orbit</strong><span>Every satellite on the globe with its trail, computed in the browser from CelesTrak's elements.</span></a>
+</div>
+
+<style scoped>
+.demos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 20px 0 28px;
+}
+.demos a {
+  display: block;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  background: var(--vp-c-bg-soft);
+  transition: border-color 0.2s;
+}
+.demos a:hover { border-color: var(--vp-c-brand-1); }
+.demos img { display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; }
+.demos strong { display: block; padding: 10px 12px 2px; font-size: 15px; color: var(--vp-c-text-1); }
+.demos span { display: block; padding: 0 12px 12px; font-size: 13px; line-height: 1.5; color: var(--vp-c-text-2); }
+</style>
+
+Drone deliveries in 3D with the orbit camera ([drone-delivery-flights](https://pacha.ubica.dev/d/drone-delivery-flights)),
+tagged gulls, jaguars, seals, sharks, turtles and whales ([animal-movement-tracking](https://pacha.ubica.dev/d/animal-movement-tracking)),
+Boston's subway on a line diagram beside the map ([mbta-subway-diagram](https://pacha.ubica.dev/d/mbta-subway-diagram)) and
+GeoLife's trips in Beijing ([geolife-mobility](https://pacha.ubica.dev/d/geolife-mobility)) use it too.
+
+### In the layer tour
 
 The **City** map of the [layer tour](/plus/start/templates), installed with the app, draws a synthetic fleet in Cuenca in 3D:
 cars, vans, trucks, buses, bicycles, drones and a herd of cattle, each at its position now with a
@@ -168,6 +212,8 @@ in km/h. **Speed unit** only sets the text written after the value.
 Click an asset, or a card's pin, to keep its card on the map; click again to let it go. Pinned
 cards are saved with the map. Cards sit above every layer.
 
+[![Lap 1 of the 2026 São Paulo Grand Prix at Interlagos, just after the start: the twenty-two cars as 3D models in their team colours, each with a short trail and its driver's code, and Lando Norris's McLaren pinned with its card: 126 km/h, its speed over the last three minutes and the band of its status under the chart](/img/plus/fleet-card.jpg)](https://pacha.ubica.dev/d/f1-race-laps)
+
 | Option                   | What it does                                                                                                                    | Default     |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | ----------- |
 | Card window              | **Auto (remembered positions, else dashboard)**, **Trail**, **Remembered positions**, **Dashboard range** or **Last N minutes** | Auto        |
@@ -201,6 +247,8 @@ A card's crosshair button, left of its pin, follows that asset until you leave t
 at the top of the map names the followed asset and switches the mode. Dragging the map pauses a
 saved follow, which resumes by itself after 10 seconds; the chip's ✕, or Esc, stops it. The
 follow camera runs on the main map only, not on a split map or the globe.
+
+[![A truck in a city centre followed by the Chase camera over satellite imagery: the chip at the top reads Following Truck, with Follow, Orbit, Chase and Custom; the truck's model stands on its status disc with its track behind it, and its card shows the elevation, 96 m, and its curve over the half hour](/img/plus/fleet-follow.jpg)](https://pacha.ubica.dev/d/gps-truck-track-plus)
 
 ## 3D models
 
@@ -264,6 +312,10 @@ need, such as the route. From there the Fleet layer takes the vehicle, not the t
 and **Remember positions** gives each vehicle a trail, a heading and a speed chart from one
 position per refresh.
 
+Two working examples read GTFS-realtime on each refresh, through a 15-second cache in the gateway: Boston's MBTA at
+[pacha.ubica.dev/d/gtfs-rt-mbta-fleet](https://pacha.ubica.dev/d/gtfs-rt-mbta-fleet), the dashboard in the video, and
+Portland's TriMet at [pacha.ubica.dev/d/trimet-live-fleet](https://pacha.ubica.dev/d/trimet-live-fleet).
+
 ## Streamed positions: Grafana Live and MQTT
 
 A query can stream instead of being refreshed: Grafana Live push, the MQTT datasource, or any
@@ -287,6 +339,8 @@ reference** on **Live**: now is then the newest report, even after the dashboard
 
 Helsinki's public transport is a working example: every tram, metro, train, ferry or bus of HSL
 over MQTT, live at [pacha.ubica.dev/d/hsl-live](https://pacha.ubica.dev/d/hsl-live).
+
+[![Helsinki's buses at half past five in the morning, over MQTT: each one an arrow turned to its heading, with the trail of its last reports behind it, a dot where one is stopped, across the city, its islands and the ring roads](/img/plus/fleet-mqtt.jpg)](https://pacha.ubica.dev/d/hsl-live)
 
 ## When it does not draw
 
