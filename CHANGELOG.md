@@ -4,7 +4,7 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
-## Unreleased
+## 1.10.1 (2026-11-16)
 
 - **The opacity of a tileset of splats.** A 3D Tile layer of Gaussian splats under an opacity of 1
   looked the same as at 1: each splat's alpha was multiplied by it, and a surface of splats is
