@@ -67,7 +67,8 @@ import {
   type BuildingsContentLike,
   type VolumeTileLike,
 } from './tile3dBuildings';
-import { sturdyLoader } from './tile3dLoader';
+import { servesTiles3D, sturdyLoader } from './tile3dLoader';
+import { isSplatTile, orderSplatLayers, splatTileLayers, type SplatTileLike } from './splats/splatTiles';
 
 /** The knobs, in the shape `registerVisConfig` takes. */
 export const TILE3D_ALTITUDE_VIS_CONFIGS = {
@@ -139,6 +140,10 @@ interface DeckTile3DLayerLike {
     flattenedOf?: TilesetLike | null;
   } | null;
   updateState(params: unknown): void;
+  /** deck's, building the sublayer of one tile. */
+  _getSubLayer?(tile: unknown, oldLayer?: unknown): unknown;
+  /** deck's, every tile's sublayer. */
+  renderLayers?(): unknown;
   _updateTileset?(viewports: Record<string, unknown> | null | undefined): void;
   /** deck's, bound as the tileset's `onTileLoad` when the tileset is created. */
   _onTileLoad?(tile: unknown): void;
@@ -464,6 +469,26 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
       }
       super.finalizeState?.(context);
     }
+
+    /** A tile of Gaussian splats gets splat layers (`splats/splatTiles.ts`); any other, deck's own. */
+    _getSubLayer(tileHeader: SplatTileLike, oldLayer?: unknown): unknown {
+      if (isSplatTile(tileHeader)) {
+        return splatTileLayers(
+          tileHeader,
+          String(this.props.id),
+          (this as unknown as { getSubLayerProps(p: object): Record<string, unknown> }).getSubLayerProps({
+            id: 'splats',
+          })
+        );
+      }
+      return (super._getSubLayer as (tile: unknown, old?: unknown) => unknown).call(this, tileHeader, oldLayer);
+    }
+
+    /** deck's tile layers, the splat ones drawn farthest first. */
+    renderLayers(): unknown {
+      const layers = (super.renderLayers as () => unknown[] | null).call(this);
+      return orderSplatLayers(layers, this.context?.viewport as any);
+    }
   }
 
   subclasses.set(Base, AltitudeAwareTile3DLayer as Constructor<DeckTile3DLayerLike>);
@@ -534,7 +559,15 @@ export function withTile3dAltitude<C extends Constructor<object>>(Tile3DLayer: C
           return layer;
         }
         const Aware = altitudeAware(layer.constructor as Constructor<DeckTile3DLayerLike>);
-        const mended = 'loader' in layer.props ? { loader: sturdyLoader(layer.props.loader) } : {};
+        // An ArcGIS 3D Tiles service sent to the I3S loader by its host name gets deck's own 3D Tiles loader.
+        const deckLoader = (layer.constructor as { defaultProps?: Record<string, unknown> }).defaultProps?.loader;
+        const loader =
+          (layer.props.loader as { id?: string } | undefined)?.id === 'i3s' &&
+          servesTiles3D(layer.props.data) &&
+          deckLoader
+            ? deckLoader
+            : layer.props.loader;
+        const mended = 'loader' in layer.props ? { loader: sturdyLoader(loader) } : {};
         return new Aware({ ...layer.props, ...knobs, ...mended });
       });
     }

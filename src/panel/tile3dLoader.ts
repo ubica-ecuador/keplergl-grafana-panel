@@ -27,7 +27,16 @@
  * the loader the tileset JSON names, and loaders.gl names its own
  * `Tiles3DLoader` there whatever loader parsed the root. So the wrapper names
  * itself, and every level below passes through it.
+ *
+ * **A tile of Gaussian splats** (glTF with `KHR_gaussian_splatting`, as Esri
+ * and Cesium serve them) is a fourth fault: loaders.gl 4 knows neither the
+ * extension nor its SPZ compression, which such tiles require, so none drew.
+ * loaders.gl is asked to leave the glTF unparsed, and the splats are read here
+ * (`splats/glbSplats.ts`) and handed on as `content.splats`, which the layer
+ * draws with its own splat layer (`splats/splatTiles.ts`).
  */
+
+import { isSplatGlb, splatsFromGlb } from './splats/glbSplats';
 
 /** A loaders.gl loader, as far as this module cares. */
 export interface LoaderLike {
@@ -254,6 +263,53 @@ function mend(parsed: any): any {
   return parsed;
 }
 
+/** The loader's options with loaders.gl told to keep a glTF tile's bytes rather than parse them. */
+function withoutGltf(options: unknown): unknown {
+  const given = (options && typeof options === 'object' ? options : {}) as Record<string, any>;
+  return { ...given, '3d-tiles': { ...(given['3d-tiles'] ?? {}), loadGLTF: false } };
+}
+
+/**
+ * A tile of splats: loaders.gl's content, which placed it, with the splats in
+ * it read and its bytes let go. A tile whose splats cannot be read keeps none,
+ * and draws nothing rather than switching the layer off.
+ */
+async function withSplats(parsed: any, data: ArrayBuffer): Promise<any> {
+  if (!parsed || typeof parsed !== 'object') {
+    return parsed;
+  }
+  try {
+    parsed.splats = await splatsFromGlb(data);
+  } catch (error) {
+    parsed.splats = [];
+    parsed.splatError = error instanceof Error ? error.message : String(error);
+  }
+  delete parsed.gltfArrayBuffer;
+  parsed.gpuMemoryUsageInBytes = parsed.splats.reduce(
+    (sum: number, chunk: { splats: { count: number } }) => sum + chunk.splats.count * 36,
+    0
+  );
+  return parsed;
+}
+
+/**
+ * Whether an address is a 3D Tiles tileset: an ArcGIS `3DTilesServer`, or a
+ * `tileset.json`.
+ *
+ * kepler sends every address with `arcgis` in it to loaders.gl's I3S loader,
+ * as ArcGIS once served only I3S (`SceneServer`). It now serves 3D Tiles as
+ * well, its Gaussian splat layers among them; the I3S loader reads nothing in
+ * a `tileset.json`, and the layer stayed blank ("tileset load error … reading
+ * 'loader'"). Such an address goes to the 3D Tiles loader instead.
+ */
+export function servesTiles3D(url: unknown): boolean {
+  if (typeof url !== 'string') {
+    return false;
+  }
+  const path = url.split(/[?#]/)[0];
+  return /\/3DTilesServer(\/|$)/i.test(path) || /\/tileset\.json$/i.test(path);
+}
+
 /** Whether ion itself serves a URL: over https, from cesium.com or a host under it. */
 function servedByIon(url: string): boolean {
   try {
@@ -301,7 +357,10 @@ export function sturdyLoader<L>(loader: L): L {
   const preload = base.preload;
   const sturdy: LoaderLike = {
     ...base,
-    parse: async (data, options, context) => mend(await parse!.call(base, data, options, context)),
+    parse: async (data, options, context) =>
+      isSplatGlb(data)
+        ? withSplats(await parse!.call(base, data, withoutGltf(options), context), data)
+        : mend(await parse!.call(base, data, options, context)),
     ...(typeof preload === 'function'
       ? { preload: async (url: string, options?: unknown) => followServedUrl(await preload.call(base, url, options)) }
       : {}),
