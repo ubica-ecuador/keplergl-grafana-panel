@@ -8,6 +8,15 @@ drag across the profile to measure a section.
 
 ![The Senda de la Laguna Grande in the Sierra de Gredos on Satellite + relief, coloured by grade from light orange (under 5 %) to dark brown, its profile under the map: 4.2 km, 39 m up and 412 m down between 1,766 and 2,178 m, steepest 24 %; the pointer on the chart at 1.4 km, 2,092 m and −10 % is the white dot on the trail](/img/plus/route.jpg)
 
+## See it live
+
+[Weather balloons over the Alps](https://pacha.ubica.dev/d/alps-weather-balloons), on the public demo instance: a
+week of radiosondes from six launch sites round the Alps, each balloon's flight drawn at its own heights over the
+relief, its track on the ground below it (a second Route layer on the same rows, drawn on the ground, with no profile),
+its profile under the map, and its height, temperature and wind on charts that share the moment you point at.
+
+[![The radiosonde launched from Payerne at 11:00 UTC on 13 November 2026 on Satellite + relief: its route at its heights in blue, rising eastwards over the Swiss Alps to 37.2 km and falling past Innsbruck, its track on the ground in white below; the profile under the map gives 440 km, 36,805 m up and 2 h 57 min; the pointer on the height chart at 13:02 UTC is the dot over Bregenz, the line on the profile at 236 km and 33,760 m, and the crosshair on the temperature and wind charts](/img/plus/route-alps.jpg)](https://pacha.ubica.dev/d/alps-weather-balloons)
+
 ## What the query needs
 
 Either of kepler's two ways of giving a line, as for its GeoJSON layer:
