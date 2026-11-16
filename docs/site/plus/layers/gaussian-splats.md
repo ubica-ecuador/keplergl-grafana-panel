@@ -52,15 +52,16 @@ panels draw it.
 
 The layer reads:
 
-| Format   | From                                                                                       |
-| -------- | ------------------------------------------------------------------------------------------ |
-| `.spz`   | Niantic's compressed splats: Scaniverse, Spark, most web exports                           |
-| `.ply`   | 3D Gaussian Splatting's own output, binary, as trainers write it (Postshot, Brush, gsplat) |
-| `.splat` | the format of antimatter15's web viewer                                                    |
-| `.glb`   | a glTF with the `KHR_gaussian_splatting` extension, plain or SPZ-compressed                |
+| Format   | From                                                                                          |
+| -------- | --------------------------------------------------------------------------------------------- |
+| `.spz`   | Niantic's compressed splats, versions 2 to 4: Scaniverse, Spark, SuperSplat, most web exports |
+| `.ply`   | binary, as trainers write it (Postshot, Brush, gsplat), or SuperSplat's compressed PLY        |
+| `.sog`   | PlayCanvas's splats as WebP pictures in a zip (SuperSplat, splat-transform), versions 2 and 3 |
+| `.splat` | the format of antimatter15's web viewer                                                       |
+| `.glb`   | a glTF with the `KHR_gaussian_splatting` extension, plain or SPZ-compressed                   |
 
-SuperSplat's compressed `.ply` is not read: export a plain `.ply` or an `.spz` from it. A scan is drawn with up to 16
-million splats and 600 MB; past that, the map says so and leaves it out.
+A SOG of version 1 (pictures beside a `meta.json`, not bundled) is not read: bundle it again with SuperSplat or
+splat-transform. A scan is drawn with up to 16 million splats and 600 MB; past that, the map says so and leaves it out.
 
 ## Placement
 
@@ -68,8 +69,8 @@ No capture knows where north is, and most do not know which way is up. The **Pla
 map:
 
 - **Up axis**: which way the file holds up. **By format** takes Y up for a `.glb` (glTF's frame) and Y down for
-  `.spz`, `.ply` and `.splat`, the frame trainers write them in. A scan lying on its side or upside down needs another
-  choice.
+  `.spz`, `.ply`, `.sog` and `.splat`, the frame trainers write them in. A scan lying on its side or upside down needs
+  another choice: some tools turn a scan to Y up as they write its `.spz`.
 - **Pitch (°)** and **Roll (°)** set a crooked capture level: the pitch raises its front (its north, before the
   heading), the roll lowers its right side.
 - **Heading (°)** turns the scan clockwise from north about its place.
