@@ -124,6 +124,19 @@ WHERE a.time BETWEEN $__timeFrom() AND $__timeTo();
 
 The card stands above the top of the scan once the scan has loaded.
 
+## A scanned building, floor by floor
+
+With the panel's [Floors](/plus/indoor/) on, a scan is cut at the floors shown: what lies above them (and below,
+unless **and below** is ticked) is left out, a section through the building, whether the other floors are seen
+through or hidden. **Cut at the floor shown**, in the **Placement** group, turns it off.
+
+- Give the scan's query **no floor column**: a scan is one row on every floor. The sensors, rooms and plans have
+  theirs, as for any indoor map.
+- Set Floors' **Spread** to the building's storey height, so that its floors' heights match the scan's: each floor
+  is drawn from half a metre under it to half a metre under the next.
+- Stand the scan's ground floor on the ground (**Floor on the ground**), or lift it with **Altitude** to where the
+  building's floor 0 is.
+
 ## Picking a capture by time
 
 The rows kepler's filters drop are not drawn. With one row per capture and a time column, a time filter (or the
