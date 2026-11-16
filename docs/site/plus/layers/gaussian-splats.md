@@ -60,8 +60,7 @@ The layer reads:
 | `.glb`   | a glTF with the `KHR_gaussian_splatting` extension, plain or SPZ-compressed                |
 
 SuperSplat's compressed `.ply` is not read: export a plain `.ply` or an `.spz` from it. A scan is drawn with up to 16
-million splats and 600 MB; past that, the map says so and leaves it out. Splats are drawn with their diffuse colour:
-the colour that changes with the angle of view (higher spherical harmonics) is left out.
+million splats and 600 MB; past that, the map says so and leaves it out.
 
 ## Placement
 
@@ -88,6 +87,10 @@ blend into a photographic surface. Scans write no depth: a nearer scan hides the
 buildings in front of a scan hide it, and a scan never hides kepler's layers drawn after it.
 
 - **Opacity** sees through the whole scan, not each splat: at 0.5 what stands behind the scan shows through it.
+- **Colour by view angle**, on by default, draws the shine and tint a splat shows from each side, as the scan was
+  trained (its spherical harmonics, up to degree 3), from `.spz`, `.ply` and `.glb`; `.splat` carries none. A scan
+  whose harmonics would take more than 256 MB of GPU memory keeps one colour a splat. Off draws every splat with one
+  colour, a little faster.
 - **Soften fine splats**, on by default, dims splats finer than a pixel for scans trained with a screen-space filter
   (most `.spz` from capture apps). Off draws them as other viewers do.
 
