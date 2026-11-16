@@ -82,6 +82,7 @@ export const PLUS_SIDEBAR: DefaultTheme.SidebarItem[] = [
     items: [
       { text: 'Base maps', link: '/plus/maps/basemaps' },
       { text: '3D tiles', link: '/plus/maps/3d-tiles' },
+      { text: 'Measuring on the map', link: '/plus/maps/measure' },
     ],
   },
   {
