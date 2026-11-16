@@ -16,7 +16,7 @@ import type { EsriDataset } from '../data/esriDataset';
 import type { ZarrDataset } from '../data/zarrDataset';
 import { namesBasemap, type SavedMapConfig } from '../data/mapConfig';
 import type { KeplerThemeOverride } from '../data/keplerTheme';
-import { KEPLER_INSTANCE_ID } from './constants';
+import { KEPLER_INSTANCE_ID, maxZoomOf } from './constants';
 import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES, startingStyleType } from './basemaps';
 import { configureKepler, configureRasterServers, isAddDataModalOpening } from './keplerConfig';
 import { configureLoaders } from './loaderOptions';
@@ -25,6 +25,7 @@ import { createKeplerStore, onKeplerAction } from './keplerStore';
 import {
   capturePlayingTimeFilter,
   closeMapPopover,
+  keepMaxZoom,
   loadDatasets,
   loadRasters,
   loadWms,
@@ -170,6 +171,8 @@ export interface KeplerMapProps {
   theme?: KeplerThemeOverride;
   /** Resolved base map style id, or null to leave kepler's default alone. */
   basemapId?: string | null;
+  /** The panel's *Maximum zoom*, as authored (`maxZoomOf` reads it). */
+  maxZoom?: number;
   customBasemapUrl?: string;
   /**
    * The panel's raster tile servers (its *Raster tile server* option), for
@@ -282,6 +285,7 @@ export function KeplerMap({
   mapConfig: savedMapConfig,
   theme,
   basemapId,
+  maxZoom,
   customBasemapUrl,
   rasterServerUrls,
   showSidePanel,
@@ -561,6 +565,14 @@ export function KeplerMap({
     }
     setBasemap(store.dispatch, basemapId);
   }, [isReady, basemapId, mapConfig, store]);
+
+  // How close the camera may come: held on the map state, which a saved config can replace.
+  useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+    return keepMaxZoom(store, maxZoomOf(maxZoom));
+  }, [isReady, maxZoom, store]);
 
   useEffect(() => {
     if (!isReady) {

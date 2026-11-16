@@ -2625,6 +2625,28 @@ export function restoreViewport(
 }
 
 /**
+ * Holds kepler's map at a maximum zoom, and brings the map back within it if it
+ * is past it. kepler has no application setting for it, only the map state's
+ * own `maxZoom`, which it hands to deck.gl and MapLibre; a saved config loaded
+ * later can replace that state, so the zoom is held on every store change, and
+ * set only when it differs. Returns the unsubscribe.
+ */
+export function keepMaxZoom(store: Store, maxZoom: number): () => void {
+  const hold = () => {
+    const mapState = readMapState(store) as (MapStateLike & { maxZoom?: number }) | null;
+    if (!mapState || mapState.maxZoom === maxZoom) {
+      return;
+    }
+    const pulledBack = typeof mapState.zoom === 'number' && mapState.zoom > maxZoom ? { zoom: maxZoom } : {};
+    store.dispatch(
+      wrapTo(KEPLER_INSTANCE_ID, updateMap({ maxZoom, ...pulledBack } as Parameters<typeof updateMap>[0], 0)) as never
+    );
+  };
+  hold();
+  return store.subscribe(hold);
+}
+
+/**
  * Keeps the 3D tilesets a saved config restores from re-framing the map when
  * their tileset loads, and returns how many layers it held.
  *

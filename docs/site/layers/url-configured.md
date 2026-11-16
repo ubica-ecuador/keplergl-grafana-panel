@@ -132,6 +132,10 @@ by the URL:
 | `arcgis`         | an ArcGIS I3S scene layer             | —                         |
 | anything else    | OGC 3D Tiles, from its `tileset.json` | —                         |
 
+An ArcGIS address that ends in `tileset.json` or names a `3DTilesServer` is read as OGC 3D Tiles:
+ArcGIS serves those too, its Gaussian splat layers among them, and the I3S loader read nothing in
+them.
+
 **Add Data → Tileset → 3D Tile** takes a name, the **Tileset URL** and an **Access Token (if
 needed)**, with one example of each kind. The image is a public 3D Tiles mesh, drawn from its
 `tileset.json`.
@@ -151,7 +155,29 @@ the ground for that reason. A tileset of buildings round the whole world, like C
 is set down building by building instead.
 
 The panel also lets the camera tilt to 85° rather than kepler's 60°, which a mesh seen from close
-to the ground needs.
+to the ground needs, and come closer than deck.gl's zoom 20 (the panel's **Maximum zoom**, 22 by
+default, up to 24: see [Map settings](../guide/kepler/map-settings#how-close-you-can-zoom)).
+
+### Gaussian splats {#gaussian-splats}
+
+A tileset of **Gaussian splats** is drawn as splats: glTF tiles with the Khronos extension
+`KHR_gaussian_splatting`, compressed with SPZ (`KHR_gaussian_splatting_compression_spz_2`), as
+ArcGIS's Gaussian splat layers and Cesium's tilers serve them. Each splat is a small ellipsoid with
+a colour and an opacity; the panel draws each as the ellipse it covers on the screen, fading from
+its centre, the farthest first, so that they blend into a continuous, photographic surface where a
+point cloud would leave the ground showing between its points. Nothing is to be set: give the layer
+the `tileset.json`.
+
+- **Sit on the ground** grounds a tileset of splats by its own splats, the lowest 2 % of them taken
+  for the ground, since its bounding boxes say little: ArcGIS writes them along the Earth's axes,
+  hundreds of metres loose.
+- Each place shows one level of detail at a time, the finest loaded; while finer tiles load, a seam
+  can show at their edge for a moment.
+- The colour is the splat's own, the same from every side: the view-dependent shine a splat can
+  carry (its spherical harmonics past the first) is not drawn.
+- A splat scan looks right from where it was captured. One captured by drone, seen from the street,
+  shows its ground edge-on, thin, and the base map through it.
+- Splats cannot be hovered or clicked.
 
 The first time a tileset loads, kepler moves the map to it — except for Google's. A saved map keeps
 its own saved view instead.

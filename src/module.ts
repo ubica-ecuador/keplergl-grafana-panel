@@ -18,7 +18,7 @@ import { ViewportVariablesEditor } from './editors/ViewportVariablesEditor';
 import { FitVariablesEditor } from './editors/FitVariablesEditor';
 import { AdHocFieldsEditor } from './editors/AdHocFieldsEditor';
 import { PlayheadVariableEditor } from './editors/PlayheadVariableEditor';
-import { RASTER_SERVER_PLACEHOLDER } from './panel/constants';
+import { DEFAULT_MAX_ZOOM, MAX_ZOOM_LIMITS, RASTER_SERVER_PLACEHOLDER } from './panel/constants';
 import { hasRemovedOptions, migrateRemovedOptions } from './panel/removedOptions';
 import { DEFAULT_PUBLISH_INTERVAL_MS, MIN_PUBLISH_INTERVAL_MS } from './panel/timeVariableSync';
 import { DEFAULT_LIVE_INTERVAL_MS, MIN_LIVE_INTERVAL_MS } from './panel/useLiveSeries';
@@ -228,6 +228,15 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
           { value: 'custom', label: 'Self-hosted style.json' },
         ],
       },
+    })
+    .addSliderInput({
+      path: 'maxZoom',
+      name: 'Maximum zoom',
+      description:
+        'How close the camera may come. 22 by default; up to 24 for 3D tiles, BIM models and Gaussian splat scans seen from a few metres (at 24 and full tilt, about eye height). Base maps past their own detail are enlarged.',
+      category: ['Map'],
+      defaultValue: DEFAULT_MAX_ZOOM,
+      settings: { min: MAX_ZOOM_LIMITS.min, max: MAX_ZOOM_LIMITS.max, step: 1 },
     })
     .addTextInput({
       path: 'customBasemapUrl',

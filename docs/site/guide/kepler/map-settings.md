@@ -27,6 +27,21 @@ Two things to expect on a tilted map:
 - **Panning a tilted terrain map can make the camera jitter**, an open kepler.gl issue
   ([keplergl/kepler.gl#3394](https://github.com/keplergl/kepler.gl/issues/3394)).
 
+## How close you can zoom
+
+The panel option **Maximum zoom** (Map section) sets how close the camera may come: 22 by default,
+from 16 to 24. deck.gl, which draws kepler's layers, stops at 20 when told nothing, and at 20 the
+camera is still some 150 m from what it looks at: enough for a city, short of a building.
+
+- **22**, MapLibre's own default, brings it to about 40 m.
+- **24** brings it to about 10 m, for 3D tiles, BIM models and Gaussian splat scans seen up close.
+  With **3D** on and the map tilted to the full 85°, the camera then stands at about eye height,
+  looking along the street.
+
+Past 24 nothing is gained: kepler's camera always looks at a point on the ground. Base maps past
+their own detail are enlarged rather than sharpened, satellite imagery most visibly. The option is
+the panel's, not kepler's: a configuration saved from the map does not change it.
+
 ## Globe
 
 kepler's globe projection works, and looks striking on a large panel. Two practical caveats in a

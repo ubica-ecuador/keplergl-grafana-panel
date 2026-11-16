@@ -339,6 +339,7 @@ export function KeplerPanel(props: Props) {
         mapConfig={geomapConversion?.mapConfig ?? options.mapConfig}
         theme={followTheme ? keplerTheme : undefined}
         basemapId={basemapId}
+        maxZoom={options.maxZoom}
         customBasemapUrl={customBasemapUrl}
         rasterServerUrls={rasterServerUrls}
         showSidePanel={options.showSidePanel ?? true}
