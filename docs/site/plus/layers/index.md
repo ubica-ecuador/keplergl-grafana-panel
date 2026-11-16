@@ -1,6 +1,6 @@
 # Plus layers
 
-Plus adds thirteen layer types to kepler's layer list. Each one is a kepler layer like any other: you pick it as the
+Plus adds fourteen layer types to kepler's layer list. Each one is a kepler layer like any other: you pick it as the
 layer type, style it in kepler's layer panel, and it is saved with the map. Most of them you add yourself, with
 **Add Layer** or by switching the type of a layer the panel already built; each layer page says when the panel adds
 one for you.
@@ -13,6 +13,7 @@ one for you.
 | [3D Shape](./shape-3d)                                | A box, cylinder or prism whose height and colour are metrics   | Points                           |
 | [Coverage and Coverage 3D](./coverage)                | Sectors from an azimuth, a beamwidth and a range; domes in 3D  | Points, one row per sector       |
 | [Viewshed](./viewshed)                                | The ground each place sees past the terrain and the buildings  | Points, one row per observer     |
+| [Buildings](./buildings)                              | The base map's buildings, each coloured by a value             | Points, polygons or H3 cells     |
 | [Surface](./surface)                                  | Coloured bands and isolines between points, or a density count | Points                           |
 | [Sparkline](./sparkline)                              | A card with each station's series and its current value        | Points, many rows per station    |
 | [3D Callout](./callout)                               | A Sparkline card on a stem above each place, at its height     | Points, many rows per place      |
@@ -57,7 +58,7 @@ its series, shown on hover in place of the popup, or all the time, beside the ob
 A click on a Plus layer reaches the panel's click variables and is ringed on the map, as on kepler's layers. See
 [Cross-filtering](/guide/dashboard/cross-filtering).
 
-kepler's draw tool offers Gauge, 3D Shape, Coverage, Viewshed, Surface, Sparkline, 3D Callout and Fleet next to its own layer types, and a
+kepler's draw tool offers Gauge, 3D Shape, Coverage, Viewshed, Buildings, Surface, Sparkline, 3D Callout and Fleet next to its own layer types, and a
 polygon drawn with it filters them. Fleet filters per asset: an asset that is inside the polygon now keeps its whole
 trail.
 
