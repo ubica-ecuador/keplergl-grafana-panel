@@ -107,6 +107,71 @@ export function packSpz(
   return bytes;
 }
 
+/**
+ * A zstd frame holding these bytes as they are (raw blocks of at most 128 KB),
+ * which any zstd decoder reads: enough to test SPZ 4 without a compressor.
+ */
+export function zstdRaw(bytes: Uint8Array): Uint8Array {
+  const blocks = Math.max(1, Math.ceil(bytes.length / 131072));
+  const out = new Uint8Array(4 + 1 + 8 + blocks * 3 + bytes.length);
+  const view = new DataView(out.buffer);
+  view.setUint32(0, 0xfd2fb528, true);
+  // Single segment, an 8-byte content size, no checksum, no dictionary.
+  out[4] = 0b11100000;
+  view.setBigUint64(5, BigInt(bytes.length), true);
+  let at = 13;
+  for (let b = 0; b < blocks; b++) {
+    const part = bytes.subarray(b * 131072, (b + 1) * 131072);
+    // Block header: last block bit, type 0 (raw), its size.
+    const header = (part.length << 3) | (b === blocks - 1 ? 1 : 0);
+    out[at] = header & 0xff;
+    out[at + 1] = (header >>> 8) & 0xff;
+    out[at + 2] = (header >>> 16) & 0xff;
+    out.set(part, at + 3);
+    at += 3 + part.length;
+  }
+  return out;
+}
+
+/**
+ * An SPZ of version 4 of these splats, as Niantic's library writes it: a
+ * 32-byte header in the clear, the table of contents, each attribute in a zstd
+ * stream of its own (raw blocks here, see `zstdRaw`).
+ */
+export function packSpzV4(
+  splats: PlainSplat[],
+  options: { flags?: number; fractionalBits?: number; shDegree?: number } = {}
+): Uint8Array {
+  const v3 = packSpz(splats, { ...options, version: 3 });
+  const count = splats.length;
+  const shDegree = options.shDegree ?? 0;
+  const sizes = [count * 9, count, count * 3, count * 3, count * 4];
+  if (shDegree > 0) {
+    sizes.push(count * ((shDegree + 1) * (shDegree + 1) - 1) * 3);
+  }
+  const streams: Uint8Array[] = [];
+  let from = 16;
+  for (const size of sizes) {
+    streams.push(zstdRaw(v3.subarray(from, from + size)));
+    from += size;
+  }
+  const toc = 32;
+  const out = new Uint8Array(toc + sizes.length * 16 + streams.reduce((sum, s) => sum + s.length, 0));
+  const view = new DataView(out.buffer);
+  out.set(v3.subarray(0, 16));
+  view.setUint32(4, 4, true);
+  out[15] = sizes.length;
+  view.setUint32(16, toc, true);
+  let at = toc + sizes.length * 16;
+  streams.forEach((stream, i) => {
+    view.setBigUint64(toc + i * 16, BigInt(stream.length), true);
+    view.setBigUint64(toc + i * 16 + 8, BigInt(sizes[i]), true);
+    out.set(stream, at);
+    at += stream.length;
+  });
+  return out;
+}
+
 /** A binary glTF with one primitive of splats, its SPZ in the binary chunk, under one node with `matrix`. */
 export function splatGlb(spz: Uint8Array, count: number, matrix?: number[]): ArrayBuffer {
   const json = {

@@ -1,7 +1,7 @@
 import { gzipSync } from 'zlib';
 
 import { decodeSpz, isGzip, parseSpz } from './spz';
-import { packSpz, type PlainSplat } from './spzFixture';
+import { packSpz, packSpzV4, type PlainSplat } from './spzFixture';
 
 import { TextDecoder as NodeTextDecoder, TextEncoder as NodeTextEncoder } from 'util';
 import { DecompressionStream as NodeDecompressionStream } from 'stream/web';
@@ -51,6 +51,22 @@ describe('SPZ', () => {
     });
   });
 
+  it('reads version 4: its header in the clear, each attribute in a zstd stream', async () => {
+    const sh = Array.from({ length: 9 }, (_, k) => (k - 4) / 8);
+    const withSh = SPLATS.map((s) => ({ ...s, sh }));
+    const four = packSpzV4(withSh, { flags: 1, shDegree: 1 });
+    expect(isGzip(four)).toBe(false);
+    const read = await decodeSpz(four);
+    const three = parseSpz(packSpz(withSh, { flags: 1, shDegree: 1 }));
+    expect(read.count).toBe(3);
+    expect(read.antialiased).toBe(true);
+    expect(Array.from(read.positions)).toEqual(Array.from(three.positions));
+    expect(Array.from(read.rotations)).toEqual(Array.from(three.rotations));
+    expect(Array.from(read.colors)).toEqual(Array.from(three.colors));
+    expect(Array.from(read.sh!.coefficients)).toEqual(Array.from(three.sh!.coefficients));
+    expect(parseSpz(packSpzV4(SPLATS)).sh).toBeNull();
+  });
+
   it('keeps the antialiased flag', () => {
     expect(parseSpz(packSpz(SPLATS, { flags: 1 })).antialiased).toBe(true);
   });
@@ -66,9 +82,13 @@ describe('SPZ', () => {
   it('refuses what it cannot read', () => {
     const packed = packSpz(SPLATS);
     expect(() => parseSpz(packed.subarray(0, 40))).toThrow(/bytes for 3 splats/);
-    const v4 = packed.slice();
-    new DataView(v4.buffer).setUint32(4, 4, true);
-    expect(() => parseSpz(v4)).toThrow(/version 4/);
+    const v5 = packed.slice();
+    new DataView(v5.buffer).setUint32(4, 5, true);
+    expect(() => parseSpz(v5)).toThrow(/version 5/);
+    // A version 4 header with the streams of another degree.
+    const v4 = packSpzV4(SPLATS);
+    v4[12] = 2;
+    expect(() => parseSpz(v4)).toThrow(/streams/);
     const junk = packed.slice();
     junk[0] = 0;
     expect(() => parseSpz(junk)).toThrow(/not an SPZ/);

@@ -13,6 +13,10 @@ release documents what changed since the one before it.
   direction from the eye, in the splats' own space. A scan whose harmonics would take more than
   256 MB of GPU memory keeps one colour a splat. The splat layer's `viewDependentColor` (on by
   default) turns them off.
+- **SPZ of version 4.** The version Niantic's library and PlayCanvas's splat-transform write today,
+  not gzipped but a header in the clear and each attribute in a zstd stream of its own, was
+  refused; it is now read (zstd inflated by fzstd, MIT, 4 KB gzipped), in a glTF's SPZ as in a
+  loose file.
 
 ## 1.10.1 (2026-11-16)
 

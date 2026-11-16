@@ -9,8 +9,10 @@
  * spherical harmonics. The layout follows Niantic's reference decoder
  * (github.com/nianticlabs/spz, MIT): version 2 stores a rotation's x, y and z
  * in a byte each, version 3 the three smallest components in 10 bits each.
- * Version 4 (zstd streams) is not read: no tileset served it when this was
- * written, and the extension names version 2.
+ * Version 4, the one Niantic's library and PlayCanvas's splat-transform write
+ * today, is not gzipped: a 32-byte header in the clear, a table of contents and
+ * each attribute in a zstd stream of its own (inflated by fzstd), the same
+ * attributes as version 3 once inflated.
  *
  * The values are taken as the glTF primitive's own: the positions of Esri's
  * tiles match the bounds their accessors state, so no axis is turned here.
@@ -52,8 +54,12 @@ export interface SplatSh {
   coefficients: Uint8Array;
 }
 
+import { decompress as unzstd } from 'fzstd';
+
 const MAGIC = 0x5053474e; // 'NGSP'
 const HEADER_BYTES = 16;
+/** Version 4's header, in the clear: version 3's 16 bytes (byte 15 the number of streams), the table's offset, 12 reserved. */
+const V4_HEADER_BYTES = 32;
 const FLAG_ANTIALIASED = 0x1;
 /** SPZ stores a colour coefficient as 0.5 + c × COLOR_SCALE, in a byte. */
 const COLOR_SCALE = 0.15;
@@ -154,11 +160,61 @@ function shOf(raw: Uint8Array, offset: number, count: number, degree: number): U
   return out;
 }
 
-/** An inflated SPZ stream, read into splats. Throws on anything it cannot read. */
-export function parseSpz(raw: Uint8Array): Splats {
-  if (raw.length < HEADER_BYTES) {
+/**
+ * An SPZ of version 4 (its header in the clear, then each attribute in a zstd
+ * stream: positions, opacities, colours, scales, rotations and, past degree 0,
+ * the harmonics) laid out as an inflated version 3 stream, which holds the same
+ * attributes one after the other.
+ */
+export function spzV4AsV3(bytes: Uint8Array): Uint8Array {
+  if (bytes.length < V4_HEADER_BYTES) {
+    throw new Error('SPZ 4: shorter than its header');
+  }
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const count = view.getUint32(8, true);
+  const shDegree = view.getUint8(12);
+  if (shDegree > 4) {
+    throw new Error(`SPZ: spherical harmonics of degree ${shDegree}`);
+  }
+  const streams = view.getUint8(15);
+  const toc = view.getUint32(16, true);
+  const sizes = [count * 9, count, count * 3, count * 3, count * 4];
+  if (shDegree > 0) {
+    sizes.push(count * shDim(shDegree) * 3);
+  }
+  if (streams !== sizes.length || toc < V4_HEADER_BYTES || toc + streams * 16 > bytes.length) {
+    throw new Error(`SPZ 4: ${streams} streams where ${sizes.length} were expected`);
+  }
+  const out = new Uint8Array(HEADER_BYTES + sizes.reduce((sum, size) => sum + size, 0));
+  out.set(bytes.subarray(0, HEADER_BYTES));
+  new DataView(out.buffer).setUint32(4, 3, true);
+  out[15] = 0;
+  let from = toc + streams * 16;
+  let at = HEADER_BYTES;
+  for (let i = 0; i < streams; i++) {
+    const compressed = Number(view.getBigUint64(toc + i * 16, true));
+    const inflated = Number(view.getBigUint64(toc + i * 16 + 8, true));
+    if (inflated !== sizes[i] || from + compressed > bytes.length) {
+      throw new Error(`SPZ 4: stream ${i} holds ${inflated} bytes, ${sizes[i]} expected`);
+    }
+    const stream = unzstd(bytes.subarray(from, from + compressed));
+    if (stream.length !== inflated) {
+      throw new Error(`SPZ 4: stream ${i} inflated to ${stream.length} bytes, ${inflated} expected`);
+    }
+    out.set(stream, at);
+    from += compressed;
+    at += inflated;
+  }
+  return out;
+}
+
+/** An inflated SPZ stream (or a version 4 SPZ, which is never gzipped), read into splats. Throws on anything it cannot read. */
+export function parseSpz(input: Uint8Array): Splats {
+  if (input.length < HEADER_BYTES) {
     throw new Error('SPZ: shorter than its header');
   }
+  const head = new DataView(input.buffer, input.byteOffset, HEADER_BYTES);
+  const raw = head.getUint32(0, true) === MAGIC && head.getUint32(4, true) === 4 ? spzV4AsV3(input) : input;
   const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
   const magic = view.getUint32(0, true);
   const version = view.getUint32(4, true);
@@ -170,7 +226,7 @@ export function parseSpz(raw: Uint8Array): Splats {
     throw new Error('SPZ: not an SPZ stream');
   }
   if (version !== 2 && version !== 3) {
-    throw new Error(`SPZ: version ${version} is not read (only 2 and 3)`);
+    throw new Error(`SPZ: version ${version} is not read (only 2, 3 and 4)`);
   }
   if (shDegree > 4) {
     throw new Error(`SPZ: spherical harmonics of degree ${shDegree}`);
