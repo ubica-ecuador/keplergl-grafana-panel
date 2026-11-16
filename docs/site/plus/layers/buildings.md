@@ -16,6 +16,7 @@ The Buildings layer is new in Plus 1.7.0, not released yet.
 [New York's street heat, block by block](https://pacha.ubica.dev/d/nyc-street-heat), on the public demo instance:
 the July 2019 heat wave from the city's Cool Neighborhoods street sensors, hour by hour, with the same buildings
 coloured three ways, by the sensors around them, by their ZIP code's Heat Vulnerability Index and by H3 hexagon.
+Hover a building for its card: its temperature over the ten days.
 
 ## The buildings
 
@@ -151,6 +152,48 @@ Pointing at a building tells its value and where it came from:
 
 A sensor's dot gives its own reading.
 
+## Cards
+
+With **Cards → Show** at **Card on hover**, the building under the pointer shows a card over its roof in place of the
+hover box: its value at the map's instant, in its colour, and its chart over the dashboard's time range. The card is
+worked out as the building's colour is, time by time:
+
+![East Harlem at 15:00 on 21 July 2019, the buildings coloured by the air temperature around them, and over one building near Park Avenue its card: Estimated at this building, 37.9 °C in the building's dark orange, and a chart of the ten days from 20 to 45 °C, with a peak every afternoon and the hour shown marked on the 21st](/img/plus/buildings-card.jpg)
+
+| Value from         | The card's chart                                                                     | Header                          |
+| ------------------ | ------------------------------------------------------------------------------------ | ------------------------------- |
+| **Sensors around** | the estimate at the building's centre, from the closest sensors reading at each time | Estimated at this building      |
+| **Sensors inside** | their mean, lowest or highest (**Several inside**)                                   | Its sensor, Its 3 sensors       |
+| **Polygons**       | its polygon's readings; where polygons overlap, their mean, lowest or highest        | the polygon's first text column |
+| **H3 cells**       | its cell's readings                                                                  | H3 and the cell's id            |
+
+Sensors seldom read at the same instant: at each time, a sensor counts with its newest reading if that is no older
+than one and a half of its usual gap, so a sensor that stopped reporting drops out of the estimate instead of
+carrying its last reading on.
+
+The card stays for a moment after the pointer leaves, so the pointer can reach it, and has a pin in its header: a
+pinned card stays on the map, kept with the map by the building's centre, and shows whenever its building is drawn.
+Save the dashboard to keep the pins. A sensor's dot keeps its hover box. There is no **Cards always**: a map in a city
+draws thousands of buildings.
+
+**The chart and the instant.** A card reads the rows past kepler's time filter, while the colours read only the rows
+the filter keeps. So query the whole range, one row per sensor and hour, and add a time filter on the hour, synced
+with the dashboard's time by a [Time Brush](/plus/time-brush): the buildings take the hour's colours, and each card
+charts the whole range with a dot on that hour. Without a time filter, a card shows the newest reading. See
+[Cards on any layer](./cards#what-a-card-shows) for the instant.
+
+| Option           | What it does                                                                       | Default                 |
+| ---------------- | ---------------------------------------------------------------------------------- | ----------------------- |
+| **Show**         | **Tooltip** (the hover box) or **Card on hover** (pinnable).                       | Tooltip                 |
+| **Placement**    | **Above, on a stem**, over the roof, or **Beside** the building.                   | Above                   |
+| **Time**         | The time column the chart runs along; **None (value only)** shows the value alone. | Auto (first time field) |
+| **Unit**         | Text after the value, kept as typed: a leading space sets it apart (` °C`).        | empty                   |
+| **Size**         | **Small**, **Medium** or **Large**.                                                | Small                   |
+| **Min**, **Max** | The chart's vertical range. Empty: from the readings.                              | auto                    |
+
+The value is the layer's colour column. **Min** and **Max** matter on a map whose values swing every day: a heat
+wave's 20 to 45 °C reads the days and nights better than 0 to 50.
+
 ## Writing it in a saved map
 
 Like any Plus layer, in the map's saved configuration. The panel names a geometry column `_geojson` and an H3 column
@@ -174,6 +217,10 @@ Like any Plus layer, in the map's saved configuration. The panel names a geometr
 
 For cells, `"columnMode": "h3"` and `"columns": { "hex_id": "h3" }`; for sensors, `"columnMode": "points"` and
 `"columns": { "lat": "latitude", "lng": "longitude" }`, with `"buildingsMode": "interpolate"` or `"inside"`.
+
+The cards are in the same `visConfig`: `"cardShow": "hover"`, and `cardPlacement` (`"above"` or `"beside"`),
+`cardTimeField`, `cardUnit`, `cardSize` (`"S"`, `"M"`, `"L"`), `cardMin` and `cardMax`. The pins are written to
+`cardPinned` by the pin on each card.
 
 ## Good to know
 

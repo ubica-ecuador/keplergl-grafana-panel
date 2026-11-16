@@ -3,7 +3,8 @@
 The 4D Model, Gauge, 3D Shape, Coverage, Traffic and Pipeline layers can show a card for each of their objects, with
 its name, its reading at the map's instant and its series over the dashboard's time range, in place of kepler's
 popup or all the time. One layer then gives each object its colour and its card, where a [Sparkline](./sparkline)
-layer beside it was needed before.
+layer beside it was needed before. The [Buildings](./buildings#cards) layer shows a building's card on hover, with
+the same settings but fewer of them (its own section says which).
 
 ![Eraring Power Station's four units as a 4D Model coloured by their output, each with a card above it: the unit's id, its output in MW in the unit's colour, and the day's series on a common scale of 0 to 720 MW](/img/plus/cards.jpg)
 
@@ -36,14 +37,15 @@ A click on an object still reaches the panel's click variables, whatever **Show*
 
 The card belongs to the object the layer draws, the same one its popup's history follows:
 
-| Layer                  | One card per                      | Where it stands                                                          | Placement by default |
-| ---------------------- | --------------------------------- | ------------------------------------------------------------------------ | -------------------- |
-| [4D Model](./model-4d) | part the rows name                | the top of the part, over the middle of its footprint                    | Above, on a stem     |
-| [Gauge](./gauge)       | place, or asset when there is one | the gauge's point                                                        | Beside               |
-| [3D Shape](./shape-3d) | place, or asset                   | the top of the shape when it is sized in metres; its base when in pixels | Beside               |
-| [Coverage](./coverage) | sector: a site and its azimuth    | the site                                                                 | Beside               |
-| [Traffic](./traffic)   | link: its two ends                | halfway between them                                                     | Beside               |
-| [Pipeline](./pipeline) | line                              | halfway along it, at its height there: a riser's card stands halfway up  | Beside               |
+| Layer                          | One card per                      | Where it stands                                                          | Placement by default |
+| ------------------------------ | --------------------------------- | ------------------------------------------------------------------------ | -------------------- |
+| [4D Model](./model-4d)         | part the rows name                | the top of the part, over the middle of its footprint                    | Above, on a stem     |
+| [Gauge](./gauge)               | place, or asset when there is one | the gauge's point                                                        | Beside               |
+| [3D Shape](./shape-3d)         | place, or asset                   | the top of the shape when it is sized in metres; its base when in pixels | Beside               |
+| [Coverage](./coverage)         | sector: a site and its azimuth    | the site                                                                 | Beside               |
+| [Traffic](./traffic)           | link: its two ends                | halfway between them                                                     | Beside               |
+| [Pipeline](./pipeline)         | line                              | halfway along it, at its height there: a riser's card stands halfway up  | Beside               |
+| [Buildings](./buildings#cards) | building, on hover or pinned      | the middle of its roof                                                   | Above, on a stem     |
 
 A 4D Model's cards appear once its model has loaded. Rows that kepler's filters hide take their object's card with
 them; the time filter does not, as it sets the instant instead (see below).
