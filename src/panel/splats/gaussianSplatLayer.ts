@@ -26,6 +26,7 @@ import type { Buffer, Texture } from '@luma.gl/core';
 import { Geometry, Model } from '@luma.gl/engine';
 
 import { backToFront, needsResort } from './splatOrder';
+import { WORKER_SORT_THRESHOLD, workerSorter, type WorkerSorter } from './sortWorker';
 import type { Splats } from './spz';
 
 /** Splats drawn per row of the data textures. */
@@ -36,24 +37,7 @@ layout(std140) uniform gaussianSplatUniforms {
   highp int textureWidth;
   highp int antialiased;
   highp int linearColors;
-  highp int replacedCount;
   float maxRadius;
-  vec3 replacedCenter0;
-  mat3 replacedInverse0;
-  vec3 replacedCenter1;
-  mat3 replacedInverse1;
-  vec3 replacedCenter2;
-  mat3 replacedInverse2;
-  vec3 replacedCenter3;
-  mat3 replacedInverse3;
-  vec3 replacedCenter4;
-  mat3 replacedInverse4;
-  vec3 replacedCenter5;
-  mat3 replacedInverse5;
-  vec3 replacedCenter6;
-  mat3 replacedInverse6;
-  vec3 replacedCenter7;
-  mat3 replacedInverse7;
 } gaussianSplat;
 `;
 
@@ -65,14 +49,7 @@ const gaussianSplatUniforms = {
     textureWidth: 'i32',
     antialiased: 'i32',
     linearColors: 'i32',
-    replacedCount: 'i32',
     maxRadius: 'f32',
-    ...Object.fromEntries(
-      Array.from({ length: 8 }, (_, i) => [
-        [`replacedCenter${i}`, 'vec3<f32>'],
-        [`replacedInverse${i}`, 'mat3x3<f32>'],
-      ]).flat()
-    ),
   },
 } as any;
 
@@ -111,26 +88,6 @@ vec4 unpackBytes(uint v) {
   return vec4(float(v & 255u), float((v >> 8u) & 255u), float((v >> 16u) & 255u), float(v >> 24u)) / 255.0;
 }
 
-// Inside the box of a finer tile drawn over this one: that tile shows this ground instead. The box is
-// taken 5 % smaller, so the two overlap in a thin band at its edge rather than leave a gap: a finer tile's
-// splats thin out towards the edge of its box.
-bool inBox(vec3 p, vec3 centre, mat3 inverse) {
-  vec3 q = inverse * (p - centre);
-  return max(max(abs(q.x), abs(q.y)), abs(q.z)) <= 0.95;
-}
-
-bool replaced(vec3 p) {
-  int n = gaussianSplat.replacedCount;
-  return (n > 0 && inBox(p, gaussianSplat.replacedCenter0, gaussianSplat.replacedInverse0))
-    || (n > 1 && inBox(p, gaussianSplat.replacedCenter1, gaussianSplat.replacedInverse1))
-    || (n > 2 && inBox(p, gaussianSplat.replacedCenter2, gaussianSplat.replacedInverse2))
-    || (n > 3 && inBox(p, gaussianSplat.replacedCenter3, gaussianSplat.replacedInverse3))
-    || (n > 4 && inBox(p, gaussianSplat.replacedCenter4, gaussianSplat.replacedInverse4))
-    || (n > 5 && inBox(p, gaussianSplat.replacedCenter5, gaussianSplat.replacedInverse5))
-    || (n > 6 && inBox(p, gaussianSplat.replacedCenter6, gaussianSplat.replacedInverse6))
-    || (n > 7 && inBox(p, gaussianSplat.replacedCenter7, gaussianSplat.replacedInverse7));
-}
-
 void cull() {
   gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
   vColor = vec4(0.0);
@@ -143,10 +100,6 @@ void main(void) {
   uvec4 a = texelFetch(splatCenters, texel, 0);
   uvec4 b = texelFetch(splatShapes, texel, 0);
   vec3 center = uintBitsToFloat(a.xyz);
-  if (replaced(center)) {
-    cull();
-    return;
-  }
   vec4 color = unpackBytes(a.w);
   vec3 scale = vec3(unpackHalf2x16(b.x), unpackHalf2x16(b.y).x);
   vec4 quaternion = vec4(unpackSnorm2x16(b.z), unpackSnorm2x16(b.w));
@@ -264,17 +217,12 @@ export interface GaussianSplatLayerProps extends LayerProps {
   /**
    * For splats trained with the screen-space filter (SPZ's antialiased flag),
    * scale each opacity by what the 0.3 px² blur takes away, as Mip-Splatting
-   * and gsplat's "antialiased" mode render. Off by default, as CesiumJS has it;
-   * to be tried again on Esri's tiles (flagged antialiased): it was judged
-   * while kepler's blending still overrode the layer's.
+   * and gsplat's "antialiased" mode render: a splat smaller than a pixel is
+   * dimmed by as much as the blur spread it. On by default, for the splats
+   * that carry the flag (Esri's do): seen from afar, it took the bright
+   * flecks and needles off their edges. Off draws them as CesiumJS does.
    */
   antialiasCompensation?: boolean;
-  /**
-   * Boxes in the splats' own space whose splats are not drawn: those of finer
-   * tiles drawn in their place (`splatTiles.ts`). Twelve numbers a box, its
-   * centre and the inverse of its half-axes (column-major); eight at most.
-   */
-  replaced?: Float32Array | null;
   /** Called after the first frame the splats were drawn in. */
   onFirstDraw?: () => void;
 }
@@ -319,28 +267,10 @@ const defaultProps: DefaultProps<GaussianSplatLayerProps> = {
   splats: { type: 'object', value: null, compare: true } as any,
   maxRadius: { type: 'number', min: 1, value: 1024 },
   linearColors: false,
-  antialiasCompensation: false,
-  replaced: { type: 'object', value: null, compare: false } as any,
+  antialiasCompensation: true,
   onFirstDraw: { type: 'function', value: () => {}, optional: true } as any,
   parameters: SPLAT_PARAMETERS as any,
 };
-
-/** The most boxes of finer tiles a layer leaves out. */
-export const MAX_REPLACED = 8;
-
-const NO_BOX = { centre: [0, 0, 0], inverse: [0, 0, 0, 0, 0, 0, 0, 0, 0] };
-
-/** The boxes as the shader's uniforms. */
-function replacedUniforms(boxes: Float32Array | null | undefined): Record<string, unknown> {
-  const count = boxes ? Math.min(MAX_REPLACED, Math.floor(boxes.length / 12)) : 0;
-  const out: Record<string, unknown> = { replacedCount: count };
-  for (let i = 0; i < MAX_REPLACED; i++) {
-    const box = i < count ? boxes!.subarray(i * 12, i * 12 + 12) : null;
-    out[`replacedCenter${i}`] = box ? Array.from(box.subarray(0, 3)) : NO_BOX.centre;
-    out[`replacedInverse${i}`] = box ? Array.from(box.subarray(3, 12)) : NO_BOX.inverse;
-  }
-  return out;
-}
 
 /** A 4×4 column-major matrix inverted, or null if it has none. */
 export function invert(m: ArrayLike<number>): number[] | null {
@@ -475,6 +405,12 @@ export class GaussianSplatLayer extends Layer<GaussianSplatLayerProps> {
     sortedFrom?: [number, number, number] | null;
     centre?: [number, number, number];
     drawn?: boolean;
+    /** Large sets: their splats in the shared sorting worker, and the order asked of it. */
+    sorter?: WorkerSorter | null;
+    /** The order last asked of the worker, and whether one is on its way. */
+    generation?: number;
+    sorting?: boolean;
+    askedAt?: number;
   };
 
   getShaders() {
@@ -504,6 +440,8 @@ export class GaussianSplatLayer extends Layer<GaussianSplatLayerProps> {
   }
 
   private release(): void {
+    this.state.sorter?.drop();
+    this.state.sorter = null;
     this.state.model?.destroy();
     this.state.gpu?.centers.destroy();
     this.state.gpu?.shapes.destroy();
@@ -572,7 +510,29 @@ export class GaussianSplatLayer extends Layer<GaussianSplatLayerProps> {
       sortedFrom: null,
       centre: centreOf(splats),
       drawn: false,
+      sorter:
+        splats.count >= WORKER_SORT_THRESHOLD
+          ? workerSorter(splats.positions, (sorted, eye, generation) => this.receiveOrder(sorted, eye, generation))
+          : null,
+      generation: 0,
+      sorting: false,
     });
+  }
+
+  /** An order back from the worker: drawn from now on, unless the splats have changed since it was asked. */
+  private receiveOrder(sorted: Float32Array, eye: [number, number, number], generation: number): void {
+    const { gpu, count } = this.state;
+    if (generation !== this.state.generation) {
+      return;
+    }
+    this.state.sorting = false;
+    if (!gpu || sorted.length !== count) {
+      return;
+    }
+    gpu.order.write(sorted);
+    this.state.order = sorted;
+    this.state.sortedFrom = eye;
+    this.setNeedsRedraw();
   }
 
   /** The camera, in the splats' own space; null where it cannot be told. */
@@ -601,6 +561,20 @@ export class GaussianSplatLayer extends Layer<GaussianSplatLayerProps> {
     if (!splats || !gpu || !order || !centre || !eye || !needsResort(sortedFrom, eye, centre)) {
       return;
     }
+    const { sorter } = this.state;
+    // The first order is worked out here, so that no frame is drawn unsorted while the worker answers.
+    if (sorter && sortedFrom) {
+      const now = Date.now();
+      // One request at a time: a move while it is out is caught by the next frame drawn after it. One
+      // that has had no answer in two seconds no longer holds the next back.
+      if (!this.state.sorting || now - (this.state.askedAt ?? 0) > 2000) {
+        this.state.sorting = true;
+        this.state.askedAt = now;
+        this.state.generation = (this.state.generation ?? 0) + 1;
+        sorter.sort(eye, this.state.generation);
+      }
+      return;
+    }
     backToFront(splats.positions, splats.count, eye, order);
     gpu.order.write(order);
     this.state.sortedFrom = eye;
@@ -618,7 +592,6 @@ export class GaussianSplatLayer extends Layer<GaussianSplatLayerProps> {
         antialiased: this.props.antialiasCompensation && this.props.splats?.antialiased ? 1 : 0,
         maxRadius: this.props.maxRadius ?? 1024,
         linearColors: this.props.linearColors ? 1 : 0,
-        ...replacedUniforms(this.props.replaced),
       },
     } as any);
     model.setInstanceCount(count);

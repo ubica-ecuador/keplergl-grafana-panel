@@ -10,7 +10,7 @@
  * tiles behind it. Within a tile, the layer sorts its own splats.
  */
 
-import { GaussianSplatLayer, MAX_REPLACED, SPLAT_PARAMETERS, invert } from './gaussianSplatLayer';
+import { GaussianSplatLayer, SPLAT_PARAMETERS } from './gaussianSplatLayer';
 import { cartographicOf, isIdentity } from '../tile3dAltitude';
 import { multiply, type SplatChunk } from './glbSplats';
 
@@ -192,117 +192,91 @@ export function enuToEcef(longitude: number, latitude: number, height: number): 
   ];
 }
 
-/** A tile's bounding volume as an ECEF centre and three half-axes, or null. */
-function boxOf(tile: any): { centre: number[]; axes: number[][] } | null {
-  const volume = tile?.boundingVolume;
-  const centre = volume?.center;
-  if (!centre) {
-    return null;
-  }
-  const halfAxes = volume.halfAxes;
-  if (halfAxes && halfAxes.length >= 9) {
-    return {
-      centre: [centre[0], centre[1], centre[2]],
-      axes: [0, 1, 2].map((c) => [halfAxes[c * 3], halfAxes[c * 3 + 1], halfAxes[c * 3 + 2]]),
-    };
-  }
-  if (typeof volume.radius === 'number') {
-    const r = volume.radius;
-    return {
-      centre: [centre[0], centre[1], centre[2]],
-      axes: [
-        [r, 0, 0],
-        [0, r, 0],
-        [0, 0, r],
-      ],
-    };
-  }
-  return null;
+/** A child loaders.gl may need drawn: in view, or not yet known to be out of it. */
+function inView(tile: any): boolean {
+  return tile?.isVisibleAndInRequestVolume !== false;
 }
 
-/** The inverse of a 3×3 matrix given as three columns, column-major, or null. */
-function invert3(c: number[][]): number[] | null {
-  const [a, b, d] = c; // columns
-  const m = [a[0], b[0], d[0], a[1], b[1], d[1], a[2], b[2], d[2]]; // row-major
-  const det =
-    m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) + m[2] * (m[3] * m[7] - m[4] * m[6]);
-  if (!det) {
-    return null;
+/** How many tiles up a tile stands from its root. */
+function depthOf(tile: any): number {
+  let depth = 0;
+  for (let p = tile?.parent; p; p = p.parent) {
+    depth++;
   }
-  const i = [
-    (m[4] * m[8] - m[5] * m[7]) / det,
-    (m[2] * m[7] - m[1] * m[8]) / det,
-    (m[1] * m[5] - m[2] * m[4]) / det,
-    (m[5] * m[6] - m[3] * m[8]) / det,
-    (m[0] * m[8] - m[2] * m[6]) / det,
-    (m[2] * m[3] - m[0] * m[5]) / det,
-    (m[3] * m[7] - m[4] * m[6]) / det,
-    (m[1] * m[6] - m[0] * m[7]) / det,
-    (m[0] * m[4] - m[1] * m[3]) / det,
-  ]; // row-major inverse
-  return [i[0], i[3], i[6], i[1], i[4], i[7], i[2], i[5], i[8]]; // column-major
+  return depth;
+}
+
+/** Whether `ancestor` is above `tile` in the tree. */
+function isAbove(ancestor: unknown, tile: any): boolean {
+  for (let p = tile?.parent; p; p = p.parent) {
+    if (p === ancestor) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
- * The boxes of `finer` tiles in a splat layer's own space: twelve numbers a box,
- * its centre and the inverse of its half-axes, as the layer's `replaced` prop.
+ * Whether a tile's ground is drawn by the tiles drawn now: by itself, or by
+ * every child of it in view. A tile with nothing to draw (no content) is; an
+ * external tileset not yet loaded is not, nor a tile whose content is not
+ * drawn and has no child to stand in for it.
  */
-export function replacedBoxes(layer: GaussianSplatLayer, finer: any[]): Float32Array | null {
-  const origin = layer.props.coordinateOrigin as number[] | undefined;
-  const model = layer.props.modelMatrix as unknown as ArrayLike<number> | null;
-  if (!origin || !model || finer.length === 0) {
-    return null;
+export function coveredBy(tile: any, drawn: ReadonlySet<unknown>, depth = 0): boolean {
+  if (drawn.has(tile)) {
+    return true;
   }
-  // ECEF to the layer's space: through east-north-up at its origin, then its model matrix.
-  const toModel = invert(multiply(enuToEcef(origin[0], origin[1], origin[2] ?? 0), Array.from(model)));
-  if (!toModel) {
-    return null;
+  if (!tile || depth > 32) {
+    return false;
   }
-  const out: number[] = [];
-  for (const tile of finer.slice(0, MAX_REPLACED)) {
-    const box = boxOf(tile);
-    if (!box) {
+  const children = (Array.isArray(tile.children) ? tile.children : []).filter(inView);
+  if (children.length === 0) {
+    return Boolean(tile.hasEmptyContent);
+  }
+  return children.every((child: any) => coveredBy(child, drawn, depth + 1));
+}
+
+/**
+ * The drawn tiles to leave undrawn, so that each place shows one level of
+ * detail: a tile whose children in view are all covered gives way to them;
+ * one with a child in view not yet covered is drawn alone, every finer tile
+ * drawn under it left out until they all are. Top down: what a tile decides
+ * for its descendants stands.
+ */
+export function tilesGivingWay(drawn: ReadonlySet<unknown>): Set<unknown> {
+  const hidden = new Set<unknown>();
+  const byDepth = [...drawn].sort((a, b) => depthOf(a) - depthOf(b));
+  for (const tile of byDepth as any[]) {
+    if (hidden.has(tile) || tile.refine === 1) {
       continue;
     }
-    const c = box.centre;
-    const centre = [0, 1, 2].map(
-      (r) => toModel[r] * c[0] + toModel[4 + r] * c[1] + toModel[8 + r] * c[2] + toModel[12 + r]
-    );
-    const axes = box.axes.map((v) =>
-      [0, 1, 2].map((r) => toModel[r] * v[0] + toModel[4 + r] * v[1] + toModel[8 + r] * v[2])
-    );
-    const inverse = invert3(axes);
-    if (inverse) {
-      out.push(...centre, ...inverse);
+    const children = (Array.isArray(tile.children) ? tile.children : []).filter(inView);
+    if (children.length > 0 && children.every((child: any) => coveredBy(child, drawn))) {
+      hidden.add(tile);
+      continue;
+    }
+    for (const other of byDepth) {
+      if (other !== tile && isAbove(tile, other)) {
+        hidden.add(other);
+      }
     }
   }
-  return out.length ? new Float32Array(out) : null;
+  return hidden;
 }
-
-/** The nearest ancestor of a tile among `drawn`, or null. */
-function drawnAncestor(tile: any, drawn: Set<unknown>): any {
-  for (let p = tile?.parent; p; p = p.parent) {
-    if (drawn.has(p)) {
-      return p;
-    }
-  }
-  return null;
-}
-
-/** The last boxes handed to each layer, kept so a layer is not told of new ones each frame for nothing. */
-const lastBoxes = new Map<string, { key: string; boxes: Float32Array | null }>();
 
 /**
  * The tiles' layers in drawing order: everything else first, as deck had it,
  * then the splat layers farthest first.
  *
- * And one level of detail at a time. loaders.gl draws a tile that refines by
- * replacement together with those of its children already loaded, until every
- * child is (`updateAndPushChildren` pushes the visible children before it knows
- * whether all are ready; a child outside the request volume never is). For a
- * mesh the two overlap unseen; splats, translucent and sorted tile by tile,
- * showed both as a grey fur. So a tile drawn under finer ones leaves out its
- * splats inside their boxes, and each place shows the finest splats loaded.
+ * And one level of detail at a time, as 3D Tiles' replacement means. loaders.gl
+ * draws a tile that refines by replacement together with those of its children
+ * already loaded, until every child is (`updateAndPushChildren` pushes the
+ * visible children before it knows whether all are ready). For a mesh the two
+ * overlap unseen; splats, translucent and sorted tile by tile, showed both as a
+ * grey fur. Leaving a coarse tile's splats out inside the boxes of the finer
+ * ones drawn left holes where a finer tile's splats did not fill its box. So a
+ * coarse tile gives way only once every child of it in view is drawn, or is
+ * covered by its own; until then it is drawn alone (`tilesGivingWay`).
  */
 export function orderSplatLayers<T>(
   layers: T[] | null | undefined,
@@ -325,36 +299,14 @@ export function orderSplatLayers<T>(
     Boolean(tile?.selected) &&
     (!viewportId || !Array.isArray(tile.viewportIds) || tile.viewportIds.includes(viewportId));
   const drawn = new Set(splatLayers.map(tileOf).filter(drawnHere));
-  const finerOf = new Map<unknown, any[]>();
-  for (const tile of drawn) {
-    const ancestor = drawnAncestor(tile, drawn);
-    if (ancestor && ancestor.refine !== 1) {
-      finerOf.set(ancestor, [...(finerOf.get(ancestor) ?? []), tile]);
-    }
-  }
-  const placed = splatLayers.map((layer) => {
-    const finer = finerOf.get(tileOf(layer)) ?? [];
-    const key = finer.map((tile) => tile.id).join('|');
-    let entry = lastBoxes.get(layer.id);
-    if (!entry || entry.key !== key) {
-      entry = { key, boxes: key ? replacedBoxes(layer, finer) : null };
-      lastBoxes.set(layer.id, entry);
-    }
-    return entry.boxes === (layer.props.replaced ?? null)
-      ? layer
-      : (layer.clone({ replaced: entry.boxes }) as GaussianSplatLayer);
-  });
+  const hidden = tilesGivingWay(drawn);
+  const shown = splatLayers.map((layer) =>
+    hidden.has(tileOf(layer)) && layer.props.visible !== false
+      ? (layer.clone({ visible: false }) as GaussianSplatLayer)
+      : layer
+  );
 
-  if (lastBoxes.size > 4 * splatLayers.length + 64) {
-    const live = new Set(splatLayers.map((layer) => layer.id));
-    for (const id of lastBoxes.keys()) {
-      if (!live.has(id)) {
-        lastBoxes.delete(id);
-      }
-    }
-  }
-
-  const far = placed
+  const far = shown
     .map((layer) => ({ layer, distance: distanceOf(layer, viewport) ?? 0 }))
     .sort((a, b) => b.distance - a.distance)
     .map(({ layer }) => layer);

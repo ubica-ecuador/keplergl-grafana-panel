@@ -11,7 +11,8 @@ release documents what changed since the one before it.
   tilers serve them) drew nothing: loaders.gl knows neither extension, and the tiles require both.
   The panel now reads them and draws each splat as the ellipse it covers on the screen, fading from
   its centre, back to front, so that they blend into a photographic surface. One level of detail at
-  a time; spherical harmonics past the first are not drawn; splats cannot be hovered. See
+  a time, a coarse tile kept until all its finer tiles in view have loaded; large scans sorted in a
+  Web Worker; spherical harmonics past the first are not drawn; splats cannot be hovered. See
   [Gaussian splats](https://docs.ubica.dev/layers/url-configured#gaussian-splats).
 - **ArcGIS 3D Tiles.** kepler read every address with `arcgis` in it as an I3S scene layer, so an
   ArcGIS `3DTilesServer` tileset drew nothing ("tileset load error"). One that ends in

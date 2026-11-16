@@ -171,8 +171,12 @@ the `tileset.json`.
 - **Sit on the ground** grounds a tileset of splats by its own splats, the lowest 2 % of them taken
   for the ground, since its bounding boxes say little: ArcGIS writes them along the Earth's axes,
   hundreds of metres loose.
-- Each place shows one level of detail at a time, the finest loaded; while finer tiles load, a seam
-  can show at their edge for a moment.
+- Each place shows one level of detail at a time: a coarse tile stays until every finer tile in view
+  under it has loaded, then gives way to them all at once.
+- Splats taken with the screen-space filter (SPZ's antialiased flag, which Esri's carry) are drawn
+  with its opacity compensation, as their training did.
+- A large scan (100,000 splats and up) is sorted in a Web Worker, so dragging the map does not
+  stutter; where the page cannot start one, it is sorted on the main thread.
 - The colour is the splat's own, the same from every side: the view-dependent shine a splat can
   carry (its spherical harmonics past the first) is not drawn.
 - A splat scan looks right from where it was captured. One captured by drone, seen from the street,

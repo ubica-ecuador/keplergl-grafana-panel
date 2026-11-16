@@ -4,10 +4,11 @@ import {
   enuToEcef,
   isSplatTile,
   noteSplatBase,
+  coveredBy,
   orderSplatLayers,
-  replacedBoxes,
   splatTileBase,
   splatTileLayers,
+  tilesGivingWay,
 } from './splatTiles';
 import type { Splats } from './spz';
 
@@ -99,64 +100,77 @@ describe('the splat layer', () => {
 });
 
 describe('one level of detail at a time', () => {
-  const ORIGIN = [108.8, 15.39, -20];
-  const enu = enuToEcef(ORIGIN[0], ORIGIN[1], ORIGIN[2]);
-  /** A point east, north, up of the origin, in ECEF. */
-  const ecefAt = (e: number, n: number, u: number) =>
-    [0, 1, 2].map((r) => enu[r] * e + enu[4 + r] * n + enu[8 + r] * u + enu[12 + r]);
+  /** A tile in a tree: drawn or not, in view or not, with these children. */
+  function node(id: string, children: any[] = [], extra: Record<string, unknown> = {}): any {
+    const tile: any = { id, children, refine: 2, isVisibleAndInRequestVolume: true, ...extra };
+    for (const child of children) {
+      child.parent = tile;
+    }
+    return tile;
+  }
 
-  it('puts the box of a finer tile in the space of the coarser one', () => {
-    // The coarse layer's space turned as Esri's tiles are (z up to y up) and lifted 20 m.
-    const turned = [1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 20, 1];
-    const layer = new GaussianSplatLayer({
-      id: 'coarse',
-      splats: SPLATS,
-      coordinateOrigin: ORIGIN,
-      modelMatrix: turned,
-    } as any);
-    const east = [enu[0], enu[1], enu[2]];
-    const north = [enu[4], enu[5], enu[6]];
-    const up = [enu[8], enu[9], enu[10]];
-    const fine = {
-      boundingVolume: {
-        center: ecefAt(30, 40, 25),
-        halfAxes: [...east.map((v) => v * 10), ...north.map((v) => v * 5), ...up.map((v) => v * 2)],
-      },
-    };
-    const boxes = replacedBoxes(layer, [fine])!;
-    expect(boxes).toHaveLength(12);
-    // The model matrix takes (x, y, z) to east x, north z, up 20 − y: east 30, north 40, up 25 is (30, −5, 40).
-    const [cx, cy, cz] = Array.from(boxes.subarray(0, 3));
-    expect(cx).toBeCloseTo(30, 3);
-    expect(cy).toBeCloseTo(-5, 3);
-    expect(cz).toBeCloseTo(40, 3);
-    // A splat 9 m east of the box's centre is inside it, 11 m is not.
-    const inside = (p: number[]) => {
-      const inv = boxes.subarray(3, 12);
-      const d = [p[0] - cx, p[1] - cy, p[2] - cz];
-      const q = [0, 1, 2].map((r) => inv[r] * d[0] + inv[3 + r] * d[1] + inv[6 + r] * d[2]);
-      return Math.max(...q.map(Math.abs)) <= 1;
-    };
-    expect(inside([cx + 9, cy, cz])).toBe(true);
-    expect(inside([cx + 11, cy, cz])).toBe(false);
+  it('gives way to finer tiles once every child in view is drawn', () => {
+    const a = node('a');
+    const b = node('b');
+    const root = node('root', [a, b]);
+    expect([...tilesGivingWay(new Set([root, a, b]))]).toEqual([root]);
   });
 
-  it('leaves out of a drawn tile the boxes of the finer tiles drawn over it', () => {
-    const parent: any = { id: 'p', refine: 2, selected: true, content: tile('p', ORIGIN).content };
-    const child: any = {
-      id: 'c',
-      parent,
-      selected: true,
-      boundingVolume: { center: ecefAt(0, 0, 0), halfAxes: [1, 0, 0, 0, 1, 0, 0, 0, 1] },
-      content: tile('c', ORIGIN).content,
-    };
+  it('is drawn alone, the finer tiles left out, while a child in view is not', () => {
+    const a = node('a');
+    const b = node('b');
+    const root = node('root', [a, b]);
+    const hidden = tilesGivingWay(new Set([root, a]));
+    expect(hidden.has(root)).toBe(false);
+    expect(hidden.has(a)).toBe(true);
+  });
+
+  it('is not held back by a child out of view, nor by an empty one', () => {
+    const a = node('a');
+    const away = node('away', [], { isVisibleAndInRequestVolume: false });
+    const empty = node('empty', [], { hasEmptyContent: true });
+    const root = node('root', [a, away, empty]);
+    expect(tilesGivingWay(new Set([root, a])).has(root)).toBe(true);
+  });
+
+  it('is held back by an external tileset not loaded yet', () => {
+    const a = node('a');
+    const external = node('external', [], { hasTilesetContent: true });
+    const root = node('root', [a, external]);
+    expect(tilesGivingWay(new Set([root, a])).has(root)).toBe(false);
+  });
+
+  it('counts a child covered by its own children', () => {
+    const g1 = node('g1');
+    const g2 = node('g2');
+    const child = node('child', [g1, g2]);
+    const other = node('other');
+    const root = node('root', [child, other]);
+    // The child itself is not drawn: its two children are.
+    const hidden = tilesGivingWay(new Set([root, other, g1, g2]));
+    expect(hidden.has(root)).toBe(true);
+    expect(hidden.has(g1) || hidden.has(g2) || hidden.has(other)).toBe(false);
+    expect(coveredBy(child, new Set([g1]))).toBe(false);
+  });
+
+  it('leaves a tile that adds to its parent drawn with it', () => {
+    const a = node('a');
+    const root = node('root', [a], { refine: 1 });
+    expect(tilesGivingWay(new Set([root, a])).size).toBe(0);
+  });
+
+  it('hides the layers of the tiles that give way, and keeps their state', () => {
+    const viewport = { cameraPosition: [0, 0, 0], projectPosition: (p: number[]) => p };
+    const child = tile('c', [1, 0, 0]);
+    const parent = { ...tile('p', [2, 0, 0]), refine: 2, children: [child], selected: true };
+    child.parent = parent;
+    child.selected = true;
+    child.isVisibleAndInRequestVolume = true;
     const [coarse] = splatTileLayers(parent, 'tiles', {});
     const [fine] = splatTileLayers(child, 'tiles', {});
-    const viewport = { cameraPosition: [0, 0, 0], projectPosition: (p: number[]) => p };
     const ordered = orderSplatLayers([coarse, fine], viewport) as GaussianSplatLayer[];
-    const out = ordered.find((l) => l.id === coarse.id)!;
-    expect(out.props.replaced).toHaveLength(12);
-    expect(ordered.find((l) => l.id === fine.id)!.props.replaced ?? null).toBeNull();
+    expect(ordered.find((l) => l.id === coarse.id)!.props.visible).toBe(false);
+    expect(ordered.find((l) => l.id === fine.id)!.props.visible).not.toBe(false);
   });
 });
 
