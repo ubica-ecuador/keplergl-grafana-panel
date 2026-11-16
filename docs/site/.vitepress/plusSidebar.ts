@@ -56,6 +56,7 @@ export const PLUS_SIDEBAR: DefaultTheme.SidebarItem[] = [
       { text: 'Route', link: '/plus/layers/route' },
       { text: 'Fleet', link: '/plus/layers/fleet' },
       { text: '4D Model', link: '/plus/layers/model-4d' },
+      { text: 'Gaussian Splats', link: '/plus/layers/gaussian-splats' },
       { text: 'Floor plan', link: '/plus/indoor/plans#the-floor-plan-layer' },
     ],
   },

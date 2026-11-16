@@ -1,6 +1,6 @@
 # Plus layers
 
-Plus adds fourteen layer types to kepler's layer list. Each one is a kepler layer like any other: you pick it as the
+Plus adds fifteen layer types to kepler's layer list. Each one is a kepler layer like any other: you pick it as the
 layer type, style it in kepler's layer panel, and it is saved with the map. Most of them you add yourself, with
 **Add Layer** or by switching the type of a layer the panel already built; each layer page says when the panel adds
 one for you.
@@ -22,6 +22,7 @@ one for you.
 | [Route](./route)                                      | A route by grade or height, with its profile under the map     | Line geometry, or a track        |
 | [Fleet](./fleet)                                      | Each vehicle or device once, where it is now, with a trail     | Positions with an asset column   |
 | [4D Model](./model-4d)                                | A 3D model whose parts are built in time, or coloured by state | One row per part of a glTF model |
+| [Gaussian Splats](./gaussian-splats)                  | A photographic 3D scan on each place, to fly to or stand in    | One row per scan                 |
 | [Floor plan](/plus/indoor/plans#the-floor-plan-layer) | A picture laid flat on the map, or on its floor indoors        | One row per picture              |
 
 Points can come from latitude and longitude columns, or from a name that [Places](/plus/data/places) turns into
