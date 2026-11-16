@@ -47,6 +47,7 @@ export const PLUS_SIDEBAR: DefaultTheme.SidebarItem[] = [
       { text: '3D Shape', link: '/plus/layers/shape-3d' },
       { text: 'Coverage and Coverage 3D', link: '/plus/layers/coverage' },
       { text: 'Viewshed', link: '/plus/layers/viewshed' },
+      { text: 'Line of Sight', link: '/plus/layers/line-of-sight' },
       { text: 'Buildings', link: '/plus/layers/buildings' },
       { text: 'Surface', link: '/plus/layers/surface' },
       { text: 'Sparkline', link: '/plus/layers/sparkline' },
