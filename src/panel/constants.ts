@@ -79,3 +79,30 @@ export function rasterServerUrlsOf(option: string | undefined): string[] {
   const url = resolveRasterServerUrl(option);
   return url ? [url] : [];
 }
+
+/** The panel's *Maximum zoom* when it is left unset: MapLibre's own default. */
+export const DEFAULT_MAX_ZOOM = 22;
+
+/** The range the option takes: no closer than 16, no further than 24. */
+export const MAX_ZOOM_LIMITS = { min: 16, max: 24 } as const;
+
+/**
+ * How close the map lets the camera come, from the panel option: the default
+ * when unset or unreadable, otherwise held within {@link MAX_ZOOM_LIMITS}.
+ *
+ * Told nothing, deck.gl's map controller stops at zoom 20, some 150 m from
+ * what it looks at — short of a 3D tileset, a BIM model or a Gaussian splat
+ * scan seen from a few metres. 22 is MapLibre's own default; 24 brings the
+ * camera to about 10 m, and at 85° of pitch to eye height. Past 24 nothing is
+ * gained in a map view: the camera always looks at a point on the ground.
+ */
+export function maxZoomOf(option: unknown): number {
+  if (option === undefined || option === null || option === '') {
+    return DEFAULT_MAX_ZOOM;
+  }
+  const value = typeof option === 'number' ? option : Number(option);
+  if (!Number.isFinite(value)) {
+    return DEFAULT_MAX_ZOOM;
+  }
+  return Math.min(MAX_ZOOM_LIMITS.max, Math.max(MAX_ZOOM_LIMITS.min, value));
+}

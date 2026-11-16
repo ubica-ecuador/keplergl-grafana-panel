@@ -1,4 +1,16 @@
-import { enclosingBox, regionBox, sturdyLoader } from './tile3dLoader';
+import { DecompressionStream as NodeDecompressionStream } from 'stream/web';
+import { TextDecoder as NodeTextDecoder, TextEncoder as NodeTextEncoder } from 'util';
+import { gzipSync } from 'zlib';
+
+import { packSpz, splatGlb } from './splats/spzFixture';
+import { enclosingBox, regionBox, servesTiles3D, sturdyLoader } from './tile3dLoader';
+
+// jsdom has neither; the browsers the panel runs in have both.
+Object.assign(globalThis, {
+  DecompressionStream: (globalThis as any).DecompressionStream ?? NodeDecompressionStream,
+  TextDecoder: (globalThis as any).TextDecoder ?? NodeTextDecoder,
+  TextEncoder: (globalThis as any).TextEncoder ?? NodeTextEncoder,
+});
 
 /** Cesium OSM Buildings' root (ion asset 96188), as served on 2026-09-28: a region round the whole world. */
 const OSM_BUILDINGS_REGION = [
@@ -358,5 +370,69 @@ describe('sturdyLoader', () => {
     it('adds no preload to a loader that had none', () => {
       expect('preload' in sturdyLoader(fakeLoader('3d-tiles', () => ({})))).toBe(false);
     });
+  });
+
+  describe('a tile of Gaussian splats', () => {
+    const glb = () =>
+      splatGlb(
+        new Uint8Array(
+          gzipSync(
+            packSpz([
+              { position: [1, 2, 3], scale: [0.1, 0.1, 0.1], rotation: [0, 0, 0, 1], color: [1, 1, 1], opacity: 1 },
+            ])
+          )
+        ),
+        1
+      );
+
+    it('has loaders.gl keep the glTF unparsed, and reads its splats itself', async () => {
+      const base = fakeLoader('3d-tiles', () => ({
+        shape: 'tile3d',
+        type: 'glTF',
+        gltfArrayBuffer: new ArrayBuffer(4),
+      }));
+      const parsed = await sturdyLoader(base).parse!(glb(), { '3d-tiles': { loadGLTF: true, other: 1 } }, {});
+      expect(base.parse.mock.calls[0][1]).toEqual({ '3d-tiles': { loadGLTF: false, other: 1 } });
+      expect(parsed.splats).toHaveLength(1);
+      expect(parsed.splats[0].splats.count).toBe(1);
+      expect(parsed.gltfArrayBuffer).toBeUndefined();
+      expect(parsed.gpuMemoryUsageInBytes).toBeGreaterThan(0);
+    });
+
+    it('keeps no splats, and says why, when they cannot be read', async () => {
+      const broken = new Uint8Array(glb());
+      // The SPZ's gzip header, spoiled.
+      const at = broken.findIndex((b, i) => b === 0x1f && broken[i + 1] === 0x8b);
+      broken[at + 2] = 0xff;
+      const parsed = await sturdyLoader(fakeLoader('3d-tiles', () => ({ shape: 'tile3d', type: 'glTF' }))).parse!(
+        broken.buffer,
+        {},
+        {}
+      );
+      expect(parsed.splats).toEqual([]);
+      expect(typeof parsed.splatError).toBe('string');
+    });
+
+    it('parses any other glTF as before', async () => {
+      const base = fakeLoader('3d-tiles', () => ({ shape: 'tile3d', gltf: emptyGltf() }));
+      const options = { '3d-tiles': { loadGLTF: true } };
+      const parsed = await sturdyLoader(base).parse!(new ArrayBuffer(16), options, {});
+      expect(base.parse.mock.calls[0][1]).toBe(options);
+      expect(parsed.splats).toBeUndefined();
+    });
+  });
+});
+
+describe('servesTiles3D', () => {
+  it('tells an ArcGIS 3D Tiles service, and any tileset.json, from an I3S scene service', () => {
+    expect(
+      servesTiles3D(
+        'https://tiles.arcgis.com/tiles/V6ZHFr6zdgNZuVG0/arcgis/rest/services/Portcoast_industrial/3DTilesServer/tileset.json'
+      )
+    ).toBe(true);
+    expect(servesTiles3D('https://tiles.arcgis.com/tiles/x/arcgis/rest/services/y/3DTilesServer')).toBe(true);
+    expect(servesTiles3D('https://example.org/city/tileset.json?v=2')).toBe(true);
+    expect(servesTiles3D('https://tiles.arcgis.com/tiles/x/arcgis/rest/services/y/SceneServer/layers/0')).toBe(false);
+    expect(servesTiles3D(undefined)).toBe(false);
   });
 });

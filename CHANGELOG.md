@@ -4,8 +4,27 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
-## 1.10.0 (2026-11-15)
+## 1.10.0 (2026-11-16)
 
+- **Gaussian splats in 3D tiles.** A 3D Tile layer given a tileset of Gaussian splats (glTF tiles
+  with `KHR_gaussian_splatting`, compressed with SPZ, as ArcGIS's Gaussian splat layers and Cesium's
+  tilers serve them) drew nothing: loaders.gl knows neither extension, and the tiles require both.
+  The panel now reads them and draws each splat as the ellipse it covers on the screen, fading from
+  its centre, back to front, so that they blend into a photographic surface. One level of detail at
+  a time, a coarse tile kept until all its finer tiles in view have loaded; large scans sorted in a
+  Web Worker; spherical harmonics past the first are not drawn; splats cannot be hovered. See
+  [Gaussian splats](https://docs.ubica.dev/layers/url-configured#gaussian-splats).
+- **ArcGIS 3D Tiles.** kepler read every address with `arcgis` in it as an I3S scene layer, so an
+  ArcGIS `3DTilesServer` tileset drew nothing ("tileset load error"). One that ends in
+  `tileset.json` or names a `3DTilesServer` is read as 3D Tiles.
+- **Sit on the ground, for tilesets boxed along the Earth's axes.** A root box written along ECEF's
+  axes was taken for an upright one, and ArcGIS's, hundreds of metres loose, lifted a site by the
+  sea some 950 m over the camera: nothing in it loaded. Such a box no longer grounds a tileset, and
+  a tileset of splats is grounded by its splats.
+- **Maximum zoom.** A new panel option (Map section), 22 by default, from 16 to 24: deck.gl alone
+  stopped the camera at zoom 20, some 150 m from what it looks at. At 24 and full tilt the camera
+  stands at about eye height. See
+  [Map settings](https://docs.ubica.dev/guide/kepler/map-settings#how-close-you-can-zoom).
 - **A nautical chart.** _Base map_ → _Seamap (Open Waters)_ draws OpenStreetMap's seamarks, rebuilt
   every week (buoys, beacons, lights with their characteristics and sectors, hazards, traffic
   separation schemes, ferry routes), over Open Waters' Seascape bathymetry: shaded depths, depth

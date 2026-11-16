@@ -114,6 +114,12 @@ export interface KeplerPanelOptions {
 
   /** `auto` follows the Grafana theme: OpenFreeMap Dark in dark mode, OpenFreeMap Positron in light. */
   basemap?: BasemapChoice;
+  /**
+   * How close the map lets the camera come, as a zoom level from 16 to 24.
+   * Default 22, MapLibre's own; deck.gl alone stops at 20. 24 for 3D tiles,
+   * BIM models and Gaussian splat scans seen from a few metres.
+   */
+  maxZoom?: number;
 
   /**
    * A self-hosted MapLibre `style.json`. The Carto base maps need outbound
