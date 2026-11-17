@@ -68,6 +68,7 @@ import {
   type VolumeTileLike,
 } from './tile3dBuildings';
 import { servesTiles3D, sturdyLoader } from './tile3dLoader';
+import { bakeI3sPositions, isI3sTile, mendI3sMeshLayer } from './i3sMesh';
 import { isSplatTile, noteSplatBase, orderSplatLayers, splatTileLayers, type SplatTileLike } from './splats/splatTiles';
 import { releasePicture } from './splats/splatPicture';
 
@@ -291,6 +292,13 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
      */
     _onTileLoad(tile: unknown): void {
       const loaded = tile as TileLike | null;
+      // An I3S tile is placed by loaders.gl in its own way, in ECEF: its vertices are baked into metres round its
+      // origin (i3sMesh.ts), and the 3D Tiles placements below, made for b3dm and glTF content, leave it alone.
+      if (isI3sTile(loaded as never)) {
+        bakeI3sPositions(loaded as never);
+        super._onTileLoad?.(tile);
+        return;
+      }
       // Before anything works out deck's metres for it: its origin may sit in a flattened volume.
       const drop =
         this.state?.flattenedOf && this.state.flattenedOf === this.state.tileset3d ? flattenedDrop(loaded) : 0;
@@ -478,7 +486,7 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
       super.finalizeState?.(context);
     }
 
-    /** A tile of Gaussian splats gets splat layers (`splats/splatTiles.ts`); any other, deck's own. */
+    /** A tile of Gaussian splats gets splat layers (`splats/splatTiles.ts`); any other, deck's own (I3S meshes mended). */
     _getSubLayer(tileHeader: SplatTileLike, oldLayer?: unknown): unknown {
       if (isSplatTile(tileHeader)) {
         // A tileset of splats is grounded by its splats (`baseAltitude`): a lower base moves it again.
@@ -493,7 +501,10 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
           })
         );
       }
-      return (super._getSubLayer as (tile: unknown, old?: unknown) => unknown).call(this, tileHeader, oldLayer);
+      // An I3S tile's mesh, drawn by deck's MeshLayer, needs its fragment shader mended to show (i3sMesh.ts).
+      return mendI3sMeshLayer(
+        (super._getSubLayer as (tile: unknown, old?: unknown) => unknown).call(this, tileHeader, oldLayer)
+      );
     }
 
     /** deck's tile layers, the splat ones drawn farthest first. */
