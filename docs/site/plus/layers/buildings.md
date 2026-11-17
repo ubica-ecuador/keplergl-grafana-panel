@@ -54,6 +54,9 @@ writing variables the map's filter follows moves the sun and the shadows with it
 the dashboard time range's end (a Time Brush writing the range, or the time picker). (kepler alone would take midnight
 of 1970 there: night over the whole map.)
 
+At night kepler turns the sun off and darkens the whole map; Plus lights the buildings then with a faint, cool light
+from high on the side opposite the sun, as a moon, so their roofs and walls still read apart.
+
 Buildings coloured by a value take the effect lighter, so their colours still read in the shade and at night:
 **Light and shadow on the buildings** (0.35) sets how much of its shadow and its light they take, from 0 (every face
 in its colour) to 1 (as the ground). The ground under them takes the effect's own shadow, and they cast the full one.
