@@ -48,10 +48,11 @@ the ground, which the layer covers with a clear surface that shows only the shad
 3. Set its time in the same panel: a date and time, the current time, or **animation**. Its shadow intensity, colours
    and light are set there too, and saved with the map.
 
-In **animation** the sun follows the map's own clock: a trip's time, or the start of a time filter shown enlarged. On
-a map with neither, Plus takes the dashboard time range's end, so a [Time Brush](/plus/time-brush) writing the range,
-or the time picker, moves the sun and the shadows with it. (kepler alone would take midnight of 1970 there: night
-over the whole map.)
+In **animation** the sun follows the map's own clock: a trip's time, or the start of a time filter shown enlarged.
+Otherwise Plus takes the end of the map's time filter window, whatever its view, so a [Time Brush](/plus/time-brush)
+writing variables the map's filter follows moves the sun and the shadows with it; and on a map with no time filter,
+the dashboard time range's end (a Time Brush writing the range, or the time picker). (kepler alone would take midnight
+of 1970 there: night over the whole map.)
 
 Buildings coloured by a value take the effect lighter, so their colours still read in the shade and at night:
 **Light and shadow on the buildings** (0.35) sets how much of its shadow and its light they take, from 0 (every face
