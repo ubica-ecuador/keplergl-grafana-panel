@@ -42,6 +42,7 @@ layout(std140) uniform gaussianSplatUniforms {
   float maxRadius;
   highp int shDegree;
   vec3 eye;
+  float depthAlpha;
 } gaussianSplat;
 `;
 
@@ -56,6 +57,7 @@ const gaussianSplatUniforms = {
     maxRadius: 'f32',
     shDegree: 'i32',
     eye: 'vec3<f32>',
+    depthAlpha: 'f32',
   },
 } as any;
 
@@ -205,7 +207,7 @@ void main(void) {
     discard;
   }
   float alpha = vColor.a * exp(-0.5 * r2);
-  if (alpha < 1.0 / 255.0) {
+  if (alpha < max(1.0 / 255.0, gaussianSplat.depthAlpha)) {
     discard;
   }
   // Premultiplied, blended with the source factor one, as the extension advises for 8-bit buffers.
@@ -256,7 +258,32 @@ export interface GaussianSplatLayerProps extends LayerProps {
    * splat has its diffuse colour from every side.
    */
   viewDependentColor?: boolean;
+  /**
+   * Write the depth of the splats' solid cores (alpha DEPTH_ALPHA and over) into the map's, after their colours: what
+   * is drawn after them (above them in kepler's list: a surface, a sheet of bands) is hidden where the scan stands in
+   * front of it, as a mesh hides it. Off by default: splats are blended, and leave the depth as they found it.
+   */
+  writeDepth?: boolean;
 }
+
+/** The alpha a splat's fragment must reach to write its depth (`writeDepth`): its core, not its faint edge. */
+export const DEPTH_ALPHA = 0.5;
+
+/** The depth pass onto the map (`writeDepth`): depth tested and written, no colour, in both naming schemes. */
+const DEPTH_WRITE_LUMA = {
+  depthWriteEnabled: true,
+  depthCompare: 'less-equal',
+  blend: false,
+  colorMask: 0,
+  cullMode: 'none',
+};
+const DEPTH_WRITE_GL = {
+  depthMask: true,
+  depthTest: true,
+  depthFunc: 0x0203,
+  blend: false,
+  colorMask: [false, false, false, false],
+};
 
 /**
  * How splats are blended: premultiplied colour over what is behind (source
@@ -305,6 +332,7 @@ const defaultProps: DefaultProps<GaussianSplatLayerProps> = {
   pictureFirst: true,
   pictureLast: true,
   viewDependentColor: true,
+  writeDepth: false,
 };
 
 /** A 4×4 column-major matrix inverted, or null if it has none. */
@@ -643,8 +671,12 @@ export class GaussianSplatLayer extends Layer<GaussianSplatLayerProps> {
     }
     const renderPass = opts?.renderPass ?? this.context.renderPass;
     const opacity = typeof this.props.opacity === 'number' ? this.props.opacity : 1;
-    if (opacity >= OPAQUE || opts?.shaderModuleProps?.picking?.isActive || !renderPass) {
+    const picking = Boolean(opts?.shaderModuleProps?.picking?.isActive);
+    if (opacity >= OPAQUE || picking || !renderPass) {
       this.drawSplats(renderPass);
+      if (!picking) {
+        this.drawDepth(renderPass);
+      }
       return;
     }
     const device: any = this.context.device;
@@ -677,9 +709,26 @@ export class GaussianSplatLayer extends Layer<GaussianSplatLayerProps> {
     if (this.props.pictureLast !== false) {
       layPicture(device, picture, renderPass, opacity);
     }
+    this.drawDepth(renderPass);
   }
 
-  private drawSplats(renderPass: any): void {
+  /** The depth of the splats' cores onto the map, once their colours are drawn (`writeDepth`). */
+  private drawDepth(renderPass: any): void {
+    const { model } = this.state;
+    if (!model || !this.props.writeDepth || !renderPass) {
+      return;
+    }
+    const device: any = this.context.device;
+    const own = (model as any).parameters;
+    model.setParameters(DEPTH_WRITE_LUMA as any);
+    try {
+      device.withParametersWebGL(DEPTH_WRITE_GL, () => this.drawSplats(renderPass, DEPTH_ALPHA));
+    } finally {
+      model.setParameters(own);
+    }
+  }
+
+  private drawSplats(renderPass: any, depthAlpha = 0): void {
     const { model, count, textureWidth } = this.state;
     if (!model || !count) {
       return;
@@ -695,6 +744,7 @@ export class GaussianSplatLayer extends Layer<GaussianSplatLayerProps> {
         linearColors: this.props.linearColors ? 1 : 0,
         shDegree: eye ? this.state.gpu!.shDegree : 0,
         eye: eye ?? [0, 0, 0],
+        depthAlpha,
       },
     } as any);
     model.setInstanceCount(count);
