@@ -34,6 +34,37 @@ whatever base map the map shows:
 
 On a relief base map each building stands on the ground under its centre.
 
+## Light and shadow
+
+Under kepler's **Light & Shadow** effect the buildings cast real shadows at the effect's time: on each other, and on
+the ground, which the layer covers with a clear surface that shows only the shadows falling on it.
+
+![The centre of Cuenca with the Buildings layer in grey and kepler's Light & Shadow at 16:30: the buildings lit from the west, their shadows falling east across the streets, the lower roofs and Parque Calderón](/img/plus/buildings-shadows.jpg)
+
+1. Add a Buildings layer. With no value to colour them by, every building is drawn in the layer's colour, a grey
+   that takes light well.
+2. Open the effects button in the map control (top right) and add **Light & Shadow**
+   ([Effects](/guide/kepler/effects)).
+3. Set its time in the same panel: a date and time, the current time, or **animation**. Its shadow intensity, colours
+   and light are set there too, and saved with the map.
+
+In **animation** the sun follows the map's own clock: a trip's time, or the start of a time filter shown enlarged. On
+a map with neither, Plus takes the dashboard time range's end, so a [Time Brush](/plus/time-brush) writing the range,
+or the time picker, moves the sun and the shadows with it. (kepler alone would take midnight of 1970 there: night
+over the whole map.)
+
+Buildings coloured by a value take the effect lighter, so their colours still read in the shade and at night:
+**Light and shadow on the buildings** (0.35) sets how much of its shadow and its light they take, from 0 (every face
+in its colour) to 1 (as the ground). The ground under them takes the effect's own shadow, and they cast the full one.
+Buildings in one colour take all of it.
+
+![The same streets coloured by a value at 07:00: the shadows fall west across the streets, dark on the ground, and the buildings keep their reds, oranges and yellows on the faces turned from the sun](/img/plus/buildings-shadows-colour.jpg)
+
+Other 3D layers drawn by deck.gl (a City Model, 3D shapes, extruded polygons, models) cast and take shadows as well:
+3D Shape cylinders standing as a square's trees cast theirs on the clear ground. The clear ground comes with the
+Buildings layer. On a base map with relief the ground takes no shadow (the clear surface is flat), the buildings
+still do. For each spot's hours of shade over a day, add a [Shade](/plus/layers/shade) layer.
+
 ## Where the value comes from
 
 The layer's rows give the values, and how kepler reads them, its **column mode** in the layer's columns, decides how

@@ -14,6 +14,7 @@ one for you.
 | [Coverage and Coverage 3D](./coverage)                | Sectors from an azimuth, a beamwidth and a range; domes in 3D  | Points, one row per sector       |
 | [Viewshed](./viewshed)                                | The ground each place sees past the terrain and the buildings  | Points, one row per observer     |
 | [Line of Sight](./line-of-sight)                      | Whether A sees B, and for a radio link its Fresnel zone        | Links, from A to B               |
+| [Shade](./shade)                                      | Each spot's hours of shade over a day                          | Any dataset; places optional     |
 | [Buildings](./buildings)                              | The base map's buildings, each coloured by a value             | Points, polygons or H3 cells     |
 | [Surface](./surface)                                  | Coloured bands and isolines between points, or a density count | Points                           |
 | [Sparkline](./sparkline)                              | A card with each station's series and its current value        | Points, many rows per station    |
