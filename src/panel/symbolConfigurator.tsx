@@ -67,7 +67,9 @@ export function SymbolLayerConfig({
   updateLayerTextLabel,
 }: ConfiguratorArgs) {
   const settings = layer.visConfigSettings;
-  const slider = (key: string) => <VisConfigSlider {...settings[key]} {...visConfiguratorProps} />;
+  // A setting the layer does not declare draws nothing: kepler's slider reads its range unguarded (3.3.0-alpha.22).
+  const slider = (key: string) =>
+    settings[key] ? <VisConfigSlider {...settings[key]} {...visConfiguratorProps} /> : null;
 
   const visConfig = layer.config.visConfig;
   const picture = visConfig.symbolSource === 'picture';

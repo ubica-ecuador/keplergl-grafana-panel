@@ -186,7 +186,10 @@ test('two clicks draw a rectangle that becomes a polygon filter', async ({
   await selectDrawMode(panel, 'draw-rectangle');
   await expect.poll(async () => (await readEditorState(map)).mode).toBe('DRAW_RECTANGLE');
 
-  const [a, , c] = await mapPoints(map);
+  // Opposite corners, the first and the last free point: the middle one can
+  // share the first's column, and a rectangle with no width is never drawn
+  // (kepler.gl 3.3.0-alpha.22 refuses a collapsed one).
+  const [a, c] = await mapPoints(map);
   await page.mouse.click(a.x, a.y);
   await settle(page);
   // The mode builds its tentative rectangle from the last pointer-move it saw,

@@ -14,7 +14,10 @@ import { readKepler } from './keplerHelpers';
  * auto-refresh does.
  */
 
-const PLAY = '.time-range-slider .playback-control-button';
+// kepler's time widget play button (kepler.gl 3.3.0-alpha.22 moved it to a row
+// above the bar, out of `.time-range-slider`); pressed while it plays.
+const PLAY = '[data-testid="time-widget-play"]';
+const PLAYING = `${PLAY}[aria-pressed="true"]`;
 
 /** Opens the map, shows its time filter and presses play. */
 async function playing(
@@ -34,7 +37,7 @@ async function playing(
   await expect(play).toBeVisible({ timeout: 60_000 });
 
   await play.click();
-  await expect(panel.locator(`${PLAY}.active`)).toBeVisible();
+  await expect(panel.locator(PLAYING)).toBeVisible();
   return { dashboardPage, panel, map };
 }
 
@@ -113,7 +116,7 @@ test('keeps playing when a variable the map reads changes', async ({
     await radius.press('Enter');
   });
 
-  await expect(panel.locator(`${PLAY}.active`)).toBeVisible();
+  await expect(panel.locator(PLAYING)).toBeVisible();
   expect(await timeWindow(map)).not.toEqual(before);
 });
 
@@ -124,6 +127,6 @@ test('keeps playing through a dashboard refresh', async ({ gotoDashboardPage, re
 
   await answered(map, () => dashboardPage.refreshDashboard());
 
-  await expect(panel.locator(`${PLAY}.active`)).toBeVisible();
+  await expect(panel.locator(PLAYING)).toBeVisible();
   expect(await timeWindow(map)).not.toEqual(before);
 });

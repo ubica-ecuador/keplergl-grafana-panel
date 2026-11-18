@@ -334,6 +334,19 @@ const config = async (env: Env): Promise<Configuration> => {
           resolve: { fullySpecified: false },
         },
         /*
+         * apache-arrow's modules import one another in a circle (vector.mjs and
+         * visitor.mjs among them) that only settles when its index is evaluated
+         * first. The package says it has no side effects, so webpack sends a
+         * named import straight to the module that defines it, past the index:
+         * since kepler.gl 3.3.0-alpha.22 `@kepler.gl/utils` imports `StructRow`
+         * that way, and the panel stopped on "Cannot access 'G' before
+         * initialization". Keeping the index in the path keeps arrow's own order.
+         */
+        {
+          test: /[\\/]node_modules[\\/]apache-arrow[\\/]/,
+          sideEffects: true,
+        },
+        /*
          * kepler's polygon filter keeps every row of a layer type it does not
          * know, the Symbols layer's among them; this teaches it to cut a layer
          * that asks to be cut by its position. See the loader.

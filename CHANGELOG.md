@@ -21,6 +21,15 @@ release documents what changed since the one before it.
 - **A split map's loading bar goes.** A swipe or dual map with a 3D Tile layer on one side showed
   "Loading..." for ever: the other side hides the layer, and a hidden 3D Tile layer never
   traversed its tileset, so it never said it was loaded. A hidden one now does.
+- **kepler.gl 3.3.0-alpha.22** (flowmap.gl 9.5, loaders.gl 4.5.5; deck.gl and luma.gl unchanged).
+  kepler's time widget is rebuilt: play, steps, speed and the animation mode sit in a row above the
+  histogram, which can be resized, colour its bins by a layer's categories and edit its range
+  exactly. A drawn polygon or line finishes on the second tap and a map click is no longer held
+  300 ms for a double click; a rectangle or circle with no width is not drawn. The flow layer draws
+  on the globe. Several fixes reach a refreshed panel: a dataset of one row gets a range filter, a
+  table's sort and a timestamp's unit follow new rows, numeric categories sort as numbers. The
+  bundle keeps apache-arrow's own module order: kepler now imports one of its classes directly, and
+  without that every panel stopped on "Cannot access … before initialization".
 - **Gaussian splats change colour with the angle they are seen from.** The spherical harmonics past
   degree 0 that a splat carries, up to degree 3, were read and dropped: each splat had one colour
   from every side, losing the shine and tint the scan was trained with. They are now drawn, the
