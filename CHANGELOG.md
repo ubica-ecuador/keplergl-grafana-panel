@@ -6,6 +6,21 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **ArcGIS I3S meshes show again.** An I3S scene layer (an integrated mesh, 3D objects) in the 3D
+  Tile layer loaded its tiles and drew nothing: deck.gl 9.4's mesh shader hands luma.gl 9.4's PBR
+  module a vertex colour of zero, which luma now multiplies the texture by, so every fragment was
+  discarded (deck's own San Francisco example too). And a mesh without texture regions, as Esri's
+  integrated meshes are, came out as streaks: the shader's region test is an `#ifdef` on a macro
+  deck defines as 0. Both are mended in the layer the panel builds for each tile, and each I3S
+  tile's vertices are worked out in 64-bit floats into metres round its own origin, rather than
+  from the Earth's centre on the GPU, a metre astray. Ground such a layer with *Sit on the ground*
+  off: an I3S root is bounded by a sphere that would lift it as far as it is wide.
+- **An I3S mesh one level of detail at a time.** A coarse node was drawn over the finer ones it
+  was giving way to while another of its children was out of view, a mottle of blurred and sharp
+  patches; it now gives way once every child in view is drawn, as splat tiles do.
+- **A split map's loading bar goes.** A swipe or dual map with a 3D Tile layer on one side showed
+  "Loading..." for ever: the other side hides the layer, and a hidden 3D Tile layer never
+  traversed its tileset, so it never said it was loaded. A hidden one now does.
 - **Gaussian splats change colour with the angle they are seen from.** The spherical harmonics past
   degree 0 that a splat carries, up to degree 3, were read and dropped: each splat had one colour
   from every side, losing the shine and tint the scan was trained with. They are now drawn, the
