@@ -5,7 +5,7 @@ drawn where it is together with its own time series. A gauge fills over each sub
 each river station, comets run along each link at its traffic's pace, and each vehicle moves with its trail. Press
 play and the whole map walks through the dashboard's time range.
 
-![European power grid on one map: renewable share as gauges, demand as 3D bars, interconnector flows as Traffic links](/img/plus/european-grid.jpg)
+<Showcase set="plus" />
 
 Plus runs the free panel with everything it does, under the same options, and adds to it. Free and Plus panels can
 run side by side on the same Grafana and the same dashboard.

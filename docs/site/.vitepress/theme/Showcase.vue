@@ -9,7 +9,13 @@ interface Shot {
   alt: string;
 }
 
-const shots: Shot[] = [
+/**
+ * Which pictures: `free` for the home page's dashboards, `plus` for the Plus overview. The Plus set is shown in a
+ * frame of one shape, the pictures fitted inside it, so a slide of another shape does not move the page.
+ */
+const props = withDefaults(defineProps<{ set?: 'free' | 'plus' }>(), { set: 'free' });
+
+const freeShots: Shot[] = [
   {
     src: '/img/showcase/zarr-stats.jpg',
     title: 'Zarr, drawn and measured',
@@ -54,6 +60,60 @@ const shots: Shot[] = [
   },
 ];
 
+const plusShots: Shot[] = [
+  {
+    src: '/img/plus/surface-under-buildings.jpg',
+    title: 'Smart city sensors',
+    blurb:
+      "Melbourne's street sensors: a Surface between them laid under the base map's 3D buildings, a card with each sensor's series, the pedestrian counters and the parking bays on the same map.",
+    alt: "Melbourne's centre tilted on a dark base map, the sensors' readings in coloured bands on the streets under the 3D buildings, with four sensor cards",
+  },
+  {
+    src: '/img/plus/floors-stacked.jpg',
+    title: 'Indoors, floor by floor',
+    blurb:
+      "An office's floors stacked in 3D, each room in the colour of its CO₂, a card over the rooms that need one, and the floor picker over the map with each floor's worst reading.",
+    alt: 'An office building with its car park, ground and first floors stacked 8 m apart, rooms coloured by CO₂, four room cards and the floor picker',
+  },
+  {
+    src: '/img/plus/gaussian-splats.jpg',
+    title: 'A factory as Gaussian splats',
+    blurb:
+      "A steelworks in Vietnam captured as a 5.3 GB scan of splats, streamed by view, with the air at each yard on a callout standing on the scan's roofs.",
+    alt: "An industrial port as a photographic Gaussian splat scan, with five air quality callouts over its sheds and yards",
+  },
+  {
+    src: '/img/plus/buildings.jpg',
+    title: 'Every building, coloured by its sensors',
+    blurb:
+      "East Harlem in a heat wave: OpenStreetMap's buildings, each coloured by the temperature estimated from the street sensors around it, with no dataset of buildings.",
+    alt: 'East Harlem tilted, every building coloured by the air temperature estimated from street sensors, the sensors as dots',
+  },
+  {
+    src: '/img/plus/city-model.jpg',
+    title: "An official city model, at a city's scale",
+    blurb:
+      "PLATEAU's model of Edogawa, Tokyo: some 77,000 buildings read in the browser, each coloured by the depth of the river flood expected at it.",
+    alt: "Edogawa's 3D city model tilted over the Arakawa river, every building coloured by expected flood depth",
+  },
+  {
+    src: '/img/plus/model-4d.jpg',
+    title: 'A building in 4D',
+    blurb:
+      "A BIM model's parts built in time from the schedule: a Time Brush moves through the works, and what is late shows in red.",
+    alt: 'An apartment block in Nijmegen half built, its parts coloured by material and schedule',
+  },
+  {
+    src: '/img/plus/european-grid.jpg',
+    title: 'Networks and flows',
+    blurb:
+      "Europe's power grid on one map: the renewable share as gauges, demand as 3D bars and the interconnectors' flows as comets along each link.",
+    alt: 'European power grid with renewable share as gauges, demand as 3D bars and interconnector flows as Traffic links',
+  },
+];
+
+const shots = props.set === 'plus' ? plusShots : freeShots;
+
 const index = ref(0);
 const current = computed(() => shots[index.value]);
 
@@ -71,7 +131,12 @@ function go(step: number) {
 </script>
 
 <template>
-  <section class="showcase" aria-roledescription="carousel" aria-label="Dashboards built with the panel">
+  <section
+    class="showcase"
+    :class="{ plus: props.set === 'plus' }"
+    aria-roledescription="carousel"
+    :aria-label="props.set === 'plus' ? 'Maps built with Plus' : 'Dashboards built with the panel'"
+  >
     <div class="frame">
       <img
         :src="src"
@@ -187,6 +252,24 @@ function go(step: number) {
   transition: background 0.2s;
 }
 .dot.on { background: var(--vp-c-brand-1); }
+
+/* In a doc page: the page's own width, one frame shape, the pictures fitted inside. */
+.showcase.plus {
+  padding: 0;
+  margin: 24px 0;
+}
+.showcase.plus .frame img {
+  aspect-ratio: 1468 / 770;
+  object-fit: contain;
+  margin: 0;
+}
+.showcase.plus .caption {
+  min-height: 112px;
+}
+.showcase.plus .caption h3 {
+  border: 0;
+  padding: 0;
+}
 
 @media (max-width: 640px) {
   .showcase { padding: 0 16px; }

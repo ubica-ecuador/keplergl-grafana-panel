@@ -4,7 +4,20 @@ A continuous surface of coloured bands and isolines drawn from points: either a 
 between sensors (**Interpolate**) or how many vehicles are within a distance of each place
 (**Count**).
 
-![Count mode over Madrid: vehicles within 500 m drawn as coloured bands with labelled isolines, densest in the centre, with the vehicles as white dots on top](/img/plus/surface-count.jpg)
+![NO₂ between Amsterdam's air quality stations: the estimate in bands, pale green where it is low and yellow round Zaandam and the centre of Amsterdam, each station a dot in the colour of its reading, and eight of them with a card of their last days' series](/img/plus/surface.jpg)
+
+## See it live
+
+On the public demo instance:
+
+- [Air quality in Amsterdam](https://pacha.ubica.dev/d/air-quality-amsterdam): NO₂ hour by hour between GGD's
+  stations, each with its card.
+- [Melbourne street sensors](https://pacha.ubica.dev/d/melbourne-city-sensors): the microclimate sensors' readings
+  between them, under the base map's 3D buildings, with parking bays and pedestrian counters.
+- [New York by ear](https://pacha.ubica.dev/d/new-york-by-ear): what 56 noise sensors heard, block by block, cut off
+  400 m from the nearest sensor.
+- [València en tiempo real](https://pacha.ubica.dev/d/fiware-valencia): the city's air stations over FIWARE, with
+  traffic and Valenbisi.
 
 ## See it in the layer tour
 
@@ -93,6 +106,8 @@ where the map cannot draw it underneath: a base map without 3D buildings, a Mapb
 globe, and Relief, whose terrain would bury it. Lifted with **Altitude**, every building is drawn in
 front of it. The other layers, the stations for instance, are still drawn over the buildings.
 
+![Melbourne's centre tilted on OpenFreeMap's Dark style: the sensors' readings estimated between them in red, blue and yellow bands on the streets, the base map's 3D buildings standing in front of them, a card over four sensors and the pedestrian counters as small figures](/img/plus/surface-under-buildings.jpg)
+
 ### On the ground of 3D tiles
 
 A 3D tileset ([Google Photorealistic 3D Tiles](../maps/3d-tiles.md)) carries the real relief: the
@@ -121,9 +136,13 @@ Without a max distance the surface covers the whole area, even far from any sens
 estimate is little more than an average of distant stations. Setting one is the honest choice when
 sensors are sparse or unevenly spread.
 
+![Lower Manhattan: the share of time 56 noise sensors heard music, estimated between them in red and orange bands that stop 400 m from the nearest sensor, with a card over six blocks](/img/plus/surface-max-distance.jpg)
+
 Hovering the surface shows the **Estimated value** under the cursor and its **Band**.
 
 ## Count
+
+![Count mode over Madrid: vehicles within 500 m drawn as coloured bands with labelled isolines, densest in the centre, with the vehicles as white dots on top](/img/plus/surface-count.jpg)
 
 Count draws how many vehicles are within a radius of each place. The layer's note says _Vehicles
 within the radius, counting each vehicle's last position once_: among the rows kepler's filters keep,
