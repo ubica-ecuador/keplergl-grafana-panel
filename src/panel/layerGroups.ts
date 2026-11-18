@@ -59,6 +59,30 @@ const withoutPointsOfInterest = (group: LayerGroup): LayerGroup =>
     filter: (layer: StyleLayer) => Boolean(group.filter(layer as never)) && !isPointOfInterest(layer),
   }) as LayerGroup;
 
+/**
+ * The source layers that hold streets: OpenMapTiles' `transportation` (OpenFreeMap, MapTiler, CARTO), Shortbread's
+ * `streets`, `street_polygons` and `bridges` (VersaTiles), Mapbox's `road`.
+ */
+const STREET_SOURCE_LAYERS = new Set(['transportation', 'streets', 'street_polygons', 'bridges', 'road']);
+
+/**
+ * A street drawn as a line or an area (its name and shield are labels): a layer of a street source layer, whatever
+ * its id. kepler's Road filter reads ids only (`road`, `street`, `bridge`…), and OpenMapTiles styles name most of
+ * their streets `highway_minor`, `highway_major_inner`…: on OpenFreeMap's Positron the Road switch, and Move to top,
+ * took the tunnels, bridges and railways and left the streets under the data.
+ */
+export function isStreet(layer: StyleLayer): boolean {
+  const sourceLayer = layer['source-layer']?.toLowerCase();
+  return Boolean(sourceLayer && STREET_SOURCE_LAYERS.has(sourceLayer)) && layer.type?.toLowerCase() !== 'symbol';
+}
+
+/** kepler's Road group, with every street of a street source layer whatever its id. */
+const withStreets = (group: LayerGroup): LayerGroup =>
+  ({
+    ...group,
+    filter: (layer: StyleLayer) => Boolean(group.filter(layer as never)) || isStreet(layer),
+  }) as LayerGroup;
+
 const isExtrusion = (layer: StyleLayer) => layer.type?.toLowerCase() === 'fill-extrusion';
 
 /**
@@ -95,6 +119,8 @@ export const STYLE_LAYER_GROUPS: LayerGroup[] = DEFAULT_LAYER_GROUPS.map(caseIns
   switch (group.slug) {
     case 'label':
       return [withoutPointsOfInterest(group), POI_LAYER_GROUP];
+    case 'road':
+      return [withStreets(group)];
     case 'building':
       return [withoutExtrusions(group)];
     case THREE_D_BUILDING_LAYER_GROUP_SLUG:

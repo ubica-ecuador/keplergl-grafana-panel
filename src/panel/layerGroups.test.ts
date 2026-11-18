@@ -4,6 +4,7 @@ import KeplerGlSchema from '@kepler.gl/schemas';
 import {
   CARTO_DARK_MATTER_LAYERS,
   OPENFREEMAP_LIBERTY_LAYERS,
+  OPENFREEMAP_POSITRON_LAYERS,
   OPENWATERS_SEAMAP_LAYERS,
   UPPER_CASE_LAYERS,
 } from './basemapStyleFixtures';
@@ -41,6 +42,25 @@ describe('the layer groups, case-insensitive', () => {
       );
       expect(slugsMatching(STYLE_LAYER_GROUPS, { id, type: 'line' })).toEqual(kepler);
     }
+  });
+
+  it("takes a style's streets into Road whatever their ids, their names staying labels", () => {
+    const street = OPENFREEMAP_POSITRON_LAYERS.find((l) => l.id === 'highway_minor')!;
+    expect(slugsMatching(STYLE_LAYER_GROUPS, street)).toEqual(['road']);
+    expect(
+      slugsMatching(STYLE_LAYER_GROUPS, {
+        id: 'highway_name_other',
+        type: 'symbol',
+        'source-layer': 'transportation_name',
+      })
+    ).toEqual(['label']);
+    expect(
+      slugsMatching(STYLE_LAYER_GROUPS, { id: 'street-residential', type: 'line', 'source-layer': 'streets' })
+    ).toEqual(['road']);
+    // A shield in the street layer itself is a label.
+    expect(
+      slugsMatching(STYLE_LAYER_GROUPS, { id: 'highway-shield', type: 'symbol', 'source-layer': 'transportation' })
+    ).toEqual(['label']);
   });
 
   it('gives the satellite overlays label and road only', () => {
