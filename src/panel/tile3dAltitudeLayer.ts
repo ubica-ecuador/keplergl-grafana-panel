@@ -108,6 +108,8 @@ interface ViewportLike {
 /** What the deck subclass needs of the class it extends. */
 interface DeckTile3DLayerLike {
   props: Record<string, unknown>;
+  /** deck's: the tileset loaded and every sublayer with it; kepler shows its loading bar while any layer says no. */
+  readonly isLoaded?: boolean;
   context?: { viewport?: ViewportLike } | null;
   state?: {
     tileset3d?: TilesetLike | null;
@@ -230,6 +232,18 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
     updateState(params: unknown): void {
       super.updateState(params);
       this.syncAltitude();
+    }
+
+    /**
+     * Loaded when hidden: a hidden 3D tile layer never traverses its tileset, so deck's own answer stays no for ever,
+     * and kepler's loading bar with it. A split map hides on each side the layers of the other (a swipe between a
+     * mesh and a scan), so its loading bar never went.
+     */
+    get isLoaded(): boolean {
+      if (this.props?.visible === false) {
+        return true;
+      }
+      return Boolean(super.isLoaded);
     }
 
     /**

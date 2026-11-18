@@ -103,6 +103,11 @@ class FakeDeckLayer {
     this.props = props;
   }
 
+  /** deck's: a tileset never traversed is never loaded. */
+  get isLoaded(): boolean {
+    return Boolean(this.state.traversed);
+  }
+
   updateState(_params: unknown): void {
     this.superCalls += 1;
   }
@@ -954,5 +959,20 @@ describe('altitudeAware, with a tileset of batched buildings', () => {
     layer.updateState({});
     expect(translation(ts)).toBeCloseTo(2490, 3);
     expect(content.gltf.scenes[0].nodes[0].mesh.primitives[0].attributes.POSITION.value).toBe(positions);
+  });
+});
+
+describe('a 3D tile layer hidden on one side of a split map', () => {
+  it('says it is loaded, though it never traverses its tileset, so the loading bar goes', () => {
+    const Aware = altitudeAware(FakeDeckLayer as never) as never as new (
+      props: Record<string, unknown>
+    ) => FakeDeckLayer & { isLoaded: boolean };
+    const hidden = new Aware({ visible: false });
+    expect(hidden.isLoaded).toBe(true);
+    // Shown, it is loaded when deck says so.
+    const shown = new Aware({ visible: true });
+    expect(shown.isLoaded).toBe(false);
+    shown.state.traversed = true;
+    expect(shown.isLoaded).toBe(true);
   });
 });
