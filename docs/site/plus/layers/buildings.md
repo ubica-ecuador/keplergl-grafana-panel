@@ -34,6 +34,14 @@ whatever base map the map shows:
 
 On a relief base map each building stands on the ground under its centre.
 
+### On a City Model
+
+**Draw on** picks the buildings the layer colours: **the base map's**, as above, or a [City Model](./city-model) layer
+of the map, listed by its name. On a City Model the Buildings layer draws only its sensors (or nothing, for polygons
+and cells) and works out its estimate over the model's own buildings, each by its roof faces seen from above and its
+middle; the City Model, with **Colour by** set to **A Buildings layer's sensors**, takes it on this layer's steps and
+legend, and its cards show this layer's series.
+
 ## Light and shadow
 
 Under kepler's **Light & Shadow** effect the buildings cast real shadows at the effect's time: on each other, and on
@@ -170,6 +178,14 @@ threshold) keep the same colours for every hour and every place: see
 - **Sensors as dots** marks each sensor in the colour of its own reading, **Dot radius** pixels wide (sensors' column
   mode only).
 - **Opacity** is kepler's, 0.9 for a new layer: the base map shows between the buildings, not through them.
+
+## An area drawn on the map
+
+An area drawn with the map's draw tool, or written to the panel's area variable, dims the buildings whose centre is
+outside it, most of the way to grey: what is outside stays in sight, the buildings inside keep their colours. An
+inverted area dims the inside, and holes and several polygons are kept. The layer's rows are left as they are: the
+dashboard's queries decide what else the area filters. A [City Model](./city-model#an-area-drawn-on-the-map) dims
+its buildings the same way.
 
 ## The hover
 

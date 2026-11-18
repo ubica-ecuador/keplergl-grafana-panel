@@ -70,6 +70,9 @@ browser round each observer, on any base map: about 19 m a pixel worldwide, down
 - **A dataset on the map** with a geometry column of polygons (GeoJSON, WKT or WKB, as for kepler's GeoJSON layer;
   see [Geometry](/guide/data/geometry)): your own footprints, a city's cadastre, Overture's buildings. The list shows
   the map's datasets that have one. The dataset can be drawn by another layer, or by none.
+- **City Model:** and a layer's name: the buildings of a [City Model](./city-model) layer of the map, as it draws them
+  from its rows or its files (the tiles in view). Each roof face stands at its own height over its building's lowest
+  point, so a tower, a lower wing or a gable blocks with its own shape.
 
 ![St. Stephen's Cathedral in Vienna, its south tower's watchroom 68 m up: the streets and squares it sees within 700 m in orange, the rest of the old town's streets shaded, its roofs clear, the buildings OpenStreetMap's from the base map](/img/plus/viewshed-buildings.jpg)
 

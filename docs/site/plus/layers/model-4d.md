@@ -41,6 +41,10 @@ From IFC, the BIM exchange format, each element has a GlobalId that the schedule
 IfcConvert --use-element-guids model.ifc model.glb
 ```
 
+A model whose meshes are compressed with Draco (`KHR_draco_mesh_compression`, as NASA's models, Sketchfab's and most
+exports with compression on come) is read too, with the decoder the plugin ships: nothing is fetched from another
+host for it.
+
 The model's origin is its (0, 0, 0): glTF's Y axis is up and -Z is north, so a model exported in a site's local
 coordinates stands as it was drawn once its origin is placed and turned (see [Placing the model](#placing-the-model)).
 
@@ -187,6 +191,27 @@ In State mode:
 Up to 256 parts named by the rows, each part is drawn on its own and its hover shows its own reading. Above that, the
 parts of one colour are drawn together, which keeps a model of thousands of parts as fast as a few, and are not
 picked on hover.
+
+### Moving parts
+
+A reading can also turn its part: `model_yaw`, `model_pitch` and `model_roll` columns, in degrees from the pose the
+glTF draws the part in, turn the node the row names about its own origin and axes, and everything under it follows.
+An antenna's azimuth and elevation, a crane's slew, a turbine's nacelle: a child turns on its own axle before its
+parent carries it, so a dish tilted on its elevation axle swings with the azimuth it sits on. Give each moving part a
+node of its own, with its origin on its axle, when the model is made.
+
+```sql
+-- Two parts of each antenna, every minute: its alidade turns to the azimuth, its elevation wheel tilts the dish
+-- down from the zenith. One row per part, the other part's column left empty.
+SELECT a.antenna || '.' || p.part AS part, a.time, a.state,
+       CASE WHEN p.part = 'azimuth'   THEN a.azimuth        END AS model_yaw,
+       CASE WHEN p.part = 'elevation' THEN a.elevation - 90 END AS model_pitch
+FROM pointing a CROSS JOIN (VALUES ('azimuth'), ('elevation')) p(part);
+```
+
+The turns follow the instant as the colours do, so a [Time Brush](/plus/time-brush) replays them. The
+[Deep Space Network](https://pacha.ubica.dev/d/deep-space-network) dashboard turns NASA's antennas this way, toward
+the spacecraft each one is talking to.
 
 ### A card on each part
 

@@ -5,13 +5,26 @@ a façade, a monument or a works site, trained into splats. Each row places one 
 and standing on the ground; a click flies to it, or puts the camera inside it at eye height, and a card above it can
 show its readings.
 
+![An industrial port in Quảng Ngãi, Vietnam, tilted: Esri's Gaussian splat scan of the steelworks streamed as 3D Tiles, the sheds, cranes and stockpiles photographic, with five 3D Callout cards of simulated PM10 over the scrap yard, the shed roof, the process area, the green belt and the east stockpiles, each with its PM2.5 and NO₂ under it and its day's chart](/img/plus/gaussian-splats.jpg)
+
 ::: info Since Plus 1.7.0
 The Gaussian Splats layer is new in Plus 1.7.0, not released yet.
 :::
 
-A tileset of splats, as ArcGIS and Cesium serve a city or a site in tiles, is drawn by the free panel's
-[3D Tile layer](/layers/url-configured#gaussian-splats) instead. This layer is for single scans, the files a capture
-app or a trainer exports.
+A scan can be a single file, as a capture app or a trainer exports it, or a tileset of splats, as ArcGIS and Cesium
+serve a city or a site in tiles (see [A tileset of splats](#a-tileset-of-splats)). The free panel's
+[3D Tile layer](/layers/url-configured#gaussian-splats) draws a tileset too, without a row, a card or a click.
+
+## See it live
+
+On the public demo instance:
+
+- [An industrial port as Gaussian splats](https://pacha.ubica.dev/d/portcoast-gaussian-splats): Esri's 5.3 GB scan of
+  a steelworks streamed as 3D Tiles, with callouts standing on its roofs, a close-up and the scan seen through.
+- [A building from bare ground to finished](https://pacha.ubica.dev/d/esri-building-e-construction): eight drone
+  captures of one works site, two side by side, each picked by its date.
+- [A mesh and Gaussian splats](https://pacha.ubica.dev/d/dangermond-mesh-vs-splats): one drone flight over the
+  Dangermond Preserve, drawn as a photogrammetry mesh and as splats.
 
 ## What the query needs
 
@@ -63,6 +76,20 @@ The layer reads:
 A SOG of version 1 (pictures beside a `meta.json`, not bundled) is not read: bundle it again with SuperSplat or
 splat-transform. A scan is drawn with up to 16 million splats and 600 MB; past that, the map says so and leaves it out.
 
+## A tileset of splats
+
+A scan URL that names a 3D Tiles tileset of Gaussian splats (a `tileset.json` of glTF tiles with
+`KHR_gaussian_splatting`, an ArcGIS `3DTilesServer`, Cesium's tilers) is not fetched whole, which a large capture
+cannot be (Esri's Portcoast scan is 5.3 GB): it streams tile by tile, at the detail the view needs, one level of detail
+at a time.
+
+- The tileset stands where it says it does: **Heading**, **Scale**, **Up axis**, **Pitch** and **Roll** do not apply.
+  **Floor on the ground** and **Altitude** do, as the 3D Tile layer's Sit on the ground and its height.
+- The row's place is what the row is about, a yard or a building of the captured site: its card stands there, and a
+  click frames 100 m round it rather than the whole site.
+- With **Allow hover** on, a hover over the splats shows the row and a click flies, as for a file.
+- **Opacity** sees through the whole tileset, as through a file. [Floors](/plus/indoor/) does not cut a tileset.
+
 ## Placement
 
 No capture knows where north is, and most do not know which way is up. The **Placement** group stands the scan on the
@@ -84,8 +111,13 @@ On a base map with relief the scan stands on the ground under its place.
 ## How it is drawn
 
 Each splat is drawn as the soft ellipse it covers on the screen, back to front, as the scan was trained, so the splats
-blend into a photographic surface. Scans write no depth: a nearer scan hides the one behind it, the base map's
-buildings in front of a scan hide it, and a scan never hides kepler's layers drawn after it.
+blend into a photographic surface. A nearer scan hides the one behind it, and the base map's buildings in front of a
+scan hide it.
+
+- **Hide what is behind**, off by default, writes the depth of the splats' cores: a layer above the scan in the
+  layer list (a [Surface](./surface) on the ground, a line) is hidden where the scan stands in front of it, and a
+  Surface poured over everything is pierced by the chimneys and pipes it bridged. Off, a scan never hides kepler's
+  layers drawn after it.
 
 - **Opacity** sees through the whole scan, not each splat: at 0.5 what stands behind the scan shows through it.
 - **Colour by view angle**, on by default, draws the shine and tint a splat shows from each side, as the scan was
@@ -148,6 +180,13 @@ WHERE a.time BETWEEN $__timeFrom() AND $__timeTo();
 
 The card stands above the top of the scan once the scan has loaded.
 
+### Callouts on a scanned roof
+
+A scan tells the ground and the tops at each place, as a mesh of 3D tiles does: a [3D Callout](./callout) with
+**Height on** set to **Roof or canopy (3D tiles)** stands on the scanned roof of a shed, and one on **Ground (3D
+tiles)** at its foot. The heights are read from the splats loaded, past the strays a training leaves under the ground
+and the specks in the air. A [Surface](./surface) follows them too.
+
 ## A scanned building, floor by floor
 
 With the panel's [Floors](/plus/indoor/) on, a scan is cut at the floors shown: what lies above them (and below,
@@ -166,3 +205,5 @@ through or hidden. **Cut at the floor shown**, in the **Placement** group, turns
 The rows kepler's filters drop are not drawn. With one row per capture and a time column, a time filter (or the
 [Time Brush](/plus/time-brush)) shows the capture of the moment: a works site week by week, a façade before and after
 its restoration.
+
+![Esri's Building E in Redlands, California, in September 2019: a drone capture as Gaussian splats on the satellite picture, the steel frame of the building rising out of a sandy works site, the cars in the car parks and the trees around photographic](/img/plus/gaussian-splats-construction.jpg)

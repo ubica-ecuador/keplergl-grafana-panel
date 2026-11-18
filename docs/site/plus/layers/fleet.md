@@ -260,6 +260,11 @@ similar words. Types with no bundled model, such as motorbikes, scooters and rob
 extruded silhouette. With a column picked under **Altitude (above ground)**, every model flies at
 its height in metres, with a line down to the ground.
 
+On a base map with relief each asset, its ghost, its trail and its trip stand on the ground under them, and an
+altitude is measured from that ground. **Altitude above** says otherwise for an aircraft, whose altitude is above the
+sea: **The ground** (the default: vehicles, drones, the floors of a building) or **The sea**, drawn as high over the
+hills as the relief is exaggerated.
+
 The road, rail and water models come from Kenney's Car Kit, Train Kit and Watercraft Kit and
 Quaternius' Public Transport Pack, all CC0; the aircraft are modelled for the panel:
 

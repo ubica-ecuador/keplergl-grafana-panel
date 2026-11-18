@@ -17,7 +17,7 @@ Plus adds.
 | Cloud-native imagery: COG, PMTiles, Zarr, WMS, ArcGIS Image Service, STAC                                                                              |     ✓      |  ✓   |
 | Dashboard time sync, cross-filtering, draggable markers, Grafana Assistant context                                                                     |     ✓      |  ✓   |
 | OpenFreeMap, CARTO and Esri public base maps, with relief                                                                                              |     ✓      |  ✓   |
-| [Gauge, 3D Shape, Coverage, Viewshed, Buildings, Surface, Sparkline, 3D Callout, Traffic, Pipeline, Route, Fleet, 4D Model, Gaussian Splats, Floor plan](/plus/layers/) |            |  ✓   |
+| [Gauge, 3D Shape, Coverage, Viewshed, Line of Sight, Shade, Buildings, City Model, Surface, Sparkline, 3D Callout, Traffic, Pipeline, Route, Fleet, 4D Model, Gaussian Splats, Floor plan](/plus/layers/) |            |  ✓   |
 | [Cards](/plus/layers/cards) with each object's reading and series on the Plus layers, and Grafana alerts on them                                       |            |  ✓   |
 | [Data in a 3D model's own frame](/plus/data/model-frame): sensors by part, people indoors, pipes and rooms                                             |            |  ✓   |
 | [Indoor maps](/plus/indoor/): a floor picker, floors stacked in 3D, floor plans and rooms, buildings and sites                                         |            |  ✓   |
@@ -42,7 +42,7 @@ Plus adds its own settings next to the free ones:
 
 - in the panel options, the **Places**, **Active alerts** and **Floors** groups, and the **Thresholds**, **Unit** and
   **Decimals** standard options, which colour and label [network links](/plus/data/network-links);
-- in kepler's side panel, the fifteen Plus layer types in the layer type list, the Plus base maps in the base map
+- in kepler's side panel, the eighteen Plus layer types in the layer type list, the Plus base maps in the base map
   picker, a **3D (Plus)** tab in **Add Data**, and an [Indoor](/plus/indoor/settings) tab.
 
 Plus steps aside wherever the free panel already draws a query. A query with coordinates, a geometry or an H3 index

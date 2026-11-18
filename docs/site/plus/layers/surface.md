@@ -73,6 +73,7 @@ so. See [Colour palettes and scales](/guide/kepler/colour-palettes-and-scales).
 | Margin (%)       | Draws past the outer sensors by this share of their extent, 0 to 50                            | 0            |
 | Under 3D buildings | Draws the surface inside the base map, under its 3D buildings, so they stand in front of it; off, it is drawn over them like every other layer | on |
 | Follow 3D tiles  | With a 3D tileset on the map, lays the surface over the ground of its tiles; off, it stays flat | on |
+| Lie on           | Following 3D tiles: **The ground**, which what stands there pierces, or **Over everything**, poured over roofs, canopies and heaps | The ground |
 | Altitude (m)     | Metres above the ground the surface is drawn at, up to 10,000; empty is the ground             | On the ground |
 
 **Last** is the newest reading, because Grafana returns rows in time order. **Mean**, **Min** and
@@ -102,6 +103,19 @@ follow: streets, parks and water are covered, and buildings stand through it. Th
 from the tiles loaded for the view, so the surface settles as they load and is interpolated between
 its samples, about a sixtieth of its width apart; in a narrow street between towers it can still be
 hidden. Off, or with no tileset on the map, the surface stays flat.
+
+**Lie on** says what the surface is laid over. **The ground**, the default, is as above: buildings and trees stand
+through it. **Over everything** pours it over the tops the tiles tell instead, roofs, canopies, heaps and cranes, half
+a metre above them, as a sheet poured over a scale model:
+
+- what is narrower than about 8 m (a chimney, a mast, a gantry's bars) is bridged, and a roof or a heap wider than
+  that keeps its height;
+- its edges are softened over about 3 m, so the sheet runs down a wall as a skirt;
+- each cell is shaded by its slope under a light from the north-west, so the form of what it covers reads through a
+  flat band colour.
+
+A [Gaussian Splats](./gaussian-splats) scan tells its ground and its tops too, and a scan with **Hide what is behind**
+on pierces a surface poured over it where its chimneys and pipes stand in front.
 
 Without a max distance the surface covers the whole area, even far from any sensor, where the
 estimate is little more than an average of distant stations. Setting one is the honest choice when

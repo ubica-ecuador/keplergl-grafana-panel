@@ -143,7 +143,7 @@ In the layer's **Cards** group. Everything but **Show** appears once **Show** is
 | **Unit**         | Text after the value, kept as typed: a leading space sets it apart (` MW`).                                | empty                   |
 | **More values**  | Up to four more numeric columns, a row each: column, label, unit. See [above](#more-than-one-value).       | none                    |
 | **Alert label**  | A Grafana alert label naming the objects; see [Grafana alerts on the cards](#grafana-alerts-on-the-cards). | empty                   |
-| **Size**         | **Small**, **Medium** or **Large**.                                                                        | Small                   |
+| **Size**         | **Collapsed** (one line: the value and the name, no chart, for many objects at once), **Small**, **Medium** or **Large**. | Small |
 | **Scale**        | **Common** to all cards, or **Per card**.                                                                  | Common                  |
 | **Min**, **Max** | The charts' vertical range. Empty: from the readings, the top rounded up.                                  | auto                    |
 

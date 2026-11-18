@@ -77,21 +77,45 @@ depends on its provider:
 | ------------------------- | -------------------------------------------------------------- |
 | Azure Maps, all four      | Relief                                                         |
 | Google, all four          | none: the tiles are images, and Relief is left off (see below) |
-| CARTO and the free styles | as in the free panel                                           |
+| OpenFreeMap's five        | Relief and 3D Building, besides the free panel's switches      |
+| CARTO and the free panel's own relief styles | as in the free panel                        |
 
 ### Relief
 
 The **Relief** switch adds real elevation under the base map. It starts off. Tilt the camera with the 3D
 control to see the ground rise.
 
-Of the styles Plus adds, Azure Maps' four have it, with [Mapterhorn](https://mapterhorn.com)'s public terrain, the
-same elevation as the free panel's **Satellite + relief** and **Topographic + relief**.
+Azure Maps' four styles and OpenFreeMap's five (Positron, Bright, Liberty, Dark and Fiord) have it, with
+[Mapterhorn](https://mapterhorn.com)'s public terrain, the same elevation as the free panel's **Satellite + relief**
+and **Topographic + relief**. CARTO's styles do not: CARTO's terms forbid modifying its base maps.
+
+### 3D buildings on OpenFreeMap
+
+On OpenFreeMap's styles the **3D Building** switch extrudes the buildings of the style's own tiles, each by its height
+in OpenStreetMap, in the colour of the map's footprints, from zoom 14. kepler's own switch draws Mapbox's buildings and
+needs a Mapbox token, so it did nothing there. Both switches start off, so a map saved on these styles looks as it
+did; Liberty keeps its own 3D buildings, on.
 
 Google's styles have no Relief. Google's terms forbid using its maps with or near a map from another provider,
 and relief would lay Google's tiles over another provider's elevation.
 
 As on the free relief styles, rasters lie on the terrain and markers and symbols stand on it; kepler's other layers
 stay at their own height. See [Base maps and relief](/guide/map/basemaps-and-relief#relief).
+
+### Plus layers on the relief
+
+On any base map with relief, the free panel's relief styles included, the Plus layers stand on the ground and stay
+put as the map pans:
+
+- 4D Models (on the ground under their origin), 3D Callouts, Sparklines, Gauges, 3D Shapes, Coverage sectors,
+  Buildings, City Models, Gaussian Splats and the cards of each, on the ground under their place;
+- Pipelines along the ground, a vertex every 25 m where their own are farther apart;
+- rows in a model's frame (`model_x`, `model_part`, `model_geometry`) with their model;
+- [Fleet](/plus/layers/fleet)'s assets, ghosts, trails and trips, an altitude measured from the ground, or from the
+  sea with **Altitude above**;
+- Route, Viewshed and Shade laid on the relief.
+
+Traffic still draws from the sea level of the map.
 
 ## The sky
 
