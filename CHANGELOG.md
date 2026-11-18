@@ -21,6 +21,11 @@ release documents what changed since the one before it.
 - **A split map's loading bar goes.** A swipe or dual map with a 3D Tile layer on one side showed
   "Loading..." for ever: the other side hides the layer, and a hidden 3D Tile layer never
   traversed its tileset, so it never said it was loaded. A hidden one now does.
+- **kepler.gl 3.3.0-alpha.23.** Light & Shadow can animate its date and time over a range of its
+  own, and a map under its shadows answers the pointer (kepler now binds the shadow sampler in
+  picking, as Plus already did). The Bitmap layer takes an elevation offset; zoom to layer works
+  for Zarr, flow field, WMS sublayers and GeoJSON points; polygon and bitmap editing answer the
+  pointer again; the flow field layer gets meshes and a switch for its trails.
 - **kepler.gl 3.3.0-alpha.22** (flowmap.gl 9.5, loaders.gl 4.5.5; deck.gl and luma.gl unchanged).
   kepler's time widget is rebuilt: play, steps, speed and the animation mode sit in a row above the
   histogram, which can be resized, colour its bins by a layer's categories and edit its range
