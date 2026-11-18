@@ -75,7 +75,73 @@ Spanish; the maps are the point.
 
 </div>
 
+<a class="plus-card" href="./plus/">
+  <img src="/img/plus/home-collage.jpg" alt="Kepler Plus maps: buildings coloured by heat, a scanned plant with sensor cards, an indoor station, a power plant in 3D, air sensors with sparklines, power flows across Europe." width="1200" height="700" loading="lazy">
+  <span class="plus-text">
+    <span class="plus-kicker">Kepler Geospatial Maps Plus</span>
+    <span class="plus-title">Digital twins, fleets and live cards in Grafana</span>
+    <span class="plus-blurb">The commercial edition: buildings and indoor floors coloured by their sensors, 3D models and scans with cards on them, fleets followed by the camera, and a time brush to play it all back.</span>
+    <span class="plus-go">Read the Plus docs →</span>
+  </span>
+</a>
+
 <style scoped>
+.plus-card {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  max-width: 880px;
+  margin: 40px auto 0;
+  padding: 12px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  text-decoration: none;
+  transition: border-color 0.2s;
+}
+.plus-card:hover {
+  border-color: var(--vp-c-brand-1);
+}
+.plus-card img {
+  flex: none;
+  width: min(400px, 48%);
+  height: auto;
+  border-radius: 8px;
+}
+.plus-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.plus-kicker {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--vp-c-text-2);
+}
+.plus-title {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.plus-blurb {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--vp-c-text-2);
+}
+.plus-go {
+  font-weight: 500;
+  color: var(--vp-c-brand-1);
+}
+@media (max-width: 640px) {
+  .plus-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .plus-card img {
+    width: 100%;
+  }
+}
 .showcase-cta {
   max-width: 1152px;
   margin: 32px auto 0;
