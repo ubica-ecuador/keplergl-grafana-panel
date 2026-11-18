@@ -69,20 +69,6 @@ const plusShots: Shot[] = [
     alt: "Melbourne's centre tilted on a dark base map, the sensors' readings in coloured bands on the streets under the 3D buildings, with four sensor cards",
   },
   {
-    src: '/img/plus/floors-stacked.jpg',
-    title: 'Indoors, floor by floor',
-    blurb:
-      "An office's floors stacked in 3D, each room in the colour of its CO₂, a card over the rooms that need one, and the floor picker over the map with each floor's worst reading.",
-    alt: 'An office building with its car park, ground and first floors stacked 8 m apart, rooms coloured by CO₂, four room cards and the floor picker',
-  },
-  {
-    src: '/img/plus/gaussian-splats.jpg',
-    title: 'A factory as Gaussian splats',
-    blurb:
-      "A steelworks in Vietnam captured as a 5.3 GB scan of splats, streamed by view, with the air at each yard on a callout standing on the scan's roofs.",
-    alt: "An industrial port as a photographic Gaussian splat scan, with five air quality callouts over its sheds and yards",
-  },
-  {
     src: '/img/plus/buildings.jpg',
     title: 'Every building, coloured by its sensors',
     blurb:
@@ -97,11 +83,53 @@ const plusShots: Shot[] = [
     alt: "Edogawa's 3D city model tilted over the Arakawa river, every building coloured by expected flood depth",
   },
   {
+    src: '/img/plus/gaussian-splats.jpg',
+    title: 'A factory as Gaussian splats',
+    blurb:
+      "A steelworks in Vietnam captured as a 5.3 GB scan of splats, streamed by view, with the air at each yard on a callout standing on the scan's roofs.",
+    alt: 'An industrial port as a photographic Gaussian splat scan, with five air quality callouts over its sheds and yards',
+  },
+  {
+    src: '/img/plus/indoor-audimax.jpg',
+    title: 'Indoors, from the evacuation plans',
+    blurb:
+      "Universität Hamburg's Audimax: its floors and rooms drawn from the building's evacuation plans laid on the map, each room in the colour of its CO₂ (simulated readings), the floor picker giving each floor's worst.",
+    alt: 'The Audimax ground floor tilted, its rooms green and the lecture hall orange over the evacuation plan, with five room cards and the floor picker',
+  },
+  {
+    src: '/img/plus/indoor-urban-sciences.jpg',
+    title: 'Every room, live',
+    blurb:
+      "Newcastle University's Urban Sciences Building, seven floors room by room: each room's CO₂, temperature and humidity from the Urban Observatory's live sensors, the other floors seen through.",
+    alt: "The Urban Sciences Building's first floor, its rooms' CO₂ in rings with their temperature and humidity, the other floors faint",
+  },
+  {
+    src: '/img/plus/indoor-south-station.jpg',
+    title: 'A station on six levels',
+    blurb:
+      "Boston's South Station from the Red Line under the street to the bus terminal: the commuter trains at their tracks and an escalator out of service on its level, live from the MBTA.",
+    alt: "South Station's levels stacked in 3D on a dark map, trains at the platforms and two red cards for an escalator out of service",
+  },
+  {
     src: '/img/plus/model-4d.jpg',
     title: 'A building in 4D',
     blurb:
       "A BIM model's parts built in time from the schedule: a Time Brush moves through the works, and what is late shows in red.",
     alt: 'An apartment block in Nijmegen half built, its parts coloured by material and schedule',
+  },
+  {
+    src: '/img/plus/model-4d-wivenhoe.jpg',
+    title: 'A power station, floor by floor',
+    blurb:
+      "Wivenhoe's pumped hydro in Queensland: its two reversible units in 3D on the relief by the dam, each in the colour of AEMO's five-minute readings, one pumping at −247 MW.",
+    alt: "Wivenhoe power station's model on satellite imagery and relief, unit 1 in blue with its card at −247 MW, unit 2 grey at 0 MW, and the floor picker",
+  },
+  {
+    src: '/img/plus/model-4d-dsn.jpg',
+    title: 'Antennas that turn',
+    blurb:
+      "NASA's Deep Space Network live at Goldstone: each antenna's model turned to the spacecraft it is talking to, with its data rate on a card, and a Time Brush to replay the day.",
+    alt: 'Goldstone tilted on satellite imagery, four antennas in 3D with cards naming Europa Clipper, Parker Solar Probe and BioSentinel and their data rates',
   },
   {
     src: '/img/plus/european-grid.jpg',
