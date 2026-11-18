@@ -9,6 +9,7 @@ import {
 } from '@grafana/data';
 
 import { datasetId } from '../data/framesToDatasets';
+import { describeError } from './redactUrl';
 
 /**
  * Grafana's data links, on the entity clicked on the map.
@@ -126,7 +127,7 @@ export function entityLinks({
         valueRowIndex: 0,
       });
     } catch (error) {
-      console.warn('[kepler] a data link could not be filled for the clicked entity', error);
+      console.warn(`[kepler] a data link could not be filled for the clicked entity: ${describeError(error)}`);
       continue;
     }
     for (const link of supplied) {

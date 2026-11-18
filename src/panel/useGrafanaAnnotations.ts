@@ -27,6 +27,7 @@ import {
 import { KEPLER_INSTANCE_ID } from './constants';
 import { onKeplerAction } from './keplerStore';
 import type { TimeRangeMs } from './timeSync';
+import { describeError } from './redactUrl';
 
 export type AnnotationsMode = 'off' | 'show' | 'both';
 
@@ -278,7 +279,7 @@ export function useGrafanaAnnotations({
         await getBackendSrv().patch(`/api/annotations/${grafanaIdOf(note.id)}`, body, { showErrorAlert: false });
         synced.current.set(note.id, noteFingerprint(note));
       } catch (e) {
-        console.warn('kepler panel: could not update the annotation', e);
+        console.warn(`kepler panel: could not update the annotation: ${describeError(e)}`);
       } finally {
         writing.current.delete(note.id);
       }
@@ -305,7 +306,7 @@ export function useGrafanaAnnotations({
       dispatch(wrapTo(KEPLER_INSTANCE_ID, setSelectedAnnotation(null)));
       synced.current.set(id, noteFingerprint(note));
     } catch (e) {
-      console.warn('kepler panel: could not save the map note as an annotation', e);
+      console.warn(`kepler panel: could not save the map note as an annotation: ${describeError(e)}`);
     } finally {
       writing.current.delete(note.id);
     }
@@ -375,7 +376,7 @@ export function useGrafanaAnnotations({
       getBackendSrv()
         .delete(`/api/annotations/${grafanaId}`, undefined, { showErrorAlert: false })
         .catch((e: unknown) => {
-          console.warn('kepler panel: could not delete the annotation', e);
+          console.warn(`kepler panel: could not delete the annotation: ${describeError(e)}`);
           // Still in Grafana: back on the map at the next pass.
           dismissed.current.delete(id);
           schedule.current();

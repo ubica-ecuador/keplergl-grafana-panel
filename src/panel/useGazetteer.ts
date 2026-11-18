@@ -5,6 +5,7 @@ import { detectFields, type FieldRoleOverrides, resolveRoles } from '../data/det
 import { GAZETTEERS, type Gazetteer, parseGazetteer, placedByName } from '../data/placeLookup';
 import { resolveRemoteSource } from '../data/remoteSource';
 import type { QueryOptions } from '../types';
+import { describeError, redactUrl } from './redactUrl';
 
 /**
  * The gazetteers a panel's place names are looked up in, one per query that
@@ -31,7 +32,7 @@ function load(url: string): Promise<Gazetteer> {
       })
       .then(parseGazetteer)
       .catch((error) => {
-        console.warn('Kepler panel: could not load the place names from', url, error);
+        console.warn(`Kepler panel: could not load the place names from ${redactUrl(url)}: ${describeError(error)}`);
         cache.delete(url);
         return new Map() as Gazetteer;
       });

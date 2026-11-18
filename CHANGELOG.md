@@ -30,6 +30,10 @@ release documents what changed since the one before it.
   table's sort and a timestamp's unit follow new rows, numeric categories sort as numbers. The
   bundle keeps apache-arrow's own module order: kepler now imports one of its classes directly, and
   without that every panel stopped on "Cannot access … before initialization".
+- **No URL with its credentials in the console.** A warning about a gazetteer, a picture, a data
+  link or an action that failed named the URL as typed, and an action's failed request was logged
+  whole, its URL and headers with it. A URL is now named by its origin and path only, without a
+  user, a password, a query or a fragment, and a failure by its name and message.
 - **Gaussian splats change colour with the angle they are seen from.** The spherical harmonics past
   degree 0 that a splat carries, up to degree 3, were read and dropped: each splat had one colour
   from every side, losing the shine and tint the scan was trained with. They are now drawn, the

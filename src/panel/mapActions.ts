@@ -1,6 +1,7 @@
 import { locationUtil, textUtil, type Action, type DataFrame, type InterpolateFunction } from '@grafana/data';
 
 import { clickedRowFrame, rowScopedVars } from './dataLinks';
+import { describeError } from './redactUrl';
 
 /**
  * Grafana's Actions, on the entity clicked on the map.
@@ -166,7 +167,7 @@ export function entityActions({
         title = replaceVariables(action.title ?? '', scopedVars);
         buildActionRequest(action, fillWith(), origin);
       } catch (error) {
-        console.warn('[kepler] an action could not be built for the clicked entity', error);
+        console.warn(`[kepler] an action could not be built for the clicked entity: ${describeError(error)}`);
         continue;
       }
       const key = `${title}\u0000${action[FETCH as Action['type']]?.url ?? ''}`;

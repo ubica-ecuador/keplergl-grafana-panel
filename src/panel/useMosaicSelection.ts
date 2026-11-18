@@ -19,6 +19,7 @@ import {
 import { MOSAIC_PANEL } from './mosaicLink';
 import { MosaicSelectionLink, type MapLike, type MosaicRuntimeLike } from './mosaicSelectionLink';
 import { SliceWatcher } from './sliceWatcher';
+import { describeError } from './redactUrl';
 
 interface Params {
   store: Store;
@@ -147,7 +148,7 @@ export function useMosaicSelection({ store, isReady, selection, columns, viewpor
 
     start().catch((error: unknown) => {
       if (!abort.signal.aborted) {
-        console.warn(`Kepler: not linked to the Mosaic selection ${name}:`, error);
+        console.warn(`Kepler: not linked to the Mosaic selection ${name}: ${describeError(error)}`);
       }
     });
 

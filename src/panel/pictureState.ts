@@ -1,5 +1,6 @@
 import { PictureProblem } from './pictureKeys';
 import { PictureFailure } from './pictureRows';
+import { redactUrl } from './redactUrl';
 
 /**
  * What became of the symbol pictures, for the layer panel to show.
@@ -72,7 +73,8 @@ function warnOnce(url: string, load: PictureLoad): void {
     warned.clear();
   }
   warned.add(note);
-  const shown = url.length > 80 ? `${url.slice(0, 77)}…` : url;
+  const redacted = redactUrl(url);
+  const shown = redacted.length > 80 ? `${redacted.slice(0, 77)}…` : redacted;
   console.warn(`[kepler panel] picture not drawn (${load}): ${shown}`);
 }
 
