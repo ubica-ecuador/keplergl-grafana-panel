@@ -8,6 +8,7 @@ import {
   mendedClassOf,
   mendI3sMeshLayer,
   mendShaders,
+  oneI3sLevelAtATime,
   UV_REGIONS_IF,
   UV_REGIONS_IFDEF,
   WHITE_VERTEX_COLOUR,
@@ -136,5 +137,59 @@ describe("an I3S tile's vertices", () => {
     expect(t.content.attributes.positions.value).toBe(once);
     expect(isI3sTile({ tileset: { type: 'TILES3D' } })).toBe(false);
     expect(bakeI3sPositions({ content: null })).toBe(false);
+  });
+});
+
+describe('an I3S scene layer drawn one level of detail at a time', () => {
+  class TileMesh {
+    static layerName = 'MeshLayer';
+    props: Record<string, any>;
+    constructor(props: Record<string, any>) {
+      this.props = props;
+    }
+    getShaders() {
+      return {};
+    }
+    clone(props: Record<string, unknown>) {
+      return new TileMesh({ ...this.props, ...props });
+    }
+  }
+  const node = (id: string, parent: any = null, selected = true) => {
+    const tile: any = {
+      id,
+      parent,
+      children: [],
+      selected,
+      tileset: { type: 'I3S' },
+      isVisibleAndInRequestVolume: true,
+    };
+    parent?.children.push(tile);
+    return tile;
+  };
+  const layerOf = (tile: any) => new TileMesh({ id: `mesh-${tile.id}`, tile, pbrMaterial: {}, visible: true });
+  const shown = (layers: any[] | null | undefined) =>
+    (layers ?? []).filter((l) => l.props.visible !== false).map((l) => l.props.tile.id);
+
+  it('leaves a coarse node out once every child of it in view is drawn', () => {
+    const root = node('root');
+    const a = node('a', root);
+    const b = node('b', root);
+    const away = node('away', root, false);
+    away.isVisibleAndInRequestVolume = false;
+    expect(shown(oneI3sLevelAtATime([root, a, b].map(layerOf)))).toEqual(['a', 'b']);
+  });
+
+  it('draws the coarse node alone while a child in view is not drawn yet', () => {
+    const root = node('root');
+    const a = node('a', root);
+    node('b', root, false);
+    const fine = node('fine', a);
+    expect(shown(oneI3sLevelAtATime([root, a, fine].map(layerOf)))).toEqual(['root']);
+  });
+
+  it('leaves other layers, and a 3D Tiles mesh, as they came', () => {
+    const layers = [{ props: { id: 'x' } }];
+    expect(oneI3sLevelAtATime(layers)).toBe(layers);
+    expect(oneI3sLevelAtATime(null)).toBeNull();
   });
 });

@@ -68,7 +68,7 @@ import {
   type VolumeTileLike,
 } from './tile3dBuildings';
 import { servesTiles3D, sturdyLoader } from './tile3dLoader';
-import { bakeI3sPositions, isI3sTile, mendI3sMeshLayer } from './i3sMesh';
+import { bakeI3sPositions, isI3sTile, mendI3sMeshLayer, oneI3sLevelAtATime } from './i3sMesh';
 import { isSplatTile, noteSplatBase, orderSplatLayers, splatTileLayers, type SplatTileLike } from './splats/splatTiles';
 import { releasePicture } from './splats/splatPicture';
 
@@ -521,10 +521,13 @@ export function altitudeAware<C extends Constructor<DeckTile3DLayerLike>>(Base: 
       );
     }
 
-    /** deck's tile layers, the splat ones drawn farthest first. */
+    /** deck's tile layers, the splat ones drawn farthest first, I3S meshes one level of detail at a time. */
     renderLayers(): unknown {
       const layers = (super.renderLayers as () => unknown[] | null).call(this);
-      return orderSplatLayers(layers, this.context?.viewport as any, splatPictureGroup(this.props.id));
+      const viewport = this.context?.viewport as any;
+      // One level of detail at a time: an I3S node with finer ones drawn under it gives way (i3sMesh.ts).
+      const meshes = oneI3sLevelAtATime(layers, viewport?.id ?? null);
+      return orderSplatLayers(meshes, viewport, splatPictureGroup(this.props.id));
     }
   }
 

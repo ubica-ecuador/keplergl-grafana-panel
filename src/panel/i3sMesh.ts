@@ -25,7 +25,15 @@
  * interleaved, the error is worse). So each tile's vertices are worked out once, as it loads, in 64-bit floats on the
  * CPU, into metres east, north and up of the tile's own origin, and the model matrix becomes the identity: what deck
  * draws is the same mesh, within a millimetre.
+ *
+ * **One level of detail at a time.** loaders.gl draws an I3S node that is to be refined together with those of its
+ * children it has drawn, while another child is out of view or not yet loaded (the same as for 3D Tiles' replacement:
+ * splats/splatTiles.ts). The coarse node and the fine ones lie a few decimetres apart, each with its own texture, and
+ * the mesh shows as a mottle of both. So the coarse node gives way once every child of it in view is drawn, and until
+ * then is drawn alone (`tilesGivingWay`, as for splat tiles).
  */
+
+import { tilesGivingWay } from './splats/splatTiles';
 
 /** The call deck.gl's MeshLayer makes, and what it should be. */
 export const ZERO_VERTEX_COLOUR = 'pbr_filterColor(vec4(0))';
@@ -182,4 +190,50 @@ export function bakeI3sPositions(tile: I3sTileLike | null | undefined): boolean 
   content.modelMatrix = IDENTITY.slice();
   content.cartographicModelMatrix = IDENTITY.slice();
   return true;
+}
+
+/** What deck's mesh layer for an I3S tile carries: the tile it draws. */
+interface TileMeshLayerLike extends MeshLayerLike {
+  props: Record<string, unknown> & {
+    tile?: { selected?: boolean; viewportIds?: string[] } & I3sTileLike;
+    visible?: boolean;
+  };
+  clone: (props: Record<string, unknown>) => unknown;
+}
+
+/**
+ * The tile layer's sublayers with each I3S node that gives way to finer ones drawn left out, so that each place shows
+ * one level of detail. Any other layer, and a list without I3S meshes, as it came.
+ */
+export function oneI3sLevelAtATime<T>(
+  layers: T[] | null | undefined,
+  viewportId?: string | null
+): T[] | null | undefined {
+  if (!Array.isArray(layers)) {
+    return layers;
+  }
+  const flat = (layers as unknown[]).flat(Infinity) as unknown[];
+  const meshes = flat.filter(
+    (layer): layer is TileMeshLayerLike =>
+      isPbrMeshLayer(layer) && isI3sTile((layer as TileMeshLayerLike).props?.tile ?? null)
+  );
+  if (meshes.length === 0) {
+    return layers;
+  }
+  // Drawn as deck's Tile3DLayer decides (`filterSubLayer`): selected, and for this viewport.
+  const drawnHere = (tile: TileMeshLayerLike['props']['tile']) =>
+    Boolean(tile?.selected) &&
+    (!viewportId || !Array.isArray(tile?.viewportIds) || tile!.viewportIds!.includes(viewportId));
+  const drawn = new Set<unknown>(meshes.map((layer) => layer.props.tile).filter(drawnHere));
+  const hidden = tilesGivingWay(drawn);
+  if (hidden.size === 0) {
+    return layers;
+  }
+  return flat.map((layer) =>
+    meshes.includes(layer as TileMeshLayerLike) &&
+    hidden.has((layer as TileMeshLayerLike).props.tile) &&
+    (layer as TileMeshLayerLike).props.visible !== false
+      ? (layer as TileMeshLayerLike).clone({ visible: false })
+      : layer
+  ) as T[];
 }
