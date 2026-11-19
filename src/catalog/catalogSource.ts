@@ -14,6 +14,7 @@ import {
 } from '../data/rasterDataset';
 import { COG_PAINTED_TYPE } from '../panel/cogPaintedLayer';
 import { xyzSavedDataset } from '../data/xyzTiles';
+import { featureRequestUrl, type FeatureProtocol, type FeatureTarget, readFeatureRequest } from './featureRequests';
 
 /**
  * STAC catalogs as a data source (the STAC Catalog data source, `ubica-stac-datasource`): what the map's
@@ -77,13 +78,21 @@ export interface CatalogEntry {
   size?: number | null;
   /** Its media type, when the catalog says. */
   mediaType?: string;
-  /** An OGC API Features collection's items, as GeoJSON. */
+  /**
+   * A features entry: where its features are asked for as GeoJSON, without area, time or limit (an OGC API
+   * collection's items, a WFS's GetFeature, an ArcGIS layer's query); null when the service gives no GeoJSON.
+   */
   itemsHref?: string | null;
+  /** A features entry: how it is asked (see `featureRequests.ts`); absent, an OGC API collection. */
+  featureProtocol?: FeatureProtocol;
+  /** A features entry of a WFS or ArcGIS: the property (or field) its time range is kept to; none, no time. */
+  timeProperty?: string | null;
 }
 
 /** A map service that draws an entry (STAC web-map-links), as the data source gives it in its `service` column. */
 export interface CatalogService {
-  protocol: 'wms' | 'wmts' | 'xyz' | 'tilejson' | 'pmtiles';
+  /** `arcgis-image`: an ArcGIS ImageServer or MapServer without Web Mercator tiles, a picture asked per tile. */
+  protocol: 'wms' | 'wmts' | 'xyz' | 'tilejson' | 'pmtiles' | 'arcgis-image';
   layers: string[];
   styles: string[];
   transparent: boolean | null;
@@ -184,7 +193,9 @@ export function whyNotAddable(
     case 'gltf-model':
       return 'A glTF model: Kepler Plus draws it, with the 4D Model layer.';
     case 'features':
-      return 'itemsHref' in entry && entry.itemsHref ? null : 'Features without an items link to read them from.';
+      return 'itemsHref' in entry && entry.itemsHref
+        ? null
+        : 'Features the service gives in no GeoJSON (GML or Esri JSON only): this map cannot read them.';
     case 'geoparquet':
       return null;
     case 'vector': {
@@ -308,6 +319,8 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
     sizes,
     itemsHrefs,
     mediaTypes,
+    protocols,
+    timeProperties,
   ] = [
     'id',
     'title',
@@ -326,6 +339,8 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
     'size',
     'items_href',
     'media_type',
+    'feature_protocol',
+    'time_property',
   ].map(column);
   const hasSeries = frame.fields.some((field) => field.name === 'series');
   const time = (value: unknown) => {
@@ -355,6 +370,10 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
       ...(time(sizes[i]) !== null ? { size: time(sizes[i]) } : {}),
       ...(typeof itemsHrefs[i] === 'string' && itemsHrefs[i] ? { itemsHref: itemsHrefs[i] } : {}),
       ...(typeof mediaTypes[i] === 'string' && mediaTypes[i] ? { mediaType: mediaTypes[i] } : {}),
+      ...(protocols[i] === 'wfs' || protocols[i] === 'arcgis' || protocols[i] === 'ogc-features'
+        ? { featureProtocol: protocols[i] }
+        : {}),
+      ...(typeof timeProperties[i] === 'string' && timeProperties[i] ? { timeProperty: timeProperties[i] } : {}),
     });
   }
   return entries.filter((entry) => entry.id !== '' && entry.href !== '');
@@ -764,6 +783,30 @@ export function followedArea(view: [number, number, number, number] | null): [nu
   return [snap(west, Math.floor), snap(south, Math.floor), snap(east, Math.ceil), snap(north, Math.ceil)];
 }
 
+/**
+ * The area features are asked over: the followed grid's (`followedArea`), or the view itself, kept to the world and
+ * rounded, when it is too wide to follow. A features service answers at most a count, so a wide view costs one
+ * request, unlike a search of scenes; the view is rounded to a hundredth so a small pan asks nothing new.
+ */
+export function featuresArea(view: [number, number, number, number] | null): [number, number, number, number] | null {
+  if (!view) {
+    return null;
+  }
+  const near = followedArea(view);
+  if (near) {
+    return near;
+  }
+  const [west, south, east, north] = view;
+  const round = (value: number, way: (n: number) => number) => way(value * 100) / 100;
+  const area: [number, number, number, number] = [
+    round(Math.max(-180, west), Math.floor),
+    round(Math.max(-85, south), Math.floor),
+    round(Math.min(180, east), Math.ceil),
+    round(Math.min(85, north), Math.ceil),
+  ];
+  return area[2] > area[0] && area[3] > area[1] ? area : null;
+}
+
 /** A dataset's saved search, or null when it is none. */
 export function searchOf(metadata: Record<string, unknown> | undefined): SeriesSearch | null {
   const search = metadata?.catalogSearch as Partial<SeriesSearch> | undefined;
@@ -1128,9 +1171,17 @@ export async function serviceDataset(entry: CatalogEntry, uid: string): Promise<
       }
       return kind === 'raster' ? remote('raster-tile', { metadataUrl: entry.href, pmtilesType: 'raster' }) : null;
     }
+    case 'arcgis-image':
+      // The panel's own ArcGIS layer (`esriImageLayer.ts`), which asks the service a picture of each tile.
+      return remote('esriImage', { serviceUrl: entry.href });
     default:
       return null;
   }
+}
+
+/** How a map service is named in the list. */
+export function serviceLabel(service: CatalogService): string {
+  return service.protocol === 'arcgis-image' ? 'ArcGIS' : service.protocol.toUpperCase();
 }
 
 /** The largest file a browser is asked to load whole; larger ones are read by query, filtered where they are. */
@@ -1181,67 +1232,53 @@ export function vectorQuery(entry: Pick<CatalogEntry, 'href' | 'serverHref'> & {
       : `SELECT * FROM ST_Read('${where}')`;
 }
 
-/** An OGC API Features items address for an area, a time range (when the collection has one) and a limit. */
+/**
+ * A features request's address for an area, a time range (when the entry has time) and a limit: an OGC API
+ * collection's items, a WFS's GetFeature or an ArcGIS layer's query (see `featureRequests.ts`).
+ */
 export function featuresUrl(
-  itemsHref: string,
+  target: FeatureTarget,
   area: [number, number, number, number] | null,
   range: { from: number; to: number } | null,
   limit: number
 ): string {
-  const url = new URL(itemsHref);
-  if (area) {
-    url.searchParams.set('bbox', area.join(','));
-  }
-  if (range) {
-    url.searchParams.set('datetime', `${new Date(range.from).toISOString()}/${new Date(range.to).toISOString()}`);
-  }
-  url.searchParams.set('limit', String(limit));
-  return url.toString();
+  return featureRequestUrl(target, area, range, limit);
 }
 
 /** Features a map loads at once from a catalog: the first ones the service gives over the view. */
 export const FEATURES_LIMIT = 2000;
 
-/** What a features dataset is asked again with: its items, area (when it follows the view), time (when it has one). */
-export interface FeaturesSearch {
-  itemsHref: string;
+/**
+ * What a features dataset is asked again with: its service and address, area (when it follows the view), time
+ * (when it has one) and limit.
+ */
+export interface FeaturesSearch extends FeatureTarget {
   bbox: [number, number, number, number];
   followView: boolean;
-  /** Whether the collection has a temporal extent, so the dashboard's time range is asked too. */
+  /** Whether the entry has time, so the dashboard's time range is asked too. */
   time: boolean;
   limit: number;
 }
 
 /**
  * The features search a dataset added from a catalog is loaded by, read off its address: kepler keeps nothing of a
- * file dataset's metadata but its address (and format), and the address is the whole search, its items, area, time
- * and limit. Null for any other dataset: one not added from a catalog (its id), or not over an area (`bbox`).
+ * file dataset's metadata but its address (and format), and the address is the whole search, its service, area,
+ * time and limit. Null for any other dataset: one not added from a catalog (its id), or not over an area.
  */
 export function featuresOfSource(id: string, source: unknown): FeaturesSearch | null {
   if (!id.startsWith('catalog-') || typeof source !== 'string') {
     return null;
   }
-  let url: URL;
-  try {
-    url = new URL(source);
-  } catch {
+  const read = readFeatureRequest(source);
+  if (!read?.bbox) {
     return null;
-  }
-  const bbox = (url.searchParams.get('bbox') ?? '').split(',').map(Number);
-  if (bbox.length !== 4 || !bbox.every(Number.isFinite)) {
-    return null;
-  }
-  const time = url.searchParams.has('datetime');
-  const limit = Number(url.searchParams.get('limit'));
-  for (const name of ['bbox', 'datetime', 'limit']) {
-    url.searchParams.delete(name);
   }
   return {
-    itemsHref: url.toString(),
-    bbox: bbox as FeaturesSearch['bbox'],
+    ...read.target,
+    bbox: read.bbox,
     followView: true,
-    time,
-    limit: Number.isFinite(limit) && limit > 0 ? limit : FEATURES_LIMIT,
+    time: read.time,
+    limit: read.limit ?? FEATURES_LIMIT,
   };
 }
 
@@ -1250,7 +1287,9 @@ export function featuresOf(metadata: Record<string, unknown> | undefined): Featu
   const f = metadata?.catalogFeatures as Partial<FeaturesSearch> | undefined;
   return typeof f?.itemsHref === 'string' && Array.isArray(f.bbox) && f.bbox.length === 4
     ? {
+        protocol: f.protocol === 'wfs' || f.protocol === 'arcgis' ? f.protocol : 'ogc-features',
         itemsHref: f.itemsHref,
+        timeProperty: typeof f.timeProperty === 'string' ? f.timeProperty : null,
         bbox: f.bbox as FeaturesSearch['bbox'],
         followView: f.followView !== false,
         time: f.time === true,
@@ -1260,9 +1299,28 @@ export function featuresOf(metadata: Record<string, unknown> | undefined): Featu
 }
 
 /**
- * The saved form of an OGC API Features collection added to a map: kepler loads its items as GeoJSON from the
- * address of the view's area and the dashboard's time range (when the collection has one), and the map asks again
- * when either moves (`useCatalogSeries`), keeping the layer.
+ * Whether a features entry has time: a WFS by the property the catalog names, an ArcGIS layer by its time field,
+ * an OGC API collection by its temporal extent.
+ */
+export function featuresHaveTime(entry: CatalogEntry): boolean {
+  return entry.featureProtocol === 'wfs' || entry.featureProtocol === 'arcgis'
+    ? Boolean(entry.timeProperty)
+    : entry.start !== null || entry.end !== null;
+}
+
+/** How a features entry is named in the list: its service, and what of it. */
+export function featuresLabel(entry: CatalogEntry): string[] {
+  return entry.featureProtocol === 'wfs'
+    ? ['WFS', entry.id.includes(':wfs:') ? entry.id.split(':wfs:').pop()! : entry.id]
+    : entry.featureProtocol === 'arcgis'
+      ? ['ArcGIS', entry.collectionTitle]
+      : ['OGC API Features', entry.collection];
+}
+
+/**
+ * The saved form of a features entry added to a map: kepler loads its features as GeoJSON from the address of the
+ * view's area and the dashboard's time range (when the entry has time), and the map asks again when either moves
+ * (`useCatalogSeries`), keeping the layer. The same for an OGC API collection, a WFS type and an ArcGIS layer.
  */
 export function featuresDataset(
   entry: CatalogEntry,
@@ -1273,9 +1331,11 @@ export function featuresDataset(
   if (entry.kind !== 'features' || !entry.itemsHref) {
     return null;
   }
-  const time = entry.start !== null || entry.end !== null;
+  const time = featuresHaveTime(entry);
   const search: FeaturesSearch = {
+    protocol: entry.featureProtocol ?? 'ogc-features',
     itemsHref: entry.itemsHref,
+    timeProperty: entry.timeProperty ?? null,
     bbox: area,
     followView: true,
     time,
@@ -1291,7 +1351,7 @@ export function featuresDataset(
       fields: [],
       allData: [],
       metadata: {
-        source: featuresUrl(entry.itemsHref, area, time ? range : null, FEATURES_LIMIT),
+        source: featuresUrl(search, area, time ? range : null, FEATURES_LIMIT),
         format: 'geojson',
         catalogFeatures: search,
         catalogEntry: entry.id,

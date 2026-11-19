@@ -18,7 +18,11 @@ import {
   searchDataset,
   searchScenes,
   serviceDataset,
+  featuresArea,
   featuresDataset,
+  featuresHaveTime,
+  featuresLabel,
+  serviceLabel,
   vectorDataset,
   vectorFormat,
   vectorQuery,
@@ -396,14 +400,20 @@ export function CatalogPanel() {
       note(entry.id, `The service did not answer: ${String((err as Error)?.message ?? err)}`);
     }
   };
-  // Features of an OGC API: loaded by kepler from the address of the view and the time range, which it follows.
+  // Features of an OGC API, a WFS or an ArcGIS layer: loaded by kepler from the address of the view and the time
+  // range, which it follows.
   const addFeatures = (entry: CatalogEntry) => {
-    const area = searchArea(entry);
-    const saved = area ? featuresDataset(entry, uid, area, range) : null;
+    // Any view: the service answers at most a count of features, however wide the area.
+    const area = featuresArea(api.context.viewBounds?.() ?? null);
+    if (!area) {
+      note(entry.id, 'No view to ask the features of');
+      return;
+    }
+    const saved = featuresDataset(entry, uid, area, range);
     if (saved) {
       api.add(saved);
       setAdded((was) => new Set([...was, entry.id]));
-      note(entry.id, `The first features over the view${entry.start !== null ? ' in the time range' : ''}`);
+      note(entry.id, `The first features over the view${featuresHaveTime(entry) ? ' in the time range' : ''}`);
     }
   };
   // A vector file: loaded whole by kepler from its address (a PMTiles archive as tiles).
@@ -532,7 +542,7 @@ export function CatalogPanel() {
                           : '',
                       ]
                     : entry.kind === 'features'
-                      ? ['OGC API Features', entry.collection]
+                      ? featuresLabel(entry)
                       : entry.kind === 'vector'
                         ? [
                             (vectorFormat(entry) ?? 'file').toUpperCase(),
@@ -542,7 +552,7 @@ export function CatalogPanel() {
                             entry.collection,
                           ]
                         : entry.service
-                          ? [entry.service.protocol.toUpperCase(), entry.service.layers.join(', '), entry.collection]
+                          ? [serviceLabel(entry.service), entry.service.layers.join(', '), entry.collection]
                           : entry.search
                             ? [entry.kind === 'external' ? 'STAC API' : 'tiles', 'searched over the view']
                             : entry.scenes

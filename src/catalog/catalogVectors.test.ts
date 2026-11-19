@@ -100,10 +100,14 @@ describe('features of an OGC API from a catalog', () => {
     expect(new URL(dated.data.metadata?.source as string).searchParams.get('datetime')).toBe(
       '1970-01-01T00:00:00.000Z/1970-01-01T00:00:01.000Z'
     );
-    expect(featuresUrl('https://f.org/i', null, null, 10)).toBe('https://f.org/i?limit=10');
+    expect(featuresUrl({ protocol: 'ogc-features', itemsHref: 'https://f.org/i' }, null, null, 10)).toBe(
+      'https://f.org/i?limit=10'
+    );
     // Kepler keeps only a file dataset's address: the search is read back off it.
     expect(featuresOfSource(saved.data.id, saved.data.metadata?.source)).toEqual({
+      protocol: 'ogc-features',
       itemsHref: 'https://f.org/collections/castles/items?f=json',
+      timeProperty: null,
       bbox: [4, 52, 5, 53],
       followView: true,
       time: false,
@@ -112,7 +116,7 @@ describe('features of an OGC API from a catalog', () => {
     expect(featuresOfSource(dated.data.id, dated.data.metadata?.source)?.time).toBe(true);
     expect(featuresOfSource('mine', saved.data.metadata?.source)).toBeNull();
     expect(featuresOfSource('catalog-file', 'https://d.org/castles.geojson')).toBeNull();
-    expect(whyNotAddable({ ...features, itemsHref: null })).toMatch(/items/);
+    expect(whyNotAddable({ ...features, itemsHref: null })).toMatch(/no GeoJSON/);
   });
 });
 

@@ -47,7 +47,7 @@ import type { ClickedPosition, Figure, PolygonGeometry } from './clickArea';
 import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
 import { stacTileTemplate } from '../data/stacTileUrl';
 import { isPanelWmsId, wmsCalendarDatasetId, type WmsDataset } from '../data/wmsDataset';
-import { type EsriDataset } from '../data/esriDataset';
+import { type EsriDataset, isPanelEsriId } from '../data/esriDataset';
 import { zarrCalendarDatasetId, type ZarrDataset } from '../data/zarrDataset';
 import { rowFieldValue, wmsFeatureValues } from './clickSync';
 import { withParkedParts, type ParkedState } from './parkedConfig';
@@ -1193,7 +1193,7 @@ function captureRemoteDatasets(store: Store): SavedRemoteDataset[] {
     // writes a second dataset with the same id into the dashboard JSON — and
     // the stale copy would then race the fresh one on the next load. Same
     // reasoning the comment above gives for leaving the row datasets out.
-    .filter(([id]) => !isPanelRasterId(id) && !isPanelWmsId(id))
+    .filter(([id]) => !isPanelRasterId(id) && !isPanelWmsId(id) && !isPanelEsriId(id))
     .map(([, dataset]) => ({
       version: VERSIONS.v1,
       // The state object is kepler's own `KeplerTable`; only this module's view

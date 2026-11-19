@@ -101,7 +101,10 @@ export function esriImageTemplate(spec: EsriImageSpec): string | null {
   return url ? `${url}&bbox={bbox-epsg-3857}` : null;
 }
 
-/** The `exportImage` request for a box, or without one (`null`) for the caller to add. */
+/**
+ * The `exportImage` request for a box, or without one (`null`) for the caller to add; `export` for a MapServer
+ * (a dynamic map service added from a catalog), whose map is drawn the same way.
+ */
 function exportImageUrl(spec: EsriImageSpec, bbox: string | null): string | null {
   const serviceUrl = spec.serviceUrl.trim().replace(/\/+$/, '');
   if (!serviceUrl) {
@@ -129,5 +132,6 @@ function exportImageUrl(spec: EsriImageSpec, bbox: string | null): string | null
     params.set('renderingRule', spec.renderingRule);
   }
 
-  return `${serviceUrl}/exportImage?${params}`;
+  // A MapServer draws its map by `export`, with the same parameters an ImageServer's `exportImage` takes.
+  return `${serviceUrl}/${/\/MapServer$/i.test(serviceUrl) ? 'export' : 'exportImage'}?${params}`;
 }

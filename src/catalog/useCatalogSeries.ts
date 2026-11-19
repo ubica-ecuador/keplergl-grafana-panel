@@ -17,6 +17,7 @@ import {
   catalogSeriesRasters,
   featuresOf,
   featuresOfSource,
+  featuresArea,
   featuresUrl,
   followedArea,
   searchOf,
@@ -133,8 +134,9 @@ export function useCatalogSeries(store: Store, isReady: boolean, range: { from: 
         }
       }
     };
-    // Features from a catalog's OGC API follow the view and the time range: their address is asked again once both
-    // hold still (SEARCH_DELAY_MS), and kepler loads it again, keeping the layer.
+    // Features from a catalog (an OGC API collection, a WFS type, an ArcGIS layer) follow the view and the time range:
+    // their address is asked again once both hold still (SEARCH_DELAY_MS), and kepler loads it again, keeping the
+    // layer.
     let featuresTimer: ReturnType<typeof setTimeout> | null = null;
     const followFeatures = () => {
       if (featuresTimer !== null) {
@@ -146,12 +148,12 @@ export function useCatalogSeries(store: Store, isReady: boolean, range: { from: 
           return;
         }
         const view = readViewportBounds(store);
-        const area = followedArea(view ? [view.west, view.south, view.east, view.north] : null);
+        const area = featuresArea(view ? [view.west, view.south, view.east, view.north] : null);
         for (const [id, dataset] of Object.entries(readDatasetsById(store) ?? {})) {
           const search = featuresOf(dataset.metadata) ?? featuresOfSource(id, dataset.metadata?.source);
           if (search) {
             const bbox = search.followView && area ? area : search.bbox;
-            const source = featuresUrl(search.itemsHref, bbox, search.time ? rangeRef.current : null, search.limit);
+            const source = featuresUrl(search, bbox, search.time ? rangeRef.current : null, search.limit);
             reloadExternalSource(store, store.dispatch, id, source);
           }
         }
@@ -162,12 +164,17 @@ export function useCatalogSeries(store: Store, isReady: boolean, range: { from: 
       followFeatures();
     };
     read();
-    // A move of the view is no change of datasets: read again when the area it would search changes.
+    // A move of the view is no change of datasets: read again when the area it would search changes, and ask the
+    // features again when theirs does (a wide view too, which a search does not follow).
+    let featuresSeen = '';
     const unsubscribe = store.subscribe(() =>
       queueMicrotask(() => {
         const moved = JSON.stringify(viewArea()) !== seen.current.view;
         read(moved);
-        if (moved) {
+        const view = readViewportBounds(store);
+        const features = JSON.stringify(featuresArea(view ? [view.west, view.south, view.east, view.north] : null));
+        if (moved || features !== featuresSeen) {
+          featuresSeen = features;
           followFeatures();
         }
         chooseWmsLayers();

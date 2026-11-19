@@ -49,6 +49,9 @@ export const REMOTE_DATASET_TYPES = [
   // A COG the tile server paints (`cogPaintedLayer.ts`). A query's is never saved (its id is the panel's, see
   // `isPanelRasterId`); one added from a catalog (Add from catalog) is, like a tileset.
   'cogPainted',
+  // An ArcGIS ImageServer or MapServer (`esriImageLayer.ts`). A query's is never saved (`isPanelEsriId`); one added
+  // from a catalog is.
+  'esriImage',
 ];
 
 /** The map's name and description, as kepler's `info` carries them. */
