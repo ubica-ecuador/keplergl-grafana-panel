@@ -26,7 +26,7 @@ import type { SavedMapConfig } from '../data/mapConfig';
 import { pickScene } from '../data/rasterDataset';
 import { entryDate, entryWhen, scenesLabel } from './CatalogPanel';
 
-// A Catalog search frame as the STAC Catalog data source answers it.
+// A Catalog search frame as the Spatial Catalog data source answers it.
 const frame = createDataFrame({
   fields: [
     {

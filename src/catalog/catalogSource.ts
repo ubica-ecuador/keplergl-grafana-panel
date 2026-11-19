@@ -17,7 +17,8 @@ import { xyzSavedDataset } from '../data/xyzTiles';
 import { featureRequestUrl, type FeatureProtocol, type FeatureTarget, readFeatureRequest } from './featureRequests';
 
 /**
- * STAC catalogs as a data source (the STAC Catalog data source, `ubica-stac-datasource`): what the map's
+ * Spatial catalogs and services as a data source (the Spatial Catalog data source, `ubica-spatialcatalog-datasource`:
+ * STAC catalogs and APIs, OGC API Features, WFS, ArcGIS Server): what the map's
  * "Add from catalog" lists, and how a dataset added from one keeps following its entry.
  *
  * A dataset added from a catalog is saved like any tileset or raster, its address included, plus where it came from
@@ -34,7 +35,7 @@ import { featureRequestUrl, type FeatureProtocol, type FeatureTarget, readFeatur
  *   (`catalogSearch`), never as scenes: they are searched again on load and when the time range changes.
  */
 
-export const CATALOG_DATASOURCE_TYPE = 'ubica-stac-datasource';
+export const CATALOG_DATASOURCE_TYPE = 'ubica-spatialcatalog-datasource';
 
 /** How long a catalog's entries are kept; one read serves every map of the dashboard. */
 const KEEP_MS = 5 * 60 * 1000;
