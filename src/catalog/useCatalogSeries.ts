@@ -5,6 +5,7 @@ import type { RasterDataset } from '../data/rasterDataset';
 import {
   applyWmsLayerChoice,
   readDatasetsById,
+  reloadExternalSource,
   readViewportBounds,
   refreshRasters,
   setRasterLayerVisible,
@@ -14,6 +15,9 @@ import {
 import {
   type CatalogDatasetLike,
   catalogSeriesRasters,
+  featuresOf,
+  featuresOfSource,
+  featuresUrl,
   followedArea,
   searchOf,
   searchScenes,
@@ -45,6 +49,11 @@ const SEARCH_DELAY_MS = 700;
  * area has nothing in that range.
  */
 export function useCatalogSeries(store: Store, isReady: boolean, range: { from: number; to: number }): RasterDataset[] {
+  // The dashboard's time range for the features that follow it, read when the view moves.
+  const rangeRef = useRef(range);
+  useEffect(() => {
+    rangeRef.current = range;
+  }, [range]);
   const [series, setSeries] = useState<RasterDataset[]>([]);
   const [specs, setSpecs] = useState<SearchSpec[]>([]);
   const searched = useRef(new Map<string, { key: string; found: SearchedScenes; applied: boolean }>());
@@ -124,20 +133,59 @@ export function useCatalogSeries(store: Store, isReady: boolean, range: { from: 
         }
       }
     };
-    reread.current = () => read(true);
+    // Features from a catalog's OGC API follow the view and the time range: their address is asked again once both
+    // hold still (SEARCH_DELAY_MS), and kepler loads it again, keeping the layer.
+    let featuresTimer: ReturnType<typeof setTimeout> | null = null;
+    const followFeatures = () => {
+      if (featuresTimer !== null) {
+        clearTimeout(featuresTimer);
+      }
+      featuresTimer = setTimeout(() => {
+        featuresTimer = null;
+        if (!live) {
+          return;
+        }
+        const view = readViewportBounds(store);
+        const area = followedArea(view ? [view.west, view.south, view.east, view.north] : null);
+        for (const [id, dataset] of Object.entries(readDatasetsById(store) ?? {})) {
+          const search = featuresOf(dataset.metadata) ?? featuresOfSource(id, dataset.metadata?.source);
+          if (search) {
+            const bbox = search.followView && area ? area : search.bbox;
+            const source = featuresUrl(search.itemsHref, bbox, search.time ? rangeRef.current : null, search.limit);
+            reloadExternalSource(store, store.dispatch, id, source);
+          }
+        }
+      }, SEARCH_DELAY_MS);
+    };
+    reread.current = () => {
+      read(true);
+      followFeatures();
+    };
     read();
     // A move of the view is no change of datasets: read again when the area it would search changes.
     const unsubscribe = store.subscribe(() =>
       queueMicrotask(() => {
-        read(JSON.stringify(viewArea()) !== seen.current.view);
+        const moved = JSON.stringify(viewArea()) !== seen.current.view;
+        read(moved);
+        if (moved) {
+          followFeatures();
+        }
         chooseWmsLayers();
       })
     );
     return () => {
       live = false;
       unsubscribe();
+      if (featuresTimer !== null) {
+        clearTimeout(featuresTimer);
+      }
     };
   }, [store, isReady]);
+
+  // A new time range asks the features that follow it again.
+  useEffect(() => {
+    reread.current();
+  }, [range.from, range.to]);
 
   const { from, to } = range;
   // Every searched series, again for each time range: after it holds still a moment, and only what changed.

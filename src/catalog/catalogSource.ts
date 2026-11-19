@@ -73,6 +73,12 @@ export interface CatalogEntry {
   service?: CatalogService;
   /** A series found by some of its entries rather than by itself: `members` holds those, to show open. */
   foundByMembers?: boolean;
+  /** A file's size in bytes, when the catalog says (`file:size`). */
+  size?: number | null;
+  /** Its media type, when the catalog says. */
+  mediaType?: string;
+  /** An OGC API Features collection's items, as GeoJSON. */
+  itemsHref?: string | null;
 }
 
 /** A map service that draws an entry (STAC web-map-links), as the data source gives it in its `service` column. */
@@ -160,7 +166,12 @@ export function catalogRaster(
 
 /** Why an entry cannot be added to this map, or null when it can. */
 export function whyNotAddable(
-  entry: Pick<CatalogEntry, 'kind' | 'href' | 'serverHref' | 'search'> & { service?: CatalogService },
+  entry: Pick<CatalogEntry, 'kind' | 'href' | 'serverHref' | 'search'> & {
+    service?: CatalogService;
+    size?: number | null;
+    itemsHref?: string | null;
+    mediaType?: string;
+  },
   context: AddContext = NO_CONTEXT
 ): string | null {
   switch (entry.kind) {
@@ -172,6 +183,21 @@ export function whyNotAddable(
         : 'A raster: this map has no tile server to draw it (Raster tile server, in the panel options).';
     case 'gltf-model':
       return 'A glTF model: Kepler Plus draws it, with the 4D Model layer.';
+    case 'features':
+      return 'itemsHref' in entry && entry.itemsHref ? null : 'Features without an items link to read them from.';
+    case 'vector': {
+      const format = vectorFormat(entry);
+      if (format === 'pmtiles') {
+        return null;
+      }
+      if (!format) {
+        return 'A file this map does not read: read it by query (DuckDB).';
+      }
+      const size = 'size' in entry ? entry.size : null;
+      return typeof size === 'number' && size > MAX_BROWSER_FILE
+        ? `${Math.round(size / 1e6)} MB: too large for a browser, read it by query (DuckDB).`
+        : null;
+    }
     case 'map-service':
       return 'service' in entry &&
         entry.service &&
@@ -276,6 +302,9 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
     thumbnails,
     series,
     services,
+    sizes,
+    itemsHrefs,
+    mediaTypes,
   ] = [
     'id',
     'title',
@@ -291,6 +320,9 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
     'thumbnail',
     'series',
     'service',
+    'size',
+    'items_href',
+    'media_type',
   ].map(column);
   const hasSeries = frame.fields.some((field) => field.name === 'series');
   const time = (value: unknown) => {
@@ -317,6 +349,9 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
       bbox: box.every(Number.isFinite) ? (box as [number, number, number, number]) : null,
       ...(hasSeries ? { series: series[i] === 'items' || series[i] === 'search' ? series[i] : null } : {}),
       ...(typeof services[i] === 'string' && services[i] ? { service: parseService(services[i]) } : {}),
+      ...(time(sizes[i]) !== null ? { size: time(sizes[i]) } : {}),
+      ...(typeof itemsHrefs[i] === 'string' && itemsHrefs[i] ? { itemsHref: itemsHrefs[i] } : {}),
+      ...(typeof mediaTypes[i] === 'string' && mediaTypes[i] ? { mediaType: mediaTypes[i] } : {}),
     });
   }
   return entries.filter((entry) => entry.id !== '' && entry.href !== '');
@@ -1089,3 +1124,207 @@ export async function serviceDataset(entry: CatalogEntry, uid: string): Promise<
       return null;
   }
 }
+
+/** The largest file a browser is asked to load whole; larger ones are read by query, filtered where they are. */
+export const MAX_BROWSER_FILE = 50e6;
+
+/** What kepler reads a vector file as (its loaders), from the name, or null for a file it does not read. */
+export function vectorFormat(entry: Pick<CatalogEntry, 'href'> & { mediaType?: string }): string | null {
+  const name = entry.href.split('?')[0].split('#')[0].toLowerCase();
+  const byName: Array<[RegExp, string]> = [
+    [/\.pmtiles$/, 'pmtiles'],
+    [/\.(geojson|json)$/, 'geojson'],
+    [/\.(geojsonl|ndjson)$/, 'geojsonl'],
+    [/\.(csv|tsv)$/, 'csv'],
+    [/\.(parquet|geoparquet)$/, 'parquet'],
+    [/\.(arrow|feather)$/, 'arrow'],
+    [/\.fgb$/, 'fgb'],
+    [/\.kml$/, 'kml'],
+    [/\.gpx$/, 'gpx'],
+    [/\.shp$/, 'shp'],
+  ];
+  const found = byName.find(([pattern]) => pattern.test(name));
+  if (found) {
+    return found[1];
+  }
+  const type = (entry.mediaType ?? '').toLowerCase();
+  const byType: Array<[string, string]> = [
+    ['pmtiles', 'pmtiles'],
+    ['geo+json', 'geojson'],
+    ['text/csv', 'csv'],
+    ['parquet', 'parquet'],
+    ['arrow', 'arrow'],
+    ['flatgeobuf', 'fgb'],
+    ['kml', 'kml'],
+    ['gpx', 'gpx'],
+    ['shapefile', 'shp'],
+  ];
+  return byType.find(([t]) => type.includes(t))?.[1] ?? null;
+}
+
+/** What a query reads a vector file with in DuckDB, for an entry the map does not load itself. */
+export function vectorQuery(entry: Pick<CatalogEntry, 'href' | 'serverHref'> & { mediaType?: string }): string {
+  const where = entry.serverHref ?? entry.href;
+  const format = vectorFormat(entry);
+  return format === 'parquet'
+    ? `SELECT * FROM read_parquet('${where}')`
+    : format === 'csv'
+      ? `SELECT * FROM read_csv('${where}')`
+      : `SELECT * FROM ST_Read('${where}')`;
+}
+
+/** An OGC API Features items address for an area, a time range (when the collection has one) and a limit. */
+export function featuresUrl(
+  itemsHref: string,
+  area: [number, number, number, number] | null,
+  range: { from: number; to: number } | null,
+  limit: number
+): string {
+  const url = new URL(itemsHref);
+  if (area) {
+    url.searchParams.set('bbox', area.join(','));
+  }
+  if (range) {
+    url.searchParams.set('datetime', `${new Date(range.from).toISOString()}/${new Date(range.to).toISOString()}`);
+  }
+  url.searchParams.set('limit', String(limit));
+  return url.toString();
+}
+
+/** Features a map loads at once from a catalog: the first ones the service gives over the view. */
+export const FEATURES_LIMIT = 2000;
+
+/** What a features dataset is asked again with: its items, area (when it follows the view), time (when it has one). */
+export interface FeaturesSearch {
+  itemsHref: string;
+  bbox: [number, number, number, number];
+  followView: boolean;
+  /** Whether the collection has a temporal extent, so the dashboard's time range is asked too. */
+  time: boolean;
+  limit: number;
+}
+
+/**
+ * The features search a dataset added from a catalog is loaded by, read off its address: kepler keeps nothing of a
+ * file dataset's metadata but its address (and format), and the address is the whole search, its items, area, time
+ * and limit. Null for any other dataset: one not added from a catalog (its id), or not over an area (`bbox`).
+ */
+export function featuresOfSource(id: string, source: unknown): FeaturesSearch | null {
+  if (!id.startsWith('catalog-') || typeof source !== 'string') {
+    return null;
+  }
+  let url: URL;
+  try {
+    url = new URL(source);
+  } catch {
+    return null;
+  }
+  const bbox = (url.searchParams.get('bbox') ?? '').split(',').map(Number);
+  if (bbox.length !== 4 || !bbox.every(Number.isFinite)) {
+    return null;
+  }
+  const time = url.searchParams.has('datetime');
+  const limit = Number(url.searchParams.get('limit'));
+  for (const name of ['bbox', 'datetime', 'limit']) {
+    url.searchParams.delete(name);
+  }
+  return {
+    itemsHref: url.toString(),
+    bbox: bbox as FeaturesSearch['bbox'],
+    followView: true,
+    time,
+    limit: Number.isFinite(limit) && limit > 0 ? limit : FEATURES_LIMIT,
+  };
+}
+
+/** A dataset's saved features search, or null. */
+export function featuresOf(metadata: Record<string, unknown> | undefined): FeaturesSearch | null {
+  const f = metadata?.catalogFeatures as Partial<FeaturesSearch> | undefined;
+  return typeof f?.itemsHref === 'string' && Array.isArray(f.bbox) && f.bbox.length === 4
+    ? {
+        itemsHref: f.itemsHref,
+        bbox: f.bbox as FeaturesSearch['bbox'],
+        followView: f.followView !== false,
+        time: f.time === true,
+        limit: typeof f.limit === 'number' ? f.limit : FEATURES_LIMIT,
+      }
+    : null;
+}
+
+/**
+ * The saved form of an OGC API Features collection added to a map: kepler loads its items as GeoJSON from the
+ * address of the view's area and the dashboard's time range (when the collection has one), and the map asks again
+ * when either moves (`useCatalogSeries`), keeping the layer.
+ */
+export function featuresDataset(
+  entry: CatalogEntry,
+  uid: string,
+  area: [number, number, number, number],
+  range: { from: number; to: number } | null
+): SavedRemoteDataset | null {
+  if (entry.kind !== 'features' || !entry.itemsHref) {
+    return null;
+  }
+  const time = entry.start !== null || entry.end !== null;
+  const search: FeaturesSearch = {
+    itemsHref: entry.itemsHref,
+    bbox: area,
+    followView: true,
+    time,
+    limit: FEATURES_LIMIT,
+  };
+  return {
+    version: 'v1',
+    data: {
+      id: `catalog-${entry.id}`.replace(/[^\w-]+/g, '-'),
+      label: entry.title,
+      color: [0, 92, 255],
+      type: 'externally-hosted',
+      fields: [],
+      allData: [],
+      metadata: {
+        source: featuresUrl(entry.itemsHref, area, time ? range : null, FEATURES_LIMIT),
+        format: 'geojson',
+        catalogFeatures: search,
+        catalogEntry: entry.id,
+        catalogUid: uid,
+      },
+    },
+  };
+}
+
+/** The saved form of a vector file a map loads whole by its address (kepler reads it), or a PMTiles archive. */
+export async function vectorDataset(entry: CatalogEntry, uid: string): Promise<SavedRemoteDataset | null> {
+  const format = vectorFormat(entry);
+  if (entry.kind !== 'vector' || !format || whyNotAddable(entry)) {
+    return null;
+  }
+  if (format === 'pmtiles') {
+    return serviceDataset({ ...entry, kind: 'map-service', service: { ...NO_SERVICE, protocol: 'pmtiles' } }, uid);
+  }
+  return {
+    version: 'v1',
+    data: {
+      id: `catalog-${entry.id}`.replace(/[^\w-]+/g, '-'),
+      label: entry.title,
+      color: [0, 92, 255],
+      type: 'externally-hosted',
+      fields: [],
+      allData: [],
+      metadata: { source: entry.href, format, catalogEntry: entry.id, catalogUid: uid },
+    },
+  };
+}
+
+const NO_SERVICE: CatalogService = {
+  protocol: 'xyz',
+  layers: [],
+  styles: [],
+  transparent: null,
+  dimensions: {},
+  encoding: null,
+  uriTemplate: null,
+  variables: {},
+  servers: [],
+  mediaType: '',
+};

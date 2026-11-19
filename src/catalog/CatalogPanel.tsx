@@ -18,6 +18,10 @@ import {
   searchDataset,
   searchScenes,
   serviceDataset,
+  featuresDataset,
+  vectorDataset,
+  vectorFormat,
+  vectorQuery,
   type SearchedScenes,
   whereInstead,
   whyNotAddable,
@@ -43,6 +47,8 @@ const KINDS: Array<[string, string]> = [
   ['gltf-model', 'Models'],
   ['raster', 'Rasters'],
   ['map-service', 'Services'],
+  ['features', 'Features'],
+  ['vector', 'Vectors'],
   ['external', 'Catalogs'],
 ];
 
@@ -385,9 +391,35 @@ export function CatalogPanel() {
       note(entry.id, `The service did not answer: ${String((err as Error)?.message ?? err)}`);
     }
   };
+  // Features of an OGC API: loaded by kepler from the address of the view and the time range, which it follows.
+  const addFeatures = (entry: CatalogEntry) => {
+    const area = searchArea(entry);
+    const saved = area ? featuresDataset(entry, uid, area, range) : null;
+    if (saved) {
+      api.add(saved);
+      setAdded((was) => new Set([...was, entry.id]));
+      note(entry.id, `The first features over the view${entry.start !== null ? ' in the time range' : ''}`);
+    }
+  };
+  // A vector file: loaded whole by kepler from its address (a PMTiles archive as tiles).
+  const addVector = async (entry: CatalogEntry) => {
+    const saved = await vectorDataset(entry, uid);
+    if (saved) {
+      api.add(saved);
+      setAdded((was) => new Set([...was, entry.id]));
+    }
+  };
   const add = (entry: CatalogEntry) => {
     if (entry.kind === 'map-service') {
       void addService(entry);
+      return;
+    }
+    if (entry.kind === 'features') {
+      addFeatures(entry);
+      return;
+    }
+    if (entry.kind === 'vector') {
+      void addVector(entry);
       return;
     }
     if (entry.search) {
@@ -473,13 +505,23 @@ export function CatalogPanel() {
               <Text>
                 <b>{entry.title}</b>
                 <span>
-                  {(entry.service
-                    ? [entry.service.protocol.toUpperCase(), entry.service.layers.join(', '), entry.collection]
-                    : entry.search
-                      ? [entry.kind === 'external' ? 'STAC API' : 'tiles', 'searched over the view']
-                      : entry.scenes
-                        ? [entryWhen(entry), follows ? 'follows the date' : 'raster series']
-                        : [entry.kind, entry.collection, entryWhen(entry)]
+                  {(entry.kind === 'features'
+                    ? ['OGC API Features', entry.collection]
+                    : entry.kind === 'vector'
+                      ? [
+                          (vectorFormat(entry) ?? 'file').toUpperCase(),
+                          typeof entry.size === 'number'
+                            ? `${(entry.size / 1e6).toFixed(entry.size < 1e7 ? 1 : 0)} MB`
+                            : '',
+                          entry.collection,
+                        ]
+                      : entry.service
+                        ? [entry.service.protocol.toUpperCase(), entry.service.layers.join(', '), entry.collection]
+                        : entry.search
+                          ? [entry.kind === 'external' ? 'STAC API' : 'tiles', 'searched over the view']
+                          : entry.scenes
+                            ? [entryWhen(entry), follows ? 'follows the date' : 'raster series']
+                            : [entry.kind, entry.collection, entryWhen(entry)]
                   )
                     .filter(Boolean)
                     .join(' · ')}
@@ -488,7 +530,9 @@ export function CatalogPanel() {
               </Text>
               <Actions>
                 {why ? (
-                  <Elsewhere>{whereInstead(entry)}</Elsewhere>
+                  <Elsewhere title={entry.kind === 'vector' ? `${why} ${vectorQuery(entry)}` : why}>
+                    {whereInstead(entry)}
+                  </Elsewhere>
                 ) : (
                   addButton(
                     entry,

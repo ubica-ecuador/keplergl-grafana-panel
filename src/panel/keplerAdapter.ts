@@ -20,6 +20,7 @@ import {
   toggleLayerAnimation,
   toggleLayerForMap,
   replaceDataInMap,
+  refreshDataset,
   setLayerAnimationTime,
   toggleSidePanel,
   updateDatasetProps,
@@ -1038,6 +1039,20 @@ export function readDatasetsById(
   store: Store
 ): Record<string, { type?: string; label?: string; metadata?: Record<string, unknown> }> | null {
   return (getVisState(store)?.datasets as Record<string, { metadata?: Record<string, unknown> }> | undefined) ?? null;
+}
+
+/**
+ * Points a dataset kepler loads by URL (`externally-hosted`) at another address and has kepler load it again, keeping
+ * its layers: what a catalog's features do when the view or the time range moves. Quiet when it is there already.
+ */
+export function reloadExternalSource(store: Store, dispatch: Dispatch, dataId: string, source: string): boolean {
+  const dataset = getVisState(store)?.datasets[dataId] as { type?: string; metadata?: { source?: string } } | undefined;
+  if (!dataset || dataset.metadata?.source === source) {
+    return false;
+  }
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, updateDatasetProps(dataId, { metadata: { source } })));
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, refreshDataset(dataId)));
+  return true;
 }
 
 /** The id of the calendar a catalog series' time filter hangs from. */
