@@ -9,6 +9,7 @@ import {
   featuresUrl,
   MAX_BROWSER_FILE,
   parquetLayer,
+  readableHere,
   readsByArea,
   withSeries,
   vectorDataset,
@@ -158,5 +159,16 @@ describe('a GeoParquet from a catalog', () => {
       followView: true,
     });
     expect(parquetLayer(part(1), 'cat', [0, 0, 1, 1]).target).toBe('00001');
+  });
+});
+
+describe('a file a browser may not read', () => {
+  it('is one whose request is refused, not one that answers an error', async () => {
+    const refused = (async () => {
+      throw new TypeError('Failed to fetch');
+    }) as unknown as typeof fetch;
+    const answers = (async () => ({ status: 405, ok: false })) as unknown as typeof fetch;
+    expect(await readableHere('https://f.org/a.geojson', refused)).toBe(false);
+    expect(await readableHere('https://f.org/a.geojson', answers)).toBe(true);
   });
 });

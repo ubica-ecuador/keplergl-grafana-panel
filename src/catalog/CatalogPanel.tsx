@@ -22,6 +22,7 @@ import {
   featuresDataset,
   featuresHaveTime,
   featuresLabel,
+  readableHere,
   serviceLabel,
   vectorDataset,
   vectorFormat,
@@ -418,6 +419,10 @@ export function CatalogPanel() {
   };
   // A vector file: loaded whole by kepler from its address (a PMTiles archive as tiles).
   const addVector = async (entry: CatalogEntry) => {
+    if (!(await readableHere(entry.href))) {
+      note(entry.id, `Its server lets no browser read it (CORS): read it by query, ${vectorQuery(entry)}`);
+      return;
+    }
     const saved = await vectorDataset(entry, uid);
     if (saved) {
       api.add(saved);

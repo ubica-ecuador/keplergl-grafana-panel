@@ -1369,6 +1369,21 @@ export function featuresDataset(
 }
 
 /** The saved form of a vector file a map loads whole by its address (kepler reads it), or a PMTiles archive. */
+/**
+ * Whether a browser may read a file: its server answers this page (CORS), redirects included. Files a catalog of
+ * records links to often live where only a server may read them (HDX's downloads redirect to storage that allows
+ * its own site alone); those are read by query instead of failing on the map. Any answer, even an error, is yes:
+ * only a refused request is no.
+ */
+export async function readableHere(url: string, read: typeof fetch = fetch): Promise<boolean> {
+  try {
+    await read(url, { method: 'HEAD' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function vectorDataset(entry: CatalogEntry, uid: string): Promise<SavedRemoteDataset | null> {
   const format = vectorFormat(entry);
   if (entry.kind !== 'vector' || !format || whyNotAddable(entry)) {
