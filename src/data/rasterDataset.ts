@@ -60,6 +60,8 @@ export interface RasterDataset {
    * nothing: the choice is made in the browser, against a list already here.
    */
   scenes: RasterScene[];
+  /** Metadata a rebuild of the dataset keeps: a catalog series' origin and scenes (catalogSource.ts). */
+  keepMetadata?: Record<string, unknown>;
 }
 
 /**
@@ -101,6 +103,11 @@ export type RasterKind = 'cog' | 'pmtiles' | 'painted' | 'stac';
 export interface RasterScene {
   /** Capture time in epoch ms, or null when the query carries no time column. */
   time: number | null;
+  /**
+   * When the scene stops being the picture, for one that lasts (a yearly map): `raster_end`. Absent or null, the
+   * scene is the instant it was captured.
+   */
+  end?: number | null;
   sourceUrl: string;
   /** The STAC item this scene belongs to, when the query names one. */
   itemUrl: string | null;
@@ -131,7 +138,12 @@ export function pickScene(scenes: RasterScene[], window: SceneWindow | null): Ra
   if (!dated) {
     return scenes[0] ?? null;
   }
-  return pickLatestWithin(scenes, (scene) => scene.time, window);
+  return pickLatestWithin(
+    scenes,
+    (scene) => scene.time,
+    window,
+    (scene) => scene.end
+  );
 }
 
 /**
@@ -241,7 +253,7 @@ export function framesToRasters(
       return;
     }
 
-    const allScenes = readScenes(frame, roles.rasterUrl, roles.time, roles.rasterItemUrl);
+    const allScenes = readScenes(frame, roles.rasterUrl, roles.time, roles.rasterItemUrl, roles.rasterEnd);
 
     // This query's own way of drawing, where it gives one; the panel's otherwise. An empty column gives none.
     const ownBands = firstText(frame, roles.rasterBands);
@@ -449,13 +461,20 @@ export function metadataUrlFor(tileServerUrl: string, sourceUrl: string): string
  * the query's ORDER BY means the window logic can assume an ordering it did not
  * have to ask for.
  */
-function readScenes(frame: DataFrame, urlColumn: string, timeColumn?: string, itemColumn?: string): RasterScene[] {
+function readScenes(
+  frame: DataFrame,
+  urlColumn: string,
+  timeColumn?: string,
+  itemColumn?: string,
+  endColumn?: string
+): RasterScene[] {
   const urls = frame.fields.find((f) => f.name === urlColumn);
   if (!urls) {
     return [];
   }
   const times = timeColumn ? frame.fields.find((f) => f.name === timeColumn) : undefined;
   const items = itemColumn ? frame.fields.find((f) => f.name === itemColumn) : undefined;
+  const ends = endColumn && endColumn !== timeColumn ? frame.fields.find((f) => f.name === endColumn) : undefined;
 
   const scenes: RasterScene[] = [];
   for (let i = 0; i < frame.length; i++) {
@@ -465,8 +484,10 @@ function readScenes(frame: DataFrame, urlColumn: string, timeColumn?: string, it
     }
     const raw = times ? Number(times.values[i]) : NaN;
     const item = items ? items.values[i] : undefined;
+    const endRaw = ends && ends.values[i] !== null && ends.values[i] !== undefined ? Number(ends.values[i]) : NaN;
     scenes.push({
       time: Number.isFinite(raw) ? raw : null,
+      ...(Number.isFinite(endRaw) ? { end: endRaw } : {}),
       sourceUrl: url.trim(),
       itemUrl: typeof item === 'string' && item.trim() ? item.trim() : null,
     });

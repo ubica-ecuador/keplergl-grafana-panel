@@ -130,10 +130,14 @@ describe('framesToRasters', () => {
 
   it('names each query it dropped for want of a server, so the panel can say so', () => {
     const missing: string[] = [];
-    framesToRasters([rasterFrame(COG, 'A'), rasterFrame(COG, 'B')], {}, {
-      tileServerUrls: [],
-      onMissingServer: (label) => missing.push(label),
-    });
+    framesToRasters(
+      [rasterFrame(COG, 'A'), rasterFrame(COG, 'B')],
+      {},
+      {
+        tileServerUrls: [],
+        onMissingServer: (label) => missing.push(label),
+      }
+    );
 
     expect(missing).toEqual(['Query A', 'Query B']);
   });
@@ -141,10 +145,14 @@ describe('framesToRasters', () => {
   it('names a query by its frame’s name when that is more than the ref id', () => {
     const named = (name: string) => ({ ...rasterFrame(COG, 'B'), name });
     const missing: string[] = [];
-    framesToRasters([named('B'), named('Sentinel-2')], {}, {
-      tileServerUrls: [],
-      onMissingServer: (label) => missing.push(label),
-    });
+    framesToRasters(
+      [named('B'), named('Sentinel-2')],
+      {},
+      {
+        tileServerUrls: [],
+        onMissingServer: (label) => missing.push(label),
+      }
+    );
 
     expect(missing).toEqual(['Query B', 'Sentinel-2 (query B)']);
   });
@@ -252,6 +260,27 @@ describe('framesToRasters — a series of scenes', () => {
     });
 
     expect(framesToRasters([frame], {}, { tileServerUrls: [SERVER] })[0].sourceUrl).toBe('https://b/jul21.tif');
+  });
+
+  it('reads when each scene stops holding from raster_end, whatever the column order', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'raster_end', type: FieldType.time, values: [Date.UTC(2010, 11, 31), Date.UTC(2020, 11, 31)] },
+        { name: 'time', type: FieldType.time, values: [Date.UTC(2010, 0, 1), Date.UTC(2020, 0, 1)] },
+        { name: 'raster_url', type: FieldType.string, values: ['https://b/2010.tif', 'https://b/2020.tif'] },
+      ],
+    });
+
+    const [raster] = framesToRasters([frame], {}, { tileServerUrls: [SERVER] });
+
+    expect(raster.scenes.map((scene) => [scene.time, scene.end])).toEqual([
+      [Date.UTC(2010, 0, 1), Date.UTC(2010, 11, 31)],
+      [Date.UTC(2020, 0, 1), Date.UTC(2020, 11, 31)],
+    ]);
+    // Mid-2010 is the 2010 map, though no scene starts in it.
+    const july = { from: Date.UTC(2010, 6, 1), to: Date.UTC(2010, 6, 31) };
+    expect(rasterForWindow(raster, july)?.sourceUrl).toBe('https://b/2010.tif');
   });
 
   it('still takes the first row when the query has no time column', () => {
@@ -564,7 +593,15 @@ describe('framesToRasters — band combinations do not overreach', () => {
 
 describe('rasterStyleKey', () => {
   it('changes when the preset or the ramp changes, so the style is re-applied', () => {
-    const base = { id: 'a', label: 'a', kind: 'stac', sourceUrl: 'u', metadataUrl: 'u', tileServerUrls: [], scenes: [] } as any;
+    const base = {
+      id: 'a',
+      label: 'a',
+      kind: 'stac',
+      sourceUrl: 'u',
+      metadataUrl: 'u',
+      tileServerUrls: [],
+      scenes: [],
+    } as any;
     expect(rasterStyleKey({ ...base, preset: 'nbr', colormap: 'rdylgn' })).not.toBe(
       rasterStyleKey({ ...base, preset: 'ndmi', colormap: 'rdylbu' })
     );
@@ -574,7 +611,15 @@ describe('rasterStyleKey', () => {
   });
 
   it('is stable for a raster with no style of its own', () => {
-    const bare = { id: 'a', label: 'a', kind: 'cog', sourceUrl: 'u', metadataUrl: 'u', tileServerUrls: [], scenes: [] } as any;
+    const bare = {
+      id: 'a',
+      label: 'a',
+      kind: 'cog',
+      sourceUrl: 'u',
+      metadataUrl: 'u',
+      tileServerUrls: [],
+      scenes: [],
+    } as any;
     expect(rasterStyleKey(bare)).toBe(rasterStyleKey(bare));
   });
 });

@@ -31,6 +31,11 @@ interface Params {
   timeVariables: TimeVariableMapping | null;
   /** The raster queries, each carrying its whole series of scenes. */
   rasters: RasterDataset[];
+  /**
+   * Whether the dashboard time range drives the map's filter (Time range sync: Dashboard drives map, or Both
+   * directions). Then the range sync owns the clock and this never widens the filter to the domain.
+   */
+  followsDashboard?: boolean;
 }
 
 /**
@@ -66,11 +71,16 @@ interface Params {
  * dispatching while kepler is mid-dispatch re-enters its reducer and overflows
  * the stack. Same shape as `useTimeVariableSync`, for the same reason.
  */
-export function useRasterTimeline({ store, isReady, rasters, timeVariables }: Params): void {
+export function useRasterTimeline({ store, isReady, rasters, timeVariables, followsDashboard = false }: Params): void {
   const rastersRef = useRef(rasters);
   useEffect(() => {
     rastersRef.current = rasters;
   }, [rasters]);
+
+  const followsDashboardRef = useRef(followsDashboard);
+  useEffect(() => {
+    followsDashboardRef.current = followsDashboard;
+  }, [followsDashboard]);
 
   const timeVariablesRef = useRef(timeVariables);
   useEffect(() => {
@@ -135,7 +145,13 @@ export function useRasterTimeline({ store, isReady, rasters, timeVariables }: Pa
       return;
     }
 
-    if (opensToDomain(opened.current, readVariableWindow(timeVariablesRef.current))) {
+    // Not when the dashboard range drives the filter: that sync has put (or is about to put) the window the
+    // dashboard asks for, and the widening is for a map nobody has an opinion about — the same reason it stands
+    // down for time variables. Widening anyway raced the range sync, and lost it, on a series that reaches the
+    // map after the filter does (one added from a catalog): the map stuck on the newest scene whatever the date.
+    if (followsDashboardRef.current && !opened.current) {
+      opened.current = true;
+    } else if (opensToDomain(opened.current, readVariableWindow(timeVariablesRef.current))) {
       const domain = readTimeDomain(store);
       if (domain) {
         pushTimeRange(store, store.dispatch, domain);
@@ -207,7 +223,6 @@ export function useRasterTimeline({ store, isReady, rasters, timeVariables }: Pa
       schedule.current();
     }
   });
-
 
   // Cancelled on unmount and nowhere else. Hanging it off the subscription
   // effect looked tidier and starved the reconcile outright: that effect

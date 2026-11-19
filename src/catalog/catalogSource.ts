@@ -3,7 +3,7 @@ import { getDataSourceSrv } from '@grafana/runtime';
 import { isObservable, lastValueFrom } from 'rxjs';
 
 import type { SavedMapConfig, SavedRemoteDataset } from '../data/mapConfig';
-import { metadataUrlFor, rasterKind, type RasterKind } from '../data/rasterDataset';
+import { metadataUrlFor, rasterKind, type RasterDataset, type RasterKind } from '../data/rasterDataset';
 import { COG_PAINTED_TYPE } from '../panel/cogPaintedLayer';
 
 /**
@@ -13,6 +13,10 @@ import { COG_PAINTED_TYPE } from '../panel/cogPaintedLayer';
  * A dataset added from a catalog is saved like any tileset or raster, its address included, plus where it came from
  * (`catalogEntry`, `catalogUid` in its metadata). On load the address is taken again from the catalog, so moving a
  * file means changing one entry, not every dashboard; with the catalog out of reach the saved address still loads.
+ *
+ * A collection of dated rasters (a map a year) is one entry in the list, a series: added, it is a raster whose scene
+ * the map's time filter picks, as for a query that returns a row per scene. It is saved with its scenes
+ * (`catalogSeries`, `catalogScenes`) and takes them again from the catalog on load, so a new year shows by itself.
  */
 
 export const CATALOG_DATASOURCE_TYPE = 'ubica-catalog-datasource';
@@ -36,9 +40,30 @@ export interface CatalogEntry {
   /** Whether the tile server paints it with the palette it carries; null when the catalog does not say. */
   painted: boolean | null;
   start: number | null;
+  /** When it stops holding (an item's end_datetime); null for an instant or when the catalog does not say. */
+  end: number | null;
+  /** The title of its collection, which names a series. */
+  collectionTitle: string;
   license: string;
   thumbnail: string | null;
   bbox: [number, number, number, number] | null;
+  /** A series only: the collection's dated rasters, oldest first. The entry's own address is the newest one's. */
+  scenes?: CatalogScene[];
+}
+
+/** One scene of a series: the entry it is, when it holds, and where this map reads it. */
+export interface CatalogScene {
+  entry: string;
+  start: number;
+  end: number | null;
+  address: string;
+}
+
+/** A series' scenes as a saved dataset keeps them (`catalogScenes`). */
+interface SavedScene {
+  time: number;
+  end: number | null;
+  url: string;
 }
 
 export interface CatalogRef {
@@ -172,38 +197,101 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
     return [];
   }
   const column = (name: string) => frame.fields.find((field) => field.name === name)?.values ?? [];
-  const [ids, titles, kinds, collections, hrefs, serverHrefs, painted, starts, licenses, thumbnails] = [
+  const [
+    ids,
+    titles,
+    kinds,
+    collections,
+    collectionTitles,
+    hrefs,
+    serverHrefs,
+    painted,
+    starts,
+    ends,
+    licenses,
+    thumbnails,
+  ] = [
     'id',
     'title',
     'kind',
     'collection',
+    'collection_title',
     'href',
     'server_href',
     'painted',
     'start',
+    'end',
     'license',
     'thumbnail',
   ].map(column);
+  const time = (value: unknown) => {
+    const n = Number(value);
+    return value !== null && value !== undefined && Number.isFinite(n) ? n : null;
+  };
   const [xmin, ymin, xmax, ymax] = ['xmin', 'ymin', 'xmax', 'ymax'].map(column);
   const entries: CatalogEntry[] = [];
   for (let i = 0; i < frame.length; i++) {
     const box = [xmin[i], ymin[i], xmax[i], ymax[i]].map(Number);
-    const start = Number(starts[i]);
     entries.push({
       id: String(ids[i] ?? ''),
       title: String(titles[i] ?? ids[i] ?? ''),
       kind: String(kinds[i] ?? 'other'),
       collection: String(collections[i] ?? ''),
+      collectionTitle: String(collectionTitles[i] ?? ''),
       href: String(hrefs[i] ?? ''),
       serverHref: serverHrefs[i] ? String(serverHrefs[i]) : null,
       painted: typeof painted[i] === 'boolean' ? painted[i] : null,
-      start: starts[i] !== null && starts[i] !== undefined && Number.isFinite(start) ? start : null,
+      start: time(starts[i]),
+      end: time(ends[i]),
       license: String(licenses[i] ?? ''),
       thumbnail: thumbnails[i] ? String(thumbnails[i]) : null,
       bbox: box.every(Number.isFinite) ? (box as [number, number, number, number]) : null,
     });
   }
   return entries.filter((entry) => entry.id !== '' && entry.href !== '');
+}
+
+/**
+ * The entries with each collection's dated rasters folded into one series: a map a year is one thing to add, and the
+ * map's time range picks the year. Fewer than two, or undated, they stay as they are.
+ */
+export function withSeries(entries: CatalogEntry[]): CatalogEntry[] {
+  const dated = (entry: CatalogEntry) => entry.kind === 'raster' && entry.start !== null && entry.collection !== '';
+  const groups = new Map<string, CatalogEntry[]>();
+  for (const entry of entries.filter(dated)) {
+    groups.set(entry.collection, [...(groups.get(entry.collection) ?? []), entry]);
+  }
+  const folded: CatalogEntry[] = [];
+  const done = new Set<string>();
+  for (const entry of entries) {
+    const group = dated(entry) ? groups.get(entry.collection) : undefined;
+    if (!group || group.length < 2) {
+      folded.push(entry);
+    } else if (!done.has(entry.collection)) {
+      done.add(entry.collection);
+      folded.push(seriesEntry(group));
+    }
+  }
+  return folded;
+}
+
+function seriesEntry(group: CatalogEntry[]): CatalogEntry {
+  const sorted = [...group].sort((a, b) => (a.start ?? 0) - (b.start ?? 0));
+  const newest = sorted[sorted.length - 1];
+  return {
+    ...newest,
+    id: newest.collection,
+    title: newest.collectionTitle || newest.collection,
+    start: sorted[0].start,
+    end: newest.end ?? newest.start,
+    thumbnail: sorted.find((entry) => entry.thumbnail)?.thumbnail ?? null,
+    scenes: sorted.map((entry) => ({
+      entry: entry.id,
+      start: entry.start as number,
+      end: entry.end,
+      address: addressOf(entry),
+    })),
+  };
 }
 
 /** Entries whose title, id or collection hold every word of the text, of one kind when asked. */
@@ -229,7 +317,9 @@ export function catalogDataset(
   if (whyNotAddable(entry, context)) {
     return null;
   }
-  const origin = { catalogEntry: entry.id, catalogUid: uid };
+  const origin = entry.scenes
+    ? { catalogSeries: entry.collection, catalogUid: uid, catalogScenes: savedScenes(entry.scenes) }
+    : { catalogEntry: entry.id, catalogUid: uid };
   const base = {
     id: `catalog-${entry.id}`,
     label: entry.title,
@@ -252,12 +342,79 @@ export function catalogDataset(
   };
 }
 
-/** The catalog entries a saved map's datasets came from. */
+/** The catalog entries (or series) a saved map's datasets came from. */
 export function catalogRefsOf(saved: SavedMapConfig | null | undefined): CatalogRef[] {
   return (saved?.datasets ?? [])
     .map((dataset) => dataset.data.metadata ?? {})
-    .filter((m) => typeof m.catalogEntry === 'string' && typeof m.catalogUid === 'string')
-    .map((m) => ({ uid: m.catalogUid as string, entry: m.catalogEntry as string }));
+    .map((m) => ({ uid: m.catalogUid, entry: m.catalogEntry ?? m.catalogSeries }))
+    .filter((ref): ref is CatalogRef => typeof ref.uid === 'string' && typeof ref.entry === 'string');
+}
+
+function savedScenes(scenes: CatalogScene[]): SavedScene[] {
+  return scenes.map((scene) => ({ time: scene.start, end: scene.end, url: scene.address }));
+}
+
+/** A saved dataset's `catalogScenes`, the malformed ones left out. */
+function scenesOf(value: unknown): SavedScene[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .filter((scene) => typeof scene?.time === 'number' && typeof scene?.url === 'string')
+    .map((scene) => ({ time: scene.time, end: typeof scene.end === 'number' ? scene.end : null, url: scene.url }));
+}
+
+/**
+ * The series a map holds (datasets added from a catalog with their scenes), as rasters its time filter moves
+ * through: a painted one by `sourceUrl`, an archive by `metadataUrl`, a tiled COG through its tile server.
+ */
+export function catalogSeriesRasters(
+  datasets: Record<string, { type?: string; label?: string; metadata?: Record<string, unknown> }>
+): RasterDataset[] {
+  const rasters: RasterDataset[] = [];
+  for (const [id, dataset] of Object.entries(datasets)) {
+    const metadata = dataset.metadata ?? {};
+    const scenes = scenesOf(metadata.catalogScenes);
+    if (scenes.length === 0) {
+      continue;
+    }
+    const newest = scenes[scenes.length - 1].url;
+    const painted = dataset.type === COG_PAINTED_TYPE;
+    const kind: RasterKind = painted ? 'painted' : metadata.pmtilesType ? 'pmtiles' : 'cog';
+    const servers = painted ? [metadata.serverUrl] : kind === 'pmtiles' ? [] : metadata.rasterTileServerUrls;
+    const tileServerUrls = (Array.isArray(servers) ? servers : []).filter(
+      (url): url is string => typeof url === 'string' && url !== ''
+    );
+    const sourceUrl =
+      painted && typeof metadata.sourceUrl === 'string'
+        ? metadata.sourceUrl
+        : kind === 'pmtiles' && typeof metadata.metadataUrl === 'string'
+          ? metadata.metadataUrl
+          : newest;
+    rasters.push({
+      id,
+      label: dataset.label ?? id,
+      kind,
+      sourceUrl,
+      metadataUrl: kind === 'cog' ? metadataUrlFor(tileServerUrls[0] ?? '', sourceUrl) : sourceUrl,
+      tileServerUrls,
+      scenes: scenes.map((scene) => ({ time: scene.time, end: scene.end, sourceUrl: scene.url, itemUrl: null })),
+      // What a rebuild of the dataset must keep, or it would stop being a series.
+      keepMetadata: {
+        catalogSeries: metadata.catalogSeries,
+        catalogUid: metadata.catalogUid,
+        catalogScenes: metadata.catalogScenes,
+      },
+    });
+  }
+  return rasters;
+}
+
+/** The moments a series' time filter spans: each scene's start, and the end of the last. */
+export function seriesCalendar(raster: RasterDataset): number[] {
+  const times = raster.scenes.map((scene) => scene.time).filter((time): time is number => time !== null);
+  const last = raster.scenes[raster.scenes.length - 1];
+  return typeof last?.end === 'number' && last.end > (last.time ?? -Infinity) ? [...times, last.end] : times;
 }
 
 /** Reads every catalog the refs name, at most `waitMs`; never rejects. */
@@ -279,18 +436,39 @@ async function settled<T>(promise: Promise<T>): Promise<T | null> {
   }
 }
 const known = new Map<string, Map<string, string>>();
+const knownSeries = new Map<string, Map<string, SavedScene[]>>();
 
-/** Records what a catalog read found (each entry's address for this map), for the synchronous lookups of a load. */
+/**
+ * Records what a catalog read found (each entry's address for this map, each series' scenes), for the synchronous
+ * lookups of a load.
+ */
 export async function rememberCatalog(uid: string): Promise<void> {
   const entries = await settled(catalogEntries(uid));
   if (entries) {
-    known.set(uid, new Map(entries.map((entry) => [entry.id, addressOf(entry)])));
+    rememberEntries(uid, entries);
   }
 }
 
-/** For tests: set what a catalog read found. */
-export function rememberCatalogForTests(uid: string, addresses: Record<string, string>): void {
-  known.set(uid, new Map(Object.entries(addresses)));
+function rememberEntries(uid: string, entries: CatalogEntry[]): void {
+  known.set(uid, new Map(entries.map((entry) => [entry.id, addressOf(entry)])));
+  knownSeries.set(
+    uid,
+    new Map(
+      withSeries(entries)
+        .filter((entry) => entry.scenes)
+        .map((entry) => [entry.collection, savedScenes(entry.scenes ?? [])])
+    )
+  );
+}
+
+/** For tests: set what a catalog read found, as addresses by entry id or as whole entries. */
+export function rememberCatalogForTests(uid: string, found: Record<string, string> | CatalogEntry[]): void {
+  if (Array.isArray(found)) {
+    rememberEntries(uid, found);
+  } else {
+    known.set(uid, new Map(Object.entries(found)));
+    knownSeries.delete(uid);
+  }
 }
 
 /** A dataset's metadata pointed at another address, or null when it already points there or cannot be moved. */
@@ -320,10 +498,26 @@ function followed(type: string, metadata: Record<string, unknown>, address: stri
  */
 export function withCatalogHref(saved: SavedRemoteDataset): SavedRemoteDataset {
   const metadata = saved.data.metadata;
+  if (metadata && typeof metadata.catalogSeries === 'string' && typeof metadata.catalogUid === 'string') {
+    return withCatalogScenes(saved, metadata);
+  }
   if (!metadata || typeof metadata.catalogEntry !== 'string' || typeof metadata.catalogUid !== 'string') {
     return saved;
   }
   const address = known.get(metadata.catalogUid)?.get(metadata.catalogEntry);
   const moved = address ? followed(saved.data.type, metadata, address) : null;
   return moved ? { ...saved, data: { ...saved.data, metadata: moved } } : saved;
+}
+
+/** A saved series with the catalog's scenes, pointed at the newest; as saved when the catalog does not list it. */
+function withCatalogScenes(saved: SavedRemoteDataset, metadata: Record<string, unknown>): SavedRemoteDataset {
+  const scenes = knownSeries.get(metadata.catalogUid as string)?.get(metadata.catalogSeries as string);
+  if (!scenes?.length) {
+    return saved;
+  }
+  const moved = followed(saved.data.type, metadata, scenes[scenes.length - 1].url) ?? metadata;
+  if (moved === metadata && JSON.stringify(scenesOf(metadata.catalogScenes)) === JSON.stringify(scenes)) {
+    return saved;
+  }
+  return { ...saved, data: { ...saved.data, metadata: { ...moved, catalogScenes: scenes } } };
 }

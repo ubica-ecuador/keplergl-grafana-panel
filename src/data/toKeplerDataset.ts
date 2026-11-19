@@ -43,6 +43,7 @@ type RenamedRole = Exclude<
   | 'rasterColormap'
   | 'rasterBands'
   | 'rasterPainted'
+  | 'rasterEnd'
   | 'wmsUrl'
   | 'wmsLayer'
   | 'zarrUrl'

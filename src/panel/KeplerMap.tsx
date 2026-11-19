@@ -69,6 +69,7 @@ import { useCenterSync } from './useCenterSync';
 import { useFitOnVariables } from './useFitOnVariables';
 import { centerOnLoad, withLoadCenter } from './centerSync';
 import { useRasterTimeline } from './useRasterTimeline';
+import { useCatalogSeries } from '../catalog/useCatalogSeries';
 import { useWmsCalendar } from './useWmsCalendar';
 import { useWmsTimeline } from './useWmsTimeline';
 import { useEsriTimeline } from './useEsriTimeline';
@@ -571,7 +572,19 @@ export function KeplerMap({
   // the clock alone instead of widening it to the whole dataset on load.
   const clockVariables = timeSync === 'variables' ? (timeVariables ?? null) : null;
 
-  useRasterTimeline({ store, isReady, rasters, timeVariables: clockVariables });
+  // A series added from a catalog moves with the same clock as a query's.
+  const catalogSeries = useCatalogSeries(store, isReady);
+  const timelineRasters = useMemo(
+    () => (catalogSeries.length > 0 ? [...rasters, ...catalogSeries] : rasters),
+    [rasters, catalogSeries]
+  );
+  useRasterTimeline({
+    store,
+    isReady,
+    rasters: timelineRasters,
+    timeVariables: clockVariables,
+    followsDashboard: couplesDashboardRange(timeSync),
+  });
 
   // A WMS query hands the same widget the service's own dates, and pins which
   // of the service's layers is drawn.

@@ -244,7 +244,8 @@ function rasterProtoDataset(raster: RasterDataset) {
       format: 'rows',
     },
     data: { fields: [], rows: [] },
-    metadata: rasterMetadata(raster),
+    // A series added from a catalog keeps where it came from and its scenes through a rebuild.
+    metadata: { ...rasterMetadata(raster), ...(raster.keepMetadata ?? {}) },
     disableDataOperation: true,
   } as unknown as ProtoDataset;
 }
@@ -1026,6 +1027,39 @@ export function restoredDatasets(savedConfig?: SavedMapConfig | null): ProtoData
  */
 export function catalogRasterMetadata(raster: CatalogRaster): Record<string, unknown> {
   return rasterMetadata({ id: '', label: '', scenes: [], ...raster }) as Record<string, unknown>;
+}
+
+/** The datasets kepler holds, by id, as `catalogSeriesRasters` reads them: the same object until one changes. */
+export function readDatasetsById(
+  store: Store
+): Record<string, { type?: string; label?: string; metadata?: Record<string, unknown> }> | null {
+  return (getVisState(store)?.datasets as Record<string, { metadata?: Record<string, unknown> }> | undefined) ?? null;
+}
+
+/** The id of the calendar a catalog series' time filter hangs from. */
+export function seriesCalendarId(seriesId: string): string {
+  return `${seriesId}-dates`;
+}
+
+/**
+ * A calendar per series added from a catalog (a raster has no rows for kepler's time filter to hang from, as a WMS
+ * has none), and none left for a series the user removed.
+ */
+export function syncSeriesCalendars(
+  store: Store,
+  dispatch: Dispatch,
+  series: Array<{ id: string; label: string; times: number[] }>
+): void {
+  for (const one of series) {
+    syncCalendarDataset(store, dispatch, { id: seriesCalendarId(one.id), label: one.label, times: one.times });
+  }
+  const wanted = new Set(series.map((one) => seriesCalendarId(one.id)));
+  for (const [id, dataset] of Object.entries(getVisState(store)?.datasets ?? {})) {
+    const calendar = Boolean((dataset.metadata as { calendarFingerprint?: string } | undefined)?.calendarFingerprint);
+    if (calendar && id.startsWith('catalog-') && id.endsWith('-dates') && !wanted.has(id)) {
+      dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(id)));
+    }
+  }
 }
 
 /**

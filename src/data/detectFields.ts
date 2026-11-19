@@ -82,6 +82,11 @@ export interface FieldRoles {
   rasterBands?: string;
   rasterPainted?: string;
   /**
+   * When each scene of a raster series stops being the picture: a yearly map lasts its year. With it a scene is in
+   * the map's time window when its span touches the window, not only when its start falls inside.
+   */
+  rasterEnd?: string;
+  /**
    * A WMS service and the one layer of it to draw.
    *
    * Both are needed: a service publishes many layers and nothing in the query
@@ -277,6 +282,7 @@ export const NAME_CANDIDATES: Record<string, string[]> = {
   rasterColormap: ['raster_colormap', 'raster_ramp'],
   rasterBands: ['raster_bands', 'band_combination'],
   rasterPainted: ['raster_painted'],
+  rasterEnd: ['raster_end', 'end_datetime'],
   // WMS. `wms` alone is worth accepting because a query that fixes the service
   // by hand reads better as `SELECT '…' AS wms`, and `service_url` is what the
   // OGC calls the endpoint.
@@ -319,8 +325,9 @@ export function detectFields(frame: DataFrame): FieldRoles {
 
   // Time is found by type rather than by name: Grafana already knows which
   // column is temporal, and dashboards name it anything from `time` to
-  // `recorded_at` to `__timestamp`.
-  const timeField = frame.fields.find((f) => f.type === FieldType.time);
+  // `recorded_at` to `__timestamp`. A raster series' end is not its time.
+  const timeFields = frame.fields.filter((f) => f.type === FieldType.time);
+  const timeField = timeFields.find((f) => f.name !== roles.rasterEnd) ?? timeFields[0];
   if (timeField) {
     roles.time = timeField.name;
   }

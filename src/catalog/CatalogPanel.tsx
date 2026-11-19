@@ -13,6 +13,7 @@ import {
   searchCatalog,
   whereInstead,
   whyNotAddable,
+  withSeries,
 } from './catalogSource';
 
 /** What the map offers the catalog panel: adding a dataset to it, and what it draws rasters with. Provided by KeplerMap. */
@@ -43,6 +44,15 @@ export function entryDate(start: number | null): string {
   }
   const iso = new Date(start).toISOString();
   return iso.endsWith('-01-01T00:00:00.000Z') ? iso.slice(0, 4) : iso.slice(0, 10);
+}
+
+/** When an entry holds, for its row: a series' first and last scene and how many, else its date. */
+export function entryWhen(entry: Pick<CatalogEntry, 'start' | 'scenes'>): string {
+  const scenes = entry.scenes ?? [];
+  if (scenes.length < 2) {
+    return entryDate(entry.start);
+  }
+  return `${entryDate(scenes[0].start)}–${entryDate(scenes[scenes.length - 1].start)} · ${scenes.length} scenes`;
 }
 
 /** An address the page can load: Grafana's own paths under its sub-path. */
@@ -236,7 +246,9 @@ export function CatalogPanel() {
       live = false;
     };
   }, [open, uid]);
-  const entries = read?.uid === uid ? (read.entries ?? null) : null;
+  const answered = read?.uid === uid ? (read.entries ?? null) : null;
+  // A collection's dated rasters are one series to add: the map's time range picks the scene.
+  const entries = useMemo(() => (answered ? withSeries(answered) : null), [answered]);
   const error = read?.uid === uid ? (read.error ?? null) : null;
 
   if (!open || !api) {
@@ -279,12 +291,17 @@ export function CatalogPanel() {
       {shown.map((entry) => {
         const why = whyNotAddable(entry, api.context);
         const done = added.has(entry.id);
+        const tip = why ?? (entry.scenes ? `${entry.title}: the map's time range picks the scene` : entry.title);
         return (
-          <Row key={entry.id} className="catalog-entry" title={why ?? entry.title}>
+          <Row key={entry.id} className="catalog-entry" title={tip}>
             <Thumb style={entry.thumbnail ? { backgroundImage: `url("${pageUrl(entry.thumbnail)}")` } : undefined} />
             <Text>
               <b>{entry.title}</b>
-              <span>{[entry.kind, entry.collection, entryDate(entry.start)].filter(Boolean).join(' · ')}</span>
+              <span>
+                {(entry.scenes ? [entryWhen(entry), 'raster series'] : [entry.kind, entry.collection, entryWhen(entry)])
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
               <span>{entry.license}</span>
             </Text>
             {why ? (

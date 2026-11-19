@@ -1,18 +1,23 @@
 import { createDataFrame, FieldType } from '@grafana/data';
 
 import {
+  type CatalogEntry,
   catalogDataset,
   catalogRaster,
   catalogRefsOf,
+  catalogSeriesRasters,
   entriesOf,
   rememberCatalogForTests,
   searchCatalog,
   whereInstead,
   whyNotAddable,
+  seriesCalendar,
   withCatalogHref,
+  withSeries,
 } from './catalogSource';
 import type { SavedMapConfig } from '../data/mapConfig';
-import { entryDate } from './CatalogPanel';
+import { pickScene } from '../data/rasterDataset';
+import { entryDate, entryWhen } from './CatalogPanel';
 
 // A Catalog search frame as the Ubica Catalog data source answers it.
 const frame = createDataFrame({
@@ -184,5 +189,86 @@ describe('a raster added from a catalog', () => {
     expect(withCatalogHref(tiled).data.metadata?.metadataUrl).toBe(
       '/titiler/cog/stac?url=https%3A%2F%2Fexample.org%2Fmoved.tif'
     );
+  });
+});
+
+describe('a collection of dated rasters in a catalog', () => {
+  const year = (y: number): CatalogEntry => ({
+    id: `cci-biomass-${y}`,
+    title: `ESA CCI Biomass, ${y}`,
+    kind: 'raster',
+    collection: 'cci-biomass',
+    collectionTitle: 'ESA CCI Biomass',
+    href: 'https://dap.ceda.ac.uk/agb.tif',
+    serverHref: `http://feeds/cci-biomass/data/agb-${y}.vrt`,
+    painted: true,
+    start: Date.UTC(y, 0, 1),
+    end: Date.UTC(y, 11, 31, 23, 59, 59),
+    license: 'ESA CCI',
+    thumbnail: null,
+    bbox: [-180, -90, 180, 90],
+  });
+  const [tileset] = entriesOf(frame);
+  const entries = [tileset, year(2010), year(2005), year(2020)];
+  const context = {
+    tileServerUrls: ['/titiler'],
+    rasterMetadata: (raster: { sourceUrl: string }) => ({ sourceUrl: raster.sourceUrl, serverUrl: '/titiler' }),
+  };
+
+  it('is one series in the list, oldest scene first, named after its collection', () => {
+    const listed = withSeries(entries);
+    expect(listed.map((e) => e.id)).toEqual(['amsterdam-dam-lidar', 'cci-biomass']);
+    const series = listed[1];
+    expect(series).toMatchObject({ title: 'ESA CCI Biomass', kind: 'raster', start: Date.UTC(2005, 0, 1) });
+    expect(series.scenes?.map((s) => s.entry)).toEqual(['cci-biomass-2005', 'cci-biomass-2010', 'cci-biomass-2020']);
+    expect(entryWhen(series)).toBe('2005–2020 · 3 scenes');
+    // One dated raster is no series.
+    expect(withSeries([year(2020)])[0].scenes).toBeUndefined();
+  });
+
+  it('is saved with its scenes, drawn at the newest, and the time window picks a year by its span', () => {
+    const series = withSeries(entries)[1];
+    const saved = catalogDataset(series, 'cat', context)!;
+    expect(saved.data).toMatchObject({
+      id: 'catalog-cci-biomass',
+      type: 'cogPainted',
+      label: 'ESA CCI Biomass',
+      metadata: {
+        sourceUrl: 'http://feeds/cci-biomass/data/agb-2020.vrt',
+        catalogSeries: 'cci-biomass',
+        catalogUid: 'cat',
+      },
+    });
+    expect(catalogRefsOf({ version: 'v1', config: {}, datasets: [saved] })).toEqual([
+      { uid: 'cat', entry: 'cci-biomass' },
+    ]);
+    const [raster] = catalogSeriesRasters({ [saved.data.id]: saved.data });
+    expect(raster).toMatchObject({ id: 'catalog-cci-biomass', kind: 'painted', tileServerUrls: ['/titiler'] });
+    expect(raster.keepMetadata).toMatchObject({ catalogSeries: 'cci-biomass', catalogUid: 'cat' });
+    // July 2010 is the 2010 map; a window over no year draws nothing.
+    const july = { from: Date.UTC(2010, 6, 1), to: Date.UTC(2010, 6, 31) };
+    expect(pickScene(raster.scenes, july)?.sourceUrl).toBe('http://feeds/cci-biomass/data/agb-2010.vrt');
+    expect(pickScene(raster.scenes, { from: Date.UTC(2014, 0, 1), to: Date.UTC(2015, 0, 1) })).toBeNull();
+    expect(seriesCalendar(raster)).toEqual([
+      Date.UTC(2005, 0, 1),
+      Date.UTC(2010, 0, 1),
+      Date.UTC(2020, 0, 1),
+      Date.UTC(2020, 11, 31, 23, 59, 59),
+    ]);
+  });
+
+  it('takes its scenes from the catalog again on load: a new year shows by itself', () => {
+    const saved = catalogDataset(withSeries(entries)[1], 'cat', context)!;
+    rememberCatalogForTests('cat', [...entries, year(2022)]);
+    const restored = withCatalogHref(saved).data.metadata!;
+    expect(restored.sourceUrl).toBe('http://feeds/cci-biomass/data/agb-2022.vrt');
+    expect((restored.catalogScenes as Array<{ url: string }>).map((s) => s.url.slice(-8))).toEqual([
+      '2005.vrt',
+      '2010.vrt',
+      '2020.vrt',
+      '2022.vrt',
+    ]);
+    rememberCatalogForTests('cat', entries);
+    expect(withCatalogHref(saved)).toBe(saved);
   });
 });
