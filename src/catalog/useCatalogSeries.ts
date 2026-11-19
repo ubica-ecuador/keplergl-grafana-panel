@@ -3,6 +3,7 @@ import type { Store } from 'redux';
 
 import type { RasterDataset } from '../data/rasterDataset';
 import {
+  applyWmsLayerChoice,
   readDatasetsById,
   readViewportBounds,
   refreshRasters,
@@ -102,11 +103,35 @@ export function useCatalogSeries(store: Store, isReady: boolean, range: { from: 
       }
       seen.current = { datasets, key, specs: specsKey, view: JSON.stringify(area) };
     };
+    // A WMS added from a catalog draws the catalog's layer once kepler has made its own (it reads the service's
+    // list first, and would draw its first layer). Once per dataset: afterwards the layer is the user's to change.
+    const wmsChosen = new Set<string>();
+    const chooseWmsLayers = () => {
+      for (const [id, dataset] of Object.entries(readDatasetsById(store) ?? {})) {
+        const layer = dataset.metadata?.catalogWmsLayer;
+        if (
+          typeof layer === 'string' &&
+          !wmsChosen.has(id) &&
+          applyWmsLayerChoice(store, store.dispatch, {
+            id,
+            label: dataset.label ?? id,
+            serviceUrl: '',
+            layerName: layer,
+            times: [],
+          })
+        ) {
+          wmsChosen.add(id);
+        }
+      }
+    };
     reread.current = () => read(true);
     read();
     // A move of the view is no change of datasets: read again when the area it would search changes.
     const unsubscribe = store.subscribe(() =>
-      queueMicrotask(() => read(JSON.stringify(viewArea()) !== seen.current.view))
+      queueMicrotask(() => {
+        read(JSON.stringify(viewArea()) !== seen.current.view);
+        chooseWmsLayers();
+      })
     );
     return () => {
       live = false;

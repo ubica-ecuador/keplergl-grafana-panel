@@ -17,6 +17,7 @@ import {
   momentLabel,
   searchDataset,
   searchScenes,
+  serviceDataset,
   type SearchedScenes,
   whereInstead,
   whyNotAddable,
@@ -41,6 +42,7 @@ const KINDS: Array<[string, string]> = [
   ['3d-tiles', '3D Tiles'],
   ['gltf-model', 'Models'],
   ['raster', 'Rasters'],
+  ['map-service', 'Services'],
   ['external', 'Catalogs'],
 ];
 
@@ -367,7 +369,27 @@ export function CatalogPanel() {
       setAdded((was) => new Set([...was, saved.data.id]));
     }
   };
+  // A map service is read first when it has to be (a TileJSON, a PMTiles header), then added as the map draws it.
+  const addService = async (entry: CatalogEntry) => {
+    note(entry.id, 'Reading…');
+    try {
+      const saved = await serviceDataset(entry, uid);
+      if (!saved) {
+        note(entry.id, 'This map cannot draw this service');
+        return;
+      }
+      api.add(saved);
+      setAdded((was) => new Set([...was, entry.id]));
+      note(entry.id, entry.license);
+    } catch (err) {
+      note(entry.id, `The service did not answer: ${String((err as Error)?.message ?? err)}`);
+    }
+  };
   const add = (entry: CatalogEntry) => {
+    if (entry.kind === 'map-service') {
+      void addService(entry);
+      return;
+    }
     if (entry.search) {
       void addSearch(entry);
       return;
@@ -380,7 +402,7 @@ export function CatalogPanel() {
   };
   const addButton = (entry: CatalogEntry, title: string) => {
     const done = added.has(entry.id);
-    const busy = notes[entry.id] === 'Searching…';
+    const busy = notes[entry.id] === 'Searching…' || notes[entry.id] === 'Reading…';
     return (
       <Add aria-label={`Add ${entry.title}`} title={title} disabled={done || busy} onClick={() => add(entry)}>
         {done ? 'Added' : busy ? '…' : 'Add'}
@@ -451,11 +473,13 @@ export function CatalogPanel() {
               <Text>
                 <b>{entry.title}</b>
                 <span>
-                  {(entry.search
-                    ? [entry.kind === 'external' ? 'STAC API' : 'tiles', 'searched over the view']
-                    : entry.scenes
-                      ? [entryWhen(entry), follows ? 'follows the date' : 'raster series']
-                      : [entry.kind, entry.collection, entryWhen(entry)]
+                  {(entry.service
+                    ? [entry.service.protocol.toUpperCase(), entry.service.layers.join(', '), entry.collection]
+                    : entry.search
+                      ? [entry.kind === 'external' ? 'STAC API' : 'tiles', 'searched over the view']
+                      : entry.scenes
+                        ? [entryWhen(entry), follows ? 'follows the date' : 'raster series']
+                        : [entry.kind, entry.collection, entryWhen(entry)]
                   )
                     .filter(Boolean)
                     .join(' · ')}

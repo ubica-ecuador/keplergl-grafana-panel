@@ -13,6 +13,7 @@ import {
   type ScenePart,
 } from '../data/rasterDataset';
 import { COG_PAINTED_TYPE } from '../panel/cogPaintedLayer';
+import { xyzSavedDataset } from '../data/xyzTiles';
 
 /**
  * STAC catalogs as a data source (the STAC Catalog data source, `ubica-stac-datasource`): what the map's
@@ -68,8 +69,27 @@ export interface CatalogEntry {
   series?: 'items' | 'search' | null;
   /** A searched series: what the data source's STAC search is asked for (an entry or a collection id). */
   search?: { target: string };
+  /** A map service entry's service (STAC web-map-links), as the data source reads it. */
+  service?: CatalogService;
   /** A series found by some of its entries rather than by itself: `members` holds those, to show open. */
   foundByMembers?: boolean;
+}
+
+/** A map service that draws an entry (STAC web-map-links), as the data source gives it in its `service` column. */
+export interface CatalogService {
+  protocol: 'wms' | 'wmts' | 'xyz' | 'tilejson' | 'pmtiles';
+  layers: string[];
+  styles: string[];
+  transparent: boolean | null;
+  dimensions: Record<string, string>;
+  encoding: 'kvp' | 'rest' | null;
+  uriTemplate: string | null;
+  variables: Record<string, unknown>;
+  servers: string[];
+  mediaType: string;
+  /** The zoom levels the service has tiles for, when the catalog says: past the last one, its tiles are enlarged. */
+  minZoom?: number;
+  maxZoom?: number;
 }
 
 /** One scene of a series: the entry it is, when it holds, and where this map reads it. */
@@ -140,7 +160,7 @@ export function catalogRaster(
 
 /** Why an entry cannot be added to this map, or null when it can. */
 export function whyNotAddable(
-  entry: Pick<CatalogEntry, 'kind' | 'href' | 'serverHref' | 'search'>,
+  entry: Pick<CatalogEntry, 'kind' | 'href' | 'serverHref' | 'search'> & { service?: CatalogService },
   context: AddContext = NO_CONTEXT
 ): string | null {
   switch (entry.kind) {
@@ -152,6 +172,13 @@ export function whyNotAddable(
         : 'A raster: this map has no tile server to draw it (Raster tile server, in the panel options).';
     case 'gltf-model':
       return 'A glTF model: Kepler Plus draws it, with the 4D Model layer.';
+    case 'map-service':
+      return 'service' in entry &&
+        entry.service &&
+        !serviceTemplate(entry.service) &&
+        serviceNeedsTemplate(entry.service)
+        ? 'A WMTS by KVP: give its layer a REST template (uriTemplate) to draw it from the catalog.'
+        : null;
     case 'external':
       if (entry.search) {
         return context.tileServerUrls.length > 0
@@ -248,6 +275,7 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
     licenses,
     thumbnails,
     series,
+    services,
   ] = [
     'id',
     'title',
@@ -262,6 +290,7 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
     'license',
     'thumbnail',
     'series',
+    'service',
   ].map(column);
   const hasSeries = frame.fields.some((field) => field.name === 'series');
   const time = (value: unknown) => {
@@ -287,6 +316,7 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
       thumbnail: thumbnails[i] ? String(thumbnails[i]) : null,
       bbox: box.every(Number.isFinite) ? (box as [number, number, number, number]) : null,
       ...(hasSeries ? { series: series[i] === 'items' || series[i] === 'search' ? series[i] : null } : {}),
+      ...(typeof services[i] === 'string' && services[i] ? { service: parseService(services[i]) } : {}),
     });
   }
   return entries.filter((entry) => entry.id !== '' && entry.href !== '');
@@ -884,4 +914,178 @@ export function momentDataset(
       },
     },
   };
+}
+
+function parseService(text: string): CatalogService | undefined {
+  try {
+    const service = JSON.parse(text);
+    return service && typeof service.protocol === 'string' ? (service as CatalogService) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** A WMTS needs a tile template: KVP needs its tile matrix set, which only its capabilities say. */
+function serviceNeedsTemplate(service: CatalogService): boolean {
+  return service.protocol === 'wmts';
+}
+
+/** A template's variable's value: as it is, its default, or the last of a list. */
+function variableValue(value: unknown): string | null {
+  if (typeof value === 'string' || typeof value === 'number') {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.length ? variableValue(value[value.length - 1]) : null;
+  }
+  if (value && typeof value === 'object' && 'default' in value) {
+    return variableValue((value as { default: unknown }).default);
+  }
+  return null;
+}
+
+/**
+ * The `{z}/{x}/{y}` template a WMTS in REST draws from: its `uriTemplate` (or an href that is one) with its tile
+ * matrix, row and column as z, y and x, and its other variables at their values or defaults (a dimension's value
+ * when the link gives one). Null for KVP, or a variable left without a value. An XYZ link's own template likewise,
+ * `{s}` its first server.
+ */
+export function serviceTemplate(service: CatalogService, href = ''): string | null {
+  const servers = (template: string) =>
+    service.servers.length ? template.replace(/\{s\}/g, service.servers[0]) : template;
+  if (service.protocol === 'xyz') {
+    return servers(href);
+  }
+  if (service.protocol !== 'wmts') {
+    return null;
+  }
+  const template = service.uriTemplate ?? (/\{TileMatrix\}/.test(href) ? href : null);
+  if (!template) {
+    return null;
+  }
+  let unresolved = false;
+  const filled = servers(template)
+    .replace(/\{TileMatrix\}/g, '{z}')
+    .replace(/\{TileRow\}/g, '{y}')
+    .replace(/\{TileCol\}/g, '{x}')
+    .replace(/\{([A-Za-z_][\w-]*)\}/g, (whole, name: string) => {
+      if (['z', 'x', 'y'].includes(name)) {
+        return whole;
+      }
+      const value = variableValue(service.variables[name]) ?? service.dimensions[name] ?? null;
+      if (value === null) {
+        unresolved = true;
+        return whole;
+      }
+      return encodeURIComponent(value);
+    });
+  return unresolved ? null : filled;
+}
+
+/** A WMS endpoint, bare: kepler and loaders.gl append their own query. */
+function bareUrl(url: string): string {
+  return url.split('#')[0].split('?')[0];
+}
+
+/** Reads a TileJSON (vector or raster) from the browser. */
+async function readTileJson(
+  url: string
+): Promise<{ tiles?: string[]; vector_layers?: unknown[]; minzoom?: number; maxzoom?: number }> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`${response.status} from the TileJSON`);
+  }
+  return response.json();
+}
+
+/** A PMTiles archive's tile type, from its header (byte 99: 1 is vector, 2–5 are images); null if unread. */
+export async function pmtilesKind(url: string, read: typeof fetch = fetch): Promise<'vector' | 'raster' | null> {
+  try {
+    const response = await read(url, { headers: { Range: 'bytes=0-126' } });
+    const header = new Uint8Array(await response.arrayBuffer());
+    if (header.length < 100 || String.fromCharCode(...header.slice(0, 7)) !== 'PMTiles') {
+      return null;
+    }
+    return header[99] === 1 ? 'vector' : header[99] >= 2 ? 'raster' : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The saved form of a map service entry, as the map draws it: a WMS as kepler's WMS tiles with the entry's layer, an
+ * XYZ or a WMTS (its REST template) as the panel's tile template, a TileJSON as vector tiles (it lists vector layers)
+ * or a tile template, a PMTiles archive as vector or raster tiles (its layers, or its header, say which). With where
+ * it came from (`catalogEntry`, `catalogUid`). No tile server needed: the service draws.
+ */
+export async function serviceDataset(entry: CatalogEntry, uid: string): Promise<SavedRemoteDataset | null> {
+  const service = entry.service;
+  if (!service || whyNotAddable(entry)) {
+    return null;
+  }
+  const origin = { catalogEntry: entry.id, catalogUid: uid };
+  const id = `catalog-${entry.id}`.replace(/[^\w-]+/g, '-');
+  const remote = (type: string, metadata: Record<string, unknown>): SavedRemoteDataset => ({
+    version: 'v1',
+    data: {
+      id,
+      label: entry.title,
+      color: [0, 92, 255],
+      type,
+      fields: [],
+      allData: [],
+      disableDataOperation: true,
+      metadata: { ...metadata, ...origin },
+    },
+  });
+  const tiles = (url: string, zoom: { minZoom?: number; maxZoom?: number } = {}) => {
+    const levels = Object.fromEntries(Object.entries(zoom).filter(([, value]) => typeof value === 'number'));
+    const saved = xyzSavedDataset(id, entry.title, { url, ...levels });
+    return { ...saved, data: { ...saved.data, metadata: { ...saved.data.metadata, ...origin } } };
+  };
+  switch (service.protocol) {
+    case 'wms': {
+      const url = bareUrl(entry.href);
+      const layer = service.layers.join(',');
+      return remote('wms-tile', {
+        type: 'remote',
+        remoteTileFormat: 'wms',
+        tilesetDataUrl: url,
+        tilesetMetadataUrl: `${url}?service=WMS&request=GetCapabilities`,
+        layers: [{ name: layer, title: entry.title, boundingBox: null, queryable: true }],
+        version: '1.3.0',
+        // The layer to draw, once kepler has read the service's own list (`useCatalogSeries`).
+        catalogWmsLayer: layer,
+      });
+    }
+    case 'xyz':
+    case 'wmts': {
+      const template = serviceTemplate(service, entry.href);
+      return template ? tiles(template, { minZoom: service.minZoom, maxZoom: service.maxZoom }) : null;
+    }
+    case 'tilejson': {
+      const tilejson = await readTileJson(entry.href);
+      const first = tilejson.tiles?.[0];
+      if (!first) {
+        return null;
+      }
+      return Array.isArray(tilejson.vector_layers) && tilejson.vector_layers.length > 0
+        ? remote('vector-tile', {
+            type: 'remote',
+            remoteTileFormat: 'mvt',
+            tilesetDataUrl: first,
+            tilesetMetadataUrl: entry.href,
+          })
+        : tiles(first, { minZoom: tilejson.minzoom, maxZoom: tilejson.maxzoom });
+    }
+    case 'pmtiles': {
+      const kind = service.layers.length > 0 ? 'vector' : await pmtilesKind(entry.href);
+      if (kind === 'vector') {
+        return remote('vector-tile', { type: 'remote', remoteTileFormat: 'pmtiles', tilesetDataUrl: entry.href });
+      }
+      return kind === 'raster' ? remote('raster-tile', { metadataUrl: entry.href, pmtilesType: 'raster' }) : null;
+    }
+    default:
+      return null;
+  }
 }
