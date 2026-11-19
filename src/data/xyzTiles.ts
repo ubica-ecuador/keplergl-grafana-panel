@@ -19,12 +19,24 @@ export interface XyzTileMetadata {
   url: string;
   minZoom?: number;
   maxZoom?: number;
+  /**
+   * The server's own name for each zoom level, put where the template has `{z}`, when it is not the number: a
+   * WMTS's tile matrices (`00`, `EPSG:3857:5`).
+   */
+  zoomIds?: Record<string, string>;
 }
 
-/** The tile's address. `{-y}` counts rows from the south (TMS); `{s}` and `{a-c}` pick the first subdomain. */
-export function xyzTileUrl(template: string, { x, y, z }: { x: number; y: number; z: number }): string {
+/**
+ * The tile's address. `{-y}` counts rows from the south (TMS); `{s}` and `{a-c}` pick the first subdomain; `{z}` is
+ * the zoom level's own name when the server has one (`zoomIds`).
+ */
+export function xyzTileUrl(
+  template: string,
+  { x, y, z }: { x: number; y: number; z: number },
+  zoomIds?: Record<string, string>
+): string {
   return template
-    .replace(/\{z\}/g, String(z))
+    .replace(/\{z\}/g, zoomIds?.[String(z)] ?? String(z))
     .replace(/\{x\}/g, String(x))
     .replace(/\{-y\}/g, String(2 ** z - 1 - y))
     .replace(/\{y\}/g, String(y))

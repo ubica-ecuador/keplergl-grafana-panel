@@ -37,17 +37,18 @@ export function xyzDeckProps(args: {
     return null;
   }
   const native = xyzMapLibreTemplate(template);
+  const zoomIds = metadata?.zoomIds;
   return {
     id: `${id}-xyz-tiles`,
-    getTileUrl: (index: { x: number; y: number; z: number }) => xyzTileUrl(template, index),
-    // What MapLibre draws instead on a relief base map (`reliefRasters.ts`).
-    reliefTiles: native.template,
-    reliefScheme: native.scheme,
+    getTileUrl: (index: { x: number; y: number; z: number }) => xyzTileUrl(template, index, zoomIds),
+    // What MapLibre draws instead on a relief base map (`reliefRasters.ts`); not tiles whose levels have names of
+    // their own, which a MapLibre template cannot say.
+    ...(zoomIds ? {} : { reliefTiles: native.template, reliefScheme: native.scheme }),
     opacity: opacity ?? 1,
     ...(typeof metadata?.minZoom === 'number' ? { minZoom: metadata.minZoom } : {}),
     ...(typeof metadata?.maxZoom === 'number' ? { maxZoom: metadata.maxZoom } : {}),
     // deck caches tiles against its triggers: a new template must refetch.
-    updateTriggers: { getTileData: template },
+    updateTriggers: { getTileData: zoomIds ? `${template} ${JSON.stringify(zoomIds)}` : template },
   };
 }
 

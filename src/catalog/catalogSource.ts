@@ -106,6 +106,8 @@ export interface CatalogService {
   /** The zoom levels the service has tiles for, when the catalog says: past the last one, its tiles are enlarged. */
   minZoom?: number;
   maxZoom?: number;
+  /** A WMTS's name for each zoom level's tile matrix, when it is not the number. */
+  zoomIds?: Record<string, string>;
 }
 
 /** One scene of a series: the entry it is, when it holds, and where this map reads it. */
@@ -218,7 +220,7 @@ export function whyNotAddable(
         entry.service &&
         !serviceTemplate(entry.service) &&
         serviceNeedsTemplate(entry.service)
-        ? 'A WMTS by KVP: give its layer a REST template (uriTemplate) to draw it from the catalog.'
+        ? 'A WMTS layer without Web Mercator tiles, or given without its template: this map cannot draw it.'
         : null;
     case 'external':
       if (entry.search) {
@@ -1127,7 +1129,11 @@ export async function serviceDataset(entry: CatalogEntry, uid: string): Promise<
   });
   const tiles = (url: string, zoom: { minZoom?: number; maxZoom?: number } = {}) => {
     const levels = Object.fromEntries(Object.entries(zoom).filter(([, value]) => typeof value === 'number'));
-    const saved = xyzSavedDataset(id, entry.title, { url, ...levels });
+    const saved = xyzSavedDataset(id, entry.title, {
+      url,
+      ...levels,
+      ...(service.zoomIds ? { zoomIds: service.zoomIds } : {}),
+    });
     return { ...saved, data: { ...saved.data, metadata: { ...saved.data.metadata, ...origin } } };
   };
   switch (service.protocol) {

@@ -69,7 +69,18 @@ describe('a map service from a catalog', () => {
     expect(serviceTemplate({ ...rest, variables: {} })).toBeNull();
     expect(serviceTemplate({ ...rest, variables: {}, dimensions: { Time: '2024-01-01' } })).toContain('/2024-01-01/');
     const kvp = service({ protocol: 'wmts', encoding: 'kvp', layers: ['tc'] });
-    expect(whyNotAddable(entry('k', 'https://m.example.org/wmts', kvp))).toMatch(/KVP/);
+    expect(whyNotAddable(entry('k', 'https://m.example.org/wmts', kvp))).toMatch(/without its template/);
+    // A WMTS whose levels have names of their own (PDOK's 00, 01…): the tiles carry them.
+    const named = await serviceDataset(
+      entry('p', 'https://p.example.org/wmts', {
+        ...rest,
+        uriTemplate: 'https://p/{TileMatrix}/{TileCol}/{TileRow}.png',
+        variables: {},
+        zoomIds: { '0': '00', '1': '01' },
+      }),
+      'cat'
+    );
+    expect(named?.data.metadata).toMatchObject({ url: 'https://p/{z}/{x}/{y}.png', zoomIds: { '0': '00', '1': '01' } });
     expect(
       serviceTemplate(service({ protocol: 'xyz', servers: ['a', 'b'] }), 'https://{s}.t.org/{z}/{x}/{y}.png')
     ).toBe('https://a.t.org/{z}/{x}/{y}.png');
