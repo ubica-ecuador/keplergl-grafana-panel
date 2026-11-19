@@ -14,7 +14,7 @@
  * - ArcGIS: `geometry` as an envelope in degrees, `time` in milliseconds, `resultRecordCount`.
  */
 
-export type FeatureProtocol = 'ogc-features' | 'wfs' | 'arcgis';
+export type FeatureProtocol = 'ogc-features' | 'wfs' | 'arcgis' | 'socrata';
 
 export type Area = [number, number, number, number];
 
@@ -25,6 +25,8 @@ export interface FeatureTarget {
   itemsHref: string;
   /** WFS: the property a time range is kept to; ArcGIS: the layer's time field (any: it has time). */
   timeProperty?: string | null;
+  /** Socrata: the geometry column an area is asked on (`shape:<name>` when it is not points). */
+  geometryField?: string;
 }
 
 /** A request read back off its address: its target, and the area, time and limit it asked. */
@@ -102,6 +104,28 @@ export function featureRequestUrl(
     }
     return url.toString();
   }
+  if (target.protocol === 'socrata') {
+    // SoQL: points within a box, shapes that intersect it; the date column in the time range.
+    const field = target.geometryField ?? '';
+    const parts: string[] = [];
+    if (area && field) {
+      const [w, s, e, n] = area;
+      parts.push(
+        field.startsWith('shape:')
+          ? `intersects(${field.slice(6)}, 'POLYGON((${w} ${s}, ${e} ${s}, ${e} ${n}, ${w} ${n}, ${w} ${s}))')`
+          : `within_box(${field}, ${n}, ${w}, ${s}, ${e})`
+      );
+    }
+    if (range && target.timeProperty) {
+      const floating = (t: number) => iso(t).replace(/\.\d+Z$/, '');
+      parts.push(`${target.timeProperty} between '${floating(range.from)}' and '${floating(range.to)}'`);
+    }
+    if (parts.length) {
+      url.searchParams.set('$where', parts.join(' AND '));
+    }
+    url.searchParams.set('$limit', String(limit));
+    return url.toString();
+  }
   if (target.protocol === 'arcgis') {
     if (area) {
       url.searchParams.set('geometry', area.join(','));
@@ -153,6 +177,33 @@ export function readFeatureRequest(source: string): ReadRequest | null {
         ? box([w, s, e, n])
         : box(bboxParam.length === 4 ? [bboxParam[1], bboxParam[0], bboxParam[3], bboxParam[2]] : []),
       time: property !== null,
+      limit,
+    };
+  }
+  if (/\/resource\/[\w-]+\.geojson$/.test(url.pathname)) {
+    const where = url.searchParams.get('$where') ?? '';
+    const point = /within_box\((\w+),\s*([-\d.e]+),\s*([-\d.e]+),\s*([-\d.e]+),\s*([-\d.e]+)\)/.exec(where);
+    const shape =
+      /intersects\((\w+),\s*'POLYGON\(\(([-\d.e]+) ([-\d.e]+),\s*([-\d.e]+) [-\d.e]+,\s*[-\d.e]+ ([-\d.e]+)/.exec(
+        where
+      );
+    const dated = /(\w+) between '/.exec(where);
+    const limit = count(url.searchParams.get('$limit'));
+    drop(url, ['$where', '$limit', '$offset']);
+    return {
+      target: {
+        protocol: 'socrata',
+        itemsHref: url.toString(),
+        timeProperty: dated?.[1] ?? null,
+        geometryField: point ? point[1] : shape ? `shape:${shape[1]}` : '',
+      },
+      // within_box(field, north, west, south, east); the polygon's first corner is west, south.
+      bbox: point
+        ? box([Number(point[3]), Number(point[4]), Number(point[5]), Number(point[2])])
+        : shape
+          ? box([Number(shape[2]), Number(shape[3]), Number(shape[4]), Number(shape[5])])
+          : null,
+      time: Boolean(dated),
       limit,
     };
   }

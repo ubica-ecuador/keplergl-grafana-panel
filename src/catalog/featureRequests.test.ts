@@ -179,3 +179,27 @@ describe('the area features are asked over', () => {
     expect(featuresArea(null)).toBeNull();
   });
 });
+
+describe('a Socrata request', () => {
+  const base = 'https://www.datos.gov.co/resource/rjax-8qyz.geojson';
+  it('asks points within the box and the date column in the range, and reads both back', () => {
+    const target = { protocol: 'socrata' as const, itemsHref: base, timeProperty: 'fecha', geometryField: 'ubicacion' };
+    const url = featureRequestUrl(target, AREA, RANGE, 2000);
+    expect(new URL(url).searchParams.get('$where')).toBe(
+      "within_box(ubicacion, 48.86, 2.34, 48.85, 2.35) AND fecha between '2010-01-01T00:00:00' and '2013-01-01T00:00:00'"
+    );
+    expect(readFeatureRequest(url)).toEqual({ target, bbox: AREA, time: true, limit: 2000 });
+  });
+
+  it('asks shapes that intersect the box', () => {
+    const target = {
+      protocol: 'socrata' as const,
+      itemsHref: base,
+      timeProperty: null,
+      geometryField: 'shape:the_geom',
+    };
+    const url = featureRequestUrl(target, AREA, null, 10);
+    expect(new URL(url).searchParams.get('$where')).toContain("intersects(the_geom, 'POLYGON((2.34 48.85,");
+    expect(readFeatureRequest(url)).toEqual({ target, bbox: AREA, time: false, limit: 10 });
+  });
+});

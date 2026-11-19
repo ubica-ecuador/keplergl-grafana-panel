@@ -88,6 +88,8 @@ export interface CatalogEntry {
   featureProtocol?: FeatureProtocol;
   /** A features entry of a WFS or ArcGIS: the property (or field) its time range is kept to; none, no time. */
   timeProperty?: string | null;
+  /** A Socrata dataset: its geometry column (`shape:<name>` when it is not points). */
+  geometryField?: string;
   /** A Datastream, sensors or an EDR collection: what it measures. */
   parameters?: Array<{ id: string; label: string; unit: string }>;
 }
@@ -330,6 +332,7 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
     protocols,
     timeProperties,
     parameterLists,
+    geometryFields,
   ] = [
     'id',
     'title',
@@ -351,6 +354,7 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
     'feature_protocol',
     'time_property',
     'parameters',
+    'geometry_field',
   ].map(column);
   const hasSeries = frame.fields.some((field) => field.name === 'series');
   const time = (value: unknown) => {
@@ -380,7 +384,11 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
       ...(time(sizes[i]) !== null ? { size: time(sizes[i]) } : {}),
       ...(typeof itemsHrefs[i] === 'string' && itemsHrefs[i] ? { itemsHref: itemsHrefs[i] } : {}),
       ...(typeof mediaTypes[i] === 'string' && mediaTypes[i] ? { mediaType: mediaTypes[i] } : {}),
-      ...(protocols[i] === 'wfs' || protocols[i] === 'arcgis' || protocols[i] === 'ogc-features'
+      ...(typeof geometryFields[i] === 'string' && geometryFields[i] ? { geometryField: geometryFields[i] } : {}),
+      ...(protocols[i] === 'wfs' ||
+      protocols[i] === 'arcgis' ||
+      protocols[i] === 'ogc-features' ||
+      protocols[i] === 'socrata'
         ? { featureProtocol: protocols[i] }
         : {}),
       ...(typeof timeProperties[i] === 'string' && timeProperties[i] ? { timeProperty: timeProperties[i] } : {}),
@@ -1304,7 +1312,9 @@ export function featuresOf(metadata: Record<string, unknown> | undefined): Featu
   const f = metadata?.catalogFeatures as Partial<FeaturesSearch> | undefined;
   return typeof f?.itemsHref === 'string' && Array.isArray(f.bbox) && f.bbox.length === 4
     ? {
-        protocol: f.protocol === 'wfs' || f.protocol === 'arcgis' ? f.protocol : 'ogc-features',
+        protocol:
+          f.protocol === 'wfs' || f.protocol === 'arcgis' || f.protocol === 'socrata' ? f.protocol : 'ogc-features',
+        ...(typeof f.geometryField === 'string' ? { geometryField: f.geometryField } : {}),
         itemsHref: f.itemsHref,
         timeProperty: typeof f.timeProperty === 'string' ? f.timeProperty : null,
         bbox: f.bbox as FeaturesSearch['bbox'],
@@ -1320,7 +1330,7 @@ export function featuresOf(metadata: Record<string, unknown> | undefined): Featu
  * an OGC API collection by its temporal extent.
  */
 export function featuresHaveTime(entry: CatalogEntry): boolean {
-  return entry.featureProtocol === 'wfs' || entry.featureProtocol === 'arcgis'
+  return entry.featureProtocol === 'wfs' || entry.featureProtocol === 'arcgis' || entry.featureProtocol === 'socrata'
     ? Boolean(entry.timeProperty)
     : entry.start !== null || entry.end !== null;
 }
@@ -1331,7 +1341,9 @@ export function featuresLabel(entry: CatalogEntry): string[] {
     ? ['WFS', entry.id.includes(':wfs:') ? entry.id.split(':wfs:').pop()! : entry.id]
     : entry.featureProtocol === 'arcgis'
       ? ['ArcGIS', entry.collectionTitle]
-      : ['OGC API Features', entry.collection];
+      : entry.featureProtocol === 'socrata'
+        ? ['Socrata', entry.collectionTitle]
+        : ['OGC API Features', entry.collection];
 }
 
 /**
@@ -1353,6 +1365,7 @@ export function featuresDataset(
     protocol: entry.featureProtocol ?? 'ogc-features',
     itemsHref: entry.itemsHref,
     timeProperty: entry.timeProperty ?? null,
+    ...(entry.geometryField ? { geometryField: entry.geometryField } : {}),
     bbox: area,
     followView: true,
     time,
