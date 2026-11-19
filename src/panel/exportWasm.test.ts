@@ -2,13 +2,13 @@ import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 import { loadSqlJs, locateSqlJsFile, SQL_JS_WASM } from './exportSqlJs';
-import startParquetWasm, * as parquetWasm from './exportParquetWasm';
 
 /**
  * kepler's Export data as GeoPackage and GeoParquet, kept off cdn.jsdelivr.net
- * and unpkg.com. webpack.config.ts swaps the two modules under test in for
- * kepler's own; these tests hold what each does, and that kepler still asks
- * for them by the requests the swap matches.
+ * and unpkg.com. webpack.config.ts swaps the sql.js loader under test in for
+ * kepler's own; these tests hold what it does, that kepler still asks for it by
+ * the request the swap matches, and that its GeoParquet writer reads the
+ * WebAssembly URL loaderOptions.ts gives it.
  */
 
 const BASE = 'https://grafana.example/public/plugins/ubica-keplergl-panel/loaders';
@@ -24,13 +24,6 @@ const initSqlJs = jest.fn();
 jest.mock('sql.js/dist/sql-wasm.js', () => ({
   __esModule: true,
   default: (settings: unknown) => initSqlJs(settings),
-}));
-
-const initParquetWasm = jest.fn();
-jest.mock('parquet-wasm', () => ({
-  __esModule: true,
-  default: (input: unknown) => initParquetWasm(input),
-  Table: class Table {},
 }));
 
 describe('loadSqlJs', () => {
@@ -57,29 +50,14 @@ describe('loadSqlJs', () => {
   });
 });
 
-describe('startParquetWasm', () => {
-  it("starts parquet-wasm from the plugin's copy, whatever URL kepler passes", async () => {
-    initParquetWasm.mockResolvedValue({});
-    const start = startParquetWasm as unknown as (input?: string) => Promise<unknown>;
-
-    await start('https://unpkg.com/parquet-wasm@0.6.1/esm/parquet_wasm_bg.wasm');
-
-    expect(initParquetWasm).toHaveBeenCalledWith(`${BASE}/parquet_wasm_bg.wasm`);
-  });
-
-  it('hands kepler the rest of the package', () => {
-    expect(parquetWasm.Table).toBeDefined();
-  });
-});
-
 describe("kepler's export writers", () => {
   it('still load sql.js through `./sql-js`, the request webpack.config.ts swaps', () => {
     const writer = readFileSync(join(KEPLER_EXPORT, 'geopackage-writer.js'), 'utf8');
     expect(writer).toMatch(/import \{ loadSqlJs \} from '\.\/sql-js';/);
   });
 
-  it('still import `parquet-wasm` for GeoParquet, the request webpack.config.ts swaps', () => {
+  it('start parquet-wasm for GeoParquet from the application config, which loaderOptions.ts sets', () => {
     const writer = readFileSync(join(KEPLER_EXPORT, 'geoparquet-writer.js'), 'utf8');
-    expect(writer).toContain("import('parquet-wasm')");
+    expect(writer).toContain('getApplicationConfig().parquetWasmUrl');
   });
 });

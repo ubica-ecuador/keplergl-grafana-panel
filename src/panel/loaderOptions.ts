@@ -1,6 +1,7 @@
 import { MVTLayer } from '@deck.gl/geo-layers';
 import { setLoaderOptions } from '@loaders.gl/core';
 import { MVTLoader } from '@loaders.gl/mvt';
+import { initApplicationConfig } from '@kepler.gl/utils';
 
 import { bundledDraco3d, fetchWasm, type Draco3dModule } from './dracoDecoder';
 import { assetBaseUrl } from './keplerConfig';
@@ -20,7 +21,9 @@ import { assetBaseUrl } from './keplerConfig';
  * - **Decoders.** Draco's comes from `www.gstatic.com`, its encoder from
  *   GitHub, and the Basis/KTX2 texture transcoders and the crunch decoder from
  *   `<CDN>/textures@<version>/dist/libs/`, where `CDN` defaults to unpkg.
- * - **Parquet.** Its WebAssembly reader defaults to `https://unpkg.com/parquet-wasm@…`.
+ * - **Parquet.** Its WebAssembly reader defaults to `https://unpkg.com/parquet-wasm@…`,
+ *   and so does kepler's GeoParquet export (Export data), which starts the same
+ *   WebAssembly itself.
  *
  * One call at module load closes all of them, for every copy of loaders.gl in
  * the bundle: there are several (kepler's packages nest 4.4.1 and 4.5.4 beside
@@ -44,7 +47,10 @@ import { assetBaseUrl } from './keplerConfig';
  *   not name (the crunch decoder, Draco's pure-JavaScript fallback) misses on
  *   the plugin's own host instead of being fetched from unpkg.
  * - `parquet.wasmUrl` is the copy of parquet-wasm's WebAssembly the plugin
- *   ships, for a Parquet file dropped on the map.
+ *   ships, for a Parquet file dropped on the map; kepler's application config
+ *   names the same file as `parquetWasmUrl` (kepler.gl 3.3.0-alpha.24) for the
+ *   GeoParquet export. parquet-wasm starts once per page, so whichever of the
+ *   reader and the writer comes first, the other finds it started from it.
  *
  * In the deferred chunk with the rest of kepler (see `KeplerMap.tsx`), not in
  * module.ts: nothing loads before the map does.
@@ -123,5 +129,6 @@ export function configureLoaders(): void {
   const base = loaderLibraryBaseUrl();
   const draco3d = bundledDraco3d(() => fetchWasm(`${base}/${DRACO_DECODER_WASM}`));
   setLoaderOptions(pluginLoaderOptions(base, draco3d));
+  initApplicationConfig({ parquetWasmUrl: `${base}/${PARQUET_WASM}` });
   mainThreadLoaders();
 }

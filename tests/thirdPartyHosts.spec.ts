@@ -2,7 +2,7 @@ import { test, expect } from '@grafana/plugin-e2e';
 import type { Locator, Page } from '@playwright/test';
 
 /**
- * Two of kepler's dialogs that called third-party hosts on their own, as the
+ * Three of kepler's dialogs that called third-party hosts on their own, as the
  * panel ships them.
  *
  * - Add Data → Tileset → Raster Tile sent every Cloud Optimized GeoTIFF to
@@ -12,6 +12,9 @@ import type { Locator, Page } from '@playwright/test';
  * - Share → Export Map fetched three preview pictures from CloudFront as it
  *   opened, for an HTML export that loads kepler.gl from CDNs. It now offers
  *   JSON only and fetches nothing.
+ * - Share → Export Data as GeoParquet or GeoPackage loaded parquet-wasm from
+ *   unpkg.com and sql.js from cdn.jsdelivr.net. Both now come from the
+ *   plugin's own `loaders/` folder.
  */
 
 test.use({ viewport: { width: 1920, height: 1080 } });
@@ -145,3 +148,62 @@ test('Export Map offers JSON only and fetches nothing', async ({
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   expect((await download).suggestedFilename()).toMatch(/\.json$/);
 });
+
+/** Opens one of kepler's dialogs on the map under `page`, through kepler's own action. */
+async function openKeplerModal(page: Page, modal: string): Promise<void> {
+  await page.locator('.maplibregl-map').evaluate((node, id) => {
+    const fiberKey = Object.keys(node).find((k) => k.startsWith('__reactFiber$'));
+    let fiber = fiberKey ? (node as unknown as Record<string, any>)[fiberKey] : null;
+    while (fiber && !(fiber.memoizedProps?.store && typeof fiber.memoizedProps.store.getState === 'function')) {
+      fiber = fiber.return;
+    }
+    const store = fiber?.memoizedProps?.store;
+    const instanceId = Object.keys(store.getState().keplerGl)[0];
+    const action = { type: '@@kepler.gl/TOGGLE_MODAL', payload: id };
+    store.dispatch({
+      type: action.type,
+      payload: { ...action, meta: { _id_: instanceId } },
+      meta: { _forward_: '@redux-forward/FORWARD', _addr_: `@@KG_${instanceId.toUpperCase()}` },
+    });
+  }, modal);
+}
+
+for (const { type, extension, file } of [
+  { type: 'GEOPARQUET', extension: 'parquet', file: 'parquet_wasm_bg.wasm' },
+  { type: 'GEOPACKAGE', extension: 'gpkg', file: 'sql-wasm.wasm' },
+]) {
+  test(`Export Data writes ${extension} with the plugin's own WebAssembly`, async ({
+    gotoPanelEditPage,
+    readProvisionedDashboard,
+    page,
+  }) => {
+    // sql.js and parquet-wasm load on the first export, after the map has.
+    test.slow();
+    const seen = outbound(page);
+    // What the export itself asks for: WebAssembly, or a script from jsDelivr.
+    let exporting = false;
+    const fetched: string[] = [];
+    page.on('request', (request) => {
+      if (exporting && (request.url().endsWith('.wasm') || /jsdelivr\.net/.test(request.url()))) {
+        fetched.push(request.url());
+      }
+    });
+    // A map of points: GeoPackage refuses a layer with no features of its own, as the trips of dashboard.json are.
+    const dashboard = await readProvisionedDashboard({ fileName: 'varsync.json' });
+    await gotoPanelEditPage({ dashboard, id: '1' });
+    await expect(page.locator('.dataset-name').first()).toBeVisible({ timeout: 60_000 });
+
+    await openKeplerModal(page, 'exportData');
+    const dialog = page.locator('.ReactModalPortal');
+    await dialog.locator('select.data-type-select').selectOption(type);
+    const download = page.waitForEvent('download');
+    exporting = true;
+    await dialog.locator('.modal--footer--confirm-button').click();
+    expect((await download).suggestedFilename()).toMatch(new RegExp(`\\.${extension}$`));
+
+    expect(fetched).toEqual([
+      expect.stringMatching(new RegExp(`/public/plugins/ubica-keplergl-panel/loaders/${file}$`)),
+    ]);
+    expect(seen).toEqual([]);
+  });
+}

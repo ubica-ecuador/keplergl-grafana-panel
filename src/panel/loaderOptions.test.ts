@@ -4,6 +4,7 @@ import { MVTLayer } from '@deck.gl/geo-layers';
 import { getLoaderOptions, parse } from '@loaders.gl/core';
 import type { Loader } from '@loaders.gl/loader-utils';
 import { MVTWorkerLoader } from '@loaders.gl/mvt';
+import { getApplicationConfig } from '@kepler.gl/utils';
 import { getLibraryUrl } from '@loaders.gl/worker-utils';
 
 import {
@@ -129,6 +130,10 @@ describe('configureLoaders', () => {
     expect(global.core?.useLocalLibraries).toBe(true);
     expect(global.core?.CDN).toBe(loaderLibraryBaseUrl());
     expect(global.modules?.draco3d).toBeDefined();
+  });
+
+  it("points kepler's GeoParquet export at the plugin's copy of parquet-wasm, not unpkg's", () => {
+    expect(getApplicationConfig().parquetWasmUrl).toBe(`${loaderLibraryBaseUrl()}/${PARQUET_WASM}`);
   });
 
   it('reaches the copies of loaders.gl nested under kepler.gl and hubble.gl', () => {

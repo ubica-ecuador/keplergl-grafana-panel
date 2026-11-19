@@ -191,23 +191,20 @@ const config = async (env: Env): Promise<Configuration> => {
         }
       }),
       /*
-       * kepler's Export data writes a GeoPackage with sql.js and GeoParquet with
-       * parquet-wasm, and fetches both from a CDN: its `sql-js` module adds a
-       * script from cdn.jsdelivr.net, and its GeoParquet writer starts
-       * parquet-wasm with a WebAssembly URL on unpkg.com. Each is swapped here,
-       * for kepler's file only, with a module that loads the same package from
-       * the plugin (src/panel/exportSqlJs.ts, src/panel/exportParquetWasm.ts).
+       * kepler's Export data writes a GeoPackage with sql.js, which its `sql-js`
+       * module loads by adding a script from cdn.jsdelivr.net (or from the
+       * folder `sqlJsUrl` names, still a script added to the page). It is
+       * swapped here, for kepler's file only, with a module that imports the
+       * same package into the bundle and finds its WebAssembly in the plugin
+       * (src/panel/exportSqlJs.ts). GeoParquet needs no swap: kepler.gl
+       * 3.3.0-alpha.24 starts parquet-wasm from the application config's
+       * `parquetWasmUrl`, which src/panel/loaderOptions.ts points at the
+       * plugin's copy.
        */
       new webpack.NormalModuleReplacementPlugin(/^\.\/sql-js(\.js)?$/, (resource) => {
         const issuer: string = resource.contextInfo?.issuer ?? '';
         if (/@kepler\.gl[\\/]processors[\\/]/.test(issuer)) {
           resource.request = path.resolve(process.cwd(), 'src', 'panel', 'exportSqlJs.ts');
-        }
-      }),
-      new webpack.NormalModuleReplacementPlugin(/^parquet-wasm$/, (resource) => {
-        const issuer: string = resource.contextInfo?.issuer ?? '';
-        if (/@kepler\.gl[\\/]processors[\\/].*geoparquet-writer\.js$/.test(issuer)) {
-          resource.request = path.resolve(process.cwd(), 'src', 'panel', 'exportParquetWasm.ts');
         }
       }),
       /*
