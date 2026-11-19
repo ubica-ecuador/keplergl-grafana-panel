@@ -49,6 +49,10 @@ export interface CatalogEntry {
   bbox: [number, number, number, number] | null;
   /** A series only: the collection's dated rasters, oldest first. The entry's own address is the newest one's. */
   scenes?: CatalogScene[];
+  /** A series only: its entries, oldest first, each of which can also be added alone (to compare two years). */
+  members?: CatalogEntry[];
+  /** A series found by some of its entries rather than by itself: `members` holds those, to show open. */
+  foundByMembers?: boolean;
 }
 
 /** One scene of a series: the entry it is, when it holds, and where this map reads it. */
@@ -74,6 +78,10 @@ export interface CatalogRef {
 /** What the map adding an entry brings: its raster tile servers, and how kepler describes a raster. */
 export interface AddContext {
   tileServerUrls: readonly string[];
+  /** The dashboard's time range, for the list's "In the time range". */
+  timeRange?: { from: number; to: number };
+  /** Whether the dashboard's time range drives the map's time filter, and so which scene of a series it draws. */
+  followsDashboard?: boolean;
   /** The metadata kepler needs for a raster (keplerAdapter's `catalogRasterMetadata`). */
   rasterMetadata?: (raster: CatalogRaster) => Record<string, unknown>;
 }
@@ -285,6 +293,7 @@ function seriesEntry(group: CatalogEntry[]): CatalogEntry {
     start: sorted[0].start,
     end: newest.end ?? newest.start,
     thumbnail: sorted.find((entry) => entry.thumbnail)?.thumbnail ?? null,
+    members: sorted,
     scenes: sorted.map((entry) => ({
       entry: entry.id,
       start: entry.start as number,
@@ -294,14 +303,47 @@ function seriesEntry(group: CatalogEntry[]): CatalogEntry {
   };
 }
 
-/** Entries whose title, id or collection hold every word of the text, of one kind when asked. */
-export function searchCatalog(entries: CatalogEntry[], text: string, kind: string): CatalogEntry[] {
+/** Whether an entry holds at some moment of a time range: undated ones hold at every moment (a building, a model). */
+export function holdsWithin(entry: Pick<CatalogEntry, 'start' | 'end'>, range: { from: number; to: number }): boolean {
+  if (entry.start === null) {
+    return true;
+  }
+  const end = entry.end !== null && entry.end > entry.start ? entry.end : entry.start;
+  return entry.start <= range.to && end >= range.from;
+}
+
+/**
+ * Entries whose title, id or collection hold every word of the text, of one kind when asked, and that hold within a
+ * time range when one is given. A series is found by itself, or by some of its entries ("2010", or the years of the
+ * range), and then carries only those, marked `foundByMembers` so the list shows them open.
+ */
+export function searchCatalog(
+  entries: CatalogEntry[],
+  text: string,
+  kind: string,
+  range: { from: number; to: number } | null = null
+): CatalogEntry[] {
   const words = text.toLowerCase().split(/\s+/).filter(Boolean);
-  return entries.filter(
-    (entry) =>
-      (!kind || entry.kind === kind) &&
-      words.every((word) => `${entry.id} ${entry.title} ${entry.collection}`.toLowerCase().includes(word))
-  );
+  const byText = (entry: CatalogEntry) =>
+    (!kind || entry.kind === kind) &&
+    words.every((word) => `${entry.id} ${entry.title} ${entry.collection}`.toLowerCase().includes(word));
+  const byTime = (entry: CatalogEntry) => range === null || holdsWithin(entry, range);
+  const found: CatalogEntry[] = [];
+  for (const entry of entries) {
+    if (!entry.members) {
+      if (byText(entry) && byTime(entry)) {
+        found.push(entry);
+      }
+      continue;
+    }
+    const inTime = entry.members.filter(byTime);
+    const members = byText(entry) ? inTime : inTime.filter(byText);
+    if (members.length > 0) {
+      const narrowed = members.length < entry.members.length;
+      found.push(narrowed ? { ...entry, members, foundByMembers: true } : entry);
+    }
+  }
+  return found;
 }
 
 /**

@@ -432,9 +432,14 @@ export function KeplerMap({
   const catalogApi = useMemo<CatalogApi>(
     () => ({
       add: (saved) => addCatalogDataset(store.dispatch, saved),
-      context: { tileServerUrls: rasterServerUrls ?? [], rasterMetadata: catalogRasterMetadata },
+      context: {
+        tileServerUrls: rasterServerUrls ?? [],
+        rasterMetadata: catalogRasterMetadata,
+        timeRange: grafanaRange,
+        followsDashboard: couplesDashboardRange(timeSync),
+      },
     }),
-    [store, rasterServerUrls]
+    [store, rasterServerUrls, grafanaRange, timeSync]
   );
 
   // The panel's size, for the load below to hand kepler before it frames the

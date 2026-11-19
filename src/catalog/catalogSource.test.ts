@@ -7,6 +7,7 @@ import {
   catalogRefsOf,
   catalogSeriesRasters,
   entriesOf,
+  holdsWithin,
   rememberCatalogForTests,
   searchCatalog,
   whereInstead,
@@ -17,7 +18,7 @@ import {
 } from './catalogSource';
 import type { SavedMapConfig } from '../data/mapConfig';
 import { pickScene } from '../data/rasterDataset';
-import { entryDate, entryWhen } from './CatalogPanel';
+import { entryDate, entryWhen, scenesLabel } from './CatalogPanel';
 
 // A Catalog search frame as the Ubica Catalog data source answers it.
 const frame = createDataFrame({
@@ -255,6 +256,42 @@ describe('a collection of dated rasters in a catalog', () => {
       Date.UTC(2020, 0, 1),
       Date.UTC(2020, 11, 31, 23, 59, 59),
     ]);
+  });
+
+  it('keeps its years, each of which can be added alone, fixed', () => {
+    const series = withSeries(entries)[1];
+    expect(series.members?.map((e) => e.id)).toEqual(['cci-biomass-2005', 'cci-biomass-2010', 'cci-biomass-2020']);
+    expect(scenesLabel(series.members ?? [])).toBe('Years');
+    const alone = catalogDataset(series.members![1], 'cat', context)!;
+    expect(alone.data).toMatchObject({
+      id: 'catalog-cci-biomass-2010',
+      metadata: { catalogEntry: 'cci-biomass-2010' },
+    });
+    expect(alone.data.metadata?.catalogScenes).toBeUndefined();
+  });
+
+  it('is found by its own name with every year, or by a year with that year only, shown open', () => {
+    const listed = withSeries(entries);
+    expect(searchCatalog(listed, 'biomass', '')[0].members).toHaveLength(3);
+    expect(searchCatalog(listed, 'biomass', '')[0].foundByMembers).toBeUndefined();
+    const found = searchCatalog(listed, '2010', '');
+    expect(found.map((e) => e.id)).toEqual(['cci-biomass']);
+    expect(found[0]).toMatchObject({ foundByMembers: true });
+    expect(found[0].members?.map((e) => e.id)).toEqual(['cci-biomass-2010']);
+    // Still the whole series to add.
+    expect(found[0].scenes).toHaveLength(3);
+  });
+
+  it('keeps to the dashboard time range when asked: the years it touches, and what has no date', () => {
+    const listed = withSeries(entries);
+    const range = { from: Date.UTC(2010, 5, 1), to: Date.UTC(2011, 0, 1) };
+    expect(holdsWithin(year(2010), range)).toBe(true);
+    expect(holdsWithin(year(2020), range)).toBe(false);
+    expect(holdsWithin(tileset, range)).toBe(true);
+    const found = searchCatalog(listed, '', '', range);
+    expect(found.map((e) => e.id)).toEqual(['amsterdam-dam-lidar', 'cci-biomass']);
+    expect(found[1].members?.map((e) => e.id)).toEqual(['cci-biomass-2010']);
+    expect(searchCatalog(listed, '', 'raster', { from: Date.UTC(2014, 0, 1), to: Date.UTC(2015, 0, 1) })).toEqual([]);
   });
 
   it('takes its scenes from the catalog again on load: a new year shows by itself', () => {

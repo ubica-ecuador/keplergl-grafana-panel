@@ -55,6 +55,17 @@ export function entryWhen(entry: Pick<CatalogEntry, 'start' | 'scenes'>): string
   return `${entryDate(scenes[0].start)}–${entryDate(scenes[scenes.length - 1].start)} · ${scenes.length} scenes`;
 }
 
+/** What a series' scenes are, for its toggle: years when each starts a year, else dates. */
+export function scenesLabel(members: Array<Pick<CatalogEntry, 'start'>>): string {
+  return members.every((member) => /^\d{4}$/.test(entryDate(member.start))) ? 'Years' : 'Dates';
+}
+
+/** A time range as the list's chip says it: days, in UTC. */
+function rangeText(range: { from: number; to: number }): string {
+  const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+  return `${day(range.from)} to ${day(range.to)}`;
+}
+
 /** An address the page can load: Grafana's own paths under its sub-path. */
 function pageUrl(url: string): string {
   const sub = config.appSubUrl ?? '';
@@ -213,6 +224,31 @@ const Elsewhere = styled.span`
   color: ${(props) => props.theme.subtextColor};
   font-size: 11px;
 `;
+const Actions = styled.div`
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+`;
+const Toggle = styled.button`
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid ${(props) => props.theme.panelBorderColor};
+  background: transparent;
+  color: ${(props) => props.theme.textColor};
+  cursor: pointer;
+  font-size: 11px;
+`;
+const Members = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: -4px 0 0 16px;
+`;
+const MemberRow = styled(Row)`
+  padding: 4px 6px;
+`;
 const Close = styled.button`
   border: none;
   background: transparent;
@@ -233,6 +269,9 @@ export function CatalogPanel() {
   const [text, setText] = useState('');
   const [kind, setKind] = useState('');
   const [added, setAdded] = useState<Set<string>>(new Set());
+  // Series whose scenes are listed one by one, and whether the list keeps to the dashboard's time range.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [inRange, setInRange] = useState(false);
 
   useEffect(() => {
     if (!open || !uid) {
@@ -254,7 +293,24 @@ export function CatalogPanel() {
   if (!open || !api) {
     return null;
   }
-  const shown = searchCatalog(entries ?? [], text, kind);
+  const range = api.context.timeRange ?? null;
+  const shown = searchCatalog(entries ?? [], text, kind, inRange ? range : null);
+  const follows = api.context.followsDashboard === true;
+  const add = (entry: CatalogEntry) => {
+    const saved = catalogDataset(entry, uid, api.context);
+    if (saved) {
+      api.add(saved);
+      setAdded(new Set([...added, entry.id]));
+    }
+  };
+  const addButton = (entry: CatalogEntry, title: string) => {
+    const done = added.has(entry.id);
+    return (
+      <Add aria-label={`Add ${entry.title}`} title={title} disabled={done} onClick={() => add(entry)}>
+        {done ? 'Added' : 'Add'}
+      </Add>
+    );
+  };
   return (
     <Panel className="catalog-panel" role="dialog" aria-label="Add from catalog">
       <Header>
@@ -284,44 +340,92 @@ export function CatalogPanel() {
             {label}
           </Chip>
         ))}
+        {range ? (
+          <Chip
+            $on={inRange}
+            aria-pressed={inRange}
+            title={`Only what holds within the dashboard's time range, ${rangeText(range)}`}
+            onClick={() => setInRange(!inRange)}
+          >
+            In the time range
+          </Chip>
+        ) : null}
       </Kinds>
       {error ? <span>The catalog did not answer: {error}</span> : null}
       {entries === null && !error ? <span>Reading the catalog…</span> : null}
       {entries !== null ? <span>{shown.length} entries</span> : null}
       {shown.map((entry) => {
         const why = whyNotAddable(entry, api.context);
-        const done = added.has(entry.id);
-        const tip = why ?? (entry.scenes ? `${entry.title}: the map's time range picks the scene` : entry.title);
+        const members = entry.members ?? [];
+        const isOpen = members.length > 0 && (expanded.has(entry.id) || entry.foundByMembers === true);
+        const picks = follows ? "the dashboard's date picks the scene" : "the map's time slider picks the scene";
         return (
-          <Row key={entry.id} className="catalog-entry" title={tip}>
-            <Thumb style={entry.thumbnail ? { backgroundImage: `url("${pageUrl(entry.thumbnail)}")` } : undefined} />
-            <Text>
-              <b>{entry.title}</b>
-              <span>
-                {(entry.scenes ? [entryWhen(entry), 'raster series'] : [entry.kind, entry.collection, entryWhen(entry)])
-                  .filter(Boolean)
-                  .join(' · ')}
-              </span>
-              <span>{entry.license}</span>
-            </Text>
-            {why ? (
-              <Elsewhere>{whereInstead(entry)}</Elsewhere>
-            ) : (
-              <Add
-                aria-label={`Add ${entry.title}`}
-                disabled={done}
-                onClick={() => {
-                  const saved = catalogDataset(entry, uid, api.context);
-                  if (saved) {
-                    api.add(saved);
-                    setAdded(new Set([...added, entry.id]));
-                  }
-                }}
-              >
-                {done ? 'Added' : 'Add'}
-              </Add>
-            )}
-          </Row>
+          <React.Fragment key={entry.id}>
+            <Row className="catalog-entry" title={why ?? (entry.scenes ? `${entry.title}: ${picks}` : entry.title)}>
+              <Thumb style={entry.thumbnail ? { backgroundImage: `url("${pageUrl(entry.thumbnail)}")` } : undefined} />
+              <Text>
+                <b>{entry.title}</b>
+                <span>
+                  {(entry.scenes
+                    ? [entryWhen(entry), follows ? 'follows the date' : 'raster series']
+                    : [entry.kind, entry.collection, entryWhen(entry)]
+                  )
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+                <span>{entry.license}</span>
+              </Text>
+              <Actions>
+                {why ? (
+                  <Elsewhere>{whereInstead(entry)}</Elsewhere>
+                ) : (
+                  addButton(entry, entry.scenes ? `Add the whole series: ${picks}` : `Add ${entry.title}`)
+                )}
+                {members.length > 0 ? (
+                  <Toggle
+                    aria-expanded={isOpen}
+                    aria-label={`${isOpen ? 'Hide' : 'Show'} the scenes of ${entry.title}`}
+                    title="Add one scene alone, fixed whatever the date: two of them compare"
+                    onClick={() => {
+                      const next = new Set(expanded);
+                      if (isOpen) {
+                        next.delete(entry.id);
+                      } else {
+                        next.add(entry.id);
+                      }
+                      setExpanded(next);
+                    }}
+                  >
+                    {scenesLabel(members)} {isOpen ? '▴' : '▾'}
+                  </Toggle>
+                ) : null}
+              </Actions>
+            </Row>
+            {isOpen ? (
+              <Members role="group" aria-label={`The scenes of ${entry.title}`}>
+                {members.map((member) => {
+                  const whyMember = whyNotAddable(member, api.context);
+                  return (
+                    <MemberRow
+                      key={member.id}
+                      className="catalog-entry catalog-member"
+                      title={whyMember ?? member.title}
+                    >
+                      <Text>
+                        <b>{entryDate(member.start) || member.title}</b>
+                        <span>{[member.kind, 'fixed'].join(' · ')}</span>
+                      </Text>
+                      {whyMember ? (
+                        <Elsewhere>{whereInstead(member)}</Elsewhere>
+                      ) : (
+                        addButton(member, `Add ${member.title} alone, whatever the date`)
+                      )}
+                    </MemberRow>
+                  );
+                })}
+              </Members>
+            ) : null}
+          </React.Fragment>
         );
       })}
     </Panel>
