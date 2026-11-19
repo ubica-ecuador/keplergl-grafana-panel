@@ -15,7 +15,7 @@ import {
 import { COG_PAINTED_TYPE } from '../panel/cogPaintedLayer';
 
 /**
- * Spatial catalogs as a data source (the Ubica Catalog data source, `ubica-catalog-datasource`): what the map's
+ * STAC catalogs as a data source (the STAC Catalog data source, `ubica-stac-datasource`): what the map's
  * "Add from catalog" lists, and how a dataset added from one keeps following its entry.
  *
  * A dataset added from a catalog is saved like any tileset or raster, its address included, plus where it came from
@@ -32,7 +32,7 @@ import { COG_PAINTED_TYPE } from '../panel/cogPaintedLayer';
  *   (`catalogSearch`), never as scenes: they are searched again on load and when the time range changes.
  */
 
-export const CATALOG_DATASOURCE_TYPE = 'ubica-catalog-datasource';
+export const CATALOG_DATASOURCE_TYPE = 'ubica-stac-datasource';
 
 /** How long a catalog's entries are kept; one read serves every map of the dashboard. */
 const KEEP_MS = 5 * 60 * 1000;
