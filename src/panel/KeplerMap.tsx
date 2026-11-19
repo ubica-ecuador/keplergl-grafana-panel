@@ -41,6 +41,7 @@ import {
   setSidePanel,
   sizeMapForFit,
   addCatalogDataset,
+  catalogRasterMetadata,
 } from './keplerAdapter';
 import { CatalogContext, type CatalogApi } from '../catalog/CatalogPanel';
 import { catalogRefsOf, prefetchCatalogs } from '../catalog/catalogSource';
@@ -427,7 +428,13 @@ export function KeplerMap({
   }, [catalogKey]);
   const catalogsReady = catalogKey === '[]' || catalogsReadFor === catalogKey;
   // Add from catalog, in the map control: a picked tileset joins the map as a saved one would.
-  const catalogApi = useMemo<CatalogApi>(() => ({ add: (saved) => addCatalogDataset(store.dispatch, saved) }), [store]);
+  const catalogApi = useMemo<CatalogApi>(
+    () => ({
+      add: (saved) => addCatalogDataset(store.dispatch, saved),
+      context: { tileServerUrls: rasterServerUrls ?? [], rasterMetadata: catalogRasterMetadata },
+    }),
+    [store, rasterServerUrls]
+  );
 
   // The panel's size, for the load below to hand kepler before it frames the
   // data. Read through a ref so that a resize does not re-run the load.

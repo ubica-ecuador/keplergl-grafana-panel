@@ -5,6 +5,7 @@ import { MapControlButton } from '@kepler.gl/components';
 
 import type { SavedRemoteDataset } from '../data/mapConfig';
 import {
+  type AddContext,
   catalogDataset,
   catalogEntries,
   type CatalogEntry,
@@ -14,9 +15,10 @@ import {
   whyNotAddable,
 } from './catalogSource';
 
-/** What the map offers the catalog panel: adding a dataset to it. Provided by KeplerMap. */
+/** What the map offers the catalog panel: adding a dataset to it, and what it draws rasters with. Provided by KeplerMap. */
 export interface CatalogApi {
   add(saved: SavedRemoteDataset): void;
+  context: AddContext;
 }
 export const CatalogContext = createContext<CatalogApi | null>(null);
 
@@ -33,6 +35,15 @@ const KINDS: Array<[string, string]> = [
   ['raster', 'Rasters'],
   ['external', 'Catalogs'],
 ];
+
+/** An entry's date for its row: the year alone when it starts a year (a yearly series), else the day. */
+export function entryDate(start: number | null): string {
+  if (start === null) {
+    return '';
+  }
+  const iso = new Date(start).toISOString();
+  return iso.endsWith('-01-01T00:00:00.000Z') ? iso.slice(0, 4) : iso.slice(0, 10);
+}
 
 /** An address the page can load: Grafana's own paths under its sub-path. */
 function pageUrl(url: string): string {
@@ -266,16 +277,14 @@ export function CatalogPanel() {
       {entries === null && !error ? <span>Reading the catalog…</span> : null}
       {entries !== null ? <span>{shown.length} entries</span> : null}
       {shown.map((entry) => {
-        const why = whyNotAddable(entry);
+        const why = whyNotAddable(entry, api.context);
         const done = added.has(entry.id);
         return (
           <Row key={entry.id} className="catalog-entry" title={why ?? entry.title}>
             <Thumb style={entry.thumbnail ? { backgroundImage: `url("${pageUrl(entry.thumbnail)}")` } : undefined} />
             <Text>
               <b>{entry.title}</b>
-              <span>
-                {entry.kind} · {entry.collection}
-              </span>
+              <span>{[entry.kind, entry.collection, entryDate(entry.start)].filter(Boolean).join(' · ')}</span>
               <span>{entry.license}</span>
             </Text>
             {why ? (
@@ -285,7 +294,7 @@ export function CatalogPanel() {
                 aria-label={`Add ${entry.title}`}
                 disabled={done}
                 onClick={() => {
-                  const saved = catalogDataset(entry, uid);
+                  const saved = catalogDataset(entry, uid, api.context);
                   if (saved) {
                     api.add(saved);
                     setAdded(new Set([...added, entry.id]));

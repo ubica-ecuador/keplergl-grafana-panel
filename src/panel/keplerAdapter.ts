@@ -64,7 +64,7 @@ import {
 } from '../data/mapConfig';
 import { savedViewportOf } from './viewportGuard';
 import { documentBase, relativeRemoteSource, resolveRemoteSource } from '../data/remoteSource';
-import { withCatalogHref } from '../catalog/catalogSource';
+import { type CatalogRaster, withCatalogHref } from '../catalog/catalogSource';
 import { viewportFromMapState, type MapStateLike } from './windViewport';
 import type { ViewportBounds } from './viewportSync';
 import { MULTI_SELECT_FILTER_TYPE, type LinkableFilter } from './mosaicLink';
@@ -1021,8 +1021,16 @@ export function restoredDatasets(savedConfig?: SavedMapConfig | null): ProtoData
 }
 
 /**
- * Adds a tileset picked from a catalog (the map's Add from catalog), as the restore above would: kepler makes its
- * layer, and the 3D Tiles framing flies to it once it loads (tile3dFraming.ts).
+ * The metadata kepler needs for a raster added from a catalog: what a query's raster of the same kind carries, so
+ * the two draw alike.
+ */
+export function catalogRasterMetadata(raster: CatalogRaster): Record<string, unknown> {
+  return rasterMetadata({ id: '', label: '', scenes: [], ...raster }) as Record<string, unknown>;
+}
+
+/**
+ * Adds a tileset or raster picked from a catalog (the map's Add from catalog), as the restore above would: kepler
+ * makes its layer, and the 3D Tiles framing flies to a tileset once it loads (tile3dFraming.ts).
  */
 export function addCatalogDataset(dispatch: Dispatch, saved: SavedRemoteDataset): void {
   const parsed = datasetSchema[VERSIONS.v1].load(

@@ -3,14 +3,16 @@ import { getDataSourceSrv } from '@grafana/runtime';
 import { isObservable, lastValueFrom } from 'rxjs';
 
 import type { SavedMapConfig, SavedRemoteDataset } from '../data/mapConfig';
+import { metadataUrlFor, rasterKind, type RasterKind } from '../data/rasterDataset';
+import { COG_PAINTED_TYPE } from '../panel/cogPaintedLayer';
 
 /**
  * Spatial catalogs as a data source (the Ubica Catalog data source, `ubica-catalog-datasource`): what the map's
- * "Add from catalog" lists, and how a tileset added from one keeps following its entry.
+ * "Add from catalog" lists, and how a dataset added from one keeps following its entry.
  *
- * A dataset added from a catalog is saved like any tileset, its URL included, plus where it came from
- * (`catalogEntry`, `catalogUid` in its metadata). On load the URL is taken again from the catalog, so moving a file
- * means changing one entry, not every dashboard; with the catalog out of reach the saved URL still loads.
+ * A dataset added from a catalog is saved like any tileset or raster, its address included, plus where it came from
+ * (`catalogEntry`, `catalogUid` in its metadata). On load the address is taken again from the catalog, so moving a
+ * file means changing one entry, not every dashboard; with the catalog out of reach the saved address still loads.
  */
 
 export const CATALOG_DATASOURCE_TYPE = 'ubica-catalog-datasource';
@@ -18,7 +20,7 @@ export const CATALOG_DATASOURCE_TYPE = 'ubica-catalog-datasource';
 /** How long a catalog's entries are kept; one read serves every map of the dashboard. */
 const KEEP_MS = 5 * 60 * 1000;
 
-/** How long a map with catalog datasets waits for their catalogs before loading with the saved URLs. */
+/** How long a map with catalog datasets waits for their catalogs before loading with the saved addresses. */
 export const CATALOG_WAIT_MS = 3000;
 
 export type CatalogKind = 'gltf-model' | '3d-tiles' | 'raster' | 'vector' | 'external' | 'other';
@@ -29,6 +31,11 @@ export interface CatalogEntry {
   kind: CatalogKind | string;
   collection: string;
   href: string;
+  /** How a tile server reads it, when the data source names an alternate the entry has (a raster's VRT, say). */
+  serverHref: string | null;
+  /** Whether the tile server paints it with the palette it carries; null when the catalog does not say. */
+  painted: boolean | null;
+  start: number | null;
   license: string;
   thumbnail: string | null;
   bbox: [number, number, number, number] | null;
@@ -39,30 +46,74 @@ export interface CatalogRef {
   entry: string;
 }
 
-/** The dataset type, and the metadata key holding the URL, a catalog entry of each kind becomes. */
-const ADDABLE: Partial<Record<string, { type: string; urlKey: string }>> = {
-  '3d-tiles': { type: 'tile-3d', urlKey: 'tile3dUrl' },
-};
+/** What the map adding an entry brings: its raster tile servers, and how kepler describes a raster. */
+export interface AddContext {
+  tileServerUrls: readonly string[];
+  /** The metadata kepler needs for a raster (keplerAdapter's `catalogRasterMetadata`). */
+  rasterMetadata?: (raster: CatalogRaster) => Record<string, unknown>;
+}
 
-/** Where an entry that this map cannot draw is used instead: a short label for its row. */
-export function whereInstead(entry: Pick<CatalogEntry, 'kind'>): string {
-  return entry.kind === 'gltf-model' ? 'In Plus' : 'By query';
+/** A raster entry as the map draws it: the panel's raster kinds (see `RasterKind`). */
+export interface CatalogRaster {
+  kind: RasterKind;
+  sourceUrl: string;
+  metadataUrl: string;
+  tileServerUrls: string[];
+}
+
+const NO_CONTEXT: AddContext = { tileServerUrls: [] };
+
+/** The address this map loads an entry from: for a raster, what its tile server reads. */
+export function addressOf(entry: Pick<CatalogEntry, 'kind' | 'href' | 'serverHref'>): string {
+  return entry.kind === 'raster' ? (entry.serverHref ?? entry.href) : entry.href;
+}
+
+/** A raster entry in the panel's terms: painted when the catalog says so, an archive by its name, else a COG. */
+export function catalogRaster(
+  entry: Pick<CatalogEntry, 'kind' | 'href' | 'serverHref' | 'painted'>,
+  tileServerUrls: readonly string[]
+): CatalogRaster {
+  const sourceUrl = addressOf(entry);
+  const kind = rasterKind(sourceUrl, entry.painted === true);
+  const servers = kind === 'pmtiles' ? [] : [...tileServerUrls];
+  return {
+    kind,
+    sourceUrl,
+    metadataUrl: kind === 'cog' ? metadataUrlFor(servers[0] ?? '', sourceUrl) : sourceUrl,
+    tileServerUrls: servers,
+  };
 }
 
 /** Why an entry cannot be added to this map, or null when it can. */
-export function whyNotAddable(entry: Pick<CatalogEntry, 'kind'>): string | null {
-  if (ADDABLE[entry.kind]) {
-    return null;
-  }
+export function whyNotAddable(
+  entry: Pick<CatalogEntry, 'kind' | 'href' | 'serverHref'>,
+  context: AddContext = NO_CONTEXT
+): string | null {
   switch (entry.kind) {
+    case '3d-tiles':
+      return null;
+    case 'raster':
+      return rasterKind(addressOf(entry)) === 'pmtiles' || context.tileServerUrls.length > 0
+        ? null
+        : 'A raster: this map has no tile server to draw it (Raster tile server, in the panel options).';
     case 'gltf-model':
       return 'A glTF model: Kepler Plus draws it, with the 4D Model layer.';
-    case 'raster':
-      return 'A raster: give its address to a query as raster_url.';
     case 'external':
       return 'A catalog of its own: search it from a query.';
     default:
       return 'This map cannot draw this kind of entry.';
+  }
+}
+
+/** Where an entry that this map cannot draw is used instead: a short label for its row. */
+export function whereInstead(entry: Pick<CatalogEntry, 'kind'>): string {
+  switch (entry.kind) {
+    case 'gltf-model':
+      return 'In Plus';
+    case 'raster':
+      return 'No tile server';
+    default:
+      return 'By query';
   }
 }
 
@@ -115,18 +166,21 @@ async function readEntries(uid: string): Promise<CatalogEntry[]> {
   return entriesOf(response.data?.[0]);
 }
 
-/** The rows of a catalog search frame (title, kind, collection, id, href, license, thumbnail, box). */
+/** The rows of a catalog search frame (title, kind, collection, id, href, server_href, painted, start, box…). */
 export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
   if (!frame) {
     return [];
   }
   const column = (name: string) => frame.fields.find((field) => field.name === name)?.values ?? [];
-  const [ids, titles, kinds, collections, hrefs, licenses, thumbnails] = [
+  const [ids, titles, kinds, collections, hrefs, serverHrefs, painted, starts, licenses, thumbnails] = [
     'id',
     'title',
     'kind',
     'collection',
     'href',
+    'server_href',
+    'painted',
+    'start',
     'license',
     'thumbnail',
   ].map(column);
@@ -134,12 +188,16 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
   const entries: CatalogEntry[] = [];
   for (let i = 0; i < frame.length; i++) {
     const box = [xmin[i], ymin[i], xmax[i], ymax[i]].map(Number);
+    const start = Number(starts[i]);
     entries.push({
       id: String(ids[i] ?? ''),
       title: String(titles[i] ?? ids[i] ?? ''),
       kind: String(kinds[i] ?? 'other'),
       collection: String(collections[i] ?? ''),
       href: String(hrefs[i] ?? ''),
+      serverHref: serverHrefs[i] ? String(serverHrefs[i]) : null,
+      painted: typeof painted[i] === 'boolean' ? painted[i] : null,
+      start: starts[i] !== null && starts[i] !== undefined && Number.isFinite(start) ? start : null,
       license: String(licenses[i] ?? ''),
       thumbnail: thumbnails[i] ? String(thumbnails[i]) : null,
       bbox: box.every(Number.isFinite) ? (box as [number, number, number, number]) : null,
@@ -158,23 +216,38 @@ export function searchCatalog(entries: CatalogEntry[], text: string, kind: strin
   );
 }
 
-/** The saved form of a tileset added from a catalog: what kepler's Add Data → Tileset makes, plus its origin. */
-export function catalogDataset(entry: CatalogEntry, uid: string): SavedRemoteDataset | null {
-  const addable = ADDABLE[entry.kind];
-  if (!addable) {
+/**
+ * The saved form of an entry added from a catalog: what kepler's Add Data → Tileset makes for a tileset, what a
+ * query's raster becomes for a raster (a `raster-tile`, or the panel's `cogPainted` when the tile server paints it),
+ * plus where it came from. Null when this map cannot add it.
+ */
+export function catalogDataset(
+  entry: CatalogEntry,
+  uid: string,
+  context: AddContext = NO_CONTEXT
+): SavedRemoteDataset | null {
+  if (whyNotAddable(entry, context)) {
     return null;
   }
+  const origin = { catalogEntry: entry.id, catalogUid: uid };
+  const base = {
+    id: `catalog-${entry.id}`,
+    label: entry.title,
+    color: [0, 92, 255],
+    fields: [],
+    allData: [],
+    disableDataOperation: true,
+  };
+  if (entry.kind === '3d-tiles') {
+    return { version: 'v1', data: { ...base, type: 'tile-3d', metadata: { tile3dUrl: entry.href, ...origin } } };
+  }
+  const raster = catalogRaster(entry, context.tileServerUrls);
   return {
     version: 'v1',
     data: {
-      id: `catalog-${entry.id}`,
-      label: entry.title,
-      color: [0, 92, 255],
-      type: addable.type,
-      fields: [],
-      allData: [],
-      disableDataOperation: true,
-      metadata: { [addable.urlKey]: entry.href, catalogEntry: entry.id, catalogUid: uid },
+      ...base,
+      type: raster.kind === 'painted' ? COG_PAINTED_TYPE : 'raster-tile',
+      metadata: { ...(context.rasterMetadata?.(raster) ?? {}), ...origin },
     },
   };
 }
@@ -207,31 +280,50 @@ async function settled<T>(promise: Promise<T>): Promise<T | null> {
 }
 const known = new Map<string, Map<string, string>>();
 
-/** Records what a catalog read found, for the synchronous lookups of a load. */
+/** Records what a catalog read found (each entry's address for this map), for the synchronous lookups of a load. */
 export async function rememberCatalog(uid: string): Promise<void> {
   const entries = await settled(catalogEntries(uid));
   if (entries) {
-    known.set(uid, new Map(entries.map((entry) => [entry.id, entry.href])));
+    known.set(uid, new Map(entries.map((entry) => [entry.id, addressOf(entry)])));
   }
 }
 
 /** For tests: set what a catalog read found. */
-export function rememberCatalogForTests(uid: string, hrefs: Record<string, string>): void {
-  known.set(uid, new Map(Object.entries(hrefs)));
+export function rememberCatalogForTests(uid: string, addresses: Record<string, string>): void {
+  known.set(uid, new Map(Object.entries(addresses)));
+}
+
+/** A dataset's metadata pointed at another address, or null when it already points there or cannot be moved. */
+function followed(type: string, metadata: Record<string, unknown>, address: string): Record<string, unknown> | null {
+  switch (type) {
+    case 'tile-3d':
+      return metadata.tile3dUrl === address ? null : { ...metadata, tile3dUrl: address };
+    case COG_PAINTED_TYPE:
+      return metadata.sourceUrl === address ? null : { ...metadata, sourceUrl: address };
+    case 'raster-tile': {
+      if (metadata.pmtilesType) {
+        return metadata.metadataUrl === address ? null : { ...metadata, metadataUrl: address };
+      }
+      const servers = metadata.rasterTileServerUrls;
+      const server = Array.isArray(servers) && typeof servers[0] === 'string' ? servers[0] : null;
+      const url = server ? metadataUrlFor(server, address) : null;
+      return url && url !== metadata.metadataUrl ? { ...metadata, metadataUrl: url } : null;
+    }
+    default:
+      return null;
+  }
 }
 
 /**
- * A saved dataset that came from a catalog, its URL taken again from the catalog when the catalog has been read
+ * A saved dataset that came from a catalog, its address taken again from the catalog when the catalog has been read
  * and still lists the entry; otherwise as saved.
  */
 export function withCatalogHref(saved: SavedRemoteDataset): SavedRemoteDataset {
   const metadata = saved.data.metadata;
-  const addable = Object.values(ADDABLE).find((a) => a?.type === saved.data.type);
-  if (!metadata || !addable || typeof metadata.catalogEntry !== 'string' || typeof metadata.catalogUid !== 'string') {
+  if (!metadata || typeof metadata.catalogEntry !== 'string' || typeof metadata.catalogUid !== 'string') {
     return saved;
   }
-  const href = known.get(metadata.catalogUid)?.get(metadata.catalogEntry);
-  return href && href !== metadata[addable.urlKey]
-    ? { ...saved, data: { ...saved.data, metadata: { ...metadata, [addable.urlKey]: href } } }
-    : saved;
+  const address = known.get(metadata.catalogUid)?.get(metadata.catalogEntry);
+  const moved = address ? followed(saved.data.type, metadata, address) : null;
+  return moved ? { ...saved, data: { ...saved.data, metadata: moved } } : saved;
 }

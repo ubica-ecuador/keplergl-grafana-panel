@@ -46,6 +46,9 @@ export const REMOTE_DATASET_TYPES = [
   'externally-hosted',
   // The panel's own `{z}/{x}/{y}` tiles (`xyzTiles.ts`): a template, no rows.
   'xyz-tiles',
+  // A COG the tile server paints (`cogPaintedLayer.ts`). A query's is never saved (its id is the panel's, see
+  // `isPanelRasterId`); one added from a catalog (Add from catalog) is, like a tileset.
+  'cogPainted',
 ];
 
 /** The map's name and description, as kepler's `info` carries them. */
