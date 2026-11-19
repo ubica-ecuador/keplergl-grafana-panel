@@ -9,7 +9,10 @@ import {
   entriesOf,
   holdsWithin,
   rememberCatalogForTests,
+  scenesOfFrame,
   searchCatalog,
+  searchDataset,
+  searchOf,
   whereInstead,
   whyNotAddable,
   seriesCalendar,
@@ -307,5 +310,110 @@ describe('a collection of dated rasters in a catalog', () => {
     ]);
     rememberCatalogForTests('cat', entries);
     expect(withCatalogHref(saved)).toBe(saved);
+  });
+});
+
+describe('how the data source says a collection is a series', () => {
+  const base = {
+    title: 't',
+    collectionTitle: 'C',
+    href: 'https://x/y.tif',
+    serverHref: null,
+    painted: null,
+    end: null,
+    license: '',
+    thumbnail: null,
+    bbox: null,
+  };
+  const raster = (id: string, collection: string, start: number | null, series: 'items' | 'search' | null) =>
+    ({ ...base, id, kind: 'raster', collection, start, series }) as CatalogEntry;
+  const api = {
+    ...base,
+    id: 's2',
+    title: 'Sentinel-2',
+    kind: 'external',
+    collection: 's2',
+    href: 'https://stac.example.org/v1/collections/s2',
+    start: 1,
+    series: 'search',
+  } as CatalogEntry;
+  const catalog = { ...api, id: 'overture', series: null, href: 'https://x/catalog.json' } as CatalogEntry;
+  const context = {
+    tileServerUrls: ['/titiler'],
+    rasterMetadata: (r: { sourceUrl: string; metadataUrl: string }) => ({ metadataUrl: r.metadataUrl }),
+  };
+
+  it('lists items series, searches API collections and listed tiles, leaves the rest', () => {
+    const listed = withSeries([
+      raster('y1', 'yearly', 1, 'items'),
+      raster('y2', 'yearly', 2, 'items'),
+      raster('t1', 'tiles', 1, 'search'),
+      raster('t2', 'tiles', 1, 'search'),
+      raster('one', 'single', 1, null),
+      api,
+      catalog,
+    ]);
+    expect(listed.map((e) => [e.id, e.scenes ? 'series' : e.search ? `search ${e.search.target}` : 'entry'])).toEqual([
+      ['yearly', 'series'],
+      ['tiles', 'search tiles'],
+      ['one', 'entry'],
+      ['s2', 'search s2'],
+      ['overture', 'entry'],
+    ]);
+    expect(whyNotAddable(listed[3], context)).toBeNull();
+    expect(whyNotAddable(listed[3])).toMatch(/tile server/);
+    expect(whyNotAddable(listed[4], context)).toMatch(/query/);
+  });
+
+  it('saves a searched series as its search, never its scenes, drawn at the newest scene found', () => {
+    const [entry] = withSeries([api]);
+    const found = {
+      scenes: [
+        { time: 1, end: null, url: 'https://cogs/a.tif', item: 'https://stac/items/a' },
+        { time: 2, end: null, url: 'https://cogs/b.tif', item: 'https://stac/items/b' },
+      ],
+      painted: null,
+      truncated: false,
+    };
+    const saved = searchDataset(entry, 'cat', context, found, [-79.123456, -3.05, -78.9, -2.85])!;
+    expect(saved.data).toMatchObject({
+      id: 'catalog-s2',
+      type: 'raster-tile',
+      metadata: {
+        metadataUrl: '/titiler/cog/stac?url=https%3A%2F%2Fcogs%2Fb.tif',
+        catalogSearch: { target: 's2', bbox: [-79.12346, -3.05, -78.9, -2.85] },
+        catalogUid: 'cat',
+      },
+    });
+    expect(saved.data.metadata?.catalogScenes).toBeUndefined();
+    expect(searchOf(saved.data.metadata)).toEqual({ target: 's2', bbox: [-79.12346, -3.05, -78.9, -2.85] });
+    expect(searchDataset(entry, 'cat', context, { ...found, scenes: [] }, [0, 0, 1, 1])).toBeNull();
+    // Moved by the map's clock from two scenes up, with the items for band combinations.
+    const [moving] = catalogSeriesRasters({ 'catalog-s2': saved.data }, new Map([['catalog-s2', found]]));
+    expect(moving.scenes.map((scene) => [scene.time, scene.itemUrl])).toEqual([
+      [1, 'https://stac/items/a'],
+      [2, 'https://stac/items/b'],
+    ]);
+    expect(moving.keepMetadata).toEqual({ catalogSearch: saved.data.metadata?.catalogSearch, catalogUid: 'cat' });
+    expect(catalogSeriesRasters({ 'catalog-s2': saved.data })).toEqual([]);
+  });
+
+  it('reads a search frame: scenes oldest first, the items, whether a limit cut it', () => {
+    const searchFrame = createDataFrame({
+      fields: [
+        { name: 'time', type: FieldType.time, values: [20, 10] },
+        { name: 'raster_url', type: FieldType.string, values: ['b.tif', 'a.tif'] },
+        { name: 'raster_item_url', type: FieldType.string, values: ['ib', 'ia'] },
+      ],
+    });
+    searchFrame.meta = { notices: [{ severity: 'warning', text: 'cut' }] };
+    expect(scenesOfFrame(searchFrame)).toEqual({
+      scenes: [
+        { time: 10, end: null, url: 'a.tif', item: 'ia' },
+        { time: 20, end: null, url: 'b.tif', item: 'ib' },
+      ],
+      painted: null,
+      truncated: true,
+    });
   });
 });

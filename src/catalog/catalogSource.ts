@@ -1,4 +1,4 @@
-import type { DataFrame, DataQueryRequest, DataQueryResponse } from '@grafana/data';
+import { dateTime, type DataFrame, type DataQueryRequest, type DataQueryResponse } from '@grafana/data';
 import { getDataSourceSrv } from '@grafana/runtime';
 import { isObservable, lastValueFrom } from 'rxjs';
 
@@ -14,9 +14,14 @@ import { COG_PAINTED_TYPE } from '../panel/cogPaintedLayer';
  * (`catalogEntry`, `catalogUid` in its metadata). On load the address is taken again from the catalog, so moving a
  * file means changing one entry, not every dashboard; with the catalog out of reach the saved address still loads.
  *
- * A collection of dated rasters (a map a year) is one entry in the list, a series: added, it is a raster whose scene
- * the map's time filter picks, as for a query that returns a row per scene. It is saved with its scenes
- * (`catalogSeries`, `catalogScenes`) and takes them again from the catalog on load, so a new year shows by itself.
+ * A collection of rasters may be a series, and the data source says how (its `series` column, read off the
+ * collection or said by the catalog):
+ * - `items`: few dated items, each the whole collection (a map a year). One entry in the list; added, a raster whose
+ *   scene the map's time filter picks, saved with its scenes (`catalogSeries`, `catalogScenes`) and taking them again
+ *   from the catalog on load. Each year can also be added alone.
+ * - `search`: a STAC API collection, or listed tiles, or too many to list. One entry; added, it is searched over the
+ *   map's view in the dashboard's time range (the data source's STAC search) and saved as that search
+ *   (`catalogSearch`), never as scenes: they are searched again on load and when the time range changes.
  */
 
 export const CATALOG_DATASOURCE_TYPE = 'ubica-catalog-datasource';
@@ -51,6 +56,10 @@ export interface CatalogEntry {
   scenes?: CatalogScene[];
   /** A series only: its entries, oldest first, each of which can also be added alone (to compare two years). */
   members?: CatalogEntry[];
+  /** How its collection is a series, as the data source says; null when not one, undefined when it does not say. */
+  series?: 'items' | 'search' | null;
+  /** A searched series: what the data source's STAC search is asked for (an entry or a collection id). */
+  search?: { target: string };
   /** A series found by some of its entries rather than by itself: `members` holds those, to show open. */
   foundByMembers?: boolean;
 }
@@ -77,6 +86,8 @@ export interface CatalogRef {
 
 /** What the map adding an entry brings: its raster tile servers, and how kepler describes a raster. */
 export interface AddContext {
+  /** The map's view, `[west, south, east, north]`: where a searched series is searched. */
+  viewBounds?: () => [number, number, number, number] | null;
   tileServerUrls: readonly string[];
   /** The dashboard's time range, for the list's "In the time range". */
   timeRange?: { from: number; to: number };
@@ -119,19 +130,24 @@ export function catalogRaster(
 
 /** Why an entry cannot be added to this map, or null when it can. */
 export function whyNotAddable(
-  entry: Pick<CatalogEntry, 'kind' | 'href' | 'serverHref'>,
+  entry: Pick<CatalogEntry, 'kind' | 'href' | 'serverHref' | 'search'>,
   context: AddContext = NO_CONTEXT
 ): string | null {
   switch (entry.kind) {
     case '3d-tiles':
       return null;
     case 'raster':
-      return rasterKind(addressOf(entry)) === 'pmtiles' || context.tileServerUrls.length > 0
+      return (rasterKind(addressOf(entry)) === 'pmtiles' && !entry.search) || context.tileServerUrls.length > 0
         ? null
         : 'A raster: this map has no tile server to draw it (Raster tile server, in the panel options).';
     case 'gltf-model':
       return 'A glTF model: Kepler Plus draws it, with the 4D Model layer.';
     case 'external':
+      if (entry.search) {
+        return context.tileServerUrls.length > 0
+          ? null
+          : 'Searched scenes: this map has no tile server to draw them (Raster tile server, in the panel options).';
+      }
       return 'A catalog of its own: search it from a query.';
     default:
       return 'This map cannot draw this kind of entry.';
@@ -139,7 +155,10 @@ export function whyNotAddable(
 }
 
 /** Where an entry that this map cannot draw is used instead: a short label for its row. */
-export function whereInstead(entry: Pick<CatalogEntry, 'kind'>): string {
+export function whereInstead(entry: Pick<CatalogEntry, 'kind' | 'search'>): string {
+  if (entry.search) {
+    return 'No tile server';
+  }
   switch (entry.kind) {
     case 'gltf-model':
       return 'In Plus';
@@ -218,6 +237,7 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
     ends,
     licenses,
     thumbnails,
+    series,
   ] = [
     'id',
     'title',
@@ -231,7 +251,9 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
     'end',
     'license',
     'thumbnail',
+    'series',
   ].map(column);
+  const hasSeries = frame.fields.some((field) => field.name === 'series');
   const time = (value: unknown) => {
     const n = Number(value);
     return value !== null && value !== undefined && Number.isFinite(n) ? n : null;
@@ -254,6 +276,7 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
       license: String(licenses[i] ?? ''),
       thumbnail: thumbnails[i] ? String(thumbnails[i]) : null,
       bbox: box.every(Number.isFinite) ? (box as [number, number, number, number]) : null,
+      ...(hasSeries ? { series: series[i] === 'items' || series[i] === 'search' ? series[i] : null } : {}),
     });
   }
   return entries.filter((entry) => entry.id !== '' && entry.href !== '');
@@ -264,23 +287,45 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
  * map's time range picks the year. Fewer than two, or undated, they stay as they are.
  */
 export function withSeries(entries: CatalogEntry[]): CatalogEntry[] {
-  const dated = (entry: CatalogEntry) => entry.kind === 'raster' && entry.start !== null && entry.collection !== '';
+  // The data source's word when it gives one; an older one's frame: dated rasters of a collection are listed.
+  const modeOf = (entry: CatalogEntry) =>
+    entry.series !== undefined
+      ? entry.series
+      : entry.kind === 'raster' && entry.start !== null && entry.collection !== ''
+        ? 'items'
+        : null;
+  const folds = (entry: CatalogEntry) => entry.kind === 'raster' && entry.collection !== '' && modeOf(entry) !== null;
   const groups = new Map<string, CatalogEntry[]>();
-  for (const entry of entries.filter(dated)) {
+  for (const entry of entries.filter(folds)) {
     groups.set(entry.collection, [...(groups.get(entry.collection) ?? []), entry]);
   }
   const folded: CatalogEntry[] = [];
   const done = new Set<string>();
   for (const entry of entries) {
-    const group = dated(entry) ? groups.get(entry.collection) : undefined;
-    if (!group || group.length < 2) {
+    if (entry.kind === 'external' && entry.series === 'search') {
+      folded.push({ ...entry, search: { target: entry.id } });
+      continue;
+    }
+    const group = folds(entry) ? groups.get(entry.collection) : undefined;
+    if (!group || (modeOf(entry) === 'items' && group.length < 2)) {
       folded.push(entry);
     } else if (!done.has(entry.collection)) {
       done.add(entry.collection);
-      folded.push(seriesEntry(group));
+      folded.push(modeOf(entry) === 'search' ? searchEntry(group) : seriesEntry(group));
     }
   }
   return folded;
+}
+
+/** Listed rasters that are searched (tiles, or too many): one entry, searched as a STAC API collection is. */
+function searchEntry(group: CatalogEntry[]): CatalogEntry {
+  const newest = [...group].sort((a, b) => (a.start ?? 0) - (b.start ?? 0))[group.length - 1];
+  return {
+    ...newest,
+    id: newest.collection,
+    title: newest.collectionTitle || newest.collection,
+    search: { target: newest.collection },
+  };
 }
 
 function seriesEntry(group: CatalogEntry[]): CatalogEntry {
@@ -411,45 +456,69 @@ function scenesOf(value: unknown): SavedScene[] {
  * through: a painted one by `sourceUrl`, an archive by `metadataUrl`, a tiled COG through its tile server.
  */
 export function catalogSeriesRasters(
-  datasets: Record<string, { type?: string; label?: string; metadata?: Record<string, unknown> }>
+  datasets: Record<string, CatalogDatasetLike>,
+  searched: ReadonlyMap<string, SearchedScenes> = new Map()
 ): RasterDataset[] {
   const rasters: RasterDataset[] = [];
   for (const [id, dataset] of Object.entries(datasets)) {
     const metadata = dataset.metadata ?? {};
-    const scenes = scenesOf(metadata.catalogScenes);
-    if (scenes.length === 0) {
-      continue;
+    const isSearch = searchOf(metadata) !== null;
+    // A searched series moves with the clock from two scenes up; none and one are the hook's (useCatalogSeries).
+    const scenes = isSearch ? (searched.get(id)?.scenes ?? []) : scenesOf(metadata.catalogScenes);
+    const raster = scenes.length >= (isSearch ? 2 : 1) ? seriesRaster(id, dataset, scenes) : null;
+    if (raster) {
+      rasters.push(raster);
     }
-    const newest = scenes[scenes.length - 1].url;
-    const painted = dataset.type === COG_PAINTED_TYPE;
-    const kind: RasterKind = painted ? 'painted' : metadata.pmtilesType ? 'pmtiles' : 'cog';
-    const servers = painted ? [metadata.serverUrl] : kind === 'pmtiles' ? [] : metadata.rasterTileServerUrls;
-    const tileServerUrls = (Array.isArray(servers) ? servers : []).filter(
-      (url): url is string => typeof url === 'string' && url !== ''
-    );
-    const sourceUrl =
-      painted && typeof metadata.sourceUrl === 'string'
-        ? metadata.sourceUrl
-        : kind === 'pmtiles' && typeof metadata.metadataUrl === 'string'
-          ? metadata.metadataUrl
-          : newest;
-    rasters.push({
-      id,
-      label: dataset.label ?? id,
-      kind,
-      sourceUrl,
-      metadataUrl: kind === 'cog' ? metadataUrlFor(tileServerUrls[0] ?? '', sourceUrl) : sourceUrl,
-      tileServerUrls,
-      scenes: scenes.map((scene) => ({ time: scene.time, end: scene.end, sourceUrl: scene.url, itemUrl: null })),
-      // What a rebuild of the dataset must keep, or it would stop being a series.
-      keepMetadata: {
-        catalogSeries: metadata.catalogSeries,
-        catalogUid: metadata.catalogUid,
-        catalogScenes: metadata.catalogScenes,
-      },
-    });
   }
   return rasters;
+}
+
+/** A dataset of kepler's store, as far as a series needs it. */
+export type CatalogDatasetLike = { type?: string; label?: string; metadata?: Record<string, unknown> };
+
+/**
+ * A dataset added from a catalog as a raster with the given scenes, drawn from the newest: a painted COG through its
+ * server, an archive by itself, a COG through a tile server.
+ */
+export function seriesRaster(
+  id: string,
+  dataset: CatalogDatasetLike,
+  scenes: Array<{ time: number | null; end: number | null; url: string; item?: string | null }>
+): RasterDataset | null {
+  if (scenes.length === 0) {
+    return null;
+  }
+  const metadata = dataset.metadata ?? {};
+  const sourceUrl = scenes[scenes.length - 1].url;
+  const painted = dataset.type === COG_PAINTED_TYPE;
+  const kind: RasterKind = painted ? 'painted' : metadata.pmtilesType ? 'pmtiles' : 'cog';
+  const servers = painted ? [metadata.serverUrl] : kind === 'pmtiles' ? [] : metadata.rasterTileServerUrls;
+  const tileServerUrls = (Array.isArray(servers) ? servers : []).filter(
+    (url): url is string => typeof url === 'string' && url !== ''
+  );
+  return {
+    id,
+    label: dataset.label ?? id,
+    kind,
+    sourceUrl,
+    metadataUrl: kind === 'cog' ? metadataUrlFor(tileServerUrls[0] ?? '', sourceUrl) : sourceUrl,
+    tileServerUrls,
+    scenes: scenes.map((scene) => ({
+      time: scene.time,
+      end: scene.end,
+      sourceUrl: scene.url,
+      itemUrl: scene.item ?? null,
+    })),
+    // What a rebuild of the dataset must keep, or it would stop being a series.
+    keepMetadata:
+      searchOf(metadata) !== null
+        ? { catalogSearch: metadata.catalogSearch, catalogUid: metadata.catalogUid }
+        : {
+            catalogSeries: metadata.catalogSeries,
+            catalogUid: metadata.catalogUid,
+            catalogScenes: metadata.catalogScenes,
+          },
+  };
 }
 
 /** The moments a series' time filter spans: each scene's start, and the end of the last. */
@@ -562,4 +631,156 @@ function withCatalogScenes(saved: SavedRemoteDataset, metadata: Record<string, u
     return saved;
   }
   return { ...saved, data: { ...saved.data, metadata: { ...moved, catalogScenes: scenes } } };
+}
+
+/** One scene a search found, as the map keeps it: its time (null when the search found one alone), the picture, the item. */
+export interface SearchedScene {
+  time: number | null;
+  end: number | null;
+  url: string;
+  item: string | null;
+}
+
+/** What a search of a series found: its scenes, oldest first; whether the catalog says they are painted; whether cut. */
+export interface SearchedScenes {
+  scenes: SearchedScene[];
+  painted: boolean | null;
+  truncated: boolean;
+}
+
+/** What a searched series is: the target of the data source's STAC search, and the area, saved with the dataset. */
+export interface SeriesSearch {
+  target: string;
+  bbox: [number, number, number, number];
+}
+
+/** A dataset's saved search, or null when it is none. */
+export function searchOf(metadata: Record<string, unknown> | undefined): SeriesSearch | null {
+  const search = metadata?.catalogSearch as Partial<SeriesSearch> | undefined;
+  const bbox = search?.bbox;
+  return typeof search?.target === 'string' &&
+    Array.isArray(bbox) &&
+    bbox.length === 4 &&
+    bbox.every((n) => typeof n === 'number' && Number.isFinite(n))
+    ? { target: search.target, bbox: bbox as SeriesSearch['bbox'] }
+    : null;
+}
+
+/** The scenes of a STAC search frame (the data source's `stac` query): raster_url, time, raster_end, raster_item_url. */
+export function scenesOfFrame(frame: DataFrame | undefined): SearchedScenes {
+  if (!frame) {
+    return { scenes: [], painted: null, truncated: false };
+  }
+  const column = (name: string) => frame.fields.find((field) => field.name === name)?.values;
+  const urls = column('raster_url') ?? [];
+  const times = column('time');
+  const ends = column('raster_end');
+  const items = column('raster_item_url');
+  const painted = column('raster_painted');
+  const number = (value: unknown) => (value === null || value === undefined ? null : Number(value));
+  const scenes: SearchedScene[] = [];
+  for (let i = 0; i < frame.length; i++) {
+    if (typeof urls[i] !== 'string' || !urls[i]) {
+      continue;
+    }
+    const time = number(times?.[i]);
+    const end = number(ends?.[i]);
+    scenes.push({
+      time: time !== null && Number.isFinite(time) ? time : null,
+      end: end !== null && Number.isFinite(end) ? end : null,
+      url: urls[i],
+      item: typeof items?.[i] === 'string' ? items[i] : null,
+    });
+  }
+  scenes.sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+  const flag = painted?.find((value: unknown) => typeof value === 'boolean');
+  return {
+    scenes,
+    painted: typeof flag === 'boolean' ? flag : null,
+    truncated: (frame.meta?.notices ?? []).some((notice) => notice.severity === 'warning'),
+  };
+}
+
+const searches = new Map<string, { at: number; answer: Promise<SearchedScenes> }>();
+/** A search answered is kept this long: Add from catalog and the map's first search are the same question. */
+const SEARCH_KEEP_MS = 2 * 60 * 1000;
+
+/**
+ * A series searched over an area in a time range, through its catalog's data source (the `stac` query), so the same
+ * search a dashboard's query makes: a STAC API's collection or a catalog's listed tiles alike.
+ */
+export function searchScenes(
+  uid: string,
+  search: SeriesSearch,
+  range: { from: number; to: number }
+): Promise<SearchedScenes> {
+  const key = JSON.stringify([uid, search.target, search.bbox, range.from, range.to]);
+  const kept = searches.get(key);
+  if (kept && Date.now() - kept.at < SEARCH_KEEP_MS) {
+    return kept.answer;
+  }
+  const answer = (async () => {
+    const ds = await getDataSourceSrv().get({ uid });
+    const from = dateTime(range.from);
+    const to = dateTime(range.to);
+    const request = {
+      targets: [{ refId: 'search', queryType: 'stac', entries: [search.target], bbox: search.bbox.join(',') }],
+      range: { from, to, raw: { from, to } },
+      scopedVars: {},
+      requestId: `catalog-search-${uid}-${search.target}`,
+      interval: '1m',
+      intervalMs: 60_000,
+      timezone: 'utc',
+      app: 'panel',
+      startTime: Date.now(),
+    } as unknown as DataQueryRequest;
+    const reply = ds.query(request) as unknown;
+    const response = (isObservable(reply) ? await lastValueFrom(reply) : await reply) as DataQueryResponse;
+    if (response.errors?.length) {
+      throw new Error(response.errors[0].message ?? 'The search failed');
+    }
+    return scenesOfFrame(response.data?.[0]);
+  })();
+  answer.catch(() => searches.delete(key));
+  searches.set(key, { at: Date.now(), answer });
+  return answer;
+}
+
+/**
+ * The saved form of a searched series: drawn at the newest scene found, and saved as its search (`catalogSearch`:
+ * target and area) with no scenes, which are searched again on load and with every change of the time range.
+ */
+export function searchDataset(
+  entry: CatalogEntry,
+  uid: string,
+  context: AddContext,
+  found: SearchedScenes,
+  bbox: [number, number, number, number]
+): SavedRemoteDataset | null {
+  const newest = found.scenes[found.scenes.length - 1];
+  if (!entry.search || !newest || whyNotAddable(entry, context)) {
+    return null;
+  }
+  const raster = catalogRaster(
+    { kind: 'raster', href: newest.url, serverHref: null, painted: found.painted },
+    context.tileServerUrls
+  );
+  const area = bbox.map((n) => Math.round(n * 1e5) / 1e5) as SeriesSearch['bbox'];
+  return {
+    version: 'v1',
+    data: {
+      id: `catalog-${entry.search.target}`,
+      label: entry.title,
+      color: [0, 92, 255],
+      fields: [],
+      allData: [],
+      disableDataOperation: true,
+      type: raster.kind === 'painted' ? COG_PAINTED_TYPE : 'raster-tile',
+      metadata: {
+        ...(context.rasterMetadata?.(raster) ?? {}),
+        catalogSearch: { target: entry.search.target, bbox: area },
+        catalogUid: uid,
+      },
+    },
+  };
 }

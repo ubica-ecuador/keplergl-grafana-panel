@@ -11,6 +11,8 @@ import {
   type CatalogEntry,
   listCatalogs,
   searchCatalog,
+  searchDataset,
+  searchScenes,
   whereInstead,
   whyNotAddable,
   withSeries,
@@ -272,6 +274,8 @@ export function CatalogPanel() {
   // Series whose scenes are listed one by one, and whether the list keeps to the dashboard's time range.
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [inRange, setInRange] = useState(false);
+  // What a search said, by entry: searching, how many scenes, none here, or why it failed.
+  const [notes, setNotes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!open || !uid) {
@@ -296,7 +300,36 @@ export function CatalogPanel() {
   const range = api.context.timeRange ?? null;
   const shown = searchCatalog(entries ?? [], text, kind, inRange ? range : null);
   const follows = api.context.followsDashboard === true;
+  const note = (id: string, said: string) => setNotes((was) => ({ ...was, [id]: said }));
+  // A searched series is searched first, over the view in the dashboard's range: added at its newest scene, or not
+  // at all when the area has none in that range.
+  const addSearch = async (entry: CatalogEntry) => {
+    const area = api.context.viewBounds?.() ?? null;
+    if (!entry.search || !area || !range) {
+      note(entry.id, 'No view or time range to search');
+      return;
+    }
+    note(entry.id, 'Searching…');
+    try {
+      const found = await searchScenes(uid, { target: entry.search.target, bbox: area }, range);
+      const saved = searchDataset(entry, uid, api.context, found, area);
+      if (!saved) {
+        note(entry.id, 'No scene over this view in the time range');
+        return;
+      }
+      api.add(saved);
+      setAdded((was) => new Set([...was, entry.id]));
+      const n = found.scenes.length;
+      note(entry.id, `${n}${found.truncated ? '+' : ''} scene${n === 1 ? '' : 's'} in the time range`);
+    } catch (err) {
+      note(entry.id, `The search failed: ${String((err as Error)?.message ?? err)}`);
+    }
+  };
   const add = (entry: CatalogEntry) => {
+    if (entry.search) {
+      void addSearch(entry);
+      return;
+    }
     const saved = catalogDataset(entry, uid, api.context);
     if (saved) {
       api.add(saved);
@@ -305,9 +338,10 @@ export function CatalogPanel() {
   };
   const addButton = (entry: CatalogEntry, title: string) => {
     const done = added.has(entry.id);
+    const busy = notes[entry.id] === 'Searching…';
     return (
-      <Add aria-label={`Add ${entry.title}`} title={title} disabled={done} onClick={() => add(entry)}>
-        {done ? 'Added' : 'Add'}
+      <Add aria-label={`Add ${entry.title}`} title={title} disabled={done || busy} onClick={() => add(entry)}>
+        {done ? 'Added' : busy ? '…' : 'Add'}
       </Add>
     );
   };
@@ -359,27 +393,43 @@ export function CatalogPanel() {
         const members = entry.members ?? [];
         const isOpen = members.length > 0 && (expanded.has(entry.id) || entry.foundByMembers === true);
         const picks = follows ? "the dashboard's date picks the scene" : "the map's time slider picks the scene";
+        const searched = entry.search ? `searched over the map's view in the dashboard's time range; ${picks}` : null;
         return (
           <React.Fragment key={entry.id}>
-            <Row className="catalog-entry" title={why ?? (entry.scenes ? `${entry.title}: ${picks}` : entry.title)}>
+            <Row
+              className="catalog-entry"
+              title={
+                why ??
+                (searched ? `${entry.title}: ${searched}` : entry.scenes ? `${entry.title}: ${picks}` : entry.title)
+              }
+            >
               <Thumb style={entry.thumbnail ? { backgroundImage: `url("${pageUrl(entry.thumbnail)}")` } : undefined} />
               <Text>
                 <b>{entry.title}</b>
                 <span>
-                  {(entry.scenes
-                    ? [entryWhen(entry), follows ? 'follows the date' : 'raster series']
-                    : [entry.kind, entry.collection, entryWhen(entry)]
+                  {(entry.search
+                    ? [entry.kind === 'external' ? 'STAC API' : 'tiles', 'searched over the view']
+                    : entry.scenes
+                      ? [entryWhen(entry), follows ? 'follows the date' : 'raster series']
+                      : [entry.kind, entry.collection, entryWhen(entry)]
                   )
                     .filter(Boolean)
                     .join(' · ')}
                 </span>
-                <span>{entry.license}</span>
+                <span>{notes[entry.id] ?? entry.license}</span>
               </Text>
               <Actions>
                 {why ? (
                   <Elsewhere>{whereInstead(entry)}</Elsewhere>
                 ) : (
-                  addButton(entry, entry.scenes ? `Add the whole series: ${picks}` : `Add ${entry.title}`)
+                  addButton(
+                    entry,
+                    searched
+                      ? `Add the scenes ${searched}`
+                      : entry.scenes
+                        ? `Add the whole series: ${picks}`
+                        : `Add ${entry.title}`
+                  )
                 )}
                 {members.length > 0 ? (
                   <Toggle

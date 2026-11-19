@@ -42,6 +42,7 @@ import {
   sizeMapForFit,
   addCatalogDataset,
   catalogRasterMetadata,
+  readViewportBounds,
 } from './keplerAdapter';
 import { CatalogContext, type CatalogApi } from '../catalog/CatalogPanel';
 import { catalogRefsOf, prefetchCatalogs } from '../catalog/catalogSource';
@@ -433,6 +434,10 @@ export function KeplerMap({
     () => ({
       add: (saved) => addCatalogDataset(store.dispatch, saved),
       context: {
+        viewBounds: () => {
+          const view = readViewportBounds(store);
+          return view ? [view.west, view.south, view.east, view.north] : null;
+        },
         tileServerUrls: rasterServerUrls ?? [],
         rasterMetadata: catalogRasterMetadata,
         timeRange: grafanaRange,
@@ -578,7 +583,7 @@ export function KeplerMap({
   const clockVariables = timeSync === 'variables' ? (timeVariables ?? null) : null;
 
   // A series added from a catalog moves with the same clock as a query's.
-  const catalogSeries = useCatalogSeries(store, isReady);
+  const catalogSeries = useCatalogSeries(store, isReady, grafanaRange);
   const timelineRasters = useMemo(
     () => (catalogSeries.length > 0 ? [...rasters, ...catalogSeries] : rasters),
     [rasters, catalogSeries]
