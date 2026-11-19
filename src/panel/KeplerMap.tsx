@@ -40,7 +40,10 @@ import {
   setBasemap,
   setSidePanel,
   sizeMapForFit,
+  addCatalogDataset,
 } from './keplerAdapter';
+import { CatalogContext, type CatalogApi } from '../catalog/CatalogPanel';
+import { catalogRefsOf, prefetchCatalogs } from '../catalog/catalogSource';
 import { decideLoadAction } from './loadDecision';
 import { useTimeRangeSync } from './useTimeRangeSync';
 import { useAutoLayers } from './useAutoLayers';
@@ -408,6 +411,24 @@ export function KeplerMap({
   // `splitMapsGuard.ts`. Armed on every load and refresh below.
   const guardSplitMaps = useSplitMapsGuard({ store, mapConfig });
 
+  // A map with tilesets added from a catalog waits for those catalogs, a few seconds at most, so that its first
+  // load takes their addresses from the catalog rather than from the saved config (catalog/catalogSource.ts).
+  const catalogKey = JSON.stringify(catalogRefsOf(mapConfig));
+  const [catalogsReadFor, setCatalogsReadFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (catalogKey === '[]') {
+      return;
+    }
+    let live = true;
+    prefetchCatalogs(JSON.parse(catalogKey)).then(() => live && setCatalogsReadFor(catalogKey));
+    return () => {
+      live = false;
+    };
+  }, [catalogKey]);
+  const catalogsReady = catalogKey === '[]' || catalogsReadFor === catalogKey;
+  // Add from catalog, in the map control: a picked tileset joins the map as a saved one would.
+  const catalogApi = useMemo<CatalogApi>(() => ({ add: (saved) => addCatalogDataset(store.dispatch, saved) }), [store]);
+
   // The panel's size, for the load below to hand kepler before it frames the
   // data. Read through a ref so that a resize does not re-run the load.
   const mapSize = useRef({ width, height });
@@ -421,6 +442,7 @@ export function KeplerMap({
     // for rows it will never get would leave it permanently blank.
     if (
       !isReady ||
+      !catalogsReady ||
       (datasets.length === 0 &&
         rasters.length === 0 &&
         wms.length === 0 &&
@@ -516,6 +538,7 @@ export function KeplerMap({
     }
   }, [
     isReady,
+    catalogsReady,
     datasets,
     rasters,
     wms,
@@ -792,35 +815,37 @@ export function KeplerMap({
                       <LinksContext.Provider value={links}>
                         <AdHocContext.Provider value={adHoc}>
                           <PanelMappingsContext.Provider value={panelMappings}>
-                            <KeplerGl
-                              id={KEPLER_INSTANCE_ID}
-                              width={width}
-                              height={height}
-                              /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
+                            <CatalogContext.Provider value={catalogApi}>
+                              <KeplerGl
+                                id={KEPLER_INSTANCE_ID}
+                                width={width}
+                                height={height}
+                                /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
                      required by the type but unused unless a Mapbox style is picked. */
-                              mapboxApiAccessToken=""
-                              /* `appName` is deliberately left at kepler's own default: the
+                                mapboxApiAccessToken=""
+                                /* `appName` is deliberately left at kepler's own default: the
                      side panel names the library the map comes from, and calling
                      it "Grafana" claimed credit for someone else's work. */
-                              theme={theme}
-                              /* kepler ships translations for its own layer types only, so the
+                                theme={theme}
+                                /* kepler ships translations for its own layer types only, so the
                      four this plugin adds showed as `Layer.Type.Esriimage` and the
                      like wherever a layer is named. */
-                              localeMessages={localeMessages}
-                              mapStyles={mapStyles}
-                              /* Drops kepler's own list, which is half Mapbox styles that
+                                localeMessages={localeMessages}
+                                mapStyles={mapStyles}
+                                /* Drops kepler's own list, which is half Mapbox styles that
                      cannot load without an account — see REPLACES_DEFAULT_MAP_STYLES. */
-                              mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
-                              /* No right-to-left text plugin. On a Mapbox base map
+                                mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
+                                /* No right-to-left text plugin. On a Mapbox base map
                      react-map-gl would load one from api.mapbox.com and run it in
                      the map's workers, which is code from a third-party host;
                      this plugin's MapLibre maps never ask for one. */
-                              RTLTextPlugin={false}
-                              /* kepler renders one commit late and silently discards actions
+                                RTLTextPlugin={false}
+                                /* kepler renders one commit late and silently discards actions
                      addressed to an instance that has not registered yet. */
-                              onKeplerGlInitialized={() => setIsReady(true)}
-                              deckGlProps={DECK_GL_PROPS}
-                            />
+                                onKeplerGlInitialized={() => setIsReady(true)}
+                                deckGlProps={DECK_GL_PROPS}
+                              />
+                            </CatalogContext.Provider>
                           </PanelMappingsContext.Provider>
                         </AdHocContext.Provider>
                       </LinksContext.Provider>

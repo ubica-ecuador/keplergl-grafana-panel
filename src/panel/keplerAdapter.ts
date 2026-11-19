@@ -64,6 +64,7 @@ import {
 } from '../data/mapConfig';
 import { savedViewportOf } from './viewportGuard';
 import { documentBase, relativeRemoteSource, resolveRemoteSource } from '../data/remoteSource';
+import { withCatalogHref } from '../catalog/catalogSource';
 import { viewportFromMapState, type MapStateLike } from './windViewport';
 import type { ViewportBounds } from './viewportSync';
 import { MULTI_SELECT_FILTER_TYPE, type LinkableFilter } from './mosaicLink';
@@ -1009,11 +1010,25 @@ export function applyWmsTime(store: Store, dispatch: Dispatch, dataId: string, t
 export function restoredDatasets(savedConfig?: SavedMapConfig | null): ProtoDataset[] {
   const base = documentBase();
   return (savedConfig?.datasets ?? []).map((saved) => {
-    const parsed = datasetSchema[VERSIONS.v1].load(withResolvedSource(saved, base).data as SavedDatasetV1['data']);
+    // A tileset added from a catalog takes its address from the catalog again (catalog/catalogSource.ts).
+    const parsed = datasetSchema[VERSIONS.v1].load(
+      withResolvedSource(withCatalogHref(saved), base).data as SavedDatasetV1['data']
+    );
     return saved.data.type === VECTOR_TILE_TYPE
       ? { ...parsed, supportedFilterTypes: VECTOR_TILE_FILTER_TYPES }
       : parsed;
   });
+}
+
+/**
+ * Adds a tileset picked from a catalog (the map's Add from catalog), as the restore above would: kepler makes its
+ * layer, and the 3D Tiles framing flies to it once it loads (tile3dFraming.ts).
+ */
+export function addCatalogDataset(dispatch: Dispatch, saved: SavedRemoteDataset): void {
+  const parsed = datasetSchema[VERSIONS.v1].load(
+    withResolvedSource(saved, documentBase()).data as SavedDatasetV1['data']
+  );
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, addDataToMap({ datasets: [parsed], options: { centerMap: false } })));
 }
 
 /**
