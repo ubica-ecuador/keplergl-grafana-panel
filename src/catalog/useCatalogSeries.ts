@@ -4,6 +4,7 @@ import type { Store } from 'redux';
 import type { RasterDataset } from '../data/rasterDataset';
 import {
   readDatasetsById,
+  readViewportBounds,
   refreshRasters,
   setRasterLayerVisible,
   swapRasterScene,
@@ -12,6 +13,7 @@ import {
 import {
   type CatalogDatasetLike,
   catalogSeriesRasters,
+  followedArea,
   searchOf,
   searchScenes,
   seriesCalendar,
@@ -26,8 +28,8 @@ interface SearchSpec extends SeriesSearch {
   uid: string;
 }
 
-/** How long the dashboard's time range must hold still before the searches follow it. */
-const SEARCH_DELAY_MS = 400;
+/** How long the time range and the view must hold still before the searches follow them. */
+const SEARCH_DELAY_MS = 700;
 
 /**
  * The series added from a catalog that the map holds, as rasters for its time filter to move through (the panel's
@@ -45,7 +47,12 @@ export function useCatalogSeries(store: Store, isReady: boolean, range: { from: 
   const [series, setSeries] = useState<RasterDataset[]>([]);
   const [specs, setSpecs] = useState<SearchSpec[]>([]);
   const searched = useRef(new Map<string, { key: string; found: SearchedScenes; applied: boolean }>());
-  const seen = useRef<{ datasets: unknown; key: string; specs: string }>({ datasets: null, key: '[]', specs: '[]' });
+  const seen = useRef<{ datasets: unknown; key: string; specs: string; view: string }>({
+    datasets: null,
+    key: '[]',
+    specs: '[]',
+    view: '',
+  });
   const reread = useRef<() => void>(() => undefined);
 
   useEffect(() => {
@@ -53,11 +60,17 @@ export function useCatalogSeries(store: Store, isReady: boolean, range: { from: 
       return;
     }
     let live = true;
+    // The area a series that follows the view is searched over, as the view moves.
+    const viewArea = () => {
+      const view = readViewportBounds(store);
+      return followedArea(view ? [view.west, view.south, view.east, view.north] : null);
+    };
     const read = (force = false) => {
       const datasets = readDatasetsById(store);
       if (!live || !datasets || (!force && datasets === seen.current.datasets)) {
         return;
       }
+      const area = viewArea();
       const found = new Map([...searched.current].map(([id, { found: scenes }]) => [id, scenes]));
       const rasters = catalogSeriesRasters(datasets, found);
       syncSeriesCalendars(
@@ -71,7 +84,7 @@ export function useCatalogSeries(store: Store, isReady: boolean, range: { from: 
         const search = searchOf(dataset.metadata);
         const uid = dataset.metadata?.catalogUid;
         if (search && typeof uid === 'string') {
-          nowSpecs.push({ id, uid, ...search });
+          nowSpecs.push({ id, uid, ...search, bbox: search.followView && area ? area : search.bbox });
           applyFewScenes(store, id, rasters, datasets[id], searched.current.get(id));
         }
       }
@@ -87,11 +100,14 @@ export function useCatalogSeries(store: Store, isReady: boolean, range: { from: 
       if (specsKey !== seen.current.specs) {
         setSpecs(nowSpecs);
       }
-      seen.current = { datasets, key, specs: specsKey };
+      seen.current = { datasets, key, specs: specsKey, view: JSON.stringify(area) };
     };
     reread.current = () => read(true);
     read();
-    const unsubscribe = store.subscribe(() => queueMicrotask(() => read()));
+    // A move of the view is no change of datasets: read again when the area it would search changes.
+    const unsubscribe = store.subscribe(() =>
+      queueMicrotask(() => read(JSON.stringify(viewArea()) !== seen.current.view))
+    );
     return () => {
       live = false;
       unsubscribe();

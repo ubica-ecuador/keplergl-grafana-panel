@@ -8,6 +8,9 @@ import {
   catalogSeriesRasters,
   entriesOf,
   holdsWithin,
+  followedArea,
+  momentDataset,
+  momentLabel,
   rememberCatalogForTests,
   scenesOfFrame,
   searchCatalog,
@@ -375,7 +378,7 @@ describe('how the data source says a collection is a series', () => {
       painted: null,
       truncated: false,
     };
-    const saved = searchDataset(entry, 'cat', context, found, [-79.123456, -3.05, -78.9, -2.85])!;
+    const saved = searchDataset(entry, 'cat', context, found, [-79.12346, -3.05, -78.9, -2.85])!;
     expect(saved.data).toMatchObject({
       id: 'catalog-s2',
       type: 'raster-tile',
@@ -386,7 +389,11 @@ describe('how the data source says a collection is a series', () => {
       },
     });
     expect(saved.data.metadata?.catalogScenes).toBeUndefined();
-    expect(searchOf(saved.data.metadata)).toEqual({ target: 's2', bbox: [-79.12346, -3.05, -78.9, -2.85] });
+    expect(searchOf(saved.data.metadata)).toEqual({
+      target: 's2',
+      bbox: [-79.12346, -3.05, -78.9, -2.85],
+      followView: true,
+    });
     expect(searchDataset(entry, 'cat', context, { ...found, scenes: [] }, [0, 0, 1, 1])).toBeNull();
     // Moved by the map's clock from two scenes up, with the items for band combinations.
     const [moving] = catalogSeriesRasters({ 'catalog-s2': saved.data }, new Map([['catalog-s2', found]]));
@@ -396,6 +403,71 @@ describe('how the data source says a collection is a series', () => {
     ]);
     expect(moving.keepMetadata).toEqual({ catalogSearch: saved.data.metadata?.catalogSearch, catalogUid: 'cat' });
     expect(catalogSeriesRasters({ 'catalog-s2': saved.data })).toEqual([]);
+  });
+
+  it('reads the pieces of one pass as one scene, drawn together when the server paints them', () => {
+    const frame = createDataFrame({
+      fields: [
+        { name: 'time', type: FieldType.time, values: [10, 11, 90] },
+        { name: 'raster_url', type: FieldType.string, values: ['w.tif', 'e.tif', 'later.tif'] },
+        { name: 'raster_group', type: FieldType.string, values: ['p1', 'p1', null] },
+        { name: 'raster_bbox', type: FieldType.string, values: ['0,0,1,1', '1,0,2,1', '0,0,1,1'] },
+        { name: 'raster_painted', type: FieldType.boolean, values: [true, true, true] },
+      ],
+    });
+    const found = scenesOfFrame(frame);
+    expect(found.scenes.map((scene) => [scene.time, scene.url, scene.parts?.length ?? 1])).toEqual([
+      [10, 'w.tif', 2],
+      [90, 'later.tif', 1],
+    ]);
+    const saved = searchDataset(
+      { ...withSeries([{ ...api }])[0] },
+      'cat',
+      { tileServerUrls: ['/titiler'], rasterMetadata: (r: { parts?: unknown }) => ({ parts: r.parts ?? null }) },
+      { ...found, scenes: [found.scenes[1], found.scenes[0]] },
+      [0, 0, 2, 1]
+    )!;
+    expect(saved.data.type).toBe('cogPainted');
+    expect(saved.data.metadata?.parts).toHaveLength(2);
+    const [moving] = catalogSeriesRasters({ s: saved.data }, new Map([['s', found]]));
+    expect(moving.scenes[0].parts).toHaveLength(2);
+  });
+
+  it('follows the view on a grid of an eighth of it, and keeps the last area for a view too wide', () => {
+    expect(followedArea([-79.13, -3.05, -78.87, -2.85])).toEqual([-79.1375, -3.055, -78.845, -2.8275]);
+    expect(followedArea([-79.12, -3.04, -78.86, -2.84])).toEqual(followedArea([-79.13, -3.05, -78.87, -2.85]));
+    expect(followedArea([-90, -10, -70, 5])).toBeNull();
+    expect(followedArea(null)).toBeNull();
+  });
+
+  it('adds one date alone: fixed, its pieces together, named by its date', () => {
+    const [entry] = withSeries([api]);
+    const scene = {
+      time: Date.UTC(2026, 10, 16, 15, 44),
+      end: null,
+      url: 'w.tif',
+      item: null,
+      parts: [
+        { url: 'w.tif', bbox: [0, 0, 1, 1] as [number, number, number, number] },
+        { url: 'e.tif', bbox: [1, 0, 2, 1] as [number, number, number, number] },
+      ],
+    };
+    const saved = momentDataset(
+      entry,
+      'cat',
+      { tileServerUrls: ['/titiler'], rasterMetadata: (r: { parts?: unknown }) => ({ parts: r.parts ?? null }) },
+      scene,
+      true
+    )!;
+    expect(saved.data).toMatchObject({
+      id: 'catalog-s2-2026-11-16T1544',
+      label: 'Sentinel-2, 2026-11-16 15:44 UTC',
+      type: 'cogPainted',
+      metadata: { catalogMoment: { target: 's2', time: scene.time }, catalogUid: 'cat' },
+    });
+    expect(saved.data.metadata?.parts).toHaveLength(2);
+    expect(searchOf(saved.data.metadata)).toBeNull();
+    expect(momentLabel(Date.UTC(2020, 0, 1))).toBe('2020-01-01');
   });
 
   it('reads a search frame: scenes oldest first, the items, whether a limit cut it', () => {

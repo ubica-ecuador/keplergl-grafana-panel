@@ -283,6 +283,37 @@ describe('framesToRasters — a series of scenes', () => {
     expect(rasterForWindow(raster, july)?.sourceUrl).toBe('https://b/2010.tif');
   });
 
+  it('makes one scene of the rows that share a raster_group, a mosaic a painted raster draws', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'time', type: FieldType.time, values: [100, 101, 5000] },
+        {
+          name: 'raster_url',
+          type: FieldType.string,
+          values: ['https://b/w.tif', 'https://b/e.tif', 'https://b/later.tif'],
+        },
+        { name: 'raster_group', type: FieldType.string, values: ['pass-1', 'pass-1', null] },
+        { name: 'raster_bbox', type: FieldType.string, values: ['0,0,1,1', '1,0,2,1', '0,0,1,1'] },
+      ],
+    });
+
+    const [raster] = framesToRasters([frame], {}, { tileServerUrls: [SERVER], painted: true });
+
+    expect(raster.scenes).toHaveLength(2);
+    expect(raster.scenes[0]).toMatchObject({
+      time: 100,
+      sourceUrl: 'https://b/w.tif',
+      parts: [
+        { url: 'https://b/w.tif', bbox: [0, 0, 1, 1] },
+        { url: 'https://b/e.tif', bbox: [1, 0, 2, 1] },
+      ],
+    });
+    // Opened on the newest, one image; moved to the pass, its two.
+    expect(raster.parts).toBeUndefined();
+    expect(rasterForWindow(raster, { from: 0, to: 200 })?.parts).toHaveLength(2);
+  });
+
   it('still takes the first row when the query has no time column', () => {
     const frame = toDataFrame({
       refId: 'A',

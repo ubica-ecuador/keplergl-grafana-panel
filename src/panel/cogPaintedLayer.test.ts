@@ -226,3 +226,46 @@ describe('makeCogPaintedLayer', () => {
     expect(theirs.props).toHaveLength(0);
   });
 });
+
+describe('cogPaintedDeckProps for a scene of several images', () => {
+  const metadata: CogPaintedMetadata = {
+    serverUrl: 'https://tiles.example.org',
+    sourceUrl: 'https://cogs.example.org/a.tif',
+    parts: [
+      { url: 'https://cogs.example.org/a.tif', bbox: [0, 0, 1, 1] },
+      { url: 'https://cogs.example.org/b.tif', bbox: [1, 0, 2, 1] },
+    ],
+  };
+
+  it('asks for every piece, and repeats them in the trigger so another pass refetches', () => {
+    const props = cogPaintedDeckProps({ id: 'l', metadata })!;
+    const parts = props.partTiles as Array<{ template: string; bbox: unknown }>;
+    expect(parts.map((p) => decodeURIComponent(p.template).replace(/^.*url=/, ''))).toEqual([
+      'https://cogs.example.org/a.tif',
+      'https://cogs.example.org/b.tif',
+    ]);
+    expect(parts[1].bbox).toEqual([1, 0, 2, 1]);
+    expect((props.updateTriggers as { getTileData: string }).getTileData).toBe(parts.map((p) => p.template).join('|'));
+  });
+
+  it('takes the chosen scene pieces, and none for a chosen scene of one image', () => {
+    const chosen = cogPaintedDeckProps({
+      id: 'l',
+      metadata,
+      scene: 'https://cogs.example.org/c.tif',
+      sceneParts: [
+        { url: 'https://cogs.example.org/c.tif', bbox: null },
+        { url: 'https://cogs.example.org/d.tif', bbox: null },
+      ],
+    })!;
+    expect((chosen.partTiles as unknown[]).length).toBe(2);
+    const single = cogPaintedDeckProps({
+      id: 'l',
+      metadata,
+      scene: 'https://cogs.example.org/e.tif',
+      sceneParts: null,
+    })!;
+    expect(single.partTiles).toBeUndefined();
+    expect(decodeURIComponent(single.data as string)).toContain('e.tif');
+  });
+});

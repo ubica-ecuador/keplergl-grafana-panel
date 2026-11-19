@@ -32,6 +32,20 @@ export interface CogPaintedMetadata {
   assets?: string[];
   /** One `min,max` per asset, in the same order. */
   rescale?: string[];
+  /** The images of the scene the dataset opened on, when several (one pass's tiles): drawn together. */
+  parts?: CogPart[];
+}
+
+/** One image of a scene of several, and where it lies (west,south,east,north) when known. */
+export interface CogPart {
+  url: string;
+  bbox: [number, number, number, number] | null;
+}
+
+/** One image of a mosaic as the deck layer asks for it: its tile url template and where it lies. */
+export interface PartTiles {
+  template: string;
+  bbox: [number, number, number, number] | null;
 }
 
 /**
@@ -57,7 +71,7 @@ interface CogPaintedLayerLike {
   id: string;
   /** kepler's placeholder, when the factory was handed no icon of its own. */
   readonly layerIcon?: unknown;
-  config: { isVisible?: boolean; visConfig?: { opacity?: number; cogScene?: unknown } };
+  config: { isVisible?: boolean; visConfig?: { opacity?: number; cogScene?: unknown; cogParts?: unknown } };
 }
 
 /** What kepler's `formatLayerData` hands back to `renderLayer`. */
@@ -84,9 +98,11 @@ export function cogPaintedDeckProps(args: {
   metadata?: CogPaintedMetadata;
   /** The scene the timeline chose, when it has chosen one. */
   scene?: string | null;
+  /** That scene's pieces, when it has several. */
+  sceneParts?: CogPart[] | null;
   opacity?: number;
 }): Record<string, unknown> | null {
-  const { id, metadata, scene, opacity } = args;
+  const { id, metadata, scene, sceneParts, opacity } = args;
   const source = scene || metadata?.sourceUrl;
   // Checked at runtime although the type promises both, because the metadata is
   // whatever kepler is holding on that dataset right now and this layer can
@@ -118,14 +134,36 @@ export function cogPaintedDeckProps(args: {
     return null;
   }
 
+  // A scene of several images: each tile asks the server for those whose box it touches and lays them oldest
+  // first, so the newest lies on top (`cogPaintedDeckLayer.ts`). Only a file per piece: a composite of an item's
+  // bands names one item.
+  const parts = (scene ? sceneParts : metadata.parts) ?? [];
+  const partTiles: PartTiles[] = metadata.assets?.length
+    ? []
+    : parts
+        .map((part) => ({
+          template: cogTileTemplate({ serverUrl: metadata.serverUrl, sourceUrl: part.url }),
+          bbox: validBox(part.bbox),
+        }))
+        .filter((part): part is PartTiles => part.template !== null);
+  const mosaic = partTiles.length > 1;
+  const trigger = mosaic ? partTiles.map((part) => part.template).join('|') : template;
+
   return {
     id: `${id}-cog-tiles`,
     data: template,
-    // What MapLibre draws instead on a relief base map (`reliefRasters.ts`).
+    ...(mosaic ? { partTiles } : {}),
+    // What MapLibre draws instead on a relief base map (`reliefRasters.ts`): one image, the scene's first.
     reliefTiles: template,
     opacity: opacity ?? 1,
-    updateTriggers: { getTileData: template },
+    updateTriggers: { getTileData: trigger },
   };
+}
+
+function validBox(box: unknown): PartTiles['bbox'] {
+  return Array.isArray(box) && box.length === 4 && box.every((n) => typeof n === 'number' && Number.isFinite(n))
+    ? (box as PartTiles['bbox'])
+    : null;
 }
 
 /**
@@ -238,6 +276,7 @@ export function makeCogPaintedLayer<C extends Constructor<object>>(
         id: this.id,
         metadata: opts?.data?.metadata,
         scene: typeof chosen === 'string' && chosen ? chosen : null,
+        sceneParts: Array.isArray(visConfig?.cogParts) ? (visConfig.cogParts as CogPart[]) : null,
         opacity: visConfig?.opacity,
       });
 

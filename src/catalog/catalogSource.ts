@@ -3,7 +3,15 @@ import { getDataSourceSrv } from '@grafana/runtime';
 import { isObservable, lastValueFrom } from 'rxjs';
 
 import type { SavedMapConfig, SavedRemoteDataset } from '../data/mapConfig';
-import { metadataUrlFor, rasterKind, type RasterDataset, type RasterKind } from '../data/rasterDataset';
+import {
+  groupScenes,
+  metadataUrlFor,
+  parseBox,
+  rasterKind,
+  type RasterDataset,
+  type RasterKind,
+  type ScenePart,
+} from '../data/rasterDataset';
 import { COG_PAINTED_TYPE } from '../panel/cogPaintedLayer';
 
 /**
@@ -103,6 +111,8 @@ export interface CatalogRaster {
   sourceUrl: string;
   metadataUrl: string;
   tileServerUrls: string[];
+  /** The images of a scene of several (one pass's tiles), drawn together when the server paints them. */
+  parts?: ScenePart[];
 }
 
 const NO_CONTEXT: AddContext = { tileServerUrls: [] };
@@ -483,7 +493,7 @@ export type CatalogDatasetLike = { type?: string; label?: string; metadata?: Rec
 export function seriesRaster(
   id: string,
   dataset: CatalogDatasetLike,
-  scenes: Array<{ time: number | null; end: number | null; url: string; item?: string | null }>
+  scenes: Array<{ time: number | null; end: number | null; url: string; item?: string | null; parts?: ScenePart[] }>
 ): RasterDataset | null {
   if (scenes.length === 0) {
     return null;
@@ -508,7 +518,9 @@ export function seriesRaster(
       end: scene.end,
       sourceUrl: scene.url,
       itemUrl: scene.item ?? null,
+      ...(scene.parts ? { parts: scene.parts } : {}),
     })),
+    ...(painted && scenes[scenes.length - 1].parts ? { parts: scenes[scenes.length - 1].parts } : {}),
     // What a rebuild of the dataset must keep, or it would stop being a series.
     keepMetadata:
       searchOf(metadata) !== null
@@ -639,6 +651,8 @@ export interface SearchedScene {
   end: number | null;
   url: string;
   item: string | null;
+  /** Its images, when it is several (one pass's tiles, `raster_group`): `url` is the first. */
+  parts?: ScenePart[];
 }
 
 /** What a search of a series found: its scenes, oldest first; whether the catalog says they are painted; whether cut. */
@@ -652,6 +666,29 @@ export interface SearchedScenes {
 export interface SeriesSearch {
   target: string;
   bbox: [number, number, number, number];
+  /** Searched again over the map's view as it moves (`bbox` is then where it was added, the fallback). */
+  followView?: boolean;
+}
+
+/** Views wider than this (degrees) keep the last area searched: a search's limit would not fill such a mosaic. */
+export const MAX_FOLLOW_SPAN = 5;
+
+/**
+ * The area a view is searched over: the view widened to a grid of an eighth of its size, so a small pan asks
+ * nothing new; null for a view too wide to follow.
+ */
+export function followedArea(view: [number, number, number, number] | null): [number, number, number, number] | null {
+  if (!view) {
+    return null;
+  }
+  const [west, south, east, north] = view;
+  const span = Math.max(east - west, north - south);
+  if (!(span > 0) || span > MAX_FOLLOW_SPAN) {
+    return null;
+  }
+  const step = span / 8;
+  const snap = (value: number, round: (n: number) => number) => Math.round(round(value / step) * step * 1e5) / 1e5;
+  return [snap(west, Math.floor), snap(south, Math.floor), snap(east, Math.ceil), snap(north, Math.ceil)];
 }
 
 /** A dataset's saved search, or null when it is none. */
@@ -662,7 +699,7 @@ export function searchOf(metadata: Record<string, unknown> | undefined): SeriesS
     Array.isArray(bbox) &&
     bbox.length === 4 &&
     bbox.every((n) => typeof n === 'number' && Number.isFinite(n))
-    ? { target: search.target, bbox: bbox as SeriesSearch['bbox'] }
+    ? { target: search.target, bbox: bbox as SeriesSearch['bbox'], ...(search.followView ? { followView: true } : {}) }
     : null;
 }
 
@@ -677,22 +714,35 @@ export function scenesOfFrame(frame: DataFrame | undefined): SearchedScenes {
   const ends = column('raster_end');
   const items = column('raster_item_url');
   const painted = column('raster_painted');
+  const groups = column('raster_group');
+  const boxes = column('raster_bbox');
   const number = (value: unknown) => (value === null || value === undefined ? null : Number(value));
-  const scenes: SearchedScene[] = [];
+  const rows = [];
   for (let i = 0; i < frame.length; i++) {
     if (typeof urls[i] !== 'string' || !urls[i]) {
       continue;
     }
     const time = number(times?.[i]);
     const end = number(ends?.[i]);
-    scenes.push({
+    rows.push({
       time: time !== null && Number.isFinite(time) ? time : null,
-      end: end !== null && Number.isFinite(end) ? end : null,
-      url: urls[i],
-      item: typeof items?.[i] === 'string' ? items[i] : null,
+      ...(end !== null && Number.isFinite(end) ? { end } : {}),
+      sourceUrl: urls[i] as string,
+      itemUrl: typeof items?.[i] === 'string' ? (items[i] as string) : null,
+      group: typeof groups?.[i] === 'string' ? (groups[i] as string) : null,
+      bbox: parseBox(boxes?.[i]),
     });
   }
-  scenes.sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+  // The pieces of one pass are one scene of several images.
+  const scenes: SearchedScene[] = groupScenes(rows)
+    .map((scene) => ({
+      time: scene.time,
+      end: scene.end ?? null,
+      url: scene.sourceUrl,
+      item: scene.itemUrl,
+      ...(scene.parts ? { parts: scene.parts } : {}),
+    }))
+    .sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
   const flag = painted?.find((value: unknown) => typeof value === 'boolean');
   return {
     scenes,
@@ -761,11 +811,15 @@ export function searchDataset(
   if (!entry.search || !newest || whyNotAddable(entry, context)) {
     return null;
   }
-  const raster = catalogRaster(
-    { kind: 'raster', href: newest.url, serverHref: null, painted: found.painted },
-    context.tileServerUrls
-  );
-  const area = bbox.map((n) => Math.round(n * 1e5) / 1e5) as SeriesSearch['bbox'];
+  const raster = {
+    ...catalogRaster(
+      { kind: 'raster', href: newest.url, serverHref: null, painted: found.painted },
+      context.tileServerUrls
+    ),
+    ...(newest.parts ? { parts: newest.parts } : {}),
+  };
+  // Already on the grid the map follows the view on (`followedArea`), so the map's first search is this one.
+  const area = bbox;
   return {
     version: 'v1',
     data: {
@@ -778,7 +832,54 @@ export function searchDataset(
       type: raster.kind === 'painted' ? COG_PAINTED_TYPE : 'raster-tile',
       metadata: {
         ...(context.rasterMetadata?.(raster) ?? {}),
-        catalogSearch: { target: entry.search.target, bbox: area },
+        catalogSearch: { target: entry.search.target, bbox: area, followView: true },
+        catalogUid: uid,
+      },
+    },
+  };
+}
+
+/** A moment's date as its row and dataset name it: the day, and the minute when it is not midnight. */
+export function momentLabel(time: number | null): string {
+  if (time === null) {
+    return '';
+  }
+  const iso = new Date(time).toISOString();
+  return iso.slice(11, 16) === '00:00' ? iso.slice(0, 10) : `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
+}
+
+/**
+ * One moment a search found, added alone: fixed whatever the date (to compare two), drawn as the series draws it,
+ * its pieces together. Saved as any raster is, with where it came from (`catalogMoment`), and not searched again.
+ */
+export function momentDataset(
+  entry: CatalogEntry,
+  uid: string,
+  context: AddContext,
+  scene: SearchedScene,
+  painted: boolean | null
+): SavedRemoteDataset | null {
+  if (!entry.search || whyNotAddable(entry, context)) {
+    return null;
+  }
+  const raster = {
+    ...catalogRaster({ kind: 'raster', href: scene.url, serverHref: null, painted }, context.tileServerUrls),
+    ...(scene.parts ? { parts: scene.parts } : {}),
+  };
+  const when = scene.time !== null ? new Date(scene.time).toISOString() : 'undated';
+  return {
+    version: 'v1',
+    data: {
+      id: `catalog-${entry.search.target}-${when.slice(0, 16).replace(/[:]/g, '')}`,
+      label: `${entry.title}, ${momentLabel(scene.time)}`,
+      color: [0, 92, 255],
+      fields: [],
+      allData: [],
+      disableDataOperation: true,
+      type: raster.kind === 'painted' ? COG_PAINTED_TYPE : 'raster-tile',
+      metadata: {
+        ...(context.rasterMetadata?.(raster) ?? {}),
+        catalogMoment: { target: entry.search.target, time: scene.time },
         catalogUid: uid,
       },
     },

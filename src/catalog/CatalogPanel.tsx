@@ -11,8 +11,13 @@ import {
   type CatalogEntry,
   listCatalogs,
   searchCatalog,
+  followedArea,
+  MAX_FOLLOW_SPAN,
+  momentDataset,
+  momentLabel,
   searchDataset,
   searchScenes,
+  type SearchedScenes,
   whereInstead,
   whyNotAddable,
   withSeries,
@@ -276,6 +281,8 @@ export function CatalogPanel() {
   const [inRange, setInRange] = useState(false);
   // What a search said, by entry: searching, how many scenes, none here, or why it failed.
   const [notes, setNotes] = useState<Record<string, string>>({});
+  // A searched series' moments over the view, listed to add one alone: by entry.
+  const [moments, setMoments] = useState<Record<string, SearchedScenes>>({});
 
   useEffect(() => {
     if (!open || !uid) {
@@ -303,10 +310,20 @@ export function CatalogPanel() {
   const note = (id: string, said: string) => setNotes((was) => ({ ...was, [id]: said }));
   // A searched series is searched first, over the view in the dashboard's range: added at its newest scene, or not
   // at all when the area has none in that range.
-  const addSearch = async (entry: CatalogEntry) => {
-    const area = api.context.viewBounds?.() ?? null;
-    if (!entry.search || !area || !range) {
+  // Where a search goes: the view, on the grid the map follows it on; none when the view is too wide to search.
+  const searchArea = (entry: CatalogEntry) => {
+    const view = api.context.viewBounds?.() ?? null;
+    const area = followedArea(view);
+    if (!view || !range) {
       note(entry.id, 'No view or time range to search');
+    } else if (!area) {
+      note(entry.id, `Zoom in to search: the view is wider than ${MAX_FOLLOW_SPAN}°`);
+    }
+    return range ? area : null;
+  };
+  const addSearch = async (entry: CatalogEntry) => {
+    const area = searchArea(entry);
+    if (!entry.search || !area || !range) {
       return;
     }
     note(entry.id, 'Searching…');
@@ -323,6 +340,31 @@ export function CatalogPanel() {
       note(entry.id, `${n}${found.truncated ? '+' : ''} scene${n === 1 ? '' : 's'} in the time range`);
     } catch (err) {
       note(entry.id, `The search failed: ${String((err as Error)?.message ?? err)}`);
+    }
+  };
+  // The moments a searched series has over the view in the range, listed below its row.
+  const listMoments = async (entry: CatalogEntry) => {
+    const area = searchArea(entry);
+    if (!entry.search || !area || !range) {
+      return;
+    }
+    note(entry.id, 'Searching…');
+    try {
+      const found = await searchScenes(uid, { target: entry.search.target, bbox: area }, range);
+      setMoments((was) => ({ ...was, [entry.id]: found }));
+      note(
+        entry.id,
+        found.scenes.length ? `${found.scenes.length} dates over the view` : 'No scene over this view in the time range'
+      );
+    } catch (err) {
+      note(entry.id, `The search failed: ${String((err as Error)?.message ?? err)}`);
+    }
+  };
+  const addMoment = (entry: CatalogEntry, scene: SearchedScenes['scenes'][number], painted: boolean | null) => {
+    const saved = momentDataset(entry, uid, api.context, scene, painted);
+    if (saved) {
+      api.add(saved);
+      setAdded((was) => new Set([...was, saved.data.id]));
     }
   };
   const add = (entry: CatalogEntry) => {
@@ -392,6 +434,8 @@ export function CatalogPanel() {
         const why = whyNotAddable(entry, api.context);
         const members = entry.members ?? [];
         const isOpen = members.length > 0 && (expanded.has(entry.id) || entry.foundByMembers === true);
+        const datesOpen = Boolean(entry.search) && expanded.has(entry.id);
+        const found = moments[entry.id];
         const picks = follows ? "the dashboard's date picks the scene" : "the map's time slider picks the scene";
         const searched = entry.search ? `searched over the map's view in the dashboard's time range; ${picks}` : null;
         return (
@@ -449,8 +493,52 @@ export function CatalogPanel() {
                     {scenesLabel(members)} {isOpen ? '▴' : '▾'}
                   </Toggle>
                 ) : null}
+                {entry.search && !why ? (
+                  <Toggle
+                    aria-expanded={datesOpen}
+                    aria-label={`${datesOpen ? 'Hide' : 'Show'} the dates of ${entry.title}`}
+                    title="The dates over the view in the time range: add one alone, fixed whatever the date"
+                    onClick={() => {
+                      const next = new Set(expanded);
+                      if (datesOpen) {
+                        next.delete(entry.id);
+                      } else {
+                        next.add(entry.id);
+                        void listMoments(entry);
+                      }
+                      setExpanded(next);
+                    }}
+                  >
+                    Dates {datesOpen ? '▴' : '▾'}
+                  </Toggle>
+                ) : null}
               </Actions>
             </Row>
+            {datesOpen && found ? (
+              <Members role="group" aria-label={`The dates of ${entry.title}`}>
+                {[...found.scenes].reverse().map((scene) => {
+                  const id = momentDataset(entry, uid, api.context, scene, found.painted)?.data.id ?? scene.url;
+                  const pieces = scene.parts?.length ?? 1;
+                  const label = momentLabel(scene.time);
+                  return (
+                    <MemberRow key={id} className="catalog-entry catalog-moment" title={`${entry.title}, ${label}`}>
+                      <Text>
+                        <b>{label || 'Undated'}</b>
+                        <span>{[pieces > 1 ? `${pieces} images` : '1 image', 'fixed'].join(' · ')}</span>
+                      </Text>
+                      <Add
+                        aria-label={`Add ${entry.title}, ${label}`}
+                        title={`Add ${label} alone, whatever the date`}
+                        disabled={added.has(id)}
+                        onClick={() => addMoment(entry, scene, found.painted)}
+                      >
+                        {added.has(id) ? 'Added' : 'Add'}
+                      </Add>
+                    </MemberRow>
+                  );
+                })}
+              </Members>
+            ) : null}
             {isOpen ? (
               <Members role="group" aria-label={`The scenes of ${entry.title}`}>
                 {members.map((member) => {
