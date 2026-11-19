@@ -14,7 +14,7 @@ import type { RasterDataset } from '../data/rasterDataset';
 import type { WmsDataset } from '../data/wmsDataset';
 import type { EsriDataset } from '../data/esriDataset';
 import type { ZarrDataset } from '../data/zarrDataset';
-import { namesBasemap, type SavedMapConfig } from '../data/mapConfig';
+import { namesBasemap, type SavedCatalogLayer, type SavedMapConfig } from '../data/mapConfig';
 import type { KeplerThemeOverride } from '../data/keplerTheme';
 import { KEPLER_INSTANCE_ID, maxZoomOf } from './constants';
 import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES, startingStyleType } from './basemaps';
@@ -71,6 +71,7 @@ import { useFitOnVariables } from './useFitOnVariables';
 import { centerOnLoad, withLoadCenter } from './centerSync';
 import { useRasterTimeline } from './useRasterTimeline';
 import { useCatalogSeries } from '../catalog/useCatalogSeries';
+import { useCatalogLayers } from '../catalog/useCatalogLayers';
 import { useWmsCalendar } from './useWmsCalendar';
 import { useWmsTimeline } from './useWmsTimeline';
 import { useEsriTimeline } from './useEsriTimeline';
@@ -430,9 +431,21 @@ export function KeplerMap({
   }, [catalogKey]);
   const catalogsReady = catalogKey === '[]' || catalogsReadFor === catalogKey;
   // Add from catalog, in the map control: a picked tileset joins the map as a saved one would.
+  // Layers read from a catalog by query over the view (GeoParquet): the map's own list, saved with it.
+  const [catalogLayers, setCatalogLayers] = useState<SavedCatalogLayer[]>(savedMapConfig?.catalogLayers ?? []);
+  const catalogLayersRef = useRef(catalogLayers);
+  useEffect(() => {
+    catalogLayersRef.current = catalogLayers;
+  }, [catalogLayers]);
+  const [catalogLayersFor, setCatalogLayersFor] = useState(savedMapConfig);
+  if (catalogLayersFor !== savedMapConfig) {
+    setCatalogLayersFor(savedMapConfig);
+    setCatalogLayers(savedMapConfig?.catalogLayers ?? []);
+  }
   const catalogApi = useMemo<CatalogApi>(
     () => ({
       add: (saved) => addCatalogDataset(store.dispatch, saved),
+      addLayer: (layer) => setCatalogLayers((was) => [...was.filter((l) => l.id !== layer.id), layer]),
       context: {
         viewBounds: () => {
           const view = readViewportBounds(store);
@@ -637,11 +650,26 @@ export function KeplerMap({
   // The options editor's save and the map's own button: one capture for both.
   // Its effect keeps its place after the load effect, which therefore runs
   // first in a commit that brings a save request.
+  // A save keeps the catalog layers beside kepler's config: kepler keeps no dataset of rows.
+  const onCapturedWithCatalog = useCallback(
+    (config: SavedMapConfig) =>
+      onMapConfigCaptured(
+        catalogLayersRef.current.length > 0 ? { ...config, catalogLayers: catalogLayersRef.current } : config
+      ),
+    [onMapConfigCaptured]
+  );
   const saveMapConfig = useSaveMapConfig({
     store,
     saveRequest,
-    onMapConfigCaptured,
+    onMapConfigCaptured: onCapturedWithCatalog,
     appliedConfigRef: appliedConfig,
+  });
+  useCatalogLayers({
+    store,
+    isReady,
+    layers: catalogLayers,
+    generation: savedMapConfig,
+    onRemoved: (id) => setCatalogLayers((was) => was.filter((l) => l.id !== id)),
   });
   const sidePanelOpen = useSidePanelOpen(store);
 

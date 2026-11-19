@@ -58,9 +58,30 @@ export interface SavedMapInfo {
 }
 
 /** A kepler saved config: `{version, config}`, as produced by `getConfigToSave`. */
+/**
+ * A layer the map reads from a catalog by query, over its view (a GeoParquet read by area, the catalog data source's
+ * `parquet` query): kepler keeps no dataset of rows, so the map keeps what to ask, and asks it again on load.
+ */
+export interface SavedCatalogLayer {
+  /** The dataset's id in kepler, which its layers name. */
+  id: string;
+  label: string;
+  /** The catalog data source. */
+  uid: string;
+  /** What is read: a collection of GeoParquet files, or one file's entry. */
+  target: string;
+  /** Columns besides the geometry; empty, the file's simple ones. */
+  columns: string[];
+  /** The area added over, kept when the view is too wide to follow. */
+  bbox: [number, number, number, number];
+  followView: boolean;
+}
+
 export interface SavedMapConfig {
   version: string;
   config: Record<string, unknown>;
+  /** Layers read from a catalog by query, over the view (see {@link SavedCatalogLayer}). */
+  catalogLayers?: SavedCatalogLayer[];
   /**
    * The URL-backed datasets the config's layers are built on.
    *

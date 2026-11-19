@@ -8,6 +8,9 @@ import {
   featuresOfSource,
   featuresUrl,
   MAX_BROWSER_FILE,
+  parquetLayer,
+  readsByArea,
+  withSeries,
   vectorDataset,
   vectorFormat,
   vectorQuery,
@@ -110,5 +113,46 @@ describe('features of an OGC API from a catalog', () => {
     expect(featuresOfSource('mine', saved.data.metadata?.source)).toBeNull();
     expect(featuresOfSource('catalog-file', 'https://d.org/castles.geojson')).toBeNull();
     expect(whyNotAddable({ ...features, itemsHref: null })).toMatch(/items/);
+  });
+});
+
+describe('a GeoParquet from a catalog', () => {
+  const part = (i: number) =>
+    entry({
+      id: `0000${i}`,
+      collection: 'place',
+      href: `https://s3.example.org/part-0000${i}.zstd.parquet`,
+      size: 7e8,
+      mediaType: 'application/vnd.apache.parquet',
+    });
+  const collection = entry({
+    id: 'place',
+    kind: 'geoparquet',
+    collection: 'place',
+    title: 'Places',
+    href: 'https://stac.example.org/place',
+    size: 1.2e10,
+  });
+
+  it('is read by area whatever its size, a collection of files as one, its files not listed apart', () => {
+    expect(readsByArea(collection)).toBe(true);
+    expect(readsByArea(part(1))).toBe(true);
+    expect(whyNotAddable(part(1))).toBeNull();
+    expect(whyNotAddable(collection)).toBeNull();
+    expect(withSeries([collection, part(1), part(2)]).map((e) => e.id)).toEqual(['place']);
+    expect(withSeries([part(1)]).map((e) => e.id)).toEqual(['00001']);
+  });
+
+  it('is added as a layer the map asks for over its view: the collection, or the one file', () => {
+    expect(parquetLayer(collection, 'cat', [4.8, 52.3, 5, 52.4])).toEqual({
+      id: 'catalog-place',
+      label: 'Places',
+      uid: 'cat',
+      target: 'place',
+      columns: [],
+      bbox: [4.8, 52.3, 5, 52.4],
+      followView: true,
+    });
+    expect(parquetLayer(part(1), 'cat', [0, 0, 1, 1]).target).toBe('00001');
   });
 });

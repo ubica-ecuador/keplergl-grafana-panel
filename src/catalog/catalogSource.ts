@@ -2,7 +2,7 @@ import { dateTime, type DataFrame, type DataQueryRequest, type DataQueryResponse
 import { getDataSourceSrv } from '@grafana/runtime';
 import { isObservable, lastValueFrom } from 'rxjs';
 
-import type { SavedMapConfig, SavedRemoteDataset } from '../data/mapConfig';
+import type { SavedCatalogLayer, SavedMapConfig, SavedRemoteDataset } from '../data/mapConfig';
 import {
   groupScenes,
   metadataUrlFor,
@@ -185,9 +185,12 @@ export function whyNotAddable(
       return 'A glTF model: Kepler Plus draws it, with the 4D Model layer.';
     case 'features':
       return 'itemsHref' in entry && entry.itemsHref ? null : 'Features without an items link to read them from.';
+    case 'geoparquet':
+      return null;
     case 'vector': {
       const format = vectorFormat(entry);
-      if (format === 'pmtiles') {
+      // A GeoParquet is read by area, whatever its size: only the row groups over the view.
+      if (format === 'pmtiles' || format === 'parquet') {
         return null;
       }
       if (!format) {
@@ -376,7 +379,12 @@ export function withSeries(entries: CatalogEntry[]): CatalogEntry[] {
   }
   const folded: CatalogEntry[] = [];
   const done = new Set<string>();
+  // A collection of GeoParquet files is listed as one, read by area: its files are not listed apart.
+  const parquetCollections = new Set(entries.filter((e) => e.kind === 'geoparquet').map((e) => e.collection));
   for (const entry of entries) {
+    if (entry.kind === 'vector' && parquetCollections.has(entry.collection) && vectorFormat(entry) === 'parquet') {
+      continue;
+    }
     if (entry.kind === 'external' && entry.series === 'search') {
       folded.push({ ...entry, search: { target: entry.id } });
       continue;
@@ -1328,3 +1336,63 @@ const NO_SERVICE: CatalogService = {
   servers: [],
   mediaType: '',
 };
+
+/** Rows a map loads from a GeoParquet over its view, at most. */
+export const PARQUET_LAYER_LIMIT = 100_000;
+
+/** Whether an entry is read by area from GeoParquet: a collection of such files, or one. */
+export function readsByArea(entry: Pick<CatalogEntry, 'kind' | 'href'> & { mediaType?: string }): boolean {
+  return entry.kind === 'geoparquet' || (entry.kind === 'vector' && vectorFormat(entry) === 'parquet');
+}
+
+/** A GeoParquet added to a map: what the map asks the catalog data source for, over its view. */
+export function parquetLayer(
+  entry: CatalogEntry,
+  uid: string,
+  area: [number, number, number, number]
+): SavedCatalogLayer {
+  return {
+    id: `catalog-${entry.id}`.replace(/[^\w-]+/g, '-'),
+    label: entry.title,
+    uid,
+    target: entry.kind === 'geoparquet' ? entry.collection : entry.id,
+    columns: [],
+    bbox: area,
+    followView: true,
+  };
+}
+
+/** A GeoParquet layer's rows over an area, through its catalog's data source (the `parquet` query). */
+export async function readParquetLayer(
+  layer: SavedCatalogLayer,
+  area: [number, number, number, number]
+): Promise<DataFrame | undefined> {
+  const ds = await getDataSourceSrv().get({ uid: layer.uid });
+  const now = dateTime();
+  const request = {
+    targets: [
+      {
+        refId: layer.id,
+        queryType: 'parquet',
+        entries: [layer.target],
+        bbox: area.join(','),
+        columns: layer.columns.join(','),
+        limit: PARQUET_LAYER_LIMIT,
+      },
+    ],
+    range: { from: now, to: now, raw: { from: now, to: now } },
+    scopedVars: {},
+    requestId: `catalog-layer-${layer.id}`,
+    interval: '1m',
+    intervalMs: 60_000,
+    timezone: 'utc',
+    app: 'panel',
+    startTime: Date.now(),
+  } as unknown as DataQueryRequest;
+  const reply = ds.query(request) as unknown;
+  const response = (isObservable(reply) ? await lastValueFrom(reply) : await reply) as DataQueryResponse;
+  if (response.errors?.length) {
+    throw new Error(response.errors[0].message ?? 'The read failed');
+  }
+  return response.data?.[0];
+}

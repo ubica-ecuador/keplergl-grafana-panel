@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { config } from '@grafana/runtime';
 import { MapControlButton } from '@kepler.gl/components';
 
-import type { SavedRemoteDataset } from '../data/mapConfig';
+import type { SavedCatalogLayer, SavedRemoteDataset } from '../data/mapConfig';
 import {
   type AddContext,
   catalogDataset,
@@ -22,6 +22,8 @@ import {
   vectorDataset,
   vectorFormat,
   vectorQuery,
+  parquetLayer,
+  readsByArea,
   type SearchedScenes,
   whereInstead,
   whyNotAddable,
@@ -31,6 +33,8 @@ import {
 /** What the map offers the catalog panel: adding a dataset to it, and what it draws rasters with. Provided by KeplerMap. */
 export interface CatalogApi {
   add(saved: SavedRemoteDataset): void;
+  /** Adds a layer the map reads by query over its view (a GeoParquet read by area). */
+  addLayer?(layer: SavedCatalogLayer): void;
   context: AddContext;
 }
 export const CatalogContext = createContext<CatalogApi | null>(null);
@@ -48,6 +52,7 @@ const KINDS: Array<[string, string]> = [
   ['raster', 'Rasters'],
   ['map-service', 'Services'],
   ['features', 'Features'],
+  ['geoparquet', 'GeoParquet'],
   ['vector', 'Vectors'],
   ['external', 'Catalogs'],
 ];
@@ -409,7 +414,20 @@ export function CatalogPanel() {
       setAdded((was) => new Set([...was, entry.id]));
     }
   };
+  // A GeoParquet: read by area over the view, again as it moves, only the row groups there.
+  const addParquet = (entry: CatalogEntry) => {
+    const area = searchArea(entry);
+    if (area && api.addLayer) {
+      api.addLayer(parquetLayer(entry, uid, area));
+      setAdded((was) => new Set([...was, entry.id]));
+      note(entry.id, 'Read over the view, again as it moves');
+    }
+  };
   const add = (entry: CatalogEntry) => {
+    if (readsByArea(entry)) {
+      addParquet(entry);
+      return;
+    }
     if (entry.kind === 'map-service') {
       void addService(entry);
       return;
@@ -505,23 +523,31 @@ export function CatalogPanel() {
               <Text>
                 <b>{entry.title}</b>
                 <span>
-                  {(entry.kind === 'features'
-                    ? ['OGC API Features', entry.collection]
-                    : entry.kind === 'vector'
-                      ? [
-                          (vectorFormat(entry) ?? 'file').toUpperCase(),
-                          typeof entry.size === 'number'
-                            ? `${(entry.size / 1e6).toFixed(entry.size < 1e7 ? 1 : 0)} MB`
-                            : '',
-                          entry.collection,
-                        ]
-                      : entry.service
-                        ? [entry.service.protocol.toUpperCase(), entry.service.layers.join(', '), entry.collection]
-                        : entry.search
-                          ? [entry.kind === 'external' ? 'STAC API' : 'tiles', 'searched over the view']
-                          : entry.scenes
-                            ? [entryWhen(entry), follows ? 'follows the date' : 'raster series']
-                            : [entry.kind, entry.collection, entryWhen(entry)]
+                  {(readsByArea(entry)
+                    ? [
+                        'GeoParquet',
+                        'read by area',
+                        typeof entry.size === 'number'
+                          ? `${(entry.size / 1e9).toFixed(entry.size < 1e10 ? 1 : 0)} GB`
+                          : '',
+                      ]
+                    : entry.kind === 'features'
+                      ? ['OGC API Features', entry.collection]
+                      : entry.kind === 'vector'
+                        ? [
+                            (vectorFormat(entry) ?? 'file').toUpperCase(),
+                            typeof entry.size === 'number'
+                              ? `${(entry.size / 1e6).toFixed(entry.size < 1e7 ? 1 : 0)} MB`
+                              : '',
+                            entry.collection,
+                          ]
+                        : entry.service
+                          ? [entry.service.protocol.toUpperCase(), entry.service.layers.join(', '), entry.collection]
+                          : entry.search
+                            ? [entry.kind === 'external' ? 'STAC API' : 'tiles', 'searched over the view']
+                            : entry.scenes
+                              ? [entryWhen(entry), follows ? 'follows the date' : 'raster series']
+                              : [entry.kind, entry.collection, entryWhen(entry)]
                   )
                     .filter(Boolean)
                     .join(' · ')}
