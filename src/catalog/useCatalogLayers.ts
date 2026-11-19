@@ -18,6 +18,8 @@ interface Params {
   generation: unknown;
   /** A layer whose dataset the user removed from the map. */
   onRemoved: (id: string) => void;
+  /** The dashboard's time range, which sensors and EDR layers follow. */
+  range?: { from: number; to: number };
 }
 
 /**
@@ -28,8 +30,12 @@ interface Params {
  * kepler keeps no dataset of rows in a saved map, so the layers are the map's own list (`catalogLayers` in its saved
  * configuration); a layer whose dataset the user removes leaves the list.
  */
-export function useCatalogLayers({ store, isReady, layers, generation, onRemoved }: Params): void {
+export function useCatalogLayers({ store, isReady, layers, generation, onRemoved, range }: Params): void {
   const layersRef = useRef(layers);
+  const rangeRef = useRef(range);
+  useEffect(() => {
+    rangeRef.current = range;
+  });
   const onRemovedRef = useRef(onRemoved);
   useEffect(() => {
     layersRef.current = layers;
@@ -66,12 +72,15 @@ export function useCatalogLayers({ store, isReady, layers, generation, onRemoved
           continue;
         }
         const bbox = layer.followView && area ? area : layer.bbox;
-        const key = JSON.stringify([layer.target, bbox, layer.columns]);
+        // Sensors and EDR are read in the dashboard's time range, again when it changes.
+        const timed = layer.queryType === 'sensors' || layer.queryType === 'edr';
+        const when = timed ? rangeRef.current : undefined;
+        const key = JSON.stringify([layer.target, bbox, layer.columns, when?.from, when?.to]);
         if (asked.current.get(layer.id) === key && (inMap || !shown.current.has(layer.id))) {
           continue;
         }
         asked.current.set(layer.id, key);
-        readParquetLayer(layer, bbox)
+        readParquetLayer(layer, bbox, when)
           .then((frame) => {
             if (!live || !frame || asked.current.get(layer.id) !== key) {
               return;
@@ -118,8 +127,8 @@ export function useCatalogLayers({ store, isReady, layers, generation, onRemoved
     };
   }, [store, isReady]);
 
-  // A layer added (or the list restored) is read at once.
+  // A layer added (or the list restored) is read at once, and timed ones again for a new time range.
   useEffect(() => {
     schedule.current();
-  }, [layers, generation]);
+  }, [layers, generation, range?.from, range?.to]);
 }

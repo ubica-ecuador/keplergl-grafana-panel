@@ -10,6 +10,8 @@ import {
   MAX_BROWSER_FILE,
   parquetLayer,
   readableHere,
+  readsByQuery,
+  searchCatalog,
   readsByArea,
   withSeries,
   vectorDataset,
@@ -170,5 +172,38 @@ describe('a file a browser may not read', () => {
     const answers = (async () => ({ status: 405, ok: false })) as unknown as typeof fetch;
     expect(await readableHere('https://f.org/a.geojson', refused)).toBe(false);
     expect(await readableHere('https://f.org/a.geojson', answers)).toBe(true);
+  });
+});
+
+describe('sensors and EDR from a catalog', () => {
+  const sensors = entry({ id: 'property:NO2', kind: 'sensors', title: 'NO2 (12 sensors)', collection: 'sensors' });
+  const station = entry({ id: '7', kind: 'datastream', title: 'NO2 (µg/m³)', collection: 'A' });
+  const edr = entry({
+    id: 'airquality',
+    kind: 'edr',
+    title: 'Air quality',
+    parameters: ['no2', 'pm10', 'pm25', 'o3'].map((id) => ({ id, label: id, unit: 'ug/m3' })),
+  });
+
+  it('are layers the data source reads over the view in the time range', () => {
+    expect([sensors, station, edr].map((e) => [readsByQuery(e), whyNotAddable(e)])).toEqual([
+      [true, null],
+      [true, null],
+      [true, null],
+    ]);
+    expect(parquetLayer(sensors, 'sta', [9, 53, 10, 54])).toMatchObject({
+      target: 'property:NO2',
+      queryType: 'sensors',
+    });
+    // An EDR collection's first parameters: all of them would be heavy.
+    expect(parquetLayer(edr, 'fmi', [24, 60, 25, 61])).toMatchObject({
+      target: 'airquality',
+      queryType: 'edr',
+      parameters: ['no2', 'pm10', 'pm25'],
+    });
+  });
+
+  it('are listed together under the Sensors chip', () => {
+    expect(searchCatalog([sensors, station, edr], '', 'sensors', null).map((e) => e.id)).toEqual(['property:NO2', '7']);
   });
 });

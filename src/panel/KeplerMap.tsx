@@ -670,6 +670,7 @@ export function KeplerMap({
     layers: catalogLayers,
     generation: savedMapConfig,
     onRemoved: (id) => setCatalogLayers((was) => was.filter((l) => l.id !== id)),
+    range: grafanaRange,
   });
   const sidePanelOpen = useSidePanelOpen(store);
 

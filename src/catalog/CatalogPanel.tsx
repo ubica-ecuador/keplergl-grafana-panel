@@ -29,6 +29,8 @@ import {
   vectorQuery,
   parquetLayer,
   readsByArea,
+  readsByQuery,
+  measuresLabel,
   type SearchedScenes,
   whereInstead,
   whyNotAddable,
@@ -59,6 +61,8 @@ const KINDS: Array<[string, string]> = [
   ['features', 'Features'],
   ['geoparquet', 'GeoParquet'],
   ['vector', 'Vectors'],
+  ['sensors', 'Sensors'],
+  ['edr', 'EDR'],
   ['external', 'Catalogs'],
 ];
 
@@ -435,11 +439,16 @@ export function CatalogPanel() {
     if (area && api.addLayer) {
       api.addLayer(parquetLayer(entry, uid, area));
       setAdded((was) => new Set([...was, entry.id]));
-      note(entry.id, 'Read over the view, again as it moves');
+      note(
+        entry.id,
+        readsByArea(entry)
+          ? 'Read over the view, again as it moves'
+          : 'Over the view in the time range, again as either moves'
+      );
     }
   };
   const add = (entry: CatalogEntry) => {
-    if (readsByArea(entry)) {
+    if (readsByQuery(entry)) {
       addParquet(entry);
       return;
     }
@@ -546,23 +555,25 @@ export function CatalogPanel() {
                           ? `${(entry.size / 1e9).toFixed(entry.size < 1e10 ? 1 : 0)} GB`
                           : '',
                       ]
-                    : entry.kind === 'features'
-                      ? featuresLabel(entry)
-                      : entry.kind === 'vector'
-                        ? [
-                            (vectorFormat(entry) ?? 'file').toUpperCase(),
-                            typeof entry.size === 'number'
-                              ? `${(entry.size / 1e6).toFixed(entry.size < 1e7 ? 1 : 0)} MB`
-                              : '',
-                            entry.collection,
-                          ]
-                        : entry.service
-                          ? [serviceLabel(entry.service), entry.service.layers.join(', '), entry.collection]
-                          : entry.search
-                            ? [entry.kind === 'external' ? 'STAC API' : 'tiles', 'searched over the view']
-                            : entry.scenes
-                              ? [entryWhen(entry), follows ? 'follows the date' : 'raster series']
-                              : [entry.kind, entry.collection, entryWhen(entry)]
+                    : entry.kind === 'sensors' || entry.kind === 'datastream' || entry.kind === 'edr'
+                      ? measuresLabel(entry)
+                      : entry.kind === 'features'
+                        ? featuresLabel(entry)
+                        : entry.kind === 'vector'
+                          ? [
+                              (vectorFormat(entry) ?? 'file').toUpperCase(),
+                              typeof entry.size === 'number'
+                                ? `${(entry.size / 1e6).toFixed(entry.size < 1e7 ? 1 : 0)} MB`
+                                : '',
+                              entry.collection,
+                            ]
+                          : entry.service
+                            ? [serviceLabel(entry.service), entry.service.layers.join(', '), entry.collection]
+                            : entry.search
+                              ? [entry.kind === 'external' ? 'STAC API' : 'tiles', 'searched over the view']
+                              : entry.scenes
+                                ? [entryWhen(entry), follows ? 'follows the date' : 'raster series']
+                                : [entry.kind, entry.collection, entryWhen(entry)]
                   )
                     .filter(Boolean)
                     .join(' · ')}

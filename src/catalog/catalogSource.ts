@@ -88,6 +88,8 @@ export interface CatalogEntry {
   featureProtocol?: FeatureProtocol;
   /** A features entry of a WFS or ArcGIS: the property (or field) its time range is kept to; none, no time. */
   timeProperty?: string | null;
+  /** A Datastream, sensors or an EDR collection: what it measures. */
+  parameters?: Array<{ id: string; label: string; unit: string }>;
 }
 
 /** A map service that draws an entry (STAC web-map-links), as the data source gives it in its `service` column. */
@@ -200,6 +202,9 @@ export function whyNotAddable(
         ? null
         : 'Features the service gives in no GeoJSON (GML or Esri JSON only): this map cannot read them.';
     case 'geoparquet':
+    case 'sensors':
+    case 'datastream':
+    case 'edr':
       return null;
     case 'vector': {
       const format = vectorFormat(entry);
@@ -324,6 +329,7 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
     mediaTypes,
     protocols,
     timeProperties,
+    parameterLists,
   ] = [
     'id',
     'title',
@@ -344,6 +350,7 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
     'media_type',
     'feature_protocol',
     'time_property',
+    'parameters',
   ].map(column);
   const hasSeries = frame.fields.some((field) => field.name === 'series');
   const time = (value: unknown) => {
@@ -377,6 +384,9 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
         ? { featureProtocol: protocols[i] }
         : {}),
       ...(typeof timeProperties[i] === 'string' && timeProperties[i] ? { timeProperty: timeProperties[i] } : {}),
+      ...(typeof parameterLists[i] === 'string' && parameterLists[i]
+        ? { parameters: parseParameters(parameterLists[i]) }
+        : {}),
     });
   }
   return entries.filter((entry) => entry.id !== '' && entry.href !== '');
@@ -475,7 +485,7 @@ export function searchCatalog(
 ): CatalogEntry[] {
   const words = text.toLowerCase().split(/\s+/).filter(Boolean);
   const byText = (entry: CatalogEntry) =>
-    (!kind || entry.kind === kind) &&
+    (!kind || entry.kind === kind || (kind === 'sensors' && entry.kind === 'datastream')) &&
     words.every((word) => `${entry.id} ${entry.title} ${entry.collection}`.toLowerCase().includes(word));
   const byTime = (entry: CatalogEntry) => range === null || holdsWithin(entry, range);
   const found: CatalogEntry[] = [];
@@ -1421,48 +1431,101 @@ const NO_SERVICE: CatalogService = {
 
 /** Rows a map loads from a GeoParquet over its view, at most. */
 export const PARQUET_LAYER_LIMIT = 100_000;
+/** Sensors a sensors layer shows at most. */
+const SENSORS_LAYER_LIMIT = 2000;
+/** Values an EDR layer reads at most. */
+const EDR_LAYER_LIMIT = 50_000;
 
 /** Whether an entry is read by area from GeoParquet: a collection of such files, or one. */
 export function readsByArea(entry: Pick<CatalogEntry, 'kind' | 'href'> & { mediaType?: string }): boolean {
   return entry.kind === 'geoparquet' || (entry.kind === 'vector' && vectorFormat(entry) === 'parquet');
 }
 
-/** A GeoParquet added to a map: what the map asks the catalog data source for, over its view. */
+/** Whether an entry is added as a layer the data source reads over the view: GeoParquet, sensors, EDR. */
+export function readsByQuery(entry: Pick<CatalogEntry, 'kind' | 'href'> & { mediaType?: string }): boolean {
+  return readsByArea(entry) || entry.kind === 'sensors' || entry.kind === 'datastream' || entry.kind === 'edr';
+}
+
+/** EDR parameters a map asks of a collection added from the catalog: its first few (all would be heavy). */
+const EDR_LAYER_PARAMETERS = 3;
+
+/**
+ * An entry added to a map as a layer the catalog data source reads over its view: a GeoParquet (by area), sensors
+ * (their last value in the time range), an EDR collection (its first parameters over the area in the time range).
+ */
 export function parquetLayer(
   entry: CatalogEntry,
   uid: string,
   area: [number, number, number, number]
 ): SavedCatalogLayer {
-  return {
+  const base = {
     id: `catalog-${entry.id}`.replace(/[^\w-]+/g, '-'),
     label: entry.title,
     uid,
-    target: entry.kind === 'geoparquet' ? entry.collection : entry.id,
     columns: [],
     bbox: area,
     followView: true,
   };
+  if (entry.kind === 'sensors' || entry.kind === 'datastream') {
+    return { ...base, target: entry.id, queryType: 'sensors' };
+  }
+  if (entry.kind === 'edr') {
+    const parameters = (entry.parameters ?? []).slice(0, EDR_LAYER_PARAMETERS).map((p) => p.id);
+    return { ...base, target: entry.id, queryType: 'edr', parameters };
+  }
+  return { ...base, target: entry.kind === 'geoparquet' ? entry.collection : entry.id };
+}
+
+/** What a sensors or EDR layer is: its service, and what of it. */
+export function measuresLabel(entry: CatalogEntry): string[] {
+  return entry.kind === 'edr'
+    ? ['EDR', (entry.parameters ?? []).length ? `${entry.parameters!.length} parameters` : '', 'over the view']
+    : ['SensorThings', entry.kind === 'sensors' ? 'last values over the view' : entry.collectionTitle];
+}
+
+/** The parameters column of an entry, as JSON. */
+function parseParameters(text: string): CatalogEntry['parameters'] {
+  try {
+    const list = JSON.parse(text);
+    return Array.isArray(list) ? list : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** A GeoParquet layer's rows over an area, through its catalog's data source (the `parquet` query). */
 export async function readParquetLayer(
   layer: SavedCatalogLayer,
-  area: [number, number, number, number]
+  area: [number, number, number, number],
+  timeRange?: { from: number; to: number }
 ): Promise<DataFrame | undefined> {
   const ds = await getDataSourceSrv().get({ uid: layer.uid });
   const now = dateTime();
+  const from = timeRange ? dateTime(timeRange.from) : now;
+  const to = timeRange ? dateTime(timeRange.to) : now;
+  const type = layer.queryType ?? 'parquet';
+  const target =
+    type === 'sensors'
+      ? { queryType: 'sensors', entries: [layer.target], bbox: area.join(','), limit: SENSORS_LAYER_LIMIT }
+      : type === 'edr'
+        ? {
+            queryType: 'edr',
+            entries: [layer.target],
+            bbox: area.join(','),
+            edrMode: 'area',
+            parameters: (layer.parameters ?? []).join(','),
+            limit: EDR_LAYER_LIMIT,
+          }
+        : {
+            queryType: 'parquet',
+            entries: [layer.target],
+            bbox: area.join(','),
+            columns: layer.columns.join(','),
+            limit: PARQUET_LAYER_LIMIT,
+          };
   const request = {
-    targets: [
-      {
-        refId: layer.id,
-        queryType: 'parquet',
-        entries: [layer.target],
-        bbox: area.join(','),
-        columns: layer.columns.join(','),
-        limit: PARQUET_LAYER_LIMIT,
-      },
-    ],
-    range: { from: now, to: now, raw: { from: now, to: now } },
+    targets: [{ refId: layer.id, ...target }],
+    range: { from, to, raw: { from, to } },
     scopedVars: {},
     requestId: `catalog-layer-${layer.id}`,
     interval: '1m',
