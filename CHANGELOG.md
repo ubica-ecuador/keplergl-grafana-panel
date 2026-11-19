@@ -21,6 +21,8 @@ release documents what changed since the one before it.
 - **A split map's loading bar goes.** A swipe or dual map with a 3D Tile layer on one side showed
   "Loading..." for ever: the other side hides the layer, and a hidden 3D Tile layer never
   traversed its tileset, so it never said it was loaded. A hidden one now does.
+- **kepler.gl 3.3.0-alpha.24.** Light & Shadow turned on after the map has loaded casts its
+  shadows; before, a map saved with the effect off showed none until it was reloaded with it on.
 - **kepler.gl 3.3.0-alpha.23.** Light & Shadow can animate its date and time over a range of its
   own, and a map under its shadows answers the pointer (kepler now binds the shadow sampler in
   picking, as Plus already did). The Bitmap layer takes an elevation offset; zoom to layer works
