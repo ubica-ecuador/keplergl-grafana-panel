@@ -31,6 +31,8 @@ import {
   readsByArea,
   readsByQuery,
   measuresLabel,
+  zarrDataset,
+  cubeLabel,
   type SearchedScenes,
   whereInstead,
   whyNotAddable,
@@ -61,6 +63,7 @@ const KINDS: Array<[string, string]> = [
   ['features', 'Features'],
   ['geoparquet', 'GeoParquet'],
   ['vector', 'Vectors'],
+  ['zarr', 'Zarr'],
   ['sensors', 'Sensors'],
   ['edr', 'EDR'],
   ['external', 'Catalogs'],
@@ -421,6 +424,18 @@ export function CatalogPanel() {
       note(entry.id, `The first features over the view${featuresHaveTime(entry) ? ' in the time range' : ''}`);
     }
   };
+  // A data cube's variable: the panel's Zarr layer, its moments asked in each time range (useCatalogZarr).
+  const addZarr = (entry: CatalogEntry) => {
+    const saved = zarrDataset(entry, uid, api.context);
+    if (saved) {
+      api.add(saved);
+      setAdded((was) => new Set([...was, entry.id]));
+      note(
+        entry.id,
+        entry.cube?.dimension ? "Its moments in the time range, on the map's clock" : 'Drawn by the tile server'
+      );
+    }
+  };
   // A vector file: loaded whole by kepler from its address (a PMTiles archive as tiles).
   const addVector = async (entry: CatalogEntry) => {
     if (!(await readableHere(entry.href))) {
@@ -454,6 +469,10 @@ export function CatalogPanel() {
     }
     if (entry.kind === 'map-service') {
       void addService(entry);
+      return;
+    }
+    if (entry.kind === 'zarr') {
+      addZarr(entry);
       return;
     }
     if (entry.kind === 'features') {
@@ -555,25 +574,27 @@ export function CatalogPanel() {
                           ? `${(entry.size / 1e9).toFixed(entry.size < 1e10 ? 1 : 0)} GB`
                           : '',
                       ]
-                    : entry.kind === 'sensors' || entry.kind === 'datastream' || entry.kind === 'edr'
-                      ? measuresLabel(entry)
-                      : entry.kind === 'features'
-                        ? featuresLabel(entry)
-                        : entry.kind === 'vector'
-                          ? [
-                              (vectorFormat(entry) ?? 'file').toUpperCase(),
-                              typeof entry.size === 'number'
-                                ? `${(entry.size / 1e6).toFixed(entry.size < 1e7 ? 1 : 0)} MB`
-                                : '',
-                              entry.collection,
-                            ]
-                          : entry.service
-                            ? [serviceLabel(entry.service), entry.service.layers.join(', '), entry.collection]
-                            : entry.search
-                              ? [entry.kind === 'external' ? 'STAC API' : 'tiles', 'searched over the view']
-                              : entry.scenes
-                                ? [entryWhen(entry), follows ? 'follows the date' : 'raster series']
-                                : [entry.kind, entry.collection, entryWhen(entry)]
+                    : entry.kind === 'zarr'
+                      ? cubeLabel(entry)
+                      : entry.kind === 'sensors' || entry.kind === 'datastream' || entry.kind === 'edr'
+                        ? measuresLabel(entry)
+                        : entry.kind === 'features'
+                          ? featuresLabel(entry)
+                          : entry.kind === 'vector'
+                            ? [
+                                (vectorFormat(entry) ?? 'file').toUpperCase(),
+                                typeof entry.size === 'number'
+                                  ? `${(entry.size / 1e6).toFixed(entry.size < 1e7 ? 1 : 0)} MB`
+                                  : '',
+                                entry.collection,
+                              ]
+                            : entry.service
+                              ? [serviceLabel(entry.service), entry.service.layers.join(', '), entry.collection]
+                              : entry.search
+                                ? [entry.kind === 'external' ? 'STAC API' : 'tiles', 'searched over the view']
+                                : entry.scenes
+                                  ? [entryWhen(entry), follows ? 'follows the date' : 'raster series']
+                                  : [entry.kind, entry.collection, entryWhen(entry)]
                   )
                     .filter(Boolean)
                     .join(' · ')}

@@ -245,3 +245,19 @@ describe('makeZarrLayer', () => {
     expect(claims.findDefaultLayerProps({ type: 'raster-tile', id: 'd1' }).props).toEqual([]);
   });
 });
+
+describe('a Zarr variable added from a catalog', () => {
+  it('asks no tile before the clock has chosen its moment', () => {
+    const metadata = {
+      serverUrl: 'https://t.org',
+      storeUrl: 'icechunk+https://b/x.icechunk',
+      variable: 'v',
+      dimension: 'init_time',
+      catalogZarr: 'c:v',
+    };
+    expect(zarrDeckProps({ id: 'l', metadata })).toBeNull();
+    expect(zarrDeckProps({ id: 'l', metadata, label: '2026-10-31T00:00:00.000000000' })).not.toBeNull();
+    // A query's own, as before.
+    expect(zarrDeckProps({ id: 'l', metadata: { ...metadata, catalogZarr: undefined } })).not.toBeNull();
+  });
+});

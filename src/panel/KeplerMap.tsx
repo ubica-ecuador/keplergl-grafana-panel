@@ -76,6 +76,7 @@ import { useWmsCalendar } from './useWmsCalendar';
 import { useWmsTimeline } from './useWmsTimeline';
 import { useEsriTimeline } from './useEsriTimeline';
 import { useZarrTimeline } from './useZarrTimeline';
+import { useCatalogZarr } from '../catalog/useCatalogZarr';
 import { useExplorerDatasets } from './useExplorerDatasets';
 import { useViewportGuard } from './useViewportGuard';
 import { useSplitMapsGuard } from './useSplitMapsGuard';
@@ -615,7 +616,10 @@ export function KeplerMap({
 
   // A Zarr query hands the widget the moments the store holds, and the label
   // each one answers to.
-  useZarrTimeline({ store, isReady, layers: zarrLayers, timeVariables: clockVariables });
+  // Data cube variables added from a catalog walk the same timeline, their moments asked in each time range.
+  const catalogZarr = useCatalogZarr(store, isReady, grafanaRange);
+  const timelineZarr = useMemo(() => [...zarrLayers, ...catalogZarr], [zarrLayers, catalogZarr]);
+  useZarrTimeline({ store, isReady, layers: timelineZarr, timeVariables: clockVariables });
   useEsriTimeline({ store, isReady, layers: esriLayers, timeVariables: clockVariables });
 
   useExplorerDatasets({ store, isReady, panelId });

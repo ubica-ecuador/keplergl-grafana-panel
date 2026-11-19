@@ -52,6 +52,9 @@ export const REMOTE_DATASET_TYPES = [
   // An ArcGIS ImageServer or MapServer (`esriImageLayer.ts`). A query's is never saved (`isPanelEsriId`); one added
   // from a catalog is.
   'esriImage',
+  // The panel's Zarr layer (`zarrTileLayer.ts`). A query's is never saved (`isPanelZarrId`); a data cube's variable
+  // added from a catalog is.
+  'zarrTiles',
 ];
 
 /** The map's name and description, as kepler's `info` carries them. */

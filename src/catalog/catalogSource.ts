@@ -13,6 +13,7 @@ import {
   type ScenePart,
 } from '../data/rasterDataset';
 import { COG_PAINTED_TYPE } from '../panel/cogPaintedLayer';
+import { ZARR_TILES_TYPE } from '../panel/zarrTileLayer';
 import { xyzSavedDataset } from '../data/xyzTiles';
 import { featureRequestUrl, type FeatureProtocol, type FeatureTarget, readFeatureRequest } from './featureRequests';
 
@@ -90,8 +91,22 @@ export interface CatalogEntry {
   timeProperty?: string | null;
   /** A Socrata dataset: its geometry column (`shape:<name>` when it is not points). */
   geometryField?: string;
+  /** A data cube's variable (Zarr, Icechunk): its store as the tile server opens it, its axes. */
+  cube?: CatalogCube;
   /** A Datastream, sensors or an EDR collection: what it measures. */
   parameters?: Array<{ id: string; label: string; unit: string }>;
+}
+
+/** A data cube's variable, as the data source gives it in its `cube` column. */
+export interface CatalogCube {
+  storeUrl: string;
+  variable: string;
+  /** The temporal axis the clock walks, or null. */
+  dimension: string | null;
+  /** `axis=value` for the other axes. */
+  selectors: string[];
+  unit?: string;
+  description?: string;
 }
 
 /** A map service that draws an entry (STAC web-map-links), as the data source gives it in its `service` column. */
@@ -187,6 +202,7 @@ export function whyNotAddable(
     size?: number | null;
     itemsHref?: string | null;
     mediaType?: string;
+    cube?: CatalogCube;
   },
   context: AddContext = NO_CONTEXT
 ): string | null {
@@ -203,6 +219,12 @@ export function whyNotAddable(
       return 'itemsHref' in entry && entry.itemsHref
         ? null
         : 'Features the service gives in no GeoJSON (GML or Esri JSON only): this map cannot read them.';
+    case 'zarr':
+      return !('cube' in entry) || !entry.cube
+        ? 'A data cube without its variables described (STAC datacube): read it with a Zarr query naming one.'
+        : context.tileServerUrls.length > 0
+          ? null
+          : 'A data cube: this map has no tile server to draw it (Raster tile server, in the panel options).';
     case 'geoparquet':
     case 'sensors':
     case 'datastream':
@@ -333,6 +355,7 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
     timeProperties,
     parameterLists,
     geometryFields,
+    cubes,
   ] = [
     'id',
     'title',
@@ -355,6 +378,7 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
     'time_property',
     'parameters',
     'geometry_field',
+    'cube',
   ].map(column);
   const hasSeries = frame.fields.some((field) => field.name === 'series');
   const time = (value: unknown) => {
@@ -385,6 +409,7 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
       ...(typeof itemsHrefs[i] === 'string' && itemsHrefs[i] ? { itemsHref: itemsHrefs[i] } : {}),
       ...(typeof mediaTypes[i] === 'string' && mediaTypes[i] ? { mediaType: mediaTypes[i] } : {}),
       ...(typeof geometryFields[i] === 'string' && geometryFields[i] ? { geometryField: geometryFields[i] } : {}),
+      ...(typeof cubes[i] === 'string' && cubes[i] ? { cube: parseCube(cubes[i]) } : {}),
       ...(protocols[i] === 'wfs' ||
       protocols[i] === 'arcgis' ||
       protocols[i] === 'ogc-features' ||
@@ -1494,6 +1519,92 @@ export function measuresLabel(entry: CatalogEntry): string[] {
   return entry.kind === 'edr'
     ? ['EDR', (entry.parameters ?? []).length ? `${entry.parameters!.length} parameters` : '', 'over the view']
     : ['SensorThings', entry.kind === 'sensors' ? 'last values over the view' : entry.collectionTitle];
+}
+
+/** The cube column of an entry, as JSON. */
+function parseCube(text: string): CatalogCube | undefined {
+  try {
+    const cube = JSON.parse(text);
+    return typeof cube?.storeUrl === 'string' && typeof cube?.variable === 'string' ? cube : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * A data cube's variable added to a map: the panel's own Zarr layer (TiTiler renders its tiles), saved like a
+ * tileset, and the variable it came from (`catalogZarr`), whose moments the map asks the data source for in each
+ * time range (`useCatalogZarr`).
+ */
+export function zarrDataset(entry: CatalogEntry, uid: string, context: AddContext): SavedRemoteDataset | null {
+  const cube = entry.cube;
+  const serverUrl = context.tileServerUrls[0];
+  if (entry.kind !== 'zarr' || !cube || !serverUrl) {
+    return null;
+  }
+  return {
+    version: 'v1',
+    data: {
+      id: `catalog-${entry.id}`.replace(/[^\w-]+/g, '-'),
+      label: entry.title,
+      color: [0, 92, 255],
+      type: ZARR_TILES_TYPE,
+      fields: [],
+      allData: [],
+      disableDataOperation: true,
+      metadata: {
+        serverUrl,
+        storeUrl: cube.storeUrl,
+        variable: cube.variable,
+        selectors: cube.selectors,
+        ...(cube.dimension ? { dimension: cube.dimension } : {}),
+        colormap: 'viridis',
+        catalogZarr: entry.id,
+        catalogEntry: entry.id,
+        catalogUid: uid,
+      },
+    },
+  };
+}
+
+/** What a data cube entry is, for its row. */
+export function cubeLabel(entry: CatalogEntry): string[] {
+  return ['Zarr', entry.cube?.variable ?? '', entry.collectionTitle];
+}
+
+/**
+ * A data cube variable's moments in a time range, and its ramp's range over an area, through its catalog's data
+ * source (the Zarr query): the frame the panel reads a Zarr from.
+ */
+export async function readCatalogZarr(
+  uid: string,
+  target: string,
+  serverUrl: string,
+  area: [number, number, number, number] | null,
+  timeRange: { from: number; to: number }
+): Promise<DataFrame | undefined> {
+  const ds = await getDataSourceSrv().get({ uid });
+  const from = dateTime(timeRange.from);
+  const to = dateTime(timeRange.to);
+  const request = {
+    targets: [
+      { refId: 'zarr', queryType: 'zarr', entries: [target], serverUrl, ...(area ? { bbox: area.join(',') } : {}) },
+    ],
+    range: { from, to, raw: { from, to } },
+    scopedVars: {},
+    requestId: `catalog-zarr-${target}`,
+    interval: '1m',
+    intervalMs: 60_000,
+    timezone: 'utc',
+    app: 'panel',
+    startTime: Date.now(),
+  } as unknown as DataQueryRequest;
+  const reply = ds.query(request) as unknown;
+  const response = (isObservable(reply) ? await lastValueFrom(reply) : await reply) as DataQueryResponse;
+  if (response.errors?.length) {
+    throw new Error(response.errors[0].message ?? 'The read failed');
+  }
+  return response.data?.[0];
 }
 
 /** The parameters column of an entry, as JSON. */

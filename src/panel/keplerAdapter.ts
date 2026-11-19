@@ -48,7 +48,7 @@ import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
 import { stacTileTemplate } from '../data/stacTileUrl';
 import { isPanelWmsId, wmsCalendarDatasetId, type WmsDataset } from '../data/wmsDataset';
 import { type EsriDataset, isPanelEsriId } from '../data/esriDataset';
-import { zarrCalendarDatasetId, type ZarrDataset } from '../data/zarrDataset';
+import { isPanelZarrId, zarrCalendarDatasetId, type ZarrDataset } from '../data/zarrDataset';
 import { rowFieldValue, wmsFeatureValues } from './clickSync';
 import { withParkedParts, type ParkedState } from './parkedConfig';
 import type { FlowFieldLayerConfig } from '../data/buildFlowField';
@@ -1055,6 +1055,34 @@ export function reloadExternalSource(store: Store, dispatch: Dispatch, dataId: s
   return true;
 }
 
+/**
+ * Puts a ramp and its range on a Zarr dataset that has none (one added from a catalog, before its first answer); a
+ * range the user or the map already has stays.
+ */
+export function setZarrStyle(
+  store: Store,
+  dispatch: Dispatch,
+  dataId: string,
+  style: { rescale?: string; colormap?: string }
+): boolean {
+  const dataset = getVisState(store)?.datasets[dataId] as { metadata?: Record<string, unknown> } | undefined;
+  const metadata = dataset?.metadata;
+  if (!metadata || !style.rescale || metadata.rescale) {
+    return false;
+  }
+  // Only the keys that change: kepler deep-merges a dataset's metadata (`deepmerge`, which concatenates arrays), so
+  // the whole metadata again would double the selectors, and TiTiler answers a repeated `sel` with a 500.
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      updateDatasetProps(dataId, {
+        metadata: { rescale: style.rescale, ...(style.colormap ? { colormap: style.colormap } : {}) },
+      })
+    )
+  );
+  return true;
+}
+
 /** The id of the calendar a catalog series' time filter hangs from. */
 export function seriesCalendarId(seriesId: string): string {
   return `${seriesId}-dates`;
@@ -1193,7 +1221,7 @@ function captureRemoteDatasets(store: Store): SavedRemoteDataset[] {
     // writes a second dataset with the same id into the dashboard JSON — and
     // the stale copy would then race the fresh one on the next load. Same
     // reasoning the comment above gives for leaving the row datasets out.
-    .filter(([id]) => !isPanelRasterId(id) && !isPanelWmsId(id) && !isPanelEsriId(id))
+    .filter(([id]) => !isPanelRasterId(id) && !isPanelWmsId(id) && !isPanelEsriId(id) && !isPanelZarrId(id))
     .map(([, dataset]) => ({
       version: VERSIONS.v1,
       // The state object is kepler's own `KeplerTable`; only this module's view
