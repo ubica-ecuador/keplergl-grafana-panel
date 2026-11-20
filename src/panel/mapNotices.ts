@@ -30,13 +30,19 @@ export interface MapNotice {
 /** A message past this many characters is cut, whole in its tooltip: a stack trace is not read over a map. */
 export const MAX_NOTICE_LENGTH = 300;
 
+/** A query's error as Grafana hands it to a panel: `DataQueryError`, as far as it is read. */
+type QueryError = { refId?: string; message?: string; data?: { message?: string } };
+
 /** The query errors Grafana hands a panel, as notices: which query, and what it said. */
-export function queryErrorNotices(
-  errors: ReadonlyArray<{ refId?: string; message?: string; data?: { message?: string } }> | undefined
-): MapNotice[] {
-  // `errors` only: the older single `error` is the first of them on every
-  // Grafana this panel runs on, and deprecated.
-  return (errors ?? []).map((e) => {
+export function queryErrorNotices(errors: readonly QueryError[] | undefined, error?: QueryError): MapNotice[] {
+  // The list, and the older single `error` when the list is empty. Not a
+  // nicety: a data source that throws reaches the panel through Grafana's
+  // runRequest `catchError`, which sets `error` alone (Grafana 13.3), so a
+  // panel whose only query threw had its error in `error` and none in
+  // `errors`. Only one of them otherwise: Grafana fills `error` with the first
+  // of `errors` when it gets a list.
+  const list = errors?.length ? errors : error ? [error] : [];
+  return list.map((e) => {
     const message = String(e.data?.message || e.message || 'it failed').trim();
     return { severity: 'error', text: e.refId ? `Query ${e.refId}: ${message}` : message };
   });

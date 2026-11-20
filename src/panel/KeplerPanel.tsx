@@ -262,15 +262,18 @@ export function KeplerPanel(props: Props) {
   // of them: over the map, where an empty map otherwise says nothing
   // (`mapNotices.ts`). The raw frames, whose notices the panel's own reshaping
   // may not carry.
+  // Deprecated, and still the only place a query that threw puts its error (`queryErrorNotices`).
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  const queryError = data.error;
   const notices = useStableValue(
     useMemo(
       () =>
         orderNotices(
-          queryErrorNotices(data.errors),
+          queryErrorNotices(data.errors, queryError),
           frameNotices(data.series),
           undrawnTiles.map((text) => ({ severity: 'warning' as const, text }))
         ),
-      [data.errors, data.series, undrawnTiles]
+      [data.errors, queryError, data.series, undrawnTiles]
     )
   );
 
