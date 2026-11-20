@@ -38,8 +38,12 @@ describe('serviceUrlOf', () => {
     expect(serviceUrlOf(`${SERVICE}#t=2026-08-20T00%3A00%3A00.000Z`)).toBe(SERVICE);
   });
 
-  it('trims surrounding whitespace and trailing slashes', () => {
-    expect(serviceUrlOf(`  ${SERVICE}/  `)).toBe(SERVICE);
+  it('trims surrounding whitespace, and keeps a trailing slash a service may need', () => {
+    expect(serviceUrlOf(`  ${SERVICE}  `)).toBe(SERVICE);
+    // NASA GIBS answers at …/best/ (its capabilities' address), not at …/best.
+    expect(serviceUrlOf('https://gibs.earthdata.nasa.gov/wms/epsg3857/best/?')).toBe(
+      'https://gibs.earthdata.nasa.gov/wms/epsg3857/best/'
+    );
   });
 });
 

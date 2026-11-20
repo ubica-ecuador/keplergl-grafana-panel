@@ -6,6 +6,10 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **A WMS whose address ends in a slash answers.** The panel tidied a WMS address's trailing slash
+  away, and a service that answers only with it, as NASA GIBS does at `…/epsg3857/best/` (the address
+  its capabilities give), was asked at `…/best`: a 404 without CORS, and the map showed *Failed to
+  fetch*. The address keeps its slash; it is still cut at its query and fragment.
 - **ArcGIS I3S meshes show again.** An I3S scene layer (an integrated mesh, 3D objects) in the 3D
   Tile layer loaded its tiles and drew nothing: deck.gl 9.4's mesh shader hands luma.gl 9.4's PBR
   module a vertex colour of zero, which luma now multiplies the texture by, so every fragment was
