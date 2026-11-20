@@ -11,8 +11,11 @@ to be rebuilt.
 
 The panel keeps all its options and its saved map: layers, filters, base map, map position and time settings, and
 the variables it reads and writes. Plus has the same options under the same paths, so nothing needs converting.
-Only options carried over from the free panel are kept; switching from any other visualization, such as Geomap,
-starts the Plus panel from its defaults.
+A Geomap panel is converted as the free panel converts it (see [Coming from Geomap](/guide/coming-from-geomap));
+switching from any other visualization starts the Plus panel from its defaults.
+
+On Grafana 13 the picker opens on **Suggestions**, where both maps appear when the query has a place, after
+Grafana's own panels. Picking the Plus card keeps the options and the saved map just the same.
 
 The one option left behind is the **CARTO API key** of the free panel up to 1.6, which neither panel offers any more
 because it saves the key in the dashboard. CARTO's base maps are asked for without a key; see
@@ -54,5 +57,8 @@ offers that provider's base maps. No key brings those back: pick another base ma
 
 ## Going back to the free panel
 
-Plus layers, Places, network links and active alerts exist only in the Plus panel. To return a panel to the free
-panel, restore the dashboard version saved before the switch, from the dashboard's **Settings → Versions**.
+Choosing **Kepler Geospatial Maps** for a Plus panel keeps its options and its saved map the same way. Plus layers,
+Places, network links and active alerts exist only in the Plus panel: the free panel leaves the Plus layers out when
+the map loads and draws the rest, and ignores the Plus options, which stay in the panel for a later switch back. To
+return a panel exactly as it was, restore the dashboard version saved before the switch, from the dashboard's
+**Settings → Versions**.

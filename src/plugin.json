@@ -3,6 +3,7 @@
   "type": "panel",
   "name": "Kepler Geospatial Maps",
   "id": "ubica-keplergl-panel",
+  "suggestions": true,
   "info": {
     "keywords": [
       "map",

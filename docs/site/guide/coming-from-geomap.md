@@ -9,6 +9,9 @@ whatever the panel would guess from the columns.
 Edit the Geomap panel, open the visualization picker, and choose **Kepler Geospatial Maps** (or
 **Kepler Geospatial Maps Plus**). Then save the dashboard.
 
+On Grafana 13 the picker opens on **Suggestions**. When the query has a place, both maps are among
+them, after Grafana's own panels; picking one converts the Geomap the same way.
+
 The conversion happens in two steps, and the second needs the queries to answer. The first reads
 Geomap's options; the second, on the first rows, builds the kepler layers on the columns the rows
 actually have — Geomap's usual location mode names no column, so they cannot be known before. A

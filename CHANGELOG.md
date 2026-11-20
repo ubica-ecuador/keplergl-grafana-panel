@@ -6,6 +6,15 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Kepler in the visualization picker's suggestions.** On Grafana 13 the map is a suggestion when a
+  query holds a place it draws without help: latitude and longitude, a geometry, an H3 cell, a
+  geohash, both ends of a flow, a Zarr store or an ArcGIS Image Service (`OK` for columns called only
+  `x` and `y`, or for a bare raster or WMS link). Its card is a live map of up to 5,000 rows with the
+  side panel folded. Grafana lists every core panel first, Geomap included. Picking the card converts
+  a Geomap's map as picking the panel from *All visualizations* does.
+- **From Kepler Plus back to Kepler, the map stays.** Changing a Kepler Plus panel's visualization to
+  this one keeps its options and its saved map, as Plus keeps this panel's; layers only Plus draws
+  are left out when the map loads.
 - **A WMS whose address ends in a slash answers.** The panel tidied a WMS address's trailing slash
   away, and a service that answers only with it, as NASA GIBS does at `…/epsg3857/best/` (the address
   its capabilities give), was asked at `…/best`: a 404 without CORS, and the map showed *Failed to

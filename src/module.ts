@@ -4,6 +4,8 @@ import { config } from '@grafana/runtime';
 import { KeplerPanelOptions } from './types';
 import { KeplerPanel } from './panel/KeplerPanel';
 import { fromGeomapPanel } from './geomap/fromGeomap';
+import { fromPlusPanel, PLUS_PANEL_ID } from './panel/panelChange';
+import { keplerSuggestions } from './panel/suggestions';
 import { SaveMapConfigEditor } from './editors/SaveMapConfigEditor';
 import { MapConfigEditor } from './editors/MapConfigEditor';
 import { HoverLayerEditor } from './editors/HoverLayerEditor';
@@ -501,10 +503,19 @@ plugin.useFieldConfig({
 // the map draws the ones with a place (see useGrafanaAnnotations).
 plugin.setDataSupport({ annotations: true, alertStates: false });
 
-// "Change visualization" from Geomap keeps its layers, view and base map.
+// "Change visualization" from Geomap keeps its layers, view and base map, and
+// from Kepler Plus the map as it was saved (panelChange.ts).
 plugin.setPanelChangeHandler((_panel, prevPluginId, prevOptions, prevFieldConfig) =>
-  fromGeomapPanel(prevPluginId, prevOptions, prevFieldConfig, config.theme2)
+  prevPluginId === PLUS_PANEL_ID
+    ? fromPlusPanel(prevOptions)
+    : fromGeomapPanel(prevPluginId, prevOptions, prevFieldConfig, config.theme2)
 );
+
+// A card in the visualization picker's suggestions when a query holds a place
+// (suggestions.ts). Grafana 13 calls the supplier as a function; the 12.0 types
+// this plugin builds against still describe the older object form, which
+// Grafana 12 only asks of its core panels.
+plugin.setSuggestionsSupplier(keplerSuggestions as unknown as Parameters<typeof plugin.setSuggestionsSupplier>[0]);
 
 // A panel saved with an option the panel no longer offers (the CARTO API key of
 // 1.6 and earlier) loses it, so the next save of the dashboard leaves it out.
