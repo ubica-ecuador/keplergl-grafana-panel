@@ -1,6 +1,7 @@
 import type { LayerIcon } from './cogPaintedLayer';
 import { XYZ_TILE_TYPE, type XyzTileMetadata, xyzMapLibreTemplate, xyzTileUrl } from '../data/xyzTiles';
 import { shownInPane } from './paneVisibility';
+import { boxOfMetadata, reliefBoundsOfBox } from './wmsExtent';
 
 /**
  * The kepler layer that draws `{z}/{x}/{y}` raster tiles.
@@ -38,6 +39,13 @@ export function xyzDeckProps(args: {
   }
   const zoomIds = metadata?.zoomIds && Object.keys(metadata.zoomIds).length ? metadata.zoomIds : undefined;
   const native = xyzMapLibreTemplate(template);
+  // The query's box, as a WMS's (`wmsExtent.ts`): every tile is cut to it
+  // (`clipBox`, `xyzTileDeckLayer.ts`), and no tile outside it is asked for —
+  // deck's `extent`, MapLibre's `bounds` on a relief. Neither of those two for
+  // a box across the antimeridian or round the world, which they cannot say.
+  const box = boxOfMetadata(metadata);
+  const extent = reliefBoundsOfBox(box);
+  const minZoom = typeof metadata?.minZoom === 'number' ? metadata.minZoom : undefined;
   return {
     id: `${id}-xyz-tiles`,
     getTileUrl: (index: { x: number; y: number; z: number }) => xyzTileUrl(template, index, zoomIds),
@@ -45,9 +53,16 @@ export function xyzDeckProps(args: {
     // Not for a service that names its zoom levels: a MapLibre template puts
     // the level's number in `{z}`, and asks PDOK for a matrix "8" it calls
     // "08". deck draws those tiles there instead, as it does off the relief.
-    ...(zoomIds ? {} : { reliefTiles: native.template, reliefScheme: native.scheme }),
+    ...(zoomIds
+      ? {}
+      : { reliefTiles: native.template, reliefScheme: native.scheme, ...(extent ? { reliefBounds: extent } : {}) }),
     opacity: opacity ?? 1,
-    ...(typeof metadata?.minZoom === 'number' ? { minZoom: metadata.minZoom } : {}),
+    ...(minZoom !== undefined ? { minZoom } : {}),
+    ...(box ? { clipBox: box } : {}),
+    // With an extent, deck fills it with tiles of the first level when the
+    // view is zoomed out past it — a whole country of level-12 tiles — where
+    // without one it draws nothing there. Nothing there, as before.
+    ...(extent ? { extent, ...(minZoom !== undefined ? { visibleMinZoom: minZoom } : {}) } : {}),
     ...(typeof metadata?.maxZoom === 'number' ? { maxZoom: metadata.maxZoom } : {}),
     // deck caches tiles against its triggers: a new template, or new names
     // for its levels, must refetch.

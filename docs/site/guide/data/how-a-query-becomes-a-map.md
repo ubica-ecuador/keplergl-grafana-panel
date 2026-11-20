@@ -162,7 +162,10 @@ SELECT 'https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:38
        '0:00,1:01,2:02,3:03,4:04,5:05,6:06,7:07,8:08,9:09' AS tiles_zoom_ids;
 ```
 
-Vector tiles (`tiles_format` `mvt`) and PMTiles archives in `tiles_url` are not drawn yet. One
+A `tiles_bbox` does for tiles what it does for a WMS: the view is framed on it when it shows none
+of it, and the tiles are cut to it (see [Where the layer is](./wms#where-the-layer-is)); no tile
+outside it is asked for. Vector tiles (`tiles_format` `mvt`) and PMTiles archives in `tiles_url` are
+not drawn yet. One
 service per query: the first row that names one decides, and in that row a WMS wins over an Esri
 service, which wins over tiles, which win over a raster. See
 [Field roles](../../reference/field-roles#the-tile-roles).

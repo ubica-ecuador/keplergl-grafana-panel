@@ -23,7 +23,7 @@ interface Params {
   arm: number;
   /**
    * The box the panel last framed the map on by itself, if any — a WMS layer
-   * out of the saved view's sight (`useWmsFraming`). The guard defends it in
+   * or tiles out of the saved view's sight (`useBoxFraming`). The guard defends it in
    * place of the saved viewport. Read at each check, so a framing made after
    * arming counts.
    */

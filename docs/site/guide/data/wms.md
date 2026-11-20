@@ -46,6 +46,10 @@ box, the panel does two things:
   service nothing. On a globe the picture is drawn whole; on a relief base map, where the base map
   draws the layer as tiles, it asks for no tile outside the box but draws the edge tiles whole.
 
+A query's `{z}/{x}/{y}` tiles (`tiles_url`) take the same box, in the same column, and get the same
+two: the view framed on it, the tiles cut to it (see
+[How a query becomes a map](./how-a-query-becomes-a-map#the-query-that-returns-an-address-instead-of-rows)).
+
 ## Nothing sits in between
 
 There is no tile server to configure here. That is the difference between a WMS and a COG, and the

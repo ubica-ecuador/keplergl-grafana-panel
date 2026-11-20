@@ -117,8 +117,8 @@ export function decideViewportGuard({
   bounds: MapBounds | null;
   /**
    * A box the panel framed the map on after the load, which wins over the
-   * saved viewport: a WMS layer that the saved view did not show
-   * (`wmsExtent.ts`). Restoring the saved view instead would undo that framing
+   * saved viewport: a WMS layer or a query's tiles that the saved view did
+   * not show (`wmsExtent.ts`). Restoring the saved view instead would undo that framing
    * on the very echo this guard exists to catch.
    */
   framed?: MapBounds | null;

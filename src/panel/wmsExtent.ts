@@ -6,7 +6,9 @@ import { type MapStateLike, viewportFromMapState } from './windViewport';
 /**
  * What the panel does with a WMS layer's box (`tiles_bbox`, `parseWmsBox`):
  * frame the view on it when the layer arrives out of sight, and draw the
- * service's picture only inside it.
+ * service's picture only inside it. A query's `{z}/{x}/{y}` tiles carry the
+ * same box and get the same two (`xyzTileDeckLayer.ts`): a tile service paints
+ * no data white as readily, and its tiles say no more about where it is.
  *
  * Both exist because of how a WMS answers. It is asked for a picture of the
  * view, whatever the view is, and it answers one: a dashboard saved over
@@ -17,7 +19,8 @@ import { type MapStateLike, viewportFromMapState } from './windViewport';
  * layer really is.
  *
  * Pure arithmetic, free of kepler, deck and the store, so the rules can be
- * tested with literal numbers; `useWmsFraming` and `wmsDeckLayer` apply them.
+ * tested with literal numbers; `useBoxFraming`, `wmsDeckLayer` and
+ * `xyzTileDeckLayer` apply them.
  */
 
 /** The latitude Web Mercator stops at; beyond it a position projects to infinity. */
@@ -106,7 +109,7 @@ export type WmsFramingDecision = 'fit' | 'keep' | 'wait';
  *   again on the next change of the store.
  *
  * Asked once per service and layer, never on a refresh that brings the same
- * pair back: that is the caller's to remember (`useWmsFraming`).
+ * pair back: that is the caller's to remember (`useBoxFraming`).
  */
 export function decideWmsFraming({
   box,
@@ -218,4 +221,15 @@ export function reliefBoundsOfBox(box: WmsBox | null): MapBounds | null {
     return null;
   }
   return [box[0], Math.max(box[1], -MERCATOR_LIMIT), box[2], Math.min(box[3], MERCATOR_LIMIT)];
+}
+
+/**
+ * The box a WMS or tile dataset's metadata carries (`tilesBbox`), if it carries
+ * a well-formed one: what the deck layers cut their pictures to.
+ */
+export function boxOfMetadata(metadata: { tilesBbox?: unknown } | undefined): WmsBox | null {
+  const box = metadata?.tilesBbox;
+  return Array.isArray(box) && box.length === 4 && box.every((n) => typeof n === 'number' && Number.isFinite(n))
+    ? (box as WmsBox)
+    : null;
 }

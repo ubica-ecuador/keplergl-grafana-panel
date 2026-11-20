@@ -3,8 +3,9 @@ import type { Store } from 'redux';
 
 import type { SavedMapConfig } from '../data/mapConfig';
 import type { WmsDataset } from '../data/wmsDataset';
+import type { XyzDataset } from '../data/xyzDataset';
 import { KEPLER_INSTANCE_ID } from './constants';
-import { useWmsFraming } from './useWmsFraming';
+import { boxedWms, boxedXyz, useBoxFraming } from './useBoxFraming';
 
 const FRANCE: [number, number, number, number] = [-5.5, 41, 10, 51.5];
 
@@ -64,12 +65,18 @@ async function settle(): Promise<void> {
   }
 }
 
-describe('useWmsFraming', () => {
+describe('useBoxFraming', () => {
   it('frames a layer the saved view shows none of, and tells the guard', async () => {
     const { store, dispatched } = fakeStore(CUENCA);
     const onFramed = jest.fn();
     renderHook(() =>
-      useWmsFraming({ store, isReady: true, layers: [wms()], mapConfig: savedOver(-2.9, -79, 12), onFramed })
+      useBoxFraming({
+        store,
+        isReady: true,
+        layers: [wms()].map(boxedWms),
+        mapConfig: savedOver(-2.9, -79, 12),
+        onFramed,
+      })
     );
     await settle();
 
@@ -81,10 +88,10 @@ describe('useWmsFraming', () => {
     const paris = { latitude: 48.85, longitude: 2.35, zoom: 8 };
     const { store, dispatched } = fakeStore(paris);
     renderHook(() =>
-      useWmsFraming({
+      useBoxFraming({
         store,
         isReady: true,
-        layers: [wms()],
+        layers: [wms()].map(boxedWms),
         mapConfig: savedOver(48.85, 2.35, 8),
         onFramed: jest.fn(),
       })
@@ -96,7 +103,9 @@ describe('useWmsFraming', () => {
 
   it('frames a map with no saved view', async () => {
     const { store, dispatched } = fakeStore({ latitude: 48.85, longitude: 2.35, zoom: 8 });
-    renderHook(() => useWmsFraming({ store, isReady: true, layers: [wms()], mapConfig: null, onFramed: jest.fn() }));
+    renderHook(() =>
+      useBoxFraming({ store, isReady: true, layers: [wms()].map(boxedWms), mapConfig: null, onFramed: jest.fn() })
+    );
     await settle();
 
     expect(fits(dispatched)).toEqual([FRANCE]);
@@ -105,9 +114,12 @@ describe('useWmsFraming', () => {
   it('frames a layer once: a refresh that brings it back moves nothing', async () => {
     const { store, dispatched, emit } = fakeStore(CUENCA);
     const props = { store, isReady: true, mapConfig: savedOver(-2.9, -79, 12), onFramed: jest.fn() };
-    const { rerender } = renderHook((layers: WmsDataset[]) => useWmsFraming({ ...props, layers }), {
-      initialProps: [wms()],
-    });
+    const { rerender } = renderHook(
+      (layers: WmsDataset[]) => useBoxFraming({ ...props, layers: layers.map(boxedWms) }),
+      {
+        initialProps: [wms()],
+      }
+    );
     await settle();
     // The user pans back to Cuenca; the dashboard refreshes the same layer.
     rerender([wms({ times: [1, 2] })]);
@@ -125,7 +137,13 @@ describe('useWmsFraming', () => {
   it('waits for kepler’s own layer, then frames', async () => {
     const { store, state, dispatched, emit } = fakeStore(CUENCA, []);
     renderHook(() =>
-      useWmsFraming({ store, isReady: true, layers: [wms()], mapConfig: savedOver(-2.9, -79, 12), onFramed: jest.fn() })
+      useBoxFraming({
+        store,
+        isReady: true,
+        layers: [wms()].map(boxedWms),
+        mapConfig: savedOver(-2.9, -79, 12),
+        onFramed: jest.fn(),
+      })
     );
     await settle();
     expect(fits(dispatched)).toEqual([]);
@@ -139,10 +157,58 @@ describe('useWmsFraming', () => {
   it('does nothing for a layer with no box', async () => {
     const { store, dispatched } = fakeStore(CUENCA);
     renderHook(() =>
-      useWmsFraming({ store, isReady: true, layers: [wms({ bbox: null })], mapConfig: null, onFramed: jest.fn() })
+      useBoxFraming({
+        store,
+        isReady: true,
+        layers: [wms({ bbox: null })].map(boxedWms),
+        mapConfig: null,
+        onFramed: jest.fn(),
+      })
     );
     await settle();
 
     expect(fits(dispatched)).toEqual([]);
+  });
+
+  it('frames a query’s tiles out of the saved view’s sight, once per template', async () => {
+    const netherlands: [number, number, number, number] = [3.2, 50.7, 7.3, 53.6];
+    const tiles = (url: string): XyzDataset => ({ id: 'grafana-B-tiles', label: 'PDOK', url, bbox: netherlands });
+    const { store, dispatched, emit } = fakeStore(CUENCA, ['grafana-B-tiles']);
+    const props = { store, isReady: true, mapConfig: savedOver(-2.9, -79, 12), onFramed: jest.fn() };
+    const { rerender } = renderHook(
+      (layers: XyzDataset[]) => useBoxFraming({ ...props, layers: layers.map(boxedXyz) }),
+      {
+        initialProps: [tiles('https://pdok.test/{z}/{x}/{y}.png')],
+      }
+    );
+    await settle();
+    expect(fits(dispatched)).toEqual([netherlands]);
+
+    rerender([tiles('https://pdok.test/{z}/{x}/{y}.png')]);
+    emit();
+    await settle();
+    expect(fits(dispatched)).toEqual([netherlands]);
+  });
+
+  it('frames a WMS and tiles arriving together on the union of their boxes', async () => {
+    const tiles: XyzDataset = {
+      id: 'grafana-B-tiles',
+      label: 'PDOK',
+      url: 'https://t/{z}/{x}/{y}',
+      bbox: [3, 50, 7, 54],
+    };
+    const { store, dispatched } = fakeStore(CUENCA, ['grafana-A-wms', 'grafana-B-tiles']);
+    renderHook(() =>
+      useBoxFraming({
+        store,
+        isReady: true,
+        layers: [boxedWms(wms()), boxedXyz(tiles)],
+        mapConfig: savedOver(-2.9, -79, 12),
+        onFramed: jest.fn(),
+      })
+    );
+    await settle();
+
+    expect(fits(dispatched)).toEqual([[-5.5, 41, 10, 54]]);
   });
 });

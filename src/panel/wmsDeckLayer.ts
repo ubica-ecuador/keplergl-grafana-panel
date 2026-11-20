@@ -1,9 +1,9 @@
 import type { Layer } from '@deck.gl/core';
-import { ClipExtension } from '@deck.gl/extensions';
 import { WMSLayer as DeckWMSLayer } from '@kepler.gl/deckgl-layers';
 import { WMSImageSource } from '@loaders.gl/wms';
 
 import type { WmsBox } from '../data/wmsDataset';
+import { BOX_CLIP } from './boxClip';
 import { wmsClipBounds } from './wmsExtent';
 import { readTimeFragment, shareMetadata } from './wmsTimeLayer';
 
@@ -85,19 +85,6 @@ export function serviceCapabilities(serviceUrl: string): Promise<unknown> {
   return source.getMetadata();
 }
 
-/**
- * The one clip extension every WMS picture shares.
- *
- * One instance rather than one per render: deck compares a layer's extensions
- * on every update, and a new instance each time reads as a new extension, which
- * recompiles the bitmap's shaders on every frame the view moves.
- *
- * deck's own, from `@deck.gl/extensions` — the copy kepler already loads for
- * its data filter, pinned to the same version by the overrides, so no second
- * deck comes with it.
- */
-const CLIP = new ClipExtension();
-
 export class TimedWMSLayer extends DeckWMSLayer {
   static layerName = 'TimedWMSLayer';
 
@@ -134,7 +121,7 @@ export class TimedWMSLayer extends DeckWMSLayer {
       return picture;
     }
     const extensions = picture.props.extensions ?? [];
-    return picture.clone({ extensions: [...extensions, CLIP], clipBounds } as Record<string, unknown>);
+    return picture.clone({ extensions: [...extensions, BOX_CLIP], clipBounds } as Record<string, unknown>);
   }
 
   _createImageSource(props: ConstructorParameters<typeof DeckWMSLayer>[0]): ReturnType<

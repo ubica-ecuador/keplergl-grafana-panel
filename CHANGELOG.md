@@ -14,7 +14,10 @@ release documents what changed since the one before it.
   `{z}`) and `tiles_bbox`. One layer per query, from its first row with an address; the rows stay a
   table, and the layer is rebuilt from the query, never saved with the map. One service per query: the
   first row that names one decides, and in that row a WMS wins over an Esri service, which wins over
-  tiles, which win over a raster.
+  tiles, which win over a raster. The box frames and cuts tiles as it does a WMS (below): the view
+  moves onto it when it shows none of it or the map has no saved view, never on a refresh; each tile
+  is cut to it (not on a globe), and no tile outside it is asked for, nor any zoomed out past the
+  service's first level.
 - **A WMS layer's box: framed on, and cut to.** A query's WMS row can carry the layer's box,
   `tiles_bbox` (or `wms_bbox`), as text `west south east north` in degrees, as the Spatial Catalog
   gives it. When the layer appears, or the query names another, and the view shows none of the box

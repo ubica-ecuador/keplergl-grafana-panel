@@ -2,17 +2,40 @@ import { useEffect, useRef } from 'react';
 import type { Store } from 'redux';
 
 import type { SavedMapConfig } from '../data/mapConfig';
-import type { WmsDataset } from '../data/wmsDataset';
+import type { WmsBox, WmsDataset } from '../data/wmsDataset';
+import type { XyzDataset } from '../data/xyzDataset';
 import { fitMapToBounds, hasLayerOnDataset, type MapBounds, readMapState } from './keplerAdapter';
 import { savedViewportOf } from './viewportGuard';
 import { decideWmsFraming, fitBoundsOfBox, judgedView, unionOfBounds } from './wmsExtent';
+
+/**
+ * A layer the map may frame on its box: the dataset it is drawn from, what
+ * makes it the same layer across refreshes, and the box its query gave.
+ */
+export interface BoxedLayer {
+  /** The dataset id, as kepler holds it: the decision waits for kepler's layer on it. */
+  id: string;
+  /** Equal across refreshes of the same layer; a new one is a new layer, framed afresh. */
+  identity: string;
+  bbox: WmsBox | null;
+}
+
+/** A query's WMS layer: the same service and layer is the same layer, whatever its dates. */
+export function boxedWms(wms: WmsDataset): BoxedLayer {
+  return { id: wms.id, identity: `${wms.serviceUrl}|${wms.layerName}`, bbox: wms.bbox };
+}
+
+/** A query's tiles: the same template is the same layer. */
+export function boxedXyz(xyz: XyzDataset): BoxedLayer {
+  return { id: xyz.id, identity: xyz.url, bbox: xyz.bbox };
+}
 
 interface Params {
   store: Store;
   /** kepler only accepts actions once its instance has registered. */
   isReady: boolean;
-  /** The WMS queries, each with the box its query gave, if any. */
-  layers: WmsDataset[];
+  /** The layers a query gave a box to: its WMS layers and its tiles (`boxedWms`, `boxedXyz`). */
+  layers: BoxedLayer[];
   /** The saved config the map was built from: whether it has a view of its own. */
   mapConfig?: SavedMapConfig | null;
   /** Told the bounds the view was just framed on, so the viewport guard defends them. */
@@ -20,19 +43,22 @@ interface Params {
 }
 
 /**
- * Frames the map on a query's WMS layer when it arrives where nobody can see
- * it — the rule is `decideWmsFraming`.
+ * Frames the map on a query's WMS layer or tiles when they arrive where nobody
+ * can see them — the rule is `decideWmsFraming`, the same for both: a service
+ * that draws pictures, with no rows for kepler to frame on, and only its box to
+ * say where it is.
  *
- * Once per service and layer: a refresh that brings the same pair back, which
- * the dashboard's auto-refresh does every few seconds, is not a new layer, and
+ * Once per layer: a refresh that brings the same one back, which the
+ * dashboard's auto-refresh does every few seconds, is not a new layer, and
  * moving the view for it would fight the user's own panning. A query that
- * starts naming another layer is asked again.
+ * starts naming another service or layer is asked again.
  *
- * The decision waits for kepler's own layer on the dataset, which exists only
- * once the service's capabilities have answered. That is not a nicety. A map
- * with no saved view is framed by kepler on its rows when they land; the rows
- * are processed in the page and the capabilities come over the network, so
- * waiting for the layer is what puts this framing after kepler's and keeps it.
+ * The decision waits for kepler's own layer on the dataset. For a WMS that
+ * exists only once the service's capabilities have answered, and that is not a
+ * nicety: a map with no saved view is framed by kepler on its rows when they
+ * land; the rows are processed in the page and the capabilities come over the
+ * network, so waiting for the layer is what puts this framing after kepler's
+ * and keeps it. Tiles have their layer at once, in the same load.
  *
  * Several layers arriving together are framed together, on the union of their
  * boxes, rather than each in turn with the last one winning.
@@ -40,7 +66,7 @@ interface Params {
  * Same structural rule as the sibling hooks: the dispatch happens on a
  * microtask, never inside the store subscription.
  */
-export function useWmsFraming({ store, isReady, layers, mapConfig, onFramed }: Params): void {
+export function useBoxFraming({ store, isReady, layers, mapConfig, onFramed }: Params): void {
   const layersRef = useRef(layers);
   const configRef = useRef(mapConfig);
   const onFramedRef = useRef(onFramed);
@@ -51,28 +77,27 @@ export function useWmsFraming({ store, isReady, layers, mapConfig, onFramed }: P
     onFramedRef.current = onFramed;
   });
 
-  /** Per dataset id, the service and layer already decided on. */
+  /** Per dataset id, the identity already decided on. */
   const decided = useRef(new Map<string, string>());
 
   const reconcile = useRef(() => {
     const saved = savedViewportOf(configRef.current);
     const fits: MapBounds[] = [];
-    for (const wms of layersRef.current) {
-      const identity = `${wms.serviceUrl}|${wms.layerName}`;
-      if (!wms.bbox || decided.current.get(wms.id) === identity || !hasLayerOnDataset(store, wms.id)) {
+    for (const layer of layersRef.current) {
+      if (!layer.bbox || decided.current.get(layer.id) === layer.identity || !hasLayerOnDataset(store, layer.id)) {
         continue;
       }
       const decision = decideWmsFraming({
-        box: wms.bbox,
+        box: layer.bbox,
         hasSavedView: saved !== null,
         view: judgedView(readMapState(store), saved),
       });
       if (decision === 'wait') {
         continue;
       }
-      decided.current.set(wms.id, identity);
+      decided.current.set(layer.id, layer.identity);
       if (decision === 'fit') {
-        fits.push(fitBoundsOfBox(wms.bbox));
+        fits.push(fitBoundsOfBox(layer.bbox));
       }
     }
     const bounds = unionOfBounds(fits);
@@ -85,9 +110,7 @@ export function useWmsFraming({ store, isReady, layers, mapConfig, onFramed }: P
   const pending = useRef(false);
   const schedule = useRef(() => {
     // Nothing left to decide: a store change costs one comparison per layer.
-    const open = layersRef.current.some(
-      (wms) => wms.bbox && decided.current.get(wms.id) !== `${wms.serviceUrl}|${wms.layerName}`
-    );
+    const open = layersRef.current.some((layer) => layer.bbox && decided.current.get(layer.id) !== layer.identity);
     if (pending.current || !open) {
       return;
     }

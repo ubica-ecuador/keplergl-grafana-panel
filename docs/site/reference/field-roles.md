@@ -121,7 +121,7 @@ server and is rebuilt from the query on every load, never saved with the map.
   stretched.
 - `tiles_zoom_ids`: the service's own name for a level where it is not the number, as `z:name` pairs
   (`0:00,1:01,…`: PDOK's WMTS names its matrices "00" to "19"). `{z}` becomes the name.
-- `tiles_bbox`: the box, `west south east north` in degrees, carried on the dataset.
+- `tiles_bbox`: the box, framed on and cut to as a WMS's is; no tile outside it is asked for.
 
 `tiles_metadata_url` (a TileJSON or the archive) is not read yet.
 
