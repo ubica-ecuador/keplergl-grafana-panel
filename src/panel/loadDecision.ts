@@ -4,6 +4,7 @@ import { isPanelRasterId } from '../data/rasterDataset';
 import { isPanelWmsId } from '../data/wmsDataset';
 import { isPanelXyzId } from '../data/xyzDataset';
 import { isPanelZarrId } from '../data/zarrDataset';
+import { savedViewportOf } from './viewportGuard';
 
 export type LoadAction = 'rebuild' | 'refresh' | 'rasters' | 'none';
 
@@ -22,6 +23,44 @@ interface LoadState {
   appliedRasters?: unknown;
   /** The raster list this render carries. */
   currentRasters?: unknown;
+}
+
+/**
+ * Whether the map is built now, or waits for its queries.
+ *
+ * It is built as soon as there is anything to draw: a query's rows or
+ * service, or a tileset the saved map carries — that one is content in its own
+ * right, and a panel whose map is one vector tile layer over a base map has no
+ * rows at all to wait for.
+ *
+ * And when the queries have answered nothing — one failed, or returned no rows
+ * — on a map saved with a view of its own. Waiting there was waiting for rows
+ * that had already not come: the saved config, view included, was never
+ * applied, and a map saved over Cuenca whose only query failed showed kepler's
+ * default, San Francisco. Built from its config, it opens on its view, and
+ * rows that come later take the refresh path, where they find the layers the
+ * config saved for them waiting.
+ *
+ * Not without a saved view: built empty, the map would take the first rows on
+ * the refresh path, which leaves the view alone, where a map saved without one
+ * is meant to be framed on them. Nor before the queries have answered: their
+ * first, empty data is not an answer.
+ */
+export function shouldBuildMap({
+  hasContent,
+  queriesAnswered,
+  mapConfig,
+}: {
+  /** Rows, a raster, a WMS, a Zarr, an Image Service or tiles from the queries. */
+  hasContent: boolean;
+  /** Whether the queries are done or failed, rather than not run or still running. */
+  queriesAnswered: boolean;
+  mapConfig?: SavedMapConfig | null;
+}): boolean {
+  if (hasContent || Boolean(mapConfig?.datasets?.length)) {
+    return true;
+  }
+  return queriesAnswered && savedViewportOf(mapConfig) !== null;
 }
 
 /**

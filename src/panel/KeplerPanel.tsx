@@ -401,6 +401,7 @@ export function KeplerPanel(props: Props) {
         annotations={data.annotations}
         grafanaAnnotations={options.grafanaAnnotations ?? 'show'}
         dashboardUid={dashboardUidOf(replaceVariables)}
+        queriesAnswered={data.state === LoadingState.Done || data.state === LoadingState.Error}
         notices={
           <>
             <MapNotices notices={notices} />

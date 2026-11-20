@@ -45,7 +45,7 @@ import {
   setSidePanel,
   sizeMapForFit,
 } from './keplerAdapter';
-import { decideLoadAction } from './loadDecision';
+import { decideLoadAction, shouldBuildMap } from './loadDecision';
 import { useTimeRangeSync } from './useTimeRangeSync';
 import { useAutoLayers } from './useAutoLayers';
 import { useFlowFieldContext } from './useFlowFieldContext';
@@ -184,6 +184,12 @@ export interface KeplerMapProps {
    * panel is known to be open or closed.
    */
   notices?: React.ReactNode;
+  /**
+   * Whether the queries have answered — done or failed — rather than not run
+   * yet: a saved map whose queries answered nothing is built all the same
+   * (`shouldBuildMap`).
+   */
+  queriesAnswered?: boolean;
   mapConfig?: SavedMapConfig | null;
   theme?: KeplerThemeOverride;
   /** Resolved base map style id, or null to leave kepler's default alone. */
@@ -301,6 +307,7 @@ export function KeplerMap({
   esriLayers,
   xyzLayers,
   notices,
+  queriesAnswered = false,
   mapConfig: savedMapConfig,
   theme,
   basemapId,
@@ -446,18 +453,21 @@ export function KeplerMap({
   });
 
   useEffect(() => {
-    // A saved tileset is content in its own right: a panel whose map is one
-    // vector tile layer over a base map has no query rows at all, and waiting
-    // for rows it will never get would leave it permanently blank.
+    // When there is something to build a map of, or the queries have answered
+    // nothing on a map with a view of its own: `shouldBuildMap`.
     if (
       !isReady ||
-      (datasets.length === 0 &&
-        rasters.length === 0 &&
-        wms.length === 0 &&
-        zarrLayers.length === 0 &&
-        esriLayers.length === 0 &&
-        xyzLayers.length === 0 &&
-        !mapConfig?.datasets?.length)
+      !shouldBuildMap({
+        hasContent:
+          datasets.length > 0 ||
+          rasters.length > 0 ||
+          wms.length > 0 ||
+          zarrLayers.length > 0 ||
+          esriLayers.length > 0 ||
+          xyzLayers.length > 0,
+        queriesAnswered,
+        mapConfig,
+      })
     ) {
       return;
     }
@@ -558,6 +568,7 @@ export function KeplerMap({
     zarrLayers,
     esriLayers,
     xyzLayers,
+    queriesAnswered,
     mapConfig,
     store,
     guardSplitMaps,

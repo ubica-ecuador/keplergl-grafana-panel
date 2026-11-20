@@ -6,6 +6,12 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **A saved map whose query failed opens on its saved view.** A map whose queries answered nothing —
+  its only query failed, or returned no rows — waited for rows that had already not come, so its saved
+  config was never applied and it showed kepler's default view over San Francisco. Once the queries
+  have answered, a map saved with a view of its own is built from its config; rows that come later
+  take the layers it saved for them. A map saved without a view still waits for its first rows, to
+  be framed on them.
 - **The map says what went wrong.** Over the map, along the top between kepler's side panel and its
   controls, one dismissible box lists each query's error (which Grafana marks only with the panel's
   corner icon), each frame's notices of severity warning or error (the Spatial Catalog's "… is no

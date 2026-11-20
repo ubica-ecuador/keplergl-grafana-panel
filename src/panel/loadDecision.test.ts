@@ -4,6 +4,7 @@ import {
   splitRefresh,
   splitWmsRefresh,
   splitXyzRefresh,
+  shouldBuildMap,
   splitZarrRefresh,
   xyzIdentity,
 } from './loadDecision';
@@ -350,10 +351,7 @@ describe('splitZarrRefresh', () => {
   });
 
   it('removes only the ids the panel minted', () => {
-    const { remove } = splitZarrRefresh(
-      [],
-      [zarr('grafana-A-zarr'), zarr('someones-own-zarr'), zarr('grafana-A-wms')]
-    );
+    const { remove } = splitZarrRefresh([], [zarr('grafana-A-zarr'), zarr('someones-own-zarr'), zarr('grafana-A-wms')]);
 
     expect(remove).toEqual(['grafana-A-zarr']);
   });
@@ -383,5 +381,27 @@ describe('splitXyzRefresh', () => {
     const { remove } = splitXyzRefresh([], [known(tiles('grafana-A-tiles')), known(tiles('geomap-xyz-0'))]);
 
     expect(remove).toEqual(['grafana-A-tiles']);
+  });
+});
+
+describe('shouldBuildMap', () => {
+  const overCuenca = { version: 'v1', config: { mapState: { latitude: -2.95, longitude: -79.1, zoom: 8.6 } } };
+  const noView = { version: 'v1', config: { visState: {} } };
+
+  it('builds as soon as there is something to draw, a saved tileset included', () => {
+    expect(shouldBuildMap({ hasContent: true, queriesAnswered: false, mapConfig: null })).toBe(true);
+    const tileset = { ...noView, datasets: [{ version: 'v1', data: { id: 't', type: 'vector-tile' } }] } as never;
+    expect(shouldBuildMap({ hasContent: false, queriesAnswered: false, mapConfig: tileset })).toBe(true);
+  });
+
+  it('builds a map saved with a view when its only query failed or answered no rows', () => {
+    // The regression: the saved view was never applied, and the map sat on San Francisco.
+    expect(shouldBuildMap({ hasContent: false, queriesAnswered: true, mapConfig: overCuenca })).toBe(true);
+  });
+
+  it('waits before the queries have answered, and on a map with no view of its own', () => {
+    expect(shouldBuildMap({ hasContent: false, queriesAnswered: false, mapConfig: overCuenca })).toBe(false);
+    expect(shouldBuildMap({ hasContent: false, queriesAnswered: true, mapConfig: noView })).toBe(false);
+    expect(shouldBuildMap({ hasContent: false, queriesAnswered: true, mapConfig: null })).toBe(false);
   });
 });
