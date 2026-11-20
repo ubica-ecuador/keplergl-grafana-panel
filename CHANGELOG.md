@@ -8,9 +8,10 @@ release documents what changed since the one before it.
 
 - **Kepler in the visualization picker's suggestions.** On Grafana 13 the map is a suggestion when a
   query holds a place it draws without help: latitude and longitude, a geometry, an H3 cell, a
-  geohash, both ends of a flow, a Zarr store or an ArcGIS Image Service (`OK` for columns called only
-  `x` and `y`, or for a bare raster or WMS link). Its card is a live map of up to 5,000 rows with the
-  side panel folded. Grafana lists every core panel first, Geomap included. Picking the card converts
+  geohash, both ends of a flow or an ArcGIS Image Service (`OK` for columns called only `x` and `y`, or
+  for a bare PMTiles raster or WMS link). Not for a COG, a STAC item or a Zarr store: they wait for a
+  raster tile server, which a card, drawn with the panel's defaults, does not have. Its card is a live
+  map of up to 5,000 rows with the side panel folded. Grafana lists every core panel first, Geomap included. Picking the card converts
   a Geomap's map as picking the panel from *All visualizations* does.
 - **From Kepler Plus back to Kepler, the map stays.** Changing a Kepler Plus panel's visualization to
   this one keeps its options and its saved map, as Plus keeps this panel's; layers only Plus draws

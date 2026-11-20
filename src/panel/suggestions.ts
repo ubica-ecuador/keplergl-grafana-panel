@@ -1,6 +1,7 @@
 import { type DataFrame, type Field, FieldType, VisualizationSuggestionScore } from '@grafana/data';
 
 import { describesFlow, detectFields } from '../data/detectFields';
+import { rasterKind } from '../data/rasterDataset';
 import type { KeplerPanelOptions } from '../types';
 
 /**
@@ -39,8 +40,13 @@ export const PREVIEW_MAX_ROWS = 5000;
  * `Best` for a place told plainly: latitude and longitude by a geographic name,
  * a geometry, an H3 cell, a geohash, both ends of a flow, a Zarr store or an
  * ArcGIS Image Service. `OK` when the only hint is weaker: coordinates called
- * `x` and `y`, which an XY chart's data is called too, or a raster or WMS link,
- * whose candidate names (`href`, `layer`) are common words.
+ * `x` and `y`, which an XY chart's data is called too, or a PMTiles raster or
+ * WMS link, whose candidate names (`href`, `layer`) are common words.
+ *
+ * No card for imagery that needs a raster tile server: a COG, a STAC item or a
+ * Zarr store. A card draws with the panel's defaults, which set no server, so
+ * all it could show is the notice asking for one. Such a query still turns
+ * into a map from "All visualizations", where that notice is the right advice.
  *
  * Grafana ranks every core panel above an external one whatever the score, so
  * the score only orders this card against other plugins'. The Plus panel
@@ -95,7 +101,7 @@ function frameScore(frame: DataFrame): VisualizationSuggestionScore | undefined 
   if (shaped(roles.geometry) || field(roles.h3) || field(roles.geohash) || describesFlow(roles)) {
     return VisualizationSuggestionScore.Best;
   }
-  if (roles.zarrUrl || roles.esriUrl) {
+  if (roles.esriUrl) {
     return VisualizationSuggestionScore.Best;
   }
   if (numeric(roles.latitude) && numeric(roles.longitude)) {
@@ -103,10 +109,15 @@ function frameScore(frame: DataFrame): VisualizationSuggestionScore | undefined 
       WEAK_COORDINATES.has(roles.latitude!.toLowerCase()) || WEAK_COORDINATES.has(roles.longitude!.toLowerCase());
     return weak ? VisualizationSuggestionScore.OK : VisualizationSuggestionScore.Best;
   }
-  if (roles.rasterUrl || (roles.wmsUrl && roles.wmsLayer)) {
+  if (drawsWithoutServer(field(roles.rasterUrl)) || (roles.wmsUrl && roles.wmsLayer)) {
     return VisualizationSuggestionScore.OK;
   }
   return undefined;
+}
+
+/** A raster column whose links include a PMTiles archive, which kepler reads without a tile server. */
+function drawsWithoutServer(field: Field | undefined): boolean {
+  return Boolean(field?.values.some((url) => typeof url === 'string' && rasterKind(url) === 'pmtiles'));
 }
 
 /** A geometry column holds text (WKT, GeoJSON), bytes (WKB) or objects; a number is no shape. */

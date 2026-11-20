@@ -87,10 +87,20 @@ describe('keplerSuggestions', () => {
   });
 
   it('is only an option for a bare link', () => {
-    expect(score(frame([{ name: 'href', type: FieldType.string, values: ['https://x/a.tif'] }]))).toEqual([
+    expect(score(frame([{ name: 'href', type: FieldType.string, values: ['https://x/a.pmtiles'] }]))).toEqual([
       VisualizationSuggestionScore.OK,
     ]);
     expect(score(frame([{ name: 'layer', type: FieldType.string, values: ['roads'] }]))).toBeUndefined();
+  });
+
+  it('suggests nothing for imagery that waits for a raster tile server, which a card has not', () => {
+    const cog = frame([{ name: 'raster_url', type: FieldType.string, values: ['http://feeds/a.tif'] }]);
+    const zarr = frame([{ name: 'zarr_url', type: FieldType.string, values: ['https://x/store.zarr'] }]);
+    expect(score(cog)).toBeUndefined();
+    expect(score(zarr)).toBeUndefined();
+    expect(score(frame([{ name: 'esri_url', type: FieldType.string, values: ['https://x/ImageServer'] }]))).toEqual([
+      VisualizationSuggestionScore.Best,
+    ]);
   });
 
   it('takes the best frame of several, and skips empty ones', () => {
