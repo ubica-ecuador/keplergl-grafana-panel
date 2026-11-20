@@ -48,7 +48,8 @@ export interface WmsDataset {
  * whatever this function does.
  */
 export function serviceUrlOf(url: string): string {
-  return url.trim().split('#')[0].split('?')[0].replace(/\/+$/, '');
+  // A trailing slash stays: a service may answer only with it (NASA GIBS's `…/best/`, as its capabilities say).
+  return url.trim().split('#')[0].split('?')[0];
 }
 
 /**
