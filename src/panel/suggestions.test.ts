@@ -103,6 +103,17 @@ describe('keplerSuggestions', () => {
     ]);
   });
 
+  it('is the best fit for raster tiles, and nothing for vector tiles it does not draw yet', () => {
+    const tiles = (url: string, format: string) =>
+      frame([
+        { name: 'tiles_url', type: FieldType.string, values: [url] },
+        { name: 'tiles_format', type: FieldType.string, values: [format] },
+      ]);
+
+    expect(score(tiles('https://t.test/{z}/{x}/{y}.png', 'raster'))).toEqual([VisualizationSuggestionScore.Best]);
+    expect(score(tiles('https://t.test/{z}/{x}/{y}.mvt', 'mvt'))).toBeUndefined();
+  });
+
   it('takes the best frame of several, and skips empty ones', () => {
     const empty = frame([
       { name: 'lat', type: FieldType.number, values: [] },

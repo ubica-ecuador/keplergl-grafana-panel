@@ -60,8 +60,8 @@ Roles are guessed twice over. First by **column name**, matched case-insensitive
 | `h3`        | `h3`, `h3_index`, `hex_id`, `hexagon`, `h3index`                                        |
 
 The exact match is deliberate. Substring matching would let `origin_lat` satisfy `lat`, and an
-origin–destination table would silently collapse into a plain point layer. The full table for all
-twenty-one roles is in [Field roles](../../reference/field-roles).
+origin–destination table would silently collapse into a plain point layer. The full table for every
+role is in [Field roles](../../reference/field-roles).
 
 **Time is the exception**: it is found by _type_, not by name. Grafana already knows which column is
 temporal, and real dashboards call it everything from `time` to `recorded_at` to `__timestamp`.
@@ -137,7 +137,8 @@ it into streamlines would draw lines that mean nothing.
 ## The query that returns an address instead of rows
 
 There is a second departure from the pipeline, and it goes the other way. A column named
-`raster_url` — or a `wms_url` and `wms_layer` pair — does not describe where a row is. It says the
+`raster_url` — or a `wms_url` and `wms_layer` pair, an `esri_url`, a `tiles_url` — does not describe
+where a row is. It says the
 query is not really about rows at all: the thing to draw is an image, and what the query can
 contribute is **where to find it**.
 
@@ -149,6 +150,22 @@ by one of its columns being an image.
 Return one row per date and the map's time widget walks them, which is the whole of the
 multitemporal arrangement. See [Rasters](./rasters), [WMS services](./wms) and
 [Imagery over time](./imagery-over-time).
+
+A `tiles_url` is a `{z}/{x}/{y}` template of finished pictures — an OpenStreetMap-style server, a
+WMTS spelt as a template — drawn with no tile server, its zoom levels and their names
+(`tiles_zoom_ids`) from the same row. That is what the Spatial Catalog's **Services** query gives
+for any map service that is not a WMS, and a DuckDB query returning the same columns draws the same:
+
+```sql
+SELECT 'https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png' AS tiles_url,
+       'raster' AS tiles_format, 0 AS tiles_min_zoom, 19 AS tiles_max_zoom,
+       '0:00,1:01,2:02,3:03,4:04,5:05,6:06,7:07,8:08,9:09' AS tiles_zoom_ids;
+```
+
+Vector tiles (`tiles_format` `mvt`) and PMTiles archives in `tiles_url` are not drawn yet. One
+service per query: the first row that names one decides, and in that row a WMS wins over an Esri
+service, which wins over tiles, which win over a raster. See
+[Field roles](../../reference/field-roles#the-tile-roles).
 
 ## What survives a refresh
 

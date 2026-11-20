@@ -1,6 +1,7 @@
 import { DataFrame } from '@grafana/data';
 
 import { detectFields, FieldRoleOverrides, resolveRoles } from './detectFields';
+import { anotherServiceWins } from './serviceKind';
 
 /**
  * A WMS layer a query points at, in the shape kepler's WMS tileset needs.
@@ -111,7 +112,8 @@ export function framesToWms(frames: DataFrame[], overrides: Record<string, Field
   frames.forEach((frame, index) => {
     const refId = frame.refId ?? `${index}`;
     const roles = resolveRoles(detectFields(frame), overrides[refId]);
-    if (!roles.wmsUrl || !roles.wmsLayer) {
+    // A query whose first service is another kind draws that one (`serviceKindOf`).
+    if (!roles.wmsUrl || !roles.wmsLayer || anotherServiceWins(frame, roles, 'wms')) {
       return;
     }
 
@@ -125,7 +127,7 @@ export function framesToWms(frames: DataFrame[], overrides: Record<string, Field
     if (!named) {
       return;
     }
-    const boxes = roles.wmsBbox ? frame.fields.find((f) => f.name === roles.wmsBbox) : undefined;
+    const boxes = roles.tilesBbox ? frame.fields.find((f) => f.name === roles.tilesBbox) : undefined;
 
     datasets.push({
       id: wmsDatasetId(refId),

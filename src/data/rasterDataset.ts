@@ -3,6 +3,7 @@ import { DataFrame } from '@grafana/data';
 import { BAND_COMBINATIONS, type BandCombination, resolveBandCombination } from './bandCombination';
 import { detectFields, FieldRoleOverrides, resolveRoles } from './detectFields';
 import { firstFlag, firstText } from './frameValues';
+import { anotherServiceWins } from './serviceKind';
 import { stacTileTemplate } from './stacTileUrl';
 import { pickLatestWithin, type TimeWindow } from './timeWindow';
 
@@ -237,7 +238,8 @@ export function framesToRasters(
   frames.forEach((frame, index) => {
     const refId = frame.refId ?? `${index}`;
     const roles = resolveRoles(detectFields(frame), overrides[refId]);
-    if (!roles.rasterUrl) {
+    // A query whose first service is another kind draws that one (`serviceKindOf`).
+    if (!roles.rasterUrl || anotherServiceWins(frame, roles, 'raster')) {
       return;
     }
 

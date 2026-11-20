@@ -1,6 +1,7 @@
 import type { DataFrame } from '@grafana/data';
 
 import { detectFields, resolveRoles, type FieldRoleOverrides } from './detectFields';
+import { anotherServiceWins } from './serviceKind';
 
 /**
  * An ArcGIS Image Service in the shape the panel's own layer reads.
@@ -86,7 +87,8 @@ export function framesToEsri(frames: DataFrame[], overrides: Record<string, Fiel
   frames.forEach((frame, index) => {
     const refId = frame.refId ?? `${index}`;
     const roles = resolveRoles(detectFields(frame), overrides[refId]);
-    if (!roles.esriUrl) {
+    // A query whose first service is another kind draws that one (`serviceKindOf`).
+    if (!roles.esriUrl || anotherServiceWins(frame, roles, 'esri')) {
       return;
     }
 

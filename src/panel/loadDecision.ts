@@ -2,6 +2,7 @@ import { isPanelEsriId } from '../data/esriDataset';
 import { SavedMapConfig } from '../data/mapConfig';
 import { isPanelRasterId } from '../data/rasterDataset';
 import { isPanelWmsId } from '../data/wmsDataset';
+import { isPanelXyzId } from '../data/xyzDataset';
 import { isPanelZarrId } from '../data/zarrDataset';
 
 export type LoadAction = 'rebuild' | 'refresh' | 'rasters' | 'none';
@@ -297,4 +298,67 @@ export function splitEsriRefresh<T extends { id: string; serviceUrl: string; ren
   const remove = known.map((dataset) => dataset.id).filter((id) => !ids.has(id) && isPanelEsriId(id));
 
   return { add, replace, keep, remove };
+}
+
+/**
+ * Splits a refresh of a query's tiles the same four ways, on a fifth identity.
+ *
+ * Everything the dataset carries: the template, its zoom levels and their
+ * names, and the box. None of it moves with time — a tile service has no
+ * clock here — so a re-run that returns the same service is a `keep`, and
+ * anything else is a service the layer must be rebuilt on (a new box would
+ * otherwise go on cutting at the old one, as with a WMS).
+ */
+export function splitXyzRefresh<
+  T extends {
+    id: string;
+    url: string;
+    minZoom?: number;
+    maxZoom?: number;
+    zoomIds?: Record<string, string>;
+    bbox?: readonly number[] | null;
+  },
+>(
+  wanted: T[],
+  known: ReadonlyArray<{ id: string; identity: string }>
+): { add: T[]; replace: T[]; keep: T[]; remove: string[] } {
+  const byId = new Map(known.map((dataset) => [dataset.id, dataset.identity]));
+  const ids = new Set(wanted.map((dataset) => dataset.id));
+
+  const add: T[] = [];
+  const replace: T[] = [];
+  const keep: T[] = [];
+
+  for (const dataset of wanted) {
+    if (!byId.has(dataset.id)) {
+      add.push(dataset);
+    } else if (byId.get(dataset.id) === xyzIdentity(dataset)) {
+      keep.push(dataset);
+    } else {
+      replace.push(dataset);
+    }
+  }
+
+  // Only ids the panel minted: a Geomap's XYZ layer, saved with the map, is
+  // the same dataset type and must survive every refresh.
+  const remove = known.map((dataset) => dataset.id).filter((id) => !ids.has(id) && isPanelXyzId(id));
+
+  return { add, replace, keep, remove };
+}
+
+/** What makes two tile datasets the same: every key of what they carry, in one string. */
+export function xyzIdentity(dataset: {
+  url?: string;
+  minZoom?: number;
+  maxZoom?: number;
+  zoomIds?: Record<string, string>;
+  bbox?: readonly number[] | null;
+}): string {
+  return JSON.stringify([
+    dataset.url ?? '',
+    dataset.minZoom ?? null,
+    dataset.maxZoom ?? null,
+    dataset.zoomIds ?? null,
+    dataset.bbox ?? null,
+  ]);
 }

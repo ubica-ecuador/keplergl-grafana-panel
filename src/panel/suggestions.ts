@@ -2,6 +2,7 @@ import { type DataFrame, type Field, FieldType, VisualizationSuggestionScore } f
 
 import { describesFlow, detectFields } from '../data/detectFields';
 import { rasterKind } from '../data/rasterDataset';
+import { framesToXyz } from '../data/xyzDataset';
 import type { KeplerPanelOptions } from '../types';
 
 /**
@@ -47,8 +48,8 @@ export const PREVIEW_OPTIONS: Partial<KeplerPanelOptions> = { showSidePanel: fal
  * detection that builds its layers (detectFields.ts).
  *
  * `Best` for a place told plainly: latitude and longitude by a geographic name,
- * a geometry, an H3 cell, a geohash, both ends of a flow, a Zarr store or an
- * ArcGIS Image Service. `OK` when the only hint is weaker: coordinates called
+ * a geometry, an H3 cell, a geohash, both ends of a flow, a Zarr store, an
+ * ArcGIS Image Service or `{z}/{x}/{y}` raster tiles. `OK` when the only hint is weaker: coordinates called
  * `x` and `y`, which an XY chart's data is called too, or a PMTiles raster or
  * WMS link, whose candidate names (`href`, `layer`) are common words.
  *
@@ -109,7 +110,8 @@ function frameScore(frame: DataFrame): VisualizationSuggestionScore | undefined 
   if (shaped(roles.geometry) || field(roles.h3) || field(roles.geohash) || describesFlow(roles)) {
     return VisualizationSuggestionScore.Best;
   }
-  if (roles.esriUrl) {
+  // Raster tiles by the catalog's own column name, which nothing else is called.
+  if (roles.esriUrl || (roles.tilesUrl && framesToXyz([frame]).length > 0)) {
     return VisualizationSuggestionScore.Best;
   }
   if (numeric(roles.latitude) && numeric(roles.longitude)) {

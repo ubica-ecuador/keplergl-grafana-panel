@@ -9,6 +9,7 @@ import { framesToEsri } from '../data/esriDataset';
 import { framesToRasters } from '../data/rasterDataset';
 import { resolveBandCombination } from '../data/bandCombination';
 import { framesToWms } from '../data/wmsDataset';
+import { framesToXyz } from '../data/xyzDataset';
 import { framesToZarr } from '../data/zarrDataset';
 import { toKeplerTheme } from '../data/keplerTheme';
 import { datasetsNaming, SavedMapConfig } from '../data/mapConfig';
@@ -248,6 +249,10 @@ export function KeplerPanel(props: Props) {
   // any extent, out of however many rasters it holds.
   const esriLayers = useMemo(() => framesToEsri(series, fieldMappings), [series, fieldMappings]);
 
+  // Map tiles travel that road too (`tiles_url`): a service that cuts its
+  // pictures in advance, so again no tile server.
+  const xyzLayers = useMemo(() => framesToXyz(series, fieldMappings), [series, fieldMappings]);
+
   // A Zarr travels that same road again, and needs the tile server the raster
   // path needs — the same option, deliberately. Both mean "the TiTiler this
   // panel draws through", and a second option saying the same thing would only
@@ -336,6 +341,7 @@ export function KeplerPanel(props: Props) {
         wmsLayers={wmsLayers}
         zarrLayers={zarrLayers}
         esriLayers={esriLayers}
+        xyzLayers={xyzLayers}
         mapConfig={geomapConversion?.mapConfig ?? options.mapConfig}
         theme={followTheme ? keplerTheme : undefined}
         basemapId={basemapId}

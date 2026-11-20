@@ -1,4 +1,12 @@
-import { decideLoadAction, splitRasterRefresh, splitRefresh, splitWmsRefresh, splitZarrRefresh } from './loadDecision';
+import {
+  decideLoadAction,
+  splitRasterRefresh,
+  splitRefresh,
+  splitWmsRefresh,
+  splitXyzRefresh,
+  splitZarrRefresh,
+  xyzIdentity,
+} from './loadDecision';
 
 /**
  * The panel has to choose between two very different kepler calls on every
@@ -348,5 +356,32 @@ describe('splitZarrRefresh', () => {
     );
 
     expect(remove).toEqual(['grafana-A-zarr']);
+  });
+});
+
+describe('splitXyzRefresh', () => {
+  const PDOK = 'https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png';
+  const tiles = (id: string, extra: Partial<{ url: string; maxZoom: number; bbox: number[] | null }> = {}) => ({
+    id,
+    url: PDOK,
+    bbox: null,
+    ...extra,
+  });
+  const known = (dataset: ReturnType<typeof tiles>) => ({ id: dataset.id, identity: xyzIdentity(dataset) });
+
+  it('adds, keeps and rebuilds by everything the dataset carries', () => {
+    expect(splitXyzRefresh([tiles('grafana-A-tiles')], []).add).toHaveLength(1);
+    expect(splitXyzRefresh([tiles('grafana-A-tiles')], [known(tiles('grafana-A-tiles'))]).keep).toHaveLength(1);
+    for (const changed of [{ url: 'https://other.test/{z}/{x}/{y}' }, { maxZoom: 12 }, { bbox: [3, 50, 7, 53] }]) {
+      expect(
+        splitXyzRefresh([tiles('grafana-A-tiles', changed)], [known(tiles('grafana-A-tiles'))]).replace
+      ).toHaveLength(1);
+    }
+  });
+
+  it('removes only the ids the panel minted, never a Geomap’s XYZ layer saved with the map', () => {
+    const { remove } = splitXyzRefresh([], [known(tiles('grafana-A-tiles')), known(tiles('geomap-xyz-0'))]);
+
+    expect(remove).toEqual(['grafana-A-tiles']);
   });
 });

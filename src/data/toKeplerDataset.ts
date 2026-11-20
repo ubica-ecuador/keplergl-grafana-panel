@@ -25,7 +25,7 @@ export type KeplerRow = Record<string, unknown>;
  * the three `zarr*` roles, which name a store, one array inside it, and the label
  * that array answers to — a tile request, not a column anyone reads. The `esri*`
  * roles are absent for the same reason again: they name a service and the rules
- * it should draw by.
+ * it should draw by, and so are the `tiles*` roles, which name a tile service.
  */
 type RenamedRole = Exclude<
   keyof FieldRoles,
@@ -45,7 +45,7 @@ type RenamedRole = Exclude<
   | 'rasterPainted'
   | 'wmsUrl'
   | 'wmsLayer'
-  | 'wmsBbox'
+  | 'tilesBbox'
   | 'zarrUrl'
   | 'zarrVariable'
   | 'zarrTimeLabel'
@@ -57,6 +57,11 @@ type RenamedRole = Exclude<
   | 'esriUrl'
   | 'esriMosaicRule'
   | 'esriRenderingRule'
+  | 'tilesUrl'
+  | 'tilesFormat'
+  | 'tilesMinZoom'
+  | 'tilesMaxZoom'
+  | 'tilesZoomIds'
 >;
 
 /**

@@ -1,4 +1,5 @@
 import type { SavedRemoteDataset } from './mapConfig';
+import type { WmsBox } from './wmsDataset';
 
 /**
  * Raster tiles addressed by a `{z}/{x}/{y}` template: OpenStreetMap-style
@@ -7,7 +8,9 @@ import type { SavedRemoteDataset } from './mapConfig';
  *
  * kepler draws raster tiles only from PMTiles and STAC; this is the plain web
  * map tile scheme. The dataset holds no rows, only the template, and the
- * panel's `xyzTileLayer.ts` draws it.
+ * panel's `xyzTileLayer.ts` draws it. Two roads make one: a Geomap's XYZ layer
+ * converted (`geomapToKepler.ts`), saved with the map, and a query's
+ * `tiles_url` (`xyzDataset.ts`), rebuilt from the query on every load.
  */
 
 /** The dataset type the panel uses for a tile template. */
@@ -19,12 +22,34 @@ export interface XyzTileMetadata {
   url: string;
   minZoom?: number;
   maxZoom?: number;
+  /**
+   * The service's own name for a zoom level, by the level's number, where it
+   * is not the number: a WMTS names its tile matrices, and PDOK's are "00" to
+   * "19". What `{z}` becomes in the address; a level not named here is its
+   * number.
+   */
+  zoomIds?: Record<string, string>;
+  /**
+   * Where the tiles have data, `[west, south, east, north]` in degrees, as the
+   * query gave it (`tiles_bbox`): the map frames the layer on it and draws
+   * nothing outside it, as it does a WMS's (`wmsExtent.ts`). The key a WMS
+   * dataset carries its box under too.
+   */
+  tilesBbox?: WmsBox;
 }
 
-/** The tile's address. `{-y}` counts rows from the south (TMS); `{s}` and `{a-c}` pick the first subdomain. */
-export function xyzTileUrl(template: string, { x, y, z }: { x: number; y: number; z: number }): string {
+/**
+ * The tile's address. `{-y}` counts rows from the south (TMS); `{s}` and
+ * `{a-c}` pick the first subdomain; `{z}` is the level's own name when the
+ * service gives one (`zoomIds`).
+ */
+export function xyzTileUrl(
+  template: string,
+  { x, y, z }: { x: number; y: number; z: number },
+  zoomIds?: Record<string, string>
+): string {
   return template
-    .replace(/\{z\}/g, String(z))
+    .replace(/\{z\}/g, zoomIds?.[String(z)] ?? String(z))
     .replace(/\{x\}/g, String(x))
     .replace(/\{-y\}/g, String(2 ** z - 1 - y))
     .replace(/\{y\}/g, String(y))

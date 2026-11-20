@@ -36,18 +36,22 @@ export function xyzDeckProps(args: {
   if (!template) {
     return null;
   }
+  const zoomIds = metadata?.zoomIds && Object.keys(metadata.zoomIds).length ? metadata.zoomIds : undefined;
   const native = xyzMapLibreTemplate(template);
   return {
     id: `${id}-xyz-tiles`,
-    getTileUrl: (index: { x: number; y: number; z: number }) => xyzTileUrl(template, index),
+    getTileUrl: (index: { x: number; y: number; z: number }) => xyzTileUrl(template, index, zoomIds),
     // What MapLibre draws instead on a relief base map (`reliefRasters.ts`).
-    reliefTiles: native.template,
-    reliefScheme: native.scheme,
+    // Not for a service that names its zoom levels: a MapLibre template puts
+    // the level's number in `{z}`, and asks PDOK for a matrix "8" it calls
+    // "08". deck draws those tiles there instead, as it does off the relief.
+    ...(zoomIds ? {} : { reliefTiles: native.template, reliefScheme: native.scheme }),
     opacity: opacity ?? 1,
     ...(typeof metadata?.minZoom === 'number' ? { minZoom: metadata.minZoom } : {}),
     ...(typeof metadata?.maxZoom === 'number' ? { maxZoom: metadata.maxZoom } : {}),
-    // deck caches tiles against its triggers: a new template must refetch.
-    updateTriggers: { getTileData: template },
+    // deck caches tiles against its triggers: a new template, or new names
+    // for its levels, must refetch.
+    updateTriggers: { getTileData: zoomIds ? `${template} ${JSON.stringify(zoomIds)}` : template },
   };
 }
 

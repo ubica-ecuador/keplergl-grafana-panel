@@ -13,6 +13,7 @@ import type { PanelDataset } from '../data/framesToDatasets';
 import type { RasterDataset } from '../data/rasterDataset';
 import type { WmsDataset } from '../data/wmsDataset';
 import type { EsriDataset } from '../data/esriDataset';
+import type { XyzDataset } from '../data/xyzDataset';
 import type { ZarrDataset } from '../data/zarrDataset';
 import { namesBasemap, type SavedMapConfig } from '../data/mapConfig';
 import type { KeplerThemeOverride } from '../data/keplerTheme';
@@ -30,12 +31,14 @@ import {
   loadRasters,
   loadWms,
   loadEsri,
+  loadXyz,
   loadZarr,
   type MapBounds,
   refreshDatasets,
   refreshRasters,
   refreshWms,
   refreshEsri,
+  refreshXyz,
   refreshZarr,
   resumeTimeFilter,
   setBasemap,
@@ -169,6 +172,11 @@ export interface KeplerMapProps {
    */
   zarrLayers: ZarrDataset[];
   esriLayers: EsriDataset[];
+  /**
+   * The `{z}/{x}/{y}` raster tiles the queries name (`tiles_url`). Separate for
+   * the reason a WMS is: a service, no rows.
+   */
+  xyzLayers: XyzDataset[];
   mapConfig?: SavedMapConfig | null;
   theme?: KeplerThemeOverride;
   /** Resolved base map style id, or null to leave kepler's default alone. */
@@ -284,6 +292,7 @@ export function KeplerMap({
   wmsLayers,
   zarrLayers,
   esriLayers,
+  xyzLayers,
   mapConfig: savedMapConfig,
   theme,
   basemapId,
@@ -439,6 +448,7 @@ export function KeplerMap({
         wms.length === 0 &&
         zarrLayers.length === 0 &&
         esriLayers.length === 0 &&
+        xyzLayers.length === 0 &&
         !mapConfig?.datasets?.length)
     ) {
       return;
@@ -496,6 +506,7 @@ export function KeplerMap({
       loadWms(store.dispatch, wms);
       loadZarr(store.dispatch, zarrLayers);
       loadEsri(store.dispatch, esriLayers);
+      loadXyz(store.dispatch, xyzLayers);
       // The viewport this load intends is not safe yet — kepler's internal
       // view state echo can overwrite it — so arm the guard that defends it.
       setGuardArm((n) => n + 1);
@@ -527,6 +538,9 @@ export function KeplerMap({
       // An Image Service is only rebuilt when the query names a different
       // endpoint or renderer; changing the year moves a `visConfig` instead.
       refreshEsri(store, store.dispatch, esriLayers);
+      // Tiles are only rebuilt when the query names another service, or
+      // other zoom levels or another box for it.
+      refreshXyz(store, store.dispatch, xyzLayers);
     }
   }, [
     isReady,
@@ -535,6 +549,7 @@ export function KeplerMap({
     wms,
     zarrLayers,
     esriLayers,
+    xyzLayers,
     mapConfig,
     store,
     guardSplitMaps,

@@ -6,6 +6,15 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Map tiles from a query.** A row with a `tiles_url`, a `{z}/{x}/{y}` template, is drawn as raster
+  tiles with no tile server, as the Spatial Catalog's *Services* query gives any map service that is
+  not a WMS (PDOK's WMTS, an OpenStreetMap-style server), or any query returning the same columns:
+  `tiles_format` (`raster`; `mvt` and `pmtiles` are not drawn yet), `tiles_min_zoom`,
+  `tiles_max_zoom`, `tiles_zoom_ids` (the service's own name for each level, `0:00,1:01,…`, put in
+  `{z}`) and `tiles_bbox`. One layer per query, from its first row with an address; the rows stay a
+  table, and the layer is rebuilt from the query, never saved with the map. One service per query: the
+  first row that names one decides, and in that row a WMS wins over an Esri service, which wins over
+  tiles, which win over a raster.
 - **A WMS layer's box: framed on, and cut to.** A query's WMS row can carry the layer's box,
   `tiles_bbox` (or `wms_bbox`), as text `west south east north` in degrees, as the Spatial Catalog
   gives it. When the layer appears, or the query names another, and the view shows none of the box

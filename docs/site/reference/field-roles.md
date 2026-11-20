@@ -3,8 +3,8 @@
 A **role** is the part a column plays. Roles are detected from the column's name — case-insensitively
 and **exactly** — except for time, which is detected from its type.
 
-There are **forty** roles. The Field mapping editor exposes **sixteen** of them; the other
-twenty-four are autodetect-only and are marked below.
+There are **forty-six** roles. The Field mapping editor exposes **sixteen** of them; the other
+thirty are autodetect-only and are marked below.
 
 ## The full table
 
@@ -39,10 +39,15 @@ twenty-four are autodetect-only and are marked below.
 | Raster painted   | ❌    | `raster_painted` — true or false, over **Let the tile server paint**                                                                                                                                            | not renamed |
 | WMS URL         | ❌     | `wms_url`, `wms`, `service_url`                                                                                                                                                                                 | not renamed |
 | WMS layer       | ❌     | `wms_layer`, `layer`, `layer_name`                                                                                                                                                                              | not renamed |
-| WMS box         | ❌     | `tiles_bbox`, `wms_bbox`                                                                                                                                                                                        | not renamed |
+| Box             | ❌     | `tiles_bbox`, `wms_bbox` — a WMS's or tiles' box, `west south east north`                                                                                                                                       | not renamed |
 | Esri service    | ❌     | `esri_url`, `image_service_url`, `imageserver_url`                                                                                                                              | not renamed |
 | Esri mosaic rule | ❌    | `esri_mosaic_rule`, `mosaic_rule`                                                                                                                                               | not renamed |
 | Esri render rule | ❌    | `esri_rendering_rule`, `rendering_rule`                                                                                                                                         | not renamed |
+| Tiles URL       | ❌     | `tiles_url`, `xyz_url` — a `{z}/{x}/{y}` template                                                                                                                                                               | not renamed |
+| Tiles format    | ❌     | `tiles_format` — `raster`, `mvt` or `pmtiles`                                                                                                                                                                   | not renamed |
+| Tiles min zoom  | ❌     | `tiles_min_zoom`                                                                                                                                                                                                | not renamed |
+| Tiles max zoom  | ❌     | `tiles_max_zoom`                                                                                                                                                                                                | not renamed |
+| Tiles zoom ids  | ❌     | `tiles_zoom_ids` — `z:name` pairs, comma separated                                                                                                                                                              | not renamed |
 | Zarr URL        | ❌     | `zarr_url`, `zarr`, `store_url`                                                                                                                                                                                 | not renamed |
 | Zarr variable   | ❌     | `zarr_variable`, `zarr_var`                                                                                                                                                                                     | not renamed |
 | Zarr time label | ❌     | `zarr_time_label`, `zarr_label`                                                                                                                                                                                 | not renamed |
@@ -54,7 +59,8 @@ twenty-four are autodetect-only and are marked below.
 
 ::: warning Some roles cannot be mapped by hand
 The editor offers the sixteen roles a table of rows needs. The other twenty-four — `originH3`,
-`destH3`, `u`, `v`, `speed`, `direction`, and every `raster*`, `wms*`, `esri*` and `zarr*` role —
+`destH3`, `u`, `v`, `speed`, `direction`, the box, and every `raster*`, `wms*`, `esri*`, `tiles*`
+and `zarr*` role —
 are detected but have no entry in it. If your columns are named something the lists do not cover,
 **alias them in the query**:
 
@@ -68,8 +74,8 @@ query called them — and once the layer exists, they can be re-pointed from its
 section. Streamlines' third spelling, [the gradient of a
 value](../guide/data/velocity-fields#the-gradient-of-a-value), has no role at all and is not
 detected: any numeric column could be a scalar field, so that one is chosen on the layer or not at
-all. The raster and WMS roles are not renamed either, for a different reason: each becomes a
-dataset of its own.
+all. The raster, WMS, Esri and tiles roles are not renamed either, for a different reason: each
+becomes a dataset of its own.
 :::
 
 ## The WMS roles make a second dataset too
@@ -83,8 +89,8 @@ A query that carries them produces the ordinary row dataset plus a WMS dataset, 
 draw. There is no tile server in that list, and its absence is the point: a WMS renders its own
 imagery, so nothing sits in between.
 
-`wmsBbox` is optional: the layer's box as text, `west south east north` in degrees, from the same
-row. The map frames the layer on it when the view shows none of it, and draws the service's picture
+The box (`tiles_bbox`) is optional: the layer's box as text, `west south east north` in degrees,
+from the same row. The map frames the layer on it when the view shows none of it, and draws the service's picture
 only inside it. See [WMS services](../guide/data/wms#where-the-layer-is).
 
 Give the **bare endpoint**. A whole `GetMap` URL is trimmed back to it, because every request is
@@ -99,6 +105,29 @@ filter is always a filter on a column, so the dates have to be on the map for th
 
 Moving the widget re-asks the service for that date and nothing else. See
 [WMS services](../guide/data/wms) and [Imagery over time](../guide/data/imagery-over-time).
+
+## The tile roles
+
+A query whose row has a `tiles_url` names map tiles: a `{z}/{x}/{y}` template (`{-y}` counts rows
+from the south, `{s}` takes the first subdomain), as the Spatial Catalog's Services frame gives any
+map service that is not a WMS. The panel makes an XYZ tile dataset of it, id `grafana-<refId>-tiles`,
+from the first row with an address, beside the ordinary row dataset; like a WMS, it needs no tile
+server and is rebuilt from the query on every load, never saved with the map.
+
+- `tiles_format`: `raster` is drawn. `mvt` (vector tiles) and `pmtiles` are not drawn yet. Without
+  the column, an address ending in `.pmtiles` is an archive, one in `.mvt` or `.pbf` vector tiles, and
+  anything else pictures.
+- `tiles_min_zoom`, `tiles_max_zoom`: the levels the service has; past the last one its tiles are
+  stretched.
+- `tiles_zoom_ids`: the service's own name for a level where it is not the number, as `z:name` pairs
+  (`0:00,1:01,…`: PDOK's WMTS names its matrices "00" to "19"). `{z}` becomes the name.
+- `tiles_bbox`: the box, `west south east north` in degrees, carried on the dataset.
+
+`tiles_metadata_url` (a TileJSON or the archive) is not read yet.
+
+**One service per query.** The first row that names a service decides what the query draws, and in
+that row a WMS (`wms_url` with `wms_layer`) wins over an Esri service (`esri_url`), which wins over
+tiles (`tiles_url`), which win over a raster (`raster_url`). A Zarr store is drawn as before.
 
 ## Why the match is exact
 

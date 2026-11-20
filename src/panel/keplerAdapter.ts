@@ -47,6 +47,8 @@ import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
 import { stacTileTemplate } from '../data/stacTileUrl';
 import { isPanelWmsId, wmsCalendarDatasetId, type WmsDataset } from '../data/wmsDataset';
 import { type EsriDataset } from '../data/esriDataset';
+import { isPanelXyzId, type XyzDataset } from '../data/xyzDataset';
+import { XYZ_TILE_TYPE, type XyzTileMetadata } from '../data/xyzTiles';
 import { zarrCalendarDatasetId, type ZarrDataset } from '../data/zarrDataset';
 import { rowFieldValue, wmsFeatureValues } from './clickSync';
 import { withParkedParts, type ParkedState } from './parkedConfig';
@@ -79,7 +81,15 @@ import type { FlowFieldLayerState } from './flowFieldContext';
 import { levelHeight, type FlowFieldContext } from './flowFieldLayer';
 import { COG_PAINTED_TYPE } from './cogPaintedLayer';
 import { ESRI_IMAGE_TYPE } from './esriImageLayer';
-import { splitEsriRefresh, splitRasterRefresh, splitRefresh, splitWmsRefresh, splitZarrRefresh } from './loadDecision';
+import {
+  splitEsriRefresh,
+  splitRasterRefresh,
+  splitRefresh,
+  splitWmsRefresh,
+  splitXyzRefresh,
+  splitZarrRefresh,
+  xyzIdentity,
+} from './loadDecision';
 import { KEPLER_INSTANCE_ID } from './constants';
 import { wrapLongitude } from '../data/longitude';
 import { ZARR_TILES_TYPE } from './zarrTileLayer';
@@ -1127,7 +1137,7 @@ function captureRemoteDatasets(store: Store): SavedRemoteDataset[] {
     // writes a second dataset with the same id into the dashboard JSON — and
     // the stale copy would then race the fresh one on the next load. Same
     // reasoning the comment above gives for leaving the row datasets out.
-    .filter(([id]) => !isPanelRasterId(id) && !isPanelWmsId(id))
+    .filter(([id]) => !isPanelRasterId(id) && !isPanelWmsId(id) && !isPanelXyzId(id))
     .map(([, dataset]) => ({
       version: VERSIONS.v1,
       // The state object is kepler's own `KeplerTable`; only this module's view
@@ -2952,5 +2962,86 @@ function readEsriDatasets(store: Store): Array<{ id: string; serviceUrl?: string
     .map(([id, dataset]) => {
       const metadata = dataset.metadata as { serviceUrl?: string; renderingRule?: string } | undefined;
       return { id, serviceUrl: metadata?.serviceUrl, renderingRule: metadata?.renderingRule };
+    });
+}
+
+/**
+ * A query's tiles in the shape the panel's XYZ layer reads: the dataset a
+ * Geomap's XYZ layer becomes (`xyzSavedDataset`), with what a catalog adds —
+ * the names of the zoom levels and the box.
+ */
+function xyzProtoDataset(xyz: XyzDataset) {
+  const metadata: XyzTileMetadata = {
+    url: xyz.url,
+    ...(xyz.minZoom !== undefined ? { minZoom: xyz.minZoom } : {}),
+    ...(xyz.maxZoom !== undefined ? { maxZoom: xyz.maxZoom } : {}),
+    ...(xyz.zoomIds ? { zoomIds: xyz.zoomIds } : {}),
+    ...(xyz.bbox ? { tilesBbox: xyz.bbox } : {}),
+  };
+  return {
+    info: { id: xyz.id, label: xyz.label, type: XYZ_TILE_TYPE, format: 'rows' },
+    data: { fields: [], rows: [] },
+    metadata,
+    disableDataOperation: true,
+  } as unknown as ProtoDataset;
+}
+
+/**
+ * Adds a query's tiles to the map, one dataset and one layer each.
+ *
+ * Not framed by kepler (`centerMap` false): tiles have no rows to frame on.
+ */
+export function loadXyz(dispatch: Dispatch, layers: XyzDataset[]): void {
+  if (layers.length === 0) {
+    return;
+  }
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      updateVisData(layers.map(xyzProtoDataset), { keepExistingConfig: true, centerMap: false })
+    )
+  );
+}
+
+/** Refresh path for a query's tiles: add, rebuild, drop, leave the rest alone (`splitXyzRefresh`). */
+export function refreshXyz(store: Store, dispatch: Dispatch, layers: XyzDataset[]): void {
+  const { add, replace, remove } = splitXyzRefresh(layers, readXyzDatasets(store));
+
+  for (const id of remove) {
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(id)));
+  }
+
+  for (const xyz of replace) {
+    dispatch(
+      wrapTo(
+        KEPLER_INSTANCE_ID,
+        replaceDataInMap({
+          datasetToReplaceId: xyz.id,
+          datasetToUse: xyzProtoDataset(xyz),
+          options: { centerMap: false, keepExistingConfig: true },
+        })
+      )
+    );
+  }
+
+  loadXyz(dispatch, add);
+}
+
+/** The tile datasets kepler holds, the Geomap ones too, as the identity the refresh compares on. */
+function readXyzDatasets(store: Store): Array<{ id: string; identity: string }> {
+  return Object.entries(getVisState(store)?.datasets ?? {})
+    .filter(([, dataset]) => dataset.type === XYZ_TILE_TYPE)
+    .map(([id, dataset]) => {
+      const metadata = dataset.metadata as Partial<XyzTileMetadata> | undefined;
+      return {
+        id,
+        identity: xyzIdentity({
+          url: metadata?.url,
+          minZoom: metadata?.minZoom,
+          maxZoom: metadata?.maxZoom,
+          zoomIds: metadata?.zoomIds,
+          bbox: metadata?.tilesBbox ?? null,
+        }),
+      };
     });
 }
