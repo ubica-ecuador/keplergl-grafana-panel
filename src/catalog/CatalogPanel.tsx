@@ -27,6 +27,7 @@ import {
   vectorDataset,
   vectorFormat,
   vectorQuery,
+  byAreaLabel,
   parquetLayer,
   readsByArea,
   readsByQuery,
@@ -448,7 +449,7 @@ export function CatalogPanel() {
       setAdded((was) => new Set([...was, entry.id]));
     }
   };
-  // A GeoParquet: read by area over the view, again as it moves, only the row groups there.
+  // A GeoParquet or a FlatGeobuf: read by area over the view, again as it moves, only what lies there.
   const addParquet = (entry: CatalogEntry) => {
     const area = searchArea(entry);
     if (area && api.addLayer) {
@@ -567,13 +568,7 @@ export function CatalogPanel() {
                 <b>{entry.title}</b>
                 <span>
                   {(readsByArea(entry)
-                    ? [
-                        'GeoParquet',
-                        'read by area',
-                        typeof entry.size === 'number'
-                          ? `${(entry.size / 1e9).toFixed(entry.size < 1e10 ? 1 : 0)} GB`
-                          : '',
-                      ]
+                    ? byAreaLabel(entry)
                     : entry.kind === 'zarr'
                       ? cubeLabel(entry)
                       : entry.kind === 'sensors' || entry.kind === 'datastream' || entry.kind === 'edr'

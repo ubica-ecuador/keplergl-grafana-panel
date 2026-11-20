@@ -1,6 +1,7 @@
 import { createDataFrame, FieldType } from '@grafana/data';
 
 import {
+  byAreaLabel,
   type CatalogEntry,
   entriesOf,
   featuresDataset,
@@ -161,6 +162,31 @@ describe('a GeoParquet from a catalog', () => {
       followView: true,
     });
     expect(parquetLayer(part(1), 'cat', [0, 0, 1, 1]).target).toBe('00001');
+  });
+});
+
+describe('a FlatGeobuf from a catalog', () => {
+  const blocks = entry({
+    id: 'population-areas',
+    title: 'US census blocks',
+    href: 'https://flatgeobuf.septima.dk/population_areas.fgb',
+    size: 12_338_379_552,
+    mediaType: 'application/vnd.flatgeobuf',
+  });
+  const small = entry({ id: 'countries', href: 'https://f.org/countries.fgb', size: 205_000 });
+
+  it('is read by area through its index whatever its size, unless the catalog says it is small', async () => {
+    expect([readsByArea(blocks), whyNotAddable(blocks)]).toEqual([true, null]);
+    expect(readsByArea({ ...blocks, size: null })).toBe(true);
+    // Small: loaded whole, as other files, since it may have no index.
+    expect(readsByArea(small)).toBe(false);
+    await expect(vectorDataset(small, 'cat')).resolves.toMatchObject({ data: { metadata: { format: 'fgb' } } });
+    expect(parquetLayer(blocks, 'cat', [-105, 39.73, -104.97, 39.76])).toMatchObject({
+      target: 'population-areas',
+      queryType: 'flatgeobuf',
+      followView: true,
+    });
+    expect(byAreaLabel(blocks)).toEqual(['FlatGeobuf', 'read by area', '12 GB']);
   });
 });
 

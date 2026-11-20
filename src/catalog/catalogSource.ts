@@ -232,8 +232,8 @@ export function whyNotAddable(
       return null;
     case 'vector': {
       const format = vectorFormat(entry);
-      // A GeoParquet is read by area, whatever its size: only the row groups over the view.
-      if (format === 'pmtiles' || format === 'parquet') {
+      // A GeoParquet or a FlatGeobuf is read by area, whatever its size: only what lies over the view.
+      if (format === 'pmtiles' || format === 'parquet' || format === 'fgb') {
         return null;
       }
       if (!format) {
@@ -1474,13 +1474,37 @@ const SENSORS_LAYER_LIMIT = 2000;
 /** Values an EDR layer reads at most. */
 const EDR_LAYER_LIMIT = 50_000;
 
-/** Whether an entry is read by area from GeoParquet: a collection of such files, or one. */
-export function readsByArea(entry: Pick<CatalogEntry, 'kind' | 'href'> & { mediaType?: string }): boolean {
-  return entry.kind === 'geoparquet' || (entry.kind === 'vector' && vectorFormat(entry) === 'parquet');
+/** Features a map loads from a FlatGeobuf over its view, at most. */
+const FLATGEOBUF_LAYER_LIMIT = 20_000;
+/** A FlatGeobuf this small, said so by the catalog, is loaded whole, as other files: it may have no index. */
+const FLATGEOBUF_WHOLE_MAX = 10e6;
+
+/** Whether an entry is a FlatGeobuf read by area, through its spatial index: one not known to be small. */
+export function readsFlatGeobuf(
+  entry: Pick<CatalogEntry, 'kind' | 'href'> & { mediaType?: string; size?: number | null }
+): boolean {
+  return (
+    entry.kind === 'vector' &&
+    vectorFormat(entry) === 'fgb' &&
+    !(typeof entry.size === 'number' && entry.size <= FLATGEOBUF_WHOLE_MAX)
+  );
+}
+
+/** Whether an entry is read by area: a GeoParquet (a collection of such files, or one), or a FlatGeobuf. */
+export function readsByArea(
+  entry: Pick<CatalogEntry, 'kind' | 'href'> & { mediaType?: string; size?: number | null }
+): boolean {
+  return (
+    entry.kind === 'geoparquet' ||
+    (entry.kind === 'vector' && vectorFormat(entry) === 'parquet') ||
+    readsFlatGeobuf(entry)
+  );
 }
 
 /** Whether an entry is added as a layer the data source reads over the view: GeoParquet, sensors, EDR. */
-export function readsByQuery(entry: Pick<CatalogEntry, 'kind' | 'href'> & { mediaType?: string }): boolean {
+export function readsByQuery(
+  entry: Pick<CatalogEntry, 'kind' | 'href'> & { mediaType?: string; size?: number | null }
+): boolean {
   return readsByArea(entry) || entry.kind === 'sensors' || entry.kind === 'datastream' || entry.kind === 'edr';
 }
 
@@ -1511,7 +1535,23 @@ export function parquetLayer(
     const parameters = (entry.parameters ?? []).slice(0, EDR_LAYER_PARAMETERS).map((p) => p.id);
     return { ...base, target: entry.id, queryType: 'edr', parameters };
   }
+  if (readsFlatGeobuf(entry)) {
+    return { ...base, target: entry.id, queryType: 'flatgeobuf' };
+  }
   return { ...base, target: entry.kind === 'geoparquet' ? entry.collection : entry.id };
+}
+
+/** What a file read by area is: its format, and its size. */
+export function byAreaLabel(entry: CatalogEntry): string[] {
+  return [
+    readsFlatGeobuf(entry) ? 'FlatGeobuf' : 'GeoParquet',
+    'read by area',
+    typeof entry.size === 'number'
+      ? entry.size >= 1e9
+        ? `${(entry.size / 1e9).toFixed(entry.size < 1e10 ? 1 : 0)} GB`
+        : `${Math.round(entry.size / 1e6)} MB`
+      : '',
+  ];
 }
 
 /** What a sensors or EDR layer is: its service, and what of it. */
@@ -1617,7 +1657,7 @@ function parseParameters(text: string): CatalogEntry['parameters'] {
   }
 }
 
-/** A GeoParquet layer's rows over an area, through its catalog's data source (the `parquet` query). */
+/** A catalog layer's rows over an area, through its catalog's data source (a `parquet`, `flatgeobuf`, `sensors` or `edr` query). */
 export async function readParquetLayer(
   layer: SavedCatalogLayer,
   area: [number, number, number, number],
@@ -1631,22 +1671,24 @@ export async function readParquetLayer(
   const target =
     type === 'sensors'
       ? { queryType: 'sensors', entries: [layer.target], bbox: area.join(','), limit: SENSORS_LAYER_LIMIT }
-      : type === 'edr'
-        ? {
-            queryType: 'edr',
-            entries: [layer.target],
-            bbox: area.join(','),
-            edrMode: 'area',
-            parameters: (layer.parameters ?? []).join(','),
-            limit: EDR_LAYER_LIMIT,
-          }
-        : {
-            queryType: 'parquet',
-            entries: [layer.target],
-            bbox: area.join(','),
-            columns: layer.columns.join(','),
-            limit: PARQUET_LAYER_LIMIT,
-          };
+      : type === 'flatgeobuf'
+        ? { queryType: 'flatgeobuf', entries: [layer.target], bbox: area.join(','), limit: FLATGEOBUF_LAYER_LIMIT }
+        : type === 'edr'
+          ? {
+              queryType: 'edr',
+              entries: [layer.target],
+              bbox: area.join(','),
+              edrMode: 'area',
+              parameters: (layer.parameters ?? []).join(','),
+              limit: EDR_LAYER_LIMIT,
+            }
+          : {
+              queryType: 'parquet',
+              entries: [layer.target],
+              bbox: area.join(','),
+              columns: layer.columns.join(','),
+              limit: PARQUET_LAYER_LIMIT,
+            };
   const request = {
     targets: [{ refId: layer.id, ...target }],
     range: { from, to, raw: { from, to } },

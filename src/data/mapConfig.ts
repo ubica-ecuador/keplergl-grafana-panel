@@ -82,11 +82,11 @@ export interface SavedCatalogLayer {
   bbox: [number, number, number, number];
   followView: boolean;
   /**
-   * What the data source is asked: a GeoParquet read by area (`parquet`, the default), the last value of sensors
-   * over the area (`sensors`, SensorThings), or an EDR collection's values there (`edr`). The last two follow the
-   * dashboard's time range too.
+   * What the data source is asked: a GeoParquet read by area (`parquet`, the default), a FlatGeobuf read by area
+   * through its spatial index (`flatgeobuf`), the last value of sensors over the area (`sensors`, SensorThings), or
+   * an EDR collection's values there (`edr`). The last two follow the dashboard's time range too.
    */
-  queryType?: 'parquet' | 'sensors' | 'edr';
+  queryType?: 'parquet' | 'flatgeobuf' | 'sensors' | 'edr';
   /** EDR: the parameters asked. */
   parameters?: string[];
 }
