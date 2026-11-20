@@ -30,7 +30,22 @@ export interface WmsDataset {
    * service cannot know.
    */
   times: number[];
+  /**
+   * Where the layer has data, as the query says: `[west, south, east, north]`
+   * in degrees, or null when the query says nothing usable.
+   *
+   * Read from the same row as the service and the layer (`tiles_bbox`), and it
+   * does two jobs on the map: the view is framed on it when the layer arrives
+   * somewhere it cannot be seen (`wmsExtent.ts`), and the picture is drawn only
+   * inside it, because many services answer an opaque white image wherever they
+   * have nothing — IGN's Cassini map covers the whole world in white outside
+   * France. `west` greater than `east` is a box across the antimeridian.
+   */
+  bbox: WmsBox | null;
 }
+
+/** A layer's box in degrees: `[west, south, east, north]`; `west > east` crosses the antimeridian. */
+export type WmsBox = [number, number, number, number];
 
 /**
  * The endpoint, as loaders.gl needs it: no query string and no fragment.
@@ -110,6 +125,7 @@ export function framesToWms(frames: DataFrame[], overrides: Record<string, Field
     if (!named) {
       return;
     }
+    const boxes = roles.wmsBbox ? frame.fields.find((f) => f.name === roles.wmsBbox) : undefined;
 
     datasets.push({
       id: wmsDatasetId(refId),
@@ -117,6 +133,7 @@ export function framesToWms(frames: DataFrame[], overrides: Record<string, Field
       serviceUrl: named.serviceUrl,
       layerName: named.layerName,
       times: readTimes(frame, roles.time),
+      bbox: boxes ? parseWmsBox(boxes.values[named.row]) : null,
     });
   });
 
@@ -128,7 +145,7 @@ function firstNamed(
   length: number,
   urls: unknown[],
   layers: unknown[]
-): { serviceUrl: string; layerName: string } | null {
+): { serviceUrl: string; layerName: string; row: number } | null {
   for (let i = 0; i < length; i++) {
     const url = urls[i];
     const layer = layers[i];
@@ -138,10 +155,60 @@ function firstNamed(
     const serviceUrl = serviceUrlOf(url);
     const layerName = layer.trim();
     if (serviceUrl && layerName) {
-      return { serviceUrl, layerName };
+      return { serviceUrl, layerName, row: i };
     }
   }
   return null;
+}
+
+/**
+ * A layer's box from what a query put in its `tiles_bbox` column, or null.
+ *
+ * The spelling the Spatial Catalog writes is text, `"west south east north"`
+ * with spaces between — `"-5.5 41 10 51.5"` for France — and spaces on
+ * purpose: kepler's type analyzer reads `[w,s,e,n]` or `w,s,e,n` as a pair of
+ * points and would draw the column as one. Commas, a JSON array and a list
+ * value are read too, since a hand-written query will reach for them.
+ *
+ * Degrees or nothing. Anything else — three numbers, a south north of its
+ * north, a projected box in metres that no longitude reaches — is not a box
+ * the map can use, and guessing would frame the view somewhere wrong or clip
+ * the picture away entirely; the layer then draws as it did before, unframed
+ * and unclipped. A box a hair outside the world (a server's -180.0000001) is
+ * pulled back to its edge.
+ */
+export function parseWmsBox(value: unknown): WmsBox | null {
+  let parts: unknown[];
+  if (typeof value === 'string') {
+    const text = value.trim().replace(/^\[|\]$/g, '');
+    parts = text ? text.split(/[\s,;]+/) : [];
+  } else if (Array.isArray(value)) {
+    parts = value;
+  } else if (value && typeof (value as { toArray?: unknown }).toArray === 'function') {
+    parts = (value as { toArray(): unknown[] }).toArray();
+  } else {
+    return null;
+  }
+  if (parts.length !== 4) {
+    return null;
+  }
+  const numbers = parts.map((part) => (typeof part === 'number' ? part : typeof part === 'string' ? Number(part) : NaN));
+  if (!numbers.every(Number.isFinite)) {
+    return null;
+  }
+  const SLACK = 1e-6;
+  const [west, south, east, north] = numbers;
+  const inRange = (n: number, limit: number) => Math.abs(n) <= limit + SLACK;
+  if (!inRange(west, 180) || !inRange(east, 180) || !inRange(south, 90) || !inRange(north, 90)) {
+    return null;
+  }
+  const clamp = (n: number, limit: number) => Math.max(-limit, Math.min(limit, n));
+  const box: WmsBox = [clamp(west, 180), clamp(south, 90), clamp(east, 180), clamp(north, 90)];
+  // No height, or no width: a point or a line is not where a layer has data.
+  if (box[1] >= box[3] || box[0] === box[2]) {
+    return null;
+  }
+  return box;
 }
 
 /**

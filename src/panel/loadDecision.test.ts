@@ -289,6 +289,14 @@ describe('splitWmsRefresh', () => {
     expect(replace.map((d) => d.serviceUrl)).toEqual(['https://other.test/wms']);
   });
 
+  it('rebuilds when only the box changes, and keeps the same box', () => {
+    const france = { ...wms('grafana-A-wms'), bbox: [-5.5, 41, 10, 51.5] };
+    const spain = { ...wms('grafana-A-wms'), bbox: [-9.5, 36, 3.3, 43.8] };
+
+    expect(splitWmsRefresh([spain], [france]).replace).toEqual([spain]);
+    expect(splitWmsRefresh([france], [{ ...france, bbox: [...france.bbox] }]).keep).toEqual([france]);
+  });
+
   it('removes only the ids the panel minted', () => {
     const { remove } = splitWmsRefresh([], [wms('grafana-A-wms'), wms('someones-own-wms'), wms('grafana-A-raster')]);
 

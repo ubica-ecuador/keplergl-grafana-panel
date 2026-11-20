@@ -39,6 +39,7 @@ twenty-four are autodetect-only and are marked below.
 | Raster painted   | ❌    | `raster_painted` — true or false, over **Let the tile server paint**                                                                                                                                            | not renamed |
 | WMS URL         | ❌     | `wms_url`, `wms`, `service_url`                                                                                                                                                                                 | not renamed |
 | WMS layer       | ❌     | `wms_layer`, `layer`, `layer_name`                                                                                                                                                                              | not renamed |
+| WMS box         | ❌     | `tiles_bbox`, `wms_bbox`                                                                                                                                                                                        | not renamed |
 | Esri service    | ❌     | `esri_url`, `image_service_url`, `imageserver_url`                                                                                                                              | not renamed |
 | Esri mosaic rule | ❌    | `esri_mosaic_rule`, `mosaic_rule`                                                                                                                                               | not renamed |
 | Esri render rule | ❌    | `esri_rendering_rule`, `rendering_rule`                                                                                                                                         | not renamed |
@@ -81,6 +82,10 @@ A query that carries them produces the ordinary row dataset plus a WMS dataset, 
 `grafana-<refId>-wms`, which holds no rows — only where the service is and which of its layers to
 draw. There is no tile server in that list, and its absence is the point: a WMS renders its own
 imagery, so nothing sits in between.
+
+`wmsBbox` is optional: the layer's box as text, `west south east north` in degrees, from the same
+row. The map frames the layer on it when the view shows none of it, and draws the service's picture
+only inside it. See [WMS services](../guide/data/wms#where-the-layer-is).
 
 Give the **bare endpoint**. A whole `GetMap` URL is trimmed back to it, because every request is
 built by appending parameters to what you give and a query string already there would corrupt the

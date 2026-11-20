@@ -57,6 +57,25 @@ describe('decideViewportGuard', () => {
     ).toEqual({ kind: 'restore', viewport: WORLD });
   });
 
+  it('defends a WMS framing in place of the saved viewport', () => {
+    // The saved view showed none of the layer, so the panel framed the layer;
+    // restoring the saved view on kepler's echo would undo exactly that.
+    const france: [number, number, number, number] = [-5.5, 41, 10, 51.5];
+    expect(
+      decideViewportGuard({
+        elapsedMs: 700,
+        attempts: 0,
+        mapState: KEPLER_DEFAULT,
+        saved: WORLD,
+        bounds: null,
+        framed: france,
+      })
+    ).toEqual({ kind: 'fit', bounds: france });
+    expect(
+      decideViewportGuard({ elapsedMs: 700, attempts: 0, mapState: WORLD, saved: WORLD, bounds: null, framed: france })
+    ).toEqual({ kind: 'none' });
+  });
+
   it('stays quiet while the map shows anything but the default', () => {
     expect(
       decideViewportGuard({ elapsedMs: 700, attempts: 1, mapState: WORLD, saved: WORLD, bounds: null })

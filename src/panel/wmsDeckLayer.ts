@@ -1,6 +1,10 @@
+import type { Layer } from '@deck.gl/core';
+import { ClipExtension } from '@deck.gl/extensions';
 import { WMSLayer as DeckWMSLayer } from '@kepler.gl/deckgl-layers';
 import { WMSImageSource } from '@loaders.gl/wms';
 
+import type { WmsBox } from '../data/wmsDataset';
+import { wmsClipBounds } from './wmsExtent';
 import { readTimeFragment, shareMetadata } from './wmsTimeLayer';
 
 /**
@@ -81,8 +85,57 @@ export function serviceCapabilities(serviceUrl: string): Promise<unknown> {
   return source.getMetadata();
 }
 
+/**
+ * The one clip extension every WMS picture shares.
+ *
+ * One instance rather than one per render: deck compares a layer's extensions
+ * on every update, and a new instance each time reads as a new extension, which
+ * recompiles the bitmap's shaders on every frame the view moves.
+ *
+ * deck's own, from `@deck.gl/extensions` — the copy kepler already loads for
+ * its data filter, pinned to the same version by the overrides, so no second
+ * deck comes with it.
+ */
+const CLIP = new ClipExtension();
+
 export class TimedWMSLayer extends DeckWMSLayer {
   static layerName = 'TimedWMSLayer';
+
+  /**
+   * The picture, drawn only inside the layer's box when its query gave one.
+   *
+   * A WMS paints the whole view it is asked for, and a service with no alpha
+   * paints white wherever it has no data: IGN's Cassini map is an RGB PNG
+   * whatever `TRANSPARENT` says, so a map of France covered the world in white.
+   * The picture is cut to the box in the bitmap's fragment shader — deck's
+   * `ClipExtension`, which discards every pixel outside a rectangle — so what
+   * the server painted elsewhere is never drawn, and never picked: a click
+   * there asks the service nothing.
+   *
+   * Cut rather than asked for less. Requesting only the part of the view inside
+   * the box would save the server some pixels, but every request of upstream's
+   * layer is built from the viewport in one method, together with the size and
+   * the cache of the last picture, and reshaping it from outside means
+   * reimplementing it. The cut touches nothing of how the picture is fetched.
+   *
+   * Where it is cut, and when it is not (a globe, a box that covers the world):
+   * `wmsClipBounds`.
+   */
+  renderLayers(): Layer | null {
+    const picture = super.renderLayers();
+    const box = (this.props as { clipBox?: WmsBox | null }).clipBox ?? null;
+    if (!picture || !box) {
+      return picture;
+    }
+    // kepler's own test for a globe: only the globe viewport has a resolution.
+    const globe = Boolean((this.context.viewport as { resolution?: number }).resolution);
+    const clipBounds = wmsClipBounds(box, this.state.bounds, globe);
+    if (!clipBounds) {
+      return picture;
+    }
+    const extensions = picture.props.extensions ?? [];
+    return picture.clone({ extensions: [...extensions, CLIP], clipBounds } as Record<string, unknown>);
+  }
 
   _createImageSource(props: ConstructorParameters<typeof DeckWMSLayer>[0]): ReturnType<
     DeckWMSLayer['_createImageSource']

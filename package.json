@@ -86,6 +86,7 @@
   },
   "dependencies": {
     "@deck.gl/core": "9.4.1",
+    "@deck.gl/extensions": "9.4.1",
     "@deck.gl/geo-layers": "9.4.1",
     "@deck.gl/layers": "9.4.1",
     "@emotion/css": "11.13.5",

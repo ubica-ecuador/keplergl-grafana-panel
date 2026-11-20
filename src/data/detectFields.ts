@@ -91,6 +91,11 @@ export interface FieldRoles {
   wmsUrl?: string;
   wmsLayer?: string;
   /**
+   * The WMS layer's box, `"west south east north"` in degrees: where the map
+   * frames the layer and the part of its picture it draws (`parseWmsBox`).
+   */
+  wmsBbox?: string;
+  /**
    * An ArcGIS Image Service, and the rules that say what to draw from it.
    *
    * Not a file but a **mosaic dataset**: a catalogue of rasters, a rule for
@@ -282,6 +287,9 @@ export const NAME_CANDIDATES: Record<string, string[]> = {
   // OGC calls the endpoint.
   wmsUrl: ['wms_url', 'wms', 'service_url'],
   wmsLayer: ['wms_layer', 'layer', 'layer_name'],
+  // `tiles_bbox` is what the Spatial Catalog's Services frame calls it. Not
+  // `bbox` alone: that is a column of any table of places, about the row.
+  wmsBbox: ['tiles_bbox', 'wms_bbox'],
   // ArcGIS Image Service. Deliberately narrow: `esri` alone is not accepted,
   // because an ArcGIS shop has columns called that about anything.
   esriUrl: ['esri_url', 'image_service_url', 'imageserver_url'],

@@ -45,6 +45,7 @@ type RenamedRole = Exclude<
   | 'rasterPainted'
   | 'wmsUrl'
   | 'wmsLayer'
+  | 'wmsBbox'
   | 'zarrUrl'
   | 'zarrVariable'
   | 'zarrTimeLabel'

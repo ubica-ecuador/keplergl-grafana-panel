@@ -780,6 +780,9 @@ function wmsProtoDataset(wms: WmsDataset) {
       tilesetMetadataUrl: `${wms.serviceUrl}?service=WMS&request=GetCapabilities`,
       layers: [{ name: wms.layerName, title: wms.layerName, boundingBox: null, queryable: true }],
       version: '1.3.0',
+      // The query's box, which kepler's capabilities refresh merges over and
+      // keeps: the layer reads it from here to cut the picture (`wmsTimeLayer.ts`).
+      ...(wms.bbox ? { tilesBbox: wms.bbox } : {}),
     },
     disableDataOperation: true,
   } as unknown as ProtoDataset;
@@ -840,16 +843,23 @@ export function refreshWms(store: Store, dispatch: Dispatch, layers: WmsDataset[
 }
 
 /** The WMS datasets kepler holds, as the identity the refresh compares on. */
-function readWmsDatasets(store: Store): Array<{ id: string; serviceUrl?: string; layerName?: string }> {
+function readWmsDatasets(
+  store: Store
+): Array<{ id: string; serviceUrl?: string; layerName?: string; bbox?: readonly number[] | null }> {
   const visState = getVisState(store);
   return Object.entries(visState?.datasets ?? {})
     .filter(([, dataset]) => dataset.type === WMS_TILE_TYPE)
     .map(([id, dataset]) => {
-      const metadata = dataset.metadata as { tilesetDataUrl?: string } | undefined;
+      const metadata = dataset.metadata as { tilesetDataUrl?: string; tilesBbox?: number[] } | undefined;
       const layer = visState?.layers.find((candidate) => candidate.config?.dataId === id);
       const chosen = layer?.config?.visConfig?.wmsLayer as { name?: string } | undefined;
-      return { id, serviceUrl: metadata?.tilesetDataUrl, layerName: chosen?.name };
+      return { id, serviceUrl: metadata?.tilesetDataUrl, layerName: chosen?.name, bbox: metadata?.tilesBbox ?? null };
     });
+}
+
+/** Whether kepler has built a layer on a dataset yet — for a WMS, once its capabilities have answered. */
+export function hasLayerOnDataset(store: Store, dataId: string): boolean {
+  return Boolean(getVisState(store)?.layers.some((layer) => layer.config?.dataId === dataId));
 }
 
 /**

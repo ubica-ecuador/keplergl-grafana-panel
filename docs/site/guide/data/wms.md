@@ -8,16 +8,43 @@ SELECT 'https://services.geoglows.org/geoserver/satellite_based_precipitation/wm
        'persiann_pdir_24h' AS wms_layer;
 ```
 
-| Role      | Detected from                     |
-| --------- | --------------------------------- |
-| WMS URL   | `wms_url`, `wms`, `service_url`   |
+| Role      | Detected from                      |
+| --------- | ---------------------------------- |
+| WMS URL   | `wms_url`, `wms`, `service_url`    |
 | WMS layer | `wms_layer`, `layer`, `layer_name` |
+| WMS box   | `tiles_bbox`, `wms_bbox`           |
 
 The two go together: a service publishes many layers, so a URL without a layer name is not a
 picture. **Both must be present or neither role applies.** Like the raster role, neither appears in
 the Field mapping editor — alias them in the query if your columns are named otherwise.
 
 <video src="/img/guide-rasters.mp4" poster="/img/guide-rasters.jpg" autoplay loop muted playsinline controls aria-label="The PERSIANN precipitation WMS on the map: dragging the time widget makes the service redraw the scene for each date, and the statistics beside it follow" style="width:100%;height:auto;border-radius:8px"></video>
+
+## Where the layer is
+
+A WMS draws whatever view it is asked for, so nothing in the service tells the map where its layer
+has data. A third column can: the layer's box as text, `west south east north` in degrees, read from
+the row that names the service and the layer.
+
+```sql
+SELECT 'https://data.geopf.fr/wms-r/wms' AS wms_url,
+       'AN-IGNF_GEOGRAPHICALGRIDSYSTEMS.CASSINI' AS wms_layer,
+       '-5.5 41 10 51.5' AS tiles_bbox;
+```
+
+Spaces between the numbers on purpose: kepler reads `[w,s,e,n]` or `w,s,e,n` in a column as a pair of
+points and would draw it. A west greater than its east is a box across the antimeridian. With the
+box, the panel does two things:
+
+- **It frames the layer.** When the layer appears, or the query starts naming another, and the view
+  shows none of the box — or the map has no saved view at all — the view moves onto the box. A saved
+  view that shows any part of the layer is kept, and a refresh that brings the same layer back never
+  moves the map.
+- **It draws the picture only inside the box.** Many services paint opaque white wherever they have
+  no data, whatever `TRANSPARENT` says — IGN's Cassini map is one — and the picture of the view
+  covered the rest of the world in white. Outside the box nothing is drawn and a click asks the
+  service nothing. On a globe the picture is drawn whole; on a relief base map, where the base map
+  draws the layer as tiles, it asks for no tile outside the box but draws the edge tiles whole.
 
 ## Nothing sits in between
 

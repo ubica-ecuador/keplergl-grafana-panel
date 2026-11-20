@@ -135,6 +135,13 @@ describe('nativeRasterOf', () => {
     });
   });
 
+  it('reads where the raster has tiles, when the layer says', () => {
+    const layer = {
+      props: { id: 'wms', reliefTiles: 'https://t/{z}/{x}/{y}.png', reliefBounds: [-5.5, 41, 10, 51.5] },
+    };
+    expect(nativeRasterOf(layer)?.bounds).toEqual([-5.5, 41, 10, 51.5]);
+  });
+
   it('is null for any other layer', () => {
     expect(nativeRasterOf({ props: { id: 'points' } })).toBeNull();
     expect(nativeRasterOf('raster')).toBeNull();
@@ -199,6 +206,19 @@ describe('syncNativeRasters', () => {
     syncNativeRasters(map, [raster('z', { maxzoom: 3 })]);
     expect(map.sources.get(`${NATIVE_PREFIX}z`)).not.toBe(source);
     expect(map.getLayer(`${NATIVE_PREFIX}z`)).toBeTruthy();
+  });
+
+  it('bounds the source by the box, and builds it again for another box', () => {
+    const map = new FakeRasterMap();
+    syncNativeRasters(map, [raster('wms', { bounds: [-5.5, 41, 10, 51.5] })]);
+    const source = map.sources.get(`${NATIVE_PREFIX}wms`)!;
+    expect(source.options.bounds).toEqual([-5.5, 41, 10, 51.5]);
+
+    syncNativeRasters(map, [raster('wms', { bounds: [-5.5, 41, 10, 51.5] })]);
+    expect(map.sources.get(`${NATIVE_PREFIX}wms`)).toBe(source);
+
+    syncNativeRasters(map, [raster('wms', { bounds: [-9.5, 36, 3.3, 43.8] })]);
+    expect(map.sources.get(`${NATIVE_PREFIX}wms`)!.options.bounds).toEqual([-9.5, 36, 3.3, 43.8]);
   });
 
   it('follows opacity, visibility and order', () => {

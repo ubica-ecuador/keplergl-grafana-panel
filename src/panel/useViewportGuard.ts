@@ -1,7 +1,14 @@
 import { useEffect } from 'react';
 import type { Store } from 'redux';
 
-import { fitMapToBounds, keepSavedFraming, readLayerBoundsUnion, readMapState, restoreViewport } from './keplerAdapter';
+import {
+  fitMapToBounds,
+  keepSavedFraming,
+  type MapBounds,
+  readLayerBoundsUnion,
+  readMapState,
+  restoreViewport,
+} from './keplerAdapter';
 import { restoredTilesetIds } from './tile3dFraming';
 import { decideViewportGuard, GUARD_WINDOW_MS, savedViewportOf } from './viewportGuard';
 import type { SavedMapConfig } from '../data/mapConfig';
@@ -14,6 +21,13 @@ interface Params {
   mapConfig?: SavedMapConfig | null;
   /** Bumped by the load effect on every rebuild; 0 means never armed. */
   arm: number;
+  /**
+   * The box the panel last framed the map on by itself, if any — a WMS layer
+   * out of the saved view's sight (`useWmsFraming`). The guard defends it in
+   * place of the saved viewport. Read at each check, so a framing made after
+   * arming counts.
+   */
+  framedRef?: { current: MapBounds | null };
 }
 
 /**
@@ -41,7 +55,7 @@ interface Params {
  * Same structural rule as the sibling hooks: dispatches happen on a
  * microtask, never inside the store subscription.
  */
-export function useViewportGuard({ store, isReady, mapConfig, arm }: Params): void {
+export function useViewportGuard({ store, isReady, mapConfig, arm, framedRef }: Params): void {
   useEffect(() => {
     if (!isReady || arm === 0) {
       return;
@@ -90,6 +104,7 @@ export function useViewportGuard({ store, isReady, mapConfig, arm }: Params): vo
         mapState: mapState as { latitude: number; longitude: number; zoom: number },
         saved,
         bounds: readLayerBoundsUnion(store),
+        framed: framedRef?.current ?? null,
       });
       if (action.kind === 'disarm') {
         disarm();
@@ -117,5 +132,5 @@ export function useViewportGuard({ store, isReady, mapConfig, arm }: Params): vo
     unsubscribe = store.subscribe(schedule);
     expiry = setTimeout(disarm, GUARD_WINDOW_MS + 500);
     return disarm;
-  }, [isReady, arm, mapConfig, store]);
+  }, [isReady, arm, mapConfig, store, framedRef]);
 }

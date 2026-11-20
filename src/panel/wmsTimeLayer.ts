@@ -38,6 +38,9 @@
  * layer has already been handed to the renderer.
  */
 
+import type { WmsBox } from '../data/wmsDataset';
+import { reliefBoundsOfBox } from './wmsExtent';
+
 /** The fragment key. Short because it is on every tile url in the network tab. */
 const TIME_KEY = 't';
 
@@ -153,6 +156,10 @@ export function withWmsTime<C extends Constructor<object>>(WMSLayer: C, buildTim
       }
       const chosen = this.config?.visConfig?.wmsTime;
       const time = typeof chosen === 'string' && chosen ? chosen : null;
+      // The query's box, carried on the dataset (`wmsProtoDataset`): the deck
+      // layer draws the picture only inside it (`wmsExtent.ts`).
+      const clipBox = boxOf((opts as { data?: { metadata?: { tilesBbox?: unknown } } } | undefined)?.data?.metadata);
+      const reliefBounds = reliefBoundsOfBox(clipBox);
 
       let last: unknown = null;
       const timed = layers.map((layer) => {
@@ -174,7 +181,8 @@ export function withWmsTime<C extends Constructor<object>>(WMSLayer: C, buildTim
         last = buildTimedLayer({
           ...props,
           data: withTimeFragment(props.data, time),
-          ...(reliefTiles ? { reliefTiles } : {}),
+          ...(clipBox ? { clipBox } : {}),
+          ...(reliefTiles ? { reliefTiles, ...(reliefBounds ? { reliefBounds } : {}) } : {}),
         });
         return last;
       });
@@ -187,6 +195,14 @@ export function withWmsTime<C extends Constructor<object>>(WMSLayer: C, buildTim
   }
 
   return WMSLayerWithTime as unknown as C;
+}
+
+/** The box a WMS dataset's metadata carries, if it carries a well-formed one. */
+function boxOf(metadata: { tilesBbox?: unknown } | undefined): WmsBox | null {
+  const box = metadata?.tilesBbox;
+  return Array.isArray(box) && box.length === 4 && box.every((n) => typeof n === 'number' && Number.isFinite(n))
+    ? (box as WmsBox)
+    : null;
 }
 
 /** Something that can be asked for its metadata, once. */

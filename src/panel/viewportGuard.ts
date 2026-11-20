@@ -103,6 +103,7 @@ export function decideViewportGuard({
   mapState,
   saved,
   bounds,
+  framed = null,
 }: {
   /** Milliseconds since the rebuild armed the guard. */
   elapsedMs: number;
@@ -114,12 +115,22 @@ export function decideViewportGuard({
   saved: SavedViewport | null;
   /** The data bounds to fit when there is no saved viewport. */
   bounds: MapBounds | null;
+  /**
+   * A box the panel framed the map on after the load, which wins over the
+   * saved viewport: a WMS layer that the saved view did not show
+   * (`wmsExtent.ts`). Restoring the saved view instead would undo that framing
+   * on the very echo this guard exists to catch.
+   */
+  framed?: MapBounds | null;
 }): GuardAction {
   if (elapsedMs > GUARD_WINDOW_MS || attempts >= GUARD_MAX_ATTEMPTS) {
     return { kind: 'disarm' };
   }
   if (!isKeplerDefaultViewport(mapState)) {
     return { kind: 'none' };
+  }
+  if (framed) {
+    return { kind: 'fit', bounds: framed };
   }
   if (saved) {
     return isKeplerDefaultViewport(saved) ? { kind: 'none' } : { kind: 'restore', viewport: saved };

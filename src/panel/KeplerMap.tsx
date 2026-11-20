@@ -31,6 +31,7 @@ import {
   loadWms,
   loadEsri,
   loadZarr,
+  type MapBounds,
   refreshDatasets,
   refreshRasters,
   refreshWms,
@@ -67,6 +68,7 @@ import { centerOnLoad, withLoadCenter } from './centerSync';
 import { useRasterTimeline } from './useRasterTimeline';
 import { useWmsCalendar } from './useWmsCalendar';
 import { useWmsTimeline } from './useWmsTimeline';
+import { useWmsFraming } from './useWmsFraming';
 import { useEsriTimeline } from './useEsriTimeline';
 import { useZarrTimeline } from './useZarrTimeline';
 import { useExplorerDatasets } from './useExplorerDatasets';
@@ -359,6 +361,17 @@ export function KeplerMap({
   // Bumped on every rebuild; arms the viewport guard for the load window.
   const [guardArm, setGuardArm] = useState(0);
   const rearmViewportGuard = useCallback(() => setGuardArm((n) => n + 1), []);
+  // The box the map last framed a WMS layer on by itself (`useWmsFraming`),
+  // which the guard then defends in place of the saved view. A rebuild drops it:
+  // the config it brings decides the view afresh.
+  const wmsFraming = useRef<MapBounds | null>(null);
+  const onWmsFramed = useCallback(
+    (bounds: MapBounds) => {
+      wmsFraming.current = bounds;
+      rearmViewportGuard();
+    },
+    [rearmViewportGuard]
+  );
 
   const hasLoaded = useRef(false);
   const appliedConfig = useRef<SavedMapConfig | null | undefined>(undefined);
@@ -474,6 +487,7 @@ export function KeplerMap({
       cancelTimeFilterResume();
       hasLoaded.current = true;
       appliedConfig.current = mapConfig;
+      wmsFraming.current = null;
       // kepler frames a load without a saved viewport to the size its state
       // holds, which is 800 × 800 until its own ResizeObserver answers.
       sizeMapForFit(store, store.dispatch, mapSize.current.width, mapSize.current.height);
@@ -527,7 +541,12 @@ export function KeplerMap({
     cancelTimeFilterResume,
   ]);
 
-  useViewportGuard({ store, isReady, mapConfig, arm: guardArm });
+  useViewportGuard({ store, isReady, mapConfig, arm: guardArm, framedRef: wmsFraming });
+
+  // A WMS layer arriving out of sight of the view — a dashboard saved over
+  // Cuenca that gains a layer of France — moves the view onto its box, once per
+  // layer. Declared after the load effect, which adds the layer it waits for.
+  useWmsFraming({ store, isReady, layers: wms, mapConfig, onFramed: onWmsFramed });
 
   // A refresh leaves the viewport alone; a change of one of these variables
   // means the rows moved, so the map frames them again. After the load effect,

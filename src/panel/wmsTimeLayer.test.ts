@@ -254,3 +254,33 @@ describe('withWmsTime on a relief base map', () => {
     expect(rendered.props.reliefTiles).toBeUndefined();
   });
 });
+
+describe('withWmsTime and the layer’s box', () => {
+  const FRANCE = [-5.5, 41, 10, 51.5];
+  const render = (metadata: Record<string, unknown> | undefined, pickable = true) => {
+    class Layer extends FakeWMSLayer {
+      renderLayer(): unknown[] {
+        const [layer] = super.renderLayer() as Array<{ props: Record<string, unknown> }>;
+        return [fakeDeckLayer({ ...layer.props, pickable })];
+      }
+    }
+    const layer = new (withWmsTime(Layer, fakeDeckLayer))();
+    const [rendered] = (layer.renderLayer as (opts: unknown) => unknown[])({ data: { metadata } }) as Array<{
+      props: Record<string, unknown>;
+    }>;
+    return rendered.props;
+  };
+
+  it('hands deck the box the dataset carries, to cut the picture to', () => {
+    expect(render({ tilesBbox: FRANCE }).clipBox).toEqual(FRANCE);
+  });
+
+  it('hands it none when the dataset carries none, or a broken one', () => {
+    expect(render(undefined).clipBox).toBeUndefined();
+    expect(render({ tilesBbox: [1, 2, 3] }).clipBox).toBeUndefined();
+  });
+
+  it('bounds the MapLibre source on a relief base map', () => {
+    expect(render({ tilesBbox: FRANCE }, false).reliefBounds).toEqual(FRANCE);
+  });
+});

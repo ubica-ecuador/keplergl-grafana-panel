@@ -183,12 +183,17 @@ export function splitRasterRefresh<T extends { id: string; metadataUrl: string }
  * sees it, and a query re-run that returns the same service and layer with a
  * hundred new dates is a `keep`.
  */
-export function splitWmsRefresh<T extends { id: string; serviceUrl: string; layerName: string }>(
+export function splitWmsRefresh<
+  T extends { id: string; serviceUrl: string; layerName: string; bbox?: readonly number[] | null },
+>(
   wanted: T[],
-  known: ReadonlyArray<{ id: string; serviceUrl?: string; layerName?: string }>
+  known: ReadonlyArray<{ id: string; serviceUrl?: string; layerName?: string; bbox?: readonly number[] | null }>
 ): { add: T[]; replace: T[]; keep: T[]; remove: string[] } {
-  const identity = (dataset: { serviceUrl?: string; layerName?: string }) =>
-    `${dataset.serviceUrl ?? ''}|${dataset.layerName ?? ''}`;
+  // The box too, rare as a change of it is: the layer cuts its picture to the
+  // box its dataset carries (`wmsExtent.ts`), so a new box on the same layer
+  // left as a `keep` would go on cutting at the old one.
+  const identity = (dataset: { serviceUrl?: string; layerName?: string; bbox?: readonly number[] | null }) =>
+    `${dataset.serviceUrl ?? ''}|${dataset.layerName ?? ''}|${dataset.bbox?.join(' ') ?? ''}`;
   const byId = new Map(known.map((dataset) => [dataset.id, identity(dataset)]));
   const ids = new Set(wanted.map((dataset) => dataset.id));
 

@@ -15,7 +15,8 @@
  *
  * A deck layer offers itself with `reliefTiles`, a MapLibre tile template
  * (`{z}/{x}/{y}`, `{y}` counted from the south with `reliefScheme: 'tms'`); its
- * `opacity`, `visible`, `minZoom`, `maxZoom` and `tileSize` say the rest.
+ * `opacity`, `visible`, `minZoom`, `maxZoom` and `tileSize` say the rest, and
+ * `reliefBounds` where it has data (a WMS's box, `wmsExtent.ts`).
  */
 
 /** One raster as MapLibre draws it. */
@@ -27,6 +28,8 @@ export interface NativeRaster {
   tileSize: number;
   minzoom?: number;
   maxzoom?: number;
+  /** Where the source has tiles, `[west, south, east, north]`: MapLibre asks for none outside. */
+  bounds?: [number, number, number, number];
   opacity: number;
   visible: boolean;
 }
@@ -78,6 +81,7 @@ export function nativeRasterOf(layer: unknown): NativeRaster | null {
   }
   const minzoom = finite(props.minZoom);
   const maxzoom = finite(props.maxZoom);
+  const bounds = Array.isArray(props.reliefBounds) && props.reliefBounds.length === 4 ? props.reliefBounds : null;
   return {
     id: props.id,
     tiles: [absoluteTemplate(template)],
@@ -85,6 +89,9 @@ export function nativeRasterOf(layer: unknown): NativeRaster | null {
     tileSize: finite(props.tileSize) ?? 256,
     ...(minzoom !== undefined ? { minzoom } : {}),
     ...(maxzoom !== undefined ? { maxzoom } : {}),
+    ...(bounds && bounds.every((n) => finite(n) !== undefined)
+      ? { bounds: bounds as [number, number, number, number] }
+      : {}),
     opacity: finite(props.opacity) ?? 1,
     visible: props.visible !== false,
   };
@@ -112,12 +119,29 @@ export function nativeKey(rasters: NativeRaster[]): string {
 }
 
 interface SourceLike {
-  serialize?(): { tiles?: string[]; scheme?: string; tileSize?: number; minzoom?: number; maxzoom?: number };
+  serialize?(): {
+    tiles?: string[];
+    scheme?: string;
+    tileSize?: number;
+    minzoom?: number;
+    maxzoom?: number;
+    bounds?: number[];
+  };
   setTiles?(tiles: string[]): unknown;
 }
 
 /** The ids the panel added to each map, to take away what is no longer wanted. */
 const added = new WeakMap<object, Set<string>>();
+
+/** Whether a source's bounds are the ones wanted; MapLibre's default world box counts as none. */
+function sameBounds(held: number[] | undefined, wanted: number[] | undefined): boolean {
+  const isWorld = (b: number[] | undefined) =>
+    !b || (b.length === 4 && b[0] <= -180 && b[1] <= -85.051129 && b[2] >= 180 && b[3] >= 85.051129);
+  if (!wanted) {
+    return isWorld(held);
+  }
+  return Array.isArray(held) && held.length === 4 && held.every((n, i) => Math.abs(n - wanted[i]) < 1e-9);
+}
 
 function sameList(a: string[] | undefined, b: string[]): boolean {
   return Array.isArray(a) && a.length === b.length && a.every((value, i) => value === b[i]);
@@ -160,7 +184,9 @@ export function syncNativeRasters(map: RasterMap, rasters: NativeRaster[]): bool
           spec.scheme !== raster.scheme ||
           spec.tileSize !== raster.tileSize ||
           spec.minzoom !== raster.minzoom ||
-          spec.maxzoom !== raster.maxzoom)
+          spec.maxzoom !== raster.maxzoom ||
+          // Bounds are fixed when a source is made: a new box is a new source.
+          !sameBounds(spec.bounds, raster.bounds))
       ) {
         if (map.getLayer(id)) {
           map.removeLayer(id);
@@ -176,6 +202,7 @@ export function syncNativeRasters(map: RasterMap, rasters: NativeRaster[]): bool
           tileSize: raster.tileSize,
           ...(raster.minzoom !== undefined ? { minzoom: raster.minzoom } : {}),
           ...(raster.maxzoom !== undefined ? { maxzoom: raster.maxzoom } : {}),
+          ...(raster.bounds ? { bounds: raster.bounds } : {}),
         });
       } else if (!sameList(spec?.tiles, raster.tiles)) {
         source.setTiles?.(raster.tiles);

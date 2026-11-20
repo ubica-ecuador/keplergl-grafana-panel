@@ -1,6 +1,6 @@
 import { FieldType, toDataFrame } from '@grafana/data';
 
-import { framesToWms, isPanelWmsId, serviceUrlOf, wmsDatasetId } from './wmsDataset';
+import { framesToWms, isPanelWmsId, parseWmsBox, serviceUrlOf, wmsDatasetId } from './wmsDataset';
 
 const SERVICE = 'https://services.geoglows.org/geoserver/satellite_based_precipitation/wms';
 const LAYER = 'persiann_pdir_24h';
@@ -112,5 +112,70 @@ describe('framesToWms', () => {
     expect(isPanelWmsId('grafana-B-wms')).toBe(true);
     expect(isPanelWmsId('grafana-B-raster')).toBe(false);
     expect(isPanelWmsId('a-tileset-someone-added-wms')).toBe(false);
+  });
+});
+
+describe('parseWmsBox', () => {
+  it('reads the Spatial Catalog’s text, west south east north with spaces', () => {
+    // IGN's Cassini map: France.
+    expect(parseWmsBox('-5.5 41 10 51.5')).toEqual([-5.5, 41, 10, 51.5]);
+  });
+
+  it('reads commas, brackets and a list too, as a hand-written query writes them', () => {
+    expect(parseWmsBox('-5.5,41,10,51.5')).toEqual([-5.5, 41, 10, 51.5]);
+    expect(parseWmsBox('[-5.5, 41, 10, 51.5]')).toEqual([-5.5, 41, 10, 51.5]);
+    expect(parseWmsBox([-5.5, 41, 10, 51.5])).toEqual([-5.5, 41, 10, 51.5]);
+  });
+
+  it('keeps a box across the antimeridian as written, west greater than east', () => {
+    expect(parseWmsBox('177 -21 -178 -12')).toEqual([177, -21, -178, -12]);
+  });
+
+  it('pulls a box a hair outside the world back to its edge', () => {
+    expect(parseWmsBox('-180.0000001 -90 180 90')).toEqual([-180, -90, 180, 90]);
+  });
+
+  it('is null for anything that is not a box in degrees', () => {
+    for (const value of [
+      undefined,
+      null,
+      '',
+      'France',
+      '-5.5 41 10',
+      '-5.5 41 10 51.5 7',
+      '-5.5 51.5 10 41', // south north of its north
+      '10 41 10 51.5', // no width
+      '-612000 5050000 1120000 6730000', // metres, not degrees
+      42,
+    ]) {
+      expect(parseWmsBox(value)).toBeNull();
+    }
+  });
+});
+
+describe('framesToWms and tiles_bbox', () => {
+  const framed = (boxes: unknown[], urls: unknown[] = boxes.map(() => SERVICE)) =>
+    toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'wms_url', type: FieldType.string, values: urls },
+        { name: 'wms_layer', type: FieldType.string, values: urls.map(() => LAYER) },
+        { name: 'tiles_bbox', type: FieldType.string, values: boxes },
+      ],
+    });
+
+  it('carries the box of the layer', () => {
+    expect(framesToWms([framed(['-5.5 41 10 51.5'])])[0].bbox).toEqual([-5.5, 41, 10, 51.5]);
+  });
+
+  it('reads it from the row that named the service and the layer', () => {
+    const [wms] = framesToWms([framed(['0 0 1 1', '-5.5 41 10 51.5'], [null, SERVICE])]);
+
+    expect(wms.bbox).toEqual([-5.5, 41, 10, 51.5]);
+  });
+
+  it('has none without the column, or with a value that is no box', () => {
+    expect(framesToWms([wmsFrame()])[0].bbox).toBeNull();
+    expect(framesToWms([framed(['somewhere'])])[0].bbox).toBeNull();
   });
 });

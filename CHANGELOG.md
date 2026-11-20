@@ -6,6 +6,15 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **A WMS layer's box: framed on, and cut to.** A query's WMS row can carry the layer's box,
+  `tiles_bbox` (or `wms_bbox`), as text `west south east north` in degrees, as the Spatial Catalog
+  gives it. When the layer appears, or the query names another, and the view shows none of the box
+  or the map has no saved view, the view moves onto it; a saved view showing part of the layer stays,
+  and a refresh never moves the map. The service's picture is drawn only inside the box, so a WMS that
+  paints opaque white where it has no data (IGN's Cassini map of France, an RGB PNG whatever
+  `TRANSPARENT` says) no longer covers the rest of the world; outside the box a click asks nothing.
+  Not on a globe, where the picture is drawn whole; on a relief base map no tile outside the box is
+  asked for, but the edge tiles are drawn whole.
 - **Kepler in the visualization picker's suggestions.** On Grafana 13 the map is a suggestion when a
   query holds a place it draws without help: latitude and longitude, a geometry, an H3 cell, a
   geohash, both ends of a flow or an ArcGIS Image Service (`OK` for columns called only `x` and `y`, or
