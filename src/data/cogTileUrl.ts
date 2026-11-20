@@ -15,6 +15,11 @@ export interface CogTileSpec {
   serverUrl: string;
   /** The COG, as TiTiler will open it — including any signature it carries. */
   sourceUrl: string;
+  /**
+   * How the server paints it, as its query parameters already encoded (`bidx=1&colormap=…`): what a catalog says
+   * of the asset (its classes' colours, a render). Absent, the server paints with the palette the file carries.
+   */
+  params?: string;
 }
 
 /** The tiling scheme. Web Mercator, because that is what the map is in. */
@@ -39,6 +44,12 @@ export function cogTileTemplate(spec: CogTileSpec): string | null {
   }
 
   const params = new URLSearchParams({ url: sourceUrl });
+  // The catalog's own parameters after the url, as they came: never one that names the file again.
+  for (const [name, value] of new URLSearchParams(spec.params ?? '')) {
+    if (name !== 'url') {
+      params.append(name, value);
+    }
+  }
 
   return `${serverUrl}/cog/tiles/${TILE_MATRIX_SET}/{z}/{x}/{y}.png?${params}`;
 }

@@ -1,5 +1,5 @@
 import { dateTime, type DataFrame, type DataQueryRequest, type DataQueryResponse } from '@grafana/data';
-import { getDataSourceSrv } from '@grafana/runtime';
+import { config, getDataSourceSrv } from '@grafana/runtime';
 import { isObservable, lastValueFrom } from 'rxjs';
 
 import type { SavedCatalogLayer, SavedMapConfig, SavedRemoteDataset } from '../data/mapConfig';
@@ -56,6 +56,13 @@ export interface CatalogEntry {
   serverHref: string | null;
   /** Whether the tile server paints it with the palette it carries; null when the catalog does not say. */
   painted: boolean | null;
+  /**
+   * How the tile server paints it, as its query parameters (`bidx=1&colormap=…`), when the catalog says (its classes'
+   * colours, a render): the data source's `paint` column.
+   */
+  paint?: string | null;
+  /** A data file's PMTiles, the same data as tiles at every zoom (Portolan's visual archive beside its GeoParquet). */
+  tiles?: CatalogTiles;
   start: number | null;
   /** When it stops holding (an item's end_datetime); null for an instant or when the catalog does not say. */
   end: number | null;
@@ -95,6 +102,13 @@ export interface CatalogEntry {
   cube?: CatalogCube;
   /** A Datastream, sensors or an EDR collection: what it measures. */
   parameters?: Array<{ id: string; label: string; unit: string }>;
+}
+
+/** A data file's PMTiles, as the data source gives it in its `tiles` column: the archive and its layers. */
+export interface CatalogTiles {
+  href: string;
+  mediaType: string;
+  service: CatalogService;
 }
 
 /** A data cube's variable, as the data source gives it in its `cube` column. */
@@ -170,6 +184,8 @@ export interface CatalogRaster {
   tileServerUrls: string[];
   /** The images of a scene of several (one pass's tiles), drawn together when the server paints them. */
   parts?: ScenePart[];
+  /** How the server paints it (its query parameters), when the catalog says. */
+  paint?: string;
 }
 
 const NO_CONTEXT: AddContext = { tileServerUrls: [] };
@@ -181,7 +197,7 @@ export function addressOf(entry: Pick<CatalogEntry, 'kind' | 'href' | 'serverHre
 
 /** A raster entry in the panel's terms: painted when the catalog says so, an archive by its name, else a COG. */
 export function catalogRaster(
-  entry: Pick<CatalogEntry, 'kind' | 'href' | 'serverHref' | 'painted'>,
+  entry: Pick<CatalogEntry, 'kind' | 'href' | 'serverHref' | 'painted' | 'paint'>,
   tileServerUrls: readonly string[]
 ): CatalogRaster {
   const sourceUrl = addressOf(entry);
@@ -192,6 +208,7 @@ export function catalogRaster(
     sourceUrl,
     metadataUrl: kind === 'cog' ? metadataUrlFor(servers[0] ?? '', sourceUrl) : sourceUrl,
     tileServerUrls: servers,
+    ...(kind === 'painted' && entry.paint ? { paint: entry.paint } : {}),
   };
 }
 
@@ -356,6 +373,8 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
     parameterLists,
     geometryFields,
     cubes,
+    paints,
+    tilesColumn,
   ] = [
     'id',
     'title',
@@ -379,6 +398,8 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
     'parameters',
     'geometry_field',
     'cube',
+    'paint',
+    'tiles',
   ].map(column);
   const hasSeries = frame.fields.some((field) => field.name === 'series');
   const time = (value: unknown) => {
@@ -398,6 +419,8 @@ export function entriesOf(frame: DataFrame | undefined): CatalogEntry[] {
       href: String(hrefs[i] ?? ''),
       serverHref: serverHrefs[i] ? String(serverHrefs[i]) : null,
       painted: typeof painted[i] === 'boolean' ? painted[i] : null,
+      ...(typeof paints[i] === 'string' && paints[i] ? { paint: paints[i] as string } : {}),
+      ...(typeof tilesColumn[i] === 'string' && tilesColumn[i] ? optional('tiles', parseTiles(tilesColumn[i])) : {}),
       start: time(starts[i]),
       end: time(ends[i]),
       license: String(licenses[i] ?? ''),
@@ -659,6 +682,8 @@ export function seriesRaster(
       ...(scene.parts ? { parts: scene.parts } : {}),
     })),
     ...(painted && scenes[scenes.length - 1].parts ? { parts: scenes[scenes.length - 1].parts } : {}),
+    // How the server paints it, as the catalog said when it was added.
+    ...(painted && typeof metadata.paint === 'string' && metadata.paint ? { paint: metadata.paint } : {}),
     // What a rebuild of the dataset must keep, or it would stop being a series.
     keepMetadata:
       searchOf(metadata) !== null
@@ -797,6 +822,8 @@ export interface SearchedScene {
 export interface SearchedScenes {
   scenes: SearchedScene[];
   painted: boolean | null;
+  /** How the server paints them (its query parameters), when the catalog says: `raster_paint`. */
+  paint?: string | null;
   truncated: boolean;
 }
 
@@ -876,6 +903,7 @@ export function scenesOfFrame(frame: DataFrame | undefined): SearchedScenes {
   const ends = column('raster_end');
   const items = column('raster_item_url');
   const painted = column('raster_painted');
+  const paints = column('raster_paint');
   const groups = column('raster_group');
   const boxes = column('raster_bbox');
   const number = (value: unknown) => (value === null || value === undefined ? null : Number(value));
@@ -906,9 +934,11 @@ export function scenesOfFrame(frame: DataFrame | undefined): SearchedScenes {
     }))
     .sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
   const flag = painted?.find((value: unknown) => typeof value === 'boolean');
+  const paint = paints?.find((value: unknown) => typeof value === 'string' && value !== '');
   return {
     scenes,
     painted: typeof flag === 'boolean' ? flag : null,
+    ...(typeof paint === 'string' ? { paint } : {}),
     truncated: (frame.meta?.notices ?? []).some((notice) => notice.severity === 'warning'),
   };
 }
@@ -975,7 +1005,7 @@ export function searchDataset(
   }
   const raster = {
     ...catalogRaster(
-      { kind: 'raster', href: newest.url, serverHref: null, painted: found.painted },
+      { kind: 'raster', href: newest.url, serverHref: null, painted: found.painted, paint: found.paint },
       context.tileServerUrls
     ),
     ...(newest.parts ? { parts: newest.parts } : {}),
@@ -1019,13 +1049,14 @@ export function momentDataset(
   uid: string,
   context: AddContext,
   scene: SearchedScene,
-  painted: boolean | null
+  painted: boolean | null,
+  paint: string | null = null
 ): SavedRemoteDataset | null {
   if (!entry.search || whyNotAddable(entry, context)) {
     return null;
   }
   const raster = {
-    ...catalogRaster({ kind: 'raster', href: scene.url, serverHref: null, painted }, context.tileServerUrls),
+    ...catalogRaster({ kind: 'raster', href: scene.url, serverHref: null, painted, paint }, context.tileServerUrls),
     ...(scene.parts ? { parts: scene.parts } : {}),
   };
   const when = scene.time !== null ? new Date(scene.time).toISOString() : 'undated';
@@ -1045,6 +1076,50 @@ export function momentDataset(
         catalogUid: uid,
       },
     },
+  };
+}
+
+/** The `tiles` column's JSON: a PMTiles archive and its service; undefined when it is not one. */
+function parseTiles(text: string): CatalogTiles | undefined {
+  try {
+    const tiles = JSON.parse(text);
+    return typeof tiles?.href === 'string' && tiles.href && tiles.service?.protocol === 'pmtiles'
+      ? {
+          href: tiles.href,
+          mediaType: typeof tiles.mediaType === 'string' ? tiles.mediaType : '',
+          service: tiles.service,
+        }
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** A key set only when it has a value, so an entry without one keeps no undefined key. */
+function optional<K extends string, V>(key: K, value: V | undefined): Partial<Record<K, V>> {
+  return value === undefined ? {} : ({ [key]: value } as Record<K, V>);
+}
+
+/**
+ * A data file's tiles as an entry of their own, a map service the map adds as any (`serviceDataset`): the PMTiles
+ * archive, its layers, under the file's title. Null when the file has none.
+ */
+export function tilesEntry(entry: CatalogEntry): CatalogEntry | null {
+  if (!entry.tiles) {
+    return null;
+  }
+  return {
+    ...entry,
+    id: `${entry.id}:tiles`,
+    kind: 'map-service',
+    href: entry.tiles.href,
+    mediaType: entry.tiles.mediaType,
+    service: entry.tiles.service,
+    serverHref: null,
+    painted: null,
+    paint: null,
+    tiles: undefined,
+    size: null,
   };
 }
 
@@ -1128,6 +1203,21 @@ async function readTileJson(
     throw new Error(`${response.status} from the TileJSON`);
   }
   return response.json();
+}
+
+/**
+ * An address kepler can load wherever it fetches from: a path of this Grafana (a catalog's file read through its
+ * data source's proxy, `/api/datasources/proxy/…`) made absolute, under Grafana's sub-path when it has one. kepler
+ * reads a PMTiles archive's tiles off the page (a worker started from a blob, where a bare path resolves to nothing),
+ * so the archive's metadata was read and not one tile asked. Other addresses are left as they are.
+ */
+export function loadableUrl(href: string, origin: string = globalThis.location?.origin ?? ''): string {
+  if (!href.startsWith('/') || href.startsWith('//')) {
+    return href;
+  }
+  const sub = (config.appSubUrl ?? '').replace(/\/+$/, '');
+  const path = sub && href !== sub && !href.startsWith(`${sub}/`) ? `${sub}${href}` : href;
+  return `${origin}${path}`;
 }
 
 /** A PMTiles archive's tile type, from its header (byte 99: 1 is vector, 2–5 are images); null if unread. */
@@ -1215,11 +1305,19 @@ export async function serviceDataset(entry: CatalogEntry, uid: string): Promise<
         : tiles(first, { minZoom: tilejson.minzoom, maxZoom: tilejson.maxzoom });
     }
     case 'pmtiles': {
-      const kind = service.layers.length > 0 ? 'vector' : await pmtilesKind(entry.href);
+      const url = loadableUrl(entry.href);
+      const kind = service.layers.length > 0 ? 'vector' : await pmtilesKind(url);
       if (kind === 'vector') {
-        return remote('vector-tile', { type: 'remote', remoteTileFormat: 'pmtiles', tilesetDataUrl: entry.href });
+        // Both addresses, as kepler's own Tileset form saves them: without `tilesetMetadataUrl` kepler reads no
+        // metadata (refreshVectorTileMetadata gives up) and the layer stays "Loading…", asking for no tile.
+        return remote('vector-tile', {
+          type: 'remote',
+          remoteTileFormat: 'pmtiles',
+          tilesetDataUrl: url,
+          tilesetMetadataUrl: url,
+        });
       }
-      return kind === 'raster' ? remote('raster-tile', { metadataUrl: entry.href, pmtilesType: 'raster' }) : null;
+      return kind === 'raster' ? remote('raster-tile', { metadataUrl: url, pmtilesType: 'raster' }) : null;
     }
     case 'arcgis-image':
       // The panel's own ArcGIS layer (`esriImageLayer.ts`), which asks the service a picture of each tile.
@@ -1551,6 +1649,8 @@ export function byAreaLabel(entry: CatalogEntry): string[] {
         ? `${(entry.size / 1e9).toFixed(entry.size < 1e10 ? 1 : 0)} GB`
         : `${Math.round(entry.size / 1e6)} MB`
       : '',
+    // Its PMTiles, a second way to add it (the Tiles button).
+    ...(entry.tiles ? ['and tiles'] : []),
   ];
 }
 

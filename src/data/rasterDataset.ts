@@ -47,6 +47,11 @@ export interface RasterDataset {
   colormap?: string;
   /** Assets to composite, in RGB order — a painted STAC composite only. */
   assets?: string[];
+  /**
+   * How the tile server paints a painted COG, as its query parameters (`bidx=1&colormap=…`): what the catalog says
+   * of the file. Absent, the server reads the palette the file carries.
+   */
+  paint?: string;
   /** One `min,max` per asset, in the same order. */
   rescale?: string[];
   /** kepler's band preset for an index — a `stac` raster only. */
@@ -277,6 +282,7 @@ export function framesToRasters(
     const bands = ownBands !== undefined ? resolveBandCombination(ownBands) : opts.bands;
     const painted = firstFlag(frame, roles.rasterPainted) ?? opts.painted;
     const ownColormap = firstText(frame, roles.rasterColormap);
+    const ownPaint = firstText(frame, roles.rasterPaint);
 
     // Whether this query is an archive is decided from the series itself,
     // before anything about items is considered — not from `opening`, which is
@@ -371,6 +377,8 @@ export function framesToRasters(
       scenes,
       // A mosaic only a server-painted raster draws: kepler's own layer takes one image.
       ...(kind === 'painted' && !paintedAssets && opening.parts ? { parts: opening.parts } : {}),
+      // How the server paints one file, as the catalog says; a composite of an item's bands has its own recipe.
+      ...(kind === 'painted' && !paintedAssets && ownPaint ? { paint: ownPaint } : {}),
     });
   });
 

@@ -24,6 +24,7 @@ import {
   featuresLabel,
   readableHere,
   serviceLabel,
+  tilesEntry,
   vectorDataset,
   vectorFormat,
   vectorQuery,
@@ -386,27 +387,35 @@ export function CatalogPanel() {
       note(entry.id, `The search failed: ${String((err as Error)?.message ?? err)}`);
     }
   };
-  const addMoment = (entry: CatalogEntry, scene: SearchedScenes['scenes'][number], painted: boolean | null) => {
-    const saved = momentDataset(entry, uid, api.context, scene, painted);
+  const addMoment = (entry: CatalogEntry, scene: SearchedScenes['scenes'][number], found: SearchedScenes) => {
+    const saved = momentDataset(entry, uid, api.context, scene, found.painted, found.paint ?? null);
     if (saved) {
       api.add(saved);
       setAdded((was) => new Set([...was, saved.data.id]));
     }
   };
   // A map service is read first when it has to be (a TileJSON, a PMTiles header), then added as the map draws it.
-  const addService = async (entry: CatalogEntry) => {
-    note(entry.id, 'Reading…');
+  // `row` is the entry whose row tells how it went: a data file's own, for its tiles.
+  const addService = async (entry: CatalogEntry, row: string = entry.id) => {
+    note(row, 'Reading…');
     try {
       const saved = await serviceDataset(entry, uid);
       if (!saved) {
-        note(entry.id, 'This map cannot draw this service');
+        note(row, 'This map cannot draw this service');
         return;
       }
       api.add(saved);
       setAdded((was) => new Set([...was, entry.id]));
-      note(entry.id, entry.license);
+      note(row, row === entry.id ? entry.license : 'Its tiles, at every zoom');
     } catch (err) {
-      note(entry.id, `The service did not answer: ${String((err as Error)?.message ?? err)}`);
+      note(row, `The service did not answer: ${String((err as Error)?.message ?? err)}`);
+    }
+  };
+  // A data file's PMTiles (Portolan's visual archive): the whole of it at every zoom, as its publisher tiled it.
+  const addTiles = (entry: CatalogEntry) => {
+    const tiles = tilesEntry(entry);
+    if (tiles) {
+      void addService(tiles, entry.id);
     }
   };
   // Features of an OGC API, a WFS or an ArcGIS layer: loaded by kepler from the address of the view and the time
@@ -581,6 +590,7 @@ export function CatalogPanel() {
                                 typeof entry.size === 'number'
                                   ? `${(entry.size / 1e6).toFixed(entry.size < 1e7 ? 1 : 0)} MB`
                                   : '',
+                                entry.tiles ? 'and tiles' : '',
                                 entry.collection,
                               ]
                             : entry.service
@@ -611,6 +621,16 @@ export function CatalogPanel() {
                         : `Add ${entry.title}`
                   )
                 )}
+                {entry.tiles ? (
+                  <Add
+                    aria-label={`Add the tiles of ${entry.title}`}
+                    title="Add its tiles (PMTiles): the whole of it at every zoom, as its publisher tiled it"
+                    disabled={added.has(`${entry.id}:tiles`)}
+                    onClick={() => addTiles(entry)}
+                  >
+                    {added.has(`${entry.id}:tiles`) ? 'Added' : 'Tiles'}
+                  </Add>
+                ) : null}
                 {members.length > 0 ? (
                   <Toggle
                     aria-expanded={isOpen}
@@ -653,7 +673,9 @@ export function CatalogPanel() {
             {datesOpen && found ? (
               <Members role="group" aria-label={`The dates of ${entry.title}`}>
                 {[...found.scenes].reverse().map((scene) => {
-                  const id = momentDataset(entry, uid, api.context, scene, found.painted)?.data.id ?? scene.url;
+                  const id =
+                    momentDataset(entry, uid, api.context, scene, found.painted, found.paint ?? null)?.data.id ??
+                    scene.url;
                   const pieces = scene.parts?.length ?? 1;
                   const label = momentLabel(scene.time);
                   return (
@@ -666,7 +688,7 @@ export function CatalogPanel() {
                         aria-label={`Add ${entry.title}, ${label}`}
                         title={`Add ${label} alone, whatever the date`}
                         disabled={added.has(id)}
-                        onClick={() => addMoment(entry, scene, found.painted)}
+                        onClick={() => addMoment(entry, scene, found)}
                       >
                         {added.has(id) ? 'Added' : 'Add'}
                       </Add>

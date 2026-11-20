@@ -1,6 +1,7 @@
 import {
   addDataToMap,
   addLayer,
+  addNotification,
   createOrUpdateFilter,
   deleteFeature,
   fitBounds,
@@ -29,7 +30,7 @@ import {
   wrapTo,
 } from '@kepler.gl/actions';
 import { ALL_FIELD_TYPES, PMTilesType, REMOTE_TILE, RemoteTileFormat } from '@kepler.gl/constants';
-import { adjustValueToFilterDomain, getApplicationConfig } from '@kepler.gl/utils';
+import { adjustValueToFilterDomain, createNotification, getApplicationConfig } from '@kepler.gl/utils';
 import { processRowObject } from '@kepler.gl/processors';
 import KeplerGlSchema, { datasetSchema, VERSIONS, type SavedDatasetV1 } from '@kepler.gl/schemas';
 import type { ProtoDataset } from '@kepler.gl/types';
@@ -270,6 +271,8 @@ function rasterMetadata(raster: RasterDataset) {
       serverUrl: raster.tileServerUrls[0] ?? '',
       sourceUrl: raster.sourceUrl,
       ...(raster.assets?.length ? { assets: raster.assets, rescale: raster.rescale } : {}),
+      // How the server paints the file, as the catalog says (its classes' colours, a render).
+      ...(raster.paint && !raster.assets?.length ? { paint: raster.paint } : {}),
       // A scene of several images (one pass's tiles): drawn together, a mosaic.
       ...(raster.parts && raster.parts.length > 1 ? { parts: raster.parts } : {}),
     };
@@ -3047,4 +3050,14 @@ function readEsriDatasets(store: Store): Array<{ id: string; serviceUrl?: string
       const metadata = dataset.metadata as { serviceUrl?: string; renderingRule?: string } | undefined;
       return { id, serviceUrl: metadata?.serviceUrl, renderingRule: metadata?.renderingRule };
     });
+}
+
+/**
+ * Tells the map's viewer why something it asked for did not come: kepler's own notification, on the map. For what
+ * fails off the page's request path (a layer read over the view as it moves), whose error would otherwise vanish.
+ */
+export function notifyMapError(dispatch: Dispatch, message: string): void {
+  dispatch(
+    wrapTo(KEPLER_INSTANCE_ID, addNotification(createNotification({ message, type: 'error', topic: 'global' })))
+  );
 }

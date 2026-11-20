@@ -43,6 +43,7 @@ type RenamedRole = Exclude<
   | 'rasterColormap'
   | 'rasterBands'
   | 'rasterPainted'
+  | 'rasterPaint'
   | 'rasterEnd'
   | 'rasterGroup'
   | 'rasterBbox'

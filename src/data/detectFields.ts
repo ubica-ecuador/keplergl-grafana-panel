@@ -82,6 +82,12 @@ export interface FieldRoles {
   rasterBands?: string;
   rasterPainted?: string;
   /**
+   * How the tile server paints a painted raster, as its query parameters (`bidx=1&colormap=…`): what a catalog says
+   * of the file (its classes' colours, a render), from the Spatial Catalog data source's Raster query. The first row
+   * with a value wins.
+   */
+  rasterPaint?: string;
+  /**
    * When each scene of a raster series stops being the picture: a yearly map lasts its year. With it a scene is in
    * the map's time window when its span touches the window, not only when its start falls inside.
    */
@@ -288,6 +294,7 @@ export const NAME_CANDIDATES: Record<string, string[]> = {
   rasterColormap: ['raster_colormap', 'raster_ramp'],
   rasterBands: ['raster_bands', 'band_combination'],
   rasterPainted: ['raster_painted'],
+  rasterPaint: ['raster_paint'],
   rasterEnd: ['raster_end', 'end_datetime'],
   rasterGroup: ['raster_group'],
   rasterBbox: ['raster_bbox'],

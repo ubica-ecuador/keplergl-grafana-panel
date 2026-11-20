@@ -34,6 +34,11 @@ export interface CogPaintedMetadata {
   rescale?: string[];
   /** The images of the scene the dataset opened on, when several (one pass's tiles): drawn together. */
   parts?: CogPart[];
+  /**
+   * How the server paints the file, as its query parameters (`bidx=1&colormap=…`): what the catalog says of it (its
+   * classes' colours, a render). Absent, the server reads the palette the file carries.
+   */
+  paint?: string;
 }
 
 /** One image of a scene of several, and where it lies (west,south,east,north) when known. */
@@ -129,7 +134,7 @@ export function cogPaintedDeckProps(args: {
         assets: metadata.assets,
         rescale: metadata.rescale,
       })
-    : cogTileTemplate({ serverUrl: metadata.serverUrl, sourceUrl: source });
+    : cogTileTemplate({ serverUrl: metadata.serverUrl, sourceUrl: source, params: paintOf(metadata) });
   if (!template) {
     return null;
   }
@@ -142,7 +147,7 @@ export function cogPaintedDeckProps(args: {
     ? []
     : parts
         .map((part) => ({
-          template: cogTileTemplate({ serverUrl: metadata.serverUrl, sourceUrl: part.url }),
+          template: cogTileTemplate({ serverUrl: metadata.serverUrl, sourceUrl: part.url, params: paintOf(metadata) }),
           bbox: validBox(part.bbox),
         }))
         .filter((part): part is PartTiles => part.template !== null);
@@ -158,6 +163,11 @@ export function cogPaintedDeckProps(args: {
     opacity: opacity ?? 1,
     updateTriggers: { getTileData: trigger },
   };
+}
+
+/** The metadata's painting, when it is a string (what kepler holds may be anything). */
+function paintOf(metadata: CogPaintedMetadata): string | undefined {
+  return typeof metadata.paint === 'string' && metadata.paint ? metadata.paint : undefined;
 }
 
 function validBox(box: unknown): PartTiles['bbox'] {

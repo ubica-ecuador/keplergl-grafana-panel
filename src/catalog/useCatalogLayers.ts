@@ -3,7 +3,7 @@ import type { Store } from 'redux';
 
 import { framesToDatasets } from '../data/framesToDatasets';
 import type { SavedCatalogLayer } from '../data/mapConfig';
-import { readDatasetIds, readViewportBounds, refreshDatasets } from '../panel/keplerAdapter';
+import { notifyMapError, readDatasetIds, readViewportBounds, refreshDatasets } from '../panel/keplerAdapter';
 import { followedArea, readParquetLayer } from './catalogSource';
 
 /** How long the view must hold still before the layers follow it. */
@@ -44,6 +44,8 @@ export function useCatalogLayers({ store, isReady, layers, generation, onRemoved
   // By layer: what was asked last (its area and columns), and whether its dataset has reached the map since.
   const asked = useRef(new Map<string, string>());
   const shown = useRef(new Set<string>());
+  // The last failure told for each layer, so a pan that fails the same way says nothing new.
+  const told = useRef(new Map<string, string>());
   const schedule = useRef<() => void>(() => undefined);
 
   useEffect(() => {
@@ -91,9 +93,15 @@ export function useCatalogLayers({ store, isReady, layers, generation, onRemoved
               shown.current.add(layer.id);
             }
           })
-          .catch(() => {
+          .catch((err: unknown) => {
             if (asked.current.get(layer.id) === key) {
               asked.current.delete(layer.id);
+              // Said once per layer and reason: a pan asks again, and the same refusal need not pile up.
+              const message = `${layer.label}: ${String((err as Error)?.message ?? err)}`;
+              if (live && told.current.get(layer.id) !== message) {
+                told.current.set(layer.id, message);
+                notifyMapError(store.dispatch, message);
+              }
             }
           });
       }

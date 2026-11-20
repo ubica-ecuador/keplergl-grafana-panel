@@ -702,6 +702,19 @@ describe('a raster that draws itself its own way', () => {
     expect(unknown.preset).toBeUndefined();
   });
 
+  it("keeps how the server paints a painted file (raster_paint, from a catalog's classes or renders)", () => {
+    const paint = 'bidx=1&colormap=%7B%221%22%3A%5B77%2C146%2C33%2C255%5D%7D';
+    const [painted, imagery] = framesToRasters(
+      [withColumns('A', { raster_painted: true, raster_paint: paint }), withColumns('B', { raster_paint: paint })],
+      {},
+      { ...BAND_OPTS, painted: false }
+    );
+    expect(painted).toMatchObject({ kind: 'painted', paint });
+    // Drawn by the browser: the server paints nothing, so the parameters have nothing to say.
+    expect(imagery.kind).toBe('cog');
+    expect(imagery.paint).toBeUndefined();
+  });
+
   it('reads painted as a yes or a no, in the spellings a query returns', () => {
     for (const yes of ['true', 'TRUE', '1', 'yes']) {
       expect(framesToRasters([withColumns('A', { raster_painted: yes })], {}, BAND_OPTS)[0].kind).toBe('painted');
