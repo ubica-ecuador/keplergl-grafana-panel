@@ -170,6 +170,22 @@ service per query: the first row that names one decides, and in that row a WMS w
 service, which wins over tiles, which win over a raster. See
 [Field roles](../../reference/field-roles#the-tile-roles).
 
+## When the map has something to say
+
+A query that fails used to leave the map drawing whatever the others gave, its error marked only by
+the icon in the panel's corner. The map now says, over itself, along the top between kepler's side
+panel and its controls:
+
+- each query's **error**;
+- each frame's **notices of severity warning or error**, which a data source writes to say why its
+  answer is not what was asked (the Spatial Catalog's "… is no longer in the catalog", "the service
+  refused the time range"). Info notices stay in the corner icon only;
+- each query whose layer the panel **cannot draw from its columns**: vector tiles (`mvt`), a PMTiles
+  archive in `tiles_url`, a `tiles_url` with no `{z}`, `{x}` and `{y}`.
+
+One box, closed with its ✕. What was closed stays closed across refreshes; a new notice shows on its
+own, and one that goes away and comes back — a query that fails again — shows again.
+
 ## What survives a refresh
 
 Datasets kepler already holds have their rows swapped in place; only a genuinely new query — one

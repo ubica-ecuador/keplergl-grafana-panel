@@ -92,6 +92,7 @@ import { usePlayheadVariableSync } from './usePlayheadVariableSync';
 import { useSaveMapConfig } from './useSaveMapConfig';
 import { useSidePanelOpen } from './useSidePanelOpen';
 import { SaveMapConfigButton } from './SaveMapConfigButton';
+import { NoticeStack } from './MapNotices';
 import { couplesDashboardRange, type TimeRangeMs, type TimeSyncMode } from './timeSync';
 import type { TimeVariableMapping } from './timeVariableSync';
 import type { VariableMapping } from './variableSync';
@@ -177,6 +178,12 @@ export interface KeplerMapProps {
    * the reason a WMS is: a service, no rows.
    */
   xyzLayers: XyzDataset[];
+  /**
+   * The notices the panel shows over the map (`MapNotices.tsx`, and the raster
+   * server's and Geomap's), placed here because here is where kepler's side
+   * panel is known to be open or closed.
+   */
+  notices?: React.ReactNode;
   mapConfig?: SavedMapConfig | null;
   theme?: KeplerThemeOverride;
   /** Resolved base map style id, or null to leave kepler's default alone. */
@@ -293,6 +300,7 @@ export function KeplerMap({
   zarrLayers,
   esriLayers,
   xyzLayers,
+  notices,
   mapConfig: savedMapConfig,
   theme,
   basemapId,
@@ -874,6 +882,9 @@ export function KeplerMap({
       {isReady && (
         <SaveMapConfigButton panelId={panelId} width={width} sidePanelOpen={sidePanelOpen} onSave={saveMapConfig} />
       )}
+      <NoticeStack width={width} sidePanelOpen={sidePanelOpen} panelId={panelId}>
+        {notices}
+      </NoticeStack>
     </div>
   );
 }

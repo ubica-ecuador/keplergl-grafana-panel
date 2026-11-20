@@ -18,8 +18,8 @@ import { resolveCustomBasemapUrl } from './customBasemapUrl';
 import { DEFAULT_CLICK_AREA_METRES } from './clickArea';
 import { LazyKeplerMap } from './LazyKeplerMap';
 import { RasterServerNotice } from './RasterServerNotice';
-import { SAVE_BUTTON_CLEARANCE_PX } from './SaveMapConfigButton';
-import { usePanelEditing } from './usePanelEditing';
+import { MapNotices } from './MapNotices';
+import { frameNotices, orderNotices, queryErrorNotices } from './mapNotices';
 import { useInterpolatedOption } from './useInterpolatedOption';
 import { useStableValue } from './useStableValue';
 import { publishIntervalOf } from './timeVariableSync';
@@ -250,8 +250,29 @@ export function KeplerPanel(props: Props) {
   const esriLayers = useMemo(() => framesToEsri(series, fieldMappings), [series, fieldMappings]);
 
   // Map tiles travel that road too (`tiles_url`): a service that cuts its
-  // pictures in advance, so again no tile server.
-  const xyzLayers = useMemo(() => framesToXyz(series, fieldMappings), [series, fieldMappings]);
+  // pictures in advance, so again no tile server. Tiles it does not draw —
+  // vector tiles, an archive — are said over the map.
+  const { xyzLayers, undrawnTiles } = useMemo(() => {
+    const undrawn: string[] = [];
+    const xyzLayers = framesToXyz(series, fieldMappings, { onUndrawn: (text) => undrawn.push(text) });
+    return { xyzLayers, undrawnTiles: undrawn };
+  }, [series, fieldMappings]);
+
+  // What the queries said about themselves, and what the panel could not draw
+  // of them: over the map, where an empty map otherwise says nothing
+  // (`mapNotices.ts`). The raw frames, whose notices the panel's own reshaping
+  // may not carry.
+  const notices = useStableValue(
+    useMemo(
+      () =>
+        orderNotices(
+          queryErrorNotices(data.errors),
+          frameNotices(data.series),
+          undrawnTiles.map((text) => ({ severity: 'warning' as const, text }))
+        ),
+      [data.errors, data.series, undrawnTiles]
+    )
+  );
 
   // A Zarr travels that same road again, and needs the tile server the raster
   // path needs — the same option, deliberately. Both mean "the TiTiler this
@@ -319,10 +340,6 @@ export function KeplerPanel(props: Props) {
     [onOptionsChange, options]
   );
 
-  // The map shows its save button along its top edge while this panel is in the
-  // panel editor; the notice moves below it then.
-  const editing = usePanelEditing(id);
-
   return (
     <div style={{ width, height, position: 'relative' }}>
       <AssistantContext {...props} resolvedBasemapId={basemapId ?? undefined} />
@@ -384,10 +401,14 @@ export function KeplerPanel(props: Props) {
         annotations={data.annotations}
         grafanaAnnotations={options.grafanaAnnotations ?? 'show'}
         dashboardUid={dashboardUidOf(replaceVariables)}
+        notices={
+          <>
+            <MapNotices notices={notices} />
+            <RasterServerNotice queries={serverMissing} />
+            <GeomapImportNotice dropped={geomapDropped} />
+          </>
+        }
       />
-      {/* After the map, so it stacks over it. */}
-      <RasterServerNotice queries={serverMissing} top={editing ? SAVE_BUTTON_CLEARANCE_PX : undefined} />
-      <GeomapImportNotice dropped={geomapDropped} top={editing ? SAVE_BUTTON_CLEARANCE_PX : undefined} />
     </div>
   );
 }

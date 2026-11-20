@@ -1,6 +1,7 @@
 import type { DataFrame } from '@grafana/data';
 
 import { detectFields, resolveRoles, type FieldRoleOverrides } from './detectFields';
+import { queryName } from './rasterDataset';
 import { serviceKindOf } from './serviceKind';
 import { parseWmsBox, type WmsBox } from './wmsDataset';
 
@@ -114,9 +115,15 @@ export function parseZoomIds(value: unknown): Record<string, string> | undefined
  * or an Image Service draws that instead (`serviceKindOf`).
  *
  * Only raster tiles. Vector tiles (`mvt`) and PMTiles archives are left off
- * the map, and so is a `tiles_url` that is no `{z}/{x}/{y}` template.
+ * the map, and so is a `tiles_url` that is no `{z}/{x}/{y}` template; each
+ * such query is told to `onUndrawn`, worded for the notice over the map
+ * (`undrawnTilesText`), since a map that shows nothing reads as broken.
  */
-export function framesToXyz(frames: DataFrame[], overrides: Record<string, FieldRoleOverrides> = {}): XyzDataset[] {
+export function framesToXyz(
+  frames: DataFrame[],
+  overrides: Record<string, FieldRoleOverrides> = {},
+  opts: { onUndrawn?: (text: string) => void } = {}
+): XyzDataset[] {
   const datasets: XyzDataset[] = [];
 
   frames.forEach((frame, index) => {
@@ -134,7 +141,9 @@ export function framesToXyz(frames: DataFrame[], overrides: Record<string, Field
     const url = String(urls.values[row]).trim();
     const at = (name: string | undefined) => column(name)?.values[row];
 
-    if (tilesFormatOf(at(roles.tilesFormat), url) !== 'raster' || !isTileTemplate(url)) {
+    const format = tilesFormatOf(at(roles.tilesFormat), url);
+    if (format !== 'raster' || !isTileTemplate(url)) {
+      opts.onUndrawn?.(undrawnTilesText(queryName(frame, refId), format));
       return;
     }
 
@@ -153,6 +162,20 @@ export function framesToXyz(frames: DataFrame[], overrides: Record<string, Field
   });
 
   return datasets;
+}
+
+/** Why a query's tiles are not on the map, as the notice over it says. */
+export function undrawnTilesText(query: string, format: string): string {
+  switch (format) {
+    case 'mvt':
+      return `${query} gives vector tiles (mvt), which this map does not draw yet.`;
+    case 'pmtiles':
+      return `${query} gives a PMTiles archive in tiles_url, which this map does not draw yet.`;
+    case 'raster':
+      return `${query} gives a tiles_url with no {z}, {x} and {y} in it, so there is no tile to ask for.`;
+    default:
+      return `${query} gives tiles in a format this map does not know (tiles_format "${format}").`;
+  }
 }
 
 /** A zoom level from a column: a whole number of zero or more, given as a number or as text. */

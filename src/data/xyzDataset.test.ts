@@ -96,6 +96,29 @@ describe('framesToXyz', () => {
     expect(framesToXyz([servicesFrame([{ tiles_url: PDOK, tiles_format: 'image/png' }])])).toEqual([]);
   });
 
+  it('says why the tiles it leaves off are not on the map', () => {
+    const undrawn: string[] = [];
+    const onUndrawn = (text: string) => undrawn.push(text);
+    framesToXyz(
+      [
+        servicesFrame([{ tiles_url: BAG, tiles_format: 'mvt' }], 'A'),
+        servicesFrame([{ tiles_url: 'https://x.test/a.pmtiles' }], 'B'),
+        servicesFrame([{ tiles_url: 'https://x.test/tiles.png' }], 'C'),
+        servicesFrame([{ tiles_url: PDOK, tiles_format: 'image/png' }], 'D'),
+        servicesFrame([pdokRow], 'E'),
+      ],
+      {},
+      { onUndrawn }
+    );
+
+    expect(undrawn).toEqual([
+      'services (query A) gives vector tiles (mvt), which this map does not draw yet.',
+      'services (query B) gives a PMTiles archive in tiles_url, which this map does not draw yet.',
+      'services (query C) gives a tiles_url with no {z}, {x} and {y} in it, so there is no tile to ask for.',
+      'services (query D) gives tiles in a format this map does not know (tiles_format "image/png").',
+    ]);
+  });
+
   it('ignores a frame with no tiles column, and zoom levels that are no levels', () => {
     const plain = toDataFrame({ refId: 'A', fields: [{ name: 'value', type: FieldType.number, values: [1] }] });
     expect(framesToXyz([plain])).toEqual([]);

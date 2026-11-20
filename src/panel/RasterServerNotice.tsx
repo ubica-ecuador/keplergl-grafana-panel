@@ -13,42 +13,32 @@ import { Alert } from '@grafana/ui';
  * Shown to everyone who opens the dashboard, since a viewer is as puzzled by a
  * blank map as an editor; the words are for whoever can change the panel.
  * Dismissable, so it never stands between a viewer and the rest of the map.
- * `top` moves it below the save button the map shows in the panel editor.
+ * Placed over the map with the panel's other notices (`NoticeStack`).
  */
-export function RasterServerNotice({ queries, top = 8 }: { queries: string[]; top?: number }) {
+export function RasterServerNotice({ queries }: { queries: string[] }) {
   const [dismissed, setDismissed] = useState(false);
   if (queries.length === 0 || dismissed) {
     return null;
   }
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        top,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: 'min(520px, calc(100% - 16px))',
-        zIndex: 100,
-      }}
+    <Alert
+      title="No raster tile server is set"
+      severity="warning"
+      bottomSpacing={0}
+      onRemove={() => setDismissed(true)}
     >
-      <Alert
-        title="No raster tile server is set"
-        severity="warning"
-        bottomSpacing={0}
-        onRemove={() => setDismissed(true)}
-      >
-        {describe(queries)} imagery that a TiTiler-compatible server draws, and this panel has none, so it is not
-        on the map. Set <strong>Raster tile server</strong> under <em>Map</em> in the panel options to a server you
-        run. It is handed every raster URL, signature included; Development Seed&apos;s public demo,{' '}
-        <code>https://titiler.xyz</code>, reads public imagery only.
-      </Alert>
-    </div>
+      {describe(queries)} imagery that a TiTiler-compatible server draws, and this panel has none, so it is not on the
+      map. Set <strong>Raster tile server</strong> under <em>Map</em> in the panel options to a server you run. It is
+      handed every raster URL, signature included; Development Seed&apos;s public demo, <code>https://titiler.xyz</code>
+      , reads public imagery only.
+    </Alert>
   );
 }
 
 /** "Query A returns" / "Query A and Query B return" / "Query A, Query B and Query C return". */
 function describe(queries: string[]): string {
-  const names = queries.length === 1 ? queries[0] : `${queries.slice(0, -1).join(', ')} and ${queries[queries.length - 1]}`;
+  const names =
+    queries.length === 1 ? queries[0] : `${queries.slice(0, -1).join(', ')} and ${queries[queries.length - 1]}`;
   return `${names} ${queries.length === 1 ? 'returns' : 'return'}`;
 }
