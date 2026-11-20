@@ -117,7 +117,7 @@ describe('keplerSuggestions', () => {
     expect(score(empty, xy, cells)).toEqual([VisualizationSuggestionScore.Best]);
   });
 
-  it('keeps the preview card small and without the side panel', () => {
+  it('keeps the preview card small, without the side panel or the time widget', () => {
     const [suggestion] = keplerSuggestions({
       hasData: true,
       rawFrames: [frame([{ name: 'h3', type: FieldType.string, values: ['8a2a1072b59ffff'] }])],
@@ -125,6 +125,6 @@ describe('keplerSuggestions', () => {
     expect(suggestion.cardOptions.maxRows).toBe(PREVIEW_MAX_ROWS);
     const card: { options?: Record<string, unknown> } = { options: { followGrafanaTheme: true } };
     suggestion.cardOptions.previewModifier(card);
-    expect(card.options).toEqual({ followGrafanaTheme: true, showSidePanel: false });
+    expect(card.options).toEqual({ followGrafanaTheme: true, showSidePanel: false, timeSync: 'off' });
   });
 });

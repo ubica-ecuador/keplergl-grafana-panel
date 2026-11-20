@@ -33,6 +33,15 @@ export interface KeplerSuggestion {
 export const PREVIEW_MAX_ROWS = 5000;
 
 /**
+ * What a preview card folds away, since at thumbnail size it would cover the
+ * map: kepler's layer and filter panel, and the time widget. That widget is the
+ * time filter the panel makes to follow the dashboard's range (`timeSync`'s
+ * default); the query already holds only that range, so the card draws the
+ * same rows without it. Picking the card does not carry these over.
+ */
+export const PREVIEW_OPTIONS: Partial<KeplerPanelOptions> = { showSidePanel: false, timeSync: 'off' };
+
+/**
  * The panel's suggestion for the visualization picker: one card when a query
  * holds something the panel draws without help, judged by the same column
  * detection that builds its layers (detectFields.ts).
@@ -78,9 +87,8 @@ export function keplerSuggestions(summary: SuggestionDataSummary): KeplerSuggest
       score: best,
       cardOptions: {
         maxRows: PREVIEW_MAX_ROWS,
-        // kepler's layer and filter panel would cover a card.
         previewModifier: (suggestion) => {
-          suggestion.options = { ...suggestion.options, showSidePanel: false };
+          suggestion.options = { ...suggestion.options, ...PREVIEW_OPTIONS };
         },
       },
     },
