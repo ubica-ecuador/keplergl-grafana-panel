@@ -15,6 +15,12 @@ export interface CogTileSpec {
   serverUrl: string;
   /** The COG, as TiTiler will open it — including any signature it carries. */
   sourceUrl: string;
+  /**
+   * How the server paints it, as its query parameters (`bidx=1&colormap_name=viridis`,
+   * `rescale=0,3000&colormap=…`): what a catalog says of the file, a query's
+   * `raster_paint`. Absent, the server reads the palette the file carries.
+   */
+  paint?: string;
 }
 
 /** The tiling scheme. Web Mercator, because that is what the map is in. */
@@ -38,7 +44,30 @@ export function cogTileTemplate(spec: CogTileSpec): string | null {
     return null;
   }
 
-  const params = new URLSearchParams({ url: sourceUrl });
+  const params = withPaint(new URLSearchParams({ url: sourceUrl }), spec.paint);
 
   return `${serverUrl}/cog/tiles/${TILE_MATRIX_SET}/{z}/{x}/{y}.png?${params}`;
+}
+
+/**
+ * A tile request's parameters with a query's paint over them: each key the
+ * paint names replaces the panel's own for that key (a `rescale` of its own
+ * over a recipe's, every value of a repeated one), the others are added. Never
+ * its `url`: the image is the query's `raster_url`, and a second one would
+ * make the server read another file.
+ */
+export function withPaint(params: URLSearchParams, paint: string | undefined): URLSearchParams {
+  const text = paint?.trim().replace(/^\?/, '');
+  if (!text) {
+    return params;
+  }
+  const own = new URLSearchParams(text);
+  const keys = new Set([...own.keys()].filter((key) => key && key !== 'url'));
+  for (const key of keys) {
+    params.delete(key);
+    for (const value of own.getAll(key)) {
+      params.append(key, value);
+    }
+  }
+  return params;
 }

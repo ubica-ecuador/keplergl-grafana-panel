@@ -1,6 +1,14 @@
 import { FieldType, toDataFrame } from '@grafana/data';
 
-import { framesToRasters, isPanelRasterId, pickScene, rasterForWindow, rasterStyleKey } from './rasterDataset';
+import { cogTileTemplate } from './cogTileUrl';
+import {
+  framesToRasters,
+  isPanelRasterId,
+  paintedIdentityOf,
+  pickScene,
+  rasterForWindow,
+  rasterStyleKey,
+} from './rasterDataset';
 
 const VISUAL = 'https://sentinel-cogs.s3.us-west-2.amazonaws.com/…/TCI.tif';
 const ITEM = 'https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a/items/S2C_10SEJ_20260913_0_L2A';
@@ -635,5 +643,76 @@ describe('a raster that draws itself its own way', () => {
         framesToRasters([withColumns('A', { raster_painted: no })], {}, { ...BAND_OPTS, painted: true })[0].kind
       ).toBe('cog');
     }
+  });
+});
+
+describe('a query’s paint and its data source’s tile server', () => {
+  const PAINT = 'bidx=1&colormap={"1":[77,146,33,255]}&resampling=nearest';
+  function painted(columns: Record<string, unknown>, tileServerUrl?: string) {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'raster_url', type: FieldType.string, values: [COG] },
+        ...Object.entries(columns).map(([name, value]) => ({
+          name,
+          type: typeof value === 'boolean' ? FieldType.boolean : FieldType.string,
+          values: [value],
+        })),
+      ],
+    });
+    if (tileServerUrl) {
+      frame.meta = { custom: { tileServerUrl } };
+    }
+    return frame;
+  }
+
+  it('paints a raster the query says how to paint, as it says', () => {
+    const [raster] = framesToRasters([painted({ raster_paint: PAINT })], {}, { tileServerUrls: [SERVER] });
+
+    expect(raster).toMatchObject({ kind: 'painted', paint: PAINT });
+    // The identity the refresh compares is the request: another paint is another picture.
+    expect(raster.metadataUrl).toBe(cogTileTemplate({ serverUrl: SERVER, sourceUrl: COG, paint: PAINT }));
+    expect(raster.metadataUrl).toBe(paintedIdentityOf({ serverUrl: SERVER, sourceUrl: COG, paint: PAINT }));
+  });
+
+  it('leaves a raster the query says not to paint to kepler, paint and all', () => {
+    const [raster] = framesToRasters(
+      [painted({ raster_paint: PAINT, raster_painted: false })],
+      {},
+      { tileServerUrls: [SERVER], painted: true }
+    );
+
+    expect(raster.kind).toBe('cog');
+    expect(raster).not.toHaveProperty('paint');
+  });
+
+  it('draws through the tile server the frame names when the panel has none', () => {
+    const missing: string[] = [];
+    const [raster] = framesToRasters(
+      [painted({ raster_paint: PAINT }, 'https://titiler.catalog.test/')],
+      {},
+      {
+        tileServerUrls: [],
+        onMissingServer: (label) => missing.push(label),
+      }
+    );
+
+    expect(missing).toEqual([]);
+    expect(raster.tileServerUrls).toEqual(['https://titiler.catalog.test']);
+    expect(raster.metadataUrl).toContain('https://titiler.catalog.test/cog/tiles/');
+
+    const [cog] = framesToRasters([painted({}, 'https://titiler.catalog.test')], {}, { tileServerUrls: [] });
+    expect(cog.metadataUrl).toBe(`https://titiler.catalog.test/cog/stac?url=${encodeURIComponent(COG)}`);
+  });
+
+  it('keeps the panel’s own tile server over the frame’s, and still says when neither has one', () => {
+    const [raster] = framesToRasters([painted({}, 'https://titiler.catalog.test')], {}, { tileServerUrls: [SERVER] });
+    expect(raster.tileServerUrls).toEqual([SERVER]);
+
+    const missing: string[] = [];
+    expect(
+      framesToRasters([painted({})], {}, { tileServerUrls: [], onMissingServer: (label) => missing.push(label) })
+    ).toEqual([]);
+    expect(missing).toEqual(['Query A']);
   });
 });

@@ -168,6 +168,7 @@ the panel's:
 | `raster_colormap` (or `raster_ramp`)   | a ramp name or a whole ramp as JSON, as the panel option does           |
 | `raster_bands` (or `band_combination`) | `forestBurn`, `infrared`, `nbr` or `ndmi`; anything else is true colour |
 | `raster_painted`                       | true or false (also 1 or 0, yes or no)                                  |
+| `raster_paint`                         | the tile server's query parameters, `bidx=1&colormap_name=viridis`      |
 
 So a classified land cover the server paints can sit under imagery the browser colours with a ramp:
 
@@ -177,6 +178,12 @@ SELECT 'https://example.org/landcover/2023.tif' AS raster_url, true AS raster_pa
 -- Query B: a single-band field, in viridis.
 SELECT 'https://example.org/lst/2023-07-14.tif' AS raster_url, 'viridis' AS raster_colormap
 ```
+
+`raster_paint` says how the server paints the file — `bidx=1&colormap_name=viridis`,
+`rescale=0,3000&colormap_name=terrain`, a classified raster's own `colormap` — as the Spatial
+Catalog's Raster query gives it from what the catalog says of the file. A query with one is
+painted unless its `raster_painted` says false, and its parameters go on every tile request, each
+replacing the panel's own for the same key (a composite's `rescale`, say); never a second `url`.
 
 The first row with a value decides; an empty one leaves the panel's. A dashboard variable reaches a
 column the way it reaches any SQL, so `'$bands' AS raster_bands` lets a dropdown choose one query's

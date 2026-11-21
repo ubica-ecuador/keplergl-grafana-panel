@@ -82,6 +82,15 @@ export interface FieldRoles {
   rasterBands?: string;
   rasterPainted?: string;
   /**
+   * How the tile server paints the raster, as its query parameters
+   * (`bidx=1&colormap_name=viridis`, `rescale=0,3000&colormap=…`): what a
+   * catalog says of the file, from the Spatial Catalog's Raster query. A query
+   * that gives one is drawn painted unless its `raster_painted` says no, and
+   * its keys win over the panel's for the same key. The first row with a
+   * value wins.
+   */
+  rasterPaint?: string;
+  /**
    * A WMS service and the one layer of it to draw.
    *
    * Both are needed: a service publishes many layers and nothing in the query
@@ -298,6 +307,7 @@ export const NAME_CANDIDATES: Record<string, string[]> = {
   rasterColormap: ['raster_colormap', 'raster_ramp'],
   rasterBands: ['raster_bands', 'band_combination'],
   rasterPainted: ['raster_painted'],
+  rasterPaint: ['raster_paint'],
   // WMS. `wms` alone is worth accepting because a query that fixes the service
   // by hand reads better as `SELECT '…' AS wms`, and `service_url` is what the
   // OGC calls the endpoint.

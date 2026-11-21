@@ -254,7 +254,7 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       path: 'rasterServerUrl',
       name: 'Raster tile server',
       description:
-        'TiTiler-compatible server that turns a COG or a Zarr store into tiles, for queries returning a raster_url or zarr_url column. None is set by default, and until one is, those queries draw nothing. It reads the imagery on the map\u2019s behalf and is handed every url, signature included, so use a server you run; Development Seed\u2019s public demo, https://titiler.xyz, reads public imagery only. A .pmtiles url needs no server and ignores this.',
+        'TiTiler-compatible server that turns a COG or a Zarr store into tiles, for queries returning a raster_url or zarr_url column. None is set by default, and until one is, those queries draw through the server their data source names (a Spatial Catalog\u2019s Tile server), or else nothing. It reads the imagery on the map\u2019s behalf and is handed every url, signature included, so use a server you run; Development Seed\u2019s public demo, https://titiler.xyz, reads public imagery only. A .pmtiles url needs no server and ignores this.',
       category: ['Map'],
       settings: { placeholder: RASTER_SERVER_PLACEHOLDER },
     })

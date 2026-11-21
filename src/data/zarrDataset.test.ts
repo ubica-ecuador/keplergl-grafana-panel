@@ -327,6 +327,30 @@ describe('framesToZarr', () => {
   });
 });
 
+describe('the data source’s tile server', () => {
+  const served = (frame: ReturnType<typeof zarrFrame>, url: string) => {
+    frame.meta = { custom: { tileServerUrl: url } };
+    return frame;
+  };
+
+  it('draws through the one a query’s frame names when the panel has none, and through the panel’s when it has one', () => {
+    const missing: string[] = [];
+    const [zarr] = framesToZarr(
+      [served(zarrFrame(), 'https://titiler.catalog.test/')],
+      {},
+      {
+        serverUrl: '',
+        onMissingServer: (label) => missing.push(label),
+      }
+    );
+    expect(zarr.serverUrl).toBe('https://titiler.catalog.test');
+    expect(missing).toEqual([]);
+
+    const [own] = framesToZarr([served(zarrFrame(), 'https://titiler.catalog.test')], {}, { serverUrl: SERVER });
+    expect(own.serverUrl).toBe(SERVER);
+  });
+});
+
 describe('defaultTimeLabel', () => {
   it('writes a timestamp the way numpy stamps a datetime64', () => {
     // xarray prints its index labels with nanosecond precision, and that is the

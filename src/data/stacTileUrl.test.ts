@@ -48,4 +48,18 @@ describe('stacTileTemplate', () => {
     expect(stacTileTemplate({ serverUrl: 'https://t', itemUrl: ITEM, assets: [] })).toBeNull();
     expect(stacTileTemplate({ serverUrl: 'https://t', itemUrl: ITEM, assets: ['  '] })).toBeNull();
   });
+
+  it('takes a query’s paint over the recipe’s stretch', () => {
+    const template = stacTileTemplate({
+      serverUrl: 'http://titiler.test',
+      itemUrl: 'https://stac.test/items/a',
+      assets: ['red', 'green', 'blue'],
+      rescale: ['0,3000', '0,3000', '0,3000'],
+      paint: 'rescale=0,10000',
+    });
+
+    const params = new URLSearchParams(template!.split('?')[1]);
+    expect(params.getAll('rescale')).toEqual(['0,10000']);
+    expect(params.getAll('assets')).toEqual(['red', 'green', 'blue']);
+  });
 });

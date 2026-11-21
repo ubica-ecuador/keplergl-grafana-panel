@@ -32,6 +32,8 @@ export interface CogPaintedMetadata {
   assets?: string[];
   /** One `min,max` per asset, in the same order. */
   rescale?: string[];
+  /** How the server paints it, a query's `raster_paint`: its keys win in every tile request. */
+  paint?: string;
 }
 
 /**
@@ -112,8 +114,9 @@ export function cogPaintedDeckProps(args: {
         itemUrl: source,
         assets: metadata.assets,
         rescale: metadata.rescale,
+        paint: metadata.paint,
       })
-    : cogTileTemplate({ serverUrl: metadata.serverUrl, sourceUrl: source });
+    : cogTileTemplate({ serverUrl: metadata.serverUrl, sourceUrl: source, paint: metadata.paint });
   if (!template) {
     return null;
   }

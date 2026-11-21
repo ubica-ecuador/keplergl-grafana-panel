@@ -6,6 +6,14 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **A raster painted as its query says, through its data source's tile server.** A query's
+  `raster_paint` (the tile server's parameters, `bidx=1&colormap_name=viridis`, as the Spatial
+  Catalog gives them from what a catalog says of the file) is put on every tile request of its
+  raster, each key over the panel's own for the same key, never a second `url`; a query with one is
+  painted unless its `raster_painted` says false. A panel with no **Raster tile server** draws a
+  query's rasters and Zarr stores through the one its frames name (`meta.custom.tileServerUrl`, a
+  Spatial Catalog's *Tile server*), and kepler's Add Data form starts from it; the panel's own still
+  wins. Such imagery gets a suggestion card, since a card then has a server.
 - **Vector tiles and PMTiles from a query.** A `tiles_url` of vector tiles (`tiles_format` `mvt`, a
   `{z}/{x}/{y}` template, with its TileJSON in `tiles_metadata_url` when the query has one) or a
   PMTiles archive (`pmtiles`, or any address ending in `.pmtiles`) is drawn as kepler's own tilesets

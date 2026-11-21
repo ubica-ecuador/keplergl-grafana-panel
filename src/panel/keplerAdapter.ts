@@ -43,8 +43,7 @@ import { keepLeadingZeroIds } from '../data/leadingZeroIds';
 import { isGrafanaBacked } from '../data/grafanaAnnotations';
 import type { LiveLayer, SavedSplitPane } from './splitMapsGuard';
 import type { ClickedPosition, Figure, PolygonGeometry } from './clickArea';
-import { isPanelRasterId, type RasterDataset } from '../data/rasterDataset';
-import { stacTileTemplate } from '../data/stacTileUrl';
+import { isPanelRasterId, paintedIdentityOf, type RasterDataset } from '../data/rasterDataset';
 import { isPanelWmsId, wmsCalendarDatasetId, type WmsDataset } from '../data/wmsDataset';
 import { type EsriDataset } from '../data/esriDataset';
 import { isPanelXyzId, type XyzDataset } from '../data/xyzDataset';
@@ -277,6 +276,7 @@ function rasterMetadata(raster: RasterDataset) {
       serverUrl: raster.tileServerUrls[0] ?? '',
       sourceUrl: raster.sourceUrl,
       ...(raster.assets?.length ? { assets: raster.assets, rescale: raster.rescale } : {}),
+      ...(raster.paint ? { paint: raster.paint } : {}),
     };
   }
 
@@ -383,6 +383,7 @@ interface PaintedMetadata {
   sourceUrl?: string;
   assets?: string[];
   rescale?: string[];
+  paint?: string;
 }
 
 /**
@@ -408,17 +409,10 @@ interface PaintedMetadata {
  */
 function paintedIdentity(metadata: PaintedMetadata | undefined): string | undefined {
   const sourceUrl = metadata?.sourceUrl;
-  if (!sourceUrl || !metadata?.assets?.length) {
+  if (!sourceUrl) {
     return sourceUrl;
   }
-  return (
-    stacTileTemplate({
-      serverUrl: metadata.serverUrl ?? '',
-      itemUrl: sourceUrl,
-      assets: metadata.assets,
-      rescale: metadata.rescale,
-    }) ?? sourceUrl
-  );
+  return paintedIdentityOf({ ...metadata, sourceUrl });
 }
 
 /**

@@ -2,7 +2,7 @@ import { DataFrame } from '@grafana/data';
 
 import { detectFields, FieldRoleOverrides, resolveRoles } from './detectFields';
 import { firstText } from './frameValues';
-import { queryName } from './rasterDataset';
+import { frameTileServerUrls, queryName } from './rasterDataset';
 
 /**
  * A Zarr variable a query points at, in the shape the panel's tile layer needs.
@@ -128,7 +128,9 @@ export function framesToZarr(
     // A store with no server to render it is a query the panel cannot draw,
     // not one that asked for nothing: the caller is told, so the panel can say
     // which query is waiting for a server rather than drawing a blank map.
-    if (!serverUrl) {
+    // The panel's server, else the one the query's data source names.
+    const server = serverUrl || frameTileServerUrls(frame)[0] || '';
+    if (!server) {
       options.onMissingServer?.(queryName(frame, refId));
       return;
     }
@@ -139,7 +141,7 @@ export function framesToZarr(
     datasets.push({
       id: zarrDatasetId(refId),
       label: frame.name ?? `Query ${refId}`,
-      serverUrl,
+      serverUrl: server,
       storeUrl: named.storeUrl,
       variable: named.variable,
       times,

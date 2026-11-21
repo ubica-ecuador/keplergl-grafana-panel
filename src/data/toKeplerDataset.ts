@@ -43,6 +43,7 @@ type RenamedRole = Exclude<
   | 'rasterColormap'
   | 'rasterBands'
   | 'rasterPainted'
+  | 'rasterPaint'
   | 'wmsUrl'
   | 'wmsLayer'
   | 'tilesBbox'

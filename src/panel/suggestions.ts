@@ -1,7 +1,7 @@
 import { type DataFrame, type Field, FieldType, VisualizationSuggestionScore } from '@grafana/data';
 
 import { describesFlow, detectFields } from '../data/detectFields';
-import { rasterKind } from '../data/rasterDataset';
+import { frameTileServerUrls, rasterKind } from '../data/rasterDataset';
 import { framesToXyz } from '../data/xyzDataset';
 import type { KeplerPanelOptions } from '../types';
 
@@ -55,7 +55,9 @@ export const PREVIEW_OPTIONS: Partial<KeplerPanelOptions> = { showSidePanel: fal
  *
  * No card for imagery that needs a raster tile server: a COG, a STAC item or a
  * Zarr store. A card draws with the panel's defaults, which set no server, so
- * all it could show is the notice asking for one. Such a query still turns
+ * all it could show is the notice asking for one — unless the frame names its
+ * own (`meta.custom.tileServerUrl`, a Spatial Catalog's Tile server), which
+ * the panel draws through when it has none: then `OK`. Such a query still turns
  * into a map from "All visualizations", where that notice is the right advice.
  *
  * Grafana ranks every core panel above an external one whatever the score, so
@@ -119,7 +121,13 @@ function frameScore(frame: DataFrame): VisualizationSuggestionScore | undefined 
       WEAK_COORDINATES.has(roles.latitude!.toLowerCase()) || WEAK_COORDINATES.has(roles.longitude!.toLowerCase());
     return weak ? VisualizationSuggestionScore.OK : VisualizationSuggestionScore.Best;
   }
-  if (drawsWithoutServer(field(roles.rasterUrl)) || (roles.wmsUrl && roles.wmsLayer)) {
+  // Imagery the frame names its own tile server for (a Spatial Catalog's) has one, whatever the panel's defaults.
+  const served = frameTileServerUrls(frame).length > 0;
+  if (
+    drawsWithoutServer(field(roles.rasterUrl)) ||
+    (served && (field(roles.rasterUrl) || (roles.zarrUrl && roles.zarrVariable))) ||
+    (roles.wmsUrl && roles.wmsLayer)
+  ) {
     return VisualizationSuggestionScore.OK;
   }
   return undefined;

@@ -1,4 +1,4 @@
-import { cogTileTemplate } from './cogTileUrl';
+import { cogTileTemplate, withPaint } from './cogTileUrl';
 
 const SERVER = 'http://localhost:8088';
 const COG = 'https://ai4edataeuwest.blob.core.windows.net/io-lulc/io-annual-lulc-v02/17M_20230101-20240101.tif';
@@ -42,5 +42,37 @@ describe('cogTileTemplate', () => {
     const template = cogTileTemplate({ serverUrl: `${SERVER}/`, sourceUrl: COG });
 
     expect(template).toContain(`${SERVER}/cog/tiles/`);
+  });
+
+  it('asks the server to paint it as the query says, after the file', () => {
+    const template = cogTileTemplate({ serverUrl: SERVER, sourceUrl: COG, paint: 'bidx=1&colormap_name=viridis' });
+
+    expect(template).toBe(
+      `${SERVER}/cog/tiles/WebMercatorQuad/{z}/{x}/{y}.png?url=${encodeURIComponent(COG)}&bidx=1&colormap_name=viridis`
+    );
+  });
+});
+
+describe('withPaint', () => {
+  const params = () =>
+    new URLSearchParams([
+      ['url', COG],
+      ['assets', 'red'],
+      ['assets', 'green'],
+      ['rescale', '0,3000'],
+    ]);
+
+  it('lets the paint’s keys win, every value of a repeated one, and adds the rest', () => {
+    const painted = withPaint(params(), '?rescale=0,255&assets=nir&colormap={"1":[0,128,0,255]}');
+
+    expect(painted.getAll('rescale')).toEqual(['0,255']);
+    expect(painted.getAll('assets')).toEqual(['nir']);
+    expect(painted.get('colormap')).toBe('{"1":[0,128,0,255]}');
+  });
+
+  it('never takes a second image, and leaves the request alone without paint', () => {
+    expect(withPaint(params(), 'url=https://elsewhere.test/a.tif&bidx=2').getAll('url')).toEqual([COG]);
+    expect(withPaint(params(), '  ').toString()).toBe(params().toString());
+    expect(withPaint(params(), undefined).toString()).toBe(params().toString());
   });
 });

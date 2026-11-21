@@ -6,7 +6,7 @@ import { KeplerPanelOptions } from '../types';
 import { AssistantContext } from '../assistant/AssistantContext';
 import { framesToDatasets } from '../data/framesToDatasets';
 import { framesToEsri } from '../data/esriDataset';
-import { framesToRasters } from '../data/rasterDataset';
+import { frameTileServerUrls, framesToRasters } from '../data/rasterDataset';
 import { resolveBandCombination } from '../data/bandCombination';
 import { framesToWms } from '../data/wmsDataset';
 import { framesToXyz } from '../data/xyzDataset';
@@ -226,8 +226,11 @@ export function KeplerPanel(props: Props) {
   // a scene has no rows, and `processRowObject([])` returns null, so anything
   // riding in the row list is dropped on the way into kepler.
   //
-  // No server is set by default (see DEFAULT_RASTER_SERVER_URL), and a query
-  // that needs one is then left off the map and named in `rasterServerMissing`.
+  // No server is set by default (see DEFAULT_RASTER_SERVER_URL): a query that
+  // needs one draws through the one its data source names in its frames
+  // (`frameTileServerUrls`, a Spatial Catalog's Tile server), and without that
+  // is left off the map and named in `rasterServerMissing`. A query's
+  // `raster_paint` says how the server paints it.
   const { rasters, rasterServerMissing } = useMemo(() => {
     const missing: string[] = [];
     const rasters = framesToRasters(series, fieldMappings, {
@@ -305,8 +308,13 @@ export function KeplerPanel(props: Props) {
     [rasterServerMissing, zarrServerMissing]
   );
 
-  // For kepler's own Add Data → Tileset → Raster Tile form.
-  const rasterServerUrls = useMemo(() => rasterServerUrlsOf(options.rasterServerUrl), [options.rasterServerUrl]);
+  // For kepler's own Add Data → Tileset → Raster Tile form: the panel's
+  // server, else the first one the queries' data sources name, the one their
+  // own rasters are drawn through (`frameTileServerUrls`).
+  const rasterServerUrls = useMemo(() => {
+    const own = rasterServerUrlsOf(options.rasterServerUrl);
+    return own.length > 0 ? own : (series.map(frameTileServerUrls).find((urls) => urls.length > 0) ?? []);
+  }, [options.rasterServerUrl, series]);
 
   const keplerTheme = useMemo(() => toKeplerTheme(grafanaTheme), [grafanaTheme]);
   const followTheme = options.followGrafanaTheme ?? true;

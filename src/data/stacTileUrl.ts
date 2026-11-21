@@ -1,3 +1,5 @@
+import { withPaint } from './cogTileUrl';
+
 /**
  * Everything TiTiler needs to draw a STAC item as tiles it composites itself.
  *
@@ -17,6 +19,8 @@ export interface StacTileSpec {
   assets: string[];
   /** One `min,max` per asset, in the same order. Omitted, the server decides. */
   rescale?: string[];
+  /** A query's `raster_paint`: its keys win over the ones above (`withPaint`). */
+  paint?: string;
 }
 
 /** The tiling scheme. Web Mercator, because that is what the map is in. */
@@ -42,6 +46,7 @@ export function stacTileTemplate(spec: StacTileSpec): string | null {
   const params = new URLSearchParams({ url: itemUrl });
   assets.forEach((asset) => params.append('assets', asset));
   (spec.rescale ?? []).forEach((range) => params.append('rescale', range));
+  withPaint(params, spec.paint);
 
   return `${serverUrl}/stac/tiles/${TILE_MATRIX_SET}/{z}/{x}/{y}.png?${params}`;
 }

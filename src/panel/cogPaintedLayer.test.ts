@@ -9,6 +9,19 @@ const META: CogPaintedMetadata = {
 };
 
 describe('cogPaintedDeckProps', () => {
+  it('asks the server to paint as the query says, and a new paint is a new picture', () => {
+    const props = cogPaintedDeckProps({ id: 'layer-1', metadata: { ...META, paint: 'bidx=1&colormap_name=viridis' } });
+    expect(props?.data).toContain('&bidx=1&colormap_name=viridis');
+    expect(props?.updateTriggers).toEqual({ getTileData: props?.data });
+
+    const composite = cogPaintedDeckProps({
+      id: 'layer-1',
+      metadata: { ...META, assets: ['red', 'green', 'blue'], rescale: ['0,3000'], paint: 'rescale=0,255' },
+    });
+    expect(composite?.data).toContain('/stac/tiles/');
+    expect(new URLSearchParams(String(composite?.data).split('?')[1]).getAll('rescale')).toEqual(['0,255']);
+  });
+
   it('offers MapLibre the same template for a relief base map', () => {
     const props = cogPaintedDeckProps({ id: 'layer-1', metadata: META });
     expect(props?.reliefTiles).toBe(props?.data);

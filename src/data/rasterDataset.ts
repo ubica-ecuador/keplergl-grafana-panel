@@ -4,6 +4,7 @@ import { BAND_COMBINATIONS, type BandCombination, resolveBandCombination } from 
 import { detectFields, FieldRoleOverrides, resolveRoles } from './detectFields';
 import { firstFlag, firstText } from './frameValues';
 import { anotherServiceWins } from './serviceKind';
+import { cogTileTemplate } from './cogTileUrl';
 import { stacTileTemplate } from './stacTileUrl';
 import { pickLatestWithin, type TimeWindow } from './timeWindow';
 
@@ -50,6 +51,12 @@ export interface RasterDataset {
   assets?: string[];
   /** One `min,max` per asset, in the same order. */
   rescale?: string[];
+  /**
+   * How the tile server paints it, as its query parameters: the query's
+   * `raster_paint`, a painted raster only. Its keys win over the panel's own
+   * in every tile request (`withPaint`).
+   */
+  paint?: string;
   /** kepler's band preset for an index — a `stac` raster only. */
   preset?: string;
   /**
@@ -248,8 +255,12 @@ export function framesToRasters(
     // This query's own way of drawing, where it gives one; the panel's otherwise. An empty column gives none.
     const ownBands = firstText(frame, roles.rasterBands);
     const bands = ownBands !== undefined ? resolveBandCombination(ownBands) : opts.bands;
-    const painted = firstFlag(frame, roles.rasterPainted) ?? opts.painted;
+    // A query that says how the server paints it is painted, unless it says otherwise.
+    const paint = firstText(frame, roles.rasterPaint)?.trim() || undefined;
+    const painted = firstFlag(frame, roles.rasterPainted) ?? (paint ? true : opts.painted);
     const ownColormap = firstText(frame, roles.rasterColormap);
+    // The panel's tile server, else the one the query's data source names (`frameTileServerUrls`).
+    const tileServerUrls = opts.tileServerUrls.length > 0 ? opts.tileServerUrls : frameTileServerUrls(frame);
 
     // Whether this query is an archive is decided from the series itself,
     // before anything about items is considered — not from `opening`, which is
@@ -305,13 +316,14 @@ export function framesToRasters(
         ? 'painted'
         : 'stac';
     const label = frame.name ?? `Query ${refId}`;
-    if (kind !== 'pmtiles' && opts.tileServerUrls.length === 0) {
+    if (kind !== 'pmtiles' && tileServerUrls.length === 0) {
       opts.onMissingServer?.(queryName(frame, refId));
       return;
     }
+    const ownPaint = kind === 'painted' ? paint : undefined;
 
     const { sourceUrl, metadataUrl } = sceneIdentity(
-      { kind, tileServerUrls: opts.tileServerUrls, assets: paintedAssets, rescale: paintedRescale },
+      { kind, tileServerUrls, assets: paintedAssets, rescale: paintedRescale, paint: ownPaint },
       opening
     );
 
@@ -321,8 +333,9 @@ export function framesToRasters(
       kind,
       sourceUrl,
       metadataUrl,
-      tileServerUrls: kind === 'pmtiles' ? [] : opts.tileServerUrls,
+      tileServerUrls: kind === 'pmtiles' ? [] : tileServerUrls,
       ...(paintedAssets ? { assets: paintedAssets, rescale: paintedRescale } : {}),
+      ...(ownPaint ? { paint: ownPaint } : {}),
       ...(kind === 'stac' && recipe.preset ? { preset: recipe.preset } : {}),
       // Never on a painted raster, whichever of the two it is. The image
       // arrives already coloured — the server read the file's own palette, or
@@ -380,6 +393,7 @@ interface RasterIdentityShape {
   tileServerUrls: string[];
   assets?: string[];
   rescale?: string[];
+  paint?: string;
 }
 
 /**
@@ -414,16 +428,53 @@ function sceneIdentity(raster: RasterIdentityShape, scene: RasterScene): { sourc
   if (raster.kind === 'stac') {
     return { sourceUrl, metadataUrl: sourceUrl };
   }
-  if (raster.kind === 'painted' && raster.assets) {
-    const template = stacTileTemplate({
-      serverUrl: raster.tileServerUrls[0] ?? '',
-      itemUrl: sourceUrl,
-      assets: raster.assets,
-      rescale: raster.rescale,
-    });
-    return { sourceUrl, metadataUrl: template ?? sourceUrl };
+  if (raster.kind === 'painted') {
+    return {
+      sourceUrl,
+      metadataUrl: paintedIdentityOf({
+        serverUrl: raster.tileServerUrls[0],
+        sourceUrl,
+        assets: raster.assets,
+        rescale: raster.rescale,
+        paint: raster.paint,
+      }),
+    };
   }
   return { sourceUrl, metadataUrl: metadataUrlForScene(raster.kind, raster.tileServerUrls[0], sourceUrl) };
+}
+
+/**
+ * What a painted raster is compared on by the refresh, from what its dataset
+ * holds: the image alone for a file the server paints with its own palette,
+ * the whole tile request when anything else decides the picture — a
+ * composite's assets and stretch, a query's paint — so that a change of any of
+ * them rebuilds the layer and nothing else does. `framesToRasters` writes it
+ * into `metadataUrl`; the adapter reads it back off kepler's dataset.
+ */
+export function paintedIdentityOf(painted: {
+  serverUrl?: string;
+  sourceUrl: string;
+  assets?: string[];
+  rescale?: string[];
+  paint?: string;
+}): string {
+  const { serverUrl = '', sourceUrl, assets, rescale, paint } = painted;
+  if (assets?.length) {
+    return stacTileTemplate({ serverUrl, itemUrl: sourceUrl, assets, rescale, paint }) ?? sourceUrl;
+  }
+  return paint ? (cogTileTemplate({ serverUrl, sourceUrl, paint }) ?? sourceUrl) : sourceUrl;
+}
+
+/**
+ * The tile server a query's data source names for its frames
+ * (`meta.custom.tileServerUrl`: a Spatial Catalog's own Tile server), as the
+ * list `framesToRasters` takes; empty when it names none. What a panel with no
+ * tile server of its own draws through, so that a map of a catalog's rasters
+ * needs the server told once, in the data source.
+ */
+export function frameTileServerUrls(frame: DataFrame): string[] {
+  const url = (frame.meta?.custom as { tileServerUrl?: unknown } | undefined)?.tileServerUrl;
+  return typeof url === 'string' && url.trim() ? [url.trim().replace(/\/+$/, '')] : [];
 }
 
 /**

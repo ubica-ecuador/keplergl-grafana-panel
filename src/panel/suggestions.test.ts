@@ -93,6 +93,25 @@ describe('keplerSuggestions', () => {
     expect(score(frame([{ name: 'layer', type: FieldType.string, values: ['roads'] }]))).toBeUndefined();
   });
 
+  it('offers a card for imagery whose frame names its own tile server, which the map draws through', () => {
+    const served = (fields: Parameters<typeof frame>[0]) => {
+      const f = frame(fields);
+      f.meta = { custom: { tileServerUrl: 'https://titiler.catalog.test' } };
+      return f;
+    };
+    expect(score(served([{ name: 'raster_url', type: FieldType.string, values: ['https://x/a.tif'] }]))).toEqual([
+      VisualizationSuggestionScore.OK,
+    ]);
+    expect(
+      score(
+        served([
+          { name: 'zarr_url', type: FieldType.string, values: ['https://x/store.zarr'] },
+          { name: 'zarr_variable', type: FieldType.string, values: ['precip'] },
+        ])
+      )
+    ).toEqual([VisualizationSuggestionScore.OK]);
+  });
+
   it('suggests nothing for imagery that waits for a raster tile server, which a card has not', () => {
     const cog = frame([{ name: 'raster_url', type: FieldType.string, values: ['http://feeds/a.tif'] }]);
     const zarr = frame([{ name: 'zarr_url', type: FieldType.string, values: ['https://x/store.zarr'] }]);
