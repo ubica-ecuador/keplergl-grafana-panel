@@ -3,6 +3,7 @@ import { FieldType, toDataFrame } from '@grafana/data';
 import {
   deleteEntry,
   layerConfigChange,
+  removeLayer,
   registerEntry,
   setFilterAnimationTime,
   toggleFilterAnimation,
@@ -479,5 +480,72 @@ describe('timeFilterDrawn', () => {
     }
     await settle();
     expect(timeFilterDrawn(store)).toBe(false);
+  });
+});
+
+describe('a query that answers something else under the same refId', () => {
+  /** What a raster series query leaves as rows: a scene per date, nothing to place. */
+  function scenes(id: string): PanelDataset {
+    return {
+      id,
+      label: 'Query A',
+      rows: [
+        { time: START, url: 'https://example.org/a.tif' },
+        { time: START + HOUR, url: 'https://example.org/b.tif' },
+      ],
+    };
+  }
+
+  function layersOn(store: Store, id: string): Array<{ id: string; type: string }> {
+    return visStateOf(store).layers.filter((layer: any) => layer.config.dataId === id);
+  }
+
+  async function mapOf(datasets: PanelDataset[]): Promise<Store> {
+    const store = createKeplerStore();
+    store.dispatch(registerEntry({ id: KEPLER_INSTANCE_ID }) as never);
+    loadDatasets(store, store.dispatch, datasets);
+    await settle();
+    return store;
+  }
+
+  it('gets the layers kepler would have made on a first load', async () => {
+    const points = answer('A');
+    const store = await mapOf([scenes(points.id)]);
+    expect(layersOn(store, points.id)).toEqual([]);
+
+    refreshDatasets(store, store.dispatch, [points]);
+    await settle();
+
+    expect(layersOn(store, points.id).map((layer) => layer.type)).toContain('point');
+  });
+
+  it('leaves a dataset whose layers were removed without any on a refresh', async () => {
+    const points = answer('A');
+    const store = await mapOf([points]);
+    for (const layer of layersOn(store, points.id)) {
+      store.dispatch(wrapTo(KEPLER_INSTANCE_ID, removeLayer(layer.id)) as never);
+    }
+    await settle();
+    expect(layersOn(store, points.id)).toEqual([]);
+
+    refreshDatasets(store, store.dispatch, [answer('A', 0.01)]);
+    await settle();
+
+    expect(layersOn(store, points.id)).toEqual([]);
+  });
+
+  it('adds nothing beside a layer that still finds its columns', async () => {
+    const points = answer('A');
+    const store = await mapOf([points]);
+    const before = layersOn(store, points.id).map((layer) => layer.id);
+    expect(before.length).toBeGreaterThan(0);
+
+    // A column more, the same coordinates: the user's layers carry on alone.
+    const wider = { ...answer('A', 0.01) };
+    wider.rows = wider.rows.map((row) => ({ ...row, extra: 1 }));
+    refreshDatasets(store, store.dispatch, [wider]);
+    await settle();
+
+    expect(layersOn(store, points.id).map((layer) => layer.id)).toEqual(before);
   });
 });

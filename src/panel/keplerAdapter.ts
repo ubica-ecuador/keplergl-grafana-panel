@@ -1165,7 +1165,7 @@ export function refreshDatasets(store: Store, dispatch: Dispatch, datasets: Pane
   const { replace, add } = splitRefresh(datasets, readDatasetIds(store));
 
   for (const dataset of replace) {
-    replaceDatasetData(dispatch, dataset);
+    replaceDatasetData(dispatch, dataset, getVisState(store));
   }
 
   if (add.length === 0) {
@@ -1358,12 +1358,20 @@ function isClampOf(value: [number, number], window: [number, number], domain: un
  * internally it re-points the layers, filters and layer order at the new data
  * rather than dropping them, so this is not the removeDataset + addDataset that
  * costs the user their layer configuration.
+ *
+ * What it does not do is build layers: kepler's replace defaults
+ * `autoCreateLayers` to false. Right for a refresh, wrong for a query that now
+ * answers something else under the same refId — a raster series switched to a
+ * catalog's features, say — whose dataset held no layer that could draw the
+ * new columns, and so came back with none. `visState`, when given, is read for
+ * that case (`replacementNeedsLayers`).
  */
-export function replaceDatasetData(dispatch: Dispatch, dataset: PanelDataset): void {
+export function replaceDatasetData(dispatch: Dispatch, dataset: PanelDataset, visState?: VisStateLike | null): void {
   const [keplerDataset] = toKeplerDatasets([dataset]);
   if (!keplerDataset) {
     return;
   }
+  const newLayers = visState ? replacementNeedsLayers(visState, dataset.id, keplerDataset) : false;
 
   dispatch(
     wrapTo(
@@ -1371,11 +1379,51 @@ export function replaceDatasetData(dispatch: Dispatch, dataset: PanelDataset): v
       replaceDataInMap({
         datasetToReplaceId: dataset.id,
         datasetToUse: keplerDataset,
-        // Re-framing on every pan would fight the gesture that triggered this.
-        options: { centerMap: false, keepExistingConfig: true },
+        // Re-framing on every pan would fight the gesture that triggered this;
+        // a query that answers something new is framed, as a first load is.
+        options: {
+          centerMap: newLayers && keplerDataset.data.rows.length > 0,
+          keepExistingConfig: true,
+          autoCreateLayers: newLayers,
+        },
       })
     )
   );
+}
+
+/**
+ * Whether replacing dataset `id` with `next` should let kepler build layers.
+ *
+ * Only when the columns changed and no layer on the dataset — live, or parked
+ * by a replace still in flight — would still find its columns in `next`. Same
+ * columns is a refresh: a dataset with no layer then is one whose layers the
+ * user removed, and they stay removed. A layer that survives is the user's
+ * map, and kepler's guesses would only stack beside it.
+ */
+export function replacementNeedsLayers(visState: VisStateLike, id: string, next: KeplerDataset): boolean {
+  const held = visState.datasets[id];
+  if (!held) {
+    return false;
+  }
+  const names = new Set(next.data.fields.map((field) => field.name));
+  const heldNames = held.fields.map((field) => field.name);
+  if (heldNames.length === names.size && heldNames.every((name) => names.has(name))) {
+    return false;
+  }
+  const layers = [...visState.layers, ...(visState.layerToBeMerged ?? [])];
+  return !layers.some((layer) => layer.config?.dataId === id && columnsIn(layer.config.columns, names));
+}
+
+/**
+ * Whether every column a layer names is among `names`. A live layer names each
+ * as `{ value }`, a parked one in its saved form as the bare name; an optional
+ * column left unset names nothing.
+ */
+function columnsIn(columns: Record<string, unknown> | undefined, names: ReadonlySet<string>): boolean {
+  return Object.values(columns ?? {}).every((column) => {
+    const name = typeof column === 'string' ? column : (column as { value?: unknown } | null)?.value;
+    return typeof name !== 'string' || names.has(name);
+  });
 }
 
 /**
@@ -1428,6 +1476,8 @@ interface VisStateLike {
   charts?: ChartLike[];
   /** Charts parked by a dataset replace, waiting to be merged back. */
   chartsToBeMerged?: ChartLike[];
+  /** Layers parked by a dataset replace, waiting to be merged back — in their saved form. */
+  layerToBeMerged?: Array<{ id?: string; config?: { dataId?: string; columns?: Record<string, unknown> } }>;
   datasets: Record<
     string,
     {
@@ -1445,6 +1495,8 @@ interface VisStateLike {
     config?: {
       dataId?: string;
       isVisible?: boolean;
+      /** The columns it draws: `{ value }` each, a bare name each once parked. */
+      columns?: Record<string, unknown>;
       visConfig?: { useSTACSearching?: boolean; wmsLayer?: unknown; wmsTime?: unknown; zarrLabel?: unknown };
     };
     meta?: { bounds?: number[] };

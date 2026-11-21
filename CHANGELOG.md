@@ -36,6 +36,13 @@ release documents what changed since the one before it.
   2017 to 2025, under "Last 7 days"), the map was empty with no word why. A notice over it now says
   how many rows, from when to when, and to widen the range to see them; it goes as soon as the range
   covers one of them again.
+- **A query that now answers something else gets its layers.** A query changed in the editor to
+  answer other columns under the same letter (a raster series switched to an Iceberg table's
+  features) kept its dataset, emptied of any layer that could draw it: kepler replaces a dataset's
+  rows without guessing layers, so the map stayed blank until a layer was added by hand. When the
+  columns change and no layer on the query still finds its own, the map now builds the layers a first
+  load would and frames them. A refresh with the same columns builds none, so layers removed by hand
+  stay removed.
 - **A map with nothing to frame stays where it is.** A query that answered no rows (a GeoParquet
   read by an area holding nothing), or rows with no geometry, took a map centred on its data to
   latitude 0, longitude 0: kepler's GeoJSON and Trip layers measured an infinite box for no
