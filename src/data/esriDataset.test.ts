@@ -36,6 +36,22 @@ describe('framesToEsri', () => {
     expect(service.renderingRule).toBe(rule);
   });
 
+  it('carries the box of the row that names the service, for the map to frame on', () => {
+    // The Spatial Catalog's Services frame: every row carries every column, empty where the service is another kind.
+    const mapServer = 'https://geo.example.nl/arcgis/rest/services/Zeeland/MapServer';
+    const services = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'esri_url', type: FieldType.string, values: [null, mapServer] },
+        { name: 'tiles_bbox', type: FieldType.string, values: ['0 0 1 1', '3.7539 51.638 5.0329 52.3354'] },
+      ],
+    });
+
+    expect(framesToEsri([services])[0].bbox).toEqual([3.7539, 51.638, 5.0329, 52.3354]);
+    expect(framesToEsri([esriFrame({ esri_url: SERVICE })])[0]).not.toHaveProperty('bbox');
+    expect(framesToEsri([esriFrame({ esri_url: SERVICE, tiles_bbox: 'somewhere' })])[0]).not.toHaveProperty('bbox');
+  });
+
   it('ignores a frame that names no service', () => {
     // The ordinary case: most queries are rows of data, and every one of them
     // passes through here.

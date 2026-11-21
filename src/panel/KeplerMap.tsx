@@ -70,7 +70,7 @@ import { centerOnLoad, withLoadCenter } from './centerSync';
 import { useRasterTimeline } from './useRasterTimeline';
 import { useWmsCalendar } from './useWmsCalendar';
 import { useWmsTimeline } from './useWmsTimeline';
-import { boxedWms, boxedXyz, useBoxFraming } from './useBoxFraming';
+import { boxedEsri, boxedWms, boxedXyz, useBoxFraming } from './useBoxFraming';
 import type { BoxFrame } from './wmsExtent';
 import { useEsriTimeline } from './useEsriTimeline';
 import { useZarrTimeline } from './useZarrTimeline';
@@ -577,11 +577,14 @@ export function KeplerMap({
 
   useViewportGuard({ store, isReady, mapConfig, arm: guardArm, framedRef: boxFraming });
 
-  // A WMS layer or tiles arriving out of sight of the view — a dashboard saved
-  // over Cuenca that gains a layer of France — move the view onto their box,
-  // once per layer. Declared after the load effect, which adds the layer it
-  // waits for.
-  const boxedLayers = useMemo(() => [...wms.map(boxedWms), ...xyzLayers.map(boxedXyz)], [wms, xyzLayers]);
+  // A WMS layer, an ArcGIS service or tiles arriving out of sight of the view —
+  // a dashboard saved over Cuenca that gains a layer of France — move the view
+  // onto their box, once per layer. Declared after the load effect, which adds
+  // the layer it waits for.
+  const boxedLayers = useMemo(
+    () => [...wms.map(boxedWms), ...esriLayers.map(boxedEsri), ...xyzLayers.map(boxedXyz)],
+    [wms, esriLayers, xyzLayers]
+  );
   useBoxFraming({ store, isReady, layers: boxedLayers, mapConfig, onFramed: onBoxFramed });
 
   // A refresh leaves the viewport alone; a change of one of these variables

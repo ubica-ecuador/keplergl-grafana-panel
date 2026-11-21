@@ -43,6 +43,7 @@ Two more columns, both optional, both the service's own JSON passed through unto
 | `esri_url` | `image_service_url`, `imageserver_url` | The endpoint, ending in `/ImageServer` (or a Map Service, below) |
 | `mosaic_rule` | `esri_mosaic_rule` | Which rasters of the mosaic to draw |
 | `rendering_rule` | `esri_rendering_rule` | How to draw them |
+| `tiles_bbox` | `wms_bbox` | Where the service has data, `west south east north`: the view is framed on it as on a [WMS's box](./wms#where-the-layer-is) |
 
 The **mosaic rule** is how a year is chosen on a multi-temporal service:
 

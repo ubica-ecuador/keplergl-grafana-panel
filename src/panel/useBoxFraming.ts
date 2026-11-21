@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { Store } from 'redux';
 
+import type { EsriDataset } from '../data/esriDataset';
 import type { SavedMapConfig } from '../data/mapConfig';
 import type { WmsBox, WmsDataset } from '../data/wmsDataset';
 import type { XyzDataset } from '../data/xyzDataset';
@@ -30,6 +31,11 @@ export function boxedWms(wms: WmsDataset): BoxedLayer {
   return { id: wms.id, identity: `${wms.serviceUrl}|${wms.layerName}`, bbox: wms.bbox };
 }
 
+/** A query's ArcGIS service: the same endpoint is the same layer, whatever year its rule draws. */
+export function boxedEsri(esri: EsriDataset): BoxedLayer {
+  return { id: esri.id, identity: esri.serviceUrl, bbox: esri.bbox ?? null };
+}
+
 /** A query's tiles: the same template is the same layer. */
 export function boxedXyz(xyz: XyzDataset): BoxedLayer {
   return {
@@ -44,7 +50,10 @@ interface Params {
   store: Store;
   /** kepler only accepts actions once its instance has registered. */
   isReady: boolean;
-  /** The layers a query gave a box to: its WMS layers and its tiles (`boxedWms`, `boxedXyz`). */
+  /**
+   * The layers a query gave a box to: its WMS layers, its ArcGIS services and
+   * its tiles (`boxedWms`, `boxedEsri`, `boxedXyz`).
+   */
   layers: BoxedLayer[];
   /** The saved config the map was built from: whether it has a view of its own. */
   mapConfig?: SavedMapConfig | null;
@@ -53,10 +62,10 @@ interface Params {
 }
 
 /**
- * Frames the map on a query's WMS layer or tiles when they arrive where nobody
- * can see them — the rule is `decideWmsFraming`, the same for both: a service
- * that draws pictures, with no rows for kepler to frame on, and only its box to
- * say where it is.
+ * Frames the map on a query's WMS layer, ArcGIS service or tiles when they
+ * arrive where nobody can see them — the rule is `decideWmsFraming`, the same
+ * for all three: a service that draws pictures, with no rows for kepler to
+ * frame on, and only its box to say where it is.
  *
  * Once per layer: a refresh that brings the same one back, which the
  * dashboard's auto-refresh does every few seconds, is not a new layer, and

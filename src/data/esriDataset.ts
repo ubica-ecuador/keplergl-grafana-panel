@@ -2,6 +2,7 @@ import type { DataFrame } from '@grafana/data';
 
 import { detectFields, resolveRoles, type FieldRoleOverrides } from './detectFields';
 import { anotherServiceWins } from './serviceKind';
+import { parseWmsBox, type WmsBox } from './wmsDataset';
 
 /**
  * An ArcGIS Image Service, or Map Service, in the shape the panel's own layer reads.
@@ -41,6 +42,13 @@ export interface EsriDataset {
    * names its years is the service's business, not ours to guess.
    */
   moments?: EsriMoment[];
+  /**
+   * Where the service has data (`tiles_bbox` on the row that names it), when
+   * the query gives it: framed on as a WMS's or tiles' box is
+   * (`useBoxFraming`), since a service that paints its own pictures has no rows
+   * for kepler to frame on either.
+   */
+  bbox?: WmsBox;
 }
 
 /** One dated slice of a mosaic, and the rule that selects it. */
@@ -99,6 +107,7 @@ export function framesToEsri(frames: DataFrame[], overrides: Record<string, Fiel
     if (!serviceUrl) {
       return;
     }
+    const bbox = roles.tilesBbox ? parseWmsBox(valueOnFirstRow(frame, roles.esriUrl, roles.tilesBbox)) : null;
 
     const renderingRule = roles.esriRenderingRule ? firstText(frame, roles.esriRenderingRule) : '';
     const moments = readMoments(frame, roles.time, roles.esriMosaicRule);
@@ -117,6 +126,7 @@ export function framesToEsri(frames: DataFrame[], overrides: Record<string, Fiel
       ...(opening ? { mosaicRule: opening } : {}),
       ...(renderingRule ? { renderingRule } : {}),
       ...(moments.length ? { moments } : {}),
+      ...(bbox ? { bbox } : {}),
     });
   });
 
@@ -148,6 +158,14 @@ function readMoments(frame: DataFrame, timeColumn?: string, ruleColumn?: string)
     }
   }
   return moments.sort((a, b) => a.time - b.time);
+}
+
+/** A column's value on the first row where another column is not blank. */
+function valueOnFirstRow(frame: DataFrame, named: string, column: string): unknown {
+  const names = frame.fields.find((candidate) => candidate.name === named);
+  const values = frame.fields.find((candidate) => candidate.name === column);
+  const row = names?.values.findIndex((value) => typeof value === 'string' && value.trim() !== '') ?? -1;
+  return row >= 0 ? values?.values[row] : undefined;
 }
 
 /** The first non-blank value of a column, or empty when it has none. */

@@ -1,11 +1,12 @@
 import { renderHook } from '@testing-library/react';
 import type { Store } from 'redux';
 
+import type { EsriDataset } from '../data/esriDataset';
 import type { SavedMapConfig } from '../data/mapConfig';
 import type { WmsDataset } from '../data/wmsDataset';
 import type { XyzDataset } from '../data/xyzDataset';
 import { KEPLER_INSTANCE_ID } from './constants';
-import { boxedWms, boxedXyz, useBoxFraming } from './useBoxFraming';
+import { boxedEsri, boxedWms, boxedXyz, useBoxFraming } from './useBoxFraming';
 
 const FRANCE: [number, number, number, number] = [-5.5, 41, 10, 51.5];
 
@@ -231,6 +232,52 @@ describe('useBoxFraming', () => {
 
     expect(fits(dispatched)).toEqual([[3, 50, 7, 54]]);
     expect(dispatched).toHaveLength(1);
+  });
+
+  it('frames an ArcGIS service on its box, once per endpoint', async () => {
+    const zeeland: [number, number, number, number] = [3.7539, 51.638, 5.0329, 52.3354];
+    const esri = (more: Partial<EsriDataset> = {}): EsriDataset => ({
+      id: 'grafana-C-esri',
+      label: 'services',
+      serviceUrl: 'https://geo.example.nl/arcgis/rest/services/Zeeland/MapServer',
+      bbox: zeeland,
+      ...more,
+    });
+    // kepler's default view, San Francisco: the map has no view of its own.
+    const { store, dispatched, emit } = fakeStore({ latitude: 37.75, longitude: -122.35, zoom: 9 }, ['grafana-C-esri']);
+    const { rerender } = renderHook(
+      (layers: EsriDataset[]) =>
+        useBoxFraming({ store, isReady: true, layers: layers.map(boxedEsri), mapConfig: null, onFramed: jest.fn() }),
+      { initialProps: [esri()] }
+    );
+    await settle();
+    expect(fits(dispatched)).toEqual([zeeland]);
+
+    // Another year of the same service is the same layer.
+    rerender([esri({ mosaicRule: '{"where":"Year=2023"}' })]);
+    emit();
+    await settle();
+    expect(fits(dispatched)).toEqual([zeeland]);
+  });
+
+  it('leaves an ArcGIS service the saved view shows, and one with no box', async () => {
+    const { store, dispatched } = fakeStore({ latitude: 52, longitude: 4.4, zoom: 9 }, ['grafana-C-esri']);
+    const service: EsriDataset = { id: 'grafana-C-esri', label: 'services', serviceUrl: 'https://x/MapServer' };
+    renderHook(() =>
+      useBoxFraming({
+        store,
+        isReady: true,
+        layers: [boxedEsri({ ...service, bbox: [3.7539, 51.638, 5.0329, 52.3354] })],
+        mapConfig: savedOver(52, 4.4, 9),
+        onFramed: jest.fn(),
+      })
+    );
+    renderHook(() =>
+      useBoxFraming({ store, isReady: true, layers: [boxedEsri(service)], mapConfig: null, onFramed: jest.fn() })
+    );
+    await settle();
+
+    expect(fits(dispatched)).toEqual([]);
   });
 
   it('frames a WMS and tiles arriving together on the union of their boxes', async () => {
