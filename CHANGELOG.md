@@ -36,6 +36,10 @@ release documents what changed since the one before it.
 - **A split map's loading bar goes.** A swipe or dual map with a 3D Tile layer on one side showed
   "Loading..." for ever: the other side hides the layer, and a hidden 3D Tile layer never
   traversed its tileset, so it never said it was loaded. A hidden one now does.
+- **kepler.gl 3.3.0-alpha.25.** Video export writes WebM in the browser (mediabunny, MPL-2.0),
+  at up to 4K, with annotations in the picture; Light & Shadow gets shadow map resolution presets
+  (Auto, the default, draws as before); the globe keeps its labels, rulers and point sizes while it
+  turns, and the Donut layer hides rings on its far side.
 - **kepler.gl 3.3.0-alpha.24.** Light & Shadow turned on after the map has loaded casts its
   shadows; before, a map saved with the effect off showed none until it was reloaded with it on.
 - **kepler.gl 3.3.0-alpha.23.** Light & Shadow can animate its date and time over a range of its
