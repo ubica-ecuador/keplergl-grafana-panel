@@ -42,7 +42,8 @@ release documents what changed since the one before it.
   corner icon), each frame's notices of severity warning or error (the Spatial Catalog's "… is no
   longer in the catalog", "the service refused the time range"; info notices stay in the icon), and
   each query whose layer the panel cannot draw from its columns (a `tiles_url` with no `{z}/{x}/{y}`,
-  a PMTiles archive whose header cannot be read). What was closed stays closed across refreshes;
+  a PMTiles archive whose header cannot be read, a catalog's service row with no `tiles_url`,
+  `esri_url` or `wms_url`, named by its protocol and title). What was closed stays closed across refreshes;
   a new notice, or one that comes back, shows. The raster tile server and Geomap notices sit in the
   same strip, no longer over the side panel.
 - **Map tiles from a query.** A row with a `tiles_url`, a `{z}/{x}/{y}` template, is drawn as raster

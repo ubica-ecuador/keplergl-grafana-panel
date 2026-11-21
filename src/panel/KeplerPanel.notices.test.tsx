@@ -65,6 +65,25 @@ describe('KeplerPanel’s notices', () => {
     expect(screen.getByTestId('map')).toHaveAttribute('data-answered', 'true');
   });
 
+  it('say a catalog’s service row the map draws nothing of', () => {
+    // IGN's elevation WMTS: `image/x-bil`, not a picture, so the catalog gives no tile address for it.
+    const services = toDataFrame({
+      refId: 'A',
+      name: 'services',
+      fields: [
+        { name: 'entry', type: FieldType.string, values: ['ign-rge-alti'] },
+        { name: 'title', type: FieldType.string, values: ['RGE ALTI'] },
+        { name: 'service', type: FieldType.string, values: ['wmts'] },
+        { name: 'url', type: FieldType.string, values: ['https://data.geopf.fr/wmts'] },
+        { name: 'layer', type: FieldType.string, values: ['ELEVATION.ELEVATIONGRIDCOVERAGE'] },
+        { name: 'tiles_bbox', type: FieldType.string, values: ['-5.15 41.33 9.57 51.10'] },
+      ],
+    });
+    panel({ series: [services] });
+
+    expect(screen.getByText(/services \(query A\) gives a WMTS service \(RGE ALTI\) with nothing/)).toBeInTheDocument();
+  });
+
   it('tell the map the queries have not answered while they run', () => {
     panel({ state: LoadingState.Loading });
 

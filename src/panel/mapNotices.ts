@@ -1,6 +1,8 @@
 import type { DataFrame } from '@grafana/data';
 
+import { detectFields, type FieldRoleOverrides, type FieldRoles, resolveRoles } from '../data/detectFields';
 import { queryName } from '../data/rasterDataset';
+import { serviceKindOf } from '../data/serviceKind';
 
 /**
  * What the map says over itself about its queries (`MapNotices.tsx`).
@@ -18,7 +20,8 @@ import { queryName } from '../data/rasterDataset';
  *   writes those about anything — a count, a conversion, a limit it kept — and
  *   on every refresh of every panel they would be noise over the map.
  * - **A layer the panel cannot draw from its columns**: tiles it does not draw
- *   yet (`framesToXyz`'s `onUndrawn`).
+ *   yet (`framesToXyz`'s `onUndrawn`), and a catalog's service row that gives
+ *   nothing to draw at all (`undrawnServiceNotices`).
  *
  * Pure, so what is said and how it is worded can be tested without a map.
  */
@@ -62,6 +65,70 @@ export function frameNotices(frames: readonly DataFrame[]): MapNotice[] {
     }
   });
   return notices;
+}
+
+/**
+ * Each query whose rows name a map service of which the map draws nothing, as
+ * a warning: the Spatial Catalog's Services row of a WMTS layer whose format is
+ * not a picture (an elevation in `image/x-bil`) comes with no `tiles_url`,
+ * `esri_url` or `wms_url`, only its protocol in `service`, its address and its
+ * title, and the map stayed empty without a word.
+ *
+ * A query is said when it has a `service` column with a value, no row names a
+ * service the map draws (`serviceKindOf`), and nothing else in it is drawn: no
+ * coordinates, geometry, cells or places, no Zarr store. Named by its first
+ * row with a protocol, and that row's `title`.
+ */
+export function undrawnServiceNotices(
+  frames: readonly DataFrame[],
+  overrides: Record<string, FieldRoleOverrides> = {}
+): MapNotice[] {
+  const notices: MapNotice[] = [];
+  frames.forEach((frame, index) => {
+    const services = frame.fields.find((field) => field.name === 'service');
+    const row = services ? services.values.findIndex(named) : -1;
+    if (!services || row < 0) {
+      return;
+    }
+    const refId = frame.refId ?? `${index}`;
+    const roles = resolveRoles(detectFields(frame), overrides[refId]);
+    if (serviceKindOf(frame, roles) !== null || drawsRows(roles)) {
+      return;
+    }
+    const title = frame.fields.find((field) => field.name === 'title')?.values[row];
+    notices.push({
+      severity: 'warning',
+      text:
+        `${queryName(frame, refId)} gives a ${protocolName(String(services.values[row]))} service` +
+        `${named(title) ? ` (${String(title).trim()})` : ''} with nothing this map draws: ` +
+        'no tiles_url, no esri_url, no wms_url with its wms_layer.',
+    });
+  });
+  return notices;
+}
+
+/** Whether a query's rows are drawn by themselves, a service or not: they say where they are. */
+function drawsRows(roles: FieldRoles): boolean {
+  return Boolean(
+    (roles.latitude && roles.longitude) ||
+    (roles.originLat && roles.originLng) ||
+    roles.geometry ||
+    roles.h3 ||
+    roles.originH3 ||
+    roles.geohash ||
+    roles.lookup ||
+    roles.zarrUrl
+  );
+}
+
+/** A protocol as people write it: `wmts` is WMTS; a longer name stays as the catalog gives it. */
+function protocolName(protocol: string): string {
+  const name = protocol.trim();
+  return /^[a-z0-9]{2,6}$/i.test(name) ? name.toUpperCase() : name;
+}
+
+function named(value: unknown): boolean {
+  return typeof value === 'string' && value.trim() !== '';
 }
 
 /**

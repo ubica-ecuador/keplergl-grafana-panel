@@ -1,6 +1,6 @@
 import { FieldType, toDataFrame } from '@grafana/data';
 
-import { frameNotices, orderNotices, queryErrorNotices } from './mapNotices';
+import { frameNotices, orderNotices, queryErrorNotices, undrawnServiceNotices } from './mapNotices';
 
 describe('queryErrorNotices', () => {
   it('names the query and says what it said, the data source’s own message first', () => {
@@ -81,5 +81,72 @@ describe('orderNotices', () => {
     const error = { severity: 'error' as const, text: 'e' };
 
     expect(orderNotices([warning, error], [warning])).toEqual([error, warning]);
+  });
+});
+
+describe('undrawnServiceNotices', () => {
+  /** A Spatial Catalog Services frame: every column on every row, empty where the service is another kind. */
+  const services = (rows: Array<Record<string, string | null>>, refId = 'A') => {
+    const columns = ['entry', 'title', 'service', 'url', 'layer', 'wms_url', 'wms_layer', 'tiles_url', 'esri_url'];
+    return toDataFrame({
+      refId,
+      name: 'services',
+      fields: [
+        ...columns.map((name) => ({ name, type: FieldType.string, values: rows.map((row) => row[name] ?? null) })),
+        { name: 'tiles_bbox', type: FieldType.string, values: rows.map(() => '-5.15 41.33 9.57 51.10') },
+      ],
+    });
+  };
+  /** IGN's elevation WMTS: its format is `image/x-bil`, not a picture, so the catalog gives no tile address. */
+  const ELEVATION = {
+    entry: 'ign-rge-alti',
+    title: 'RGE ALTI',
+    service: 'wmts',
+    url: 'https://data.geopf.fr/wmts',
+    layer: 'ELEVATION.ELEVATIONGRIDCOVERAGE',
+  };
+
+  it('says a service row that gives nothing this map draws, by its protocol and title', () => {
+    expect(undrawnServiceNotices([services([ELEVATION])])).toEqual([
+      {
+        severity: 'warning',
+        text:
+          'services (query A) gives a WMTS service (RGE ALTI) with nothing this map draws: ' +
+          'no tiles_url, no esri_url, no wms_url with its wms_layer.',
+      },
+    ]);
+  });
+
+  it('says it too when the frame has no service columns at all', () => {
+    const bare = toDataFrame({
+      refId: 'B',
+      fields: Object.entries(ELEVATION).map(([name, value]) => ({ name, type: FieldType.string, values: [value] })),
+    });
+    expect(undrawnServiceNotices([bare])).toEqual([
+      expect.objectContaining({
+        text: expect.stringMatching(/^Query B gives a WMTS service \(RGE ALTI\) with nothing/),
+      }),
+    ]);
+  });
+
+  it('says nothing when a row names a service the map draws', () => {
+    const tiles = { ...ELEVATION, title: 'Plan IGN', tiles_url: 'https://data.geopf.fr/wmts/{z}/{x}/{y}.png' };
+    const wms = { ...ELEVATION, service: 'wms', wms_url: 'https://data.geopf.fr/wms-r/wms', wms_layer: 'CASSINI' };
+    const esri = { ...ELEVATION, service: 'esri', esri_url: 'https://x/arcgis/rest/services/A/MapServer' };
+    expect(undrawnServiceNotices([services([ELEVATION, tiles]), services([wms], 'B'), services([esri], 'C')])).toEqual(
+      []
+    );
+  });
+
+  it('says nothing of rows the map draws by themselves, nor of a query with no protocol', () => {
+    const placed = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'service', type: FieldType.string, values: ['bus'] },
+        { name: 'latitude', type: FieldType.number, values: [-2.9] },
+        { name: 'longitude', type: FieldType.number, values: [-79] },
+      ],
+    });
+    expect(undrawnServiceNotices([placed, services([{ ...ELEVATION, service: null }], 'B')])).toEqual([]);
   });
 });

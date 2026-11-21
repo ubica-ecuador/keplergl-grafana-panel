@@ -194,7 +194,10 @@ panel and its controls:
   answer is not what was asked (the Spatial Catalog's "… is no longer in the catalog", "the service
   refused the time range"). Info notices stay in the corner icon only;
 - each query whose layer the panel **cannot draw from its columns**: vector tiles (`mvt`), a PMTiles
-  archive in `tiles_url`, a `tiles_url` with no `{z}`, `{x}` and `{y}`.
+  archive in `tiles_url`, a `tiles_url` with no `{z}`, `{x}` and `{y}`;
+- each query of a catalog's **services that gives nothing to draw**: a `service` column naming a
+  protocol, and no row with a `tiles_url`, an `esri_url` or a `wms_url` with its `wms_layer` (a WMTS
+  layer whose format is not a picture, an elevation in `image/x-bil`), nor anything else to draw.
 
 One box, closed with its ✕. What was closed stays closed across refreshes; a new notice shows on its
 own, and one that goes away and comes back — a query that fails again — shows again.

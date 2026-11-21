@@ -19,7 +19,7 @@ import { DEFAULT_CLICK_AREA_METRES } from './clickArea';
 import { LazyKeplerMap } from './LazyKeplerMap';
 import { RasterServerNotice } from './RasterServerNotice';
 import { MapNotices } from './MapNotices';
-import { frameNotices, orderNotices, queryErrorNotices } from './mapNotices';
+import { frameNotices, orderNotices, queryErrorNotices, undrawnServiceNotices } from './mapNotices';
 import { useInterpolatedOption } from './useInterpolatedOption';
 import { usePmtilesKinds } from './usePmtilesKinds';
 import { useStableValue } from './useStableValue';
@@ -278,9 +278,10 @@ export function KeplerPanel(props: Props) {
         orderNotices(
           queryErrorNotices(data.errors, queryError),
           frameNotices(data.series),
-          [...undrawnTiles, ...unreadArchives].map((text) => ({ severity: 'warning' as const, text }))
+          [...undrawnTiles, ...unreadArchives].map((text) => ({ severity: 'warning' as const, text })),
+          undrawnServiceNotices(series, fieldMappings)
         ),
-      [data.errors, queryError, data.series, undrawnTiles, unreadArchives]
+      [data.errors, queryError, data.series, undrawnTiles, unreadArchives, series, fieldMappings]
     )
   );
 
