@@ -1,7 +1,7 @@
 import { registerEntry } from '@kepler.gl/actions';
 
 import { KEPLER_INSTANCE_ID } from './constants';
-import { captureMapConfig, loadDatasets, loadXyz, refreshXyz } from './keplerAdapter';
+import { captureMapConfig, loadDatasets, loadXyz, refreshXyz, xyzProtoDataset } from './keplerAdapter';
 import { createKeplerStore } from './keplerStore';
 import { xyzSavedDataset } from '../data/xyzTiles';
 import type { XyzDataset } from '../data/xyzDataset';
@@ -86,6 +86,105 @@ describe('a query’s tiles on the map', () => {
     const metadata = visStateOf(store).datasets['grafana-A-tiles'].metadata;
     expect(metadata).toMatchObject({ url: other.url, maxZoom: 8, tilesBbox: PDOK.bbox });
     expect(metadata).not.toHaveProperty('zoomIds');
+
+    refreshXyz(store, store.dispatch, []);
+    await settle();
+    expect(visStateOf(store).datasets['grafana-A-tiles']).toBeUndefined();
+  });
+});
+
+describe('a query’s vector tiles and archives on the map', () => {
+  const BAG: XyzDataset = {
+    id: 'grafana-A-tiles',
+    label: '3D BAG',
+    url: 'https://tiles.test/3dbag/{z}/{x}/{y}.mvt',
+    format: 'mvt',
+    metadataUrl: 'https://tiles.test/3dbag.json',
+    minZoom: 10,
+    maxZoom: 15,
+    bbox: [3.2, 50.7, 7.3, 53.6],
+  };
+  const ARCHIVE: XyzDataset = {
+    id: 'grafana-B-tiles',
+    label: 'Manzanero',
+    url: 'https://data.test/manzanero.pmtiles',
+    format: 'pmtiles',
+    pmtilesKind: 'vector',
+    bbox: [-3.9, 40.3, -3.5, 40.6],
+  };
+  const realFetch = global.fetch;
+  beforeEach(() => {
+    // kepler reads the TileJSON and the archive itself: nothing answers here, and it draws without.
+    global.fetch = jest.fn().mockRejectedValue(new Error('offline')) as never;
+    // kepler logs each read that failed.
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+  afterEach(() => {
+    global.fetch = realFetch;
+    jest.restoreAllMocks();
+  });
+
+  it('become kepler’s own vector tilesets, with its Vector Tile layer in the look of a query’s tiles', async () => {
+    const store = newMap();
+    loadXyz(store.dispatch, [BAG, ARCHIVE]);
+    await settle();
+
+    const { datasets, layers } = visStateOf(store);
+    expect(datasets['grafana-A-tiles']).toMatchObject({
+      type: 'vector-tile',
+      metadata: {
+        remoteTileFormat: 'mvt',
+        tilesetDataUrl: BAG.url,
+        tilesetMetadataUrl: BAG.metadataUrl,
+        tilesBbox: BAG.bbox,
+        tilesMinZoom: 10,
+        tilesMaxZoom: 15,
+      },
+    });
+    expect(datasets['grafana-B-tiles']).toMatchObject({
+      type: 'vector-tile',
+      metadata: { remoteTileFormat: 'pmtiles', tilesetDataUrl: ARCHIVE.url, tilesetMetadataUrl: ARCHIVE.url },
+    });
+    const drawn = layers.filter((l) => l.config.dataId.endsWith('-tiles')) as unknown as Array<{
+      type: string;
+      config: { visConfig: Record<string, unknown> };
+    }>;
+    expect(drawn.map((l) => l.type)).toEqual(['vectorTile', 'vectorTile']);
+    expect(drawn[0].config.visConfig).toMatchObject({ stroked: true, strokeWidth: 1, radius: 4, opacity: 0.6 });
+  });
+
+  it('are left out of a save', async () => {
+    const store = newMap();
+    loadXyz(store.dispatch, [BAG, ARCHIVE]);
+    await settle();
+    expect(captureMapConfig(store)?.datasets ?? []).toEqual([]);
+  });
+
+  it('draw a picture archive as kepler’s raster tileset, the shape a raster_url archive takes', () => {
+    // Not on the store: kepler's raster layer reads the archive as soon as it is built.
+    expect(xyzProtoDataset({ ...ARCHIVE, pmtilesKind: 'raster' })).toMatchObject({
+      info: { id: 'grafana-B-tiles', type: 'raster-tile' },
+      metadata: { metadataUrl: ARCHIVE.url, pmtilesType: 'raster', tilesBbox: ARCHIVE.bbox },
+    });
+  });
+
+  it('are kept on a refresh that names the same tiles, and rebuilt as another kind when they change', async () => {
+    const store = newMap();
+    loadXyz(store.dispatch, [BAG]);
+    await settle();
+    const before = visStateOf(store).datasets['grafana-A-tiles'];
+
+    refreshXyz(store, store.dispatch, [{ ...BAG }]);
+    await settle();
+    expect(visStateOf(store).datasets['grafana-A-tiles']).toBe(before);
+
+    // The same query now naming pictures: another dataset type, another layer.
+    const pictures: XyzDataset = { id: 'grafana-A-tiles', label: '3D BAG', url: PDOK.url, bbox: null };
+    refreshXyz(store, store.dispatch, [pictures]);
+    await settle();
+    const { datasets, layers } = visStateOf(store);
+    expect(datasets['grafana-A-tiles'].type).toBe('xyz-tiles');
+    expect(layers.filter((l) => l.config.dataId === 'grafana-A-tiles').map((l) => l.type)).toEqual(['xyz-tiles']);
 
     refreshXyz(store, store.dispatch, []);
     await settle();

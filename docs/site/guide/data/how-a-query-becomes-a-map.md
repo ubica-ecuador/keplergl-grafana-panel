@@ -164,9 +164,21 @@ SELECT 'https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:38
 
 A `tiles_bbox` does for tiles what it does for a WMS: the view is framed on it when it shows none
 of it, and the tiles are cut to it (see [Where the layer is](./wms#where-the-layer-is)); no tile
-outside it is asked for. Vector tiles (`tiles_format` `mvt`) and PMTiles archives in `tiles_url` are
-not drawn yet. One
-service per query: the first row that names one decides, and in that row a WMS wins over an Esri
+outside it is asked for.
+
+Vector tiles are the same template with `tiles_format` `mvt`, and their TileJSON in
+`tiles_metadata_url` when there is one: it names the fields, which hover and filters then offer. A
+PMTiles archive is its address (`tiles_format` `pmtiles`, or any address ending in `.pmtiles`); the
+panel reads its header first, and draws vector tiles or pictures as the archive says. Both are
+drawn by kepler's own Vector Tile and Raster Tile layers, framed and cut to the box like the
+pictures, a query's vector tiles in a look that reads on any base map:
+
+```sql
+SELECT 'https://data.source.coop/cholmes/portolan-nl/tudelft/3dbag/3dbag-lod13.pmtiles' AS tiles_url,
+       'pmtiles' AS tiles_format;
+```
+
+One service per query: the first row that names one decides, and in that row a WMS wins over an Esri
 service, which wins over tiles, which win over a raster. See
 [Field roles](../../reference/field-roles#the-tile-roles).
 

@@ -2966,11 +2966,27 @@ function readEsriDatasets(store: Store): Array<{ id: string; serviceUrl?: string
 }
 
 /**
- * A query's tiles in the shape the panel's XYZ layer reads: the dataset a
- * Geomap's XYZ layer becomes (`xyzSavedDataset`), with what a catalog adds —
- * the names of the zoom levels and the box.
+ * A query's tiles as the dataset that draws them.
+ *
+ * Pictures: the shape the panel's XYZ layer reads, the dataset a Geomap's XYZ
+ * layer becomes (`xyzSavedDataset`), with what a catalog adds — the names of
+ * the zoom levels and the box.
+ *
+ * Vector tiles and archives: kepler's own, in the shape its Add Data →
+ * Tileset produces (`getDatasetAttributesFromVectorTile`, `_onTilesetAdded`),
+ * so kepler reads the TileJSON or the archive's header for the fields and the
+ * zoom levels itself and draws them with its Vector Tile layer; a picture
+ * archive with its Raster Tile layer, as a `raster_url` archive is
+ * (`rasterMetadata`). What the query adds rides beside, under keys kepler does
+ * not write over when its metadata comes back: the box (`tilesBbox`), the zoom
+ * levels the query gave (`tilesMinZoom`, `tilesMaxZoom`, which
+ * `queryTileLayers.ts` hands the layer where kepler found none) and what the
+ * refresh compares (`tilesIdentity`).
  */
-function xyzProtoDataset(xyz: XyzDataset) {
+export function xyzProtoDataset(xyz: XyzDataset) {
+  if (xyz.format) {
+    return queryTilesetProtoDataset(xyz);
+  }
   const metadata: XyzTileMetadata = {
     url: xyz.url,
     ...(xyz.minZoom !== undefined ? { minZoom: xyz.minZoom } : {}),
@@ -2982,6 +2998,42 @@ function xyzProtoDataset(xyz: XyzDataset) {
     info: { id: xyz.id, label: xyz.label, type: XYZ_TILE_TYPE, format: 'rows' },
     data: { fields: [], rows: [] },
     metadata,
+    disableDataOperation: true,
+  } as unknown as ProtoDataset;
+}
+
+/** The filters a vector tileset takes: kepler's list, strings included, as its Add Data gives it. */
+const QUERY_VECTOR_FILTER_TYPES = [...VECTOR_TILE_FILTER_TYPES, ALL_FIELD_TYPES.string];
+
+function queryTilesetProtoDataset(xyz: XyzDataset) {
+  const ours = {
+    ...(xyz.bbox ? { tilesBbox: xyz.bbox } : {}),
+    ...(xyz.minZoom !== undefined ? { tilesMinZoom: xyz.minZoom } : {}),
+    ...(xyz.maxZoom !== undefined ? { tilesMaxZoom: xyz.maxZoom } : {}),
+    tilesIdentity: xyzIdentity(xyz),
+  };
+  if (xyz.format === 'pmtiles' && xyz.pmtilesKind === 'raster') {
+    return {
+      info: { id: xyz.id, label: xyz.label, type: RASTER_TILE_TYPE, format: 'rows' },
+      data: { fields: [], rows: [] },
+      metadata: { metadataUrl: xyz.url, pmtilesType: PMTilesType.RASTER, ...ours },
+      disableDataOperation: true,
+    } as unknown as ProtoDataset;
+  }
+  const archive = xyz.format === 'pmtiles';
+  // An archive describes itself; vector tiles only when the query names their TileJSON.
+  const metadataUrl = archive ? (xyz.metadataUrl ?? xyz.url) : xyz.metadataUrl;
+  return {
+    info: { id: xyz.id, label: xyz.label, type: VECTOR_TILE_TYPE, format: 'rows' },
+    data: { fields: [], rows: [] },
+    metadata: {
+      type: REMOTE_TILE,
+      remoteTileFormat: archive ? RemoteTileFormat.PMTILES : RemoteTileFormat.MVT,
+      tilesetDataUrl: xyz.url,
+      ...(metadataUrl ? { tilesetMetadataUrl: metadataUrl } : {}),
+      ...ours,
+    },
+    supportedFilterTypes: QUERY_VECTOR_FILTER_TYPES,
     disableDataOperation: true,
   } as unknown as ProtoDataset;
 }
@@ -3011,28 +3063,50 @@ export function refreshXyz(store: Store, dispatch: Dispatch, layers: XyzDataset[
     dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(id)));
   }
 
+  const types = new Map(Object.entries(getVisState(store)?.datasets ?? {}).map(([id, dataset]) => [id, dataset.type]));
+  const anew: XyzDataset[] = [];
   for (const xyz of replace) {
+    const proto = xyzProtoDataset(xyz) as unknown as { info: { type: string } };
+    // Tiles that change kind — pictures become vector tiles — need another
+    // layer: kepler would keep the old one on a dataset it cannot draw.
+    if (types.get(xyz.id) !== proto.info.type) {
+      dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(xyz.id)));
+      anew.push(xyz);
+      continue;
+    }
     dispatch(
       wrapTo(
         KEPLER_INSTANCE_ID,
         replaceDataInMap({
           datasetToReplaceId: xyz.id,
-          datasetToUse: xyzProtoDataset(xyz),
+          datasetToUse: proto as unknown as ProtoDataset,
           options: { centerMap: false, keepExistingConfig: true },
         })
       )
     );
   }
 
-  loadXyz(dispatch, add);
+  loadXyz(dispatch, [...anew, ...add]);
 }
 
-/** The tile datasets kepler holds, the Geomap ones too, as the identity the refresh compares on. */
+/**
+ * The tile datasets kepler holds, the Geomap ones too, as the identity the
+ * refresh compares on: the pictures by what they carry, a query's vector
+ * tiles and archives by the identity they were built with (kepler writes its
+ * own zoom levels over theirs once it has read the tileset).
+ */
 function readXyzDatasets(store: Store): Array<{ id: string; identity: string }> {
   return Object.entries(getVisState(store)?.datasets ?? {})
-    .filter(([, dataset]) => dataset.type === XYZ_TILE_TYPE)
+    .filter(
+      ([id, dataset]) =>
+        dataset.type === XYZ_TILE_TYPE ||
+        (isPanelXyzId(id) && (dataset.type === VECTOR_TILE_TYPE || dataset.type === RASTER_TILE_TYPE))
+    )
     .map(([id, dataset]) => {
-      const metadata = dataset.metadata as Partial<XyzTileMetadata> | undefined;
+      const metadata = dataset.metadata as (Partial<XyzTileMetadata> & { tilesIdentity?: string }) | undefined;
+      if (typeof metadata?.tilesIdentity === 'string') {
+        return { id, identity: metadata.tilesIdentity };
+      }
       return {
         id,
         identity: xyzIdentity({

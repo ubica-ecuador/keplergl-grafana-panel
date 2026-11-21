@@ -117,11 +117,13 @@ export interface FieldRoles {
    * service has, and the service's own name for each level when it is not the
    * number (a WMTS's tile matrices: PDOK's are "00" to "19"), as
    * `"z:name,z:name"`. The Spatial Catalog's Services frame gives every map
-   * service that is not a WMS in these columns. Only raster tiles are drawn
-   * (`xyzDataset.ts`).
+   * service that is not a WMS in these columns (`xyzDataset.ts`). The
+   * metadata url is where vector tiles describe themselves: a TileJSON, or the
+   * PMTiles archive itself.
    */
   tilesUrl?: string;
   tilesFormat?: string;
+  tilesMetadataUrl?: string;
   tilesMinZoom?: string;
   tilesMaxZoom?: string;
   tilesZoomIds?: string;
@@ -314,6 +316,7 @@ export const NAME_CANDIDATES: Record<string, string[]> = {
   // `tiles` and `format` are words any table uses.
   tilesUrl: ['tiles_url', 'xyz_url'],
   tilesFormat: ['tiles_format'],
+  tilesMetadataUrl: ['tiles_metadata_url'],
   tilesMinZoom: ['tiles_min_zoom'],
   tilesMaxZoom: ['tiles_max_zoom'],
   tilesZoomIds: ['tiles_zoom_ids'],

@@ -7,7 +7,7 @@ import type { MapNotice } from './mapNotices';
 const failed: MapNotice = { severity: 'error', text: 'Query A: The service refused the time range' };
 const vector: MapNotice = {
   severity: 'warning',
-  text: 'services (query B) gives vector tiles (mvt), which this map does not draw yet.',
+  text: 'services (query B) gives a tiles_url with no {z}, {x} and {y} in it, so there is no tile to ask for.',
 };
 
 describe('MapNotices', () => {

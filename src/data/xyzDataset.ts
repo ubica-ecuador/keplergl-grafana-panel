@@ -33,6 +33,20 @@ export interface XyzDataset {
   zoomIds?: Record<string, string>;
   /** Where the tiles have data (`tiles_bbox`), or null: framed on and cut to, as a WMS's box is. */
   bbox: WmsBox | null;
+  /**
+   * What the tiles are when they are not pictures: vector tiles (`mvt`), or a
+   * PMTiles archive (`pmtiles`), whose `url` is the archive. Absent for
+   * pictures, the plain `{z}/{x}/{y}` case.
+   */
+  format?: 'mvt' | 'pmtiles';
+  /** Where vector tiles describe themselves (`tiles_metadata_url`): a TileJSON, or the archive. */
+  metadataUrl?: string;
+  /**
+   * What a PMTiles archive holds, as its header says (`pmtilesHeader.ts`):
+   * vector tiles or pictures. Unknown until the header is read, and an archive
+   * is not drawn before.
+   */
+  pmtilesKind?: 'vector' | 'raster';
 }
 
 /** What a query's tiles are: pictures, vector tiles, or a PMTiles archive. */
@@ -66,13 +80,18 @@ export function tilesFormatOf(format: unknown, url: string): TilesFormat | strin
   if (given) {
     return given;
   }
-  if (/\.pmtiles([?#]|$)/i.test(url)) {
+  if (isPmtilesUrl(url)) {
     return 'pmtiles';
   }
   if (/\.(mvt|pbf)([?#]|$)/i.test(url)) {
     return 'mvt';
   }
   return 'raster';
+}
+
+/** Whether an address is a PMTiles archive: `.pmtiles` at the end of its path, as kepler's `isPMTilesUrl` reads it. */
+export function isPmtilesUrl(url: string): boolean {
+  return /\.pmtiles([?#]|$)/i.test(url);
 }
 
 /** Whether a template names a tile: a zoom, a column and a row. */
@@ -107,17 +126,19 @@ export function parseZoomIds(value: unknown): Record<string, string> | undefined
 }
 
 /**
- * Turns the queries that name raster tiles into tile descriptors.
+ * Turns the queries that name map tiles into tile descriptors.
  *
  * One descriptor per query, from its first row with a `tiles_url`, never one
  * per row: the rule the WMS and Image Service roads follow. The rows stay a
  * table on the map, as a WMS query's do. A query whose first service is a WMS
  * or an Image Service draws that instead (`serviceKindOf`).
  *
- * Only raster tiles. Vector tiles (`mvt`) and PMTiles archives are left off
- * the map, and so is a `tiles_url` that is no `{z}/{x}/{y}` template; each
- * such query is told to `onUndrawn`, worded for the notice over the map
- * (`undrawnTilesText`), since a map that shows nothing reads as broken.
+ * Pictures and vector tiles (`mvt`) are a `{z}/{x}/{y}` template; a PMTiles
+ * archive is its address, and what it holds is read from its header before
+ * it is drawn (`usePmtilesKinds`). A template that names no tile, and a format
+ * the panel does not know, are left off the map; each such query is told to
+ * `onUndrawn`, worded for the notice over the map (`undrawnTilesText`), since
+ * a map that shows nothing reads as broken.
  */
 export function framesToXyz(
   frames: DataFrame[],
@@ -141,15 +162,24 @@ export function framesToXyz(
     const url = String(urls.values[row]).trim();
     const at = (name: string | undefined) => column(name)?.values[row];
 
-    const format = tilesFormatOf(at(roles.tilesFormat), url);
-    if (format !== 'raster' || !isTileTemplate(url)) {
+    // An address that is an archive is one whatever the column says: kepler,
+    // which reads it, tells the two apart by the address alone.
+    const given = tilesFormatOf(at(roles.tilesFormat), url);
+    const format = isPmtilesUrl(url) ? 'pmtiles' : given;
+    if (
+      !(format === 'raster' || format === 'mvt' || format === 'pmtiles') ||
+      (format !== 'pmtiles' && !isTileTemplate(url))
+    ) {
       opts.onUndrawn?.(undrawnTilesText(queryName(frame, refId), format));
       return;
     }
 
     const minZoom = zoomOf(at(roles.tilesMinZoom));
     const maxZoom = zoomOf(at(roles.tilesMaxZoom));
-    const zoomIds = parseZoomIds(at(roles.tilesZoomIds));
+    // A vector tile's level is its number: the names are a WMTS's, of pictures.
+    const zoomIds = format === 'raster' ? parseZoomIds(at(roles.tilesZoomIds)) : undefined;
+    const metadata = at(roles.tilesMetadataUrl);
+    const metadataUrl = format !== 'raster' && typeof metadata === 'string' && metadata.trim() ? metadata.trim() : '';
     datasets.push({
       id: xyzDatasetId(refId),
       label: frame.name ?? `Query ${refId}`,
@@ -158,6 +188,8 @@ export function framesToXyz(
       ...(maxZoom !== undefined ? { maxZoom } : {}),
       ...(zoomIds ? { zoomIds } : {}),
       bbox: parseWmsBox(at(roles.tilesBbox)),
+      ...(format !== 'raster' ? { format } : {}),
+      ...(metadataUrl ? { metadataUrl } : {}),
     });
   });
 
@@ -167,11 +199,8 @@ export function framesToXyz(
 /** Why a query's tiles are not on the map, as the notice over it says. */
 export function undrawnTilesText(query: string, format: string): string {
   switch (format) {
-    case 'mvt':
-      return `${query} gives vector tiles (mvt), which this map does not draw yet.`;
-    case 'pmtiles':
-      return `${query} gives a PMTiles archive in tiles_url, which this map does not draw yet.`;
     case 'raster':
+    case 'mvt':
       return `${query} gives a tiles_url with no {z}, {x} and {y} in it, so there is no tile to ask for.`;
     default:
       return `${query} gives tiles in a format this map does not know (tiles_format "${format}").`;

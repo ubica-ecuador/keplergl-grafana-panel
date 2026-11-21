@@ -103,7 +103,7 @@ describe('keplerSuggestions', () => {
     ]);
   });
 
-  it('is the best fit for raster tiles, and nothing for vector tiles it does not draw yet', () => {
+  it('is the best fit for map tiles, pictures, vector tiles and archives, and nothing for a template with no tile', () => {
     const tiles = (url: string, format: string) =>
       frame([
         { name: 'tiles_url', type: FieldType.string, values: [url] },
@@ -111,7 +111,9 @@ describe('keplerSuggestions', () => {
       ]);
 
     expect(score(tiles('https://t.test/{z}/{x}/{y}.png', 'raster'))).toEqual([VisualizationSuggestionScore.Best]);
-    expect(score(tiles('https://t.test/{z}/{x}/{y}.mvt', 'mvt'))).toBeUndefined();
+    expect(score(tiles('https://t.test/{z}/{x}/{y}.mvt', 'mvt'))).toEqual([VisualizationSuggestionScore.Best]);
+    expect(score(tiles('https://t.test/a.pmtiles', 'pmtiles'))).toEqual([VisualizationSuggestionScore.Best]);
+    expect(score(tiles('https://t.test/tiles.mvt', 'mvt'))).toBeUndefined();
   });
 
   it('takes the best frame of several, and skips empty ones', () => {

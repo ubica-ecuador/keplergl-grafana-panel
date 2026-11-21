@@ -356,6 +356,9 @@ export function splitXyzRefresh<
     maxZoom?: number;
     zoomIds?: Record<string, string>;
     bbox?: readonly number[] | null;
+    format?: string;
+    metadataUrl?: string;
+    pmtilesKind?: string;
   },
 >(
   wanted: T[],
@@ -385,19 +388,29 @@ export function splitXyzRefresh<
   return { add, replace, keep, remove };
 }
 
-/** What makes two tile datasets the same: every key of what they carry, in one string. */
+/**
+ * What makes two tile datasets the same: every key of what they carry, in one
+ * string. Vector tiles and archives add what they are and where they describe
+ * themselves; pictures read as they always did.
+ */
 export function xyzIdentity(dataset: {
   url?: string;
   minZoom?: number;
   maxZoom?: number;
   zoomIds?: Record<string, string>;
   bbox?: readonly number[] | null;
+  format?: string;
+  metadataUrl?: string;
+  pmtilesKind?: string;
 }): string {
-  return JSON.stringify([
+  const base = [
     dataset.url ?? '',
     dataset.minZoom ?? null,
     dataset.maxZoom ?? null,
     dataset.zoomIds ?? null,
     dataset.bbox ?? null,
-  ]);
+  ];
+  return JSON.stringify(
+    dataset.format ? [...base, dataset.format, dataset.metadataUrl ?? null, dataset.pmtilesKind ?? null] : base
+  );
 }

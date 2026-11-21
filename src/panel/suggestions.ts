@@ -49,7 +49,7 @@ export const PREVIEW_OPTIONS: Partial<KeplerPanelOptions> = { showSidePanel: fal
  *
  * `Best` for a place told plainly: latitude and longitude by a geographic name,
  * a geometry, an H3 cell, a geohash, both ends of a flow, a Zarr store, an
- * ArcGIS Image Service or `{z}/{x}/{y}` raster tiles. `OK` when the only hint is weaker: coordinates called
+ * ArcGIS Image Service, or map tiles (`{z}/{x}/{y}` pictures or vector tiles, a PMTiles archive). `OK` when the only hint is weaker: coordinates called
  * `x` and `y`, which an XY chart's data is called too, or a PMTiles raster or
  * WMS link, whose candidate names (`href`, `layer`) are common words.
  *
@@ -110,7 +110,7 @@ function frameScore(frame: DataFrame): VisualizationSuggestionScore | undefined 
   if (shaped(roles.geometry) || field(roles.h3) || field(roles.geohash) || describesFlow(roles)) {
     return VisualizationSuggestionScore.Best;
   }
-  // Raster tiles by the catalog's own column name, which nothing else is called.
+  // Map tiles by the catalog's own column name, which nothing else is called.
   if (roles.esriUrl || (roles.tilesUrl && framesToXyz([frame]).length > 0)) {
     return VisualizationSuggestionScore.Best;
   }

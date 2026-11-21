@@ -85,14 +85,52 @@ describe('framesToXyz', () => {
     expect(tiles.url).toBe(PDOK);
   });
 
-  it('leaves vector tiles, a PMTiles archive and an address with no tile in it off the map', () => {
-    expect(framesToXyz([servicesFrame([{ tiles_url: BAG, tiles_format: 'mvt' }])])).toEqual([]);
-    expect(framesToXyz([servicesFrame([{ tiles_url: 'https://x.test/a.pmtiles', tiles_format: 'pmtiles' }])])).toEqual(
-      []
-    );
+  it('draws vector tiles with their TileJSON, and a PMTiles archive, which describes itself', () => {
+    const tilejson = 'https://tiles.test/3dbag-lod13.json';
+    expect(
+      framesToXyz([
+        servicesFrame([
+          {
+            tiles_url: BAG,
+            tiles_format: 'mvt',
+            tiles_metadata_url: tilejson,
+            tiles_min_zoom: 10,
+            tiles_max_zoom: 14,
+            tiles_zoom_ids: PDOK_ZOOM_IDS,
+            tiles_bbox: NETHERLANDS,
+          },
+        ]),
+      ])
+    ).toEqual([
+      {
+        id: 'grafana-A-tiles',
+        label: 'services',
+        url: BAG,
+        format: 'mvt',
+        metadataUrl: tilejson,
+        minZoom: 10,
+        maxZoom: 14,
+        bbox: [3.2, 50.7, 7.3, 53.6],
+      },
+    ]);
+
+    const archive = 'https://data.test/3dbag-lod13.pmtiles';
+    expect(
+      framesToXyz([servicesFrame([{ tiles_url: archive, tiles_format: 'pmtiles', tiles_metadata_url: archive }])])
+    ).toEqual([
+      { id: 'grafana-A-tiles', label: 'services', url: archive, format: 'pmtiles', metadataUrl: archive, bbox: null },
+    ]);
+    // Told by the address alone, and an archive whatever the column says: kepler reads it as one.
+    expect(framesToXyz([servicesFrame([{ tiles_url: archive }])])[0].format).toBe('pmtiles');
+    expect(framesToXyz([servicesFrame([{ tiles_url: archive, tiles_format: 'mvt' }])])[0].format).toBe('pmtiles');
+    expect(framesToXyz([servicesFrame([{ tiles_url: `${BAG.replace('.mvt', '.pbf')}` }])])[0].format).toBe('mvt');
+  });
+
+  it('leaves an address with no tile in it, and a format it does not know, off the map', () => {
     expect(framesToXyz([servicesFrame([{ tiles_url: 'https://x.test/tiles.png', tiles_format: 'raster' }])])).toEqual(
       []
     );
+    expect(framesToXyz([servicesFrame([{ tiles_url: 'https://x.test/tiles.mvt', tiles_format: 'mvt' }])])).toEqual([]);
     expect(framesToXyz([servicesFrame([{ tiles_url: PDOK, tiles_format: 'image/png' }])])).toEqual([]);
   });
 
@@ -106,16 +144,16 @@ describe('framesToXyz', () => {
         servicesFrame([{ tiles_url: 'https://x.test/tiles.png' }], 'C'),
         servicesFrame([{ tiles_url: PDOK, tiles_format: 'image/png' }], 'D'),
         servicesFrame([pdokRow], 'E'),
+        servicesFrame([{ tiles_url: 'https://x.test/tiles.mvt', tiles_format: 'mvt' }], 'F'),
       ],
       {},
       { onUndrawn }
     );
 
     expect(undrawn).toEqual([
-      'services (query A) gives vector tiles (mvt), which this map does not draw yet.',
-      'services (query B) gives a PMTiles archive in tiles_url, which this map does not draw yet.',
       'services (query C) gives a tiles_url with no {z}, {x} and {y} in it, so there is no tile to ask for.',
       'services (query D) gives tiles in a format this map does not know (tiles_format "image/png").',
+      'services (query F) gives a tiles_url with no {z}, {x} and {y} in it, so there is no tile to ask for.',
     ]);
   });
 

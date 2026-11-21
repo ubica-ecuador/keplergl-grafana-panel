@@ -22,6 +22,7 @@ import { ownLayerIcon } from './ownLayerIcon';
 import { buildSymbolDeckLayer, glyphInk } from './symbolDeckLayer';
 import { makeSymbolLayer, SYMBOL_TYPE } from './symbolLayer';
 import { withTile3dAltitude } from './tile3dAltitudeLayer';
+import { withQueryRasterTiles, withQueryVectorTiles } from './queryTileLayers';
 import { buildVectorFieldDeckLayer } from './vectorFieldDeckLayer';
 import { makeVectorFieldLayer } from './vectorFieldLayer';
 import { buildTimedWmsLayer } from './wmsDeckLayer';
@@ -91,6 +92,12 @@ const layerClasses = {
   // on a hill draws in mid-air — and past a certain camera does not draw at
   // all, with no error to explain it. `tile3dAltitude.ts` has the measurements.
   tile3d: withTile3dAltitude(LayerClasses.tile3d),
+  // Taught what a query's tiles carry beside kepler's metadata: the box they
+  // are cut to, the zoom levels the query gave, and for vector tiles a look
+  // that reads on any base map (`queryTileLayers.ts`). A tileset added by
+  // hand is drawn exactly as kepler draws it.
+  vectorTile: withQueryVectorTiles(LayerClasses.vectorTile),
+  rasterTile: withQueryRasterTiles(LayerClasses.rasterTile),
   // Not a repair but an addition: kepler ships no generic raster tileset —
   // `RemoteTileFormat` is mvt, pmtiles or wms, and its raster path is wired to
   // STAC and PMTiles — so a Zarr rendered by TiTiler has nothing upstream to

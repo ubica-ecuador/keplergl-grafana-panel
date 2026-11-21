@@ -43,8 +43,9 @@ thirty are autodetect-only and are marked below.
 | Esri service    | ❌     | `esri_url`, `image_service_url`, `imageserver_url`                                                                                                                              | not renamed |
 | Esri mosaic rule | ❌    | `esri_mosaic_rule`, `mosaic_rule`                                                                                                                                               | not renamed |
 | Esri render rule | ❌    | `esri_rendering_rule`, `rendering_rule`                                                                                                                                         | not renamed |
-| Tiles URL       | ❌     | `tiles_url`, `xyz_url` — a `{z}/{x}/{y}` template                                                                                                                                                               | not renamed |
+| Tiles URL       | ❌     | `tiles_url`, `xyz_url` — a `{z}/{x}/{y}` template, or a PMTiles archive                                                                                                                                         | not renamed |
 | Tiles format    | ❌     | `tiles_format` — `raster`, `mvt` or `pmtiles`                                                                                                                                                                   | not renamed |
+| Tiles metadata  | ❌     | `tiles_metadata_url` — vector tiles' TileJSON, or the archive                                                                                                                                                   | not renamed |
 | Tiles min zoom  | ❌     | `tiles_min_zoom`                                                                                                                                                                                                | not renamed |
 | Tiles max zoom  | ❌     | `tiles_max_zoom`                                                                                                                                                                                                | not renamed |
 | Tiles zoom ids  | ❌     | `tiles_zoom_ids` — `z:name` pairs, comma separated                                                                                                                                                              | not renamed |
@@ -109,21 +110,27 @@ Moving the widget re-asks the service for that date and nothing else. See
 ## The tile roles
 
 A query whose row has a `tiles_url` names map tiles: a `{z}/{x}/{y}` template (`{-y}` counts rows
-from the south, `{s}` takes the first subdomain), as the Spatial Catalog's Services frame gives any
-map service that is not a WMS. The panel makes an XYZ tile dataset of it, id `grafana-<refId>-tiles`,
-from the first row with an address, beside the ordinary row dataset; like a WMS, it needs no tile
-server and is rebuilt from the query on every load, never saved with the map.
+from the south, `{s}` takes the first subdomain) or a PMTiles archive, as the Spatial Catalog's
+Services frame gives any map service that is not a WMS. The panel makes a tile dataset of it, id
+`grafana-<refId>-tiles`, from the first row with an address, beside the ordinary row dataset; like a
+WMS, it needs no tile server and is rebuilt from the query on every load, never saved with the map.
 
-- `tiles_format`: `raster` is drawn. `mvt` (vector tiles) and `pmtiles` are not drawn yet. Without
-  the column, an address ending in `.pmtiles` is an archive, one in `.mvt` or `.pbf` vector tiles, and
-  anything else pictures.
+- `tiles_format`: `raster` is pictures, drawn by the panel's XYZ layer. `mvt` is vector tiles, drawn
+  by kepler's Vector Tile layer. `pmtiles` is an archive: its header is read first (one request of
+  127 bytes), and it is drawn as vector tiles or with kepler's Raster Tile layer, as the archive says;
+  an archive that cannot be read is said over the map. Without the column, an address ending in
+  `.pmtiles` is an archive, one in `.mvt` or `.pbf` vector tiles, and anything else pictures; an
+  address ending in `.pmtiles` is an archive whatever the column says.
+- `tiles_metadata_url`: where vector tiles describe themselves, a TileJSON (or the archive, which
+  describes itself anyway). kepler reads the fields and zoom levels from it; vector tiles without one
+  draw, with no fields to hover.
 - `tiles_min_zoom`, `tiles_max_zoom`: the levels the service has; past the last one its tiles are
-  stretched.
+  stretched. For vector tiles and archives, the TileJSON's or the header's levels win when they give
+  some.
 - `tiles_zoom_ids`: the service's own name for a level where it is not the number, as `z:name` pairs
   (`0:00,1:01,…`: PDOK's WMTS names its matrices "00" to "19"). `{z}` becomes the name.
-- `tiles_bbox`: the box, framed on and cut to as a WMS's is; no tile outside it is asked for.
-
-`tiles_metadata_url` (a TileJSON or the archive) is not read yet.
+- `tiles_bbox`: the box, framed on and cut to as a WMS's is; no tile outside it is asked for. An
+  archive without one is framed and cut on the box its header gives.
 
 **One service per query.** The first row that names a service decides what the query draws, and in
 that row a WMS (`wms_url` with `wms_layer`) wins over an Esri service (`esri_url`), which wins over

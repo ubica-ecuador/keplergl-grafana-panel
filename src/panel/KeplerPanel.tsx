@@ -21,6 +21,7 @@ import { RasterServerNotice } from './RasterServerNotice';
 import { MapNotices } from './MapNotices';
 import { frameNotices, orderNotices, queryErrorNotices } from './mapNotices';
 import { useInterpolatedOption } from './useInterpolatedOption';
+import { usePmtilesKinds } from './usePmtilesKinds';
 import { useStableValue } from './useStableValue';
 import { publishIntervalOf } from './timeVariableSync';
 import { withKeplerFields, type VariableMapping } from './variableSync';
@@ -250,13 +251,16 @@ export function KeplerPanel(props: Props) {
   const esriLayers = useMemo(() => framesToEsri(series, fieldMappings), [series, fieldMappings]);
 
   // Map tiles travel that road too (`tiles_url`): a service that cuts its
-  // pictures in advance, so again no tile server. Tiles it does not draw —
-  // vector tiles, an archive — are said over the map.
-  const { xyzLayers, undrawnTiles } = useMemo(() => {
+  // tiles in advance, pictures or vector tiles, so again no tile server. Tiles
+  // it cannot draw — a template with no tile in it — are said over the map,
+  // and so is an archive whose header could not be read: a PMTiles archive
+  // waits for it, to know which of kepler's layers draws it.
+  const { queryTiles, undrawnTiles } = useMemo(() => {
     const undrawn: string[] = [];
-    const xyzLayers = framesToXyz(series, fieldMappings, { onUndrawn: (text) => undrawn.push(text) });
-    return { xyzLayers, undrawnTiles: undrawn };
+    const queryTiles = framesToXyz(series, fieldMappings, { onUndrawn: (text) => undrawn.push(text) });
+    return { queryTiles, undrawnTiles: undrawn };
   }, [series, fieldMappings]);
+  const { layers: xyzLayers, unread: unreadArchives } = usePmtilesKinds(queryTiles);
 
   // What the queries said about themselves, and what the panel could not draw
   // of them: over the map, where an empty map otherwise says nothing
@@ -271,9 +275,9 @@ export function KeplerPanel(props: Props) {
         orderNotices(
           queryErrorNotices(data.errors, queryError),
           frameNotices(data.series),
-          undrawnTiles.map((text) => ({ severity: 'warning' as const, text }))
+          [...undrawnTiles, ...unreadArchives].map((text) => ({ severity: 'warning' as const, text }))
         ),
-      [data.errors, queryError, data.series, undrawnTiles]
+      [data.errors, queryError, data.series, undrawnTiles, unreadArchives]
     )
   );
 

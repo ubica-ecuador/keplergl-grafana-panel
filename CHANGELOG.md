@@ -6,6 +6,17 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Vector tiles and PMTiles from a query.** A `tiles_url` of vector tiles (`tiles_format` `mvt`, a
+  `{z}/{x}/{y}` template, with its TileJSON in `tiles_metadata_url` when the query has one) or a
+  PMTiles archive (`pmtiles`, or any address ending in `.pmtiles`) is drawn as kepler's own tilesets
+  are: vector tiles with its Vector Tile layer, whose fields it reads from the TileJSON or the archive,
+  and an archive of pictures with its Raster Tile layer. What an archive holds is read from its header
+  (one request of 127 bytes, once per page) before it is drawn; an archive that cannot be read is said
+  over the map. Like raster tiles: one layer per query, never saved with the map, the zoom levels
+  from `tiles_min_zoom` and `tiles_max_zoom` where the tileset gives none, and `tiles_bbox` (or an
+  archive's own box) framed on, cut to, and no tile asked for outside it. A query's vector tiles start
+  as a filled tint under a solid outline with points of four pixels, readable on a dark or a light base
+  map; a tileset added by hand keeps kepler's look.
 - **A saved map whose query failed opens on its saved view.** A map whose queries answered nothing —
   its only query failed, or returned no rows — waited for rows that had already not come, so its saved
   config was never applied and it showed kepler's default view over San Francisco. Once the queries
@@ -16,14 +27,14 @@ release documents what changed since the one before it.
   controls, one dismissible box lists each query's error (which Grafana marks only with the panel's
   corner icon), each frame's notices of severity warning or error (the Spatial Catalog's "… is no
   longer in the catalog", "the service refused the time range"; info notices stay in the icon), and
-  each query whose layer the panel cannot draw from its columns (vector tiles, a PMTiles archive in
-  `tiles_url`, a `tiles_url` with no `{z}/{x}/{y}`). What was closed stays closed across refreshes;
+  each query whose layer the panel cannot draw from its columns (a `tiles_url` with no `{z}/{x}/{y}`,
+  a PMTiles archive whose header cannot be read). What was closed stays closed across refreshes;
   a new notice, or one that comes back, shows. The raster tile server and Geomap notices sit in the
   same strip, no longer over the side panel.
 - **Map tiles from a query.** A row with a `tiles_url`, a `{z}/{x}/{y}` template, is drawn as raster
   tiles with no tile server, as the Spatial Catalog's *Services* query gives any map service that is
   not a WMS (PDOK's WMTS, an OpenStreetMap-style server), or any query returning the same columns:
-  `tiles_format` (`raster`; `mvt` and `pmtiles` are not drawn yet), `tiles_min_zoom`,
+  `tiles_format` (`raster`; `mvt` and `pmtiles` above), `tiles_min_zoom`,
   `tiles_max_zoom`, `tiles_zoom_ids` (the service's own name for each level, `0:00,1:01,…`, put in
   `{z}`) and `tiles_bbox`. One layer per query, from its first row with an address; the rows stay a
   table, and the layer is rebuilt from the query, never saved with the map. One service per query: the

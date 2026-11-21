@@ -59,6 +59,7 @@ type RenamedRole = Exclude<
   | 'esriRenderingRule'
   | 'tilesUrl'
   | 'tilesFormat'
+  | 'tilesMetadataUrl'
   | 'tilesMinZoom'
   | 'tilesMaxZoom'
   | 'tilesZoomIds'
