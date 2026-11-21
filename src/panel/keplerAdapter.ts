@@ -65,6 +65,7 @@ import {
 } from '../data/mapConfig';
 import { savedViewportOf } from './viewportGuard';
 import { type BoxFrame, raisedToMinZoom } from './wmsExtent';
+import { isFiniteBounds } from './finiteBounds';
 import { documentBase, relativeRemoteSource, resolveRemoteSource } from '../data/remoteSource';
 import { viewportFromMapState, type MapStateLike } from './windViewport';
 import type { ViewportBounds } from './viewportSync';
@@ -2603,11 +2604,11 @@ export function readViewportBounds(store: Store): ViewportBounds | null {
 export function readLayerBoundsUnion(store: Store): MapBounds | null {
   let union: MapBounds | null = null;
   for (const layer of getVisState(store)?.layers ?? []) {
-    const bounds = layer.meta?.bounds;
-    if (!Array.isArray(bounds) || bounds.length !== 4) {
+    // Not every layer's bounds frame something: a layer of nothing can measure an infinite box.
+    const b = layer.meta?.bounds;
+    if (!isFiniteBounds(b)) {
       continue;
     }
-    const b = bounds as MapBounds;
     union = union
       ? [Math.min(union[0], b[0]), Math.min(union[1], b[1]), Math.max(union[2], b[2]), Math.max(union[3], b[3])]
       : b;

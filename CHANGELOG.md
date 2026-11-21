@@ -31,6 +31,11 @@ release documents what changed since the one before it.
   archive's own box) framed on, cut to, and no tile asked for outside it. A query's vector tiles start
   as a filled tint under a solid outline with points of four pixels, readable on a dark or a light base
   map; a tileset added by hand keeps kepler's look.
+- **A map with nothing to frame stays where it is.** A query that answered no rows (a GeoParquet
+  read by an area holding nothing), or rows with no geometry, took a map centred on its data to
+  latitude 0, longitude 0: kepler's GeoJSON and Trip layers measured an infinite box for no
+  features, and the centring read it as the whole world. Such a layer now has no bounds, and is left
+  out of every fit on the data, as a point layer with no coordinates already was.
 - **A saved map whose query failed opens on its saved view.** A map whose queries answered nothing —
   its only query failed, or returned no rows — waited for rows that had already not come, so its saved
   config was never applied and it showed kepler's default view over San Francisco. Once the queries

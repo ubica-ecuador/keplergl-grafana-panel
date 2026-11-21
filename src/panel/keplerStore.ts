@@ -8,6 +8,7 @@ import { makeCellsLayer, CELLS_TYPE } from './cellsLayer';
 import { buildCogPaintedDeckLayer } from './cogPaintedDeckLayer';
 import { makeCogPaintedLayer } from './cogPaintedLayer';
 import { buildEsriImageDeckLayer } from './esriImageDeckLayer';
+import { withFiniteBounds } from './finiteBounds';
 import { makeEsriImageLayer } from './esriImageLayer';
 import { makeXyzTileLayer } from './xyzTileLayer';
 import { buildXyzTileDeckLayer } from './xyzTileDeckLayer';
@@ -87,6 +88,10 @@ const RASTER_ICON = own(RasterTileIcon);
 const layerClasses = {
   ...LayerClasses,
   wms: withWmsTime(withWmsPicking(LayerClasses.wms), buildTimedWmsLayer),
+  // Repairs too: with no features they measured infinite bounds, and a map
+  // centred on them went to latitude 0, longitude 0 (`finiteBounds.ts`).
+  geojson: withFiniteBounds(LayerClasses.geojson),
+  trip: withFiniteBounds(LayerClasses.trip),
   // A repair, like the WMS one above. A 3D tileset states its geometry at its
   // real altitude and this map's ground is a plane at zero, so a mesh surveyed
   // on a hill draws in mid-air — and past a certain camera does not draw at
