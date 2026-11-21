@@ -537,3 +537,27 @@ describe('framesToDatasets: stations versus grids', () => {
     expect(other.rows[0]).toEqual({ latitude: 1, longitude: 2, weight: 5 });
   });
 });
+
+describe('framesToDatasets: the layer a frame names', () => {
+  const frame = (custom?: unknown) =>
+    toDataFrame({
+      refId: 'A',
+      meta: custom === undefined ? undefined : ({ custom } as never),
+      fields: [
+        { name: 'latitude', type: FieldType.number, values: [-2.9] },
+        { name: 'longitude', type: FieldType.number, values: [-79] },
+      ],
+    });
+
+  it('rides on its dataset and on its route', () => {
+    const layer = { key: 'cat|vector|places', bbox: [-81, -5, -75, 1.5] };
+    const [dataset, route] = framesToDatasets([frame({ layer })], {}, { routeQueries: ['A'] });
+    expect(dataset.layer).toEqual(layer);
+    expect(route.layer).toEqual(layer);
+  });
+
+  it('is absent from a frame that names none', () => {
+    expect(framesToDatasets([frame()])[0]).not.toHaveProperty('layer');
+    expect(framesToDatasets([frame({ tileServerUrl: 'https://t.example.org' })])[0]).not.toHaveProperty('layer');
+  });
+});

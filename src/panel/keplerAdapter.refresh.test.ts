@@ -7,6 +7,7 @@ import {
   registerEntry,
   setFilterAnimationTime,
   toggleFilterAnimation,
+  updateMap,
   wrapTo,
 } from '@kepler.gl/actions';
 import type { Store } from 'redux';
@@ -24,6 +25,7 @@ import {
 } from './keplerAdapter';
 import { createKeplerStore } from './keplerStore';
 import { formatTimeValue } from './timeVariableSync';
+import { useLayerFraming } from './useLayerFraming';
 import { useTimeVariableSync } from './useTimeVariableSync';
 
 let mockSearch = new URLSearchParams();
@@ -547,5 +549,69 @@ describe('a query that answers something else under the same refId', () => {
     await settle();
 
     expect(layersOn(store, points.id).map((layer) => layer.id)).toEqual(before);
+  });
+
+  it('leaves the framing of a query that names its layer to that layer', async () => {
+    const points: PanelDataset = { ...answer('A'), layer: { key: 'places', bbox: null } };
+    const store = await mapOf([scenes(points.id)]);
+    panTo(store, 40, 0);
+
+    refreshDatasets(store, store.dispatch, [points]);
+    await settle();
+
+    expect(layersOn(store, points.id).map((layer) => layer.type)).toContain('point');
+    expect(mapStateOf(store).latitude).toBe(40);
+  });
+});
+
+function mapStateOf(store: Store) {
+  return (store.getState() as any).keplerGl[KEPLER_INSTANCE_ID].mapState;
+}
+
+/** The user dragging the map somewhere else. */
+function panTo(store: Store, latitude: number, longitude: number): void {
+  store.dispatch(wrapTo(KEPLER_INSTANCE_ID, updateMap({ latitude, longitude, zoom: 5 } as never)) as never);
+}
+
+describe('a query pointed at another layer of the same columns', () => {
+  /** What a catalog's query answers: points, naming the layer they are. */
+  const named = (key: string, shift: number): PanelDataset => ({ ...answer('A', shift), layer: { key, bbox: null } });
+  const framesOf = (key: string) => [
+    toDataFrame({
+      refId: 'A',
+      meta: { custom: { layer: { key } } } as never,
+      fields: [{ name: 'v', type: FieldType.number, values: [1] }],
+    }),
+  ];
+
+  it('frames the new layer on its rows, and a refresh of it moves nothing', async () => {
+    const store = createKeplerStore();
+    store.dispatch(registerEntry({ id: KEPLER_INSTANCE_ID }) as never);
+    loadDatasets(store, store.dispatch, [named('cuenca', 0)]);
+    await settle();
+    const hook = renderHook(
+      ({ frames }: { frames: ReturnType<typeof framesOf> }) =>
+        useLayerFraming({ store, isReady: true, frames, boxed: [], width: 800, height: 600, onFramed: () => {} }),
+      { initialProps: { frames: framesOf('cuenca') } }
+    );
+    panTo(store, 40, 0);
+
+    // The load effect's order: the hook sees the answer, then its rows are handed to kepler.
+    hook.rerender({ frames: framesOf('quito') });
+    refreshDatasets(store, store.dispatch, [named('quito', 2.7)]);
+    await settle();
+
+    // Quito's rows, latitude -0.2 to -0.189: framed on them, at the zoom they need.
+    expect(mapStateOf(store).latitude).toBeCloseTo(-0.195, 2);
+    expect(mapStateOf(store).longitude).toBeCloseTo(-79, 2);
+    expect(mapStateOf(store).zoom).toBeGreaterThan(10);
+
+    // The user pans; a refresh of the same layer leaves the map there.
+    panTo(store, 40, 0);
+    hook.rerender({ frames: framesOf('quito') });
+    refreshDatasets(store, store.dispatch, [named('quito', 2.8)]);
+    await settle();
+    expect(mapStateOf(store).latitude).toBe(40);
+    hook.unmount();
   });
 });

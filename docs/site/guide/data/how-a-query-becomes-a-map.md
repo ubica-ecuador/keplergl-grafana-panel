@@ -215,3 +215,38 @@ untouched by a refresh.
 They are not, however, saved anywhere by default. Layer styling lives in kepler's store, not
 Grafana's, so it survives a refresh but not a page reload until you capture it explicitly with
 **Map configuration → Save current map**. See [Map configuration](../map/map-configuration).
+
+A refresh never moves the view either: the map is framed on its data once, on load, and after
+that the view is the user's. A query whose columns change under the same letter — switched in the
+editor to another data source — gets the layers a first load would build, framed as on load.
+
+### A query that names its layer
+
+Some queries are switched to another layer that has the **same columns**: another GeoParquet file
+of the same schema, another file of a collection, a layer a dashboard variable picks. Nothing in
+the rows says that the layer changed, so a data source can say it in the frame's metadata:
+
+```json
+{
+  "meta": {
+    "custom": {
+      "layer": { "key": "<data source>|<query kind>|<entries>", "bbox": [-81, -5, -75, 1.5] }
+    }
+  }
+}
+```
+
+- `key` names the layer the query draws, and is the same on every refresh of it. The Spatial
+  Catalog sends its data source's uid, the query's kind and the ids of the entries it reads.
+- `bbox`, optional, is where the layer is, `[west, south, east, north]` in degrees (west greater
+  than east crosses the antimeridian; a single point is framed at a street's zoom).
+
+The first answer after the panel opens only records the key: the load keeps its saved view, or
+frames the data, as it always has. An answer with **another key** frames the map on the new layer:
+on its `bbox` at once, even when the answer holds no rows (the dashboard's time range may hide them
+all, which the map says over itself); without a `bbox`, on its rows as soon as they reach the
+layers. Another layer with neither leaves the view where it is. A refresh with the same key never
+moves the view, and a pan after the framing is kept. A query framed on its own `tiles_bbox` — a
+WMS, an ArcGIS service, tiles — is left to that framing (see
+[Where the layer is](./wms#where-the-layer-is)). Any data source may send it; a frame without it is
+framed as before.

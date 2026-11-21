@@ -1364,7 +1364,10 @@ function isClampOf(value: [number, number], window: [number, number], domain: un
  * answers something else under the same refId — a raster series switched to a
  * catalog's features, say — whose dataset held no layer that could draw the
  * new columns, and so came back with none. `visState`, when given, is read for
- * that case (`replacementNeedsLayers`).
+ * that case (`replacementNeedsLayers`), and the new layers are framed — but for
+ * a query that names its layer (`PanelDataset.layer`): `useLayerFraming` frames
+ * that one on its box or its rows when the layer changes, and a refresh of the
+ * same layer moves nothing, so two framings never race.
  */
 export function replaceDatasetData(dispatch: Dispatch, dataset: PanelDataset, visState?: VisStateLike | null): void {
   const [keplerDataset] = toKeplerDatasets([dataset]);
@@ -1380,9 +1383,11 @@ export function replaceDatasetData(dispatch: Dispatch, dataset: PanelDataset, vi
         datasetToReplaceId: dataset.id,
         datasetToUse: keplerDataset,
         // Re-framing on every pan would fight the gesture that triggered this;
-        // a query that answers something new is framed, as a first load is.
+        // a query that answers something new is framed, as a first load is —
+        // unless its frames name their layer, which frames it when that layer
+        // changes and never otherwise (`layerFraming.ts`).
         options: {
-          centerMap: newLayers && keplerDataset.data.rows.length > 0,
+          centerMap: newLayers && keplerDataset.data.rows.length > 0 && !dataset.layer,
           keepExistingConfig: true,
           autoCreateLayers: newLayers,
         },
@@ -2681,10 +2686,14 @@ export function readViewportBounds(store: Store): ViewportBounds | null {
  *
  * What the load-window viewport guard fits a config-less map back to when
  * kepler's internal view state echo undoes the centre-on-data of the load.
+ * With `dataIds`, only the layers drawn from those datasets: a query's own.
  */
-export function readLayerBoundsUnion(store: Store): MapBounds | null {
+export function readLayerBoundsUnion(store: Store, dataIds?: readonly string[]): MapBounds | null {
   let union: MapBounds | null = null;
   for (const layer of getVisState(store)?.layers ?? []) {
+    if (dataIds && !dataIds.includes(layer.config?.dataId ?? '')) {
+      continue;
+    }
     // Not every layer's bounds frame something: a layer of nothing can measure an infinite box.
     const b = layer.meta?.bounds;
     if (!isFiniteBounds(b)) {

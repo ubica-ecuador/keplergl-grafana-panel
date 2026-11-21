@@ -10,6 +10,7 @@ import { buildTripLayer, TripLayerConfig, TripLayerMode } from './buildTripLayer
 import { buildTrips } from './buildTrips';
 import { describesLattice, earliestTimestepRows } from './buildWindField';
 import { detectFields, FieldRoleOverrides, FieldRoles, legacyCountColumn, resolveRoles } from './detectFields';
+import { type FrameLayer, frameLayerOf } from './frameLayer';
 import { KeplerColumn, KeplerRow, keplerRenamesOf, toKeplerColumns, toKeplerRows } from './toKeplerDataset';
 
 /**
@@ -77,6 +78,12 @@ export interface PanelDataset {
   fixedLayer?: FixedLayerConfig;
   /** The cells of a query placed by geohash alone (`placeLookup.ts`). */
   geohashLayer?: GeohashLayerConfig;
+  /**
+   * The layer the query's frame says it draws (`meta.custom.layer`,
+   * `frameLayer.ts`). A dataset that names its layer is framed when that layer
+   * changes and never on a refresh of it (`layerFraming.ts`).
+   */
+  layer?: FrameLayer;
 }
 
 /**
@@ -119,7 +126,7 @@ export function framesToDatasets(
 
   const folded = (refId: string, roles: FieldRoles) => opts.tripLayerModes?.[refId] === 'geojson' && isTripFrame(roles);
 
-  const datasets = resolved.map(({ frame, refId, roles }): PanelDataset => {
+  const datasetOf = (frame: DataFrame, refId: string, roles: FieldRoles): PanelDataset => {
     const id = datasetId(refId);
     const label = frame.name ?? `Query ${refId}`;
 
@@ -163,6 +170,13 @@ export function framesToDatasets(
       symbolLayer: pointsSymbols(symbolRoles) ? (buildSymbolLayer(symbolRoles, id) ?? undefined) : undefined,
       geohashLayer: buildGeohashLayer(roles, id, label) ?? undefined,
     };
+  };
+
+  // The layer a frame names rides on its dataset, whichever shape the rows took.
+  const datasets = resolved.map(({ frame, refId, roles }): PanelDataset => {
+    const dataset = datasetOf(frame, refId, roles);
+    const layer = frameLayerOf(frame);
+    return layer ? { ...dataset, layer } : dataset;
   });
 
   // A network's edges take their ends from the nodes (`buildNetwork.ts`).
@@ -209,6 +223,7 @@ export function framesToDatasets(
       columns: rows.length === 0 ? routeColumns(toKeplerColumns(resolved[index].frame, roles)) : undefined,
       renames: dataset.renames,
       lineLayer: buildLineLayer(id, label),
+      ...(dataset.layer ? { layer: dataset.layer } : {}),
     };
     return [dataset, route];
   });

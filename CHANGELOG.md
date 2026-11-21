@@ -36,6 +36,17 @@ release documents what changed since the one before it.
   2017 to 2025, under "Last 7 days"), the map was empty with no word why. A notice over it now says
   how many rows, from when to when, and to widen the range to see them; it goes as soon as the range
   covers one of them again.
+- **A query pointed at another layer is framed on it.** A query switched to another layer with the
+  same columns (another GeoParquet file of the same schema, another file of a collection, a layer a
+  variable names) kept the view of the old one, which may show nothing of the new. A frame may now
+  say which layer it draws, `meta.custom.layer` `{ key, bbox? }` (the Spatial Catalog sends its
+  data source, its query's kind and the entries it reads, and the extent the catalog gives). The
+  first answer only records the key; an answer with another key frames the map on its `bbox` at
+  once, rows or none (the range may hide them all), and without a `bbox` on its rows once they reach
+  the layers; another layer with neither leaves the view where it is. A refresh of the same layer
+  never moves the view, and a pan after the framing is kept. A query framed on its own `tiles_bbox`
+  (a WMS, an ArcGIS service, tiles) is left to that framing, and a query that names its layer is not
+  framed a second time when its columns change.
 - **A query that now answers something else gets its layers.** A query changed in the editor to
   answer other columns under the same letter (a raster series switched to an Iceberg table's
   features) kept its dataset, emptied of any layer that could draw it: kepler replaces a dataset's

@@ -147,6 +147,12 @@ ones, frames them, and frames any further step in the next few seconds; after th
 user's. Leave out variables that only filter what is already on screen, or every change would pull
 the map back to the whole dataset.
 
+A variable that picks a layer — another file of a catalog, another collection — needs none of
+this when the query's data source names the layer it draws (`meta.custom.layer`, which the Spatial
+Catalog sends): the map frames each new layer by itself, on its extent when the source gives one.
+See [A query that names its layer](../data/how-a-query-becomes-a-map#a-query-that-names-its-layer).
+Listing that variable here as well adds a second fit, on all of the map's rows; there is no need to.
+
 ## Chart — a chart's cross-filter
 
 Switch a mapping's source to **Chart cross-filter** and pick a column: when a chart in kepler's

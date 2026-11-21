@@ -24,7 +24,7 @@ import { type MapStateLike, viewportFromMapState } from './windViewport';
  */
 
 /** The latitude Web Mercator stops at; beyond it a position projects to infinity. */
-const MERCATOR_LIMIT = 85.051129;
+export const MERCATOR_LIMIT = 85.051129;
 
 /** A view's extent in degrees; `west` and `east` unwrapped, so they may pass ±180. */
 export interface ViewExtent {

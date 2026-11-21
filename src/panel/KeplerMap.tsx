@@ -67,6 +67,7 @@ import { useSelectionValues } from './useSelectionValues';
 import { useCoordinateSync } from './useCoordinateSync';
 import { useCenterSync } from './useCenterSync';
 import { useFitOnVariables } from './useFitOnVariables';
+import { useLayerFraming } from './useLayerFraming';
 import { centerOnLoad, withLoadCenter } from './centerSync';
 import { useRasterTimeline } from './useRasterTimeline';
 import { useWmsCalendar } from './useWmsCalendar';
@@ -453,6 +454,18 @@ export function KeplerMap({
     mapSize.current = { width, height };
   });
 
+  // The layers framed on a box of their own (`useBoxFraming`, below).
+  const boxedLayers = useMemo(
+    () => [...wms.map(boxedWms), ...esriLayers.map(boxedEsri), ...xyzLayers.map(boxedXyz)],
+    [wms, esriLayers, xyzLayers]
+  );
+
+  // A query pointed at another layer — its frames name another
+  // `meta.custom.layer` — frames the map on that layer's box or rows. Declared
+  // before the load effect, so it notes where the old layer was before the
+  // new rows are handed over (`useLayerFraming.ts`).
+  useLayerFraming({ store, isReady, frames, boxed: boxedLayers, width, height, onFramed: onBoxFramed });
+
   useEffect(() => {
     // When there is something to build a map of, or the queries have answered
     // nothing on a map with a view of its own: `shouldBuildMap`.
@@ -582,10 +595,6 @@ export function KeplerMap({
   // a dashboard saved over Cuenca that gains a layer of France — move the view
   // onto their box, once per layer. Declared after the load effect, which adds
   // the layer it waits for.
-  const boxedLayers = useMemo(
-    () => [...wms.map(boxedWms), ...esriLayers.map(boxedEsri), ...xyzLayers.map(boxedXyz)],
-    [wms, esriLayers, xyzLayers]
-  );
   useBoxFraming({ store, isReady, layers: boxedLayers, mapConfig, onFramed: onBoxFramed });
 
   // A refresh leaves the viewport alone; a change of one of these variables
