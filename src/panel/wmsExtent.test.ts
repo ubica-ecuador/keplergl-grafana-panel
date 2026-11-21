@@ -4,6 +4,7 @@ import {
   decideWmsFraming,
   fitBoundsOfBox,
   judgedView,
+  raisedToMinZoom,
   reliefBoundsOfBox,
   unionOfBounds,
   wmsClipBounds,
@@ -104,6 +105,30 @@ describe('fitBoundsOfBox and unionOfBounds', () => {
   it('frames several layers on all of them', () => {
     expect(unionOfBounds([fitBoundsOfBox(FRANCE), [-9.5, 36, 3.3, 43.8]])).toEqual([-9.5, 36, 10, 51.5]);
     expect(unionOfBounds([])).toBeNull();
+  });
+});
+
+describe('raisedToMinZoom', () => {
+  /** IGN's WMTS of France, whose levels start at 6. */
+  const IGN: [number, number, number, number] = [-5.15, 41.33, 9.57, 51.1];
+
+  it('brings a fit below the first level in to it, on the box’s centre', () => {
+    const raised = raisedToMinZoom(IGN, 6, 5.35)!;
+    expect(raised.zoom).toBe(6);
+    expect(raised.latitude).toBeCloseTo(46.215, 3);
+    expect(raised.longitude).toBeCloseTo(2.21, 3);
+  });
+
+  it('leaves a fit at or past the first level, or with none, as it is', () => {
+    expect(raisedToMinZoom(IGN, 6, 6)).toBeNull();
+    expect(raisedToMinZoom(IGN, 6, 7.2)).toBeNull();
+    expect(raisedToMinZoom(IGN, undefined, 3)).toBeNull();
+    expect(raisedToMinZoom(IGN, 6, undefined)).toBeNull();
+  });
+
+  it('brings a centre past the antimeridian back into ±180', () => {
+    expect(raisedToMinZoom(fitBoundsOfBox(FIJI), 8, 4)?.longitude).toBeCloseTo(179.5, 6);
+    expect(raisedToMinZoom([176, -21, 190, -12], 8, 4)?.longitude).toBeCloseTo(-177, 6);
   });
 });
 

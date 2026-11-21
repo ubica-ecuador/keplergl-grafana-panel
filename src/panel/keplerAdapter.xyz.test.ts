@@ -1,7 +1,15 @@
-import { registerEntry } from '@kepler.gl/actions';
+import { registerEntry, updateMap, wrapTo } from '@kepler.gl/actions';
 
 import { KEPLER_INSTANCE_ID } from './constants';
-import { captureMapConfig, loadDatasets, loadXyz, refreshXyz, xyzProtoDataset } from './keplerAdapter';
+import {
+  captureMapConfig,
+  fitMapToBox,
+  loadDatasets,
+  loadXyz,
+  readMapState,
+  refreshXyz,
+  xyzProtoDataset,
+} from './keplerAdapter';
 import { createKeplerStore } from './keplerStore';
 import { xyzSavedDataset } from '../data/xyzTiles';
 import type { XyzDataset } from '../data/xyzDataset';
@@ -189,5 +197,32 @@ describe('a query’s vector tiles and archives on the map', () => {
     refreshXyz(store, store.dispatch, []);
     await settle();
     expect(visStateOf(store).datasets['grafana-A-tiles']).toBeUndefined();
+  });
+});
+
+describe('framing a query’s tiles on their box', () => {
+  /** IGN's WMTS of France: its levels start at 6, and a fit of its box lands below that. */
+  const IGN: [number, number, number, number] = [-5.15, 41.33, 9.57, 51.1];
+
+  it('goes no further out than the tiles’ first level, on the box’s centre', () => {
+    const store = newMap();
+    store.dispatch(wrapTo(KEPLER_INSTANCE_ID, updateMap({ width: 800, height: 600 } as never, 0)));
+    fitMapToBox(store, store.dispatch, { bounds: IGN });
+    expect(readMapState(store)?.zoom).toBeLessThan(6);
+
+    fitMapToBox(store, store.dispatch, { bounds: IGN, minZoom: 6 });
+    const view = readMapState(store)!;
+    expect(view.zoom).toBe(6);
+    expect(view.latitude).toBeCloseTo(46.215, 3);
+    expect(view.longitude).toBeCloseTo(2.21, 3);
+  });
+
+  it('keeps kepler’s fit when it already shows the first level', () => {
+    const store = newMap();
+    store.dispatch(wrapTo(KEPLER_INSTANCE_ID, updateMap({ width: 800, height: 600 } as never, 0)));
+    fitMapToBox(store, store.dispatch, { bounds: IGN, minZoom: 3 });
+    const fitted = readMapState(store)!.zoom!;
+    expect(fitted).toBeGreaterThan(3);
+    expect(fitted).toBeLessThan(6);
   });
 });

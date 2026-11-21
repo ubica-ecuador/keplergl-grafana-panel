@@ -126,7 +126,8 @@ WMS, it needs no tile server and is rebuilt from the query on every load, never 
   describes itself anyway). kepler reads the fields and zoom levels from it; vector tiles without one
   draw, with no fields to hover.
 - `tiles_min_zoom`, `tiles_max_zoom`: the levels the service has; past the last one its tiles are
-  stretched. For vector tiles and archives, the TileJSON's or the header's levels win when they give
+  stretched. A view framed on the box goes no further out than the first level, on the box's
+  centre: below it there is no tile to ask for. For vector tiles and archives, the TileJSON's or the header's levels win when they give
   some.
 - `tiles_zoom_ids`: the service's own name for a level where it is not the number, as `z:name` pairs
   (`0:00,1:01,…`: PDOK's WMTS names its matrices "00" to "19"). `{z}` becomes the name.

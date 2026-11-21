@@ -68,12 +68,33 @@ describe('decideViewportGuard', () => {
         mapState: KEPLER_DEFAULT,
         saved: WORLD,
         bounds: null,
-        framed: france,
+        framed: { bounds: france },
       })
     ).toEqual({ kind: 'fit', bounds: france });
     expect(
-      decideViewportGuard({ elapsedMs: 700, attempts: 0, mapState: WORLD, saved: WORLD, bounds: null, framed: france })
+      decideViewportGuard({
+        elapsedMs: 700,
+        attempts: 0,
+        mapState: WORLD,
+        saved: WORLD,
+        bounds: null,
+        framed: { bounds: france },
+      })
     ).toEqual({ kind: 'none' });
+  });
+
+  it('fits a framing again no further out than its first zoom level', () => {
+    const france: [number, number, number, number] = [-5.15, 41.33, 9.57, 51.1];
+    expect(
+      decideViewportGuard({
+        elapsedMs: 700,
+        attempts: 0,
+        mapState: KEPLER_DEFAULT,
+        saved: null,
+        bounds: null,
+        framed: { bounds: france, minZoom: 6 },
+      })
+    ).toEqual({ kind: 'fit', bounds: france, minZoom: 6 });
   });
 
   it('stays quiet while the map shows anything but the default', () => {

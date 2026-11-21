@@ -1,17 +1,11 @@
 import { useEffect } from 'react';
 import type { Store } from 'redux';
 
-import {
-  fitMapToBounds,
-  keepSavedFraming,
-  type MapBounds,
-  readLayerBoundsUnion,
-  readMapState,
-  restoreViewport,
-} from './keplerAdapter';
+import { fitMapToBox, keepSavedFraming, readLayerBoundsUnion, readMapState, restoreViewport } from './keplerAdapter';
 import { restoredTilesetIds } from './tile3dFraming';
 import { decideViewportGuard, GUARD_WINDOW_MS, savedViewportOf } from './viewportGuard';
 import type { SavedMapConfig } from '../data/mapConfig';
+import type { BoxFrame } from './wmsExtent';
 
 interface Params {
   store: Store;
@@ -27,7 +21,7 @@ interface Params {
    * place of the saved viewport. Read at each check, so a framing made after
    * arming counts.
    */
-  framedRef?: { current: MapBounds | null };
+  framedRef?: { current: BoxFrame | null };
 }
 
 /**
@@ -113,7 +107,7 @@ export function useViewportGuard({ store, isReady, mapConfig, arm, framedRef }: 
         restoreViewport(store, store.dispatch, action.viewport);
       } else if (action.kind === 'fit') {
         attempts += 1;
-        fitMapToBounds(store.dispatch, action.bounds);
+        fitMapToBox(store, store.dispatch, action);
       }
     };
 

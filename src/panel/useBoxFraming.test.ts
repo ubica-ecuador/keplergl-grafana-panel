@@ -81,7 +81,7 @@ describe('useBoxFraming', () => {
     await settle();
 
     expect(fits(dispatched)).toEqual([FRANCE]);
-    expect(onFramed).toHaveBeenCalledWith(FRANCE);
+    expect(onFramed).toHaveBeenCalledWith({ bounds: FRANCE });
   });
 
   it('leaves a saved view that shows part of the layer', async () => {
@@ -188,6 +188,49 @@ describe('useBoxFraming', () => {
     emit();
     await settle();
     expect(fits(dispatched)).toEqual([netherlands]);
+  });
+
+  it('frames tiles no further out than their first level, on the box’s centre', async () => {
+    // IGN's WMTS of France starts at 6: kepler's fit of its box lands at 5.35, where it has no tile.
+    const ign: [number, number, number, number] = [-5.15, 41.33, 9.57, 51.1];
+    const tiles: XyzDataset = {
+      id: 'grafana-B-tiles',
+      label: 'IGN',
+      url: 'https://data.geopf.fr/wmts/{z}/{x}/{y}',
+      minZoom: 6,
+      maxZoom: 16,
+      bbox: ign,
+    };
+    // The fake store applies no action: it reads as kepler's fit had left it.
+    const { store, dispatched } = fakeStore({ latitude: 46.2, longitude: 2.2, zoom: 5.35 }, ['grafana-B-tiles']);
+    const onFramed = jest.fn();
+    renderHook(() => useBoxFraming({ store, isReady: true, layers: [boxedXyz(tiles)], mapConfig: null, onFramed }));
+    await settle();
+
+    expect(fits(dispatched)).toEqual([ign]);
+    const views = dispatched.map((action) => action?.payload?.payload?.viewport).filter(Boolean);
+    expect(views).toEqual([
+      expect.objectContaining({ zoom: 6, latitude: expect.closeTo(46.215, 3), longitude: expect.closeTo(2.21, 3) }),
+    ]);
+    expect(onFramed).toHaveBeenCalledWith({ bounds: ign, minZoom: 6 });
+  });
+
+  it('leaves the zoom of a fit that already shows the first level', async () => {
+    const tiles: XyzDataset = {
+      id: 'grafana-B-tiles',
+      label: 'PDOK',
+      url: 'https://t/{z}/{x}/{y}',
+      minZoom: 6,
+      bbox: [3, 50, 7, 54],
+    };
+    const { store, dispatched } = fakeStore({ latitude: 52, longitude: 5, zoom: 6.8 }, ['grafana-B-tiles']);
+    renderHook(() =>
+      useBoxFraming({ store, isReady: true, layers: [boxedXyz(tiles)], mapConfig: null, onFramed: jest.fn() })
+    );
+    await settle();
+
+    expect(fits(dispatched)).toEqual([[3, 50, 7, 54]]);
+    expect(dispatched).toHaveLength(1);
   });
 
   it('frames a WMS and tiles arriving together on the union of their boxes', async () => {

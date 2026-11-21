@@ -33,7 +33,6 @@ import {
   loadEsri,
   loadXyz,
   loadZarr,
-  type MapBounds,
   refreshDatasets,
   refreshRasters,
   refreshWms,
@@ -72,6 +71,7 @@ import { useRasterTimeline } from './useRasterTimeline';
 import { useWmsCalendar } from './useWmsCalendar';
 import { useWmsTimeline } from './useWmsTimeline';
 import { boxedWms, boxedXyz, useBoxFraming } from './useBoxFraming';
+import type { BoxFrame } from './wmsExtent';
 import { useEsriTimeline } from './useEsriTimeline';
 import { useZarrTimeline } from './useZarrTimeline';
 import { useExplorerDatasets } from './useExplorerDatasets';
@@ -388,10 +388,10 @@ export function KeplerMap({
   // The box the map last framed a WMS layer or a query's tiles on by itself
   // (`useBoxFraming`), which the guard then defends in place of the saved view.
   // A rebuild drops it: the config it brings decides the view afresh.
-  const boxFraming = useRef<MapBounds | null>(null);
+  const boxFraming = useRef<BoxFrame | null>(null);
   const onBoxFramed = useCallback(
-    (bounds: MapBounds) => {
-      boxFraming.current = bounds;
+    (frame: BoxFrame) => {
+      boxFraming.current = frame;
       rearmViewportGuard();
     },
     [rearmViewportGuard]

@@ -4,9 +4,9 @@ import type { Store } from 'redux';
 import type { SavedMapConfig } from '../data/mapConfig';
 import type { WmsBox, WmsDataset } from '../data/wmsDataset';
 import type { XyzDataset } from '../data/xyzDataset';
-import { fitMapToBounds, hasLayerOnDataset, type MapBounds, readMapState } from './keplerAdapter';
+import { fitMapToBox, hasLayerOnDataset, type MapBounds, readMapState } from './keplerAdapter';
 import { savedViewportOf } from './viewportGuard';
-import { decideWmsFraming, fitBoundsOfBox, judgedView, unionOfBounds } from './wmsExtent';
+import { type BoxFrame, decideWmsFraming, fitBoundsOfBox, judgedView, unionOfBounds } from './wmsExtent';
 
 /**
  * A layer the map may frame on its box: the dataset it is drawn from, what
@@ -18,6 +18,11 @@ export interface BoxedLayer {
   /** Equal across refreshes of the same layer; a new one is a new layer, framed afresh. */
   identity: string;
   bbox: WmsBox | null;
+  /**
+   * The first zoom level the layer has tiles at (`tiles_min_zoom`): the frame
+   * goes no further out, or the map would ask for no tile of it.
+   */
+  minZoom?: number;
 }
 
 /** A query's WMS layer: the same service and layer is the same layer, whatever its dates. */
@@ -27,7 +32,12 @@ export function boxedWms(wms: WmsDataset): BoxedLayer {
 
 /** A query's tiles: the same template is the same layer. */
 export function boxedXyz(xyz: XyzDataset): BoxedLayer {
-  return { id: xyz.id, identity: xyz.url, bbox: xyz.bbox };
+  return {
+    id: xyz.id,
+    identity: xyz.url,
+    bbox: xyz.bbox,
+    ...(xyz.minZoom !== undefined ? { minZoom: xyz.minZoom } : {}),
+  };
 }
 
 interface Params {
@@ -38,8 +48,8 @@ interface Params {
   layers: BoxedLayer[];
   /** The saved config the map was built from: whether it has a view of its own. */
   mapConfig?: SavedMapConfig | null;
-  /** Told the bounds the view was just framed on, so the viewport guard defends them. */
-  onFramed: (bounds: MapBounds) => void;
+  /** Told what the view was just framed on, so the viewport guard defends it. */
+  onFramed: (frame: BoxFrame) => void;
 }
 
 /**
@@ -61,7 +71,9 @@ interface Params {
  * and keeps it. Tiles have their layer at once, in the same load.
  *
  * Several layers arriving together are framed together, on the union of their
- * boxes, rather than each in turn with the last one winning.
+ * boxes, rather than each in turn with the last one winning; and no further
+ * out than the highest of their first zoom levels, so none of them is left
+ * where it has no tile to ask for (`raisedToMinZoom`).
  *
  * Same structural rule as the sibling hooks: the dispatch happens on a
  * microtask, never inside the store subscription.
@@ -83,6 +95,7 @@ export function useBoxFraming({ store, isReady, layers, mapConfig, onFramed }: P
   const reconcile = useRef(() => {
     const saved = savedViewportOf(configRef.current);
     const fits: MapBounds[] = [];
+    let minZoom: number | undefined;
     for (const layer of layersRef.current) {
       if (!layer.bbox || decided.current.get(layer.id) === layer.identity || !hasLayerOnDataset(store, layer.id)) {
         continue;
@@ -98,12 +111,16 @@ export function useBoxFraming({ store, isReady, layers, mapConfig, onFramed }: P
       decided.current.set(layer.id, layer.identity);
       if (decision === 'fit') {
         fits.push(fitBoundsOfBox(layer.bbox));
+        if (layer.minZoom !== undefined) {
+          minZoom = Math.max(minZoom ?? layer.minZoom, layer.minZoom);
+        }
       }
     }
     const bounds = unionOfBounds(fits);
     if (bounds) {
-      fitMapToBounds(store.dispatch, bounds);
-      onFramedRef.current(bounds);
+      const frame: BoxFrame = { bounds, ...(minZoom !== undefined ? { minZoom } : {}) };
+      fitMapToBox(store, store.dispatch, frame);
+      onFramedRef.current(frame);
     }
   });
 

@@ -64,6 +64,7 @@ import {
   type SavedRemoteDataset,
 } from '../data/mapConfig';
 import { savedViewportOf } from './viewportGuard';
+import { type BoxFrame, raisedToMinZoom } from './wmsExtent';
 import { documentBase, relativeRemoteSource, resolveRemoteSource } from '../data/remoteSource';
 import { viewportFromMapState, type MapStateLike } from './windViewport';
 import type { ViewportBounds } from './viewportSync';
@@ -2563,6 +2564,21 @@ export function addAutoLayer(
 /** Frames the map on a bounding box. */
 export function fitMapToBounds(dispatch: Dispatch, bounds: MapBounds): void {
   dispatch(wrapTo(KEPLER_INSTANCE_ID, fitBounds(bounds)));
+}
+
+/**
+ * Frames the map on a layer's box, and no further out than the layer's first
+ * zoom level (`raisedToMinZoom`): kepler fits the box, and when the zoom it
+ * lands on has no tile of the layer the view is brought in to that level, on
+ * the box's centre. Read back from the store, where kepler's fit has already
+ * landed: redux dispatches synchronously.
+ */
+export function fitMapToBox(store: Store, dispatch: Dispatch, frame: BoxFrame): void {
+  fitMapToBounds(dispatch, frame.bounds);
+  const raised = raisedToMinZoom(frame.bounds, frame.minZoom, readMapState(store)?.zoom);
+  if (raised) {
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, updateMap(raised as Parameters<typeof updateMap>[0], 0)));
+  }
 }
 
 /**

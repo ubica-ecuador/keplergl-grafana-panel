@@ -79,6 +79,39 @@ export function fitBoundsOfBox(box: WmsBox): MapBounds {
   return [west, Math.max(south, -MERCATOR_LIMIT), east, Math.min(north, MERCATOR_LIMIT)];
 }
 
+/**
+ * What the map frames a layer's box on: its bounds (`fitBoundsOfBox`), and the
+ * first zoom level the layer has tiles at, when its query gave one
+ * (`tiles_min_zoom`).
+ */
+export interface BoxFrame {
+  bounds: MapBounds;
+  minZoom?: number;
+}
+
+/**
+ * The view to put the map at when the zoom kepler fitted the box at is below
+ * the layer's first level, or null when it is not.
+ *
+ * A layer has no tile to ask for below its first level — a WMTS whose matrices
+ * start at 6, framed on France at 5.35, asks for nothing and shows an empty
+ * map. So the frame is the box's centre at that first level: the box no longer
+ * fits the map, but what is shown of it is drawn. The centre is the box's
+ * middle, as kepler's own fit takes it, its longitude brought back into ±180.
+ */
+export function raisedToMinZoom(
+  bounds: MapBounds,
+  minZoom: number | undefined,
+  zoom: number | undefined
+): { latitude: number; longitude: number; zoom: number } | null {
+  if (minZoom === undefined || typeof zoom !== 'number' || !Number.isFinite(zoom) || zoom >= minZoom) {
+    return null;
+  }
+  const [west, south, east, north] = bounds;
+  const middle = (west + east) / 2;
+  return { latitude: (south + north) / 2, longitude: ((((middle + 180) % 360) + 360) % 360) - 180, zoom: minZoom };
+}
+
 /** The smallest bounds holding all of them, or null for none. */
 export function unionOfBounds(bounds: MapBounds[]): MapBounds | null {
   return bounds.reduce<MapBounds | null>(

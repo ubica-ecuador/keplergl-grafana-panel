@@ -1,5 +1,6 @@
 import type { SavedMapConfig } from '../data/mapConfig';
 import type { MapBounds } from './keplerAdapter';
+import type { BoxFrame } from './wmsExtent';
 
 /**
  * Decides when the load-window guard restores the map's intended viewport.
@@ -84,7 +85,7 @@ export function savedViewportOf(config: SavedMapConfig | null | undefined): Save
 
 export type GuardAction =
   | { kind: 'restore'; viewport: SavedViewport }
-  | { kind: 'fit'; bounds: MapBounds }
+  | { kind: 'fit'; bounds: MapBounds; minZoom?: number }
   | { kind: 'disarm' }
   | { kind: 'none' };
 
@@ -119,9 +120,10 @@ export function decideViewportGuard({
    * A box the panel framed the map on after the load, which wins over the
    * saved viewport: a WMS layer or a query's tiles that the saved view did
    * not show (`wmsExtent.ts`). Restoring the saved view instead would undo that framing
-   * on the very echo this guard exists to catch.
+   * on the very echo this guard exists to catch. Fitted again no further out than
+   * its first zoom level, as it was framed.
    */
-  framed?: MapBounds | null;
+  framed?: BoxFrame | null;
 }): GuardAction {
   if (elapsedMs > GUARD_WINDOW_MS || attempts >= GUARD_MAX_ATTEMPTS) {
     return { kind: 'disarm' };
@@ -130,7 +132,11 @@ export function decideViewportGuard({
     return { kind: 'none' };
   }
   if (framed) {
-    return { kind: 'fit', bounds: framed };
+    return {
+      kind: 'fit',
+      bounds: framed.bounds,
+      ...(framed.minZoom !== undefined ? { minZoom: framed.minZoom } : {}),
+    };
   }
   if (saved) {
     return isKeplerDefaultViewport(saved) ? { kind: 'none' } : { kind: 'restore', viewport: saved };

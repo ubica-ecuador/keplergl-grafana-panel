@@ -164,7 +164,8 @@ SELECT 'https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:38
 
 A `tiles_bbox` does for tiles what it does for a WMS: the view is framed on it when it shows none
 of it, and the tiles are cut to it (see [Where the layer is](./wms#where-the-layer-is)); no tile
-outside it is asked for.
+outside it is asked for. The frame goes no further out than `tiles_min_zoom`, on the box's centre,
+since below the first level there is no tile to ask for.
 
 Vector tiles are the same template with `tiles_format` `mvt`, and their TileJSON in
 `tiles_metadata_url` when there is one: it names the fields, which hover and filters then offer. A

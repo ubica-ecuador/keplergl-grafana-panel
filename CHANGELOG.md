@@ -54,7 +54,8 @@ release documents what changed since the one before it.
   tiles, which win over a raster. The box frames and cuts tiles as it does a WMS (below): the view
   moves onto it when it shows none of it or the map has no saved view, never on a refresh; each tile
   is cut to it (not on a globe), and no tile outside it is asked for, nor any zoomed out past the
-  service's first level.
+  service's first level; a view framed on the box goes no further out than that level, on the box's
+  centre (a WMTS of France starting at 6 was framed at 5.35, with no tile to ask for).
 - **A WMS layer's box: framed on, and cut to.** A query's WMS row can carry the layer's box,
   `tiles_bbox` (or `wms_bbox`), as text `west south east north` in degrees, as the Spatial Catalog
   gives it. When the layer appears, or the query names another, and the view shows none of the box
