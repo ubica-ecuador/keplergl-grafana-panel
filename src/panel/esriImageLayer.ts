@@ -25,7 +25,7 @@ import { shownInPane } from './paneVisibility';
 
 /** Which service to draw, and how it should choose among its rasters. */
 export interface EsriImageMetadata {
-  /** The service endpoint, ending in `/ImageServer`. */
+  /** The service endpoint, ending in `/ImageServer`, `/MapServer` or `/MapServer/<id>`. */
   serviceUrl: string;
   /** The service's own JSON for picking rasters — how a year is chosen. */
   mosaicRule?: string;

@@ -4,7 +4,7 @@ import { detectFields, resolveRoles, type FieldRoleOverrides } from './detectFie
 import { anotherServiceWins } from './serviceKind';
 
 /**
- * An ArcGIS Image Service in the shape the panel's own layer reads.
+ * An ArcGIS Image Service, or Map Service, in the shape the panel's own layer reads.
  *
  * Sibling to `wmsDataset.ts` rather than to `rasterDataset.ts`, and for the
  * same reason that one is: what the query describes is a **service**, not a
@@ -16,7 +16,10 @@ export interface EsriDataset {
   /** `grafana-<refId>-esri`, so a refresh can tell its own layers from a user's. */
   id: string;
   label: string;
-  /** The service endpoint, ending in `/ImageServer`. */
+  /**
+   * The service endpoint, ending in `/ImageServer`; or a Map Service, ending in
+   * `/MapServer`, or one of its layers, `/MapServer/<id>` (`esriImageUrl.ts`).
+   */
   serviceUrl: string;
   /**
    * Which rasters of the mosaic to draw, as the service's own JSON.

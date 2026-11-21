@@ -40,7 +40,7 @@ Two more columns, both optional, both the service's own JSON passed through unto
 
 | Column | Aliases | What it does |
 | ------ | ------- | ------------ |
-| `esri_url` | `image_service_url`, `imageserver_url` | The endpoint, ending in `/ImageServer` |
+| `esri_url` | `image_service_url`, `imageserver_url` | The endpoint, ending in `/ImageServer` (or a Map Service, below) |
 | `mosaic_rule` | `esri_mosaic_rule` | Which rasters of the mosaic to draw |
 | `rendering_rule` | `esri_rendering_rule` | How to draw them |
 
@@ -180,3 +180,19 @@ Esri's own viewer also sends `pixelSize`, matching the resolution being displaye
 describes the pixel you can see rather than the 10 m one underneath it. Left out — as above — the
 service samples native resolution, which is more precise and rarely what you did not want.
 :::
+
+## Map Services {#map-service}
+
+An `esri_url` ending in `/MapServer` is an ArcGIS **Map Service**, drawn the same way: it too paints
+a picture of any box, so each tile is asked for one, by `export` instead of `exportImage`, in Web
+Mercator, transparent (`png32`). The whole service draws the layers it shows by default; an address
+ending in `/MapServer/<id>` draws that layer alone (`layers=show:<id>`), which is how the Spatial
+Catalog names one ArcGIS layer:
+
+```sql
+SELECT 'https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer/2' AS esri_url
+```
+
+A Map Service takes no mosaic or rendering rule: its layers are drawn as its author styled them.
+Labels are drawn per tile, so a label across a tile's edge may be cut there.
+

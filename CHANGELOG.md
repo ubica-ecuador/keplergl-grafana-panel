@@ -6,6 +6,10 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **ArcGIS Map Services from `esri_url`.** An `esri_url` ending in `/MapServer` is drawn as an Image
+  Service is, a picture of each tile in Web Mercator, by the service's `export`
+  (`format=png32&transparent=true`); one ending in `/MapServer/<id>` draws that layer alone
+  (`layers=show:<id>`). An `/ImageServer` is drawn by `exportImage` as before.
 - **A raster painted as its query says, through its data source's tile server.** A query's
   `raster_paint` (the tile server's parameters, `bidx=1&colormap_name=viridis`, as the Spatial
   Catalog gives them from what a catalog says of the file) is put on every tile request of its

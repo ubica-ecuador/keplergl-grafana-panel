@@ -1,4 +1,4 @@
-import { esriImageTemplate, esriImageUrl } from './esriImageUrl';
+import { esriImageTemplate, esriImageUrl, mapServiceOf } from './esriImageUrl';
 
 const SERVICE = 'https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer';
 
@@ -97,5 +97,51 @@ describe('esriImageTemplate', () => {
 
   it('is null without a service', () => {
     expect(esriImageTemplate({ serviceUrl: ' ' })).toBeNull();
+  });
+});
+
+describe('a Map Service', () => {
+  const USA = 'https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer';
+
+  it('is asked to export a picture of each tile, every layer it shows by default', () => {
+    const url = esriImageUrl({ serviceUrl: USA }, TILE)!;
+
+    expect(url.startsWith(`${USA}/export?`)).toBe(true);
+    const params = paramsOf(url);
+    expect(params).toMatchObject({
+      bboxSR: '3857',
+      imageSR: '3857',
+      size: '256,256',
+      format: 'png32',
+      transparent: 'true',
+      f: 'image',
+    });
+    expect(params).not.toHaveProperty('layers');
+    expect(paramsOf(url).bbox).toBe(paramsOf(esriImageUrl({ serviceUrl: SERVICE }, TILE)!).bbox);
+  });
+
+  it('shows only the layer its address names, and takes no mosaic or rendering rule', () => {
+    const url = esriImageUrl(
+      { serviceUrl: `${USA}/2/`, mosaicRule: '{"where":"Year=2023"}', renderingRule: '{}' },
+      TILE
+    )!;
+
+    expect(url.startsWith(`${USA}/export?`)).toBe(true);
+    expect(paramsOf(url)).toMatchObject({ layers: 'show:2' });
+    expect(paramsOf(url)).not.toHaveProperty('mosaicRule');
+    expect(paramsOf(url)).not.toHaveProperty('renderingRule');
+  });
+
+  it('gives MapLibre the same request on a relief', () => {
+    expect(esriImageTemplate({ serviceUrl: `${USA}/2` })).toMatch(
+      /\/MapServer\/export\?.*layers=show%3A2.*&bbox=\{bbox-epsg-3857\}$/
+    );
+  });
+
+  it('is told apart from an Image Service by its address', () => {
+    expect(mapServiceOf(USA)).toEqual({ endpoint: USA });
+    expect(mapServiceOf(`${USA}/12`)).toEqual({ endpoint: USA, layerId: '12' });
+    expect(mapServiceOf('https://x.test/arcgis/rest/services/Landcover/ImageServer')).toBeNull();
+    expect(mapServiceOf(`${USA}/2/query`)).toBeNull();
   });
 });

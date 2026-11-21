@@ -16,11 +16,20 @@
  * There is no `{z}/{x}/{y}` scheme to fill in — the service is not tiled and
  * publishes no cache — so the url is built per tile from its bounds. deck's
  * `TileLayer` hands those over, which is the whole of the adaptation.
+ *
+ * A Map Service is asked the same way: it draws a picture of any box too, by
+ * `export` rather than `exportImage`, from its vector layers rather than a
+ * mosaic. An address ending in `/MapServer` draws every layer the service
+ * shows by default; one ending in `/MapServer/<id>` draws that layer alone
+ * (`layers=show:<id>`), as the Spatial Catalog names an ArcGIS layer.
  */
 
 /** Which service to ask, and how it should choose and draw. */
 export interface EsriImageSpec {
-  /** The service endpoint, ending in `/ImageServer`. */
+  /**
+   * The service endpoint: `…/ImageServer`, or a Map Service, `…/MapServer` or
+   * one of its layers, `…/MapServer/<id>`.
+   */
   serviceUrl: string;
   /**
    * Which rasters of the mosaic to draw, as the service's own JSON.
@@ -101,7 +110,25 @@ export function esriImageTemplate(spec: EsriImageSpec): string | null {
   return url ? `${url}&bbox={bbox-epsg-3857}` : null;
 }
 
-/** The `exportImage` request for a box, or without one (`null`) for the caller to add. */
+/**
+ * A Map Service's endpoint and the layer an address names, or null when the
+ * address is no Map Service: `…/MapServer` draws every layer it shows by
+ * default, `…/MapServer/2` its layer 2.
+ */
+export function mapServiceOf(serviceUrl: string): { endpoint: string; layerId?: string } | null {
+  const match = /^(.*\/MapServer)(?:\/(\d+))?\/*$/i.exec(serviceUrl.trim());
+  if (!match) {
+    return null;
+  }
+  return { endpoint: match[1], ...(match[2] !== undefined ? { layerId: match[2] } : {}) };
+}
+
+/**
+ * The request for a box, or without one (`null`) for the caller to add: an
+ * Image Service's `exportImage`, a Map Service's `export`. The same box, size
+ * and transparency either way; a Map Service has no mosaic or rendering rule
+ * to take, and is told which layer to show when the address names one.
+ */
 function exportImageUrl(spec: EsriImageSpec, bbox: string | null): string | null {
   const serviceUrl = spec.serviceUrl.trim().replace(/\/+$/, '');
   if (!serviceUrl) {
@@ -122,6 +149,15 @@ function exportImageUrl(spec: EsriImageSpec, bbox: string | null): string | null
   if (bbox === null) {
     params.delete('bbox');
   }
+
+  const mapService = mapServiceOf(serviceUrl);
+  if (mapService) {
+    if (mapService.layerId !== undefined) {
+      params.set('layers', `show:${mapService.layerId}`);
+    }
+    return `${mapService.endpoint}/export?${params}`;
+  }
+
   if (spec.mosaicRule) {
     params.set('mosaicRule', spec.mosaicRule);
   }
