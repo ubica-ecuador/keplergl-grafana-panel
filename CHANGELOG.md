@@ -31,6 +31,11 @@ release documents what changed since the one before it.
   archive's own box) framed on, cut to, and no tile asked for outside it. A query's vector tiles start
   as a filled tint under a solid outline with points of four pixels, readable on a dark or a light base
   map; a tileset added by hand keeps kepler's look.
+- **A map whose rows the time range hides says so.** When the map's time filter follows the
+  dashboard's range and every row of a query falls outside it (Madrid's fountains, inspected from
+  2017 to 2025, under "Last 7 days"), the map was empty with no word why. A notice over it now says
+  how many rows, from when to when, and to widen the range to see them; it goes as soon as the range
+  covers one of them again.
 - **A map with nothing to frame stays where it is.** A query that answered no rows (a GeoParquet
   read by an area holding nothing), or rows with no geometry, took a map centred on its data to
   latitude 0, longitude 0: kepler's GeoJSON and Trip layers measured an infinite box for no

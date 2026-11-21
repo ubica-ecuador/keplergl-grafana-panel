@@ -197,7 +197,11 @@ panel and its controls:
   archive in `tiles_url`, a `tiles_url` with no `{z}`, `{x}` and `{y}`;
 - each query of a catalog's **services that gives nothing to draw**: a `service` column naming a
   protocol, and no row with a `tiles_url`, an `esri_url` or a `wms_url` with its `wms_layer` (a WMTS
-  layer whose format is not a picture, an elevation in `image/x-bil`), nor anything else to draw.
+  layer whose format is not a picture, an elevation in `image/x-bil`), nor anything else to draw;
+- each query whose **rows all fall outside the dashboard's time range**, when the map's time filter
+  follows that range (**Time range sync** *Dashboard drives map* or *Both directions*): how many,
+  from when to when, and to widen the range to see them. It goes as soon as the range covers one of
+  them again.
 
 One box, closed with its ✕. What was closed stays closed across refreshes; a new notice shows on its
 own, and one that goes away and comes back — a query that fails again — shows again.

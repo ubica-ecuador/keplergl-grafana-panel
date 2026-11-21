@@ -7,7 +7,7 @@ import { serviceKindOf } from '../data/serviceKind';
 /**
  * What the map says over itself about its queries (`MapNotices.tsx`).
  *
- * Three sources, all of which used to leave a map that simply showed nothing,
+ * Four sources, all of which used to leave a map that simply showed nothing,
  * or less than asked:
  *
  * - **A query's error.** Grafana marks a failed query only with an icon in the
@@ -22,6 +22,9 @@ import { serviceKindOf } from '../data/serviceKind';
  * - **A layer the panel cannot draw from its columns**: tiles it does not draw
  *   yet (`framesToXyz`'s `onUndrawn`), and a catalog's service row that gives
  *   nothing to draw at all (`undrawnServiceNotices`).
+ * - **Rows the dashboard's time range hides, every one of them**: the time
+ *   filter that follows the range leaves nothing on the map
+ *   (`outOfRangeNotices`, read from kepler's store by `useTimeRangeNotices`).
  *
  * Pure, so what is said and how it is worded can be tested without a map.
  */
@@ -129,6 +132,82 @@ function protocolName(protocol: string): string {
 
 function named(value: unknown): boolean {
   return typeof value === 'string' && value.trim() !== '';
+}
+
+/** The times of one dataset under the map's time filter, as kepler maps them: epoch ms, null where a row has none. */
+export interface FilteredTimes {
+  /** The dataset id, `grafana-<refId>` for a query's rows. */
+  dataId: string;
+  label: string;
+  times: readonly unknown[];
+}
+
+/** Each dataset's times, finite and sorted, once per array kepler hands over. */
+const sortedTimes = new WeakMap<readonly unknown[], Float64Array>();
+
+function sortedOf(times: readonly unknown[]): Float64Array {
+  let sorted = sortedTimes.get(times);
+  if (!sorted) {
+    sorted = Float64Array.from(times.filter((t): t is number => typeof t === 'number' && Number.isFinite(t))).sort();
+    sortedTimes.set(times, sorted);
+  }
+  return sorted;
+}
+
+/** Whether any of the sorted times is within the range, ends included: the first at or after its start. */
+function anyWithin(sorted: Float64Array, from: number, to: number): boolean {
+  let low = 0;
+  let high = sorted.length;
+  while (low < high) {
+    const mid = (low + high) >> 1;
+    if (sorted[mid] < from) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+  return low < sorted.length && sorted[low] <= to;
+}
+
+/**
+ * Each query whose rows all fall outside the dashboard's time range, as a
+ * warning: the time filter that follows the range (`useTimeRangeSync`) hides
+ * every one of them, and the map is empty with no word why — Madrid's fountains,
+ * inspected from 2017 to 2025, under "Last 7 days". Said with the rows' span,
+ * first to last, as `formatTime` writes a moment; gone as soon as the range
+ * covers one of them again. A query with no timed row is not said: there is
+ * nothing the range could show.
+ *
+ * The times are sorted once per array kepler hands over, so a store change
+ * that leaves the rows alone costs a binary search per query.
+ */
+export function outOfRangeNotices(
+  sets: readonly FilteredTimes[],
+  range: { from: number; to: number },
+  formatTime: (ms: number, span: number) => string
+): MapNotice[] {
+  const notices: MapNotice[] = [];
+  for (const { dataId, label, times } of sets) {
+    const sorted = sortedOf(times);
+    if (sorted.length === 0 || anyWithin(sorted, range.from, range.to)) {
+      continue;
+    }
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const span = last - first;
+    const refId = /^grafana-(.+)$/.exec(dataId)?.[1];
+    const name = refId && label !== `Query ${refId}` && label !== refId ? `${label} (query ${refId})` : label;
+    notices.push({
+      severity: 'warning',
+      text:
+        sorted.length === 1
+          ? `${name}: its one row, at ${formatTime(first, span)}, falls outside the dashboard's time range. ` +
+            'Widen the range to see it.'
+          : `${name}: its ${sorted.length.toLocaleString('en-US')} rows all fall outside the dashboard's time ` +
+            `range: they run from ${formatTime(first, span)} to ${formatTime(last, span)}. Widen the range to see them.`,
+    });
+  }
+  return notices;
 }
 
 /**

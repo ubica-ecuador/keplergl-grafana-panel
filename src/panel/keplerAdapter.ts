@@ -66,6 +66,7 @@ import {
 import { savedViewportOf } from './viewportGuard';
 import { type BoxFrame, raisedToMinZoom } from './wmsExtent';
 import { isFiniteBounds } from './finiteBounds';
+import type { FilteredTimes } from './mapNotices';
 import { documentBase, relativeRemoteSource, resolveRemoteSource } from '../data/remoteSource';
 import { viewportFromMapState, type MapStateLike } from './windViewport';
 import type { ViewportBounds } from './viewportSync';
@@ -2339,6 +2340,34 @@ export function timeFilterDrawn(store: Store): boolean {
   }
   const filtered = new Set<string | undefined>(Array.isArray(filter.dataId) ? filter.dataId : [filter.dataId]);
   return visState.layers.some((layer) => Boolean(layer.config?.isVisible) && filtered.has(layer.config?.dataId));
+}
+
+/**
+ * The times behind the map's time filter, per dataset a visible layer draws:
+ * kepler's own mapping of the filtered field to epoch ms (`filterProps.mappedValue`,
+ * null where a row has no time), the array kept as long as the rows are. A
+ * dataset only a clock reads (a WMS's or a Zarr's calendar) is left out: it has
+ * no rows on the map to hide. Empty when the map has no time filter.
+ */
+export function readTimeFilterTimes(store: Store): FilteredTimes[] {
+  const visState = getVisState(store);
+  const filter = visState && ownFilters(visState).find((f) => f.type === TIME_FILTER_TYPE);
+  if (!visState || !filter) {
+    return [];
+  }
+  const dataIds = Array.isArray(filter.dataId) ? filter.dataId : filter.dataId ? [filter.dataId] : [];
+  const names = Array.isArray(filter.name) ? filter.name : filter.name ? [filter.name] : [];
+  const sets: FilteredTimes[] = [];
+  dataIds.forEach((dataId, index) => {
+    const drawn = visState.layers.some((layer) => Boolean(layer.config?.isVisible) && layer.config?.dataId === dataId);
+    const dataset = visState.datasets[dataId] as
+      { label?: string; fields: Array<{ name: string; filterProps?: { mappedValue?: unknown } }> } | undefined;
+    const times = dataset?.fields.find((field) => field.name === names[index])?.filterProps?.mappedValue;
+    if (drawn && dataset && Array.isArray(times)) {
+      sets.push({ dataId, label: dataset.label ?? dataId, times });
+    }
+  });
+  return sets;
 }
 
 /** The full time extent of the data behind the map's time filter. */

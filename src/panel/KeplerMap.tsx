@@ -46,6 +46,7 @@ import {
 } from './keplerAdapter';
 import { decideLoadAction, shouldBuildMap } from './loadDecision';
 import { useTimeRangeSync } from './useTimeRangeSync';
+import { useTimeRangeNotices } from './useTimeRangeNotices';
 import { useAutoLayers } from './useAutoLayers';
 import { useFlowFieldContext } from './useFlowFieldContext';
 import { usePeerTimeSync } from './usePeerTimeSync';
@@ -92,7 +93,7 @@ import { usePlayheadVariableSync } from './usePlayheadVariableSync';
 import { useSaveMapConfig } from './useSaveMapConfig';
 import { useSidePanelOpen } from './useSidePanelOpen';
 import { SaveMapConfigButton } from './SaveMapConfigButton';
-import { NoticeStack } from './MapNotices';
+import { MapNotices, NoticeStack } from './MapNotices';
 import { couplesDashboardRange, type TimeRangeMs, type TimeSyncMode } from './timeSync';
 import type { TimeVariableMapping } from './timeVariableSync';
 import type { VariableMapping } from './variableSync';
@@ -660,6 +661,8 @@ export function KeplerMap({
     datasets,
     onChangeGrafanaRange,
   });
+  // The rows that time filter hides, when it hides every one of a query's.
+  const timeRangeNotices = useTimeRangeNotices({ store, isReady, mode: timeSync, grafanaRange, timeZone });
 
   // Auto-add trip, flow and flow field layers only on a fresh map; a saved
   // config owns its layers. Adding one can move the viewport, which then needs
@@ -898,6 +901,7 @@ export function KeplerMap({
       )}
       <NoticeStack width={width} sidePanelOpen={sidePanelOpen} panelId={panelId}>
         {notices}
+        <MapNotices notices={timeRangeNotices} />
       </NoticeStack>
     </div>
   );

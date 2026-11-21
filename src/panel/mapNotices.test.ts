@@ -1,6 +1,6 @@
 import { FieldType, toDataFrame } from '@grafana/data';
 
-import { frameNotices, orderNotices, queryErrorNotices, undrawnServiceNotices } from './mapNotices';
+import { frameNotices, orderNotices, outOfRangeNotices, queryErrorNotices, undrawnServiceNotices } from './mapNotices';
 
 describe('queryErrorNotices', () => {
   it('names the query and says what it said, the data source’s own message first', () => {
@@ -148,5 +148,68 @@ describe('undrawnServiceNotices', () => {
       ],
     });
     expect(undrawnServiceNotices([placed, services([{ ...ELEVATION, service: null }], 'B')])).toEqual([]);
+  });
+});
+
+describe('outOfRangeNotices', () => {
+  const day = (iso: string) => Date.parse(`${iso}T00:00:00Z`);
+  const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+  /** Madrid's fountains, inspected from 2017 to 2025; one has no date. */
+  const FOUNTAINS = {
+    dataId: 'grafana-A',
+    label: 'fountains',
+    times: [day('2019-05-02'), day('2017-03-01'), null, day('2025-06-30')],
+  };
+  const LAST_7_DAYS = { from: day('2026-11-14'), to: day('2026-11-21') };
+
+  it('says a query whose every row the range hides, with their span', () => {
+    expect(outOfRangeNotices([FOUNTAINS], LAST_7_DAYS, iso)).toEqual([
+      {
+        severity: 'warning',
+        text:
+          "fountains (query A): its 3 rows all fall outside the dashboard's time range: they run from 2017-03-01 " +
+          'to 2025-06-30. Widen the range to see them.',
+      },
+    ]);
+  });
+
+  it('says nothing once the range covers one of them, its ends included', () => {
+    expect(outOfRangeNotices([FOUNTAINS], { from: day('2025-06-30'), to: day('2026-01-01') }, iso)).toEqual([]);
+    expect(outOfRangeNotices([FOUNTAINS], { from: day('2010-01-01'), to: day('2017-03-01') }, iso)).toEqual([]);
+    expect(outOfRangeNotices([FOUNTAINS], { from: day('2019-01-01'), to: day('2019-12-31') }, iso)).toEqual([]);
+  });
+
+  it('says it too when the range falls between the rows', () => {
+    expect(outOfRangeNotices([FOUNTAINS], { from: day('2020-01-01'), to: day('2024-12-31') }, iso)).toHaveLength(1);
+  });
+
+  it('says nothing of a query with no timed row', () => {
+    expect(
+      outOfRangeNotices(
+        [
+          { ...FOUNTAINS, times: [] },
+          { ...FOUNTAINS, times: [null] },
+        ],
+        LAST_7_DAYS,
+        iso
+      )
+    ).toEqual([]);
+  });
+
+  it('names one row as one, and a query by its ref id when its frame has no name of its own', () => {
+    expect(
+      outOfRangeNotices([{ dataId: 'grafana-B', label: 'Query B', times: [day('2017-03-01')] }], LAST_7_DAYS, iso)
+    ).toEqual([
+      {
+        severity: 'warning',
+        text: "Query B: its one row, at 2017-03-01, falls outside the dashboard's time range. Widen the range to see it.",
+      },
+    ]);
+  });
+
+  it('hands the formatter the rows’ span, for it to choose how much of a moment to write', () => {
+    const format = jest.fn((ms: number) => String(ms));
+    outOfRangeNotices([{ ...FOUNTAINS, times: [1000, 4000] }], { from: 5000, to: 6000 }, format);
+    expect(format).toHaveBeenCalledWith(1000, 3000);
   });
 });
