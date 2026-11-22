@@ -560,4 +560,21 @@ describe('framesToDatasets: the layer a frame names', () => {
     expect(framesToDatasets([frame()])[0]).not.toHaveProperty('layer');
     expect(framesToDatasets([frame({ tileServerUrl: 'https://t.example.org' })])[0]).not.toHaveProperty('layer');
   });
+
+  it("credits a frame's rows, but not its route nor the rows of a frame a service draws", () => {
+    const layer = { attribution: 'Example Network' };
+    const [dataset, route] = framesToDatasets([frame({ layer })], {}, { routeQueries: ['A'] });
+    expect(dataset.attributions).toEqual(['Example Network']);
+    expect(route).not.toHaveProperty('attributions');
+
+    const wms = toDataFrame({
+      refId: 'B',
+      meta: { custom: { layer } } as never,
+      fields: [
+        { name: 'wms_url', type: FieldType.string, values: ['https://maps.example.org/wms'] },
+        { name: 'wms_layer', type: FieldType.string, values: ['storms'] },
+      ],
+    });
+    expect(framesToDatasets([wms])[0]).not.toHaveProperty('attributions');
+  });
 });

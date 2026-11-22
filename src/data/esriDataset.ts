@@ -3,6 +3,7 @@ import type { DataFrame } from '@grafana/data';
 import { detectFields, resolveRoles, type FieldRoleOverrides } from './detectFields';
 import { anotherServiceWins } from './serviceKind';
 import { parseWmsBox, type WmsBox } from './wmsDataset';
+import { attributionsOf } from './frameLayer';
 
 /**
  * An ArcGIS Image Service, or Map Service, in the shape the panel's own layer reads.
@@ -14,6 +15,8 @@ import { parseWmsBox, type WmsBox } from './wmsDataset';
  * of a mosaic of however many rasters it holds.
  */
 export interface EsriDataset {
+  /** Whom to credit for it (`meta.custom.layer.attribution`), as kepler's dataset attributions (`frameLayer.ts`). */
+  attributions?: string[];
   /** `grafana-<refId>-esri`, so a refresh can tell its own layers from a user's. */
   id: string;
   /** The row's `title` when it has one, else the query's name: see `WmsDataset.label`. */
@@ -141,6 +144,7 @@ export function framesToEsri(frames: DataFrame[], overrides: Record<string, Fiel
       ...(moments.length ? { moments } : {}),
       ...(bbox ? { bbox } : {}),
       ...(legendUrl ? { legendUrl } : {}),
+      ...attributionsOf(frame),
     });
   });
 

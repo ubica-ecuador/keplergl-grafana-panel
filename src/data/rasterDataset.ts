@@ -7,6 +7,7 @@ import { anotherServiceWins } from './serviceKind';
 import { cogTileTemplate } from './cogTileUrl';
 import { stacTileTemplate } from './stacTileUrl';
 import { pickLatestWithin, type TimeWindow } from './timeWindow';
+import { attributionsOf } from './frameLayer';
 
 /**
  * A raster scene a query points at, in the shape kepler's raster tileset needs.
@@ -17,6 +18,8 @@ import { pickLatestWithin, type TimeWindow } from './timeWindow';
  * whose whole substance is in `metadata`.
  */
 export interface RasterDataset {
+  /** Whom to credit for it (`meta.custom.layer.attribution`), as kepler's dataset attributions (`frameLayer.ts`). */
+  attributions?: string[];
   id: string;
   label: string;
   /** How the imagery reaches the map — see {@link RasterKind}. */
@@ -331,6 +334,7 @@ export function framesToRasters(
       id: rasterDatasetId(refId),
       label,
       kind,
+      ...attributionsOf(frame),
       sourceUrl,
       metadataUrl,
       tileServerUrls: kind === 'pmtiles' ? [] : tileServerUrls,

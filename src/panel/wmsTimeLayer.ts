@@ -135,11 +135,19 @@ interface WmsLayerLike {
   };
   /** What a click reads to ask the service about a pixel. */
   deckLayerRef?: unknown;
-  /** kepler's: the service's endpoint and WMS version, once its capabilities answered. */
-  meta?: { tilesetDataUrl?: unknown; wmsVersion?: unknown };
+  /** kepler's: the service's endpoint and WMS version, once its capabilities answered; whom the layer credits. */
+  meta?: { tilesetDataUrl?: unknown; wmsVersion?: unknown; attribution?: unknown };
   renderLayer(opts?: unknown): unknown[];
   /** What kepler's map legend shows of the layer: a picture, or null for none. */
   getLegendImageUrl?(): string | null;
+  updateMeta?(meta: Record<string, unknown>): void;
+  updateLayerMeta?(dataset: unknown, ...rest: unknown[]): unknown;
+}
+
+/** Whether a dataset carries credits its data source named (`metadata.attributions`, `frameLayer.ts`). */
+function namesItsCredits(dataset: unknown): boolean {
+  const attributions = (dataset as { metadata?: { attributions?: unknown } } | null)?.metadata?.attributions;
+  return Array.isArray(attributions) && attributions.length > 0;
 }
 
 /** The WMS parameters a GetLegendGraphic replaces on a service url, as kepler's `buildWmsRequestUrl` does. */
@@ -272,6 +280,19 @@ export function withWmsTime<C extends Constructor<object>>(WMSLayer: C, buildTim
       return super.getLegendImageUrl?.() ?? null;
     }
 
+    /**
+     * kepler credits a WMS layer with the service's attribution or, lacking one, its dataset's label (a query's
+     * frame name, `services`) linked to the service. When the data source named whom to credit, the dataset's
+     * attributions say it, and the label would only stand beside them.
+     */
+    updateLayerMeta(dataset: unknown, ...rest: unknown[]): unknown {
+      const result = super.updateLayerMeta?.(dataset, ...rest);
+      if (namesItsCredits(dataset) && this.meta?.attribution) {
+        this.updateMeta?.({ attribution: null });
+      }
+      return result;
+    }
+
     renderLayer(opts?: unknown): unknown[] {
       const layers = super.renderLayer(opts) ?? [];
       if (layers.length === 0) {
@@ -284,7 +305,9 @@ export function withWmsTime<C extends Constructor<object>>(WMSLayer: C, buildTim
       const style = typeof styled === 'string' && styled ? styled : null;
       // The query's box, carried on the dataset (`wmsProtoDataset`): the deck
       // layer draws the picture only inside it (`wmsExtent.ts`).
-      const clipBox = boxOfMetadata((opts as { data?: { metadata?: { tilesBbox?: unknown } } } | undefined)?.data?.metadata);
+      const clipBox = boxOfMetadata(
+        (opts as { data?: { metadata?: { tilesBbox?: unknown } } } | undefined)?.data?.metadata
+      );
       const reliefBounds = reliefBoundsOfBox(clipBox);
 
       let last: unknown = null;

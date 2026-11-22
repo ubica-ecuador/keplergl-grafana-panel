@@ -4,6 +4,7 @@ import { detectFields, resolveRoles, type FieldRoleOverrides } from './detectFie
 import { queryName } from './rasterDataset';
 import { serviceKindOf } from './serviceKind';
 import { parseWmsBox, type WmsBox } from './wmsDataset';
+import { attributionsOf, frameZoomsOf } from './frameLayer';
 
 /**
  * Map tiles a query points at, in the shape the panel's XYZ layer draws
@@ -22,6 +23,8 @@ import { parseWmsBox, type WmsBox } from './wmsDataset';
  * returning the same columns draws the same layer.
  */
 export interface XyzDataset {
+  /** Whom to credit for it (`meta.custom.layer.attribution`), as kepler's dataset attributions (`frameLayer.ts`). */
+  attributions?: string[];
   /** `grafana-<refId>-tiles`: rebuilt from the query, and never saved with the map. */
   id: string;
   label: string;
@@ -174,8 +177,10 @@ export function framesToXyz(
       return;
     }
 
-    const minZoom = zoomOf(at(roles.tilesMinZoom));
-    const maxZoom = zoomOf(at(roles.tilesMaxZoom));
+    // The row's levels, else the layer's (`meta.custom.layer`): said once for every row.
+    const layerZooms = frameZoomsOf(frame);
+    const minZoom = zoomOf(at(roles.tilesMinZoom)) ?? layerZooms.minZoom;
+    const maxZoom = zoomOf(at(roles.tilesMaxZoom)) ?? layerZooms.maxZoom;
     // A vector tile's level is its number: the names are a WMTS's, of pictures.
     const zoomIds = format === 'raster' ? parseZoomIds(at(roles.tilesZoomIds)) : undefined;
     const metadata = at(roles.tilesMetadataUrl);
@@ -190,6 +195,7 @@ export function framesToXyz(
       bbox: parseWmsBox(at(roles.tilesBbox)),
       ...(format !== 'raster' ? { format } : {}),
       ...(metadataUrl ? { metadataUrl } : {}),
+      ...attributionsOf(frame),
     });
   });
 

@@ -167,6 +167,19 @@ describe('framesToXyz', () => {
   });
 });
 
+describe("the layer's own zoom levels and credits", () => {
+  it('takes the zoom levels from meta.custom.layer when the row has none, and the row wins', () => {
+    const frame = servicesFrame([{ ...pdokRow, tiles_min_zoom: null, tiles_max_zoom: 8 }]);
+    frame.meta = {
+      custom: { layer: { minZoom: 3, maxZoom: 12, attribution: { title: 'PDOK', url: 'https://www.pdok.nl' } } },
+    };
+    const [tiles] = framesToXyz([frame]);
+    expect(tiles.minZoom).toBe(3);
+    expect(tiles.maxZoom).toBe(8);
+    expect(tiles.attributions).toEqual(['<a href="https://www.pdok.nl/" title="PDOK">PDOK</a>']);
+  });
+});
+
 describe('one service per query', () => {
   const wms = { wms_url: 'https://data.geopf.fr/wms-r', wms_layer: 'CASSINI' };
 

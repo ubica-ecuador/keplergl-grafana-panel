@@ -32,4 +32,12 @@ describe('toKeplerDatasets', () => {
     ]);
     expect(dataset.data.fields.map((field) => field.type)).toEqual(filled.data.fields.map((field) => field.type));
   });
+
+  it("hands kepler a dataset's credits as its metadata, and no metadata without any", () => {
+    const rows = [{ latitude: 1, longitude: 2 }];
+    const [credited] = toKeplerDatasets([{ id: 'grafana-A', label: 'A', rows, attributions: ['© ESA'] }]);
+    expect(credited.metadata).toEqual({ attributions: ['© ESA'] });
+    const [plain] = toKeplerDatasets([{ id: 'grafana-A', label: 'A', rows }]);
+    expect(plain).not.toHaveProperty('metadata');
+  });
 });

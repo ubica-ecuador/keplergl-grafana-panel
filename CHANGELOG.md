@@ -29,6 +29,17 @@ release documents what changed since the one before it.
   service's dataset and layer, where a catalog query's name is the same for every service it lists.
   A change of `esri_rendering_rule` (or of `legend_url`) rebuilds the service's dataset as before,
   which keeps the layer's settings and the view.
+- **A layer's credits and zoom levels from its data source.** Beside its `key` and `bbox`, a frame's
+  `meta.custom.layer` may say whom to credit for the layer, `attribution` (a title, `{ title, url }`,
+  or a list of either), and the zoom levels its tiles exist at, `minZoom` and `maxZoom`. The credits
+  are shown with the base map's, in kepler's attribution: at most four per layer, each one line of
+  plain text, linked only to an `http(s)` page. The zoom levels stand in for a query's
+  `tiles_min_zoom` and `tiles_max_zoom` when its row has none. Both are read whether or not the frame
+  names its `key`, so any data source may send them; a frame without them is drawn as before. The
+  Spatial Catalog sends the providers and licence of what a layer draws (a WMS layer's
+  `Attribution`, STAC's licensor and producer, an ArcGIS layer's `copyrightText`). A credit is read
+  when kepler makes the dataset, so a refresh of the same layer keeps the one it had; a vector
+  tileset or a PMTiles archive that credits itself in its TileJSON or header is credited by that.
 - **ArcGIS Map Services from `esri_url`.** An `esri_url` ending in `/MapServer` is drawn as an Image
   Service is, a picture of each tile in Web Mercator, by the service's `export`
   (`format=png32&transparent=true`); one ending in `/MapServer/<id>` draws that layer alone

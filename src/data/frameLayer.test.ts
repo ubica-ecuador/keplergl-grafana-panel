@@ -1,6 +1,13 @@
 import { toDataFrame } from '@grafana/data';
 
-import { frameLayerOf, layerBoxOf } from './frameLayer';
+import {
+  attributionStrings,
+  attributionsOf,
+  frameCreditsOf,
+  frameLayerOf,
+  frameZoomsOf,
+  layerBoxOf,
+} from './frameLayer';
 
 const frameWith = (custom: unknown) => toDataFrame({ refId: 'A', fields: [], meta: { custom } as never });
 
@@ -42,5 +49,70 @@ describe('layerBoxOf', () => {
     expect(layerBoxOf([0, 0, 1, Number.NaN])).toBeNull();
     expect(layerBoxOf([500000, 4000000, 600000, 4100000])).toBeNull();
     expect(layerBoxOf('0 0 1 1')).toBeNull();
+  });
+});
+
+describe("a layer's credits", () => {
+  it('takes a title, a title and a page, or a list of either, with or without a key', () => {
+    expect(frameCreditsOf(frameWith({ layer: { attribution: '© ESA' } }))).toEqual([{ title: '© ESA' }]);
+    expect(
+      frameCreditsOf(
+        frameWith({
+          layer: {
+            key: 'k',
+            attribution: [{ title: 'Copernicus', url: 'https://www.copernicus.eu' }, 'CC-BY-4.0', 'cc-by-4.0'],
+          },
+        })
+      )
+    ).toEqual([{ title: 'Copernicus', url: 'https://www.copernicus.eu/' }, { title: 'CC-BY-4.0' }]);
+    expect(frameCreditsOf(frameWith({ layer: { key: 'k' } }))).toEqual([]);
+    expect(frameCreditsOf(toDataFrame({ refId: 'A', fields: [] }))).toEqual([]);
+  });
+
+  it('keeps only web pages as links and no markup in a title', () => {
+    const credits = frameCreditsOf(
+      frameWith({
+        layer: {
+          attribution: [
+            { title: 'Bad', url: 'javascript:alert(1)' },
+            { title: '<b>"Quoted"</b> <img src=x onerror=alert(1)>', url: 'https://ok.example.org/a"b' },
+            { url: 'https://untitled.example.org' },
+          ],
+        },
+      })
+    );
+    expect(credits).toEqual([
+      { title: 'Bad' },
+      { title: 'bQuoted/b img src=x onerror=alert(1)', url: 'https://ok.example.org/a%22b' },
+    ]);
+    // What kepler is handed: its link pattern reads the href and title back whole.
+    const [plain, link] = attributionStrings(credits);
+    expect(plain).toBe('Bad');
+    expect(link).toBe(
+      '<a href="https://ok.example.org/a%22b" title="bQuoted/b img src=x onerror=alert(1)">bQuoted/b img src=x onerror=alert(1)</a>'
+    );
+    expect(/href="([^"]*)/.exec(link)?.[1]).toBe('https://ok.example.org/a%22b');
+  });
+
+  it('keeps a footer short: four credits, each one line', () => {
+    const many = Array.from({ length: 9 }, (_, i) => `Credit ${i}`);
+    expect(frameCreditsOf(frameWith({ layer: { attribution: many } }))).toHaveLength(4);
+    const [long] = frameCreditsOf(frameWith({ layer: { attribution: 'word\n'.repeat(100) } }));
+    expect(long.title.length).toBeLessThanOrEqual(160);
+    expect(long.title).not.toContain('\n');
+  });
+
+  it("is spread into a dataset's metadata only when there is one", () => {
+    expect(attributionsOf(frameWith({ layer: { attribution: 'OSM' } }))).toEqual({ attributions: ['OSM'] });
+    expect(attributionsOf(frameWith({ layer: { key: 'k' } }))).toEqual({});
+  });
+});
+
+describe("a layer's zoom levels", () => {
+  it('reads whole levels, and drops a maximum under the minimum', () => {
+    expect(frameZoomsOf(frameWith({ layer: { minZoom: 2, maxZoom: 14 } }))).toEqual({ minZoom: 2, maxZoom: 14 });
+    expect(frameZoomsOf(frameWith({ layer: { minZoom: 10, maxZoom: 4 } }))).toEqual({ minZoom: 10 });
+    expect(frameZoomsOf(frameWith({ layer: { minZoom: 1.5, maxZoom: '9' } }))).toEqual({});
+    expect(frameZoomsOf(frameWith({}))).toEqual({});
   });
 });

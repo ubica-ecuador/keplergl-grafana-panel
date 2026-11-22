@@ -165,6 +165,36 @@ describe('withWmsTime', () => {
   });
 });
 
+describe('withWmsTime and the credits', () => {
+  /** kepler's WMS layer, as far as its credit goes: its dataset's label when the service names none. */
+  class Credited {
+    config = { visConfig: {} };
+    meta: { attribution?: unknown } = {};
+    renderLayer() {
+      return [];
+    }
+    updateMeta(meta: Record<string, unknown>) {
+      this.meta = { ...this.meta, ...meta };
+    }
+    updateLayerMeta(dataset: { metadata: { label: string; attributions?: string[] } }) {
+      this.updateMeta({ attribution: { title: dataset.metadata.label, url: 'https://maps.example.org/wms' } });
+    }
+  }
+  const Layer = withWmsTime(Credited, (props) => props);
+
+  it("drops kepler's label credit when the data source named whom to credit", () => {
+    const layer = new Layer();
+    layer.updateLayerMeta({ metadata: { label: 'services', attributions: ['© Weather Service'] } });
+    expect(layer.meta.attribution).toBeNull();
+  });
+
+  it("keeps kepler's credit when the data source named none", () => {
+    const layer = new Layer();
+    layer.updateLayerMeta({ metadata: { label: 'services' } });
+    expect(layer.meta.attribution).toEqual({ title: 'services', url: 'https://maps.example.org/wms' });
+  });
+});
+
 describe('shareMetadata', () => {
   const source = (answer: Promise<unknown>) => {
     const calls = { count: 0 };

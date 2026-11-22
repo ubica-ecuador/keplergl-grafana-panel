@@ -2,6 +2,7 @@ import { DataFrame } from '@grafana/data';
 
 import { detectFields, FieldRoleOverrides, resolveRoles } from './detectFields';
 import { anotherServiceWins } from './serviceKind';
+import { attributionsOf } from './frameLayer';
 
 /**
  * A WMS layer a query points at, in the shape kepler's WMS tileset needs.
@@ -15,6 +16,8 @@ import { anotherServiceWins } from './serviceKind';
  * because a GeoTIFF is not tiles; a WMS *is* the server.
  */
 export interface WmsDataset {
+  /** Whom to credit for it (`meta.custom.layer.attribution`), as kepler's dataset attributions (`frameLayer.ts`). */
+  attributions?: string[];
   id: string;
   /**
    * The name the dataset, and kepler's layer on it until the user renames it,
@@ -168,6 +171,7 @@ export function framesToWms(frames: DataFrame[], overrides: Record<string, Field
       bbox: boxes ? parseWmsBox(boxes.values[named.row]) : null,
       ...(style ? { style } : {}),
       ...(legendUrl ? { legendUrl } : {}),
+      ...attributionsOf(frame),
     });
   });
 
@@ -226,7 +230,9 @@ export function parseWmsBox(value: unknown): WmsBox | null {
   if (parts.length !== 4) {
     return null;
   }
-  const numbers = parts.map((part) => (typeof part === 'number' ? part : typeof part === 'string' ? Number(part) : NaN));
+  const numbers = parts.map((part) =>
+    typeof part === 'number' ? part : typeof part === 'string' ? Number(part) : NaN
+  );
   if (!numbers.every(Number.isFinite)) {
     return null;
   }

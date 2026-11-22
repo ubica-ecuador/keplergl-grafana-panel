@@ -10,7 +10,8 @@ import { buildTripLayer, TripLayerConfig, TripLayerMode } from './buildTripLayer
 import { buildTrips } from './buildTrips';
 import { describesLattice, earliestTimestepRows } from './buildWindField';
 import { detectFields, FieldRoleOverrides, FieldRoles, legacyCountColumn, resolveRoles } from './detectFields';
-import { type FrameLayer, frameLayerOf } from './frameLayer';
+import { attributionsOf, type FrameLayer, frameLayerOf } from './frameLayer';
+import { serviceKindOf } from './serviceKind';
 import { KeplerColumn, KeplerRow, keplerRenamesOf, toKeplerColumns, toKeplerRows } from './toKeplerDataset';
 
 /**
@@ -84,6 +85,13 @@ export interface PanelDataset {
    * changes and never on a refresh of it (`layerFraming.ts`).
    */
   layer?: FrameLayer;
+  /**
+   * Whom to credit for it (`meta.custom.layer.attribution`), as kepler's
+   * dataset attributions (`frameLayer.ts`). A route drawn from the same rows
+   * leaves it to its query's dataset: kepler lists every dataset's credits,
+   * twice if two say the same.
+   */
+  attributions?: string[];
 }
 
 /**
@@ -176,7 +184,10 @@ export function framesToDatasets(
   const datasets = resolved.map(({ frame, refId, roles }): PanelDataset => {
     const dataset = datasetOf(frame, refId, roles);
     const layer = frameLayerOf(frame);
-    return layer ? { ...dataset, layer } : dataset;
+    // A frame a service draws is credited on that service's dataset: kepler lists every dataset's credits, and its
+    // rows' dataset would say them twice.
+    const served = serviceKindOf(frame, roles) !== null || Boolean(roles.zarrUrl && roles.zarrVariable);
+    return { ...dataset, ...(layer ? { layer } : {}), ...(served ? {} : attributionsOf(frame)) };
   });
 
   // A network's edges take their ends from the nodes (`buildNetwork.ts`).

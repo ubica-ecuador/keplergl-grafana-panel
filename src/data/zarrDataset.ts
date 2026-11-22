@@ -3,6 +3,7 @@ import { DataFrame } from '@grafana/data';
 import { detectFields, FieldRoleOverrides, resolveRoles } from './detectFields';
 import { firstText } from './frameValues';
 import { frameTileServerUrls, queryName } from './rasterDataset';
+import { attributionsOf } from './frameLayer';
 
 /**
  * A Zarr variable a query points at, in the shape the panel's tile layer needs.
@@ -17,6 +18,8 @@ import { frameTileServerUrls, queryName } from './rasterDataset';
  * has to turn them into tiles.
  */
 export interface ZarrDataset {
+  /** Whom to credit for it (`meta.custom.layer.attribution`), as kepler's dataset attributions (`frameLayer.ts`). */
+  attributions?: string[];
   id: string;
   label: string;
   /** The TiTiler that will render it, from the panel option. */
@@ -140,6 +143,7 @@ export function framesToZarr(
 
     datasets.push({
       id: zarrDatasetId(refId),
+      ...attributionsOf(frame),
       label: frame.name ?? `Query ${refId}`,
       serverUrl: server,
       storeUrl: named.storeUrl,

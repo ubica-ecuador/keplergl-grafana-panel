@@ -115,7 +115,20 @@ import { chartFilterIds, onlyChartFilters, withoutChartFilters, type ChartLike }
 export type KeplerDataset = {
   info: { id: string; label: string };
   data: NonNullable<ReturnType<typeof processRowObject>>;
+  /** Whom to credit for it, in kepler's attribution (`credited`). */
+  metadata?: { attributions: string[] };
 };
+
+/**
+ * A dataset's credits as kepler's metadata (`attributions`, which kepler shows
+ * beside the base map's credits), from its frame's `meta.custom.layer`
+ * (`frameLayer.ts`). Read when kepler makes the dataset: a refresh of the same
+ * one swaps its rows and keeps its metadata, so a new credit comes with the
+ * next layer.
+ */
+function credited(dataset: { attributions?: string[] }): { attributions?: string[] } {
+  return dataset.attributions?.length ? { attributions: dataset.attributions } : {};
+}
 
 /**
  * Turns panel datasets into kepler datasets.
@@ -129,13 +142,13 @@ export type KeplerDataset = {
  */
 export function toKeplerDatasets(datasets: PanelDataset[]): KeplerDataset[] {
   const out: KeplerDataset[] = [];
-  for (const { id, label, rows, columns } of datasets) {
+  for (const { id, label, rows, columns, attributions } of datasets) {
     const data = rows.length === 0 && columns?.length ? columnsOnly(columns) : processRowObject(rows);
     if (data && rows.length) {
       keepLeadingZeroIds(data, rows);
     }
     if (data) {
-      out.push({ info: { id, label }, data });
+      out.push({ info: { id, label }, data, ...(attributions?.length ? { metadata: { attributions } } : {}) });
     }
   }
   return out;
@@ -255,7 +268,7 @@ function rasterProtoDataset(raster: RasterDataset) {
       format: 'rows',
     },
     data: { fields: [], rows: [] },
-    metadata: rasterMetadata(raster),
+    metadata: { ...rasterMetadata(raster), ...credited(raster) },
     disableDataOperation: true,
   } as unknown as ProtoDataset;
 }
@@ -790,6 +803,7 @@ function wmsProtoDataset(wms: WmsDataset) {
       // The query's box, which kepler's capabilities refresh merges over and
       // keeps: the layer reads it from here to cut the picture (`wmsTimeLayer.ts`).
       ...(wms.bbox ? { tilesBbox: wms.bbox } : {}),
+      ...credited(wms),
     },
     disableDataOperation: true,
   } as unknown as ProtoDataset;
@@ -2890,6 +2904,7 @@ function zarrProtoDataset(zarr: ZarrDataset) {
       dimension: zarr.dimension,
       colormap: zarr.colormap,
       rescale: zarr.rescale,
+      ...credited(zarr),
     },
     disableDataOperation: true,
   } as unknown as ProtoDataset;
@@ -3016,6 +3031,7 @@ function esriProtoDataset(service: EsriDataset) {
       ...(service.renderingRule ? { renderingRule: service.renderingRule } : {}),
       // What kepler's map legend shows of the layer (`esriImageLayer.ts`).
       ...(service.legendUrl ? { legendUrl: service.legendUrl } : {}),
+      ...credited(service),
     },
     disableDataOperation: true,
   } as unknown as ProtoDataset;
@@ -3151,7 +3167,7 @@ export function xyzProtoDataset(xyz: XyzDataset) {
   return {
     info: { id: xyz.id, label: xyz.label, type: XYZ_TILE_TYPE, format: 'rows' },
     data: { fields: [], rows: [] },
-    metadata,
+    metadata: { ...metadata, ...credited(xyz) },
     disableDataOperation: true,
   } as unknown as ProtoDataset;
 }
@@ -3165,6 +3181,9 @@ function queryTilesetProtoDataset(xyz: XyzDataset) {
     ...(xyz.minZoom !== undefined ? { tilesMinZoom: xyz.minZoom } : {}),
     ...(xyz.maxZoom !== undefined ? { tilesMaxZoom: xyz.maxZoom } : {}),
     tilesIdentity: xyzIdentity(xyz),
+    // kepler's refresh of a tileset's metadata merges over this, and a TileJSON
+    // or archive that credits itself (or says it credits no one) wins.
+    ...credited(xyz),
   };
   if (xyz.format === 'pmtiles' && xyz.pmtilesKind === 'raster') {
     return {
