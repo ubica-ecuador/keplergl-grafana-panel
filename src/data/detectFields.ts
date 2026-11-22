@@ -370,6 +370,19 @@ export const NAME_CANDIDATES: Record<string, string[]> = {
  * user override every role. Detection deliberately accepts a wide set of names
  * so that an unrecognised column is a dropdown rather than a query rewrite.
  */
+/**
+ * The column a frame says its clock is (`meta.custom.timeField`, as the
+ * Spatial Catalog data source writes it): a name, `null` when its dates are
+ * no clock, or undefined when it says nothing.
+ */
+export function frameTimeField(frame: DataFrame): string | null | undefined {
+  const custom = frame.meta?.custom as { timeField?: unknown } | undefined;
+  if (!custom || !('timeField' in custom)) {
+    return undefined;
+  }
+  return typeof custom.timeField === 'string' && custom.timeField ? custom.timeField : null;
+}
+
 export function detectFields(frame: DataFrame): FieldRoles {
   const roles: FieldRoles = {};
 
@@ -382,8 +395,16 @@ export function detectFields(frame: DataFrame): FieldRoles {
 
   // Time is found by type rather than by name: Grafana already knows which
   // column is temporal, and dashboards name it anything from `time` to
-  // `recorded_at` to `__timestamp`.
-  const timeField = frame.fields.find((f) => f.type === FieldType.time);
+  // `recorded_at` to `__timestamp`. A frame that names its clock is taken at
+  // its word (`frameTimeField`): that column, or none at all — a layer's dates
+  // that are not when anything happened (a record's last update) are no clock.
+  const named = frameTimeField(frame);
+  const timeField =
+    named === undefined
+      ? frame.fields.find((f) => f.type === FieldType.time)
+      : named === null
+        ? undefined
+        : frame.fields.find((f) => f.name === named && f.type === FieldType.time);
   if (timeField) {
     roles.time = timeField.name;
   }

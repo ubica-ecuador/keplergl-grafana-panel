@@ -87,6 +87,26 @@ describe('detectFields', () => {
     expect(detectFields(frame).time).toBe('recorded_at');
   });
 
+  // The Spatial Catalog's frames name their clock (`meta.custom.timeField`): a
+  // layer's dates are often not when anything happened — a record's last
+  // update, the day a road entered the register — and such a date driving the
+  // map hid its rows on any recent time range.
+  it("takes a frame's own word for its clock: the column it names, or none", () => {
+    const fields = [
+      { name: 'latitude', type: FieldType.number, values: [-2.9] },
+      { name: 'longitude', type: FieldType.number, values: [-79.0] },
+      { name: 'last_update', type: FieldType.time, values: [1] },
+      { name: 'Startdatum', type: FieldType.time, values: [2] },
+    ];
+    const named = toDataFrame({ fields, meta: { custom: { timeField: 'Startdatum' } } });
+    const none = toDataFrame({ fields, meta: { custom: { timeField: null } } });
+    const silent = toDataFrame({ fields, meta: { custom: { layer: { key: 'roads' } } } });
+
+    expect(detectFields(named).time).toBe('Startdatum');
+    expect(detectFields(none).time).toBeUndefined();
+    expect(detectFields(silent).time).toBe('last_update');
+  });
+
   it('recognises a geometry column', () => {
     const frame = toDataFrame({
       fields: [{ name: 'geom', type: FieldType.string, values: ['0101000020E6100000'] }],

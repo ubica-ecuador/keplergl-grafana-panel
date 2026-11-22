@@ -9,7 +9,14 @@ import { buildSymbolLayer, SymbolLayerConfig } from './buildSymbolLayer';
 import { buildTripLayer, TripLayerConfig, TripLayerMode } from './buildTripLayer';
 import { buildTrips } from './buildTrips';
 import { describesLattice, earliestTimestepRows } from './buildWindField';
-import { detectFields, FieldRoleOverrides, FieldRoles, legacyCountColumn, resolveRoles } from './detectFields';
+import {
+  detectFields,
+  FieldRoleOverrides,
+  FieldRoles,
+  frameTimeField,
+  legacyCountColumn,
+  resolveRoles,
+} from './detectFields';
 import { attributionsOf, type FrameLayer, frameLabelOf, frameLayerOf } from './frameLayer';
 import { serviceKindOf } from './serviceKind';
 import { KeplerColumn, KeplerRow, keplerRenamesOf, toKeplerColumns, toKeplerRows } from './toKeplerDataset';
@@ -92,6 +99,11 @@ export interface PanelDataset {
    * twice if two say the same.
    */
   attributions?: string[];
+  /**
+   * The query says its dates are no clock (`meta.custom.timeField` null) and
+   * no time was mapped: kepler's time filter binds to none of its timestamps.
+   */
+  timeless?: boolean;
 }
 
 /**
@@ -187,7 +199,13 @@ export function framesToDatasets(
     // A frame a service draws is credited on that service's dataset: kepler lists every dataset's credits, and its
     // rows' dataset would say them twice.
     const served = serviceKindOf(frame, roles) !== null || Boolean(roles.zarrUrl && roles.zarrVariable);
-    return { ...dataset, ...(layer ? { layer } : {}), ...(served ? {} : attributionsOf(frame)) };
+    const timeless = !roles.time && frameTimeField(frame) === null;
+    return {
+      ...dataset,
+      ...(layer ? { layer } : {}),
+      ...(served ? {} : attributionsOf(frame)),
+      ...(timeless ? { timeless } : {}),
+    };
   });
 
   // A network's edges take their ends from the nodes (`buildNetwork.ts`).

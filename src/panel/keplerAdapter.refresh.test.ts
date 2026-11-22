@@ -158,6 +158,45 @@ function pushOnceBack(store: Store, window: [number, number]): void {
   });
 }
 
+describe("a query's clock", () => {
+  const dated = (custom: Record<string, unknown>) =>
+    framesToDatasets([
+      toDataFrame({
+        refId: 'A',
+        meta: { custom },
+        fields: [
+          { name: 'last_update', type: FieldType.time, values: [START, START + HOUR] },
+          { name: 'Startdatum', type: FieldType.time, values: [START + 2 * HOUR, START + 3 * HOUR] },
+          { name: 'latitude', type: FieldType.number, values: [-2.9, -2.91] },
+          { name: 'longitude', type: FieldType.number, values: [-79, -79] },
+        ],
+      }),
+    ]);
+  const mapOf = async (datasets: PanelDataset[]) => {
+    const store = createKeplerStore();
+    store.dispatch(registerEntry({ id: KEPLER_INSTANCE_ID }) as never);
+    loadDatasets(store, store.dispatch, datasets);
+    await settle();
+    return store;
+  };
+
+  it('binds the time filter to the column the query names, not the first of its dates', async () => {
+    const store = await mapOf(dated({ timeField: 'Startdatum' }));
+    expect(ensureTimeFilter(store, store.dispatch)).toBe(true);
+    await settle();
+    const filter = visStateOf(store).filters.find((f: { type?: string }) => f.type === 'timeRange');
+    const dataset = visStateOf(store).datasets['grafana-A'];
+    expect(dataset.fields[filter.fieldIdx[0]].name).toBe('time');
+    expect(filter.domain).toEqual([START + 2 * HOUR, START + 3 * HOUR]);
+  });
+
+  it('makes no time filter of a query whose dates it says are no clock', async () => {
+    const store = await mapOf(dated({ timeField: null }));
+    expect(ensureTimeFilter(store, store.dispatch)).toBe(false);
+    expect(timeFilter(store)).toBeUndefined();
+  });
+});
+
 describe('a data refresh while the time filter plays', () => {
   beforeEach(() => {
     mockSearch = new URLSearchParams();

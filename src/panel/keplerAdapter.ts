@@ -38,7 +38,7 @@ import { FieldType } from '@grafana/data';
 
 import type { FixedLayerConfig, PanelDataset } from '../data/framesToDatasets';
 import type { GeohashLayerConfig } from '../data/placeLookup';
-import type { KeplerColumn } from '../data/toKeplerDataset';
+import { KEPLER_COLUMN, type KeplerColumn } from '../data/toKeplerDataset';
 import { keepLeadingZeroIds } from '../data/leadingZeroIds';
 import { isGrafanaBacked } from '../data/grafanaAnnotations';
 import type { LiveLayer, SavedSplitPane } from './splitMapsGuard';
@@ -72,13 +72,7 @@ import { documentBase, relativeRemoteSource, resolveRemoteSource } from '../data
 import { viewportFromMapState, type MapStateLike } from './windViewport';
 import type { ViewportBounds } from './viewportSync';
 import { MULTI_SELECT_FILTER_TYPE, type LinkableFilter } from './mosaicLink';
-import {
-  findTimeFieldName,
-  readTimeFilterDomain,
-  readTimeFilterValue,
-  TIME_FILTER_TYPE,
-  type TimeRangeMs,
-} from './timeSync';
+import { readTimeFilterDomain, readTimeFilterValue, TIME_FILTER_TYPE, type TimeRangeMs } from './timeSync';
 import { supersededLayerIds } from './autoLayers';
 import type { FlowFieldLayerState } from './flowFieldContext';
 import { levelHeight, type FlowFieldContext } from './flowFieldLayer';
@@ -116,8 +110,8 @@ import { chartFilterIds, onlyChartFilters, withoutChartFilters, type ChartLike }
 export type KeplerDataset = {
   info: { id: string; label: string };
   data: NonNullable<ReturnType<typeof processRowObject>>;
-  /** Whom to credit for it, in kepler's attribution (`credited`). */
-  metadata?: { attributions: string[] };
+  /** Kepler's dataset metadata: whom to credit (`credited`), and `timeless`, a dataset whose time filter binds to none of its dates. */
+  metadata?: { attributions?: string[]; timeless?: boolean };
 };
 
 /**
@@ -143,13 +137,14 @@ function credited(dataset: { attributions?: string[] }): { attributions?: string
  */
 export function toKeplerDatasets(datasets: PanelDataset[]): KeplerDataset[] {
   const out: KeplerDataset[] = [];
-  for (const { id, label, rows, columns, attributions } of datasets) {
+  for (const { id, label, rows, columns, attributions, timeless } of datasets) {
     const data = rows.length === 0 && columns?.length ? columnsOnly(columns) : processRowObject(rows);
     if (data && rows.length) {
       keepLeadingZeroIds(data, rows);
     }
     if (data) {
-      out.push({ info: { id, label }, data, ...(attributions?.length ? { metadata: { attributions } } : {}) });
+      const metadata = { ...(attributions?.length ? { attributions } : {}), ...(timeless ? { timeless } : {}) };
+      out.push({ info: { id, label }, data, ...(Object.keys(metadata).length ? { metadata } : {}) });
     }
   }
   return out;
@@ -2555,13 +2550,26 @@ export function ensureTimeFilter(store: Store, dispatch: Dispatch): boolean {
   }
 
   for (const [dataId, dataset] of Object.entries(visState.datasets)) {
-    const timeField = findTimeFieldName(dataset.fields);
+    const timeField = clockOf(dataset);
     if (timeField) {
       dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(undefined, dataId, timeField)));
       return true;
     }
   }
   return false;
+}
+
+/**
+ * The field a dataset's time filter binds to: none for a dataset whose query
+ * said its dates are no clock (`timeless`, `frameTimeField`), else its
+ * first timestamp, the query's time column (renamed `time`) before any other.
+ */
+function clockOf(dataset: { fields: Array<{ name: string; type?: string }>; metadata?: unknown }): string | null {
+  if ((dataset.metadata as { timeless?: boolean } | undefined)?.timeless) {
+    return null;
+  }
+  const timed = dataset.fields.filter((f) => f.type === ALL_FIELD_TYPES.timestamp);
+  return (timed.find((f) => f.name === KEPLER_COLUMN.time) ?? timed[0])?.name ?? null;
 }
 
 /**
@@ -2642,7 +2650,7 @@ export function pushTimeRange(store: Store, dispatch: Dispatch, range: TimeRange
   }
 
   for (const [dataId, dataset] of Object.entries(visState.datasets)) {
-    const timeField = findTimeFieldName(dataset.fields);
+    const timeField = clockOf(dataset);
     if (timeField) {
       dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(undefined, dataId, timeField, value)));
       return true;
