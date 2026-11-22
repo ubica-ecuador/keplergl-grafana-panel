@@ -43,6 +43,19 @@ export interface WmsDataset {
    * France. `west` greater than `east` is a box across the antimeridian.
    */
   bbox: WmsBox | null;
+  /**
+   * The style to draw the layer with, one of those the service publishes for it
+   * (`wms_style`); absent for the service's default.
+   *
+   * Not part of what makes the layer this layer: a query that moves from one
+   * style to another — a variable picking among the styles the catalogue
+   * lists — draws the same layer in another way, and is followed by a new
+   * picture, not a new layer (`applyWmsStyle`). The view stays where it is and
+   * the layer keeps what the user set on it.
+   */
+  style?: string;
+  /** Where its legend is (`legend_url`), drawn over the map. See `serviceLegend.ts`. */
+  legendUrl?: string;
 }
 
 /** A layer's box in degrees: `[west, south, east, north]`; `west > east` crosses the antimeridian. */
@@ -128,6 +141,14 @@ export function framesToWms(frames: DataFrame[], overrides: Record<string, Field
       return;
     }
     const boxes = roles.tilesBbox ? frame.fields.find((f) => f.name === roles.tilesBbox) : undefined;
+    // On the row that names the service and the layer, as the box is: a style
+    // is a style of that layer.
+    const textOnRow = (column: string | undefined) => {
+      const value = column ? frame.fields.find((f) => f.name === column)?.values[named.row] : undefined;
+      return typeof value === 'string' ? value.trim() : '';
+    };
+    const style = textOnRow(roles.wmsStyle);
+    const legendUrl = textOnRow(roles.legendUrl);
 
     datasets.push({
       id: wmsDatasetId(refId),
@@ -136,6 +157,8 @@ export function framesToWms(frames: DataFrame[], overrides: Record<string, Field
       layerName: named.layerName,
       times: readTimes(frame, roles.time),
       bbox: boxes ? parseWmsBox(boxes.values[named.row]) : null,
+      ...(style ? { style } : {}),
+      ...(legendUrl ? { legendUrl } : {}),
     });
   });
 

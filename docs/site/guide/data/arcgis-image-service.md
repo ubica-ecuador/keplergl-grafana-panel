@@ -44,6 +44,7 @@ Two more columns, both optional, both the service's own JSON passed through unto
 | `mosaic_rule` | `esri_mosaic_rule` | Which rasters of the mosaic to draw |
 | `rendering_rule` | `esri_rendering_rule` | How to draw them |
 | `tiles_bbox` | `wms_bbox` | Where the service has data, `west south east north`: the view is framed on it as on a [WMS's box](./wms#where-the-layer-is) |
+| `legend_url` | `legend_graphic_url` | Its legend, drawn over the map: see [Its legend](#its-legend) |
 
 The **mosaic rule** is how a year is chosen on a multi-temporal service:
 
@@ -55,7 +56,9 @@ SELECT
 
 Changing it does **not** rebuild the layer. It rides in the layer's `visConfig`, the way a Zarr
 layer's time label does, so stepping through years keeps whatever you named, faded or reordered.
-Only a change of endpoint or of rendering rule rebuilds.
+Only a change of endpoint or of rendering rule rebuilds, and even then the layer keeps its settings
+and the view stays where it is: a variable over the service's raster functions (its
+`rasterFunctionInfos`) draws the same extent with the new one.
 
 Left out, the service draws with the renderer its author published — which for a thematic service is
 the palette they chose, and the reason this path needs no colour settings at all.
@@ -115,6 +118,29 @@ becomes a thematic overlay rather than a full coverage. Measured on one tile of 
 
 The default is already the service's cartographic renderer — asking for it explicitly changes
 nothing, byte for byte — so leave the column out unless you want one of the others.
+
+### Its legend {#its-legend}
+
+What the colours mean is the service's to say, and it says it at `…/ImageServer/legend` (with the
+rendering rule drawn) or `…/MapServer/legend`. Put that address in `legend_url` and the map draws the
+legend over itself, as a [WMS's](./wms#styles-and-legends) is drawn: bottom-left, titled with the
+layer's name, folded by its title, gone while the layer is hidden.
+
+```sql
+SELECT
+  'https://landsat2.arcgis.com/arcgis/rest/services/Landsat/MS/ImageServer'       AS esri_url,
+  '{"rasterFunction":"NDVI Colorized"}'                                            AS rendering_rule,
+  'https://landsat2.arcgis.com/arcgis/rest/services/Landsat/MS/ImageServer/legend'
+    || '?renderingRule=' || url_encode('{"rasterFunction":"NDVI Colorized"}')     AS legend_url
+```
+
+The panel asks it for JSON (`f=json`, whatever format the address names) and draws its swatches with
+their labels in the dashboard's theme. A stretch of many values (NDVI Colorized gives one per value,
+256 of them) is drawn as one bar of colour with its first and last labels. A Map Service drawn one
+layer at a time (`…/MapServer/<id>`) shows that layer's swatches alone; a whole Map Service, a group
+per layer. The legend is fetched, so the service has to allow CORS, as public ArcGIS services do; one
+that refuses, or answers an error, shows no legend and draws the map as before. Any other address in
+`legend_url` is shown as a picture.
 
 ## What it costs
 

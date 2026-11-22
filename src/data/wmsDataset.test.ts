@@ -48,6 +48,39 @@ describe('serviceUrlOf', () => {
 });
 
 describe('framesToWms', () => {
+  it('carries the style and the legend of the row that names the service and the layer', () => {
+    // The Spatial Catalog's Services frame: a WMS row beside an empty one.
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'wms_url', type: FieldType.string, values: ['', SERVICE] },
+        { name: 'wms_layer', type: FieldType.string, values: ['', LAYER] },
+        { name: 'wms_style', type: FieldType.string, values: ['other', ' rain_classes '] },
+        { name: 'legend_url', type: FieldType.string, values: ['', `${SERVICE}?request=GetLegendGraphic`] },
+      ],
+    });
+
+    const [wms] = framesToWms([frame]);
+
+    expect(wms).toMatchObject({ style: 'rain_classes', legendUrl: `${SERVICE}?request=GetLegendGraphic` });
+  });
+
+  it('gives no style for an empty one, which is the service default', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'wms_url', type: FieldType.string, values: [SERVICE] },
+        { name: 'wms_layer', type: FieldType.string, values: [LAYER] },
+        { name: 'wms_style', type: FieldType.string, values: ['  '] },
+      ],
+    });
+
+    const [wms] = framesToWms([frame]);
+
+    expect(wms.style).toBeUndefined();
+    expect(wms.legendUrl).toBeUndefined();
+  });
+
   it('describes the service and layer a query points at', () => {
     const [wms] = framesToWms([wmsFrame()]);
 

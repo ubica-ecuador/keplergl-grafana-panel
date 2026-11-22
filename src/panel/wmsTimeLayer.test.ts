@@ -62,6 +62,16 @@ describe('withTimeFragment / readTimeFragment', () => {
 
     expect(readTimeFragment(withTimeFragment(withQuery, TIME))).toEqual({ url: withQuery, time: TIME });
   });
+
+  it('carries a style beside the time, or alone, and reads both back', () => {
+    const both = withTimeFragment(SERVICE, TIME, 'dwd:rain & snow');
+    const alone = withTimeFragment(SERVICE, null, 'rain_classes');
+
+    expect(both).toBe(`${SERVICE}#t=${encodeURIComponent(TIME)}&s=${encodeURIComponent('dwd:rain & snow')}`);
+    expect(readTimeFragment(both)).toEqual({ url: SERVICE, time: TIME, style: 'dwd:rain & snow' });
+    expect(readTimeFragment(alone)).toEqual({ url: SERVICE, style: 'rain_classes' });
+    expect(withTimeFragment(alone, null, '')).toBe(SERVICE);
+  });
 });
 
 describe('withWmsTime', () => {
@@ -86,6 +96,22 @@ describe('withWmsTime', () => {
     // The string differs, which is the point: deck compares `data` by identity
     // and only a change there recreates the image source and refetches.
     expect(readTimeFragment(rendered.props.data)).toEqual({ url: SERVICE, time: TIME });
+  });
+
+  it('hands deck a data url carrying the style the query names, so a new style is a new picture', () => {
+    const layer = new Timed();
+    layer.config.visConfig.wmsTime = TIME;
+    layer.config.visConfig.wmsStyle = 'rain_classes';
+
+    const [first] = layer.renderLayer() as Array<{ props: { data: string } }>;
+    layer.config.visConfig.wmsStyle = 'rain_contours';
+    const [second] = layer.renderLayer() as Array<{ props: { data: string } }>;
+    layer.config.visConfig.wmsStyle = '';
+    const [byDefault] = layer.renderLayer() as Array<{ props: { data: string } }>;
+
+    expect(readTimeFragment(first.props.data)).toEqual({ url: SERVICE, time: TIME, style: 'rain_classes' });
+    expect(second.props.data).not.toBe(first.props.data);
+    expect(readTimeFragment(byDefault.props.data)).toEqual({ url: SERVICE, time: TIME });
   });
 
   it('keeps every other prop kepler assembled', () => {
@@ -227,6 +253,13 @@ describe('wmsMapLibreTemplate', () => {
 
   it('is null with no layer to ask for', () => {
     expect(wmsMapLibreTemplate({ url: SERVICE, layers: [] })).toBeNull();
+  });
+
+  it('asks for the style the query names, and the default without one', () => {
+    expect(params(wmsMapLibreTemplate({ url: SERVICE, layers: ['a'], style: 'rain_classes' })!).STYLES).toBe(
+      'rain_classes'
+    );
+    expect(params(wmsMapLibreTemplate({ url: SERVICE, layers: ['a'] })!).STYLES).toBe('');
   });
 });
 

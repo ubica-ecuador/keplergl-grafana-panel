@@ -5,6 +5,7 @@ import { pickLatestWithin } from '../data/timeWindow';
 import type { WmsDataset } from '../data/wmsDataset';
 import {
   applyWmsLayerChoice,
+  applyWmsStyle,
   applyWmsTime,
   ensureTimeFilter,
   pushTimeRange,
@@ -53,6 +54,9 @@ interface Params {
  * 2. **Follow the clock**, but only for a query that offered dates. A fixed
  *    layer keeps kepler's own behaviour, which is the service's default slice.
  *
+ * And, on the way, the style the query names (`wms_style`), followed on every
+ * change of it: a new picture of the same layer (`applyWmsStyle`).
+ *
  * Reconciliation runs on a **microtask** rather than inside the subscription:
  * dispatching while kepler is mid-dispatch re-enters its reducer and overflows
  * the stack. Same shape as `useRasterTimeline`, for the same reason.
@@ -92,6 +96,7 @@ export function useWmsTimeline({ store, isReady, layers, timeVariables }: Params
       if (!pinned.current.has(wms.id) && applyWmsLayerChoice(store, store.dispatch, wms)) {
         pinned.current.add(wms.id);
       }
+      applyWmsStyle(store, store.dispatch, wms.id, wms.style);
     }
 
     const dated = wmsLayers.filter((wms) => wms.times.length > 0);

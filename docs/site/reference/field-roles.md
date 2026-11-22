@@ -40,6 +40,8 @@ thirty are autodetect-only and are marked below.
 | Raster paint     | ❌    | `raster_paint` — the tile server's query parameters for this query's raster (painted unless `raster_painted` is false)                                                                                          | not renamed |
 | WMS URL         | ❌     | `wms_url`, `wms`, `service_url`                                                                                                                                                                                 | not renamed |
 | WMS layer       | ❌     | `wms_layer`, `layer`, `layer_name`                                                                                                                                                                              | not renamed |
+| WMS style       | ❌     | `wms_style`, `wms_styles` — one of the styles the WMS publishes for the layer; empty for its default                                                                                                            | not renamed |
+| Legend          | ❌     | `legend_url`, `legend_graphic_url` — a WMS's or an ArcGIS service's legend: a picture, or ArcGIS's `…/legend`                                                                                                   | not renamed |
 | Box             | ❌     | `tiles_bbox`, `wms_bbox` — a WMS's or tiles' box, `west south east north`                                                                                                                                       | not renamed |
 | Esri service    | ❌     | `esri_url`, `image_service_url`, `imageserver_url` — an `…/ImageServer`, or a `…/MapServer` or `…/MapServer/<id>`                                                              | not renamed |
 | Esri mosaic rule | ❌    | `esri_mosaic_rule`, `mosaic_rule`                                                                                                                                               | not renamed |
@@ -60,9 +62,9 @@ thirty are autodetect-only and are marked below.
 | Zarr range      | ❌     | `zarr_rescale`, `zarr_range`                                                                                                                                                                                    | not renamed |
 
 ::: warning Some roles cannot be mapped by hand
-The editor offers the sixteen roles a table of rows needs. The other twenty-four — `originH3`,
-`destH3`, `u`, `v`, `speed`, `direction`, the box, and every `raster*`, `wms*`, `esri*`, `tiles*`
-and `zarr*` role —
+The editor offers the sixteen roles a table of rows needs. The others — `originH3`,
+`destH3`, `u`, `v`, `speed`, `direction`, the box, the legend, and every `raster*`, `wms*`, `esri*`,
+`tiles*` and `zarr*` role —
 are detected but have no entry in it. If your columns are named something the lists do not cover,
 **alias them in the query**:
 
@@ -94,6 +96,12 @@ imagery, so nothing sits in between.
 The box (`tiles_bbox`) is optional: the layer's box as text, `west south east north` in degrees,
 from the same row. The map frames the layer on it when the view shows none of it, and draws the service's picture
 only inside it. See [WMS services](../guide/data/wms#where-the-layer-is).
+
+The style (`wms_style`) and the legend (`legend_url`) are optional too, from the same row. The style
+is the `STYLES` of every request, and a change of it draws a new picture of the same layer: no new
+dataset, no move of the view. The legend is drawn over the map while the layer is shown; an
+`esri_url` row takes the same `legend_url`. See
+[WMS services](../guide/data/wms#styles-and-legends).
 
 Give the **bare endpoint**. A whole `GetMap` URL is trimmed back to it, because every request is
 built by appending parameters to what you give and a query string already there would corrupt the

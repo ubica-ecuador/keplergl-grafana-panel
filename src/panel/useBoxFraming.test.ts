@@ -302,3 +302,22 @@ describe('useBoxFraming', () => {
     expect(fits(dispatched)).toEqual([[-5.5, 41, 10, 54]]);
   });
 });
+
+describe('box framing identities', () => {
+  it('is the same layer in another style, so a style change does not reframe', () => {
+    expect(boxedWms(wms({ style: 'rain_contours' })).identity).toBe(boxedWms(wms({ style: 'rain_classes' })).identity);
+  });
+
+  it('is the same service under another rendering rule, so a rule change does not reframe', () => {
+    const service: EsriDataset = {
+      id: 'grafana-A-esri',
+      label: 'Landsat',
+      serviceUrl: 'https://landsat2.arcgis.com/arcgis/rest/services/Landsat/MS/ImageServer',
+      bbox: FRANCE,
+    };
+
+    expect(boxedEsri({ ...service, renderingRule: '{"rasterFunction":"NDVI Colorized"}' }).identity).toBe(
+      boxedEsri(service).identity
+    );
+  });
+});

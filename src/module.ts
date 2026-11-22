@@ -314,6 +314,14 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       category: ['Map'],
       settings: { placeholder: '0,30' },
     })
+    .addBooleanSwitch({
+      path: 'serviceLegends',
+      name: 'Service legends',
+      description:
+        'Draw over the map the legend a query names in a legend_url column for its WMS layer or ArcGIS service (a GetLegendGraphic picture, or ArcGIS’s legend?f=json), in the bottom-left corner while the layer is shown.',
+      category: ['Map'],
+      defaultValue: true,
+    })
     .addCustomEditor({
       id: 'variableMappings',
       path: 'variableMappings',

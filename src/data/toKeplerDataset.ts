@@ -21,7 +21,8 @@ export type KeplerRow = Record<string, unknown>;
  *
  * `rasterUrl` and `rasterItemUrl` are absent because they become a dataset of
  * their own, whose substance is a metadata url rather than any row. So are
- * `wmsUrl` and `wmsLayer`, which name a service rather than describe a row, and
+ * `wmsUrl`, `wmsLayer` and `wmsStyle`, which name a service rather than describe a row (and
+ * `legendUrl`, where its legend is), and
  * the three `zarr*` roles, which name a store, one array inside it, and the label
  * that array answers to — a tile request, not a column anyone reads. The `esri*`
  * roles are absent for the same reason again: they name a service and the rules
@@ -46,6 +47,8 @@ type RenamedRole = Exclude<
   | 'rasterPaint'
   | 'wmsUrl'
   | 'wmsLayer'
+  | 'wmsStyle'
+  | 'legendUrl'
   | 'tilesBbox'
   | 'zarrUrl'
   | 'zarrVariable'

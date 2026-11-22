@@ -13,6 +13,8 @@ SELECT 'https://services.geoglows.org/geoserver/satellite_based_precipitation/wm
 | WMS URL   | `wms_url`, `wms`, `service_url`    |
 | WMS layer | `wms_layer`, `layer`, `layer_name` |
 | WMS box   | `tiles_bbox`, `wms_bbox`           |
+| WMS style | `wms_style`, `wms_styles`          |
+| Legend    | `legend_url`, `legend_graphic_url` |
 
 The two go together: a service publishes many layers, so a URL without a layer name is not a
 picture. **Both must be present or neither role applies.** Like the raster role, neither appears in
@@ -49,6 +51,40 @@ box, the panel does two things:
 A query's `{z}/{x}/{y}` tiles (`tiles_url`) take the same box, in the same column, and get the same
 two: the view framed on it, the tiles cut to it (see
 [How a query becomes a map](./how-a-query-becomes-a-map#the-query-that-returns-an-address-instead-of-rows)).
+
+## Styles and legends
+
+A WMS layer often comes in several **styles**, which its capabilities list: the same warnings drawn
+by type or by severity, a temperature as shaded classes or as contours. A fourth column picks one,
+and a fifth says where its legend is:
+
+```sql
+SELECT 'https://maps.dwd.de/geoserver/ows' AS wms_url,
+       'dwd:Autowarn_Analyse' AS wms_layer,
+       'autowarn_analyse_severity' AS wms_style,
+       'https://maps.dwd.de/geoserver/ows?service=WMS&version=1.3.0&request=GetLegendGraphic'
+         || '&format=image%2Fpng&layer=dwd%3AAutowarn_Analyse&style=autowarn_analyse_severity'
+         AS legend_url;
+```
+
+- **`wms_style`** is the `STYLES` of every request: the pictures (`GetMap`, and the tiles a relief base
+  map draws) and the clicks (`GetFeatureInfo`), so a click is answered for the style on screen. Empty,
+  or no column, is the service's default style. Read from the row that names the service and the
+  layer. Not `style` alone: a table of buildings has a column called that about the building.
+- **A change of style is a new picture, not a new layer.** A variable over the styles the catalogue
+  lists, or the Spatial Catalog's style picker, changes the column; the map asks the service for the
+  same view in the new style. The view does not move, and the layer keeps whatever was set on it in
+  the layer panel (its name, its opacity, its place in the list).
+- **`legend_url`** is drawn over the map, in its bottom-left corner (right of the side panel when it
+  is open, above kepler's time widget when that reaches the corner): one block per layer, titled with
+  the layer's name in the layer panel, folded and unfolded by its title, gone while the layer is
+  hidden. A picture (a WMS's `LegendURL`, most often a `GetLegendGraphic`) is shown as it is, on a
+  white ground so that the black text services draw reads in the dark theme too. It loads as an
+  image, which needs no CORS; one that does not load is no block at all. The panel option
+  [**Service legends**](../../reference/panel-options#map) turns them off.
+
+An ArcGIS service's `legend_url` takes the same column, and the map draws its swatches itself: see
+[ArcGIS Image Services](./arcgis-image-service#its-legend).
 
 ## Nothing sits in between
 

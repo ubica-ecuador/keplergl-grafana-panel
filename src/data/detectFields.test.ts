@@ -354,3 +354,33 @@ describe('detectFields: rotation and magnitude', () => {
     expect(named('people')).toBeUndefined();
   });
 });
+
+describe('detectFields — WMS style and service legend', () => {
+  it('recognises a WMS style and a legend url by name', () => {
+    const frame = toDataFrame({
+      fields: [
+        { name: 'wms_url', type: FieldType.string, values: [] },
+        { name: 'wms_layer', type: FieldType.string, values: [] },
+        { name: 'wms_style', type: FieldType.string, values: [] },
+        { name: 'legend_url', type: FieldType.string, values: [] },
+      ],
+    });
+
+    expect(detectFields(frame)).toMatchObject({ wmsStyle: 'wms_style', legendUrl: 'legend_url' });
+  });
+
+  it('leaves a column called style or legend to the rows: they are about the row, not a service', () => {
+    // OpenStreetMap's buildings carry an architectural `style`; a table's `legend` is a label.
+    const frame = toDataFrame({
+      fields: [
+        { name: 'geometry', type: FieldType.string, values: [] },
+        { name: 'style', type: FieldType.string, values: [] },
+        { name: 'legend', type: FieldType.string, values: [] },
+      ],
+    });
+
+    const roles = detectFields(frame);
+    expect(roles.wmsStyle).toBeUndefined();
+    expect(roles.legendUrl).toBeUndefined();
+  });
+});

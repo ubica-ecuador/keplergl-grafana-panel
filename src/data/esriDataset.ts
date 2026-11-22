@@ -49,6 +49,12 @@ export interface EsriDataset {
    * for kepler to frame on either.
    */
   bbox?: WmsBox;
+  /**
+   * Where its legend is (`legend_url` on the row that names the service): the
+   * service's `legend?f=json`, with the rendering rule drawn when there is one,
+   * or a picture. Drawn over the map (`serviceLegend.ts`).
+   */
+  legendUrl?: string;
 }
 
 /** One dated slice of a mosaic, and the rule that selects it. */
@@ -110,6 +116,8 @@ export function framesToEsri(frames: DataFrame[], overrides: Record<string, Fiel
     const bbox = roles.tilesBbox ? parseWmsBox(valueOnFirstRow(frame, roles.esriUrl, roles.tilesBbox)) : null;
 
     const renderingRule = roles.esriRenderingRule ? firstText(frame, roles.esriRenderingRule) : '';
+    const legend = roles.legendUrl ? valueOnFirstRow(frame, roles.esriUrl, roles.legendUrl) : undefined;
+    const legendUrl = typeof legend === 'string' ? legend.trim() : '';
     const moments = readMoments(frame, roles.time, roles.esriMosaicRule);
     // The newest is what a map opens on, the same rule the raster and Zarr
     // paths follow; an undated query falls back to its first named rule.
@@ -127,6 +135,7 @@ export function framesToEsri(frames: DataFrame[], overrides: Record<string, Fiel
       ...(renderingRule ? { renderingRule } : {}),
       ...(moments.length ? { moments } : {}),
       ...(bbox ? { bbox } : {}),
+      ...(legendUrl ? { legendUrl } : {}),
     });
   });
 

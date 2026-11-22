@@ -8,7 +8,8 @@ import { wmsClipBounds } from './wmsExtent';
 import { readTimeFragment, shareMetadata } from './wmsTimeLayer';
 
 /**
- * The deck.gl layer that turns the date in a data url into a WMS `TIME`.
+ * The deck.gl layer that turns the date in a data url into a WMS `TIME`, and
+ * the style in it into `STYLES`.
  *
  * Everything about drawing a WMS is upstream's; the one thing changed here is
  * how the image source gets built. `_createImageSource` is called by deck
@@ -33,13 +34,18 @@ import { readTimeFragment, shareMetadata } from './wmsTimeLayer';
  * A vendor parameter is merged into *every* request, so it covers the click.
  * It also lands on GetCapabilities, where it is inert.
  */
-function wmsOptions(time: string | undefined, loadOptions: Record<string, unknown> | undefined) {
+function wmsOptions(time: string | undefined, loadOptions: Record<string, unknown> | undefined, style?: string) {
   const parameters = time ? { time } : {};
   return {
     loadOptions,
     wms: {
       wmsParameters: {
         ...parameters,
+        // The style, unlike the date, needs no vendor copy: `styles` is on the
+        // fixed list GetFeatureInfo is built from, so a click is answered for
+        // the style on screen. Left out for the service's default, which
+        // loaders.gl then sends as an empty `STYLES=`, as WMS 1.3.0 asks.
+        ...(style ? { styles: style } : {}),
         // kepler parses a feature-info reply as GML — it walks
         // `gml:featureMember` — while loaders.gl asks for `text/plain` unless
         // told otherwise. Left alone the two never meet: the service answers in
@@ -127,11 +133,11 @@ export class TimedWMSLayer extends DeckWMSLayer {
   _createImageSource(props: ConstructorParameters<typeof DeckWMSLayer>[0]): ReturnType<
     DeckWMSLayer['_createImageSource']
   > {
-    const { url, time } = readTimeFragment(String(props.data));
-    const source = new WMSImageSource(url, wmsOptions(time, props.loadOptions));
+    const { url, time, style } = readTimeFragment(String(props.data));
+    const source = new WMSImageSource(url, wmsOptions(time, props.loadOptions, style));
 
-    // Bound to the service rather than to this source, so the date can change
-    // without re-reading the catalogue.
+    // Bound to the service rather than to this source, so the date and the
+    // style can change without re-reading the catalogue.
     shareMetadata(source, url, metadataByService);
 
     return source as unknown as ReturnType<DeckWMSLayer['_createImageSource']>;

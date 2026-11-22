@@ -40,32 +40,51 @@
 
 import { boxOfMetadata, reliefBoundsOfBox } from './wmsExtent';
 
-/** The fragment key. Short because it is on every tile url in the network tab. */
+/** The fragment keys. Short because they are on every tile url in the network tab. */
 const TIME_KEY = 't';
+const STYLE_KEY = 's';
 
 /**
- * The data url for a service at a given moment.
+ * The data url for a service at a given moment, in a given style.
  *
  * Any fragment already there is replaced rather than appended to: `renderLayer`
  * runs on every store change, so its own output comes back as input, and
  * stacking would grow the string without bound and break the split.
  *
+ * The style travels the way the date does, and for the same reasons: a new
+ * style is a new string, so deck builds a new image source and fetches a new
+ * picture by itself, and the same style leaves the string — and the picture —
+ * alone. No dataset is touched, so the view does not move and the layer the
+ * user styled stays the same layer.
+ *
  * The query string, if the service publishes one, is left exactly as it stands.
  * It belongs to the service — MapServer endpoints carry `?map=…` — and only the
  * fragment is ours to write.
  */
-export function withTimeFragment(url: string, time: string | null | undefined): string {
+export function withTimeFragment(url: string, time: string | null | undefined, style?: string | null): string {
   const base = url.split('#')[0];
-  return time ? `${base}#${TIME_KEY}=${encodeURIComponent(time)}` : base;
+  const parts = [
+    ...(time ? [`${TIME_KEY}=${encodeURIComponent(time)}`] : []),
+    ...(style ? [`${STYLE_KEY}=${encodeURIComponent(style)}`] : []),
+  ];
+  return parts.length ? `${base}#${parts.join('&')}` : base;
 }
 
-/** The service url and the moment a data url carries, as the deck layer reads it. */
-export function readTimeFragment(data: string): { url: string; time?: string } {
+/** The service url, and the moment and style a data url carries, as the deck layer reads them. */
+export function readTimeFragment(data: string): { url: string; time?: string; style?: string } {
   const [url, fragment] = data.split('#');
-  if (!fragment?.startsWith(`${TIME_KEY}=`)) {
-    return { url };
+  const read: { url: string; time?: string; style?: string } = { url };
+  for (const part of fragment?.split('&') ?? []) {
+    const at = part.indexOf('=');
+    const key = part.slice(0, at);
+    const value = at > 0 ? decodeURIComponent(part.slice(at + 1)) : '';
+    if (key === TIME_KEY && value) {
+      read.time = value;
+    } else if (key === STYLE_KEY && value) {
+      read.style = value;
+    }
   }
-  return { url, time: decodeURIComponent(fragment.slice(TIME_KEY.length + 1)) };
+  return read;
 }
 
 /**
@@ -73,14 +92,16 @@ export function readTimeFragment(data: string): { url: string; time?: string } {
  * one 256 px square per tile, `{bbox-epsg-3857}` filled in by MapLibre. Version
  * 1.3.0 and PNG as loaders.gl asks for the picture deck draws; in 1.3.0 the axis
  * order of EPSG:3857 is x then y, so the box goes as MapLibre writes it. The
- * service's own query (MapServer's `?map=…`) is kept and the moment, if any, goes
- * as `TIME`.
+ * service's own query (MapServer's `?map=…`) is kept, the moment, if any, goes
+ * as `TIME`, and the style, if any, as `STYLES`: the tiles are the picture deck
+ * would draw.
  */
 export function wmsMapLibreTemplate(args: {
   url: string;
   layers: string[];
   transparent?: boolean;
   time?: string | null;
+  style?: string | null;
 }): string | null {
   const base = args.url.split('#')[0].trim();
   const layers = args.layers.filter((name) => typeof name === 'string' && name);
@@ -92,7 +113,7 @@ export function wmsMapLibreTemplate(args: {
     VERSION: '1.3.0',
     REQUEST: 'GetMap',
     LAYERS: layers.join(','),
-    STYLES: '',
+    STYLES: args.style ?? '',
     CRS: 'EPSG:3857',
     WIDTH: '256',
     HEIGHT: '256',
@@ -108,7 +129,7 @@ export function wmsMapLibreTemplate(args: {
 
 /** The members of kepler's WMS layer this wrapper touches. */
 interface WmsLayerLike {
-  config?: { visConfig?: { wmsTime?: unknown } };
+  config?: { visConfig?: { wmsTime?: unknown; wmsStyle?: unknown } };
   /** What a click reads to ask the service about a pixel. */
   deckLayerRef?: unknown;
   renderLayer(opts?: unknown): unknown[];
@@ -129,7 +150,8 @@ type Constructor<T> = new (...args: any[]) => T;
  * `visConfig` change is what makes kepler recompute a layer's data — the same
  * pair `swapRasterScene` relies on — and because the dataset then never has to
  * be touched at all: no rebuild, no refetch of a 900 KB capabilities document,
- * and the layer the user styled survives every step of the timeline.
+ * and the layer the user styled survives every step of the timeline. The
+ * style the query names (`visConfig.wmsStyle`) takes the same road.
  *
  * The deck layer is rebuilt from the props kepler assembled rather than
  * assembled again here, so the id, the opacity, the click handler and whatever
@@ -155,6 +177,9 @@ export function withWmsTime<C extends Constructor<object>>(WMSLayer: C, buildTim
       }
       const chosen = this.config?.visConfig?.wmsTime;
       const time = typeof chosen === 'string' && chosen ? chosen : null;
+      // The style the query asked for (`applyWmsStyle`): empty is the service's default.
+      const styled = this.config?.visConfig?.wmsStyle;
+      const style = typeof styled === 'string' && styled ? styled : null;
       // The query's box, carried on the dataset (`wmsProtoDataset`): the deck
       // layer draws the picture only inside it (`wmsExtent.ts`).
       const clipBox = boxOfMetadata((opts as { data?: { metadata?: { tilesBbox?: unknown } } } | undefined)?.data?.metadata);
@@ -176,10 +201,11 @@ export function withWmsTime<C extends Constructor<object>>(WMSLayer: C, buildTim
               layers: Array.isArray(props.layers) ? (props.layers as string[]) : [],
               transparent: props.transparent as boolean | undefined,
               time,
+              style,
             });
         last = buildTimedLayer({
           ...props,
-          data: withTimeFragment(props.data, time),
+          data: withTimeFragment(props.data, time, style),
           ...(clipBox ? { clipBox } : {}),
           ...(reliefTiles ? { reliefTiles, ...(reliefBounds ? { reliefBounds } : {}) } : {}),
         });

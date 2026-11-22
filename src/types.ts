@@ -186,6 +186,12 @@ export interface KeplerPanelOptions {
    */
   zarrRescale?: string;
 
+  /**
+   * Draw the legends a query's WMS layers and ArcGIS services name
+   * (`legend_url`) over the map, while their layers are shown. Default on.
+   */
+  serviceLegends?: boolean;
+
   /** Follow the dashboard theme. Off leaves kepler with its own dark styling. */
   followGrafanaTheme?: boolean;
 

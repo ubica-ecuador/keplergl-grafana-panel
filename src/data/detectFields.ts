@@ -100,6 +100,20 @@ export interface FieldRoles {
   wmsUrl?: string;
   wmsLayer?: string;
   /**
+   * Which of the styles the WMS publishes for that layer to draw it with: the
+   * `STYLES` of every GetMap and GetFeatureInfo, so a click answers for the
+   * picture shown. Empty, or no column, is the service's default style. Read
+   * from the row that names the service, like the layer.
+   */
+  wmsStyle?: string;
+  /**
+   * Where the legend of a WMS layer or an ArcGIS service is: a picture (a WMS
+   * `LegendURL`, a GetLegendGraphic), or an ArcGIS REST `legend?f=json`, whose
+   * swatches and labels the map draws itself (`serviceLegend.ts`). Drawn over
+   * the map while the layer is shown.
+   */
+  legendUrl?: string;
+  /**
    * A WMS or tile layer's box, `"west south east north"` in degrees: where the
    * map frames the layer and the part of its picture it draws (`parseWmsBox`).
    */
@@ -313,6 +327,12 @@ export const NAME_CANDIDATES: Record<string, string[]> = {
   // OGC calls the endpoint.
   wmsUrl: ['wms_url', 'wms', 'service_url'],
   wmsLayer: ['wms_layer', 'layer', 'layer_name'],
+  // Not `style` alone: a table of buildings or of anything drawn has a column
+  // called that about the row (OpenStreetMap's architectural `style`), and
+  // read as a WMS style it would ask the service for a style it does not have.
+  wmsStyle: ['wms_style', 'wms_styles'],
+  // Not `legend` alone either, which a table uses for a label of the row.
+  legendUrl: ['legend_url', 'legend_graphic_url'],
   // `tiles_bbox` is what the Spatial Catalog's Services frame calls it, for a
   // WMS and for tiles alike. Not `bbox` alone: that is a column of any table
   // of places, about the row.

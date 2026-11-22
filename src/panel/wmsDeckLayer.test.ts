@@ -36,3 +36,27 @@ describe('TimedWMSLayer', () => {
     expect(a.props.extensions[0]).toBe(b.props.extensions[0]);
   });
 });
+
+describe('TimedWMSLayer image source', () => {
+  const source = (data: string) =>
+    (new TimedWMSLayer({ id: 'wms', data, layers: ['CASSINI'] } as any) as any)._createImageSource({ data });
+  const params = (url: string) => Object.fromEntries(new URLSearchParams(url.slice(url.indexOf('?') + 1)));
+  const FRANCE_BOX = [
+    [-5, 41],
+    [10, 51],
+  ];
+  const viewport = { width: 256, height: 256, boundingBox: FRANCE_BOX as any, layers: ['CASSINI'] };
+
+  it('asks GetMap and GetFeatureInfo for the style in the data url, so a click answers for the picture shown', () => {
+    const styled = source(`${SERVICE}#s=${encodeURIComponent('dwd:rain classes')}`);
+
+    expect(params(decodeURI(styled.getMapURL(viewport))).STYLES).toBe('dwd:rain classes');
+    expect(
+      params(decodeURI(styled.getFeatureInfoURL({ ...viewport, query_layers: ['CASSINI'], x: 1, y: 1 }))).STYLES
+    ).toBe('dwd:rain classes');
+  });
+
+  it('sends an empty STYLES, the service default, without one', () => {
+    expect(params(decodeURI(source(SERVICE).getMapURL(viewport))).STYLES).toBe('');
+  });
+});

@@ -36,6 +36,21 @@ describe('framesToEsri', () => {
     expect(service.renderingRule).toBe(rule);
   });
 
+  it('carries the legend of the row that names the service', () => {
+    const legend = `${SERVICE}/legend?f=json&renderingRule=%7B%22rasterFunction%22%3A%22Stretch%22%7D`;
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'esri_url', type: FieldType.string, values: ['', SERVICE] },
+        { name: 'legend_url', type: FieldType.string, values: ['https://elsewhere.example/legend.png', legend] },
+      ],
+    });
+
+    const [service] = framesToEsri([frame]);
+
+    expect(service.legendUrl).toBe(legend);
+  });
+
   it('carries the box of the row that names the service, for the map to frame on', () => {
     // The Spatial Catalog's Services frame: every row carries every column, empty where the service is another kind.
     const mapServer = 'https://geo.example.nl/arcgis/rest/services/Zeeland/MapServer';

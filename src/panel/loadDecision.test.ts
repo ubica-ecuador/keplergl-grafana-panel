@@ -1,6 +1,7 @@
 import {
   decideLoadAction,
   splitRasterRefresh,
+  splitEsriRefresh,
   splitRefresh,
   splitWmsRefresh,
   splitXyzRefresh,
@@ -346,10 +347,43 @@ describe('splitWmsRefresh', () => {
     expect(splitWmsRefresh([france], [{ ...france, bbox: [...france.bbox] }]).keep).toEqual([france]);
   });
 
+  it('keeps the layer when only its style changes: a new picture, not a new layer', () => {
+    const classes = { ...wms('grafana-A-wms'), style: 'rain_classes' };
+    const contours = { ...wms('grafana-A-wms'), style: 'rain_contours' };
+
+    const { keep, replace } = splitWmsRefresh([contours], [classes]);
+
+    expect(keep).toEqual([contours]);
+    expect(replace).toEqual([]);
+  });
+
   it('removes only the ids the panel minted', () => {
     const { remove } = splitWmsRefresh([], [wms('grafana-A-wms'), wms('someones-own-wms'), wms('grafana-A-raster')]);
 
     expect(remove).toEqual(['grafana-A-wms']);
+  });
+});
+
+describe('splitEsriRefresh', () => {
+  const SERVICE = 'https://landsat2.arcgis.com/arcgis/rest/services/Landsat/MS/ImageServer';
+  const esri = (renderingRule?: string, mosaicRule?: string) => ({
+    id: 'grafana-A-esri',
+    serviceUrl: SERVICE,
+    ...(renderingRule ? { renderingRule } : {}),
+    ...(mosaicRule ? { mosaicRule } : {}),
+  });
+
+  it('rebuilds the service on another rendering rule, so the tiles are asked for again with it', () => {
+    // The rule travels in the dataset's metadata, and a replace keeps the
+    // layer's config (`keepExistingConfig`) and never centres the map; the
+    // box framing compares the service alone (`boxedEsri`).
+    const ndvi = esri('{"rasterFunction":"NDVI Colorized"}');
+
+    expect(splitEsriRefresh([ndvi], [esri('{"rasterFunction":"Agriculture"}')]).replace).toEqual([ndvi]);
+  });
+
+  it('keeps it when only the mosaic rule moves: the year is a visConfig change', () => {
+    expect(splitEsriRefresh([esri(undefined, 'Year=2023')], [esri()]).keep).toHaveLength(1);
   });
 });
 

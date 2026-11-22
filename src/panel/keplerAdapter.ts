@@ -1014,6 +1014,63 @@ export function applyWmsTime(store: Store, dispatch: Dispatch, dataId: string, t
 }
 
 /**
+ * Draws a WMS layer in the style its query names, or the service's default.
+ *
+ * The road the date takes (`applyWmsTime`): one dispatch into the layer's
+ * `visConfig`, which `wmsTimeLayer` puts on the data url, so deck builds a new
+ * image source and fetches one picture. No dataset is touched — the style is
+ * not part of what `splitWmsRefresh` compares — so the layer keeps its id and
+ * whatever the user set on it, and nothing reframes the view.
+ *
+ * Followed on every reconcile rather than pinned once like the layer: the
+ * layer panel offers no style to pick, so the query (a variable over the
+ * styles the catalogue lists) is the only one choosing. Quiet when the layer
+ * already draws that style, and an absent style and an empty one are the same.
+ */
+export function applyWmsStyle(store: Store, dispatch: Dispatch, dataId: string, style: string | undefined): boolean {
+  const layer = getVisState(store)?.layers.find((candidate) => candidate.config?.dataId === dataId);
+  if (!layer) {
+    return false;
+  }
+  const current = layer.config?.visConfig?.wmsStyle;
+  if ((typeof current === 'string' ? current : '') === (style ?? '')) {
+    return true;
+  }
+  return applyLayerVisConfig(store, dispatch, dataId, { wmsStyle: style ?? '' });
+}
+
+/** A dataset's layers as a legend over the map follows them: whether any is shown, and the first one's label. */
+export interface LayerShown {
+  dataId: string;
+  /** kepler's label of the layer, which the user may have renamed; '' when it has none. */
+  label: string;
+  visible: boolean;
+}
+
+/**
+ * Whether kepler shows a layer on each of these datasets, and under what name.
+ * A dataset with no layer yet — a WMS before its capabilities answer — is left
+ * out: nothing of it is drawn.
+ */
+export function readLayersShown(store: Store, dataIds: readonly string[]): LayerShown[] {
+  const layers = getVisState(store)?.layers ?? [];
+  const shown: LayerShown[] = [];
+  for (const dataId of dataIds) {
+    const on = layers.filter((layer) => layer.config?.dataId === dataId);
+    if (on.length === 0) {
+      continue;
+    }
+    const label = (on[0].config as { label?: unknown } | undefined)?.label;
+    shown.push({
+      dataId,
+      label: typeof label === 'string' ? label.trim() : '',
+      visible: on.some((layer) => Boolean(layer.config?.isVisible)),
+    });
+  }
+  return shown;
+}
+
+/**
  * The URL-backed datasets a saved config carries, ready for `addDataToMap`.
  *
  * `supportedFilterTypes` is re-attached rather than restored: kepler's
@@ -1502,7 +1559,13 @@ interface VisStateLike {
       isVisible?: boolean;
       /** The columns it draws: `{ value }` each, a bare name each once parked. */
       columns?: Record<string, unknown>;
-      visConfig?: { useSTACSearching?: boolean; wmsLayer?: unknown; wmsTime?: unknown; zarrLabel?: unknown };
+      visConfig?: {
+        useSTACSearching?: boolean;
+        wmsLayer?: unknown;
+        wmsTime?: unknown;
+        wmsStyle?: unknown;
+        zarrLabel?: unknown;
+      };
     };
     meta?: { bounds?: number[] };
     /**

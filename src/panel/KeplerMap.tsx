@@ -17,6 +17,7 @@ import type { XyzDataset } from '../data/xyzDataset';
 import type { ZarrDataset } from '../data/zarrDataset';
 import { namesBasemap, type SavedMapConfig } from '../data/mapConfig';
 import type { KeplerThemeOverride } from '../data/keplerTheme';
+import { serviceLegends as legendsOfServices } from '../data/serviceLegend';
 import { KEPLER_INSTANCE_ID, maxZoomOf } from './constants';
 import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES, startingStyleType } from './basemaps';
 import { configureKepler, configureRasterServers, isAddDataModalOpening } from './keplerConfig';
@@ -95,6 +96,8 @@ import { useSaveMapConfig } from './useSaveMapConfig';
 import { useSidePanelOpen } from './useSidePanelOpen';
 import { SaveMapConfigButton } from './SaveMapConfigButton';
 import { MapNotices, NoticeStack } from './MapNotices';
+import { ServiceLegends } from './ServiceLegends';
+import { useServiceLegends } from './useServiceLegends';
 import { couplesDashboardRange, type TimeRangeMs, type TimeSyncMode } from './timeSync';
 import type { TimeVariableMapping } from './timeVariableSync';
 import type { VariableMapping } from './variableSync';
@@ -269,6 +272,8 @@ export interface KeplerMapProps {
   grafanaAnnotations?: AnnotationsMode;
   /** The dashboard's uid, which a saved annotation belongs to; '' on an unsaved dashboard. */
   dashboardUid?: string;
+  /** Whether the legends the services' queries name (`legend_url`) are drawn over the map. */
+  serviceLegends?: boolean;
 }
 
 /**
@@ -347,6 +352,7 @@ export function KeplerMap({
   annotations,
   grafanaAnnotations = 'show',
   dashboardUid = '',
+  serviceLegends = true,
 }: KeplerMapProps) {
   // A link that carries a center mapping's pair opens the map there: the
   // config the panel mounts with is loaded with that viewport, so the guard
@@ -687,6 +693,14 @@ export function KeplerMap({
   // The rows that time filter hides, when it hides every one of a query's.
   const timeRangeNotices = useTimeRangeNotices({ store, isReady, mode: timeSync, grafanaRange, timeZone });
 
+  // What the services' colours mean, as they say it themselves (`legend_url`),
+  // while their layers are shown.
+  const legends = useMemo(
+    () => (serviceLegends ? legendsOfServices(wmsLayers, esriLayers) : []),
+    [serviceLegends, wmsLayers, esriLayers]
+  );
+  const shownLegends = useServiceLegends({ store, isReady, legends });
+
   // Auto-add trip, flow and flow field layers only on a fresh map; a saved
   // config owns its layers. Adding one can move the viewport, which then needs
   // the same defending the initial load gets.
@@ -926,6 +940,13 @@ export function KeplerMap({
         {notices}
         <MapNotices notices={timeRangeNotices} />
       </NoticeStack>
+      <ServiceLegends
+        legends={shownLegends}
+        width={width}
+        height={height}
+        sidePanelOpen={sidePanelOpen}
+        root={styleTarget}
+      />
     </div>
   );
 }
