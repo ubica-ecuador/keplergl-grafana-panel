@@ -110,8 +110,12 @@ import { chartFilterIds, onlyChartFilters, withoutChartFilters, type ChartLike }
 export type KeplerDataset = {
   info: { id: string; label: string };
   data: NonNullable<ReturnType<typeof processRowObject>>;
-  /** Kepler's dataset metadata: whom to credit (`credited`), and `timeless`, a dataset whose time filter binds to none of its dates. */
-  metadata?: { attributions?: string[]; timeless?: boolean };
+  /**
+   * Whom to credit for it, in kepler's attribution (`credited`); whether
+   * its polygons are outlines (`outlineLayer.ts`); and `timeless`, a dataset
+   * whose time filter binds to none of its dates.
+   */
+  metadata?: { attributions?: string[]; outline?: boolean; timeless?: boolean };
 };
 
 /**
@@ -137,13 +141,17 @@ function credited(dataset: { attributions?: string[] }): { attributions?: string
  */
 export function toKeplerDatasets(datasets: PanelDataset[]): KeplerDataset[] {
   const out: KeplerDataset[] = [];
-  for (const { id, label, rows, columns, attributions, timeless } of datasets) {
+  for (const { id, label, rows, columns, attributions, outline, timeless } of datasets) {
     const data = rows.length === 0 && columns?.length ? columnsOnly(columns) : processRowObject(rows);
     if (data && rows.length) {
       keepLeadingZeroIds(data, rows);
     }
     if (data) {
-      const metadata = { ...(attributions?.length ? { attributions } : {}), ...(timeless ? { timeless } : {}) };
+      const metadata = {
+        ...(attributions?.length ? { attributions } : {}),
+        ...(outline ? { outline } : {}),
+        ...(timeless ? { timeless } : {}),
+      };
       out.push({ info: { id, label }, data, ...(Object.keys(metadata).length ? { metadata } : {}) });
     }
   }

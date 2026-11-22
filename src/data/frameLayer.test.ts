@@ -6,6 +6,7 @@ import {
   frameCreditsOf,
   frameLabelOf,
   frameLayerOf,
+  frameOutlineOf,
   frameTitleOf,
   frameZoomsOf,
   layerBoxOf,
@@ -140,5 +141,19 @@ describe('frameTitleOf and frameLabelOf', () => {
     for (const title of [undefined, null, '', '   ', 42, { en: 'Rivers' }]) {
       expect(frameTitleOf(named({ layer: { key: 'k', title } }))).toBeUndefined();
     }
+  });
+});
+
+describe('frameOutlineOf', () => {
+  it('reads outline: true, with or without a key', () => {
+    expect(frameOutlineOf(frameWith({ layer: { outline: true } }))).toBe(true);
+    expect(frameOutlineOf(frameWith({ layer: { key: 'k', outline: true } }))).toBe(true);
+  });
+
+  it('is false for anything else', () => {
+    expect(frameOutlineOf(toDataFrame({ refId: 'A', fields: [] }))).toBe(false);
+    expect(frameOutlineOf(frameWith({ layer: { key: 'k' } }))).toBe(false);
+    expect(frameOutlineOf(frameWith({ layer: { outline: 'yes' } }))).toBe(false);
+    expect(frameOutlineOf(frameWith({ outline: true }))).toBe(false);
   });
 });

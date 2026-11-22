@@ -17,7 +17,7 @@ import {
   legacyCountColumn,
   resolveRoles,
 } from './detectFields';
-import { attributionsOf, type FrameLayer, frameLabelOf, frameLayerOf } from './frameLayer';
+import { attributionsOf, type FrameLayer, frameLabelOf, frameLayerOf, frameOutlineOf } from './frameLayer';
 import { serviceKindOf } from './serviceKind';
 import { KeplerColumn, KeplerRow, keplerRenamesOf, toKeplerColumns, toKeplerRows } from './toKeplerDataset';
 
@@ -104,6 +104,12 @@ export interface PanelDataset {
    * no time was mapped: kepler's time filter binds to none of its timestamps.
    */
   timeless?: boolean;
+  /**
+   * Whether its polygons are drawn as outlines (`meta.custom.layer.outline`,
+   * `frameLayer.ts`): a catalog's boxes. Read by the GeoJSON layer kepler makes
+   * for it (`outlineLayer.ts`).
+   */
+  outline?: boolean;
 }
 
 /**
@@ -204,6 +210,7 @@ export function framesToDatasets(
       ...dataset,
       ...(layer ? { layer } : {}),
       ...(served ? {} : attributionsOf(frame)),
+      ...(frameOutlineOf(frame) ? { outline: true } : {}),
       ...(timeless ? { timeless } : {}),
     };
   });

@@ -5,10 +5,10 @@ export type LayerBox = [number, number, number, number];
 
 /**
  * What a frame says about the layer it draws, in `meta.custom.layer`:
- * `{ key, bbox?, title?, attribution?, minZoom?, maxZoom? }`. This is the
- * layer's place on the map; its name, whom it credits and its tiles' zoom
- * levels are read on their own (`frameTitleOf`, `frameCreditsOf`,
- * `frameZoomsOf`).
+ * `{ key, bbox?, title?, attribution?, minZoom?, maxZoom?, outline? }`. This
+ * is the layer's place on the map; its name, whom it credits, its tiles' zoom
+ * levels and whether its shapes are outlines are read on their own
+ * (`frameTitleOf`, `frameCreditsOf`, `frameZoomsOf`, `frameOutlineOf`).
  *
  * `key` names the layer, and is the same on every refresh of it: a Spatial
  * Catalog sends its data source, the query's kind and the entries it reads. A
@@ -154,6 +154,16 @@ export function frameZoomsOf(frame: DataFrame): { minZoom?: number; maxZoom?: nu
     ...(minZoom !== undefined ? { minZoom } : {}),
     ...(maxZoom !== undefined && (minZoom === undefined || maxZoom >= minZoom) ? { maxZoom } : {}),
   };
+}
+
+/**
+ * Whether a frame's shapes are to be drawn as outlines (`meta.custom.layer.outline: true`):
+ * its rows' polygons say where things lie rather than what they are, a catalog's
+ * coverage boxes. Read whether or not the frame names its layer's `key`, as its
+ * credits are; any data source may send it.
+ */
+export function frameOutlineOf(frame: DataFrame): boolean {
+  return layerObjectOf(frame)?.outline === true;
 }
 
 /** The layer a frame names in `meta.custom.layer`, or null when it names none. */

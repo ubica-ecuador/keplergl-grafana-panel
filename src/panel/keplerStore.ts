@@ -17,6 +17,7 @@ import { makePhotosLayer, PHOTOS_TYPE } from './photosLayer';
 import { buildPhotosDeckLayers } from './photosDeckLayer';
 import { buildFlowFieldDeckLayer, makeScreenCamera } from './flowFieldDeckLayer';
 import { makeFlowFieldLayer } from './flowFieldLayer';
+import { withOutline } from './outlineLayer';
 import { buildMarkersDeckLayer } from './markersDeckLayer';
 import { makeMarkersLayer } from './markersLayer';
 import { ownLayerIcon } from './ownLayerIcon';
@@ -89,8 +90,10 @@ const layerClasses = {
   ...LayerClasses,
   wms: withWmsTime(withWmsPicking(LayerClasses.wms), buildTimedWmsLayer),
   // Repairs too: with no features they measured infinite bounds, and a map
-  // centred on them went to latitude 0, longitude 0 (`finiteBounds.ts`).
-  geojson: withFiniteBounds(LayerClasses.geojson),
+  // centred on them went to latitude 0, longitude 0 (`finiteBounds.ts`). The
+  // GeoJSON layer also outlines the polygons of a dataset whose source says
+  // they are extents, a catalog's boxes (`outlineLayer.ts`).
+  geojson: withOutline(withFiniteBounds(LayerClasses.geojson)),
   trip: withFiniteBounds(LayerClasses.trip),
   // A repair, like the WMS one above. A 3D tileset states its geometry at its
   // real altitude and this map's ground is a plane at zero, so a mesh surveyed

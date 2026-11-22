@@ -6,6 +6,12 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **A catalog's boxes as outlines.** A frame whose `meta.custom.layer` says `outline: true` has its
+  polygons drawn as outlines, not filled: shapes that say where things lie, not what they are. The
+  Spatial Catalog sends it on a Catalog search, whose `footprint` boxes, filled, stacked into one
+  tinted slab over the map. Only the layer kepler makes for the query changes, as it makes it: a
+  saved map keeps what it saved, and the layer's Fill switch turns the fill back on. Points and lines
+  are drawn as before. Read whether or not the frame names its `key`.
 - **The viewport in one variable.** *Publish viewport* takes, besides or instead of its four edges,
   one variable for the whole box (`viewportVariables.view`): a WKT `POLYGON`, as the drawn area is
   written, or `west,south,east,north` (`viewFormat: 'bbox'`). A data source that reads an area takes
