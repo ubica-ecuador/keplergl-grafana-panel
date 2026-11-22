@@ -11,26 +11,24 @@ release documents what changed since the one before it.
   written, or `west,south,east,north` (`viewFormat: 'bbox'`). A data source that reads an area takes
   it as is (the Spatial Catalog's area: `$view`); SQL reads it as `ST_GeomFromText(${view:sqlstring})`.
   Published with the edges, in the same write, and not written again while it holds the box.
-- **A WMS layer in one of its styles, and a service's legend over the map.** A query's `wms_style`
-  (or `wms_styles`; not `style` alone, a column of any table of buildings) on the row that names the
-  WMS is the `STYLES` of every request: the picture, the tiles a relief base map draws, and the click
-  (`GetFeatureInfo`), so a click is answered for the style on screen. Empty is the service's default.
-  A change of style (a variable over the styles a catalogue lists) asks for a new picture of the same
-  layer, the way a change of date does: no new dataset, the view does not move, and the layer keeps
-  its name, opacity and place set in the layer panel. A query's `legend_url` (or
-  `legend_graphic_url`) on a WMS or `esri_url` row is drawn over the map, in its bottom-left corner,
-  right of the open side panel, above kepler's scale bar, and above its time widget when that
-  reaches the corner: one block per layer, titled with the layer's name when the user renamed it,
-  else the row's `title` (a catalog's name for each service), else the layer's name; folded by its
-  title, gone while the layer is hidden,
-  scrolling when the legends are taller than the map. A picture (a WMS's `LegendURL`, a
-  `GetLegendGraphic`) is shown as it is, on a white ground, and needs no CORS; ArcGIS's
-  `…/ImageServer/legend` or `…/MapServer/legend` is fetched as JSON (`f=json`) and drawn as swatches
-  and labels in the dashboard's theme, a stretch of many values as one bar between its end labels,
-  and only the layer drawn of a `…/MapServer/<id>`. A legend that does not load, or a service that
-  refuses CORS, shows none and draws the map as before. The new **Service legends** option
-  (`serviceLegends`, on by default) turns them off. A change of `esri_rendering_rule` rebuilds the
-  service's dataset as before, which keeps the layer's settings and the view.
+- **A WMS layer in one of its styles, and a service's legend in the map's legend.** A query's
+  `wms_style` (or `wms_styles`; not `style` alone, a column of any table of buildings) on the row
+  that names the WMS is the `STYLES` of every request: the picture, the tiles a relief base map
+  draws, and the click (`GetFeatureInfo`), so a click is answered for the style on screen. Empty is
+  the service's default. A change of style (a variable over the styles a catalogue lists) asks for a
+  new picture of the same layer, the way a change of date does: no new dataset, the view does not
+  move, and the layer keeps its name, opacity and place set in the layer panel. kepler's map legend
+  (the legend button in the map control) now shows the legend of the style drawn: the row's
+  `legend_url` (or `legend_graphic_url`) when it gives one, else the service's `GetLegendGraphic`
+  of that style; kepler's own showed the default style's whatever was drawn. An `esri_url` row's
+  `legend_url` is shown there too: a picture as it is, ArcGIS's `…/ImageServer/legend` or
+  `…/MapServer/legend` fetched as JSON (`f=json`) and drawn as swatches and labels in the legend's
+  look, a stretch of many values as one bar between its end labels, and only the layer drawn of a
+  `…/MapServer/<id>`; a service that refuses CORS shows none. An ArcGIS service layer no longer shows
+  a colour swatch of its own there, as kepler's WMS layer does not. A row's `title` column names the
+  service's dataset and layer, where a catalog query's name is the same for every service it lists.
+  A change of `esri_rendering_rule` (or of `legend_url`) rebuilds the service's dataset as before,
+  which keeps the layer's settings and the view.
 - **ArcGIS Map Services from `esri_url`.** An `esri_url` ending in `/MapServer` is drawn as an Image
   Service is, a picture of each tile in Web Mercator, by the service's `export`
   (`format=png32&transparent=true`); one ending in `/MapServer/<id>` draws that layer alone

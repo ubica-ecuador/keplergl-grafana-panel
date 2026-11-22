@@ -38,6 +38,7 @@
  * layer has already been handed to the renderer.
  */
 
+import { legendPictureOf } from '../data/serviceLegend';
 import { boxOfMetadata, reliefBoundsOfBox } from './wmsExtent';
 
 /** The fragment keys. Short because they are on every tile url in the network tab. */
@@ -129,10 +130,84 @@ export function wmsMapLibreTemplate(args: {
 
 /** The members of kepler's WMS layer this wrapper touches. */
 interface WmsLayerLike {
-  config?: { visConfig?: { wmsTime?: unknown; wmsStyle?: unknown } };
+  config?: {
+    visConfig?: { wmsTime?: unknown; wmsStyle?: unknown; wmsLegendUrl?: unknown; wmsLayer?: { name?: unknown } };
+  };
   /** What a click reads to ask the service about a pixel. */
   deckLayerRef?: unknown;
+  /** kepler's: the service's endpoint and WMS version, once its capabilities answered. */
+  meta?: { tilesetDataUrl?: unknown; wmsVersion?: unknown };
   renderLayer(opts?: unknown): unknown[];
+  /** What kepler's map legend shows of the layer: a picture, or null for none. */
+  getLegendImageUrl?(): string | null;
+}
+
+/** The WMS parameters a GetLegendGraphic replaces on a service url, as kepler's `buildWmsRequestUrl` does. */
+const LEGEND_REPLACED_KEYS = new Set([
+  'service',
+  'request',
+  'version',
+  'layers',
+  'layer',
+  'styles',
+  'style',
+  'format',
+  'crs',
+  'srs',
+  'bbox',
+  'width',
+  'height',
+  'transparent',
+  'bgcolor',
+  'exceptions',
+  'sld',
+  'sld_version',
+  'legend_options',
+]);
+
+/**
+ * The GetLegendGraphic of a layer in one style: kepler's own request for a
+ * WMS legend (`buildWmsGetLegendGraphicUrl` in `@kepler.gl/table`, the one its
+ * WMS layer falls back to), with the `STYLE` kepler leaves out. Kept here,
+ * parameter for parameter, so this module stays free of kepler's imports. The
+ * service's own query (MapServer's `?map=…`) is kept; null for a url that
+ * does not parse.
+ */
+export function wmsLegendGraphicUrl(
+  serviceUrl: string,
+  layerName: string,
+  style: string,
+  version?: string
+): string | null {
+  if (!serviceUrl || !layerName) {
+    return null;
+  }
+  try {
+    const url = new URL(serviceUrl.split('#')[0]);
+    for (const key of [...url.searchParams.keys()]) {
+      if (LEGEND_REPLACED_KEYS.has(key.toLowerCase())) {
+        url.searchParams.delete(key);
+      }
+    }
+    const params: Record<string, string> = {
+      SERVICE: 'WMS',
+      REQUEST: 'GetLegendGraphic',
+      VERSION: version || '1.3.0',
+      LAYER: layerName,
+      FORMAT: 'image/png',
+      STYLE: style,
+      TRANSPARENT: 'TRUE',
+      SLD_VERSION: '1.1.0',
+    };
+    for (const [key, value] of Object.entries(params)) {
+      if (value) {
+        url.searchParams.set(key, value);
+      }
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
 }
 
 /** Builds the deck layer that understands the fragment — see `wmsDeckLayer.ts`. */
@@ -170,6 +245,33 @@ type Constructor<T> = new (...args: any[]) => T;
  */
 export function withWmsTime<C extends Constructor<object>>(WMSLayer: C, buildTimedLayer: TimedDeckLayerFactory): C {
   class WMSLayerWithTime extends (WMSLayer as Constructor<WmsLayerLike>) {
+    /**
+     * What kepler's map legend shows of the layer: the legend of the style it
+     * draws.
+     *
+     * kepler's own answers the layer's first `LegendURL` in the capabilities,
+     * or a GetLegendGraphic with no `STYLE`: both the default style's, whatever
+     * the picture is drawn in. So the query's `legend_url` comes first (a
+     * picture: an ArcGIS legend is no WMS's); then, for a style with none, the
+     * GetLegendGraphic of that style; and only for the default style without
+     * a `legend_url`, kepler's.
+     */
+    getLegendImageUrl(): string | null {
+      const visConfig = this.config?.visConfig;
+      const picture = legendPictureOf(typeof visConfig?.wmsLegendUrl === 'string' ? visConfig.wmsLegendUrl : '');
+      if (picture) {
+        return picture;
+      }
+      const style = typeof visConfig?.wmsStyle === 'string' ? visConfig.wmsStyle : '';
+      const name = visConfig?.wmsLayer?.name;
+      const service = this.meta?.tilesetDataUrl;
+      if (style && typeof name === 'string' && typeof service === 'string') {
+        const version = typeof this.meta?.wmsVersion === 'string' ? this.meta.wmsVersion : undefined;
+        return wmsLegendGraphicUrl(service, name, style, version);
+      }
+      return super.getLegendImageUrl?.() ?? null;
+    }
+
     renderLayer(opts?: unknown): unknown[] {
       const layers = super.renderLayer(opts) ?? [];
       if (layers.length === 0) {

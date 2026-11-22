@@ -1,49 +1,28 @@
-import type { EsriDataset } from './esriDataset';
-import type { WmsDataset } from './wmsDataset';
-
 /**
- * The legends of the services a map draws, as the map shows them over itself
- * (`ServiceLegends.tsx`).
+ * The legends of the services a map draws, as kepler's map legend shows them
+ * (the legend button in the map control).
  *
  * A WMS or an ArcGIS service hands out finished pictures, so the map has no
- * colour scale of its own to explain them: kepler's legend shows a WMS layer
- * as a name and nothing else. What the colours mean is the service's to say,
- * and services say it in one of two ways, which are the two kinds here:
+ * colour scale of its own to explain them. What the colours mean is the
+ * service's to say, and services say it in one of two ways, which are the two
+ * kinds here:
  *
  * - **A picture.** A WMS publishes a `LegendURL` for each style of a layer,
- *   most often a GetLegendGraphic — swatches and labels already drawn. It is
- *   shown as an `<img>`, which needs no CORS: the browser shows a picture from
- *   anywhere, and nothing reads its pixels.
+ *   most often a GetLegendGraphic — swatches and labels already drawn. kepler's
+ *   legend shows it as an `<img>` (a layer's `getLegendImageUrl`), which needs
+ *   no CORS: the browser shows a picture from anywhere, and nothing reads its
+ *   pixels.
  * - **ArcGIS's legend JSON.** An Image Service or a Map Service answers
  *   `…/legend?f=json` (with `renderingRule=` for the raster function drawn)
  *   with each layer's swatches as base64 PNGs and their labels as text. The
- *   map draws those itself, so the labels take the dashboard's theme. That one
- *   is fetched, and so needs the service to allow it; one that does not shows
- *   nothing, and the map is drawn as before.
+ *   panel draws those inside kepler's legend (`serviceLegendContent.tsx`), so
+ *   the labels take kepler's legend type and colours. That one is fetched, and
+ *   so needs the service to allow it; one that does not shows nothing, and the
+ *   map is drawn as before.
  *
  * Pure, so what is read from a column and from a reply can be tested without a
  * map or a network.
  */
-
-/** A legend to show over the map: whose, where it is, and how to read it. */
-export interface ServiceLegend {
-  /** The dataset of the layer it explains: the legend shows while kepler's layer on it does. */
-  dataId: string;
-  /**
-   * The name the panel gave its dataset, the query's (`frame.name`, or
-   * `Query <refId>`): what kepler labels the layer with until the user renames it.
-   */
-  label: string;
-  /** The row's own name for the layer, its `title` column, when it has one. */
-  rowTitle?: string;
-  url: string;
-  kind: LegendKind;
-  /**
-   * For an ArcGIS legend of a Map Service drawn one layer at a time
-   * (`…/MapServer/<id>`): that layer's id, the only one of the reply shown.
-   */
-  layerId?: number;
-}
 
 /** A picture to show as it is, or ArcGIS's legend JSON to draw. */
 export type LegendKind = 'image' | 'arcgis';
@@ -75,47 +54,27 @@ export const MAX_LISTED_ENTRIES = 24;
 export const RAMP_SWATCHES = 64;
 
 /**
- * The legends of a map's services, one per WMS layer or ArcGIS service whose
- * query gave a `legend_url`, in the order the queries came. A url the map would
- * not show — anything but http(s), a path on Grafana's own host or a `data:`
- * picture — gives none.
+ * The ArcGIS legend a layer of a service shows, or null when its `legend_url`
+ * is none: the url asked for JSON (`arcgisLegendUrl`), and for a Map Service
+ * drawn one layer at a time (`…/MapServer/<id>`) that layer's id, the only one
+ * of the reply shown.
  */
-export function serviceLegends(wms: readonly WmsDataset[], esri: readonly EsriDataset[]): ServiceLegend[] {
-  const legends: ServiceLegend[] = [];
-  for (const layer of wms) {
-    const legend = legendOf(layer.id, layer.label, layer.legendUrl, layer.title);
-    if (legend) {
-      legends.push(legend);
-    }
-  }
-  for (const service of esri) {
-    const legend = legendOf(service.id, service.label, service.legendUrl, service.title);
-    if (legend) {
-      const layerId = /\/MapServer\/(\d+)\/?$/i.exec(service.serviceUrl)?.[1];
-      legends.push(legend.kind === 'arcgis' && layerId ? { ...legend, layerId: Number(layerId) } : legend);
-    }
-  }
-  return legends;
-}
-
-function legendOf(
-  dataId: string,
-  label: string,
-  url: string | undefined,
-  rowTitle: string | undefined
-): ServiceLegend | null {
-  const address = url?.trim() ?? '';
-  const kind = legendKindOf(address);
-  if (!kind) {
+export function arcgisLegendOf(
+  serviceUrl: string,
+  legendUrl: string | undefined
+): { url: string; layerId?: number } | null {
+  const address = legendUrl?.trim() ?? '';
+  if (legendKindOf(address) !== 'arcgis') {
     return null;
   }
-  return {
-    dataId,
-    label,
-    ...(rowTitle ? { rowTitle } : {}),
-    url: kind === 'arcgis' ? asJsonLegend(address) : address,
-    kind,
-  };
+  const layerId = /\/MapServer\/(\d+)\/?$/i.exec(serviceUrl)?.[1];
+  return { url: arcgisLegendUrl(address), ...(layerId ? { layerId: Number(layerId) } : {}) };
+}
+
+/** A legend url as a picture for kepler's legend, or null when it is none (not one, or ArcGIS's JSON). */
+export function legendPictureOf(legendUrl: string | undefined): string | null {
+  const address = legendUrl?.trim() ?? '';
+  return legendKindOf(address) === 'image' ? address : null;
 }
 
 /**
@@ -142,7 +101,7 @@ export function legendKindOf(url: string): LegendKind | null {
  * for no format, and any other format (`f=html`, the endpoint's default when
  * none is given) replaced, since only JSON can be drawn.
  */
-function asJsonLegend(url: string): string {
+export function arcgisLegendUrl(url: string): string {
   const [base, fragment] = url.split('#');
   const [path, query = ''] = base.split('?');
   const params = query.split('&').filter((part) => part && !/^f=/i.test(part));
@@ -241,50 +200,4 @@ export function fetchArcgisLegend(url: string, fetchImpl: typeof fetch = fetch):
     });
   replies.set(url, pending);
   return pending;
-}
-
-/** A legend as the map shows it, with its title (`legendTitle`). */
-export interface ShownLegend extends ServiceLegend {
-  title: string;
-}
-
-/**
- * The labels kepler gives a layer of a service the user has not renamed: the
- * panel's name for its dataset, or kepler's own placeholders when it found none.
- */
-const DEFAULT_LAYER_LABELS = new Set(['WMS Layer', 'Image Service', 'ArcGIS Image Service']);
-
-/**
- * What a legend is titled, in this order:
- *
- * 1. **The layer's label, when the user renamed it** in the layer panel: a name
- *    someone chose wins over anything a query says.
- * 2. **The row's `title`**: the Spatial Catalog names each service it lists
- *    there ("Angeeichtes Radarkomposit (RW)"), where the query's name — and
- *    with it kepler's default label — is the same for all of them ("services").
- * 3. **The layer's label as kepler has it**, the query's name; that name itself
- *    for a layer with no label.
- */
-export function legendTitle(legend: ServiceLegend, layerLabel: string): string {
-  const renamed = layerLabel !== '' && layerLabel !== legend.label && !DEFAULT_LAYER_LABELS.has(layerLabel);
-  if (renamed) {
-    return layerLabel;
-  }
-  return legend.rowTitle || layerLabel || legend.label;
-}
-
-/**
- * The legends to show: those whose layer kepler draws, in the order the
- * legends came, each with its title (`legendTitle`). A legend whose layer is
- * hidden, or not built yet, is not shown.
- */
-export function shownLegends(
-  legends: readonly ServiceLegend[],
-  layers: ReadonlyArray<{ dataId: string; label: string; visible: boolean }>
-): ShownLegend[] {
-  const byId = new Map(layers.map((layer) => [layer.dataId, layer]));
-  return legends.flatMap((legend) => {
-    const layer = byId.get(legend.dataId);
-    return layer?.visible ? [{ ...legend, title: legendTitle(legend, layer.label) }] : [];
-  });
 }

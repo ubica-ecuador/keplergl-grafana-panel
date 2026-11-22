@@ -16,6 +16,14 @@ import { anotherServiceWins } from './serviceKind';
  */
 export interface WmsDataset {
   id: string;
+  /**
+   * The name the dataset, and kepler's layer on it until the user renames it,
+   * go by: the row's own name for the layer when it has one (its `title`
+   * column, as the Spatial Catalog's Services frame gives each service), else
+   * the query's. A catalog query lists many services under one query name
+   * ("services"), so that name alone told none of them apart, in the layer
+   * panel or in the map's legend.
+   */
   label: string;
   /** The service endpoint, bare: no query, no fragment — see {@link serviceUrlOf}. */
   serviceUrl: string;
@@ -56,12 +64,6 @@ export interface WmsDataset {
   style?: string;
   /** Where its legend is (`legend_url`), drawn over the map. See `serviceLegend.ts`. */
   legendUrl?: string;
-  /**
-   * The row's own name for the layer (its `title` column, as the Spatial
-   * Catalog's Services frame gives it), which titles its legend: the query's
-   * name is the same for every service a catalog query lists.
-   */
-  title?: string;
 }
 
 /** A layer's box in degrees: `[west, south, east, north]`; `west > east` crosses the antimeridian. */
@@ -159,14 +161,13 @@ export function framesToWms(frames: DataFrame[], overrides: Record<string, Field
 
     datasets.push({
       id: wmsDatasetId(refId),
-      label: frame.name ?? `Query ${refId}`,
+      label: title || (frame.name ?? `Query ${refId}`),
       serviceUrl: named.serviceUrl,
       layerName: named.layerName,
       times: readTimes(frame, roles.time),
       bbox: boxes ? parseWmsBox(boxes.values[named.row]) : null,
       ...(style ? { style } : {}),
       ...(legendUrl ? { legendUrl } : {}),
-      ...(title ? { title } : {}),
     });
   });
 

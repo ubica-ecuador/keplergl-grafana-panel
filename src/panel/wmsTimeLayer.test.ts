@@ -1,4 +1,11 @@
-import { readTimeFragment, shareMetadata, withTimeFragment, withWmsTime, wmsMapLibreTemplate } from './wmsTimeLayer';
+import {
+  readTimeFragment,
+  shareMetadata,
+  withTimeFragment,
+  withWmsTime,
+  wmsLegendGraphicUrl,
+  wmsMapLibreTemplate,
+} from './wmsTimeLayer';
 
 const SERVICE = 'https://services.geoglows.org/geoserver/satellite_based_precipitation/wms';
 const TIME = '2026-08-20T00:00:00.000Z';
@@ -315,5 +322,70 @@ describe('withWmsTime and the layer’s box', () => {
 
   it('bounds the MapLibre source on a relief base map', () => {
     expect(render({ tilesBbox: FRANCE }, false).reliefBounds).toEqual(FRANCE);
+  });
+});
+
+describe('the legend kepler’s map legend shows of a WMS layer', () => {
+  /** kepler's WMS layer as far as its legend goes: the default style's legend, from its capabilities. */
+  class KeplerWms extends FakeWMSLayer {
+    meta = { tilesetDataUrl: 'https://maps.dwd.de/geoserver/ows', wmsVersion: '1.3.0' };
+    getLegendImageUrl(): string | null {
+      return 'https://maps.dwd.de/legend-of-the-default-style.png';
+    }
+  }
+  const make = (visConfig: Record<string, unknown>) => {
+    const layer = new (withWmsTime(KeplerWms, fakeDeckLayer))();
+    layer.config.visConfig = { wmsLayer: { name: 'dwd:Autowarn_Analyse' }, ...visConfig };
+    return layer as KeplerWms;
+  };
+  const params = (url: string | null) => Object.fromEntries(new URL(url!).searchParams);
+
+  it('shows the query’s legend_url first', () => {
+    const legend = 'https://maps.dwd.de/geoserver/ows?request=GetLegendGraphic&style=severity';
+
+    expect(make({ wmsStyle: 'severity', wmsLegendUrl: legend }).getLegendImageUrl()).toBe(legend);
+  });
+
+  it('asks for the GetLegendGraphic of the style drawn when the query gives no legend', () => {
+    expect(params(make({ wmsStyle: 'autowarn_analyse_severity' }).getLegendImageUrl())).toEqual({
+      SERVICE: 'WMS',
+      REQUEST: 'GetLegendGraphic',
+      VERSION: '1.3.0',
+      LAYER: 'dwd:Autowarn_Analyse',
+      FORMAT: 'image/png',
+      STYLE: 'autowarn_analyse_severity',
+      TRANSPARENT: 'TRUE',
+      SLD_VERSION: '1.1.0',
+    });
+  });
+
+  it('leaves the default style to kepler, and an ArcGIS legend or an unsafe url is no WMS legend', () => {
+    expect(make({}).getLegendImageUrl()).toBe('https://maps.dwd.de/legend-of-the-default-style.png');
+    expect(
+      make({ wmsLegendUrl: 'https://x.example/arcgis/rest/services/A/MapServer/legend' }).getLegendImageUrl()
+    ).toBe('https://maps.dwd.de/legend-of-the-default-style.png');
+    expect(make({ wmsLegendUrl: 'javascript:alert(1)' }).getLegendImageUrl()).toBe(
+      'https://maps.dwd.de/legend-of-the-default-style.png'
+    );
+  });
+});
+
+describe('wmsLegendGraphicUrl', () => {
+  it('keeps the service’s own query and replaces the WMS parameters already on it', () => {
+    const url = wmsLegendGraphicUrl('https://ms.example/cgi?map=/x.map&REQUEST=GetMap&layers=a', 'rain', 'classes')!;
+
+    expect(Object.fromEntries(new URL(url).searchParams)).toMatchObject({
+      map: '/x.map',
+      REQUEST: 'GetLegendGraphic',
+      LAYER: 'rain',
+      STYLE: 'classes',
+    });
+    expect(new URL(url).searchParams.has('layers')).toBe(false);
+  });
+
+  it('is null without a service or a layer, or for a url that does not parse', () => {
+    expect(wmsLegendGraphicUrl('', 'rain', 'classes')).toBeNull();
+    expect(wmsLegendGraphicUrl('https://geo.test/wms', '', 'classes')).toBeNull();
+    expect(wmsLegendGraphicUrl('not a url', 'rain', 'classes')).toBeNull();
   });
 });

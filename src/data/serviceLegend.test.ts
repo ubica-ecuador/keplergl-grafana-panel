@@ -1,12 +1,11 @@
 import {
+  arcgisLegendOf,
   fetchArcgisLegend,
   legendKindOf,
-  legendTitle,
+  legendPictureOf,
   MAX_LISTED_ENTRIES,
   parseArcgisLegend,
   RAMP_SWATCHES,
-  serviceLegends,
-  shownLegends,
 } from './serviceLegend';
 
 const WMS = 'https://maps.dwd.de/geoserver/ows';
@@ -14,16 +13,6 @@ const GRAPHIC = `${WMS}?service=WMS&request=GetLegendGraphic&format=image%2Fpng&
 const IMAGE_SERVICE = 'https://landsat2.arcgis.com/arcgis/rest/services/Landsat/MS/ImageServer';
 const MAP_SERVICE = 'https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer';
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAPklEQVQ4jWPMy8v7z0BFwAIiJk6aRBXD8vPyGJgYqAyYRg==';
-
-const wms = (legendUrl?: string) => ({
-  id: 'grafana-A-wms',
-  label: 'Warnings',
-  serviceUrl: WMS,
-  layerName: 'dwd:Autowarn_Analyse',
-  times: [],
-  bbox: null,
-  ...(legendUrl !== undefined ? { legendUrl } : {}),
-});
 
 /** An Image Service's reply to `legend?f=json`, as landsat2.arcgis.com answers it. */
 const imageServiceReply = {
@@ -59,46 +48,34 @@ describe('legendKindOf', () => {
   });
 });
 
-describe('serviceLegends', () => {
-  it('gives one legend per layer whose query named one, in the order they came', () => {
-    const legends = serviceLegends(
-      [wms(GRAPHIC), { ...wms(), id: 'grafana-B-wms' }],
-      [{ id: 'grafana-C-esri', label: 'Landsat', serviceUrl: IMAGE_SERVICE, legendUrl: `${IMAGE_SERVICE}/legend` }]
-    );
-
-    expect(legends).toEqual([
-      { dataId: 'grafana-A-wms', label: 'Warnings', url: GRAPHIC, kind: 'image' },
-      { dataId: 'grafana-C-esri', label: 'Landsat', url: `${IMAGE_SERVICE}/legend?f=json`, kind: 'arcgis' },
-    ]);
-  });
-
+describe('arcgisLegendOf', () => {
   it('asks an ArcGIS legend for JSON whatever format it named, keeping its rendering rule', () => {
-    const [legend] = serviceLegends(
-      [],
-      [
-        {
-          id: 'grafana-A-esri',
-          label: 'NDVI',
-          serviceUrl: IMAGE_SERVICE,
-          legendUrl: `${IMAGE_SERVICE}/legend?renderingRule=%7B%7D&f=pjson`,
-        },
-      ]
-    );
-
-    expect(legend.url).toBe(`${IMAGE_SERVICE}/legend?renderingRule=%7B%7D&f=json`);
+    expect(arcgisLegendOf(IMAGE_SERVICE, `${IMAGE_SERVICE}/legend`)).toEqual({ url: `${IMAGE_SERVICE}/legend?f=json` });
+    expect(arcgisLegendOf(IMAGE_SERVICE, `${IMAGE_SERVICE}/legend?renderingRule=%7B%7D&f=pjson`)).toEqual({
+      url: `${IMAGE_SERVICE}/legend?renderingRule=%7B%7D&f=json`,
+    });
   });
 
   it('shows only the layer a Map Service is drawn by, when it is drawn one layer at a time', () => {
-    const [legend] = serviceLegends(
-      [],
-      [{ id: 'grafana-A-esri', label: 'States', serviceUrl: `${MAP_SERVICE}/2`, legendUrl: `${MAP_SERVICE}/legend` }]
-    );
-
-    expect(legend.layerId).toBe(2);
+    expect(arcgisLegendOf(`${MAP_SERVICE}/2`, `${MAP_SERVICE}/legend`)).toEqual({
+      url: `${MAP_SERVICE}/legend?f=json`,
+      layerId: 2,
+    });
   });
 
-  it('gives none for a url the map would not show', () => {
-    expect(serviceLegends([wms('javascript:alert(1)'), wms('  ')], [])).toEqual([]);
+  it('is none for a picture, an unsafe url or no url', () => {
+    expect(arcgisLegendOf(IMAGE_SERVICE, GRAPHIC)).toBeNull();
+    expect(arcgisLegendOf(IMAGE_SERVICE, 'javascript:alert(1)')).toBeNull();
+    expect(arcgisLegendOf(IMAGE_SERVICE, undefined)).toBeNull();
+  });
+});
+
+describe('legendPictureOf', () => {
+  it('gives a picture url as it is, and none for ArcGIS JSON or an unsafe url', () => {
+    expect(legendPictureOf(` ${GRAPHIC} `)).toBe(GRAPHIC);
+    expect(legendPictureOf(`${IMAGE_SERVICE}/legend`)).toBeNull();
+    expect(legendPictureOf('javascript:alert(1)')).toBeNull();
+    expect(legendPictureOf(undefined)).toBeNull();
   });
 });
 
@@ -160,49 +137,6 @@ describe('parseArcgisLegend', () => {
     expect(parseArcgisLegend({ error: { code: 400, message: 'Unable to complete operation.' } })).toEqual([]);
     expect(parseArcgisLegend(null)).toEqual([]);
     expect(parseArcgisLegend('<html>')).toEqual([]);
-  });
-});
-
-describe('shownLegends', () => {
-  const legend = { dataId: 'grafana-A-wms', label: 'Query A', url: GRAPHIC, kind: 'image' as const };
-
-  it('shows a legend while its layer is, titled with the layer’s label', () => {
-    expect(shownLegends([legend], [{ dataId: 'grafana-A-wms', label: 'Warnings', visible: true }])).toEqual([
-      { ...legend, title: 'Warnings' },
-    ]);
-    expect(shownLegends([legend], [{ dataId: 'grafana-A-wms', label: '', visible: true }])[0].title).toBe('Query A');
-  });
-
-  it('hides it while the layer is hidden, or not built yet', () => {
-    expect(shownLegends([legend], [{ dataId: 'grafana-A-wms', label: 'Warnings', visible: false }])).toEqual([]);
-    expect(shownLegends([legend], [])).toEqual([]);
-  });
-});
-
-describe('legendTitle', () => {
-  const legend = { dataId: 'grafana-A-wms', label: 'services', url: GRAPHIC, kind: 'image' as const };
-  const titled = { ...legend, rowTitle: 'Angeeichtes Radarkomposit (RW)' };
-
-  it('takes the row’s title over the query’s name, which a catalog query gives every service it lists', () => {
-    expect(legendTitle(titled, 'services')).toBe('Angeeichtes Radarkomposit (RW)');
-    expect(legendTitle(titled, 'WMS Layer')).toBe('Angeeichtes Radarkomposit (RW)');
-    expect(legendTitle(titled, '')).toBe('Angeeichtes Radarkomposit (RW)');
-  });
-
-  it('lets a layer the user renamed keep the name they chose', () => {
-    expect(legendTitle(titled, 'Radar over Germany')).toBe('Radar over Germany');
-  });
-
-  it('falls back to the layer’s label, and then to the query’s name', () => {
-    expect(legendTitle(legend, 'services')).toBe('services');
-    expect(legendTitle(legend, 'WMS Layer')).toBe('WMS Layer');
-    expect(legendTitle(legend, '')).toBe('services');
-  });
-
-  it('carries the row’s title from the dataset onto the legend', () => {
-    const [shown] = serviceLegends([{ ...wms(GRAPHIC), title: 'Unwetterwarnungen' }], []);
-
-    expect(shown.rowTitle).toBe('Unwetterwarnungen');
   });
 });
 

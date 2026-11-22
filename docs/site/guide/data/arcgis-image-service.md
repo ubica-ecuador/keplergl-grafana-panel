@@ -122,9 +122,9 @@ nothing, byte for byte — so leave the column out unless you want one of the ot
 ### Its legend {#its-legend}
 
 What the colours mean is the service's to say, and it says it at `…/ImageServer/legend` (with the
-rendering rule drawn) or `…/MapServer/legend`. Put that address in `legend_url` and the map draws the
-legend over itself, as a [WMS's](./wms#styles-and-legends) is drawn: bottom-left, titled with the
-row's `title` or the layer's name, folded by its title, gone while the layer is hidden.
+rendering rule drawn) or `…/MapServer/legend`. Put that address in `legend_url` and the map's legend
+(the legend button in the map control) draws it under the layer's name, as it shows a
+[WMS's](./wms#styles-and-legends).
 
 ```sql
 SELECT
@@ -135,12 +135,13 @@ SELECT
 ```
 
 The panel asks it for JSON (`f=json`, whatever format the address names) and draws its swatches with
-their labels in the dashboard's theme. A stretch of many values (NDVI Colorized gives one per value,
-256 of them) is drawn as one bar of colour with its first and last labels. A Map Service drawn one
-layer at a time (`…/MapServer/<id>`) shows that layer's swatches alone; a whole Map Service, a group
-per layer. The legend is fetched, so the service has to allow CORS, as public ArcGIS services do; one
-that refuses, or answers an error, shows no legend and draws the map as before. Any other address in
-`legend_url` is shown as a picture.
+their labels in the legend's own type and colours. A stretch of many values (NDVI Colorized gives one
+per value, 256 of them) is drawn as one bar of colour with its first and last labels. A Map Service
+drawn one layer at a time (`…/MapServer/<id>`) shows that layer's swatches alone; a whole Map Service,
+a group per layer. The legend is fetched, so the service has to allow CORS, as public ArcGIS services
+do; one that refuses, or answers an error, leaves only the layer's name in the legend and draws the
+map as before. Any other address in `legend_url` is shown as a picture. A row's `title` names the
+layer, as for a WMS.
 
 ## What it costs
 

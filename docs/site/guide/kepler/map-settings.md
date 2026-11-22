@@ -50,8 +50,11 @@ describes a rectangle in degrees, which is a poor description of what a globe is
 
 ## Legend
 
-Shows the colour and size encodings for the visible layers. It is part of the saved configuration,
-so a provisioned dashboard can open with it already on. Which layers it lists is chosen under
+Shows the colour and size encodings for the visible layers, and for a WMS or an ArcGIS service the
+service's own legend (see [Styles and legends](../data/wms#styles-and-legends)). It is part of the
+saved configuration, so a provisioned dashboard can open with it already on: open it, then save the
+map configuration (its `uiState.mapControls.mapLegend.active` is then `true` in the panel's
+`mapConfig`). Which layers it lists is chosen under
 **Interactions → Legend**, where a layer can be left out of the legend and stay on the map — see
 [Interactions](./interactions#legend). It can be resized from its top edge as well as its bottom,
 so one sitting in a bottom corner grows without being moved first, and it moves by its title.

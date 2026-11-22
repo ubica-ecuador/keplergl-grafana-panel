@@ -36,7 +36,7 @@ describe('framesToEsri', () => {
     expect(service.renderingRule).toBe(rule);
   });
 
-  it('carries the legend of the row that names the service', () => {
+  it('carries the legend of the row that names the service, and its title as its name', () => {
     const legend = `${SERVICE}/legend?f=json&renderingRule=%7B%22rasterFunction%22%3A%22Stretch%22%7D`;
     const frame = toDataFrame({
       refId: 'A',
@@ -50,7 +50,7 @@ describe('framesToEsri', () => {
     const [service] = framesToEsri([frame]);
 
     expect(service.legendUrl).toBe(legend);
-    expect(service.title).toBe('Sentinel-2 Land Cover');
+    expect(service.label).toBe('Sentinel-2 Land Cover');
   });
 
   it('carries the box of the row that names the service, for the map to frame on', () => {

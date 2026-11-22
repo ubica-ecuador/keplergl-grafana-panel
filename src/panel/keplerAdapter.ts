@@ -1014,60 +1014,39 @@ export function applyWmsTime(store: Store, dispatch: Dispatch, dataId: string, t
 }
 
 /**
- * Draws a WMS layer in the style its query names, or the service's default.
+ * Draws a WMS layer in the style its query names, or the service's default,
+ * and points kepler's legend of it at the query's legend.
  *
  * The road the date takes (`applyWmsTime`): one dispatch into the layer's
  * `visConfig`, which `wmsTimeLayer` puts on the data url, so deck builds a new
  * image source and fetches one picture. No dataset is touched — the style is
  * not part of what `splitWmsRefresh` compares — so the layer keeps its id and
- * whatever the user set on it, and nothing reframes the view.
+ * whatever the user set on it, and nothing reframes the view. The legend
+ * (`legend_url`, in `visConfig.wmsLegendUrl`) is what kepler's map legend shows
+ * of the layer (`withWmsTime`'s `getLegendImageUrl`), and changes with the style.
  *
  * Followed on every reconcile rather than pinned once like the layer: the
  * layer panel offers no style to pick, so the query (a variable over the
  * styles the catalogue lists) is the only one choosing. Quiet when the layer
- * already draws that style, and an absent style and an empty one are the same.
+ * already has both, and an absent value and an empty one are the same.
  */
-export function applyWmsStyle(store: Store, dispatch: Dispatch, dataId: string, style: string | undefined): boolean {
+export function applyWmsStyle(
+  store: Store,
+  dispatch: Dispatch,
+  dataId: string,
+  style: string | undefined,
+  legendUrl?: string
+): boolean {
   const layer = getVisState(store)?.layers.find((candidate) => candidate.config?.dataId === dataId);
   if (!layer) {
     return false;
   }
-  const current = layer.config?.visConfig?.wmsStyle;
-  if ((typeof current === 'string' ? current : '') === (style ?? '')) {
+  const visConfig = layer.config?.visConfig;
+  const text = (value: unknown) => (typeof value === 'string' ? value : '');
+  if (text(visConfig?.wmsStyle) === (style ?? '') && text(visConfig?.wmsLegendUrl) === (legendUrl ?? '')) {
     return true;
   }
-  return applyLayerVisConfig(store, dispatch, dataId, { wmsStyle: style ?? '' });
-}
-
-/** A dataset's layers as a legend over the map follows them: whether any is shown, and the first one's label. */
-export interface LayerShown {
-  dataId: string;
-  /** kepler's label of the layer, which the user may have renamed; '' when it has none. */
-  label: string;
-  visible: boolean;
-}
-
-/**
- * Whether kepler shows a layer on each of these datasets, and under what name.
- * A dataset with no layer yet — a WMS before its capabilities answer — is left
- * out: nothing of it is drawn.
- */
-export function readLayersShown(store: Store, dataIds: readonly string[]): LayerShown[] {
-  const layers = getVisState(store)?.layers ?? [];
-  const shown: LayerShown[] = [];
-  for (const dataId of dataIds) {
-    const on = layers.filter((layer) => layer.config?.dataId === dataId);
-    if (on.length === 0) {
-      continue;
-    }
-    const label = (on[0].config as { label?: unknown } | undefined)?.label;
-    shown.push({
-      dataId,
-      label: typeof label === 'string' ? label.trim() : '',
-      visible: on.some((layer) => Boolean(layer.config?.isVisible)),
-    });
-  }
-  return shown;
+  return applyLayerVisConfig(store, dispatch, dataId, { wmsStyle: style ?? '', wmsLegendUrl: legendUrl ?? '' });
 }
 
 /**
@@ -1564,6 +1543,7 @@ interface VisStateLike {
         wmsLayer?: unknown;
         wmsTime?: unknown;
         wmsStyle?: unknown;
+        wmsLegendUrl?: unknown;
         zarrLabel?: unknown;
       };
     };
@@ -3034,6 +3014,8 @@ function esriProtoDataset(service: EsriDataset) {
       serviceUrl: service.serviceUrl,
       ...(service.mosaicRule ? { mosaicRule: service.mosaicRule } : {}),
       ...(service.renderingRule ? { renderingRule: service.renderingRule } : {}),
+      // What kepler's map legend shows of the layer (`esriImageLayer.ts`).
+      ...(service.legendUrl ? { legendUrl: service.legendUrl } : {}),
     },
     disableDataOperation: true,
   } as unknown as ProtoDataset;
@@ -3120,12 +3102,20 @@ export function applyEsriMosaicRule(store: Store, dispatch: Dispatch, dataId: st
 }
 
 /** The Image Service datasets kepler holds, as the identity the refresh compares on. */
-function readEsriDatasets(store: Store): Array<{ id: string; serviceUrl?: string; renderingRule?: string }> {
+function readEsriDatasets(
+  store: Store
+): Array<{ id: string; serviceUrl?: string; renderingRule?: string; legendUrl?: string }> {
   return Object.entries(getVisState(store)?.datasets ?? {})
     .filter(([, dataset]) => dataset.type === ESRI_TILE_TYPE)
     .map(([id, dataset]) => {
-      const metadata = dataset.metadata as { serviceUrl?: string; renderingRule?: string } | undefined;
-      return { id, serviceUrl: metadata?.serviceUrl, renderingRule: metadata?.renderingRule };
+      const metadata = dataset.metadata as
+        { serviceUrl?: string; renderingRule?: string; legendUrl?: string } | undefined;
+      return {
+        id,
+        serviceUrl: metadata?.serviceUrl,
+        renderingRule: metadata?.renderingRule,
+        legendUrl: metadata?.legendUrl,
+      };
     });
 }
 

@@ -1,4 +1,4 @@
-import { esriDeckProps, makeEsriImageLayer, EsriImageMetadata } from './esriImageLayer';
+import { esriDeckProps, esriLegendOf, makeEsriImageLayer, EsriImageMetadata } from './esriImageLayer';
 
 const SERVICE = 'https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer';
 
@@ -157,5 +157,47 @@ describe('makeEsriImageLayer', () => {
     expect(mine.props).toHaveLength(1);
     expect(mine.props[0]).toMatchObject({ dataId: 'd1', isVisible: true });
     expect(theirs.props).toHaveLength(0);
+  });
+});
+
+describe('the legend of an ArcGIS service layer', () => {
+  const EsriLayer = makeEsriImageLayer(FakeBaseLayer, fakeBuild);
+  const formatted = (metadata: EsriImageMetadata) => {
+    const layer = new (EsriLayer as never as new (p?: unknown) => any)();
+    layer.config.dataId = 'grafana-A-esri';
+    layer.formatLayerData({ 'grafana-A-esri': { metadata } });
+    return layer;
+  };
+
+  it('hands kepler’s legend ArcGIS’s JSON legend to draw, and only the layer a Map Service draws', () => {
+    const image = formatted({ ...META, legendUrl: `${SERVICE}/legend?renderingRule=%7B%7D` });
+    const mapLayer = formatted({
+      serviceUrl: 'https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer/2',
+      legendUrl: 'https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer/legend',
+    });
+
+    expect(esriLegendOf(image)).toEqual({ url: `${SERVICE}/legend?renderingRule=%7B%7D&f=json` });
+    expect(image.getLegendImageUrl()).toBeNull();
+    expect(esriLegendOf(mapLayer)?.layerId).toBe(2);
+  });
+
+  it('hands it a picture legend as kepler shows one, through getLegendImageUrl', () => {
+    const layer = formatted({ ...META, legendUrl: 'https://example.org/legend.png' });
+
+    expect(layer.getLegendImageUrl()).toBe('https://example.org/legend.png');
+    expect(esriLegendOf(layer)).toBeNull();
+  });
+
+  it('has nothing to show without a legend_url, and no colour channel standing for the service’s colours', () => {
+    const layer = formatted(META);
+
+    expect(layer.getLegendImageUrl()).toBeNull();
+    expect(esriLegendOf(layer)).toBeNull();
+    expect(layer.getLegendVisualChannels()).toEqual({});
+  });
+
+  it('is read for no layer of another type', () => {
+    expect(esriLegendOf({ type: 'wms', esriLegend: { url: 'x' } })).toBeNull();
+    expect(esriLegendOf(null)).toBeNull();
   });
 });

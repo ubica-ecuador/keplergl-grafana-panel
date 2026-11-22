@@ -48,7 +48,7 @@ describe('serviceUrlOf', () => {
 });
 
 describe('framesToWms', () => {
-  it('carries the style and the legend of the row that names the service and the layer', () => {
+  it('carries the style, the legend and the title of the row that names the service and the layer', () => {
     // The Spatial Catalog's Services frame: a WMS row beside an empty one.
     const frame = toDataFrame({
       refId: 'A',
@@ -66,7 +66,7 @@ describe('framesToWms', () => {
     expect(wms).toMatchObject({
       style: 'rain_classes',
       legendUrl: `${SERVICE}?request=GetLegendGraphic`,
-      title: 'PERSIANN 24 h',
+      label: 'PERSIANN 24 h',
     });
   });
 
@@ -84,6 +84,8 @@ describe('framesToWms', () => {
 
     expect(wms.style).toBeUndefined();
     expect(wms.legendUrl).toBeUndefined();
+    // No title column: the query's name, as before.
+    expect(wms.label).toBe('Query A');
   });
 
   it('describes the service and layer a query points at', () => {

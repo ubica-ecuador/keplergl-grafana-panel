@@ -8,6 +8,7 @@ import {
   MapPopoverContentFactory,
   ModalDialogFactory,
   ExportMapModalFactory,
+  LayerLegendContentFactory,
   PanelHeaderFactory,
   RangeSliderFactory,
 } from '@kepler.gl/components';
@@ -55,6 +56,7 @@ describe('the recipes the panel injects', () => {
     ['the enlarged time bar', RangeSliderFactory, 'TimeBarCursorRangeSlider'],
     ['the minified time bar', TimelineSliderFactory, 'TimeBarCursorTimelineSlider'],
     ['the Export Map dialog', ExportMapModalFactory, 'ExportMapModalJsonOnly'],
+    ['the legend content of a layer', LayerLegendContentFactory, 'LayerLegendContentWithServices'],
   ])('still replaces %s when the whole list is provided', (_name, stock, expected) => {
     expect(nameOf(resolve().get(stock as never))).toBe(expected);
   });

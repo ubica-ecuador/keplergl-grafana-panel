@@ -382,6 +382,12 @@ describe('splitEsriRefresh', () => {
     expect(splitEsriRefresh([ndvi], [esri('{"rasterFunction":"Agriculture"}')]).replace).toEqual([ndvi]);
   });
 
+  it('rebuilds it on another legend, which the dataset carries for kepler’s map legend', () => {
+    const legend = { ...esri(), legendUrl: `${SERVICE}/legend?f=json` };
+
+    expect(splitEsriRefresh([legend], [esri()]).replace).toEqual([legend]);
+  });
+
   it('keeps it when only the mosaic rule moves: the year is a visConfig change', () => {
     expect(splitEsriRefresh([esri(undefined, 'Year=2023')], [esri()]).keep).toHaveLength(1);
   });

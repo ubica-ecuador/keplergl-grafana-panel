@@ -328,12 +328,16 @@ export function splitZarrRefresh<T extends { id: string; storeUrl: string; varia
  * the same service with another year is a `keep` rather than a rebuild — and
  * the layer the user had named, faded or reordered survives the step.
  */
-export function splitEsriRefresh<T extends { id: string; serviceUrl: string; renderingRule?: string }>(
+export function splitEsriRefresh<
+  T extends { id: string; serviceUrl: string; renderingRule?: string; legendUrl?: string },
+>(
   wanted: T[],
-  known: ReadonlyArray<{ id: string; serviceUrl?: string; renderingRule?: string }>
+  known: ReadonlyArray<{ id: string; serviceUrl?: string; renderingRule?: string; legendUrl?: string }>
 ): { add: T[]; replace: T[]; keep: T[]; remove: string[] } {
-  const identity = (dataset: { serviceUrl?: string; renderingRule?: string }) =>
-    `${dataset.serviceUrl ?? ''}|${dataset.renderingRule ?? ''}`;
+  // The legend too, which the dataset carries for kepler's map legend: it most
+  // often moves with the rendering rule, and a new one alone is as rare.
+  const identity = (dataset: { serviceUrl?: string; renderingRule?: string; legendUrl?: string }) =>
+    `${dataset.serviceUrl ?? ''}|${dataset.renderingRule ?? ''}|${dataset.legendUrl ?? ''}`;
   const byId = new Map(known.map((dataset) => [dataset.id, identity(dataset)]));
   const ids = new Set(wanted.map((dataset) => dataset.id));
 

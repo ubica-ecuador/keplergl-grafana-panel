@@ -41,7 +41,7 @@ thirty are autodetect-only and are marked below.
 | WMS URL         | ❌     | `wms_url`, `wms`, `service_url`                                                                                                                                                                                 | not renamed |
 | WMS layer       | ❌     | `wms_layer`, `layer`, `layer_name`                                                                                                                                                                              | not renamed |
 | WMS style       | ❌     | `wms_style`, `wms_styles` — one of the styles the WMS publishes for the layer; empty for its default                                                                                                            | not renamed |
-| Legend          | ❌     | `legend_url`, `legend_graphic_url` — a WMS's or an ArcGIS service's legend: a picture, or ArcGIS's `…/legend`                                                                                                   | not renamed |
+| Legend          | ❌     | `legend_url`, `legend_graphic_url` — a WMS's or an ArcGIS service's legend in the map's legend: a picture, or ArcGIS's `…/legend`                                                                                          | not renamed |
 | Box             | ❌     | `tiles_bbox`, `wms_bbox` — a WMS's or tiles' box, `west south east north`                                                                                                                                       | not renamed |
 | Esri service    | ❌     | `esri_url`, `image_service_url`, `imageserver_url` — an `…/ImageServer`, or a `…/MapServer` or `…/MapServer/<id>`                                                              | not renamed |
 | Esri mosaic rule | ❌    | `esri_mosaic_rule`, `mosaic_rule`                                                                                                                                               | not renamed |
@@ -99,9 +99,9 @@ only inside it. See [WMS services](../guide/data/wms#where-the-layer-is).
 
 The style (`wms_style`) and the legend (`legend_url`) are optional too, from the same row. The style
 is the `STYLES` of every request, and a change of it draws a new picture of the same layer: no new
-dataset, no move of the view. The legend is drawn over the map while the layer is shown; an
-`esri_url` row takes the same `legend_url`. See
-[WMS services](../guide/data/wms#styles-and-legends).
+dataset, no move of the view. The legend is what the map's legend shows of the layer; an `esri_url`
+row takes the same `legend_url`. A `title` column on that row, when there is one, names the dataset
+and its layer. See [WMS services](../guide/data/wms#styles-and-legends).
 
 Give the **bare endpoint**. A whole `GetMap` URL is trimmed back to it, because every request is
 built by appending parameters to what you give and a query string already there would corrupt the

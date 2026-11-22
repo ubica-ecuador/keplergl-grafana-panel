@@ -75,18 +75,22 @@ SELECT 'https://maps.dwd.de/geoserver/ows' AS wms_url,
   lists, or the Spatial Catalog's style picker, changes the column; the map asks the service for the
   same view in the new style. The view does not move, and the layer keeps whatever was set on it in
   the layer panel (its name, its opacity, its place in the list).
-- **`legend_url`** is drawn over the map, in its bottom-left corner (right of the side panel when it
-  is open, above kepler's scale bar, and above its time widget when that reaches the corner): one
-  block per layer, folded and unfolded by its title, gone while the layer is hidden. The title is the
-  layer's name if you renamed it in the layer panel; otherwise the row's `title` column, when it has
-  one (the Spatial Catalog gives each service its own there, where the query's name is the same for
-  all of them); otherwise the layer's name. A picture (a WMS's `LegendURL`, most often a `GetLegendGraphic`) is shown as it is, on a
-  white ground so that the black text services draw reads in the dark theme too. It loads as an
-  image, which needs no CORS; one that does not load is no block at all. The panel option
-  [**Service legends**](../../reference/panel-options#map) turns them off.
+- **The map's legend shows the legend of the style drawn.** Open it with the legend button in the
+  map control (or save the map with it open: it is part of the saved configuration, see
+  [Map settings](../kepler/map-settings#legend)). Under the layer's name it shows the `legend_url`
+  picture when the row gives one (a WMS's `LegendURL`, most often a `GetLegendGraphic`); for a
+  `wms_style` with no `legend_url`, the service's `GetLegendGraphic` of that style (`STYLE=`); for
+  the default style with neither, the legend the capabilities publish, or the default
+  `GetLegendGraphic`, as kepler does for any WMS. It changes with the style. The picture is shown as
+  it is, on a white ground, and loads as an image, which needs no CORS; one that does not load leaves
+  only the layer's name.
+- **The row's `title` names the layer.** A row that carries a `title` (the Spatial Catalog gives each
+  service its own) names the dataset and the layer, in the layer panel and in the legend, where the
+  query's name would be the same for every service a catalog query lists. A layer you renamed in the
+  layer panel and saved keeps your name.
 
-An ArcGIS service's `legend_url` takes the same column, and the map draws its swatches itself: see
-[ArcGIS Image Services](./arcgis-image-service#its-legend).
+An ArcGIS service's `legend_url` takes the same column, and its swatches are drawn in the same
+legend: see [ArcGIS Image Services](./arcgis-image-service#its-legend).
 
 ## Nothing sits in between
 

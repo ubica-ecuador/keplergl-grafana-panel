@@ -1,5 +1,6 @@
 import type { LayerIcon } from './cogPaintedLayer';
 import { esriImageTemplate, esriImageUrl, type TileBounds } from '../data/esriImageUrl';
+import { arcgisLegendOf, legendPictureOf } from '../data/serviceLegend';
 import { shownInPane } from './paneVisibility';
 
 /**
@@ -31,6 +32,20 @@ export interface EsriImageMetadata {
   mosaicRule?: string;
   /** The service's own JSON for drawing them. */
   renderingRule?: string;
+  /** Where its legend is (`legend_url`): a picture, or ArcGIS's `…/legend` (`serviceLegend.ts`). */
+  legendUrl?: string;
+}
+
+/** An ArcGIS legend to draw in kepler's map legend: the url that answers JSON, and the one layer of it shown. */
+export interface EsriLegendSpec {
+  url: string;
+  layerId?: number;
+}
+
+/** The ArcGIS legend kepler's map legend draws for a layer, when the layer is one of these and has one. */
+export function esriLegendOf(layer: unknown): EsriLegendSpec | null {
+  const own = layer as { type?: unknown; esriLegend?: unknown } | null;
+  return own?.type === ESRI_IMAGE_TYPE && own.esriLegend ? (own.esriLegend as EsriLegendSpec) : null;
 }
 
 /** Builds the deck layer — see `esriImageDeckLayer.ts`. */
@@ -190,6 +205,30 @@ export function makeEsriImageLayer<C extends Constructor<object>>(
       return Boolean(this.type && this.config.isVisible);
     }
 
+    /**
+     * The service's legend, as kepler's map legend reads it: a picture through
+     * `getLegendImageUrl`, ArcGIS's JSON through `esriLegendOf`, which the
+     * panel's legend content draws (`serviceLegendContent.tsx`). Taken from
+     * the dataset whenever kepler formats the layer's data — the one moment the
+     * layer sees it — since the legend is no setting of the layer's own.
+     */
+    esriLegend: EsriLegendSpec | null = null;
+    esriLegendPicture: string | null = null;
+
+    /** The service's legend picture, when its `legend_url` is one; ArcGIS's JSON is drawn instead. */
+    getLegendImageUrl(): string | null {
+      return this.esriLegendPicture;
+    }
+
+    /**
+     * Nothing of colour or size: the picture is the service's. Left to the base
+     * class, kepler's legend drew the layer's unused colour as a swatch, as if
+     * the service painted in it — kepler's WMS layer answers the same.
+     */
+    getLegendVisualChannels(): Record<string, unknown> {
+      return {};
+    }
+
     /** The metadata travels whole; there is no row to reshape. */
     formatLayerData(
       datasets: Record<string, { metadata?: EsriImageMetadata }>,
@@ -197,8 +236,10 @@ export function makeEsriImageLayer<C extends Constructor<object>>(
     ): EsriImageLayerData {
       void rest;
       const dataId = (this.config as { dataId?: string }).dataId;
-      const dataset = dataId ? datasets?.[dataId] : undefined;
-      return { metadata: dataset?.metadata };
+      const metadata = dataId ? datasets?.[dataId]?.metadata : undefined;
+      this.esriLegend = metadata ? arcgisLegendOf(metadata.serviceUrl, metadata.legendUrl) : null;
+      this.esriLegendPicture = legendPictureOf(metadata?.legendUrl);
+      return { metadata };
     }
 
     renderLayer(opts?: {

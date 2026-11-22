@@ -54,8 +54,9 @@ interface Params {
  * 2. **Follow the clock**, but only for a query that offered dates. A fixed
  *    layer keeps kepler's own behaviour, which is the service's default slice.
  *
- * And, on the way, the style the query names (`wms_style`), followed on every
- * change of it: a new picture of the same layer (`applyWmsStyle`).
+ * And, on the way, the style the query names (`wms_style`) and its legend
+ * (`legend_url`), followed on every change: a new picture of the same layer,
+ * and what kepler's map legend shows of it (`applyWmsStyle`).
  *
  * Reconciliation runs on a **microtask** rather than inside the subscription:
  * dispatching while kepler is mid-dispatch re-enters its reducer and overflows
@@ -96,7 +97,7 @@ export function useWmsTimeline({ store, isReady, layers, timeVariables }: Params
       if (!pinned.current.has(wms.id) && applyWmsLayerChoice(store, store.dispatch, wms)) {
         pinned.current.add(wms.id);
       }
-      applyWmsStyle(store, store.dispatch, wms.id, wms.style);
+      applyWmsStyle(store, store.dispatch, wms.id, wms.style, wms.legendUrl);
     }
 
     const dated = wmsLayers.filter((wms) => wms.times.length > 0);

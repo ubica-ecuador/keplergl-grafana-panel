@@ -7,6 +7,7 @@ import { replaceModalDialog } from './modalOnBody';
 import { replaceMapPopoverContent } from './selectPopover';
 import { replaceRangeSlider, replaceTimelineSlider } from './timeBarCursorSlider';
 import { replaceExportMapModal } from './exportMapJsonOnly';
+import { replaceLayerLegendContent } from './serviceLegendContent';
 
 /**
  * The component replacements the panel hands `injectComponents`, in the order
@@ -53,5 +54,8 @@ export function keplerRecipes(): Array<[unknown, unknown]> {
     replaceTimelineSlider(),
     // Share → Export Map as JSON only: its tree is kepler's JSON panel alone.
     replaceExportMapModal(),
+    // A layer's legend content: inside the map container's and the map
+    // control's trees, so after both; its own tree is kepler's colour legends.
+    replaceLayerLegendContent(),
   ] as Array<[unknown, unknown]>;
 }

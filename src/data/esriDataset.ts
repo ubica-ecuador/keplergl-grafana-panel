@@ -16,6 +16,7 @@ import { parseWmsBox, type WmsBox } from './wmsDataset';
 export interface EsriDataset {
   /** `grafana-<refId>-esri`, so a refresh can tell its own layers from a user's. */
   id: string;
+  /** The row's `title` when it has one, else the query's name: see `WmsDataset.label`. */
   label: string;
   /**
    * The service endpoint, ending in `/ImageServer`; or a Map Service, ending in
@@ -55,8 +56,6 @@ export interface EsriDataset {
    * or a picture. Drawn over the map (`serviceLegend.ts`).
    */
   legendUrl?: string;
-  /** The row's own name for the service (its `title` column), which titles its legend. */
-  title?: string;
 }
 
 /** One dated slice of a mosaic, and the rule that selects it. */
@@ -135,14 +134,13 @@ export function framesToEsri(frames: DataFrame[], overrides: Record<string, Fiel
 
     datasets.push({
       id: esriDatasetId(refId),
-      label: frame.name ?? `Query ${refId}`,
+      label: title || (frame.name ?? `Query ${refId}`),
       serviceUrl,
       ...(opening ? { mosaicRule: opening } : {}),
       ...(renderingRule ? { renderingRule } : {}),
       ...(moments.length ? { moments } : {}),
       ...(bbox ? { bbox } : {}),
       ...(legendUrl ? { legendUrl } : {}),
-      ...(title ? { title } : {}),
     });
   });
 

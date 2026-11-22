@@ -2,7 +2,7 @@ import type { Store } from 'redux';
 
 import type { WmsDataset } from '../data/wmsDataset';
 import { KEPLER_INSTANCE_ID } from './constants';
-import { applyWmsStyle, readLayersShown, refreshWms } from './keplerAdapter';
+import { applyWmsStyle, refreshWms } from './keplerAdapter';
 
 const SERVICE = 'https://maps.dwd.de/geoserver/ows';
 const LAYER = 'dwd:Autowarn_Analyse';
@@ -71,6 +71,23 @@ describe('applyWmsStyle', () => {
     expect(dispatch).not.toHaveBeenCalled();
   });
 
+  it('puts the query’s legend beside the style, for kepler’s map legend, and follows a change of it', () => {
+    const dispatch = jest.fn();
+    const legend = `${SERVICE}?request=GetLegendGraphic&layer=${LAYER}&style=severity`;
+
+    applyWmsStyle(fakeStore({ visConfig: { wmsStyle: 'severity' } }), dispatch, 'grafana-A-wms', 'severity', legend);
+    applyWmsStyle(
+      fakeStore({ visConfig: { wmsStyle: 'severity', wmsLegendUrl: legend } }),
+      dispatch,
+      'grafana-A-wms',
+      'severity',
+      legend
+    );
+
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(dispatch.mock.calls[0][0])).toContain(`"wmsLegendUrl":${JSON.stringify(legend)}`);
+  });
+
   it('goes back to the service default when the query stops naming one', () => {
     const dispatch = jest.fn();
 
@@ -94,16 +111,5 @@ describe('refreshWms', () => {
     refreshWms(fakeStore({ visConfig: { wmsStyle: 'types' } }), dispatch, [wms('severity')]);
 
     expect(dispatch).not.toHaveBeenCalled();
-  });
-});
-
-describe('readLayersShown', () => {
-  it('says whether each dataset has a layer shown, under its label, and leaves out one with none yet', () => {
-    const store = fakeStore({ label: 'Storm warnings' }, [{ dataId: 'grafana-B-esri', isVisible: false }]);
-
-    expect(readLayersShown(store, ['grafana-A-wms', 'grafana-B-esri', 'grafana-C-wms'])).toEqual([
-      { dataId: 'grafana-A-wms', label: 'Storm warnings', visible: true },
-      { dataId: 'grafana-B-esri', label: '', visible: false },
-    ]);
   });
 });
