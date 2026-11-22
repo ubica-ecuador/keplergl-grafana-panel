@@ -6,6 +6,11 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **The viewport in one variable.** *Publish viewport* takes, besides or instead of its four edges,
+  one variable for the whole box (`viewportVariables.view`): a WKT `POLYGON`, as the drawn area is
+  written, or `west,south,east,north` (`viewFormat: 'bbox'`). A data source that reads an area takes
+  it as is (the Spatial Catalog's area: `$view`); SQL reads it as `ST_GeomFromText(${view:sqlstring})`.
+  Published with the edges, in the same write, and not written again while it holds the box.
 - **ArcGIS Map Services from `esri_url`.** An `esri_url` ending in `/MapServer` is drawn as an Image
   Service is, a picture of each tile in Web Mercator, by the service's `export`
   (`format=png32&transparent=true`); one ending in `/MapServer/<id>` draws that layer alone

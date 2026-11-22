@@ -10,7 +10,8 @@ openfreemap-* ids. openwaters-seamap is a nautical chart (seamarks, depths; not 
 navigation). Colour ramp:
 'layer.config.visConfig.colorRange'. Filters: 'config.visState.filters'.
 Cross-filter: this panel filters other panels via 'clickArea' (click a point for a circular
-area) and can publish the viewport to dashboard variables ('viewportVariables'); it does not
+area) and can publish the viewport to dashboard variables ('viewportVariables': west/south/east/north, or
+view with viewFormat 'wkt' | 'bbox' for the whole box in one variable); it does not
 support drawing a rectangle.
 Data layers draw from the panel's Grafana queries: to add a layer that needs data, add a
 query (refId) returning the columns, then a layer in 'config.visState.layers' whose dataId is

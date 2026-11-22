@@ -11,7 +11,7 @@ interface Params {
   store: Store;
   /** kepler only has a measurable viewport once its instance has registered. */
   isReady: boolean;
-  /** The variables the four edges are published to. */
+  /** The variables the four edges, or the whole box, are published to. */
   variables?: ViewportVariables;
 }
 
@@ -30,7 +30,7 @@ const PUBLISH_DELAY_MS = 300;
  * Publishes the map's viewport as a bbox of dashboard variables.
  *
  * One way only: the panels that read `$west`/`$south`/`$east`/`$north`
- * re-query to what the map is showing. Nothing reads them back — a viewport
+ * (or the one `$view`) re-query to what the map is showing. Nothing reads them back — a viewport
  * driven from outside is what the centre mapping is for.
  *
  * Publishes on load too, once the map has settled: a consuming panel should
@@ -62,7 +62,7 @@ export function useViewportSync({ store, isReady, variables }: Params): void {
     }
 
     const variableValues: Record<string, unknown> = {};
-    for (const name of [named!.west, named!.south, named!.east, named!.north]) {
+    for (const name of [named!.west, named!.south, named!.east, named!.north, named!.view]) {
       if (name) {
         variableValues[name] = readVariable(name);
       }

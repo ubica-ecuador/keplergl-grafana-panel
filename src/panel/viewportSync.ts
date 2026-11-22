@@ -7,6 +7,12 @@
  * Numbers rather than WKT on purpose — they carry no injection risk into a
  * consumer's SQL, unlike a free-text geometry.
  *
+ * Or as one variable, `view`: the same box as a WKT `POLYGON` (the form the
+ * drawn area is published in, so a query written for one takes the other) or
+ * as `west,south,east,north` (a `bbox=` parameter). Data sources that read an
+ * area themselves (the Spatial Catalog's area field) take either at once; a
+ * SQL consumer should interpolate it as `${view:sqlstring}`.
+ *
  * One way only, map to variables, and only for *other* panels. Filtering the
  * map's own query by its own viewport is a ratchet: zooming out cannot bring
  * the rows back, because the dataset no longer holds them. The option name
@@ -22,7 +28,14 @@ export interface ViewportVariables {
   south?: string;
   east?: string;
   north?: string;
+  /** One variable for the whole box, in `viewFormat`. */
+  view?: string;
+  /** How `view` is written: WKT `POLYGON` (the default) or `west,south,east,north`. */
+  viewFormat?: ViewFormat;
 }
+
+/** The forms the one-variable box is written in. */
+export type ViewFormat = 'wkt' | 'bbox';
 
 /** The bbox of the current view, in EPSG:4326 degrees. */
 export interface ViewportBounds {
@@ -34,7 +47,9 @@ export interface ViewportBounds {
 
 /** Whether the panel names any variable for the viewport to drive. */
 export function hasViewportVariables(variables: ViewportVariables | undefined): boolean {
-  return Boolean(variables && (variables.west || variables.south || variables.east || variables.north));
+  return Boolean(
+    variables && (variables.west || variables.south || variables.east || variables.north || variables.view)
+  );
 }
 
 /**
@@ -72,7 +87,58 @@ export function viewportVariableWrites({
   addWrite(writes, variables.south, clampLatitude(south), variableValues);
   addWrite(writes, variables.east, clampLongitude(east), variableValues);
   addWrite(writes, variables.north, clampLatitude(north), variableValues);
+  if (variables.view) {
+    const text = viewText(
+      {
+        west: round6(clampLongitude(west)),
+        south: round6(clampLatitude(south)),
+        east: round6(clampLongitude(east)),
+        north: round6(clampLatitude(north)),
+      },
+      variables.viewFormat
+    );
+    if (!sameView(variableValues[variables.view], text)) {
+      writes[variables.view] = text;
+    }
+  }
   return writes;
+}
+
+/**
+ * The box as the one variable holds it: a closed WKT ring, counter-clockwise from the south-west corner, or the
+ * four edges joined by commas. Edges already rounded and clamped.
+ */
+export function viewText({ west, south, east, north }: ViewportBounds, format: ViewFormat = 'wkt'): string {
+  if (format === 'bbox') {
+    return `${west},${south},${east},${north}`;
+  }
+  const ring = [
+    [west, south],
+    [east, south],
+    [east, north],
+    [west, north],
+    [west, south],
+  ];
+  return `POLYGON((${ring.map(([x, y]) => `${x} ${y}`).join(', ')}))`;
+}
+
+/**
+ * Whether the variable already holds this box: its numbers, in order, equal the new text's, so a hand-typed
+ * `POLYGON ((…))` with other spacing or trailing zeros is no move.
+ */
+function sameView(raw: unknown, text: string): boolean {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof value !== 'string' || value.trim() === '') {
+    return false;
+  }
+  const kind = (s: string) => (/^\s*polygon/i.test(s) ? 'wkt' : 'bbox');
+  if (kind(value) !== kind(text)) {
+    return false;
+  }
+  const numbers = (s: string) => (s.match(/-?\d+(?:\.\d+)?(?:e-?\d+)?/gi) ?? []).map((n) => round6(Number(n)));
+  const a = numbers(value);
+  const b = numbers(text);
+  return a.length === b.length && a.every((n, i) => n === b[i]);
 }
 
 function addWrite(

@@ -1,4 +1,4 @@
-import { hasViewportVariables, viewportVariableWrites } from './viewportSync';
+import { hasViewportVariables, viewportVariableWrites, viewText } from './viewportSync';
 
 /**
  * The decision behind "filter to what I am looking at".
@@ -17,6 +17,11 @@ describe('hasViewportVariables', () => {
   it('is true when any of the four is named', () => {
     expect(hasViewportVariables({ west: 'w' })).toBe(true);
     expect(hasViewportVariables(vars)).toBe(true);
+  });
+
+  it('is true for the one variable of the whole box alone', () => {
+    expect(hasViewportVariables({ view: 'view' })).toBe(true);
+    expect(hasViewportVariables({ viewFormat: 'bbox' })).toBe(false);
   });
 
   it('is false for an absent or empty mapping', () => {
@@ -106,5 +111,81 @@ describe('viewportVariableWrites', () => {
         variableValues: {},
       })
     ).toEqual({});
+  });
+});
+
+describe('the whole box in one variable', () => {
+  const wkt = 'POLYGON((-79.05 -2.95, -78.95 -2.95, -78.95 -2.85, -79.05 -2.85, -79.05 -2.95))';
+
+  it('is a closed WKT polygon by default, as the drawn area is written', () => {
+    expect(viewportVariableWrites({ bounds, variables: { view: 'v' }, variableValues: {} })).toEqual({ v: wkt });
+  });
+
+  it('is west,south,east,north when asked', () => {
+    expect(
+      viewportVariableWrites({ bounds, variables: { view: 'v', viewFormat: 'bbox' }, variableValues: {} })
+    ).toEqual({ v: '-79.05,-2.95,-78.95,-2.85' });
+  });
+
+  it('goes with the four edges in the same write', () => {
+    expect(viewportVariableWrites({ bounds, variables: { ...vars, view: 'v' }, variableValues: {} })).toEqual({
+      w: '-79.05',
+      s: '-2.95',
+      e: '-78.95',
+      n: '-2.85',
+      v: wkt,
+    });
+  });
+
+  it('writes nothing when it already holds the box, whatever its spacing or trailing zeros', () => {
+    const variables = { view: 'v' };
+    expect(viewportVariableWrites({ bounds, variables, variableValues: { v: wkt } })).toEqual({});
+    expect(
+      viewportVariableWrites({
+        bounds,
+        variables,
+        variableValues: {
+          v: 'POLYGON ((-79.050 -2.95,-78.95 -2.95,-78.95 -2.85,-79.05 -2.85,-79.05 -2.95))',
+        },
+      })
+    ).toEqual({});
+    expect(
+      viewportVariableWrites({
+        bounds,
+        variables: { view: 'v', viewFormat: 'bbox' },
+        variableValues: { v: ['-79.050000,-2.95,-78.95,-2.85'] },
+      })
+    ).toEqual({});
+  });
+
+  it('rewrites a box held in the other form, or a box that moved', () => {
+    expect(
+      viewportVariableWrites({ bounds, variables: { view: 'v' }, variableValues: { v: '-79.05,-2.95,-78.95,-2.85' } })
+    ).toEqual({ v: wkt });
+    expect(
+      viewportVariableWrites({
+        bounds,
+        variables: { view: 'v', viewFormat: 'bbox' },
+        variableValues: { v: '-79.05,-2.95,-78.95,-2.8' },
+      })
+    ).toEqual({ v: '-79.05,-2.95,-78.95,-2.85' });
+  });
+
+  it('is rounded and clamped as the edges are', () => {
+    expect(
+      viewportVariableWrites({
+        bounds: { west: -250, south: -95, east: 250.0000001, north: 95 },
+        variables: { view: 'v', viewFormat: 'bbox' },
+        variableValues: {},
+      })
+    ).toEqual({ v: '-180,-90,180,90' });
+  });
+
+  it('writes nothing for a view that is not yet measurable', () => {
+    expect(viewportVariableWrites({ bounds: null, variables: { view: 'v' }, variableValues: {} })).toEqual({});
+  });
+
+  it('draws the ring counter-clockwise from the south-west corner and closes it', () => {
+    expect(viewText({ west: 0, south: 1, east: 2, north: 3 })).toBe('POLYGON((0 1, 2 1, 2 3, 0 3, 0 1))');
   });
 });

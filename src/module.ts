@@ -415,7 +415,8 @@ export const plugin = new PanelPlugin<KeplerPanelOptions>(KeplerPanel).setPanelO
       id: 'viewportVariables',
       path: 'viewportVariables',
       name: 'Publish viewport (for other panels)',
-      description: 'Write the bounding box of what the map is showing to four dashboard variables.',
+      description:
+        'Write the bounding box of what the map is showing to four dashboard variables, or to one as WKT or west,south,east,north.',
       category: ['Cross-filtering'],
       editor: ViewportVariablesEditor,
     })

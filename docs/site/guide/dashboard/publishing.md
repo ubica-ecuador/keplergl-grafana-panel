@@ -41,6 +41,28 @@ every panel that reads the pair.
 Coordinates are **clamped to the ones that exist**. Zoomed far enough out the computed span runs
 past the antimeridian and the poles, and no consuming query should be handed a longitude of −250.
 
+### The whole box in one variable
+
+The same box can go to **one** text box variable instead, or as well: **Whole box** names it, and
+**as** picks its form.
+
+| Form              | Value                                                                             | For                                                             |
+| ----------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| **WKT** (default) | `POLYGON((-79.05 -2.95, -78.95 -2.95, -78.95 -2.85, -79.05 -2.85, -79.05 -2.95))` | SQL, and every query written for the [drawn area](#drawn-areas) |
+| **w,s,e,n**       | `-79.05,-2.95,-78.95,-2.85`                                                       | a `bbox=` parameter of an OGC API, WFS or STAC search           |
+
+A data source that reads an area itself takes either as is: in the Spatial Catalog, put `$view` in
+the query's area, and a GeoParquet, a FlatGeobuf or a feature service is read for what the map
+shows. In SQL, the value is text, so interpolate it escaped:
+
+```sql
+WHERE ST_Intersects(geom, ST_GeomFromText(${view:sqlstring}))
+```
+
+It is published with the edges, at the same moments and in the same write, rounded and clamped the
+same way. A variable that already holds the box (whatever its spacing or trailing zeros) is not
+written again.
+
 ### Practical notes
 
 You can name fewer than four variables if your query only needs some of them — publishing is
