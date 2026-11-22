@@ -5,13 +5,15 @@ import { keplerIntervalPairOf } from '../data/intervalRows';
 import { KEPLER_INSTANCE_ID } from './constants';
 
 /**
- * The rows alive at a moment, for a dataset whose rows live from `valid_from` to `valid_to` (`intervalRows.ts`): an
- * Iceberg table's history played on the map.
+ * The rows in force at a moment, for a dataset whose rows live from one moment to another: the pair its query names
+ * (`meta.custom.timeInterval`: a Valid until, an Iceberg table's history played on the map), else `valid_from` and
+ * `valid_to` (`intervalRows.ts`).
  *
- * kepler's time filter takes an end field (its "end time field"): with `valid_to` there, it keeps the rows whose
- * life overlaps the filter's window, an empty end being a row still alive. So a dataset's new time filter gets
- * `valid_to` as its end and a window of one moment, the last: the table as it is now, and as it was at any moment
- * the window is moved or played to. A wider window keeps every row alive at some moment of it.
+ * kepler's time filter takes an end field (its "end time field"): with the end there, it keeps the rows whose
+ * life overlaps the filter's window, an empty end being a row still alive. So a dataset's new time filter gets the
+ * end as its end field and a window of one moment: now, or the last moment when the rows end before now (kepler's
+ * domain runs a second past the last end), so the rows in force now, or the table as it is now; then as at any
+ * moment the window is moved or played to. A wider window keeps every row in force at some moment of it.
  *
  * Done once for a dataset, on the filter the panel makes for it: one the user changes or removes stays as they left
  * it, and a saved map brings its own back.
@@ -29,7 +31,7 @@ interface FilterLike {
 }
 
 export interface IntervalVisState {
-  datasets?: Record<string, { fields: Array<{ name: string }> }>;
+  datasets?: Record<string, { fields: Array<{ name: string }>; metadata?: unknown }>;
   filters?: FilterLike[];
 }
 
@@ -63,14 +65,28 @@ export function intervalMemory(): IntervalMemory {
   return { made: new Set(), pending: new Map() };
 }
 
+/**
+ * The columns a dataset's rows are in force from and to: the ones its query names (`meta.custom.timeInterval`, kept
+ * in the dataset's metadata), else `valid_from` and `valid_to` by their names.
+ */
+function intervalOf(dataset: { fields: Array<{ name: string }>; metadata?: unknown }) {
+  const names = dataset.fields.map((f) => f.name);
+  const named = (dataset.metadata as { interval?: { start: string; end: string } } | undefined)?.interval;
+  return named && names.includes(named.start) && names.includes(named.end) ? named : keplerIntervalPairOf(names);
+}
+
 const pairOf = (v: unknown): [number, number] | null =>
   Array.isArray(v) && typeof v[0] === 'number' && typeof v[1] === 'number' ? [v[0], v[1]] : null;
 
 /** The next thing to do for the map's interval datasets, or nothing: one at a time, each changes the state read next. */
-export function intervalStep(visState: IntervalVisState, memory: IntervalMemory): IntervalStep | null {
+export function intervalStep(
+  visState: IntervalVisState,
+  memory: IntervalMemory,
+  now: () => number = Date.now
+): IntervalStep | null {
   const filters = visState.filters ?? [];
   for (const [dataId, dataset] of Object.entries(visState.datasets ?? {})) {
-    const pair = keplerIntervalPairOf(dataset.fields.map((f) => f.name));
+    const pair = intervalOf(dataset);
     if (!pair) {
       continue;
     }
@@ -101,7 +117,8 @@ export function intervalStep(visState: IntervalVisState, memory: IntervalMemory)
         continue;
       }
       memory.pending.delete(key);
-      return { kind: 'moment', idx, value: [domain[1], domain[1]] };
+      const at = Math.min(Math.max(now(), domain[0]), domain[1]);
+      return { kind: 'moment', idx, value: [at, at] };
     }
   }
   return null;

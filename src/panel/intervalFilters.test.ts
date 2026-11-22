@@ -78,6 +78,38 @@ describe('a map of rows that live from valid_from to valid_to', () => {
     expect(kept(store)).toEqual(['kept', 'added in March']);
   });
 
+  it('keeps the rows in force by the pair its query names, at now when now is in their time', async () => {
+    // Zones in force from Startdatum to Einddatum, a query with a Valid until: no clock, the pair said apart.
+    const day = 24 * 3600 * 1000;
+    const now = Date.now();
+    const zones = toDataFrame({
+      refId: 'Z',
+      meta: { custom: { timeField: null, timeInterval: { start: 'Startdatum', end: 'Einddatum' } } },
+      fields: [
+        { name: 'zone', type: FieldType.string, values: ['ended', 'in force', 'to come'] },
+        { name: 'latitude', type: FieldType.number, values: [51.5, 51.6, 51.7] },
+        { name: 'longitude', type: FieldType.number, values: [5, 5.1, 5.2] },
+        { name: 'Startdatum', type: FieldType.time, values: [now - 900 * day, now - 300 * day, now + 200 * day] },
+        { name: 'Einddatum', type: FieldType.time, values: [now - 400 * day, null, now + 900 * day] },
+      ],
+    });
+    const store = createKeplerStore();
+    store.dispatch(registerEntry({ id: KEPLER_INSTANCE_ID }) as never);
+    loadDatasets(store, store.dispatch, framesToDatasets([zones]), { centerMap: false });
+    await settle();
+    const [filter] = visState(store).filters;
+    expect([filter.name[0], filter.endName?.[0]]).toEqual(['Startdatum', 'Einddatum']);
+    // Now, not the last moment named (the zone to come ends years ahead).
+    expect(filter.value[0]).toBe(filter.value[1]);
+    expect(Math.abs(filter.value[0] - now)).toBeLessThan(60_000);
+    const vs = visState(store);
+    const dataset = vs.datasets[filter.dataId[0]];
+    const keep = getFilterFunction(dataset.fields[filter.fieldIdx[0]], dataset.id, filter, [], dataset.dataContainer);
+    const zone = dataset.fields.findIndex((f: any) => f.name === 'zone');
+    const kept = [0, 1, 2].filter((r) => keep({ index: r })).map((r) => dataset.dataContainer.valueAt(r, zone));
+    expect(kept).toEqual(['in force']);
+  });
+
   it('sets a filter up once: one the user removed is not made again', async () => {
     const store = await loaded();
     store.dispatch(wrapTo(KEPLER_INSTANCE_ID, removeFilter(0)) as never);

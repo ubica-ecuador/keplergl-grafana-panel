@@ -6,6 +6,11 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Rows in force by the pair a query names.** A frame that says its start and end in
+  `meta.custom.timeInterval` (`{start, end}`; the Spatial Catalog's Time column with a Valid until,
+  and its Iceberg history) gets the same time filter as `valid_from`/`valid_to`: the start, the end
+  as kepler's end time field, one moment. That moment is now when now is within the data's time, so
+  zones in force from one date to another open on the ones in force today.
 - **Rows that live for a while, at one moment.** A query with both `valid_from` and `valid_to` gets
   its time filter set up with `valid_to` as kepler's end time field and a window of one moment, the
   last: the map shows the rows alive then, an empty end being a row still alive, and playing or

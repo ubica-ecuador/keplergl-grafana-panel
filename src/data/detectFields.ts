@@ -383,6 +383,23 @@ export function frameTimeField(frame: DataFrame): string | null | undefined {
   return typeof custom.timeField === 'string' && custom.timeField ? custom.timeField : null;
 }
 
+/**
+ * The pair a frame's rows are in force by (`meta.custom.timeInterval`, `{ start, end }`, as the Spatial Catalog
+ * data source writes it for a Valid until or an Iceberg table's whole history), when it names two of its columns.
+ */
+export function frameTimeInterval(frame: DataFrame): { start: string; end: string } | null {
+  const pair = (frame.meta?.custom as { timeInterval?: { start?: unknown; end?: unknown } } | undefined)?.timeInterval;
+  const names = new Set(frame.fields.map((f) => f.name));
+  return pair &&
+    typeof pair.start === 'string' &&
+    typeof pair.end === 'string' &&
+    pair.start !== pair.end &&
+    names.has(pair.start) &&
+    names.has(pair.end)
+    ? { start: pair.start, end: pair.end }
+    : null;
+}
+
 export function detectFields(frame: DataFrame): FieldRoles {
   const roles: FieldRoles = {};
 

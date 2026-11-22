@@ -14,6 +14,7 @@ import {
   FieldRoleOverrides,
   FieldRoles,
   frameTimeField,
+  frameTimeInterval,
   legacyCountColumn,
   resolveRoles,
 } from './detectFields';
@@ -104,6 +105,12 @@ export interface PanelDataset {
    * no time was mapped: kepler's time filter binds to none of its timestamps.
    */
   timeless?: boolean;
+  /**
+   * The columns its rows are in force from and to, by the names kepler reads them by
+   * (`meta.custom.timeInterval`): its time filter keeps the rows in force at a moment by both
+   * (`intervalFilters.ts`).
+   */
+  interval?: { start: string; end: string };
   /**
    * Whether its polygons are drawn as outlines (`meta.custom.layer.outline`,
    * `frameLayer.ts`): a catalog's boxes. Read by the GeoJSON layer kepler makes
@@ -206,12 +213,16 @@ export function framesToDatasets(
     // rows' dataset would say them twice.
     const served = serviceKindOf(frame, roles) !== null || Boolean(roles.zarrUrl && roles.zarrVariable);
     const timeless = !roles.time && frameTimeField(frame) === null;
+    const pair = frameTimeInterval(frame);
+    const renames = keplerRenamesOf(roles);
+    const interval = pair ? { start: renames[pair.start] ?? pair.start, end: renames[pair.end] ?? pair.end } : null;
     return {
       ...dataset,
       ...(layer ? { layer } : {}),
       ...(served ? {} : attributionsOf(frame)),
       ...(frameOutlineOf(frame) ? { outline: true } : {}),
       ...(timeless ? { timeless } : {}),
+      ...(interval ? { interval } : {}),
     };
   });
 
