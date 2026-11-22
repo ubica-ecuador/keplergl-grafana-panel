@@ -12,6 +12,15 @@ It is a ratchet, and it feels like a bug the first time it happens. The option i
 viewport (for other panels)_ for exactly this reason.
 :::
 
+::: tip Reading the view on purpose
+There is one case where a map should read its own view: a source too big to load whole, read for
+what the map shows each time it moves — a GeoParquet or FlatGeobuf through a data source that reads
+an area, such as the Spatial Catalog, or a large Parquet pruned by the box in SQL. The query re-runs
+at every rest, a refresh keeps the view, and zooming out reads the wider box. Then kepler's filters,
+histograms and legend count only what is on screen: say so on the panel, and keep a limit on the
+rows.
+:::
+
 ## The viewport
 
 **Publish viewport (for other panels)** names four dashboard variables — west, south, east and
@@ -22,10 +31,14 @@ WHERE lng BETWEEN $west AND $east
   AND lat BETWEEN $south AND $north
 ```
 
-### Four numbers, not a geometry
+### Four numbers, or one text
 
-Deliberately. Four numeric variables carry no injection risk into a consumer's SQL, where a
-free-text geometry would. There is nothing free-form for a consuming query to interpolate.
+The four edges are numbers, and four numeric variables carry no injection risk into a consumer's
+SQL: there is nothing free-form for it to interpolate. The [whole box in one
+variable](#the-whole-box-in-one-variable) is text. The map only ever writes a box into it, but a
+dashboard variable can also be set from the URL: interpolate it as a quoted, escaped string,
+`${view:sqlstring}`, which reads the same on a data source that quotes variables
+([DuckDB](../sources/duckdb-geoparquet)) and on one that does not ([PostgreSQL](../sources/postgis)).
 
 ### When it publishes
 
