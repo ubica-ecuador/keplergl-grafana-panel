@@ -4,7 +4,7 @@ import { detectFields, resolveRoles, type FieldRoleOverrides } from './detectFie
 import { queryName } from './rasterDataset';
 import { serviceKindOf } from './serviceKind';
 import { parseWmsBox, type WmsBox } from './wmsDataset';
-import { attributionsOf, frameLabelOf, frameZoomsOf } from './frameLayer';
+import { attributionsOf, frameLabelOf, frameLayerOf, frameZoomsOf } from './frameLayer';
 
 /**
  * Map tiles a query points at, in the shape the panel's XYZ layer draws
@@ -50,6 +50,18 @@ export interface XyzDataset {
    * is not drawn before.
    */
   pmtilesKind?: 'vector' | 'raster';
+  /**
+   * Where the tiles' legend is (`legend_url`), for pictures only: a WMTS
+   * style's `LegendURL`, most often a WMS GetLegendGraphic of the same style.
+   * Shown in kepler's map legend when it is a picture (`serviceLegend.ts`).
+   */
+  legendUrl?: string;
+  /**
+   * The layer the frame names (`meta.custom.layer.key`): the same key is the
+   * same layer whatever its address, as another WMTS style of it is, and is not
+   * framed again (`boxedXyz`).
+   */
+  layerKey?: string;
 }
 
 /** What a query's tiles are: pictures, vector tiles, or a PMTiles archive. */
@@ -185,6 +197,11 @@ export function framesToXyz(
     const zoomIds = format === 'raster' ? parseZoomIds(at(roles.tilesZoomIds)) : undefined;
     const metadata = at(roles.tilesMetadataUrl);
     const metadataUrl = format !== 'raster' && typeof metadata === 'string' && metadata.trim() ? metadata.trim() : '';
+    // A legend explains pictures: vector tiles have kepler's own legend of
+    // what they are coloured by, and an archive's pictures kepler's layer.
+    const legend = format === 'raster' ? at(roles.legendUrl) : undefined;
+    const legendUrl = typeof legend === 'string' ? legend.trim() : '';
+    const layerKey = frameLayerOf(frame)?.key;
     datasets.push({
       id: xyzDatasetId(refId),
       label: frameLabelOf(frame, refId),
@@ -195,6 +212,8 @@ export function framesToXyz(
       bbox: parseWmsBox(at(roles.tilesBbox)),
       ...(format !== 'raster' ? { format } : {}),
       ...(metadataUrl ? { metadataUrl } : {}),
+      ...(legendUrl ? { legendUrl } : {}),
+      ...(layerKey ? { layerKey } : {}),
       ...attributionsOf(frame),
     });
   });

@@ -380,6 +380,7 @@ export function splitXyzRefresh<
     format?: string;
     metadataUrl?: string;
     pmtilesKind?: string;
+    legendUrl?: string;
   },
 >(
   wanted: T[],
@@ -423,6 +424,7 @@ export function xyzIdentity(dataset: {
   format?: string;
   metadataUrl?: string;
   pmtilesKind?: string;
+  legendUrl?: string;
 }): string {
   const base = [
     dataset.url ?? '',
@@ -431,7 +433,14 @@ export function xyzIdentity(dataset: {
     dataset.zoomIds ?? null,
     dataset.bbox ?? null,
   ];
+  // The legend of pictures too, which their dataset carries for kepler's map
+  // legend: it most often moves with the address (another WMTS style), and a
+  // new one alone rebuilds the dataset as well. Only when there is one, so an
+  // identity without reads as it always did.
+  const legend = dataset.legendUrl ? [dataset.legendUrl] : [];
   return JSON.stringify(
-    dataset.format ? [...base, dataset.format, dataset.metadataUrl ?? null, dataset.pmtilesKind ?? null] : base
+    dataset.format
+      ? [...base, dataset.format, dataset.metadataUrl ?? null, dataset.pmtilesKind ?? null, ...legend]
+      : [...base, ...legend]
   );
 }

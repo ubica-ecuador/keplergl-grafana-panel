@@ -439,7 +439,10 @@ describe('splitZarrRefresh', () => {
 
 describe('splitXyzRefresh', () => {
   const PDOK = 'https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png';
-  const tiles = (id: string, extra: Partial<{ url: string; maxZoom: number; bbox: number[] | null }> = {}) => ({
+  const tiles = (
+    id: string,
+    extra: Partial<{ url: string; maxZoom: number; bbox: number[] | null; legendUrl: string }> = {}
+  ) => ({
     id,
     url: PDOK,
     bbox: null,
@@ -450,11 +453,20 @@ describe('splitXyzRefresh', () => {
   it('adds, keeps and rebuilds by everything the dataset carries', () => {
     expect(splitXyzRefresh([tiles('grafana-A-tiles')], []).add).toHaveLength(1);
     expect(splitXyzRefresh([tiles('grafana-A-tiles')], [known(tiles('grafana-A-tiles'))]).keep).toHaveLength(1);
-    for (const changed of [{ url: 'https://other.test/{z}/{x}/{y}' }, { maxZoom: 12 }, { bbox: [3, 50, 7, 53] }]) {
+    for (const changed of [
+      { url: 'https://other.test/{z}/{x}/{y}' },
+      { maxZoom: 12 },
+      { bbox: [3, 50, 7, 53] },
+      { legendUrl: 'https://other.test/legend.png' },
+    ]) {
       expect(
         splitXyzRefresh([tiles('grafana-A-tiles', changed)], [known(tiles('grafana-A-tiles'))]).replace
       ).toHaveLength(1);
     }
+  });
+
+  it('reads tiles without a legend as it always did', () => {
+    expect(xyzIdentity(tiles('grafana-A-tiles'))).toBe(JSON.stringify([PDOK, null, null, null, null]));
   });
 
   it('removes only the ids the panel minted, never a Geomap’s XYZ layer saved with the map', () => {

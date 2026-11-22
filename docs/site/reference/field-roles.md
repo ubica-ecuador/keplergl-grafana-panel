@@ -41,7 +41,7 @@ thirty are autodetect-only and are marked below.
 | WMS URL         | ❌     | `wms_url`, `wms`, `service_url`                                                                                                                                                                                 | not renamed |
 | WMS layer       | ❌     | `wms_layer`, `layer`, `layer_name`                                                                                                                                                                              | not renamed |
 | WMS style       | ❌     | `wms_style`, `wms_styles` — one of the styles the WMS publishes for the layer; empty for its default                                                                                                            | not renamed |
-| Legend          | ❌     | `legend_url`, `legend_graphic_url` — a WMS's or an ArcGIS service's legend in the map's legend: a picture, or ArcGIS's `…/legend`                                                                                          | not renamed |
+| Legend          | ❌     | `legend_url`, `legend_graphic_url` — a WMS's, an ArcGIS service's or picture tiles' legend in the map's legend: a picture, or ArcGIS's `…/legend` (not for tiles)                                                         | not renamed |
 | Box             | ❌     | `tiles_bbox`, `wms_bbox` — a WMS's or tiles' box, `west south east north`                                                                                                                                       | not renamed |
 | Esri service    | ❌     | `esri_url`, `image_service_url`, `imageserver_url` — an `…/ImageServer`, or a `…/MapServer` or `…/MapServer/<id>`                                                              | not renamed |
 | Esri mosaic rule | ❌    | `esri_mosaic_rule`, `mosaic_rule`                                                                                                                                               | not renamed |
@@ -141,6 +141,10 @@ WMS, it needs no tile server and is rebuilt from the query on every load, never 
   (`0:00,1:01,…`: PDOK's WMTS names its matrices "00" to "19"). `{z}` becomes the name.
 - `tiles_bbox`: the box, framed on and cut to as a WMS's is; no tile outside it is asked for. An
   archive without one is framed and cut on the box its header gives.
+- `legend_url` (or `legend_graphic_url`): for pictures, where their legend is, a picture shown in
+  the map's legend under the layer's name, as a WMS's is: a WMTS style's `LegendURL`. A new one, or
+  a new `tiles_url` with it (another style of the same layer, `meta.custom.layer.key` unchanged),
+  draws the new tiles and legend on the same layer without moving the view.
 
 **One service per query.** The first row that names a service decides what the query draws, and in
 that row a WMS (`wms_url` with `wms_layer`) wins over an Esri service (`esri_url`), which wins over

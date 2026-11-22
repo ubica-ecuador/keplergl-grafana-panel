@@ -8,6 +8,7 @@ import { injector, MapLegendFactory, provideRecipesToInjector } from '@kepler.gl
 import { Layer, LayerClasses } from '@kepler.gl/layers';
 
 import { makeEsriImageLayer } from './esriImageLayer';
+import { makeXyzTileLayer } from './xyzTileLayer';
 import { keplerRecipes } from './keplerRecipes';
 import { withWmsTime } from './wmsTimeLayer';
 
@@ -21,6 +22,7 @@ const MapLegend = provideRecipesToInjector(keplerRecipes() as Array<[never, neve
 
 const WmsLayer = withWmsTime(LayerClasses.wms as never, (props) => props) as unknown as new (props: object) => any;
 const EsriLayer = makeEsriImageLayer(Layer as never, (props) => props) as unknown as new (props: object) => any;
+const XyzLayer = makeXyzTileLayer(Layer as never, (props) => props) as unknown as new (props: object) => any;
 
 const DWD = 'https://maps.dwd.de/geoserver/ows';
 const LANDSAT = 'https://landsat2.arcgis.com/arcgis/rest/services/Landsat/MS/ImageServer';
@@ -36,6 +38,14 @@ function wms(visConfig: Record<string, unknown>) {
 function esri(legendUrl: string) {
   const layer = new EsriLayer({ id: 'esri-layer', dataId: 'grafana-B-esri', label: 'Landsat', isVisible: true });
   layer.formatLayerData({ 'grafana-B-esri': { metadata: { serviceUrl: LANDSAT, legendUrl } } });
+  return layer;
+}
+
+function tiles(legendUrl?: string) {
+  const layer = new XyzLayer({ id: 'xyz-layer', dataId: 'grafana-C-tiles', label: 'Länder', isVisible: true });
+  layer.formatLayerData({
+    'grafana-C-tiles': { metadata: { url: 'https://maps.dwd.test/Laender_ocker/{z}/{y}/{x}', legendUrl } },
+  });
   return layer;
 }
 
@@ -78,6 +88,22 @@ describe('the service layers in kepler’s map legend', () => {
     expect(screen.getByText('Landsat')).toBeInTheDocument();
     expect(screen.getByText('Red: SWIR 1')).toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledWith(`${LANDSAT}/legend?f=json`, { credentials: 'omit' });
+  });
+
+  it('lists a query’s tiles with the picture of their legend_url, as kepler shows a WMS’s', async () => {
+    const legend = `${DWD}?service=WMS&request=GetLegendGraphic&format=image/png&layer=dwd:Laender&style=Laender_ocker`;
+    await legendOf([tiles(legend)]);
+
+    expect(screen.getByText('Länder')).toBeInTheDocument();
+    expect(screen.getByAltText('Länder')).toHaveAttribute('src', legend);
+  });
+
+  it('lists a query’s tiles with no legend and no colour swatch of their own', async () => {
+    await legendOf([tiles()]);
+
+    expect(screen.getByText('Länder')).toBeInTheDocument();
+    expect(screen.queryByAltText('Länder')).toBeNull();
+    expect(document.querySelector('.legend--layer_color-schema, .legend--layer_size-schema')).toBeNull();
   });
 
   it('shows an ArcGIS service’s picture legend as kepler shows a WMS’s', async () => {

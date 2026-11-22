@@ -50,8 +50,8 @@ describes a rectangle in degrees, which is a poor description of what a globe is
 
 ## Legend
 
-Shows the colour and size encodings for the visible layers, and for a WMS or an ArcGIS service the
-service's own legend (see [Styles and legends](../data/wms#styles-and-legends)). It is part of the
+Shows the colour and size encodings for the visible layers, and for a WMS, an ArcGIS service or a
+query's picture tiles with a `legend_url` the service's own legend (see [Styles and legends](../data/wms#styles-and-legends)). It is part of the
 saved configuration, so a provisioned dashboard can open with it already on: open it, then save the
 map configuration (its `uiState.mapControls.mapLegend.active` is then `true` in the panel's
 `mapConfig`). Which layers it lists is chosen under

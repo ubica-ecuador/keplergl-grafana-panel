@@ -3199,6 +3199,7 @@ export function xyzProtoDataset(xyz: XyzDataset) {
     ...(xyz.maxZoom !== undefined ? { maxZoom: xyz.maxZoom } : {}),
     ...(xyz.zoomIds ? { zoomIds: xyz.zoomIds } : {}),
     ...(xyz.bbox ? { tilesBbox: xyz.bbox } : {}),
+    ...(xyz.legendUrl ? { legendUrl: xyz.legendUrl } : {}),
   };
   return {
     info: { id: xyz.id, label: xyz.label, type: XYZ_TILE_TYPE, format: 'rows' },
@@ -3324,6 +3325,7 @@ function readXyzDatasets(store: Store): Array<{ id: string; identity: string }> 
           maxZoom: metadata?.maxZoom,
           zoomIds: metadata?.zoomIds,
           bbox: metadata?.tilesBbox ?? null,
+          legendUrl: metadata?.legendUrl,
         }),
       };
     });

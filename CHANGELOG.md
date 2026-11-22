@@ -35,6 +35,17 @@ release documents what changed since the one before it.
   service's dataset and layer, where a catalog query's name is the same for every service it lists.
   A change of `esri_rendering_rule` (or of `legend_url`) rebuilds the service's dataset as before,
   which keeps the layer's settings and the view.
+- **A legend for a query's tiles, in the map's legend.** A query's `{z}/{x}/{y}` picture tiles
+  (`tiles_url`) take the row's `legend_url` (or `legend_graphic_url`) as a WMS does: a picture, shown
+  in kepler's map legend under the layer's name (the layer's `getLegendImageUrl`), such as a WMTS
+  style's `LegendURL`, which the Spatial Catalog sends for the style chosen (GeoServer's
+  `GetLegendGraphic` of it, for a GeoWebCache WMTS). ArcGIS's `…/legend` JSON is not drawn for tiles;
+  vector tiles and archives take none. The tiles' layer no longer shows a colour swatch of its own
+  there, as a WMS's does not. A WMTS's other style is another `tiles_url`: on a frame whose
+  `meta.custom.layer.key` stays, the new tiles and their legend are drawn on the same layer, which
+  keeps its settings, and the view does not move; before, a new address was framed again as a new
+  layer, which on a map with no view of its own moved the view to the box on every change of style.
+  Tiles without a frame key are framed on a new address as before.
 - **A layer's credits and zoom levels from its data source.** Beside its `key` and `bbox`, a frame's
   `meta.custom.layer` may say whom to credit for the layer, `attribution` (a title, `{ title, url }`,
   or a list of either), and the zoom levels its tiles exist at, `minZoom` and `maxZoom`. The credits

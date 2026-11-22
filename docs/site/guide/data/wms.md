@@ -92,6 +92,15 @@ SELECT 'https://maps.dwd.de/geoserver/ows' AS wms_url,
 An ArcGIS service's `legend_url` takes the same column, and its swatches are drawn in the same
 legend: see [ArcGIS Image Services](./arcgis-image-service#its-legend).
 
+A query's `{z}/{x}/{y}` picture tiles (`tiles_url`, a WMTS's tile matrices spelt as a template) take
+the same `legend_url` too, a picture, shown under the layer's name in the same legend: a WMTS style's
+`LegendURL`, which for GeoServer's GeoWebCache is the `GetLegendGraphic` of that style
+(`…/ows?service=WMS&request=GetLegendGraphic&layer=dwd:Laender&style=Laender_ocker`). A WMTS's
+other style is another template; when the frame names its layer (`meta.custom.layer.key`, as the
+Spatial Catalog sends it) and the key stays, a change of style draws the new tiles and the new
+legend on the same layer, and the view does not move. Vector tiles and archives take no `legend_url`:
+kepler's legend shows what their layer is coloured by.
+
 ## Nothing sits in between
 
 There is no tile server to configure here. That is the difference between a WMS and a COG, and the

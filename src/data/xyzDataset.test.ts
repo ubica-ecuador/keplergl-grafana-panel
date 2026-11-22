@@ -167,6 +167,49 @@ describe('framesToXyz', () => {
   });
 });
 
+describe('the tiles’ legend and layer', () => {
+  /** DWD's states, a GeoWebCache WMTS: each style its own template and its own GetLegendGraphic. */
+  const DWD_TILES =
+    'https://maps.dwd.de/geoserver/gwc/service/wmts/rest/dwd:Laender/Laender_ocker/EPSG:900913/EPSG:900913:{z}/{y}/{x}?format=image/png';
+  const DWD_LEGEND =
+    'https://maps.dwd.de/geoserver/ows?service=WMS&request=GetLegendGraphic&format=image/png&width=20&height=20&layer=dwd:Laender&style=Laender_ocker';
+  const withLegend = (row: Row, legend: string) => {
+    const frame = servicesFrame([row]);
+    frame.fields.push({ name: 'legend_url', type: FieldType.string, config: {}, values: [legend] });
+    return frame;
+  };
+
+  it('carries the row’s legend_url for pictures, the style’s legend', () => {
+    const [tiles] = framesToXyz([withLegend({ tiles_url: DWD_TILES, tiles_format: 'raster' }, ` ${DWD_LEGEND} `)]);
+    expect(tiles.legendUrl).toBe(DWD_LEGEND);
+  });
+
+  it('reads legend_graphic_url too, by detection', () => {
+    const frame = toDataFrame({
+      refId: 'B',
+      fields: [
+        { name: 'tiles_url', type: FieldType.string, values: [DWD_TILES] },
+        { name: 'legend_graphic_url', type: FieldType.string, values: [DWD_LEGEND] },
+      ],
+    });
+    expect(framesToXyz([frame])[0].legendUrl).toBe(DWD_LEGEND);
+  });
+
+  it('carries no legend for vector tiles, kepler’s own legend explains those, nor an empty one', () => {
+    expect(framesToXyz([withLegend({ tiles_url: BAG, tiles_format: 'mvt' }, DWD_LEGEND)])[0]).not.toHaveProperty(
+      'legendUrl'
+    );
+    expect(framesToXyz([withLegend({ tiles_url: DWD_TILES }, '  ')])[0]).not.toHaveProperty('legendUrl');
+  });
+
+  it('names the layer its frame names (meta.custom.layer.key), and none without one', () => {
+    const frame = servicesFrame([{ tiles_url: DWD_TILES }]);
+    frame.meta = { custom: { layer: { key: 'dwd:Laender' } } };
+    expect(framesToXyz([frame])[0].layerKey).toBe('dwd:Laender');
+    expect(framesToXyz([servicesFrame([{ tiles_url: DWD_TILES }])])[0]).not.toHaveProperty('layerKey');
+  });
+});
+
 describe("the layer's own zoom levels and credits", () => {
   it('takes the zoom levels from meta.custom.layer when the row has none, and the row wins', () => {
     const frame = servicesFrame([{ ...pdokRow, tiles_min_zoom: null, tiles_max_zoom: 8 }]);

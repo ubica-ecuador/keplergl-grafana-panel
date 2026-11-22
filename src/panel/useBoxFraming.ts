@@ -36,11 +36,15 @@ export function boxedEsri(esri: EsriDataset): BoxedLayer {
   return { id: esri.id, identity: esri.serviceUrl, bbox: esri.bbox ?? null };
 }
 
-/** A query's tiles: the same template is the same layer. */
+/**
+ * A query's tiles: the same layer its frame names (`meta.custom.layer.key`),
+ * else the same template. A WMTS's other style is another template of the same
+ * layer — a style change that must not reframe, as a WMS's does not.
+ */
 export function boxedXyz(xyz: XyzDataset): BoxedLayer {
   return {
     id: xyz.id,
-    identity: xyz.url,
+    identity: xyz.layerKey ? `layer:${xyz.layerKey}` : xyz.url,
     bbox: xyz.bbox,
     ...(xyz.minZoom !== undefined ? { minZoom: xyz.minZoom } : {}),
   };

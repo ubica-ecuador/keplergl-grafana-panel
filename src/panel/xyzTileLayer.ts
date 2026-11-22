@@ -1,4 +1,5 @@
 import type { LayerIcon } from './cogPaintedLayer';
+import { legendPictureOf } from '../data/serviceLegend';
 import { XYZ_TILE_TYPE, type XyzTileMetadata, xyzMapLibreTemplate, xyzTileUrl } from '../data/xyzTiles';
 import { shownInPane } from './paneVisibility';
 import { boxOfMetadata, reliefBoundsOfBox } from './wmsExtent';
@@ -128,10 +129,35 @@ export function makeXyzTileLayer<C extends Constructor<object>>(
       return Boolean(this.type && this.config.isVisible);
     }
 
+    /**
+     * The tiles' legend, as kepler's map legend reads it: the picture of the
+     * row's `legend_url` (a WMTS style's LegendURL), shown as kepler shows a
+     * WMS's. Taken from the dataset whenever kepler formats the layer's data —
+     * the one moment the layer sees it — as the ArcGIS layer does
+     * (`esriImageLayer.ts`), so the legend of another style comes with the
+     * dataset that draws it.
+     */
+    xyzLegendPicture: string | null = null;
+
+    getLegendImageUrl(): string | null {
+      return this.xyzLegendPicture;
+    }
+
+    /**
+     * Nothing of colour or size: the tiles are the service's pictures. Left to
+     * the base class, kepler's legend drew the layer's unused colour as a
+     * swatch, as if the tiles were painted in it.
+     */
+    getLegendVisualChannels(): Record<string, unknown> {
+      return {};
+    }
+
     formatLayerData(datasets: Record<string, { metadata?: XyzTileMetadata }>, ...rest: unknown[]): XyzTileLayerData {
       void rest;
       const dataId = this.config.dataId;
-      return { metadata: dataId ? datasets?.[dataId]?.metadata : undefined };
+      const metadata = dataId ? datasets?.[dataId]?.metadata : undefined;
+      this.xyzLegendPicture = legendPictureOf(metadata?.legendUrl);
+      return { metadata };
     }
 
     renderLayer(opts?: { data?: XyzTileLayerData; visible?: boolean }): unknown[] {

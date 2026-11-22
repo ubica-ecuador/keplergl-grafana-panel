@@ -191,6 +191,37 @@ describe('useBoxFraming', () => {
     expect(fits(dispatched)).toEqual([netherlands]);
   });
 
+  it('leaves the view when a query’s tiles change style: another template of the layer its frame names', async () => {
+    const germany: [number, number, number, number] = [5.8, 47.2, 15.1, 55.1];
+    const style = (name: string): XyzDataset => ({
+      id: 'grafana-B-tiles',
+      label: 'Länder',
+      url: `https://maps.dwd.de/geoserver/gwc/service/wmts/rest/dwd:Laender/${name}/EPSG:900913/{z}/{y}/{x}`,
+      bbox: germany,
+      layerKey: 'dwd:Laender',
+    });
+    // No saved view: a layer seen for the first time is framed whatever the map shows.
+    const { store, dispatched, emit } = fakeStore({ latitude: 48.85, longitude: 2.35, zoom: 8 }, ['grafana-B-tiles']);
+    const { rerender } = renderHook(
+      (layers: XyzDataset[]) =>
+        useBoxFraming({ store, isReady: true, mapConfig: null, onFramed: jest.fn(), layers: layers.map(boxedXyz) }),
+      { initialProps: [style('Laender_ocker')] }
+    );
+    await settle();
+    expect(fits(dispatched)).toEqual([germany]);
+
+    rerender([style('Laender_grau')]);
+    emit();
+    await settle();
+    expect(fits(dispatched)).toEqual([germany]);
+
+    // Another layer is framed again.
+    rerender([{ ...style('Laender_grau'), layerKey: 'dwd:Kreise' }]);
+    emit();
+    await settle();
+    expect(fits(dispatched)).toEqual([germany, germany]);
+  });
+
   it('frames tiles no further out than their first level, on the box’s centre', async () => {
     // IGN's WMTS of France starts at 6: kepler's fit of its box lands at 5.35, where it has no tile.
     const ign: [number, number, number, number] = [-5.15, 41.33, 9.57, 51.1];
@@ -306,6 +337,21 @@ describe('useBoxFraming', () => {
 describe('box framing identities', () => {
   it('is the same layer in another style, so a style change does not reframe', () => {
     expect(boxedWms(wms({ style: 'rain_contours' })).identity).toBe(boxedWms(wms({ style: 'rain_classes' })).identity);
+  });
+
+  it('is the same tiles layer under another template when its frame names the layer, and another without', () => {
+    const tiles = (url: string, layerKey?: string): XyzDataset => ({
+      id: 'grafana-A-tiles',
+      label: 'Länder',
+      url,
+      bbox: null,
+      ...(layerKey ? { layerKey } : {}),
+    });
+    const ocker = 'https://maps.dwd.test/Laender_ocker/{z}/{y}/{x}';
+    const grau = 'https://maps.dwd.test/Laender_grau/{z}/{y}/{x}';
+
+    expect(boxedXyz(tiles(ocker, 'dwd:Laender')).identity).toBe(boxedXyz(tiles(grau, 'dwd:Laender')).identity);
+    expect(boxedXyz(tiles(ocker)).identity).not.toBe(boxedXyz(tiles(grau)).identity);
   });
 
   it('is the same service under another rendering rule, so a rule change does not reframe', () => {

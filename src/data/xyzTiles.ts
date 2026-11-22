@@ -36,6 +36,11 @@ export interface XyzTileMetadata {
    * dataset carries its box under too.
    */
   tilesBbox?: WmsBox;
+  /**
+   * Where the tiles' legend is (`legend_url`): a picture kepler's map legend
+   * shows (the layer's `getLegendImageUrl`, `xyzTileLayer.ts`).
+   */
+  legendUrl?: string;
 }
 
 /**

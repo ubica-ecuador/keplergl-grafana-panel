@@ -101,6 +101,78 @@ describe('a query’s tiles on the map', () => {
   });
 });
 
+describe('a query’s tiles with a legend', () => {
+  /** DWD's states as a GeoWebCache WMTS: each style its own template and its own legend. */
+  const style = (name: string): XyzDataset => ({
+    id: 'grafana-A-tiles',
+    label: 'Länder',
+    url: `https://maps.dwd.de/geoserver/gwc/service/wmts/rest/dwd:Laender/${name}/EPSG:900913/EPSG:900913:{z}/{y}/{x}?format=image/png`,
+    bbox: [5.8, 47.2, 15.1, 55.1],
+    legendUrl: `https://maps.dwd.de/geoserver/ows?service=WMS&request=GetLegendGraphic&format=image/png&layer=dwd:Laender&style=${name}`,
+    layerKey: 'dwd:Laender',
+  });
+  type LegendLayer = { id: string; config: { dataId: string }; getLegendImageUrl(): string | null };
+  const tilesLayers = (store: ReturnType<typeof newMap>) =>
+    (visStateOf(store).layers as unknown as LegendLayer[]).filter((l) => l.config.dataId === 'grafana-A-tiles');
+
+  it('hand kepler’s map legend the picture of their legend_url', async () => {
+    const store = newMap();
+    loadXyz(store.dispatch, [style('Laender_ocker')]);
+    await settle();
+
+    expect(visStateOf(store).datasets['grafana-A-tiles'].metadata).toMatchObject({
+      legendUrl: style('Laender_ocker').legendUrl,
+    });
+    expect(tilesLayers(store).map((l) => l.getLegendImageUrl())).toEqual([style('Laender_ocker').legendUrl]);
+  });
+
+  it('draw another style’s tiles with its legend, on the same layer and in the same view', async () => {
+    const store = newMap();
+    loadXyz(store.dispatch, [style('Laender_ocker')]);
+    await settle();
+    fitMapToBox(store, store.dispatch, { bounds: [5.8, 47.2, 15.1, 55.1] });
+    await settle();
+    const [before] = tilesLayers(store);
+    const view = readMapState(store);
+
+    refreshXyz(store, store.dispatch, [style('Laender_grau')]);
+    await settle();
+
+    expect(visStateOf(store).datasets['grafana-A-tiles'].metadata).toMatchObject({
+      url: style('Laender_grau').url,
+      legendUrl: style('Laender_grau').legendUrl,
+    });
+    const after = tilesLayers(store);
+    expect(after.map((l) => l.id)).toEqual([before.id]);
+    expect(after[0].getLegendImageUrl()).toBe(style('Laender_grau').legendUrl);
+    expect(readMapState(store)).toEqual(view);
+  });
+
+  it('rebuild on a new legend alone, and carry none without one', async () => {
+    const store = newMap();
+    loadXyz(store.dispatch, [{ ...style('Laender_ocker'), legendUrl: undefined }]);
+    await settle();
+    expect(visStateOf(store).datasets['grafana-A-tiles'].metadata).not.toHaveProperty('legendUrl');
+    expect(tilesLayers(store)[0].getLegendImageUrl()).toBeNull();
+
+    refreshXyz(store, store.dispatch, [style('Laender_ocker')]);
+    await settle();
+    expect(tilesLayers(store)[0].getLegendImageUrl()).toBe(style('Laender_ocker').legendUrl);
+  });
+
+  it('show no ArcGIS legend JSON as a picture', async () => {
+    const store = newMap();
+    loadXyz(store.dispatch, [
+      {
+        ...style('Laender_ocker'),
+        legendUrl: 'https://services.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/legend',
+      },
+    ]);
+    await settle();
+    expect(tilesLayers(store)[0].getLegendImageUrl()).toBeNull();
+  });
+});
+
 describe('a query’s vector tiles and archives on the map', () => {
   const BAG: XyzDataset = {
     id: 'grafana-A-tiles',
