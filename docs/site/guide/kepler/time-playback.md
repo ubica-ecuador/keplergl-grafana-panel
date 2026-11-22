@@ -78,6 +78,24 @@ each step whole, where a sliding window spends most of its frames straddling two
 A numeric timeline has the same mode, one bin at a time. kepler then filters that column on the CPU
 rather than the GPU, so that a value on a bin's edge falls in one bin only.
 
+## Rows that live for a while
+
+A row that exists from one moment to another, such as a building from the commit that added it to
+the one that deleted it, needs two time columns. kepler's time filter takes an **end time field**: a
+row is kept when its life overlaps the window, and an empty end means it is still alive. You can pick
+the end field on the filter card yourself.
+
+A query with both `valid_from` and `valid_to` gets that set up. Its time filter is on `valid_from`, its
+end field is `valid_to`, and its window is one moment wide, so the map shows the rows alive at that
+moment. It opens on the last moment, which is the data as it is now. Play it or drag it to step back
+through the history. With _Dashboard drives map_ or _Both directions_, the moment is the end of the
+dashboard time range. A wider window keeps every row that was alive at some moment within it.
+
+The Spatial Catalog data source returns an Iceberg table's whole history in this shape, so the map
+shows the table as each commit left it. A row deleted by a commit still counts at the exact
+millisecond of that commit, because kepler includes both ends of the window. The histogram counts the
+rows alive in each bar.
+
 ## Data outside the window
 
 Kepler's animation shows the window; it does not remove the rest of the data. Widening the brush

@@ -33,6 +33,7 @@ import { withWmsTime } from './wmsTimeLayer';
 import { withPresentLayerGroups } from './loadedLayerGroups';
 import { buildZarrDeckLayer } from './zarrDeckLayer';
 import { makeZarrLayer, ZARR_TILES_TYPE } from './zarrTileLayer';
+import { linkIntervalFilters } from './intervalFilters';
 
 /**
  * The icon a stock layer shows, borrowed for one of ours.
@@ -248,5 +249,7 @@ export function createKeplerStore(styleType: string = NO_MAP_ID): Store {
     return next(action);
   };
   store = legacy_createStore(reducer, {}, applyMiddleware(...enhanceReduxMiddleware([tellListeners as never])));
+  // Rows that live from valid_from to valid_to: the ones alive at the time filter's moment.
+  linkIntervalFilters(store);
   return store;
 }

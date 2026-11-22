@@ -6,6 +6,13 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Rows that live for a while, at one moment.** A query with both `valid_from` and `valid_to` gets
+  its time filter set up with `valid_to` as kepler's end time field and a window of one moment, the
+  last: the map shows the rows alive then, an empty end being a row still alive, and playing or
+  dragging the moment goes back through the history; the histogram counts the rows alive. The
+  Spatial Catalog gives an Iceberg table's whole history so, and the map shows the table as each
+  commit left it. With the dashboard driving the map, the moment is the time range's end. Done once,
+  on the filter the panel makes: one changed or removed, or a saved map's, is left as it is.
 - **A catalog's boxes as outlines.** A frame whose `meta.custom.layer` says `outline: true` has its
   polygons drawn as outlines, not filled: shapes that say where things lie, not what they are. The
   Spatial Catalog sends it on a Catalog search, whose `footprint` boxes, filled, stacked into one

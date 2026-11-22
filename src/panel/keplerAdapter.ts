@@ -65,6 +65,7 @@ import {
 } from '../data/mapConfig';
 import { layerTitleRenames, type NamedLayer, type WantedTitle } from './layerTitles';
 import { savedViewportOf } from './viewportGuard';
+import { isIntervalTimeFilter } from './intervalFilters';
 import { type BoxFrame, raisedToMinZoom } from './wmsExtent';
 import { isFiniteBounds } from './finiteBounds';
 import type { FilteredTimes } from './mapNotices';
@@ -2646,7 +2647,15 @@ export function pushTimeRange(store: Store, dispatch: Dispatch, range: TimeRange
 
   const existing = ownFilters(visState).find((f) => f.type === TIME_FILTER_TYPE);
   if (existing) {
-    dispatch(wrapTo(KEPLER_INSTANCE_ID, createOrUpdateFilter(existing.id, undefined, undefined, value)));
+    // A filter that keeps rows by their life (an end field) is a moment: the dashboard's end, as a snapshot of a
+    // table at the dashboard's time is. Over the whole range it would keep every row alive at some moment of it.
+    const moment = isIntervalTimeFilter(existing as Parameters<typeof isIntervalTimeFilter>[0]);
+    dispatch(
+      wrapTo(
+        KEPLER_INSTANCE_ID,
+        createOrUpdateFilter(existing.id, undefined, undefined, moment ? [range.to, range.to] : value)
+      )
+    );
     return true;
   }
 
