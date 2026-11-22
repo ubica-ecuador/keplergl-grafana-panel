@@ -7,7 +7,7 @@ import { anotherServiceWins } from './serviceKind';
 import { cogTileTemplate } from './cogTileUrl';
 import { stacTileTemplate } from './stacTileUrl';
 import { pickLatestWithin, type TimeWindow } from './timeWindow';
-import { attributionsOf } from './frameLayer';
+import { attributionsOf, frameLabelOf } from './frameLayer';
 
 /**
  * A raster scene a query points at, in the shape kepler's raster tileset needs.
@@ -318,7 +318,7 @@ export function framesToRasters(
       : recipe.renderer === 'painted'
         ? 'painted'
         : 'stac';
-    const label = frame.name ?? `Query ${refId}`;
+    const label = frameLabelOf(frame, refId);
     if (kind !== 'pmtiles' && tileServerUrls.length === 0) {
       opts.onMissingServer?.(queryName(frame, refId));
       return;

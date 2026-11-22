@@ -5,9 +5,10 @@ export type LayerBox = [number, number, number, number];
 
 /**
  * What a frame says about the layer it draws, in `meta.custom.layer`:
- * `{ key, bbox?, attribution?, minZoom?, maxZoom? }`. This is the layer's
- * place on the map; whom it credits and its tiles' zoom levels are read on
- * their own (`frameCreditsOf`, `frameZoomsOf`).
+ * `{ key, bbox?, title?, attribution?, minZoom?, maxZoom? }`. This is the
+ * layer's place on the map; its name, whom it credits and its tiles' zoom
+ * levels are read on their own (`frameTitleOf`, `frameCreditsOf`,
+ * `frameZoomsOf`).
  *
  * `key` names the layer, and is the same on every refresh of it: a Spatial
  * Catalog sends its data source, the query's kind and the entries it reads. A
@@ -32,6 +33,9 @@ export interface LayerCredit {
   title: string;
   url?: string;
 }
+
+/** The longest layer name kept, in characters: a line of kepler's layer list. */
+const LONGEST_TITLE = 80;
 
 /** Credits kept for one layer: a footer, not a bibliography. */
 const MOST_CREDITS = 4;
@@ -62,6 +66,35 @@ function creditTitleOf(value: unknown): string {
   }
   const flat = value.replace(/[<>"]/g, '').replace(/\s+/g, ' ').trim();
   return flat.length > LONGEST ? `${flat.slice(0, LONGEST - 1).trimEnd()}…` : flat;
+}
+
+/**
+ * What a frame calls its layer (`meta.custom.layer.title`): a Spatial Catalog
+ * sends the title of the entry it reads, where the frame's own name says what
+ * kind of rows it holds (`rasters`, `features`, `services`). Plain text on one
+ * line, at most 80 characters; undefined when it names none. Read whether or
+ * not the frame names its layer's `key`.
+ */
+export function frameTitleOf(frame: DataFrame): string | undefined {
+  const given = layerObjectOf(frame)?.title;
+  if (typeof given !== 'string') {
+    return undefined;
+  }
+  const flat = given.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim();
+  if (!flat) {
+    return undefined;
+  }
+  return flat.length > LONGEST_TITLE ? `${flat.slice(0, LONGEST_TITLE - 1).trimEnd()}…` : flat;
+}
+
+/** The name a query's frame gives what the panel draws of it: its layer's title, else its own name, else its query. */
+export function frameLabelOf(frame: DataFrame, refId: string): string {
+  return frameTitleOf(frame) ?? untitledLabelOf(frame, refId);
+}
+
+/** The name the panel gives a query's frame that names no title: the frame's own name, else its query's. */
+export function untitledLabelOf(frame: DataFrame, refId: string): string {
+  return frame.name ?? `Query ${refId}`;
 }
 
 /**

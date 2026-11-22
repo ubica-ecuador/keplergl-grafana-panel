@@ -4,7 +4,9 @@ import {
   attributionStrings,
   attributionsOf,
   frameCreditsOf,
+  frameLabelOf,
   frameLayerOf,
+  frameTitleOf,
   frameZoomsOf,
   layerBoxOf,
 } from './frameLayer';
@@ -114,5 +116,29 @@ describe("a layer's zoom levels", () => {
     expect(frameZoomsOf(frameWith({ layer: { minZoom: 10, maxZoom: 4 } }))).toEqual({ minZoom: 10 });
     expect(frameZoomsOf(frameWith({ layer: { minZoom: 1.5, maxZoom: '9' } }))).toEqual({});
     expect(frameZoomsOf(frameWith({}))).toEqual({});
+  });
+});
+
+describe('frameTitleOf and frameLabelOf', () => {
+  const named = (custom: unknown, name?: string) =>
+    toDataFrame({ refId: 'B', name, fields: [], meta: { custom } as never });
+
+  it("names a layer by its title, before the frame's own name and its query's", () => {
+    expect(frameLabelOf(named({ layer: { key: 'k', title: 'Land cover 2020' } }, 'features'), 'B')).toBe(
+      'Land cover 2020'
+    );
+    expect(frameLabelOf(named({ layer: { key: 'k' } }, 'features'), 'B')).toBe('features');
+    expect(frameLabelOf(named(undefined), 'B')).toBe('Query B');
+  });
+
+  it('takes a title with no key, as one line of plain text, and cuts a long one', () => {
+    expect(frameTitleOf(named({ layer: { title: '  <b>Rivers</b>\n of  Ecuador ' } }))).toBe('bRivers/b of Ecuador');
+    expect(frameTitleOf(named({ layer: { title: 'x'.repeat(200) } }))).toHaveLength(80);
+  });
+
+  it('names no title that is not a string with text', () => {
+    for (const title of [undefined, null, '', '   ', 42, { en: 'Rivers' }]) {
+      expect(frameTitleOf(named({ layer: { key: 'k', title } }))).toBeUndefined();
+    }
   });
 });

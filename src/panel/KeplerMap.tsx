@@ -68,6 +68,7 @@ import { useCoordinateSync } from './useCoordinateSync';
 import { useCenterSync } from './useCenterSync';
 import { useFitOnVariables } from './useFitOnVariables';
 import { useLayerFraming } from './useLayerFraming';
+import { useLayerTitles } from './useLayerTitles';
 import { centerOnLoad, withLoadCenter } from './centerSync';
 import { useRasterTimeline } from './useRasterTimeline';
 import { useWmsCalendar } from './useWmsCalendar';
@@ -466,6 +467,11 @@ export function KeplerMap({
   // before the load effect, so it notes where the old layer was before the
   // new rows are handed over (`useLayerFraming.ts`).
   useLayerFraming({ store, isReady, frames, boxed: boxedLayers, width, height, onFramed: onBoxFramed });
+
+  // A query whose frames name their layer's title (`meta.custom.layer.title`)
+  // names its layers after it, while they carry a name the panel or kepler gave
+  // them (`useLayerTitles.ts`).
+  useLayerTitles({ store, isReady, frames });
 
   useEffect(() => {
     // When there is something to build a map of, or the queries have answered

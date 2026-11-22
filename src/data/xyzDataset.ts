@@ -4,7 +4,7 @@ import { detectFields, resolveRoles, type FieldRoleOverrides } from './detectFie
 import { queryName } from './rasterDataset';
 import { serviceKindOf } from './serviceKind';
 import { parseWmsBox, type WmsBox } from './wmsDataset';
-import { attributionsOf, frameZoomsOf } from './frameLayer';
+import { attributionsOf, frameLabelOf, frameZoomsOf } from './frameLayer';
 
 /**
  * Map tiles a query points at, in the shape the panel's XYZ layer draws
@@ -187,7 +187,7 @@ export function framesToXyz(
     const metadataUrl = format !== 'raster' && typeof metadata === 'string' && metadata.trim() ? metadata.trim() : '';
     datasets.push({
       id: xyzDatasetId(refId),
-      label: frame.name ?? `Query ${refId}`,
+      label: frameLabelOf(frame, refId),
       url,
       ...(minZoom !== undefined ? { minZoom } : {}),
       ...(maxZoom !== undefined ? { maxZoom } : {}),

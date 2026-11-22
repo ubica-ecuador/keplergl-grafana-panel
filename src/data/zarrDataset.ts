@@ -3,7 +3,7 @@ import { DataFrame } from '@grafana/data';
 import { detectFields, FieldRoleOverrides, resolveRoles } from './detectFields';
 import { firstText } from './frameValues';
 import { frameTileServerUrls, queryName } from './rasterDataset';
-import { attributionsOf } from './frameLayer';
+import { attributionsOf, frameLabelOf } from './frameLayer';
 
 /**
  * A Zarr variable a query points at, in the shape the panel's tile layer needs.
@@ -144,7 +144,7 @@ export function framesToZarr(
     datasets.push({
       id: zarrDatasetId(refId),
       ...attributionsOf(frame),
-      label: frame.name ?? `Query ${refId}`,
+      label: frameLabelOf(frame, refId),
       serverUrl: server,
       storeUrl: named.storeUrl,
       variable: named.variable,

@@ -3,7 +3,7 @@ import type { DataFrame } from '@grafana/data';
 import { detectFields, resolveRoles, type FieldRoleOverrides } from './detectFields';
 import { anotherServiceWins } from './serviceKind';
 import { parseWmsBox, type WmsBox } from './wmsDataset';
-import { attributionsOf } from './frameLayer';
+import { attributionsOf, frameLabelOf } from './frameLayer';
 
 /**
  * An ArcGIS Image Service, or Map Service, in the shape the panel's own layer reads.
@@ -137,7 +137,7 @@ export function framesToEsri(frames: DataFrame[], overrides: Record<string, Fiel
 
     datasets.push({
       id: esriDatasetId(refId),
-      label: title || (frame.name ?? `Query ${refId}`),
+      label: title || frameLabelOf(frame, refId),
       serviceUrl,
       ...(opening ? { mosaicRule: opening } : {}),
       ...(renderingRule ? { renderingRule } : {}),

@@ -10,7 +10,7 @@ import { buildTripLayer, TripLayerConfig, TripLayerMode } from './buildTripLayer
 import { buildTrips } from './buildTrips';
 import { describesLattice, earliestTimestepRows } from './buildWindField';
 import { detectFields, FieldRoleOverrides, FieldRoles, legacyCountColumn, resolveRoles } from './detectFields';
-import { attributionsOf, type FrameLayer, frameLayerOf } from './frameLayer';
+import { attributionsOf, type FrameLayer, frameLabelOf, frameLayerOf } from './frameLayer';
 import { serviceKindOf } from './serviceKind';
 import { KeplerColumn, KeplerRow, keplerRenamesOf, toKeplerColumns, toKeplerRows } from './toKeplerDataset';
 
@@ -136,7 +136,7 @@ export function framesToDatasets(
 
   const datasetOf = (frame: DataFrame, refId: string, roles: FieldRoles): PanelDataset => {
     const id = datasetId(refId);
-    const label = frame.name ?? `Query ${refId}`;
+    const label = frameLabelOf(frame, refId);
 
     // A velocity grid stays a velocity grid: the rows travel to kepler as they
     // came, every hour of the forecast among them. kepler's time filter is what

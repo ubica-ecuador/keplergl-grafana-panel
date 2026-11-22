@@ -63,6 +63,7 @@ import {
   type SavedMapConfig,
   type SavedRemoteDataset,
 } from '../data/mapConfig';
+import { layerTitleRenames, type NamedLayer, type WantedTitle } from './layerTitles';
 import { savedViewportOf } from './viewportGuard';
 import { type BoxFrame, raisedToMinZoom } from './wmsExtent';
 import { isFiniteBounds } from './finiteBounds';
@@ -603,6 +604,25 @@ export function setRasterLayerVisible(store: Store, dispatch: Dispatch, dataId: 
     )
   );
   return true;
+}
+
+/**
+ * Renames the layers on datasets whose query names its layer's title, while
+ * they still carry a name the panel or kepler gave them (`layerTitles.ts`).
+ * Returns how many it renamed.
+ */
+export function applyLayerTitles(store: Store, dispatch: Dispatch, wanted: ReadonlyMap<string, WantedTitle>): number {
+  const layers = getVisState(store)?.layers ?? [];
+  const renames = layerTitleRenames(layers as NamedLayer[], wanted);
+  for (const { layer, label } of renames) {
+    dispatch(
+      wrapTo(
+        KEPLER_INSTANCE_ID,
+        layerConfigChange(layer as unknown as Parameters<typeof layerConfigChange>[0], { label })
+      )
+    );
+  }
+  return renames.length;
 }
 
 /**

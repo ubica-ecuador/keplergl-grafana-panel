@@ -40,6 +40,15 @@ release documents what changed since the one before it.
   `Attribution`, STAC's licensor and producer, an ArcGIS layer's `copyrightText`). A credit is read
   when kepler makes the dataset, so a refresh of the same layer keeps the one it had; a vector
   tileset or a PMTiles archive that credits itself in its TileJSON or header is credited by that.
+- **A layer named as its data source names it.** A frame's `meta.custom.layer` may say the layer's
+  `title`, and the query's datasets, and kepler's layers on them, take it in place of the frame's own
+  name (`rasters`, `features`, `services`) or `Query A`; a row's `title` still names a WMS or ArcGIS
+  service. A layer whose name is still one the panel or kepler gave it — the frame's name, the
+  query's, a title the query named before, or kepler's cut of a title at what looks like a file
+  extension ("CCI Biomass v5.01" made "CCI Biomass v5") — is renamed to the title: a map saved before
+  its data source said one, and a query pointed at another layer, which keeps its layers. A name the
+  user gave a layer stays. The Spatial Catalog sends the title of the entry a layer draws, or of the
+  collection its items belong to.
 - **ArcGIS Map Services from `esri_url`.** An `esri_url` ending in `/MapServer` is drawn as an Image
   Service is, a picture of each tile in Web Mercator, by the service's `export`
   (`format=png32&transparent=true`); one ending in `/MapServer/<id>` draws that layer alone

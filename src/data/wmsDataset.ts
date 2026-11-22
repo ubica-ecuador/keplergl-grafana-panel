@@ -2,7 +2,7 @@ import { DataFrame } from '@grafana/data';
 
 import { detectFields, FieldRoleOverrides, resolveRoles } from './detectFields';
 import { anotherServiceWins } from './serviceKind';
-import { attributionsOf } from './frameLayer';
+import { attributionsOf, frameLabelOf } from './frameLayer';
 
 /**
  * A WMS layer a query points at, in the shape kepler's WMS tileset needs.
@@ -164,7 +164,7 @@ export function framesToWms(frames: DataFrame[], overrides: Record<string, Field
 
     datasets.push({
       id: wmsDatasetId(refId),
-      label: title || (frame.name ?? `Query ${refId}`),
+      label: title || frameLabelOf(frame, refId),
       serviceUrl: named.serviceUrl,
       layerName: named.layerName,
       times: readTimes(frame, roles.time),
