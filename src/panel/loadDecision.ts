@@ -6,7 +6,7 @@ import { isPanelXyzId } from '../data/xyzDataset';
 import { isPanelZarrId } from '../data/zarrDataset';
 import { savedViewportOf } from './viewportGuard';
 
-export type LoadAction = 'rebuild' | 'refresh' | 'rasters' | 'none';
+export type LoadAction = 'rebuild' | 'refresh' | 'rasters' | 'tiles' | 'none';
 
 interface LoadState {
   /** Whether kepler has already been handed a full map. */
@@ -23,6 +23,10 @@ interface LoadState {
   appliedRasters?: unknown;
   /** The raster list this render carries. */
   currentRasters?: unknown;
+  /** The query tiles last handed to kepler — an identity token again. */
+  appliedTiles?: unknown;
+  /** The query tiles this render carries. */
+  currentTiles?: unknown;
 }
 
 /**
@@ -87,6 +91,9 @@ export function shouldBuildMap({
  * `replaceDataInMap` per query and blinks layers that did not change; so the
  * narrow action says what actually happened.
  *
+ * `tiles` is the fifth, for the same reason: a query's tiles can move without
+ * its rows, when a PMTiles archive's header answers after them.
+ *
  * Tracked as an explicit `hasLoaded` flag rather than inferred from the config
  * alone, because "no config yet" and "no config saved" are both `undefined` and
  * comparing them would make the first load look like a refresh.
@@ -99,6 +106,8 @@ export function decideLoadAction({
   currentDatasets,
   appliedRasters,
   currentRasters,
+  appliedTiles,
+  currentTiles,
 }: LoadState): LoadAction {
   if (!hasLoaded) {
     return 'rebuild';
@@ -118,7 +127,15 @@ export function decideLoadAction({
   // memo does not re-run for an options clone, only for a query re-run or a
   // change of band combination. `refreshRasters` compares scenes by url
   // afterwards, so even a list rebuilt for nothing dispatches nothing.
-  return currentRasters === appliedRasters ? 'none' : 'rasters';
+  if (currentRasters !== appliedRasters) {
+    return 'rasters';
+  }
+  // A query's PMTiles archive reaches the map after its rows: the panel reads
+  // the archive's header first, to tell vector tiles from pictures, so the
+  // tiles arrive a render later with the rows unchanged. Judged on the rows and
+  // the rasters that was 'none', and a map already up when the query changed —
+  // a query switched to a PMTiles layer in the panel editor — never drew it.
+  return currentTiles === appliedTiles ? 'none' : 'tiles';
 }
 
 /**

@@ -403,6 +403,7 @@ export function KeplerMap({
   const appliedConfig = useRef<SavedMapConfig | null | undefined>(undefined);
   const appliedDatasets = useRef<PanelDataset[] | undefined>(undefined);
   const appliedRasters = useRef<RasterDataset[] | undefined>(undefined);
+  const appliedTiles = useRef<XyzDataset[] | undefined>(undefined);
 
   // Registering the plugin's own styles: satellite imagery that needs no Mapbox
   // account, plus a self-hosted style.json when one is configured, which is
@@ -494,6 +495,8 @@ export function KeplerMap({
       currentDatasets: datasets,
       appliedRasters: appliedRasters.current,
       currentRasters: rasters,
+      appliedTiles: appliedTiles.current,
+      currentTiles: xyzLayers,
     });
 
     // 'none' when neither the data nor the config really changed — an options
@@ -506,6 +509,7 @@ export function KeplerMap({
 
     appliedDatasets.current = datasets;
     appliedRasters.current = rasters;
+    appliedTiles.current = xyzLayers;
 
     // Only the scenes moved, which is what a change of band combination is: the
     // dropdown rebuilds the raster list while the rows stay the objects they
@@ -516,6 +520,16 @@ export function KeplerMap({
     if (action === 'rasters') {
       guardSplitMaps();
       refreshRasters(store, store.dispatch, rasters);
+      refreshXyz(store, store.dispatch, xyzLayers);
+      return;
+    }
+
+    // Only the query's tiles moved: a PMTiles archive whose header answered
+    // after its query's rows (`usePmtilesKinds`). `refreshXyz` compares tiles by
+    // what they draw, so a list rebuilt for nothing dispatches nothing.
+    if (action === 'tiles') {
+      guardSplitMaps();
+      refreshXyz(store, store.dispatch, xyzLayers);
       return;
     }
 

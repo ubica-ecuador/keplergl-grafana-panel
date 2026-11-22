@@ -162,6 +162,46 @@ describe('decideLoadAction', () => {
     ).toBe('refresh');
   });
 
+  // A PMTiles archive is drawn a render after its query's rows: the panel
+  // reads its header first, to tell vector tiles from pictures. A map already
+  // up — a query switched to a PMTiles layer in the panel editor — judged that
+  // on the rows and the rasters, read 'none', and never drew the archive.
+  it('adds the tiles when they arrive after the rows', () => {
+    const datasets = [{ id: 'grafana-A' }];
+    const rasters: unknown[] = [];
+
+    expect(
+      decideLoadAction({
+        hasLoaded: true,
+        appliedConfig: undefined,
+        currentConfig: undefined,
+        appliedDatasets: datasets,
+        currentDatasets: datasets,
+        appliedRasters: rasters,
+        currentRasters: rasters,
+        appliedTiles: [],
+        currentTiles: [{ id: 'grafana-A-tiles', format: 'pmtiles' }],
+      })
+    ).toBe('tiles');
+  });
+
+  it('does nothing when the tiles did not move either', () => {
+    const datasets = [{ id: 'grafana-A' }];
+    const tiles = [{ id: 'grafana-A-tiles', format: 'pmtiles' }];
+
+    expect(
+      decideLoadAction({
+        hasLoaded: true,
+        appliedConfig: undefined,
+        currentConfig: undefined,
+        appliedDatasets: datasets,
+        currentDatasets: datasets,
+        appliedTiles: tiles,
+        currentTiles: tiles,
+      })
+    ).toBe('none');
+  });
+
   // A panel with no raster query at all: both sides are undefined, and that
   // must not read as a change.
   it('does nothing for a panel that has no rasters', () => {
