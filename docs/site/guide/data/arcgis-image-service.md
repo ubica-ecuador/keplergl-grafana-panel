@@ -124,7 +124,7 @@ nothing, byte for byte — so leave the column out unless you want one of the ot
 What the colours mean is the service's to say, and it says it at `…/ImageServer/legend` (with the
 rendering rule drawn) or `…/MapServer/legend`. Put that address in `legend_url` and the map draws the
 legend over itself, as a [WMS's](./wms#styles-and-legends) is drawn: bottom-left, titled with the
-layer's name, folded by its title, gone while the layer is hidden.
+row's `title` or the layer's name, folded by its title, gone while the layer is hidden.
 
 ```sql
 SELECT

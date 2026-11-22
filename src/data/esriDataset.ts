@@ -55,6 +55,8 @@ export interface EsriDataset {
    * or a picture. Drawn over the map (`serviceLegend.ts`).
    */
   legendUrl?: string;
+  /** The row's own name for the service (its `title` column), which titles its legend. */
+  title?: string;
 }
 
 /** One dated slice of a mosaic, and the rule that selects it. */
@@ -118,6 +120,10 @@ export function framesToEsri(frames: DataFrame[], overrides: Record<string, Fiel
     const renderingRule = roles.esriRenderingRule ? firstText(frame, roles.esriRenderingRule) : '';
     const legend = roles.legendUrl ? valueOnFirstRow(frame, roles.esriUrl, roles.legendUrl) : undefined;
     const legendUrl = typeof legend === 'string' ? legend.trim() : '';
+    const named = frame.fields.some((field) => field.name === 'title')
+      ? valueOnFirstRow(frame, roles.esriUrl, 'title')
+      : undefined;
+    const title = typeof named === 'string' ? named.trim() : '';
     const moments = readMoments(frame, roles.time, roles.esriMosaicRule);
     // The newest is what a map opens on, the same rule the raster and Zarr
     // paths follow; an undated query falls back to its first named rule.
@@ -136,6 +142,7 @@ export function framesToEsri(frames: DataFrame[], overrides: Record<string, Fiel
       ...(moments.length ? { moments } : {}),
       ...(bbox ? { bbox } : {}),
       ...(legendUrl ? { legendUrl } : {}),
+      ...(title ? { title } : {}),
     });
   });
 

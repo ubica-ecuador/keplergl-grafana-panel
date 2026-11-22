@@ -29,8 +29,13 @@ import type { WmsDataset } from './wmsDataset';
 export interface ServiceLegend {
   /** The dataset of the layer it explains: the legend shows while kepler's layer on it does. */
   dataId: string;
-  /** The query's name for it, when kepler's layer has no label of its own. */
+  /**
+   * The name the panel gave its dataset, the query's (`frame.name`, or
+   * `Query <refId>`): what kepler labels the layer with until the user renames it.
+   */
   label: string;
+  /** The row's own name for the layer, its `title` column, when it has one. */
+  rowTitle?: string;
   url: string;
   kind: LegendKind;
   /**
@@ -78,13 +83,13 @@ export const RAMP_SWATCHES = 64;
 export function serviceLegends(wms: readonly WmsDataset[], esri: readonly EsriDataset[]): ServiceLegend[] {
   const legends: ServiceLegend[] = [];
   for (const layer of wms) {
-    const legend = legendOf(layer.id, layer.label, layer.legendUrl);
+    const legend = legendOf(layer.id, layer.label, layer.legendUrl, layer.title);
     if (legend) {
       legends.push(legend);
     }
   }
   for (const service of esri) {
-    const legend = legendOf(service.id, service.label, service.legendUrl);
+    const legend = legendOf(service.id, service.label, service.legendUrl, service.title);
     if (legend) {
       const layerId = /\/MapServer\/(\d+)\/?$/i.exec(service.serviceUrl)?.[1];
       legends.push(legend.kind === 'arcgis' && layerId ? { ...legend, layerId: Number(layerId) } : legend);
@@ -93,13 +98,24 @@ export function serviceLegends(wms: readonly WmsDataset[], esri: readonly EsriDa
   return legends;
 }
 
-function legendOf(dataId: string, label: string, url: string | undefined): ServiceLegend | null {
+function legendOf(
+  dataId: string,
+  label: string,
+  url: string | undefined,
+  rowTitle: string | undefined
+): ServiceLegend | null {
   const address = url?.trim() ?? '';
   const kind = legendKindOf(address);
   if (!kind) {
     return null;
   }
-  return { dataId, label, url: kind === 'arcgis' ? asJsonLegend(address) : address, kind };
+  return {
+    dataId,
+    label,
+    ...(rowTitle ? { rowTitle } : {}),
+    url: kind === 'arcgis' ? asJsonLegend(address) : address,
+    kind,
+  };
 }
 
 /**
@@ -227,16 +243,40 @@ export function fetchArcgisLegend(url: string, fetchImpl: typeof fetch = fetch):
   return pending;
 }
 
-/** A legend as the map shows it: titled with kepler's name for its layer. */
+/** A legend as the map shows it, with its title (`legendTitle`). */
 export interface ShownLegend extends ServiceLegend {
   title: string;
 }
 
 /**
+ * The labels kepler gives a layer of a service the user has not renamed: the
+ * panel's name for its dataset, or kepler's own placeholders when it found none.
+ */
+const DEFAULT_LAYER_LABELS = new Set(['WMS Layer', 'Image Service', 'ArcGIS Image Service']);
+
+/**
+ * What a legend is titled, in this order:
+ *
+ * 1. **The layer's label, when the user renamed it** in the layer panel: a name
+ *    someone chose wins over anything a query says.
+ * 2. **The row's `title`**: the Spatial Catalog names each service it lists
+ *    there ("Angeeichtes Radarkomposit (RW)"), where the query's name — and
+ *    with it kepler's default label — is the same for all of them ("services").
+ * 3. **The layer's label as kepler has it**, the query's name; that name itself
+ *    for a layer with no label.
+ */
+export function legendTitle(legend: ServiceLegend, layerLabel: string): string {
+  const renamed = layerLabel !== '' && layerLabel !== legend.label && !DEFAULT_LAYER_LABELS.has(layerLabel);
+  if (renamed) {
+    return layerLabel;
+  }
+  return legend.rowTitle || layerLabel || legend.label;
+}
+
+/**
  * The legends to show: those whose layer kepler draws, in the order the
- * legends came, each titled with the layer's label (which the user may have
- * renamed in the layer panel), or the query's name when it has none. A legend
- * whose layer is hidden, or not built yet, is not shown.
+ * legends came, each with its title (`legendTitle`). A legend whose layer is
+ * hidden, or not built yet, is not shown.
  */
 export function shownLegends(
   legends: readonly ServiceLegend[],
@@ -245,6 +285,6 @@ export function shownLegends(
   const byId = new Map(layers.map((layer) => [layer.dataId, layer]));
   return legends.flatMap((legend) => {
     const layer = byId.get(legend.dataId);
-    return layer?.visible ? [{ ...legend, title: layer.label || legend.label }] : [];
+    return layer?.visible ? [{ ...legend, title: legendTitle(legend, layer.label) }] : [];
   });
 }

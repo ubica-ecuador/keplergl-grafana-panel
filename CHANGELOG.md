@@ -19,8 +19,10 @@ release documents what changed since the one before it.
   layer, the way a change of date does: no new dataset, the view does not move, and the layer keeps
   its name, opacity and place set in the layer panel. A query's `legend_url` (or
   `legend_graphic_url`) on a WMS or `esri_url` row is drawn over the map, in its bottom-left corner,
-  right of the open side panel and above kepler's time widget when that reaches the corner: one block
-  per layer, titled with the layer's name, folded by its title, gone while the layer is hidden,
+  right of the open side panel, above kepler's scale bar, and above its time widget when that
+  reaches the corner: one block per layer, titled with the layer's name when the user renamed it,
+  else the row's `title` (a catalog's name for each service), else the layer's name; folded by its
+  title, gone while the layer is hidden,
   scrolling when the legends are taller than the map. A picture (a WMS's `LegendURL`, a
   `GetLegendGraphic`) is shown as it is, on a white ground, and needs no CORS; ArcGIS's
   `…/ImageServer/legend` or `…/MapServer/legend` is fetched as JSON (`f=json`) and drawn as swatches

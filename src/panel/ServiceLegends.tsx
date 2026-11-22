@@ -17,19 +17,26 @@ const TOP_CLEARANCE_PX = 56;
 /** The least height the legends get; past it they scroll. */
 const MIN_HEIGHT_PX = 48;
 
-/** kepler's bottom widget — its time widget, its animation controls — as measured in the map. */
-export interface BottomWidgetBox {
-  /** Its left edge, in pixels from the map's. */
+/**
+ * Something of kepler's in the map's bottom edge that the legends stand on
+ * rather than cover: its bottom widget (the time widget, the animation
+ * controls) or its scale bar, as measured in the map.
+ */
+export interface CornerObstacle {
+  /** Its left and right edges, in pixels from the map's left edge. */
   left: number;
-  height: number;
+  right: number;
+  /** How high its top is above the map's bottom edge, in pixels. */
+  rise: number;
 }
 
 /**
  * Where the legends go: the bottom-left corner of the map, right of kepler's
- * side panel when it is open, and above kepler's bottom widget when that
- * reaches the corner. The widget is right-aligned and at most 1080 px wide, so
- * on a wide map it leaves the corner free and the legends stay at the bottom;
- * on a narrower one they stand on it. On a map too narrow for a legend right
+ * side panel when it is open, and above whatever of kepler's sits in that
+ * corner (`CornerObstacle`): its scale bar, which is always there, and its
+ * bottom widget when that reaches the corner. The widget is right-aligned and
+ * at most 1080 px wide, so on a wide map it leaves the corner free; on a
+ * narrower one the legends stand on it. On a map too narrow for a legend right
  * of the open side panel they go over the panel, as the notices do.
  *
  * At most the map's height, less the top strip of kepler's toggle and the
@@ -39,59 +46,86 @@ export function legendPlacement({
   width,
   height,
   sidePanelOpen,
-  bottomWidget,
+  obstacles,
 }: {
   width: number;
   height: number;
   sidePanelOpen: boolean;
-  bottomWidget: BottomWidgetBox | null;
+  obstacles: readonly CornerObstacle[];
 }): { left: number; bottom: number; maxWidth: number; maxHeight: number } {
   const besidePanel = SIDE_PANEL_RIGHT_PX + EDGE_PX;
   const left =
     sidePanelOpen && besidePanel + Math.min(LEGEND_WIDTH_PX, 160) <= width - CONTROLS_PX ? besidePanel : EDGE_PX;
   const maxWidth = Math.max(0, Math.min(LEGEND_WIDTH_PX, width - left - CONTROLS_PX));
-  const lifted =
-    bottomWidget && bottomWidget.height > 0 && bottomWidget.left < left + maxWidth + EDGE_PX ? bottomWidget.height : 0;
+  // Only what lies under the legends' own span lifts them.
+  const lifted = obstacles
+    .filter((obstacle) => obstacle.rise > 0 && obstacle.left < left + maxWidth && obstacle.right > left)
+    .reduce((highest, obstacle) => Math.max(highest, obstacle.rise), 0);
   const bottom = EDGE_PX + lifted;
   return { left, bottom, maxWidth, maxHeight: Math.max(MIN_HEIGHT_PX, height - bottom - TOP_CLEARANCE_PX) };
 }
 
+/** What the legends stand on: kepler's bottom widget, and its scale bar (one per pane of a split map). */
+const OBSTACLES = '.bottom-widget--container, .map-scale';
+
 /**
- * kepler's bottom widget, measured in the map: found by the class kepler gives
- * it, inside this panel's own element only, and followed by a ResizeObserver
- * — the widget changes height when a time filter is enlarged or minified, and
- * moves when the map is resized. Null while there is nothing to place, or
- * where there is no ResizeObserver to follow it with.
+ * kepler's bottom widget and scale bar, measured in the map: found by the
+ * classes kepler gives them, inside this panel's own element only. Followed by
+ * a ResizeObserver on each and on the map — the widget changes height when a
+ * time filter is enlarged or minified, the scale bar its width with the zoom —
+ * and looked for again on a frame after kepler adds or removes elements, since
+ * either may come after the legends. None where there is no ResizeObserver.
  */
-function useBottomWidget(root: HTMLElement | null, active: boolean): BottomWidgetBox | null {
-  const [box, setBox] = useState<BottomWidgetBox | null>(null);
+function useCornerObstacles(root: HTMLElement | null, active: boolean): readonly CornerObstacle[] {
+  const [obstacles, setObstacles] = useState<readonly CornerObstacle[]>(NO_OBSTACLES);
   useEffect(() => {
     if (!root || !active || typeof ResizeObserver === 'undefined') {
       return;
     }
-    let widget: Element | null = null;
-    const observer = new ResizeObserver(() => measure());
+    const observed = new Set<Element>();
+    let frame: number | null = null;
     const measure = () => {
-      if (!widget?.isConnected) {
-        widget = root.querySelector('.bottom-widget--container');
-        if (widget) {
-          observer.observe(widget);
+      frame = null;
+      const map = root.getBoundingClientRect();
+      const next: CornerObstacle[] = [];
+      root.querySelectorAll(OBSTACLES).forEach((element) => {
+        if (!observed.has(element)) {
+          observed.add(element);
+          resized.observe(element);
         }
-      }
-      if (!widget) {
-        setBox(null);
-        return;
-      }
-      const own = widget.getBoundingClientRect();
-      const next = { left: Math.round(own.left - root.getBoundingClientRect().left), height: Math.round(own.height) };
-      setBox((last) => (last && last.left === next.left && last.height === next.height ? last : next));
+        const own = element.getBoundingClientRect();
+        if (own.width > 0 && own.height > 0) {
+          next.push({
+            left: Math.round(own.left - map.left),
+            right: Math.round(own.right - map.left),
+            rise: Math.round(map.bottom - own.top),
+          });
+        }
+      });
+      setObstacles((last) => (JSON.stringify(last) === JSON.stringify(next) ? last : next));
     };
-    observer.observe(root);
+    const later = () => {
+      if (frame === null) {
+        frame = requestAnimationFrame(measure);
+      }
+    };
+    const resized = new ResizeObserver(later);
+    resized.observe(root);
+    const added = typeof MutationObserver === 'undefined' ? null : new MutationObserver(later);
+    added?.observe(root, { childList: true, subtree: true });
     measure();
-    return () => observer.disconnect();
+    return () => {
+      resized.disconnect();
+      added?.disconnect();
+      if (frame !== null) {
+        cancelAnimationFrame(frame);
+      }
+    };
   }, [root, active]);
-  return active ? box : null;
+  return active ? obstacles : NO_OBSTACLES;
 }
+
+const NO_OBSTACLES: readonly CornerObstacle[] = [];
 
 const getStyles = (theme: GrafanaTheme2) => ({
   stack: css({
@@ -153,8 +187,8 @@ const getStyles = (theme: GrafanaTheme2) => ({
 
 /**
  * The legends of the services the map draws (`serviceLegend.ts`), one block
- * each, in the bottom-left corner (`legendPlacement`): titled with the layer's
- * label, folded and unfolded by that title, and gone while the layer is hidden.
+ * each, in the bottom-left corner (`legendPlacement`): titled as `legendTitle`
+ * says, folded and unfolded by that title, and gone while the layer is hidden.
  *
  * Outside kepler's Provider, beside the notices, where @grafana/ui finds
  * Grafana's theme. A legend that cannot be shown — a picture that does not
@@ -176,12 +210,12 @@ export function ServiceLegends({
   root: HTMLElement | null;
 }) {
   const styles = useStyles2(getStyles);
-  const bottomWidget = useBottomWidget(root, legends.length > 0);
+  const obstacles = useCornerObstacles(root, legends.length > 0);
   const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
   if (legends.length === 0) {
     return null;
   }
-  const { left, bottom, maxWidth, maxHeight } = legendPlacement({ width, height, sidePanelOpen, bottomWidget });
+  const { left, bottom, maxWidth, maxHeight } = legendPlacement({ width, height, sidePanelOpen, obstacles });
   if (maxWidth < 80) {
     return null;
   }

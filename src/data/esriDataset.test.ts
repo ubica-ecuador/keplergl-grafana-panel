@@ -43,12 +43,14 @@ describe('framesToEsri', () => {
       fields: [
         { name: 'esri_url', type: FieldType.string, values: ['', SERVICE] },
         { name: 'legend_url', type: FieldType.string, values: ['https://elsewhere.example/legend.png', legend] },
+        { name: 'title', type: FieldType.string, values: ['Elsewhere', 'Sentinel-2 Land Cover'] },
       ],
     });
 
     const [service] = framesToEsri([frame]);
 
     expect(service.legendUrl).toBe(legend);
+    expect(service.title).toBe('Sentinel-2 Land Cover');
   });
 
   it('carries the box of the row that names the service, for the map to frame on', () => {

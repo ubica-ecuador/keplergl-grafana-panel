@@ -57,12 +57,17 @@ describe('framesToWms', () => {
         { name: 'wms_layer', type: FieldType.string, values: ['', LAYER] },
         { name: 'wms_style', type: FieldType.string, values: ['other', ' rain_classes '] },
         { name: 'legend_url', type: FieldType.string, values: ['', `${SERVICE}?request=GetLegendGraphic`] },
+        { name: 'title', type: FieldType.string, values: ['Some other service', 'PERSIANN 24 h'] },
       ],
     });
 
     const [wms] = framesToWms([frame]);
 
-    expect(wms).toMatchObject({ style: 'rain_classes', legendUrl: `${SERVICE}?request=GetLegendGraphic` });
+    expect(wms).toMatchObject({
+      style: 'rain_classes',
+      legendUrl: `${SERVICE}?request=GetLegendGraphic`,
+      title: 'PERSIANN 24 h',
+    });
   });
 
   it('gives no style for an empty one, which is the service default', () => {

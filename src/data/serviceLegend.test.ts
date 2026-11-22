@@ -1,6 +1,7 @@
 import {
   fetchArcgisLegend,
   legendKindOf,
+  legendTitle,
   MAX_LISTED_ENTRIES,
   parseArcgisLegend,
   RAMP_SWATCHES,
@@ -175,6 +176,33 @@ describe('shownLegends', () => {
   it('hides it while the layer is hidden, or not built yet', () => {
     expect(shownLegends([legend], [{ dataId: 'grafana-A-wms', label: 'Warnings', visible: false }])).toEqual([]);
     expect(shownLegends([legend], [])).toEqual([]);
+  });
+});
+
+describe('legendTitle', () => {
+  const legend = { dataId: 'grafana-A-wms', label: 'services', url: GRAPHIC, kind: 'image' as const };
+  const titled = { ...legend, rowTitle: 'Angeeichtes Radarkomposit (RW)' };
+
+  it('takes the row’s title over the query’s name, which a catalog query gives every service it lists', () => {
+    expect(legendTitle(titled, 'services')).toBe('Angeeichtes Radarkomposit (RW)');
+    expect(legendTitle(titled, 'WMS Layer')).toBe('Angeeichtes Radarkomposit (RW)');
+    expect(legendTitle(titled, '')).toBe('Angeeichtes Radarkomposit (RW)');
+  });
+
+  it('lets a layer the user renamed keep the name they chose', () => {
+    expect(legendTitle(titled, 'Radar over Germany')).toBe('Radar over Germany');
+  });
+
+  it('falls back to the layer’s label, and then to the query’s name', () => {
+    expect(legendTitle(legend, 'services')).toBe('services');
+    expect(legendTitle(legend, 'WMS Layer')).toBe('WMS Layer');
+    expect(legendTitle(legend, '')).toBe('services');
+  });
+
+  it('carries the row’s title from the dataset onto the legend', () => {
+    const [shown] = serviceLegends([{ ...wms(GRAPHIC), title: 'Unwetterwarnungen' }], []);
+
+    expect(shown.rowTitle).toBe('Unwetterwarnungen');
   });
 });
 

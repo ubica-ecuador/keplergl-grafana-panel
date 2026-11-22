@@ -56,6 +56,12 @@ export interface WmsDataset {
   style?: string;
   /** Where its legend is (`legend_url`), drawn over the map. See `serviceLegend.ts`. */
   legendUrl?: string;
+  /**
+   * The row's own name for the layer (its `title` column, as the Spatial
+   * Catalog's Services frame gives it), which titles its legend: the query's
+   * name is the same for every service a catalog query lists.
+   */
+  title?: string;
 }
 
 /** A layer's box in degrees: `[west, south, east, north]`; `west > east` crosses the antimeridian. */
@@ -149,6 +155,7 @@ export function framesToWms(frames: DataFrame[], overrides: Record<string, Field
     };
     const style = textOnRow(roles.wmsStyle);
     const legendUrl = textOnRow(roles.legendUrl);
+    const title = textOnRow('title');
 
     datasets.push({
       id: wmsDatasetId(refId),
@@ -159,6 +166,7 @@ export function framesToWms(frames: DataFrame[], overrides: Record<string, Field
       bbox: boxes ? parseWmsBox(boxes.values[named.row]) : null,
       ...(style ? { style } : {}),
       ...(legendUrl ? { legendUrl } : {}),
+      ...(title ? { title } : {}),
     });
   });
 

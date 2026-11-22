@@ -16,36 +16,40 @@ const picture: ShownLegend = {
 };
 
 describe('legendPlacement', () => {
+  /** kepler's scale bar as it stands in the corner: 9 px from the bottom, 20 px high. */
+  const scale = (left = 9) => ({ left, right: left + 90, rise: 29 });
+
   it('sits in the bottom-left corner, right of the open side panel', () => {
-    expect(legendPlacement({ width: 1200, height: 600, sidePanelOpen: false, bottomWidget: null })).toMatchObject({
+    expect(legendPlacement({ width: 1200, height: 600, sidePanelOpen: false, obstacles: [] })).toMatchObject({
       left: 8,
       bottom: 8,
       maxWidth: LEGEND_WIDTH_PX,
     });
-    expect(legendPlacement({ width: 1200, height: 600, sidePanelOpen: true, bottomWidget: null }).left).toBe(340);
+    expect(legendPlacement({ width: 1200, height: 600, sidePanelOpen: true, obstacles: [] }).left).toBe(340);
+  });
+
+  it('stands on kepler’s scale bar, which is always in the corner', () => {
+    expect(legendPlacement({ width: 1200, height: 600, sidePanelOpen: false, obstacles: [scale()] }).bottom).toBe(37);
+    // The side panel open: the scale bar moves right of it, and so do the legends.
+    expect(legendPlacement({ width: 1200, height: 600, sidePanelOpen: true, obstacles: [scale(309)] }).bottom).toBe(37);
   });
 
   it('stands on kepler’s bottom widget when the widget reaches the corner, and not when it leaves it free', () => {
-    const under = legendPlacement({
-      width: 900,
-      height: 600,
-      sidePanelOpen: false,
-      bottomWidget: { left: 0, height: 120 },
-    });
-    const beside = legendPlacement({
-      width: 1600,
-      height: 600,
-      sidePanelOpen: false,
-      bottomWidget: { left: 520, height: 120 },
-    });
+    const widget = (left: number) => ({ left, right: 1080 + left, rise: 120 });
+    const under = legendPlacement({ width: 900, height: 600, sidePanelOpen: false, obstacles: [scale(), widget(0)] });
+    const beside = legendPlacement({ width: 1600, height: 600, sidePanelOpen: false, obstacles: [widget(520)] });
 
     expect(under.bottom).toBe(128);
     expect(under.maxHeight).toBe(600 - 128 - 56);
     expect(beside.bottom).toBe(8);
   });
 
+  it('is not lifted by what lies elsewhere along the bottom: the right pane’s scale bar of a split map', () => {
+    expect(legendPlacement({ width: 1200, height: 600, sidePanelOpen: false, obstacles: [scale(609)] }).bottom).toBe(8);
+  });
+
   it('goes over the side panel on a map too narrow for both', () => {
-    expect(legendPlacement({ width: 480, height: 400, sidePanelOpen: true, bottomWidget: null }).left).toBe(8);
+    expect(legendPlacement({ width: 480, height: 400, sidePanelOpen: true, obstacles: [] }).left).toBe(8);
   });
 });
 
@@ -70,6 +74,31 @@ describe('ServiceLegends', () => {
 
     expect(title).toHaveAttribute('aria-expanded', 'false');
     expect(image.parentElement).not.toBeVisible();
+  });
+
+  it('measures kepler’s scale bar inside the map and stands on it', () => {
+    const original = (global as { ResizeObserver?: unknown }).ResizeObserver;
+    (global as { ResizeObserver?: unknown }).ResizeObserver = class {
+      observe() {}
+      disconnect() {}
+    };
+    const rect = (left: number, top: number, width: number, height: number) =>
+      ({ left, top, width, height, right: left + width, bottom: top + height }) as DOMRect;
+    const root = document.createElement('div');
+    root.getBoundingClientRect = () => rect(0, 0, 1000, 600);
+    const bar = document.createElement('div');
+    bar.className = 'map-scale';
+    bar.getBoundingClientRect = () => rect(9, 571, 90, 20);
+    root.appendChild(bar);
+    document.body.appendChild(root);
+    try {
+      render(<ServiceLegends {...props} root={root} legends={[picture]} />);
+
+      expect(screen.getByTestId('service-legends')).toHaveStyle({ bottom: '37px' });
+    } finally {
+      (global as { ResizeObserver?: unknown }).ResizeObserver = original;
+      root.remove();
+    }
   });
 
   it('drops a legend whose picture does not load, and leaves the others', () => {

@@ -76,9 +76,11 @@ SELECT 'https://maps.dwd.de/geoserver/ows' AS wms_url,
   same view in the new style. The view does not move, and the layer keeps whatever was set on it in
   the layer panel (its name, its opacity, its place in the list).
 - **`legend_url`** is drawn over the map, in its bottom-left corner (right of the side panel when it
-  is open, above kepler's time widget when that reaches the corner): one block per layer, titled with
-  the layer's name in the layer panel, folded and unfolded by its title, gone while the layer is
-  hidden. A picture (a WMS's `LegendURL`, most often a `GetLegendGraphic`) is shown as it is, on a
+  is open, above kepler's scale bar, and above its time widget when that reaches the corner): one
+  block per layer, folded and unfolded by its title, gone while the layer is hidden. The title is the
+  layer's name if you renamed it in the layer panel; otherwise the row's `title` column, when it has
+  one (the Spatial Catalog gives each service its own there, where the query's name is the same for
+  all of them); otherwise the layer's name. A picture (a WMS's `LegendURL`, most often a `GetLegendGraphic`) is shown as it is, on a
   white ground so that the black text services draw reads in the dark theme too. It loads as an
   image, which needs no CORS; one that does not load is no block at all. The panel option
   [**Service legends**](../../reference/panel-options#map) turns them off.
