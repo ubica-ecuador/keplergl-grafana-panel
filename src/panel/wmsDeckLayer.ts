@@ -1,4 +1,4 @@
-import type { Layer } from '@deck.gl/core';
+import type { Layer, UpdateParameters, Viewport } from '@deck.gl/core';
 import { WMSLayer as DeckWMSLayer } from '@kepler.gl/deckgl-layers';
 import { WMSImageSource } from '@loaders.gl/wms';
 
@@ -91,8 +91,56 @@ export function serviceCapabilities(serviceUrl: string): Promise<unknown> {
   return source.getMetadata();
 }
 
+/** The picture of the moment before, kept while the next one loads (see `TimedWMSLayer.updateState`). */
+type HeldParameters = DeckWMSLayer['state']['lastRequestParameters'];
+
 export class TimedWMSLayer extends DeckWMSLayer {
   static layerName = 'TimedWMSLayer';
+
+  declare state: DeckWMSLayer['state'] & { heldParameters?: HeldParameters };
+
+  /**
+   * The picture of the moment before stays until the next one lands.
+   *
+   * A new date or style is a new `data` (its fragment), and upstream's layer
+   * clears its picture on every new source: stepping through a forecast, the
+   * map went blank at each step until the service answered, a flash per step.
+   * When only the fragment changed (the same service), the picture and its box
+   * are put back after upstream's update, and the next one replaces them as it
+   * lands. Not its request parameters: kept, they tell upstream the view is
+   * already covered and it would ask for nothing; `renderLayers` reads them
+   * from `heldParameters` meanwhile. A request that fails takes the old
+   * picture away (`loadImage`): it would show a moment the clock has left.
+   */
+  updateState(params: UpdateParameters<this>): void {
+    const before = this.state;
+    const held =
+      before?.image && sameServiceOtherMoment(params.oldProps.data, params.props.data)
+        ? {
+            image: before.image,
+            bounds: before.bounds,
+            parameters: before.lastRequestParameters ?? before.heldParameters,
+          }
+        : null;
+    super.updateState(params);
+    if (held) {
+      this.setState({ image: held.image, bounds: held.bounds, heldParameters: held.parameters });
+    }
+  }
+
+  async loadImage(viewport: Viewport, reason: string): Promise<void> {
+    await super.loadImage(viewport, reason);
+    const state = this.state;
+    if (!state.heldParameters) {
+      return;
+    }
+    if (state.lastRequestParameters) {
+      state.heldParameters = undefined;
+    } else if (!state.inFlightRequestParameters) {
+      // Nothing landed and no request is on its way: the picture held is of another moment.
+      this.setState({ image: undefined, heldParameters: undefined });
+    }
+  }
 
   /**
    * The picture, drawn only inside the layer's box when its query gave one.
@@ -115,7 +163,7 @@ export class TimedWMSLayer extends DeckWMSLayer {
    * `wmsClipBounds`.
    */
   renderLayers(): Layer | null {
-    const picture = super.renderLayers();
+    const picture = this.renderPicture();
     const box = (this.props as { clipBox?: WmsBox | null }).clipBox ?? null;
     if (!picture || !box) {
       return picture;
@@ -130,9 +178,24 @@ export class TimedWMSLayer extends DeckWMSLayer {
     return picture.clone({ extensions: [...extensions, BOX_CLIP], clipBounds } as Record<string, unknown>);
   }
 
-  _createImageSource(props: ConstructorParameters<typeof DeckWMSLayer>[0]): ReturnType<
-    DeckWMSLayer['_createImageSource']
-  > {
+  /** Upstream's picture, drawn in the projection of the request that made it: the one held while the next loads. */
+  private renderPicture(): Layer | null {
+    const state = this.state;
+    const held = !state.lastRequestParameters && state.heldParameters;
+    if (!held) {
+      return super.renderLayers();
+    }
+    state.lastRequestParameters = held;
+    try {
+      return super.renderLayers();
+    } finally {
+      state.lastRequestParameters = undefined;
+    }
+  }
+
+  _createImageSource(
+    props: ConstructorParameters<typeof DeckWMSLayer>[0]
+  ): ReturnType<DeckWMSLayer['_createImageSource']> {
     const { url, time, style } = readTimeFragment(String(props.data));
     const source = new WMSImageSource(url, wmsOptions(time, props.loadOptions, style));
 
@@ -142,6 +205,16 @@ export class TimedWMSLayer extends DeckWMSLayer {
 
     return source as unknown as ReturnType<DeckWMSLayer['_createImageSource']>;
   }
+}
+
+/** Whether two data urls are the same service at another moment or in another style: only their fragment differs. */
+export function sameServiceOtherMoment(before: unknown, after: unknown): boolean {
+  return (
+    typeof before === 'string' &&
+    typeof after === 'string' &&
+    before !== after &&
+    readTimeFragment(before).url === readTimeFragment(after).url
+  );
 }
 
 /** Builds one, in the shape `withWmsTime` asks for. */

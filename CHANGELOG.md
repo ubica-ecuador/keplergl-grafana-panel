@@ -6,6 +6,11 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **A WMS keeps its picture while the next moment loads.** Each step of the clock on a WMS with a
+  time dimension cleared the picture until the service answered, a blank map per step. The
+  picture of the moment before now stays until the next lands and is replaced by it; a step the
+  service refuses takes it away, so the map never shows a moment the clock has left. Stepping
+  DWD's ICON temperature hour by hour: 0 of 394 samples blank, 135 of 400 before.
 - **A WMS query that names another layer draws that layer.** The panel pinned kepler's WMS layer to
   the service layer a query names once per query, so a query moved to another layer of the same
   service (DWD's satellite picture, then AICON's wind) went on asking for the first, in the style
