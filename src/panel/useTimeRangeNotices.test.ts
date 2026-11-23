@@ -5,15 +5,19 @@ import type { Store } from 'redux';
 
 import { framesToDatasets } from '../data/framesToDatasets';
 import { framesToWms } from '../data/wmsDataset';
+import { framesToZarr } from '../data/zarrDataset';
 import { KEPLER_INSTANCE_ID } from './constants';
 import {
   ensureTimeFilter,
   loadDatasets,
   loadWms,
+  loadZarr,
   pushTimeRange,
   readTimeFilterTimes,
+  refreshZarr,
   setRasterLayerVisible,
   syncWmsCalendar,
+  syncZarrCalendar,
 } from './keplerAdapter';
 import { createKeplerStore } from './keplerStore';
 import type { TimeRangeMs, TimeSyncMode } from './timeSync';
@@ -129,5 +133,55 @@ describe('useTimeRangeNotices', () => {
           '2026-11-22 03:00 to 2026-11-23 12:00. Widen the range to see them.',
       },
     ]);
+
+    // On, it draws a date of its own (its window opened on its calendar): nothing to say.
+    setRasterLayerVisible(store, store.dispatch, wms.id, true);
+    await act(settle);
+    expect(result.current).toEqual([]);
+  });
+  it('drops a Zarr’s calendar with it, so the clock moves on to the WMS that replaces it', async () => {
+    // CHIRPS' week of October, then the same query turned into DWD's satellite of November.
+    const store = createKeplerStore();
+    store.dispatch(registerEntry({ id: KEPLER_INSTANCE_ID }) as never);
+    const [zarr] = framesToZarr(
+      [
+        toDataFrame({
+          refId: 'A',
+          fields: [
+            { name: 'zarr_url', type: FieldType.string, values: ['https://data.example.org/chirps.zarr'] },
+            { name: 'zarr_variable', type: FieldType.string, values: ['precip'] },
+          ],
+        }),
+      ],
+      {},
+      { serverUrl: 'https://titiler.example.org' }
+    );
+    loadZarr(store.dispatch, [zarr]);
+    await settle();
+    syncZarrCalendar(store, store.dispatch, { ...zarr, times: [day('2026-10-25'), day('2026-10-31')] });
+    await settle();
+    ensureTimeFilter(store, store.dispatch);
+    await settle();
+
+    refreshZarr(store, store.dispatch, []);
+    const [wms] = framesToWms([
+      toDataFrame({
+        refId: 'A',
+        fields: [
+          { name: 'wms_url', type: FieldType.string, values: ['https://maps.dwd.de/geoserver/ows'] },
+          { name: 'wms_layer', type: FieldType.string, values: ['dwd:Satellite_meteosat'] },
+        ],
+      }),
+    ]);
+    loadWms(store.dispatch, [wms]);
+    await settle();
+    syncWmsCalendar(store, store.dispatch, { ...wms, times: [Date.UTC(2026, 10, 22, 3), Date.UTC(2026, 10, 23, 12)] });
+    await settle();
+    ensureTimeFilter(store, store.dispatch);
+    await settle();
+
+    const visState = (store.getState() as any).keplerGl[KEPLER_INSTANCE_ID].visState;
+    expect(Object.keys(visState.datasets).sort()).toEqual(['grafana-A-wms', 'grafana-A-wms-times']);
+    expect(visState.filters.map((filter: { dataId: string[] }) => filter.dataId)).toEqual([['grafana-A-wms-times']]);
   });
 });

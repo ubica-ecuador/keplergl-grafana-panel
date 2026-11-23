@@ -867,6 +867,19 @@ export function loadWms(dispatch: Dispatch, layers: WmsDataset[], options: { cen
 }
 
 /**
+ * Drops a WMS's or a Zarr's dataset and the calendar beside it (`syncCalendarDataset`). The calendar is a dataset
+ * of rows, which the refresh does not list among the layers it drops: left behind, the map's time filter stayed on
+ * its dates. A Zarr query turned into a WMS one kept the Zarr's week of October as the clock, and the WMS, whose
+ * dates were in November, was turned off at every move of it (`useWmsTimeline`).
+ */
+function removeWithCalendar(store: Store, dispatch: Dispatch, id: string, calendarId: string): void {
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(id)));
+  if (getVisState(store)?.datasets[calendarId]) {
+    dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(calendarId)));
+  }
+}
+
+/**
  * Refresh path for WMS layers: add, rebuild, drop, and leave the rest alone.
  *
  * Rebuilding is rare by design. The date never comes through here — it is a
@@ -879,7 +892,7 @@ export function refreshWms(store: Store, dispatch: Dispatch, layers: WmsDataset[
   const { add, replace, remove } = splitWmsRefresh(layers, readWmsDatasets(store));
 
   for (const id of remove) {
-    dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(id)));
+    removeWithCalendar(store, dispatch, id, wmsCalendarDatasetId(id));
   }
 
   for (const wms of replace) {
@@ -2495,7 +2508,7 @@ export function timeFilterDrawn(store: Store): boolean {
  * The times behind the map's time filter, per dataset a visible layer draws:
  * kepler's own mapping of the filtered field to epoch ms (`filterProps.mappedValue`,
  * null where a row has no time), the array kept as long as the rows are. A
- * WMS's or a Zarr's calendar is read for its layer, as its `dates`, though the
+ * WMS's or a Zarr's calendar is read for its layer, as its `dates`, while the
  * layer is off: its timeline turns it off when no date is in the window, and
  * the map was left empty with no word why. Empty when the map has no time filter.
  */
@@ -2517,12 +2530,13 @@ export function readTimeFilterTimes(store: Store): FilteredTimes[] {
   };
   dataIds.forEach((dataId, index) => {
     const dataset = visState.datasets[dataId] as Dataset | undefined;
-    // A WMS's or a Zarr's calendar (`syncCalendarDataset`) is said for its layer, which its timeline hides when the
-    // window holds none of its dates: the layer is off then, and that is what the notice explains.
+    // A WMS's or a Zarr's calendar (`syncCalendarDataset`) is said for its layer while that layer is off: its
+    // timeline turns it off when the window holds none of its dates, and that is what the notice explains. On, it
+    // draws a date of its own (a window opened on its calendar, not on the range), and there is nothing to say.
     const calendar = Boolean(dataset?.metadata?.calendarFingerprint) && dataId.endsWith(CALENDAR_SUFFIX);
     const owner = calendar ? dataId.slice(0, -CALENDAR_SUFFIX.length) : dataId;
     const drawn = visState.layers.some(
-      (layer) => layer.config?.dataId === owner && (calendar || Boolean(layer.config?.isVisible))
+      (layer) => layer.config?.dataId === owner && Boolean(layer.config?.isVisible) !== calendar
     );
     const times = dataset?.fields.find((field) => field.name === names[index])?.filterProps?.mappedValue;
     if (drawn && dataset && Array.isArray(times)) {
@@ -3017,7 +3031,7 @@ export function refreshZarr(store: Store, dispatch: Dispatch, layers: ZarrDatase
   const { add, replace, remove } = splitZarrRefresh(layers, readZarrDatasets(store));
 
   for (const id of remove) {
-    dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(id)));
+    removeWithCalendar(store, dispatch, id, zarrCalendarDatasetId(id));
   }
 
   for (const zarr of replace) {

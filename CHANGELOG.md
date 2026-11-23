@@ -6,11 +6,17 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **A query that stops being a Zarr or a WMS takes its calendar with it.** The dates a Zarr or a WMS
+  layer offers are a dataset of their own beside it, for kepler's time filter to hang on, and it
+  stayed on the map when the query moved to another layer: a Zarr query turned into a WMS one kept
+  the Zarr's week of October as the clock, and the WMS, whose dates were in November, opened with
+  its eye closed and went off again at every move of the clock. The calendar now goes with its
+  layer, and the clock moves to the dates of the layer that replaces it.
 - **A WMS or Zarr layer turned off by the time range says so.** A layer that draws a date of its
   own (a WMS's time dimension, a Zarr's calendar) is turned off while the map's window holds none
   of its dates, and turned off again on the next move of the clock if one turns it on by hand. With
-  the dashboard's range driving the map, a range with none of its dates now says it over the map,
-  as for a query's rows: "Satellitenbild (query A): its 12 dates all fall outside the dashboard's
+  the dashboard's range driving the map, a range with none of its dates now says it over the map
+  while the layer is off, as for a query's rows: "Satellitenbild (query A): its 12 dates all fall outside the dashboard's
   time range: they run from 2026-11-22 03:00 to 2026-11-23 12:00. Widen the range to see them."
 - **A catalog's service named by its protocol in the notice of a map that draws nothing of it.** A
   Spatial Catalog's Catalog search writes each entry's service whole, as JSON, in its `service`
