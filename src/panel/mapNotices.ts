@@ -161,6 +161,8 @@ export interface FilteredTimes {
   dataId: string;
   label: string;
   times: readonly unknown[];
+  /** What the times are of: a query's rows (the default), or the dates a WMS or a Zarr layer offers. */
+  noun?: 'rows' | 'dates';
 }
 
 /** Each dataset's times, finite and sorted, once per array kepler hands over. */
@@ -208,7 +210,7 @@ export function outOfRangeNotices(
   formatTime: (ms: number, span: number) => string
 ): MapNotice[] {
   const notices: MapNotice[] = [];
-  for (const { dataId, label, times } of sets) {
+  for (const { dataId, label, times, noun = 'rows' } of sets) {
     const sorted = sortedOf(times);
     if (sorted.length === 0 || anyWithin(sorted, range.from, range.to)) {
       continue;
@@ -216,15 +218,16 @@ export function outOfRangeNotices(
     const first = sorted[0];
     const last = sorted[sorted.length - 1];
     const span = last - first;
-    const refId = /^grafana-(.+)$/.exec(dataId)?.[1];
+    const refId = /^grafana-(.+?)(?:-wms|-zarr)?$/.exec(dataId)?.[1];
+    const one = noun === 'dates' ? 'date' : 'row';
     const name = refId && label !== `Query ${refId}` && label !== refId ? `${label} (query ${refId})` : label;
     notices.push({
       severity: 'warning',
       text:
         sorted.length === 1
-          ? `${name}: its one row, at ${formatTime(first, span)}, falls outside the dashboard's time range. ` +
+          ? `${name}: its one ${one}, at ${formatTime(first, span)}, falls outside the dashboard's time range. ` +
             'Widen the range to see it.'
-          : `${name}: its ${sorted.length.toLocaleString('en-US')} rows all fall outside the dashboard's time ` +
+          : `${name}: its ${sorted.length.toLocaleString('en-US')} ${noun} all fall outside the dashboard's time ` +
             `range: they run from ${formatTime(first, span)} to ${formatTime(last, span)}. Widen the range to see them.`,
     });
   }

@@ -2495,9 +2495,12 @@ export function timeFilterDrawn(store: Store): boolean {
  * The times behind the map's time filter, per dataset a visible layer draws:
  * kepler's own mapping of the filtered field to epoch ms (`filterProps.mappedValue`,
  * null where a row has no time), the array kept as long as the rows are. A
- * dataset only a clock reads (a WMS's or a Zarr's calendar) is left out: it has
- * no rows on the map to hide. Empty when the map has no time filter.
+ * WMS's or a Zarr's calendar is read for its layer, as its `dates`, though the
+ * layer is off: its timeline turns it off when no date is in the window, and
+ * the map was left empty with no word why. Empty when the map has no time filter.
  */
+const CALENDAR_SUFFIX = '-times';
+
 export function readTimeFilterTimes(store: Store): FilteredTimes[] {
   const visState = getVisState(store);
   const filter = visState && ownFilters(visState).find((f) => f.type === TIME_FILTER_TYPE);
@@ -2507,13 +2510,24 @@ export function readTimeFilterTimes(store: Store): FilteredTimes[] {
   const dataIds = Array.isArray(filter.dataId) ? filter.dataId : filter.dataId ? [filter.dataId] : [];
   const names = Array.isArray(filter.name) ? filter.name : filter.name ? [filter.name] : [];
   const sets: FilteredTimes[] = [];
+  type Dataset = {
+    label?: string;
+    metadata?: { calendarFingerprint?: string };
+    fields: Array<{ name: string; filterProps?: { mappedValue?: unknown } }>;
+  };
   dataIds.forEach((dataId, index) => {
-    const drawn = visState.layers.some((layer) => Boolean(layer.config?.isVisible) && layer.config?.dataId === dataId);
-    const dataset = visState.datasets[dataId] as
-      { label?: string; fields: Array<{ name: string; filterProps?: { mappedValue?: unknown } }> } | undefined;
+    const dataset = visState.datasets[dataId] as Dataset | undefined;
+    // A WMS's or a Zarr's calendar (`syncCalendarDataset`) is said for its layer, which its timeline hides when the
+    // window holds none of its dates: the layer is off then, and that is what the notice explains.
+    const calendar = Boolean(dataset?.metadata?.calendarFingerprint) && dataId.endsWith(CALENDAR_SUFFIX);
+    const owner = calendar ? dataId.slice(0, -CALENDAR_SUFFIX.length) : dataId;
+    const drawn = visState.layers.some(
+      (layer) => layer.config?.dataId === owner && (calendar || Boolean(layer.config?.isVisible))
+    );
     const times = dataset?.fields.find((field) => field.name === names[index])?.filterProps?.mappedValue;
     if (drawn && dataset && Array.isArray(times)) {
-      sets.push({ dataId, label: dataset.label ?? dataId, times });
+      const label = (visState.datasets[owner] as Dataset | undefined)?.label ?? dataset.label ?? owner;
+      sets.push({ dataId: owner, label, times, ...(calendar ? { noun: 'dates' as const } : {}) });
     }
   });
   return sets;

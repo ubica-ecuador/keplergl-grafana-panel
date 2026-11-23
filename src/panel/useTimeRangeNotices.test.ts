@@ -4,8 +4,17 @@ import { registerEntry } from '@kepler.gl/actions';
 import type { Store } from 'redux';
 
 import { framesToDatasets } from '../data/framesToDatasets';
+import { framesToWms } from '../data/wmsDataset';
 import { KEPLER_INSTANCE_ID } from './constants';
-import { loadDatasets, pushTimeRange, readTimeFilterTimes } from './keplerAdapter';
+import {
+  ensureTimeFilter,
+  loadDatasets,
+  loadWms,
+  pushTimeRange,
+  readTimeFilterTimes,
+  setRasterLayerVisible,
+  syncWmsCalendar,
+} from './keplerAdapter';
 import { createKeplerStore } from './keplerStore';
 import type { TimeRangeMs, TimeSyncMode } from './timeSync';
 import { useTimeRangeNotices } from './useTimeRangeNotices';
@@ -79,5 +88,46 @@ describe('useTimeRangeNotices', () => {
     rerender({ range: LAST_7_DAYS, mode: 'variables' });
     await act(settle);
     expect(result.current).toEqual([]);
+  });
+  it('says the dates of a WMS its timeline turned off, none in the range', async () => {
+    // DWD's satellite picture every 3 hours, kept for a day and a half, under a week of October.
+    const store = createKeplerStore();
+    store.dispatch(registerEntry({ id: KEPLER_INSTANCE_ID }) as never);
+    const [wms] = framesToWms([
+      toDataFrame({
+        refId: 'A',
+        name: 'services',
+        fields: [
+          { name: 'title', type: FieldType.string, values: ['Satellitenbild'] },
+          { name: 'wms_url', type: FieldType.string, values: ['https://maps.dwd.de/geoserver/ows'] },
+          { name: 'wms_layer', type: FieldType.string, values: ['dwd:Satellite_meteosat'] },
+        ],
+      }),
+    ]);
+    loadWms(store.dispatch, [wms]);
+    await settle();
+    syncWmsCalendar(store, store.dispatch, {
+      ...wms,
+      times: [Date.UTC(2026, 10, 22, 3), Date.UTC(2026, 10, 23, 12)],
+    });
+    await settle();
+    ensureTimeFilter(store, store.dispatch);
+    const october: TimeRangeMs = { from: day('2026-10-25'), to: day('2026-10-31') };
+    pushTimeRange(store, store.dispatch, october);
+    setRasterLayerVisible(store, store.dispatch, wms.id, false);
+    await settle();
+
+    const { result } = renderHook(() =>
+      useTimeRangeNotices({ store, isReady: true, mode: 'toMap', grafanaRange: october, timeZone: 'utc' })
+    );
+    await act(settle);
+    expect(result.current).toEqual([
+      {
+        severity: 'warning',
+        text:
+          "Satellitenbild (query A): its 2 dates all fall outside the dashboard's time range: they run from " +
+          '2026-11-22 03:00 to 2026-11-23 12:00. Widen the range to see them.',
+      },
+    ]);
   });
 });

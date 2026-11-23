@@ -191,6 +191,23 @@ describe('outOfRangeNotices', () => {
   };
   const LAST_7_DAYS = { from: day('2026-11-14'), to: day('2026-11-21') };
 
+  it('says the dates of a WMS or a Zarr layer as dates', () => {
+    const satellite = {
+      dataId: 'grafana-B-wms',
+      label: 'Satellitenbild',
+      times: [day('2026-11-22')],
+      noun: 'dates' as const,
+    };
+    expect(outOfRangeNotices([satellite], LAST_7_DAYS, iso)).toEqual([
+      {
+        severity: 'warning',
+        text:
+          "Satellitenbild (query B): its one date, at 2026-11-22, falls outside the dashboard's time range. " +
+          'Widen the range to see it.',
+      },
+    ]);
+  });
+
   it('says a query whose every row the range hides, with their span', () => {
     expect(outOfRangeNotices([FOUNTAINS], LAST_7_DAYS, iso)).toEqual([
       {

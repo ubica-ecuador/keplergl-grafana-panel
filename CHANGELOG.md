@@ -6,6 +6,12 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **A WMS or Zarr layer turned off by the time range says so.** A layer that draws a date of its
+  own (a WMS's time dimension, a Zarr's calendar) is turned off while the map's window holds none
+  of its dates, and turned off again on the next move of the clock if one turns it on by hand. With
+  the dashboard's range driving the map, a range with none of its dates now says it over the map,
+  as for a query's rows: "Satellitenbild (query A): its 12 dates all fall outside the dashboard's
+  time range: they run from 2026-11-22 03:00 to 2026-11-23 12:00. Widen the range to see them."
 - **A catalog's service named by its protocol in the notice of a map that draws nothing of it.** A
   Spatial Catalog's Catalog search writes each entry's service whole, as JSON, in its `service`
   column; the notice put that JSON where the protocol goes. It now reads the protocol from it:
