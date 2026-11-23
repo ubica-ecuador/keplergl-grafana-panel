@@ -148,18 +148,22 @@ test('compare mode: pinned and hovered sites each draw their series, and only th
 }) => {
   test.slow();
   const map = await gotoChartsPanel(gotoDashboardPage, readProvisionedDashboard, page);
-  const { north, south } = await sitePoints(map);
+  // Pinned on the centre, hovered on the north: the south site can sit under
+  // the map's control column (Grafana 12's layout, kepler 3.3.0-alpha.27), and
+  // a site under an overlay is not one the pointer can reach; the pinned
+  // popup opens below and to the right of its site, away from the north one.
+  const { north, centre } = await sitePoints(map);
 
   // The fixture's `interactionConfig.tooltip.compareMode: true`, kept by
   // kepler's own merge since 3.3.0-alpha.20 (keplerAdapter.compareMode.test.ts).
   expect((await readCharts(map)).compareMode).toBe(true);
 
-  await page.mouse.click(north.x, north.y);
+  await page.mouse.click(centre.x, centre.y);
   await settle(page);
   // The button exists only while kepler holds a clicked entity: proof the click landed.
   await expect(page.locator('.panel-select-entity')).toHaveCount(1, { timeout: 10_000 });
 
-  await hover(page, map, south, 'south');
+  await hover(page, map, north, 'north');
 
   await expect(page.locator('.map-popover__layer-chart')).toHaveCount(2, { timeout: 10_000 });
   await expect(page.locator('.panel-select-entity')).toHaveCount(1);
