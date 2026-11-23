@@ -117,6 +117,35 @@ describe('undrawnServiceNotices', () => {
     ]);
   });
 
+  it("reads the protocol of a service written whole, as a Catalog search's rows give it", () => {
+    const search = toDataFrame({
+      refId: 'A',
+      name: 'catalog',
+      fields: [
+        { name: 'entry', type: FieldType.string, values: ['dwd:Laender', 'dwd:Warnungen'] },
+        { name: 'title', type: FieldType.string, values: ['Länder', 'Warnungen'] },
+        {
+          name: 'service',
+          type: FieldType.string,
+          values: [
+            JSON.stringify({ styles: [], transparent: true, protocol: 'wms', layers: ['Laender'], dimensions: {} }),
+            JSON.stringify({ protocol: 'wms', layers: ['Warnungen'] }),
+          ],
+        },
+      ],
+    });
+    expect(undrawnServiceNotices([search])).toEqual([
+      expect.objectContaining({
+        text: expect.stringMatching(/^catalog \(query A\) gives a WMS service \(Länder\) with nothing this map draws/),
+      }),
+    ]);
+    const nameless = toDataFrame({
+      refId: 'B',
+      fields: [{ name: 'service', type: FieldType.string, values: ['{"layers":["x"]}', '{not json'] }],
+    });
+    expect(undrawnServiceNotices([nameless])).toEqual([]);
+  });
+
   it('says it too when the frame has no service columns at all', () => {
     const bare = toDataFrame({
       refId: 'B',

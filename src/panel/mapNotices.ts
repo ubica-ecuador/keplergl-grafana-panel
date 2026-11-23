@@ -89,7 +89,7 @@ export function undrawnServiceNotices(
   const notices: MapNotice[] = [];
   frames.forEach((frame, index) => {
     const services = frame.fields.find((field) => field.name === 'service');
-    const row = services ? services.values.findIndex(named) : -1;
+    const row = services ? services.values.findIndex((value) => protocolOf(value) !== null) : -1;
     if (!services || row < 0) {
       return;
     }
@@ -102,7 +102,7 @@ export function undrawnServiceNotices(
     notices.push({
       severity: 'warning',
       text:
-        `${queryName(frame, refId)} gives a ${protocolName(String(services.values[row]))} service` +
+        `${queryName(frame, refId)} gives a ${protocolName(protocolOf(services.values[row])!)} service` +
         `${named(title) ? ` (${String(title).trim()})` : ''} with nothing this map draws: ` +
         'no tiles_url, no esri_url, no wms_url with its wms_layer.',
     });
@@ -122,6 +122,27 @@ function drawsRows(roles: FieldRoles): boolean {
     roles.lookup ||
     roles.zarrUrl
   );
+}
+
+/**
+ * A row's protocol from its `service` value: the word itself (a Services frame's `wms`), or the `protocol` of a
+ * service written whole as JSON (a Catalog search frame's `{"protocol":"wms","layers":[…],…}`, which was put in the
+ * notice as it stood). Null for an empty value, or JSON that names none.
+ */
+function protocolOf(value: unknown): string | null {
+  if (!named(value)) {
+    return null;
+  }
+  const text = String(value).trim();
+  if (!text.startsWith('{')) {
+    return text;
+  }
+  try {
+    const protocol = (JSON.parse(text) as { protocol?: unknown }).protocol;
+    return named(protocol) ? String(protocol).trim() : null;
+  } catch {
+    return null;
+  }
 }
 
 /** A protocol as people write it: `wmts` is WMTS; a longer name stays as the catalog gives it. */

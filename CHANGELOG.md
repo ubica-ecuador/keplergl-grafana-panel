@@ -6,6 +6,10 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **A catalog's service named by its protocol in the notice of a map that draws nothing of it.** A
+  Spatial Catalog's Catalog search writes each entry's service whole, as JSON, in its `service`
+  column; the notice put that JSON where the protocol goes. It now reads the protocol from it:
+  "catalog (query A) gives a WMS service (Länder) with nothing this map draws".
 - **A scene of several pieces, drawn as one mosaic.** Rows of a raster query that share a
   `raster_group` are one scene of several images, the sheets of one aerial survey or the tiles of one
   satellite pass, with `raster_bbox` (`west,south,east,north`) saying where each lies. Painted by the
