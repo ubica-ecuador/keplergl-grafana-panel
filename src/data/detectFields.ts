@@ -91,6 +91,12 @@ export interface FieldRoles {
    */
   rasterPaint?: string;
   /**
+   * The pieces of one moment of a raster series: rows that share a value are one scene (the tiles of one satellite
+   * pass), which a server-painted raster draws together; and where each piece lies, `west,south,east,north`.
+   */
+  rasterGroup?: string;
+  rasterBbox?: string;
+  /**
    * A WMS service and the one layer of it to draw.
    *
    * Both are needed: a service publishes many layers and nothing in the query
@@ -322,6 +328,8 @@ export const NAME_CANDIDATES: Record<string, string[]> = {
   rasterBands: ['raster_bands', 'band_combination'],
   rasterPainted: ['raster_painted'],
   rasterPaint: ['raster_paint'],
+  rasterGroup: ['raster_group'],
+  rasterBbox: ['raster_bbox'],
   // WMS. `wms` alone is worth accepting because a query that fixes the service
   // by hand reads better as `SELECT '…' AS wms`, and `service_url` is what the
   // OGC calls the endpoint.

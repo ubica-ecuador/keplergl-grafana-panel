@@ -21,6 +21,25 @@ describe('framesToDatasets', () => {
     expect(dataset.rows[0]).toEqual({ latitude: -2.9, longitude: -79.0 });
   });
 
+  it('leaves out of the rows how a raster’s pieces make one mosaic', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'entry', type: FieldType.string, values: ['25an1', '25an2'] },
+        { name: 'raster_url', type: FieldType.string, values: ['https://b/25an1.tif', 'https://b/25an2.tif'] },
+        { name: 'raster_group', type: FieldType.string, values: ['2024-06-15T00:00:00Z', '2024-06-15T00:00:00Z'] },
+        { name: 'raster_bbox', type: FieldType.string, values: ['4.6,52.4,4.75,52.5', '4.75,52.4,4.9,52.5'] },
+      ],
+    });
+
+    const [dataset] = framesToDatasets([frame]);
+
+    expect(dataset.rows).toHaveLength(2);
+    expect(Object.keys(dataset.rows[0])).not.toContain('raster_group');
+    expect(Object.keys(dataset.rows[0])).not.toContain('raster_bbox');
+    expect(dataset.rows[0].entry).toBe('25an1');
+  });
+
   it('names the columns kepler renames, by the query column they come from', () => {
     const frame = toDataFrame({
       refId: 'A',

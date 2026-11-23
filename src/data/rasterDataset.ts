@@ -7,7 +7,7 @@ import { anotherServiceWins } from './serviceKind';
 import { cogTileTemplate } from './cogTileUrl';
 import { stacTileTemplate } from './stacTileUrl';
 import { pickLatestWithin, type TimeWindow } from './timeWindow';
-import { attributionsOf, frameLabelOf } from './frameLayer';
+import { attributionsOf, frameLabelOf, frameLayerOf } from './frameLayer';
 
 /**
  * A raster scene a query points at, in the shape kepler's raster tileset needs.
@@ -71,6 +71,19 @@ export interface RasterDataset {
    * nothing: the choice is made in the browser, against a list already here.
    */
   scenes: RasterScene[];
+  /** The pieces of the scene being drawn, when it has several (see `RasterScene.parts`). */
+  parts?: ScenePart[];
+  /**
+   * The layer the frame names (`meta.custom.layer.key`): the same key is the
+   * same layer across refreshes, which the map frames once (`boxedRaster`).
+   */
+  layerKey?: string;
+}
+
+/** One piece of a scene: an image, and where it lies (west,south,east,north) when known. */
+export interface ScenePart {
+  url: string;
+  bbox: [number, number, number, number] | null;
 }
 
 /**
@@ -115,6 +128,12 @@ export interface RasterScene {
   sourceUrl: string;
   /** The STAC item this scene belongs to, when the query names one. */
   itemUrl: string | null;
+  /**
+   * The images a scene is made of, when more than one: the pieces of one satellite pass, side by side, which a
+   * query marks by giving them one `raster_group`. A server-painted raster draws them all (a mosaic in the
+   * browser); `sourceUrl` is the first of them, the scene's identity.
+   */
+  parts?: ScenePart[];
 }
 
 /**
@@ -176,7 +195,7 @@ export function rasterForWindow(raster: RasterDataset, window: SceneWindow | nul
   if (identity.sourceUrl === raster.sourceUrl && identity.metadataUrl === raster.metadataUrl) {
     return raster;
   }
-  return { ...raster, ...identity };
+  return { ...raster, ...identity, parts: scene.parts };
 }
 
 /**
@@ -253,7 +272,10 @@ export function framesToRasters(
       return;
     }
 
-    const allScenes = readScenes(frame, roles.rasterUrl, roles.time, roles.rasterItemUrl);
+    const allScenes = readScenes(frame, roles.rasterUrl, roles.time, roles.rasterItemUrl, {
+      group: roles.rasterGroup,
+      bbox: roles.rasterBbox,
+    });
 
     // This query's own way of drawing, where it gives one; the panel's otherwise. An empty column gives none.
     const ownBands = firstText(frame, roles.rasterBands);
@@ -330,11 +352,13 @@ export function framesToRasters(
       opening
     );
 
+    const layerKey = frameLayerOf(frame)?.key;
     rasters.push({
       id: rasterDatasetId(refId),
       label,
       kind,
       ...attributionsOf(frame),
+      ...(layerKey ? { layerKey } : {}),
       sourceUrl,
       metadataUrl,
       tileServerUrls: kind === 'pmtiles' ? [] : tileServerUrls,
@@ -359,6 +383,8 @@ export function framesToRasters(
               ? { colormap: opts.colormap }
               : {}),
       scenes,
+      // A mosaic only a server-painted raster draws: kepler's own layer takes one image.
+      ...(kind === 'painted' && !paintedAssets && opening.parts ? { parts: opening.parts } : {}),
     });
   });
 
@@ -506,15 +532,23 @@ export function metadataUrlFor(tileServerUrl: string, sourceUrl: string): string
  * the query's ORDER BY means the window logic can assume an ordering it did not
  * have to ask for.
  */
-function readScenes(frame: DataFrame, urlColumn: string, timeColumn?: string, itemColumn?: string): RasterScene[] {
+function readScenes(
+  frame: DataFrame,
+  urlColumn: string,
+  timeColumn?: string,
+  itemColumn?: string,
+  pieces: { group?: string; bbox?: string } = {}
+): RasterScene[] {
   const urls = frame.fields.find((f) => f.name === urlColumn);
   if (!urls) {
     return [];
   }
   const times = timeColumn ? frame.fields.find((f) => f.name === timeColumn) : undefined;
   const items = itemColumn ? frame.fields.find((f) => f.name === itemColumn) : undefined;
+  const groups = pieces.group ? frame.fields.find((f) => f.name === pieces.group) : undefined;
+  const boxes = pieces.bbox ? frame.fields.find((f) => f.name === pieces.bbox) : undefined;
 
-  const scenes: RasterScene[] = [];
+  const rows: Array<RasterScene & { group: string | null; bbox: ScenePart['bbox'] }> = [];
   for (let i = 0; i < frame.length; i++) {
     const url = urls.values[i];
     if (typeof url !== 'string' || !url.trim()) {
@@ -522,12 +556,60 @@ function readScenes(frame: DataFrame, urlColumn: string, timeColumn?: string, it
     }
     const raw = times ? Number(times.values[i]) : NaN;
     const item = items ? items.values[i] : undefined;
-    scenes.push({
+    const group = groups?.values[i];
+    rows.push({
       time: Number.isFinite(raw) ? raw : null,
       sourceUrl: url.trim(),
       itemUrl: typeof item === 'string' && item.trim() ? item.trim() : null,
+      group: typeof group === 'string' && group ? group : null,
+      bbox: parseBox(boxes?.values[i]),
     });
   }
 
-  return scenes.sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+  return groupScenes(rows).sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+}
+
+/** A box written `west,south,east,north`, or null. */
+export function parseBox(value: unknown): ScenePart['bbox'] {
+  const parts =
+    typeof value === 'string' ? value.split(',').map(Number) : Array.isArray(value) ? value.map(Number) : [];
+  return parts.length === 4 && parts.every(Number.isFinite) ? (parts as ScenePart['bbox']) : null;
+}
+
+/**
+ * Rows that share a group as one scene of several parts, at the earliest time of them;
+ * rows without a group stay as they are. The pieces are kept oldest first, so the newest lies on top.
+ */
+export function groupScenes(
+  rows: Array<RasterScene & { group?: string | null; bbox?: ScenePart['bbox'] }>
+): RasterScene[] {
+  const scenes: RasterScene[] = [];
+  const byGroup = new Map<string, Array<RasterScene & { bbox?: ScenePart['bbox'] }>>();
+  for (const row of rows) {
+    if (row.group) {
+      const members = byGroup.get(row.group);
+      if (members) {
+        members.push(row);
+        continue;
+      }
+      byGroup.set(row.group, [row]);
+    }
+    scenes.push(row);
+  }
+  return scenes.map((scene) => {
+    const { group, bbox, ...plain } = scene as RasterScene & { group?: string | null; bbox?: ScenePart['bbox'] };
+    const members = group ? (byGroup.get(group) ?? []) : [];
+    if (members.length < 2) {
+      return plain;
+    }
+    const sorted = [...members].sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+    const times = sorted.map((m) => m.time).filter((t): t is number => t !== null);
+    return {
+      ...plain,
+      time: times.length ? Math.min(...times) : null,
+      sourceUrl: sorted[0].sourceUrl,
+      itemUrl: sorted[0].itemUrl,
+      parts: sorted.map((m) => ({ url: m.sourceUrl, bbox: m.bbox ?? null })),
+    };
+  });
 }

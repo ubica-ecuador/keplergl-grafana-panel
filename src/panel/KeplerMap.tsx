@@ -73,7 +73,7 @@ import { centerOnLoad, withLoadCenter } from './centerSync';
 import { useRasterTimeline } from './useRasterTimeline';
 import { useWmsCalendar } from './useWmsCalendar';
 import { useWmsTimeline } from './useWmsTimeline';
-import { boxedEsri, boxedWms, boxedXyz, useBoxFraming } from './useBoxFraming';
+import { boxedEsri, boxedRaster, boxedWms, boxedXyz, useBoxFraming } from './useBoxFraming';
 import type { BoxFrame } from './wmsExtent';
 import { useEsriTimeline } from './useEsriTimeline';
 import { useZarrTimeline } from './useZarrTimeline';
@@ -458,8 +458,8 @@ export function KeplerMap({
 
   // The layers framed on a box of their own (`useBoxFraming`, below).
   const boxedLayers = useMemo(
-    () => [...wms.map(boxedWms), ...esriLayers.map(boxedEsri), ...xyzLayers.map(boxedXyz)],
-    [wms, esriLayers, xyzLayers]
+    () => [...wms.map(boxedWms), ...esriLayers.map(boxedEsri), ...xyzLayers.map(boxedXyz), ...rasters.map(boxedRaster)],
+    [wms, esriLayers, xyzLayers, rasters]
   );
 
   // A query pointed at another layer — its frames name another

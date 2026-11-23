@@ -138,10 +138,14 @@ describe('framesToRasters', () => {
 
   it('names each query it dropped for want of a server, so the panel can say so', () => {
     const missing: string[] = [];
-    framesToRasters([rasterFrame(COG, 'A'), rasterFrame(COG, 'B')], {}, {
-      tileServerUrls: [],
-      onMissingServer: (label) => missing.push(label),
-    });
+    framesToRasters(
+      [rasterFrame(COG, 'A'), rasterFrame(COG, 'B')],
+      {},
+      {
+        tileServerUrls: [],
+        onMissingServer: (label) => missing.push(label),
+      }
+    );
 
     expect(missing).toEqual(['Query A', 'Query B']);
   });
@@ -149,10 +153,14 @@ describe('framesToRasters', () => {
   it('names a query by its frame’s name when that is more than the ref id', () => {
     const named = (name: string) => ({ ...rasterFrame(COG, 'B'), name });
     const missing: string[] = [];
-    framesToRasters([named('B'), named('Sentinel-2')], {}, {
-      tileServerUrls: [],
-      onMissingServer: (label) => missing.push(label),
-    });
+    framesToRasters(
+      [named('B'), named('Sentinel-2')],
+      {},
+      {
+        tileServerUrls: [],
+        onMissingServer: (label) => missing.push(label),
+      }
+    );
 
     expect(missing).toEqual(['Query B', 'Sentinel-2 (query B)']);
   });
@@ -260,6 +268,49 @@ describe('framesToRasters — a series of scenes', () => {
     });
 
     expect(framesToRasters([frame], {}, { tileServerUrls: [SERVER] })[0].sourceUrl).toBe('https://b/jul21.tif');
+  });
+
+  it('makes one scene of the rows that share a raster_group, a mosaic a painted raster draws', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'time', type: FieldType.time, values: [100, 101, 5000] },
+        {
+          name: 'raster_url',
+          type: FieldType.string,
+          values: ['https://b/w.tif', 'https://b/e.tif', 'https://b/later.tif'],
+        },
+        { name: 'raster_group', type: FieldType.string, values: ['pass-1', 'pass-1', null] },
+        { name: 'raster_bbox', type: FieldType.string, values: ['0,0,1,1', '1,0,2,1', '0,0,1,1'] },
+      ],
+    });
+
+    const [raster] = framesToRasters([frame], {}, { tileServerUrls: [SERVER], painted: true });
+
+    expect(raster.scenes).toHaveLength(2);
+    expect(raster.scenes[0]).toMatchObject({
+      time: 100,
+      sourceUrl: 'https://b/w.tif',
+      parts: [
+        { url: 'https://b/w.tif', bbox: [0, 0, 1, 1] },
+        { url: 'https://b/e.tif', bbox: [1, 0, 2, 1] },
+      ],
+    });
+    // Opened on the newest, one image; moved to the pass, its two.
+    expect(raster.parts).toBeUndefined();
+    expect(rasterForWindow(raster, { from: 0, to: 200 })?.parts).toHaveLength(2);
+  });
+
+  it('carries the layer its frame names, so the map frames it once', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [{ name: 'raster_url', type: FieldType.string, values: ['https://b/w.tif'] }],
+    });
+    frame.meta = { custom: { layer: { key: 'catalog|stac|kb25' } } };
+
+    const [raster] = framesToRasters([frame], {}, { tileServerUrls: [SERVER], painted: true });
+
+    expect(raster.layerKey).toBe('catalog|stac|kb25');
   });
 
   it('still takes the first row when the query has no time column', () => {
@@ -572,7 +623,15 @@ describe('framesToRasters — band combinations do not overreach', () => {
 
 describe('rasterStyleKey', () => {
   it('changes when the preset or the ramp changes, so the style is re-applied', () => {
-    const base = { id: 'a', label: 'a', kind: 'stac', sourceUrl: 'u', metadataUrl: 'u', tileServerUrls: [], scenes: [] } as any;
+    const base = {
+      id: 'a',
+      label: 'a',
+      kind: 'stac',
+      sourceUrl: 'u',
+      metadataUrl: 'u',
+      tileServerUrls: [],
+      scenes: [],
+    } as any;
     expect(rasterStyleKey({ ...base, preset: 'nbr', colormap: 'rdylgn' })).not.toBe(
       rasterStyleKey({ ...base, preset: 'ndmi', colormap: 'rdylbu' })
     );
@@ -582,7 +641,15 @@ describe('rasterStyleKey', () => {
   });
 
   it('is stable for a raster with no style of its own', () => {
-    const bare = { id: 'a', label: 'a', kind: 'cog', sourceUrl: 'u', metadataUrl: 'u', tileServerUrls: [], scenes: [] } as any;
+    const bare = {
+      id: 'a',
+      label: 'a',
+      kind: 'cog',
+      sourceUrl: 'u',
+      metadataUrl: 'u',
+      tileServerUrls: [],
+      scenes: [],
+    } as any;
     expect(rasterStyleKey(bare)).toBe(rasterStyleKey(bare));
   });
 });

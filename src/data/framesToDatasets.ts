@@ -149,9 +149,13 @@ export function framesToDatasets(
     savedCount?: ReadonlySet<string>;
   } = {}
 ): PanelDataset[] {
-  const resolved = frames.map((frame, index) => {
-    const refId = frame.refId ?? `${index}`;
-    const roles = resolveRoles(detectFields(frame), overrides[refId]);
+  const resolved = frames.map((given, index) => {
+    const refId = given.refId ?? `${index}`;
+    const roles = resolveRoles(detectFields(given), overrides[refId]);
+    // How a raster's pieces make one mosaic (`rasterDataset.ts`) says nothing of a row: left out of the rows, where
+    // kepler took a `raster_group` moment for the rows' time and a `raster_bbox` for a pair of points to draw.
+    const pieces = [roles.rasterGroup, roles.rasterBbox].filter(Boolean);
+    const frame = pieces.length ? { ...given, fields: given.fields.filter((f) => !pieces.includes(f.name)) } : given;
     const legacy = !roles.count && opts.savedCount?.has(datasetId(refId)) ? legacyCountColumn(frame) : undefined;
     // A row placed by geohash or by name gains coordinates before anything reads them.
     return { refId, ...placeFrame(frame, legacy ? { ...roles, count: legacy } : roles, opts.gazetteers?.[refId]) };

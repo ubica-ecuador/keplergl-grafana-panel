@@ -3,10 +3,11 @@ import type { Store } from 'redux';
 
 import type { EsriDataset } from '../data/esriDataset';
 import type { SavedMapConfig } from '../data/mapConfig';
+import type { RasterDataset } from '../data/rasterDataset';
 import type { WmsDataset } from '../data/wmsDataset';
 import type { XyzDataset } from '../data/xyzDataset';
 import { KEPLER_INSTANCE_ID } from './constants';
-import { boxedEsri, boxedWms, boxedXyz, useBoxFraming } from './useBoxFraming';
+import { boxedEsri, boxedRaster, boxedWms, boxedXyz, useBoxFraming } from './useBoxFraming';
 
 const FRANCE: [number, number, number, number] = [-5.5, 41, 10, 51.5];
 
@@ -331,6 +332,63 @@ describe('useBoxFraming', () => {
     await settle();
 
     expect(fits(dispatched)).toEqual([[-5.5, 41, 10, 54]]);
+  });
+});
+
+describe('a mosaic of pieces', () => {
+  /** Two sheets of one aerial survey, side by side, west of Amsterdam: a scene of two pieces. */
+  const WEST: [number, number, number, number] = [4.6, 52.4, 4.75, 52.5];
+  const EAST: [number, number, number, number] = [4.75, 52.4, 4.9, 52.5];
+  const mosaic = (more: Partial<RasterDataset> = {}): RasterDataset => ({
+    id: 'grafana-A-raster',
+    label: 'KB 25',
+    kind: 'painted',
+    sourceUrl: 'https://data.test/25an1.tif',
+    metadataUrl: '',
+    tileServerUrls: ['https://titiler.test'],
+    scenes: [
+      {
+        time: null,
+        sourceUrl: 'https://data.test/25an1.tif',
+        itemUrl: null,
+        parts: [
+          { url: 'https://data.test/25an1.tif', bbox: WEST },
+          { url: 'https://data.test/25an2.tif', bbox: EAST },
+        ],
+      },
+    ],
+    ...more,
+  });
+
+  it('frames a map with no saved view on where its pieces lie, all of them', async () => {
+    const { store, dispatched } = fakeStore({ latitude: 37.75, longitude: -122.45, zoom: 9 }, ['grafana-A-raster']);
+    renderHook(() =>
+      useBoxFraming({ store, isReady: true, layers: [boxedRaster(mosaic())], mapConfig: null, onFramed: jest.fn() })
+    );
+    await settle();
+
+    expect(fits(dispatched)).toEqual([[4.6, 52.4, 4.9, 52.5]]);
+  });
+
+  it('leaves the view of a raster of single images, which says nothing of where it lies', async () => {
+    const single = mosaic({ scenes: [{ time: null, sourceUrl: 'https://data.test/one.tif', itemUrl: null }] });
+    const { store, dispatched } = fakeStore({ latitude: 37.75, longitude: -122.45, zoom: 9 }, ['grafana-A-raster']);
+    renderHook(() =>
+      useBoxFraming({ store, isReady: true, layers: [boxedRaster(single)], mapConfig: null, onFramed: jest.fn() })
+    );
+    await settle();
+
+    expect(boxedRaster(single).bbox).toBeNull();
+    expect(fits(dispatched)).toEqual([]);
+  });
+
+  it('is the same layer when its frame names it, whichever piece comes first', () => {
+    const other = mosaic({ sourceUrl: 'https://data.test/25an2.tif' });
+
+    expect(boxedRaster(mosaic({ layerKey: 'kb25' })).identity).toBe(
+      boxedRaster({ ...other, layerKey: 'kb25' }).identity
+    );
+    expect(boxedRaster(mosaic()).identity).not.toBe(boxedRaster(other).identity);
   });
 });
 

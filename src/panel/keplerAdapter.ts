@@ -305,6 +305,8 @@ function rasterMetadata(raster: RasterDataset) {
       sourceUrl: raster.sourceUrl,
       ...(raster.assets?.length ? { assets: raster.assets, rescale: raster.rescale } : {}),
       ...(raster.paint ? { paint: raster.paint } : {}),
+      // A scene of several images (one pass's tiles): drawn together, a mosaic.
+      ...(raster.parts && raster.parts.length > 1 ? { parts: raster.parts } : {}),
     };
   }
 
@@ -492,7 +494,9 @@ export function swapRasterScene(store: Store, dispatch: Dispatch, raster: Raster
   // the next render and repeats it in `updateTriggers.getTileData`, which is
   // what actually expires deck's tiles. Same shape as the Zarr layer's label.
   if (raster.kind === 'painted') {
-    return applyLayerVisConfig(store, dispatch, raster.id, { cogScene: raster.sourceUrl });
+    // The scene's pieces beside it, or none: a scene of one image must not keep the last mosaic's.
+    const parts = raster.parts && raster.parts.length > 1 ? raster.parts : null;
+    return applyLayerVisConfig(store, dispatch, raster.id, { cogScene: raster.sourceUrl, cogParts: parts });
   }
 
   const visState = getVisState(store);

@@ -1,6 +1,8 @@
 import { TileLayer } from '@deck.gl/geo-layers';
 import { BitmapLayer } from '@deck.gl/layers';
 
+import type { PartTiles } from './cogPaintedLayer';
+
 /**
  * The deck.gl layers that draw TiTiler's painted COG tiles.
  *
@@ -40,18 +42,74 @@ function renderSubLayers(
   }
 
   const { west, south, east, north } = props.tile.bbox;
-  return new BitmapLayer(props as never, {
-    data: undefined,
-    image: props.data,
-    bounds: [west, south, east, north],
-  } as never);
+  return new BitmapLayer(
+    props as never,
+    {
+      data: undefined,
+      image: props.data,
+      bounds: [west, south, east, north],
+    } as never
+  );
+}
+
+type TileBox = { west: number; south: number; east: number; north: number };
+
+/** Whether a piece's box touches a tile's; a piece that does not say where it lies is asked everywhere. */
+export function touches(box: PartTiles['bbox'], tile: TileBox): boolean {
+  return !box || (box[0] <= tile.east && box[2] >= tile.west && box[1] <= tile.north && box[3] >= tile.south);
+}
+
+/**
+ * One tile of a scene of several images (a mosaic): the server's picture of each piece whose box touches the
+ * tile, laid oldest first so the newest is on top. A piece the server has no tile for (404 outside its image) adds
+ * nothing; a tile no piece covers is null, which draws nothing, as for a single image.
+ */
+export async function mosaicTile(
+  parts: PartTiles[],
+  tile: { index: { x: number; y: number; z: number }; bbox: TileBox; signal?: AbortSignal },
+  load: (url: string, signal?: AbortSignal) => Promise<ImageBitmap | null> = loadImage
+): Promise<ImageBitmap | HTMLCanvasElement | null> {
+  const { x, y, z } = tile.index;
+  const images = await Promise.all(
+    parts
+      .filter((part) => touches(part.bbox, tile.bbox))
+      .map((part) =>
+        load(part.template.replace('{z}', String(z)).replace('{x}', String(x)).replace('{y}', String(y)), tile.signal)
+      )
+  );
+  const drawn = images.filter((image): image is ImageBitmap => image !== null);
+  if (drawn.length <= 1) {
+    return drawn[0] ?? null;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = drawn[0].width;
+  canvas.height = drawn[0].height;
+  const context = canvas.getContext('2d');
+  for (const image of drawn) {
+    context?.drawImage(image, 0, 0, canvas.width, canvas.height);
+  }
+  return canvas;
+}
+
+async function loadImage(url: string, signal?: AbortSignal): Promise<ImageBitmap | null> {
+  try {
+    const response = await fetch(url, { signal });
+    return response.ok ? await createImageBitmap(await response.blob()) : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Builds the tile layer, in the shape `makeCogPaintedLayer` asks for. */
-export const buildCogPaintedDeckLayer = (props: Record<string, unknown>): unknown =>
-  new TileLayer({
+export const buildCogPaintedDeckLayer = (props: Record<string, unknown>): unknown => {
+  const { partTiles, ...rest } = props as Record<string, unknown> & { partTiles?: PartTiles[] };
+  return new TileLayer({
     tileSize: 256,
     maxRequests: MAX_REQUESTS,
     renderSubLayers,
-    ...props,
+    ...(partTiles?.length
+      ? { getTileData: (tile: Parameters<typeof mosaicTile>[1]) => mosaicTile(partTiles, tile) }
+      : {}),
+    ...rest,
   } as never);
+};

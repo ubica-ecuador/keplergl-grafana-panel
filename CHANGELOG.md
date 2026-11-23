@@ -6,6 +6,14 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **A scene of several pieces, drawn as one mosaic.** Rows of a raster query that share a
+  `raster_group` are one scene of several images, the sheets of one aerial survey or the tiles of one
+  satellite pass, with `raster_bbox` (`west,south,east,north`) saying where each lies. Painted by the
+  tile server, they are drawn together: each tile asks for the pieces whose box it touches and lays
+  them oldest first. kepler's own raster layer still takes one image, and a relief base map the
+  scene's first. A map with no view of its own opens on the pieces' boxes, which a raster's empty
+  rows never gave it; the two columns stay out of the query's rows. The Spatial Catalog's STAC
+  search sends them: Portolan NL's 32 sheets of Amsterdam, or a Sentinel-2 pass of four tiles.
 - **Rows in force by the pair a query names.** A frame that says its start and end in
   `meta.custom.timeInterval` (`{start, end}`; the Spatial Catalog's Time column with a Valid until,
   and its Iceberg history) gets the same time filter as `valid_from`/`valid_to`: the start, the end
