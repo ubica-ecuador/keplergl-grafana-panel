@@ -40,6 +40,17 @@ class FakeWMSLayer {
 const Timed = withWmsTime(FakeWMSLayer, fakeDeckLayer);
 
 describe('withTimeFragment / readTimeFragment', () => {
+  it('carries the dates to fall back on with the moment, and none without one', () => {
+    const earlier = ['2026-11-30T22:00:00.000Z', '2026-11-30T21:00:00.000Z'];
+    expect(readTimeFragment(withTimeFragment(SERVICE, TIME, 'temp', earlier))).toEqual({
+      url: SERVICE,
+      time: TIME,
+      style: 'temp',
+      earlier,
+    });
+    expect(withTimeFragment(SERVICE, null, null, earlier)).toBe(SERVICE);
+  });
+
   it('carries the time in a fragment, which never reaches the server', () => {
     const url = withTimeFragment(SERVICE, TIME);
 

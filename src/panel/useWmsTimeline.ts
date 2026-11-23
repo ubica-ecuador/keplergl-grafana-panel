@@ -147,7 +147,13 @@ export function useWmsTimeline({ store, isReady, layers, timeVariables }: Params
       setRasterLayerVisible(store, store.dispatch, wms.id, true);
       // ISO 8601 with Z, which is what a WMS `TIME` is defined in and what
       // GeoServer answers to.
-      applyWmsTime(store, store.dispatch, wms.id, new Date(moment).toISOString());
+      applyWmsTime(
+        store,
+        store.dispatch,
+        wms.id,
+        new Date(moment).toISOString(),
+        earlierWithin(wms.times, moment, window)
+      );
     }
   });
 
@@ -196,4 +202,24 @@ function calendarKey(wms: WmsDataset): string {
 /** Whether a time domain holds a calendar's earliest and latest dates (in whatever order they came). */
 function covers(domain: { from: number; to: number }, times: number[]): boolean {
   return times.every((time) => time >= domain.from && time <= domain.to);
+}
+
+/** How many dates before the moment a refused step asks, at most: each is a request. */
+const MAX_EARLIER = 3;
+
+/**
+ * The dates before a moment in the window, latest first, at most `MAX_EARLIER`: what the deck layer asks when the
+ * service refuses the moment (a dimension that promises more dates than the service holds).
+ */
+export function earlierWithin(
+  times: readonly number[],
+  moment: number,
+  window: { from: number; to: number } | null
+): string[] {
+  const from = window?.from ?? -Infinity;
+  return times
+    .filter((time) => time < moment && time >= from)
+    .sort((a, b) => b - a)
+    .slice(0, MAX_EARLIER)
+    .map((time) => new Date(time).toISOString());
 }

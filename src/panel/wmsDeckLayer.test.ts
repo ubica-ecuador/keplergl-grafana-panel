@@ -134,3 +134,61 @@ describe('TimedWMSLayer between two moments', () => {
     expect(twice.state.image).toBeUndefined();
   });
 });
+
+describe('TimedWMSLayer at a moment the service refuses', () => {
+  const REFUSED = new Error("WMS Service error: Could not find a match for 'time' value: '2026-11-30T23:00:00.000Z'");
+  /** DWD's ICON past its first days: one hour in three. */
+  const HELD = new Set(['2026-11-30T21:00:00.000Z']);
+  function source(
+    data: string,
+    answer = (time: string) => (HELD.has(time) ? { width: 256 } : Promise.reject(REFUSED))
+  ) {
+    const built = (new TimedWMSLayer({ id: 'wms', data, layers: ['ICON_T2M'] } as any) as any)._createImageSource({
+      data,
+    });
+    const asked: string[] = [];
+    built.getMap = jest.fn(async () => {
+      asked.push(built.wmsParameters.time);
+      return answer(built.wmsParameters.time);
+    });
+    return { built, asked };
+  }
+  const box = {
+    boundingBox: [
+      [0, 0],
+      [1, 1],
+    ],
+    width: 256,
+    height: 256,
+    layers: ['ICON_T2M'],
+  };
+  const AT = (earlier: string[]) =>
+    `${SERVICE}#t=${encodeURIComponent('2026-11-30T23:00:00.000Z')}&e=${earlier.map(encodeURIComponent).join(',')}`;
+
+  it('asks the dates before it in the window, and keeps the first that answers', async () => {
+    const { built, asked } = source(AT(['2026-11-30T22:00:00.000Z', '2026-11-30T21:00:00.000Z']));
+
+    await expect(built.getImage(box)).resolves.toEqual({ width: 256 });
+    expect(asked).toEqual(['2026-11-30T23:00:00.000Z', '2026-11-30T22:00:00.000Z', '2026-11-30T21:00:00.000Z']);
+    // A click asks the service about the picture shown.
+    expect([built.wmsParameters.time, built.vendorParameters.time]).toEqual([
+      '2026-11-30T21:00:00.000Z',
+      '2026-11-30T21:00:00.000Z',
+    ]);
+  });
+
+  it('throws the refusal of its own moment when every date is refused, and is back at it', async () => {
+    const { built } = source(AT(['2026-11-30T22:00:00.000Z']));
+
+    await expect(built.getImage(box)).rejects.toBe(REFUSED);
+    expect(built.wmsParameters.time).toBe('2026-11-30T23:00:00.000Z');
+  });
+
+  it('asks nothing else when the service fails for another reason', async () => {
+    const down = new Error('WMS Service error: Service Unavailable');
+    const { built, asked } = source(AT(['2026-11-30T21:00:00.000Z']), () => Promise.reject(down));
+
+    await expect(built.getImage(box)).rejects.toBe(down);
+    expect(asked).toEqual(['2026-11-30T23:00:00.000Z']);
+  });
+});

@@ -44,6 +44,8 @@ import { boxOfMetadata, reliefBoundsOfBox } from './wmsExtent';
 /** The fragment keys. Short because they are on every tile url in the network tab. */
 const TIME_KEY = 't';
 const STYLE_KEY = 's';
+/** The dates to fall back on, latest first, when the service refuses the moment (see `wmsDeckLayer.ts`). */
+const EARLIER_KEY = 'e';
 
 /**
  * The data url for a service at a given moment, in a given style.
@@ -62,27 +64,44 @@ const STYLE_KEY = 's';
  * It belongs to the service — MapServer endpoints carry `?map=…` — and only the
  * fragment is ours to write.
  */
-export function withTimeFragment(url: string, time: string | null | undefined, style?: string | null): string {
+export function withTimeFragment(
+  url: string,
+  time: string | null | undefined,
+  style?: string | null,
+  earlier?: readonly string[] | null
+): string {
   const base = url.split('#')[0];
   const parts = [
     ...(time ? [`${TIME_KEY}=${encodeURIComponent(time)}`] : []),
     ...(style ? [`${STYLE_KEY}=${encodeURIComponent(style)}`] : []),
+    ...(time && earlier?.length ? [`${EARLIER_KEY}=${earlier.map(encodeURIComponent).join(',')}`] : []),
   ];
   return parts.length ? `${base}#${parts.join('&')}` : base;
 }
 
-/** The service url, and the moment and style a data url carries, as the deck layer reads them. */
-export function readTimeFragment(data: string): { url: string; time?: string; style?: string } {
+/** What a data url carries for the deck layer: the service url, the moment, the style, the dates to fall back on. */
+export interface TimeFragment {
+  url: string;
+  time?: string;
+  style?: string;
+  earlier?: string[];
+}
+
+/** The service url, and the moment, style and earlier dates a data url carries, as the deck layer reads them. */
+export function readTimeFragment(data: string): TimeFragment {
   const [url, fragment] = data.split('#');
-  const read: { url: string; time?: string; style?: string } = { url };
+  const read: TimeFragment = { url };
   for (const part of fragment?.split('&') ?? []) {
     const at = part.indexOf('=');
     const key = part.slice(0, at);
-    const value = at > 0 ? decodeURIComponent(part.slice(at + 1)) : '';
+    const raw = at > 0 ? part.slice(at + 1) : '';
+    const value = decodeURIComponent(raw);
     if (key === TIME_KEY && value) {
       read.time = value;
     } else if (key === STYLE_KEY && value) {
       read.style = value;
+    } else if (key === EARLIER_KEY && raw) {
+      read.earlier = raw.split(',').map(decodeURIComponent).filter(Boolean);
     }
   }
   return read;
@@ -131,7 +150,13 @@ export function wmsMapLibreTemplate(args: {
 /** The members of kepler's WMS layer this wrapper touches. */
 interface WmsLayerLike {
   config?: {
-    visConfig?: { wmsTime?: unknown; wmsStyle?: unknown; wmsLegendUrl?: unknown; wmsLayer?: { name?: unknown } };
+    visConfig?: {
+      wmsTime?: unknown;
+      wmsTimeEarlier?: unknown;
+      wmsStyle?: unknown;
+      wmsLegendUrl?: unknown;
+      wmsLayer?: { name?: unknown };
+    };
   };
   /** What a click reads to ask the service about a pixel. */
   deckLayerRef?: unknown;
@@ -299,6 +324,9 @@ export function withWmsTime<C extends Constructor<object>>(WMSLayer: C, buildTim
         return layers;
       }
       const chosen = this.config?.visConfig?.wmsTime;
+      // The dates before it in the window, latest first, for a service that refuses it (`wmsDeckLayer.ts`).
+      const before = this.config?.visConfig?.wmsTimeEarlier;
+      const earlier = Array.isArray(before) ? before.filter((t): t is string => typeof t === 'string') : null;
       const time = typeof chosen === 'string' && chosen ? chosen : null;
       // The style the query asked for (`applyWmsStyle`): empty is the service's default.
       const styled = this.config?.visConfig?.wmsStyle;
@@ -330,7 +358,7 @@ export function withWmsTime<C extends Constructor<object>>(WMSLayer: C, buildTim
             });
         last = buildTimedLayer({
           ...props,
-          data: withTimeFragment(props.data, time, style),
+          data: withTimeFragment(props.data, time, style, earlier),
           ...(clipBox ? { clipBox } : {}),
           ...(reliefTiles ? { reliefTiles, ...(reliefBounds ? { reliefBounds } : {}) } : {}),
         });

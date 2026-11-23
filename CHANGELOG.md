@@ -6,6 +6,13 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **A WMS moment the service refuses falls back on the dates before it.** A time dimension can
+  promise more than the service holds: DWD's ICON says an hour apart up to its last day, but past
+  its first days holds one hour in three and refuses the others, so most steps of the clock there
+  failed with "WMS Service error". A refused moment is now asked again at the dates before it in
+  the clock's window, up to three, latest first, and the first that answers is drawn (a click asks
+  the service about it); only when all are refused is the error shown. Any other failure is not
+  retried.
 - **A WMS keeps its picture while the next moment loads.** Each step of the clock on a WMS with a
   time dimension cleared the picture until the service answered, a blank map per step. The
   picture of the moment before now stays until the next lands and is replaced by it; a step the

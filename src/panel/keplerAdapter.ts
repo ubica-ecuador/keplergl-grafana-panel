@@ -1072,15 +1072,25 @@ export function syncCalendarDataset(
  * Quiet when the layer already shows that moment, which is most of the time: a
  * drag of the time widget that stays between two dates arrives here and stops.
  */
-export function applyWmsTime(store: Store, dispatch: Dispatch, dataId: string, time: string): boolean {
+export function applyWmsTime(
+  store: Store,
+  dispatch: Dispatch,
+  dataId: string,
+  time: string,
+  earlier: readonly string[] = []
+): boolean {
   const layer = getVisState(store)?.layers.find((candidate) => candidate.config?.dataId === dataId);
   if (!layer) {
     return false;
   }
-  if (layer.config?.visConfig?.wmsTime === time) {
+  const held = layer.config?.visConfig?.wmsTimeEarlier;
+  const same = Array.isArray(held) && held.length === earlier.length && held.every((t, i) => t === earlier[i]);
+  if (layer.config?.visConfig?.wmsTime === time && (same || (!held && earlier.length === 0))) {
     return true;
   }
-  return applyLayerVisConfig(store, dispatch, dataId, { wmsTime: time });
+  // `wmsTimeEarlier`: the dates before it in the window, latest first, which the deck layer asks when the service
+  // refuses the moment (`wmsDeckLayer.ts`).
+  return applyLayerVisConfig(store, dispatch, dataId, { wmsTime: time, wmsTimeEarlier: [...earlier] });
 }
 
 /**
@@ -1612,6 +1622,7 @@ interface VisStateLike {
         useSTACSearching?: boolean;
         wmsLayer?: unknown;
         wmsTime?: unknown;
+        wmsTimeEarlier?: unknown;
         wmsStyle?: unknown;
         wmsLegendUrl?: unknown;
         zarrLabel?: unknown;

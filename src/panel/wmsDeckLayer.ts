@@ -196,8 +196,11 @@ export class TimedWMSLayer extends DeckWMSLayer {
   _createImageSource(
     props: ConstructorParameters<typeof DeckWMSLayer>[0]
   ): ReturnType<DeckWMSLayer['_createImageSource']> {
-    const { url, time, style } = readTimeFragment(String(props.data));
+    const { url, time, style, earlier } = readTimeFragment(String(props.data));
     const source = new WMSImageSource(url, wmsOptions(time, props.loadOptions, style));
+    if (time && earlier?.length) {
+      fallBackInTime(source, time, earlier);
+    }
 
     // Bound to the service rather than to this source, so the date and the
     // style can change without re-reading the catalogue.
@@ -205,6 +208,56 @@ export class TimedWMSLayer extends DeckWMSLayer {
 
     return source as unknown as ReturnType<DeckWMSLayer['_createImageSource']>;
   }
+}
+
+/** A service's refusal of the moment asked: WMS 1.3's InvalidDimensionValue, or its text naming the time. */
+export function refusesTime(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return /InvalidDimensionValue|\btime\b/i.test(message);
+}
+
+/**
+ * A source that asks the dates before its moment when the service refuses it.
+ *
+ * A time dimension can promise more than the service holds: DWD's ICON says
+ * `2026-11-22T06:00Z/2026-12-01T00:00Z/PT1H`, an hour apart to the end, but
+ * past its first days holds one hour in three, and refuses the others
+ * ("InvalidDimensionValue"). The clock's step picks the latest date in its
+ * window, so most steps of the later days failed. Refused, the picture is
+ * asked at the dates before it in the window (`earlier`, latest first), the
+ * first that answers is drawn, and the source keeps it, so a click asks the
+ * service about the picture shown. All refused, it is the first refusal that
+ * is thrown, for the moment the clock shows. Any other failure is thrown as
+ * it came: a service that is down is not asked again.
+ */
+function fallBackInTime(source: WMSImageSource, time: string, earlier: readonly string[]): void {
+  const getImage = source.getImage.bind(source);
+  const at = (moment: string) => {
+    source.wmsParameters = { ...source.wmsParameters, time: moment };
+    source.vendorParameters = { ...source.vendorParameters, time: moment };
+  };
+  source.getImage = async (parameters) => {
+    try {
+      return await getImage(parameters);
+    } catch (refusal) {
+      if (!refusesTime(refusal)) {
+        throw refusal;
+      }
+      for (const moment of earlier) {
+        at(moment);
+        try {
+          return await getImage(parameters);
+        } catch (error) {
+          if (!refusesTime(error)) {
+            at(time);
+            throw error;
+          }
+        }
+      }
+      at(time);
+      throw refusal;
+    }
+  };
 }
 
 /** Whether two data urls are the same service at another moment or in another style: only their fragment differs. */

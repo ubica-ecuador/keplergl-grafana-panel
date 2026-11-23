@@ -7,7 +7,7 @@ import { framesToWms, type WmsDataset } from '../data/wmsDataset';
 import { KEPLER_INSTANCE_ID } from './constants';
 import { loadWms, readTimeRange, refreshWms } from './keplerAdapter';
 import { createKeplerStore } from './keplerStore';
-import { useWmsTimeline } from './useWmsTimeline';
+import { earlierWithin, useWmsTimeline } from './useWmsTimeline';
 
 /** A query's WMS layer turned into another of the same service, on kepler's real store. */
 
@@ -62,5 +62,19 @@ describe('useWmsTimeline', () => {
     await settle();
     expect(chosenLayer(store)).toBe('Aicon_reg025_fd_sl_UV10M');
     expect(readTimeRange(store)).toEqual({ from: hour(22, 6), to: hour(30, 21) });
+  });
+});
+
+describe('earlierWithin', () => {
+  it('gives the dates before the moment in the window, latest first, three at most', () => {
+    const times = [hour(30, 17), hour(30, 18), hour(30, 19), hour(30, 20), hour(30, 21), hour(30, 22), hour(30, 23)];
+    expect(earlierWithin(times, hour(30, 23), { from: hour(30, 18), to: hour(30, 23) })).toEqual([
+      '2026-11-30T22:00:00.000Z',
+      '2026-11-30T21:00:00.000Z',
+      '2026-11-30T20:00:00.000Z',
+    ]);
+    expect(earlierWithin(times, hour(30, 19), { from: hour(30, 18), to: hour(30, 20) })).toEqual([
+      '2026-11-30T18:00:00.000Z',
+    ]);
   });
 });
