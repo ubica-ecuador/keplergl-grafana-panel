@@ -949,7 +949,15 @@ export function applyWmsLayerChoice(store: Store, dispatch: Dispatch, wms: WmsDa
     return false;
   }
 
-  const known = (getVisState(store)?.datasets[wms.id]?.metadata as { layers?: WmsServiceLayer[] } | undefined)?.layers;
+  const metadata = getVisState(store)?.datasets[wms.id]?.metadata as
+    { layers?: WmsServiceLayer[]; tilesetDataUrl?: string } | undefined;
+  // Not before the dataset is the query's service: a query that moves to a layer with an address of its own (a
+  // GeoServer's per-layer endpoint) is replaced a store change later, and the new layer asked at the old address
+  // is one the service does not know there ("WMS Service error").
+  if (metadata?.tilesetDataUrl !== undefined && metadata.tilesetDataUrl !== wms.serviceUrl) {
+    return false;
+  }
+  const known = metadata?.layers;
   const chosen = known?.find((candidate) => candidate.name === wms.layerName) ?? {
     name: wms.layerName,
     title: wms.layerName,

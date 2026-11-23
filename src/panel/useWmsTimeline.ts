@@ -74,18 +74,23 @@ export function useWmsTimeline({ store, isReady, layers, timeVariables }: Params
   }, [timeVariables]);
 
   /**
-   * Datasets whose layer has been pinned to the right service layer.
+   * The layer choices already pinned: a dataset and the service layer its query
+   * names (`pinKey`).
    *
-   * Once only: after that the choice is the user's to change from the layer
-   * panel — the WMS layer offers exactly that dropdown — and re-imposing it on
-   * every store change would undo them mid-click.
+   * Once per choice: after that the choice is the user's to change from the
+   * layer panel — the WMS layer offers exactly that dropdown — and re-imposing
+   * it on every store change would undo them mid-click. A query that names
+   * another layer is another choice, pinned again: keyed by the dataset alone,
+   * the map went on asking for the layer before (DWD's satellite picture) in
+   * the style of the new one (AICON's wind), and the service refused it.
    */
   const pinned = useRef(new Set<string>());
 
-  // The filter is opened to its full domain once. kepler creates a time filter
-  // narrowed to a slice of the domain somewhere in the past, so without this
-  // the map would open on an old date while having just drawn the newest one.
-  const opened = useRef(false);
+  // The filter is opened to its full domain once per set of layers. kepler
+  // creates a time filter narrowed to a slice of the domain somewhere in the
+  // past, so without this the map would open on an old date while having just
+  // drawn the newest one; a query that names another layer brings its own dates.
+  const opened = useRef<string | null>(null);
 
   const reconcile = useRef(() => {
     const wmsLayers = layersRef.current;
@@ -94,8 +99,8 @@ export function useWmsTimeline({ store, isReady, layers, timeVariables }: Params
     }
 
     for (const wms of wmsLayers) {
-      if (!pinned.current.has(wms.id) && applyWmsLayerChoice(store, store.dispatch, wms)) {
-        pinned.current.add(wms.id);
+      if (!pinned.current.has(pinKey(wms)) && applyWmsLayerChoice(store, store.dispatch, wms)) {
+        pinned.current.add(pinKey(wms));
       }
       applyWmsStyle(store, store.dispatch, wms.id, wms.style, wms.legendUrl);
     }
@@ -117,11 +122,14 @@ export function useWmsTimeline({ store, isReady, layers, timeVariables }: Params
       return;
     }
 
-    if (opensToDomain(opened.current, readVariableWindow(timeVariablesRef.current))) {
+    const calendars = dated.map(calendarKey).join(';');
+    if (opensToDomain(opened.current === calendars, readVariableWindow(timeVariablesRef.current))) {
       const domain = readTimeDomain(store);
-      if (domain) {
+      // Once the filter holds the dates: kepler rebuilds a calendar's domain after the store change that replaced
+      // it, and a window opened on the one before would stay on the dates of the layer before.
+      if (domain && dated.every((wms) => covers(domain, wms.times))) {
         pushTimeRange(store, store.dispatch, domain);
-        opened.current = true;
+        opened.current = calendars;
       }
     }
 
@@ -170,4 +178,22 @@ export function useWmsTimeline({ store, isReady, layers, timeVariables }: Params
     const unsubscribe = store.subscribe(onStoreChange.current);
     return unsubscribe;
   }, [isReady, store, layers]);
+}
+
+/** A layer choice: the dataset, and the service layer its query names there. */
+function pinKey(wms: WmsDataset): string {
+  return `${wms.id}|${wms.serviceUrl}|${wms.layerName}`;
+}
+
+/**
+ * A layer choice and its dates, first, last and how many. The dates change with the layer (the capabilities
+ * document is read once per page), so another key is another layer to open the clock on.
+ */
+function calendarKey(wms: WmsDataset): string {
+  return `${pinKey(wms)}|${wms.times.length}|${wms.times[0]}|${wms.times[wms.times.length - 1]}`;
+}
+
+/** Whether a time domain holds a calendar's earliest and latest dates (in whatever order they came). */
+function covers(domain: { from: number; to: number }, times: number[]): boolean {
+  return times.every((time) => time >= domain.from && time <= domain.to);
 }

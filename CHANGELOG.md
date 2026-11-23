@@ -6,6 +6,11 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **A WMS query that names another layer draws that layer.** The panel pinned kepler's WMS layer to
+  the service layer a query names once per query, so a query moved to another layer of the same
+  service (DWD's satellite picture, then AICON's wind) went on asking for the first, in the style
+  of the second, and the service refused it ("WMS Service error"). Each layer a query names is
+  pinned now, once the map holds that layer's service, and the clock opens on its dates.
 - **A query that stops being a Zarr or a WMS takes its calendar with it.** The dates a Zarr or a WMS
   layer offers are a dataset of their own beside it, for kepler's time filter to hang on, and it
   stayed on the map when the query moved to another layer: a Zarr query turned into a WMS one kept
