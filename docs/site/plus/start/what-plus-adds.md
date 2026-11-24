@@ -42,7 +42,7 @@ Plus adds its own settings next to the free ones:
 
 - in the panel options, the **Places**, **Active alerts** and **Floors** groups, and the **Thresholds**, **Unit** and
   **Decimals** standard options, which colour and label [network links](/plus/data/network-links);
-- in kepler's side panel, the eighteen Plus layer types in the layer type list, the Plus base maps in the base map
+- in kepler's side panel, the nineteen Plus layer types in the layer type list, the Plus base maps in the base map
   picker, a **3D (Plus)** tab in **Add Data**, and an [Indoor](/plus/indoor/settings) tab.
 
 Plus steps aside wherever the free panel already draws a query. A query with coordinates, a geometry or an H3 index

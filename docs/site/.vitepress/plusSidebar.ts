@@ -51,6 +51,7 @@ export const PLUS_SIDEBAR: DefaultTheme.SidebarItem[] = [
       { text: 'Shade', link: '/plus/layers/shade' },
       { text: 'Buildings', link: '/plus/layers/buildings' },
       { text: 'City Model', link: '/plus/layers/city-model' },
+      { text: 'Streets', link: '/plus/layers/streets' },
       { text: 'Surface', link: '/plus/layers/surface' },
       { text: 'Sparkline', link: '/plus/layers/sparkline' },
       { text: '3D Callout', link: '/plus/layers/callout' },

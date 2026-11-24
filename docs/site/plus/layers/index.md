@@ -1,6 +1,6 @@
 # Plus layers
 
-Plus adds eighteen layer types to kepler's layer list. Each one is a kepler layer like any other: you pick it as the
+Plus adds nineteen layer types to kepler's layer list. Each one is a kepler layer like any other: you pick it as the
 layer type, style it in kepler's layer panel, and it is saved with the map. Most of them you add yourself, with
 **Add Layer** or by switching the type of a layer the panel already built; each layer page says when the panel adds
 one for you.
@@ -17,6 +17,7 @@ one for you.
 | [Shade](./shade)                                      | Each spot's hours of shade over a day                          | Any dataset; places optional     |
 | [Buildings](./buildings)                              | The base map's buildings, each coloured by a value             | Points, polygons or H3 cells     |
 | [City Model](./city-model)                            | An official 3D city model, its buildings coloured by a value   | CityJSON files, tiles or surfaces |
+| [Streets](./streets)                                  | The base map's streets, each coloured by a value               | Points: sensors or moving points |
 | [Surface](./surface)                                  | Coloured bands and isolines between points, or a density count | Points                           |
 | [Sparkline](./sparkline)                              | A card with each station's series and its current value        | Points, many rows per station    |
 | [3D Callout](./callout)                               | A Sparkline card on a stem above each place, at its height     | Points, many rows per place      |

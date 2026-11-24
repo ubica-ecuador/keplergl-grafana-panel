@@ -44,6 +44,12 @@ Liberty and Fiord at first.
 
 The Map Style picker shows the style in use, the night's at night.
 
+### Layer blending by the time of day
+
+**Layer blending, when** sets kepler's Layer Blending (the Layers tab's) by the sun: **At night**, **By day** or **Day
+and night**, in the mode **Layer blending** picks (Additive or Subtractive), and normal the rest of the time. At first
+it is **As the Layers tab sets it**, and the rule leaves it alone. It follows the sun even with Follow the sun off.
+
 ## Building shadows
 
 MapLibre draws the base map's 3D buildings, and casts no shadow: kepler's Light & Shadow lights and shades only what
@@ -62,6 +68,7 @@ buildings, and cast their shadows, themselves.
 | **Opacity**                | The buildings' opacity, 0 to 1.                                                                 |
 | **Shade on their faces**   | How far the light and the shade fall on the buildings' walls: 0 (every face in its colour) to 1. |
 | **In the base map's colour** | On: the style's building colour, which follows Day and night. Off: a colour **By day** and one **At night**. |
+| **Drawn**                  | **Under the data** (first among kepler's layers, as at first) or **Over the data** (after them: the shadows fall on a polygon or a Surface layer). |
 
 At night the buildings keep their colour, the night's style's or the one picked for the night, under a faint light
 from high on the side opposite the sun, so their roofs and walls still read apart. They are drawn from zoom 12, out to
@@ -87,10 +94,23 @@ flat footprints, under the 3D buildings, the names and kepler's layers. From afa
 | **Pool of light**  | The size of each lamp's pool, 0.3 to 3 times its own.                         |
 | **Lamps**          | Sodium (orange, 2000 K), warm white LED (3000 K) or neutral white LED (4000 K). |
 | **By day too**     | Lit by day as well, to set them up without waiting for the night.             |
+| **Drawn**          | **Under the data** (in the base map, as at first) or **Over the data**: kepler's last layer, lighting a polygon or a Surface layer; the 3D buildings deck draws still hide it. |
 
 A light base map shows little of them: use them with a dark style, or with Day and night. They are drawn from zoom 12,
 out to about 3.5 km from the centre of the view; not on the globe, nor with **Relief** on, whose terrain would bury
 them. With Building shadows on, the ground the shadows fall on leaves the streets their light at night.
+
+## Roads over the lights
+
+**Roads over the lights (buildings over the roads)**, in Building shadows and in Street lights alike (one setting):
+the lights are drawn in the base map under its roads, and the buildings, which Plus draws over the base map, stand over
+the roads. **Drawn** of the street lights does not apply then: the light cannot be under the roads and over the data at
+once.
+
+![The centre of Madrid at 16:30 on Liberty with Roads over the lights: the buildings and their shadows over the streets, the main roads in yellow between them](/img/plus/night-and-day-roads-over.jpg)
+
+kepler's own **Move to top** of the Road group (Map Layers) draws the roads in a second map over everything, so they cut
+through every building. The switch shows on while that is set, and turning it on or off clears it.
 
 ## In a provisioned dashboard
 
@@ -108,9 +128,9 @@ time range:
       "building": true,
       "water": true,
       "land": true,
-      "dayNightStyles": { "on": true, "day": "openfreemap-liberty", "night": "openfreemap-fiord" },
-      "buildingShadows": { "on": true, "opacity": 1, "shade": 1, "styleColour": true },
-      "streetLights": { "on": true, "intensity": 1, "reach": 1, "colour": "warm", "always": false }
+      "dayNightStyles": { "on": true, "day": "openfreemap-liberty", "night": "openfreemap-fiord", "blendWhen": "never", "blendMode": "additive" },
+      "buildingShadows": { "on": true, "opacity": 1, "shade": 1, "styleColour": true, "overData": false },
+      "streetLights": { "on": true, "intensity": 1, "reach": 1, "colour": "warm", "always": false, "overData": false, "roadsOnTop": false }
     }
   },
   "visState": {
@@ -123,3 +143,4 @@ time range:
 
 With `"styleColour": false`, `buildingShadows` takes `colour` and `nightColour` as `[r, g, b]`. `colour` in
 `streetLights` is `sodium`, `warm` or `neutral`.
+`blendWhen` is `never`, `night`, `day` or `always`; `blendMode` `additive` or `subtractive`.
