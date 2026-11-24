@@ -80,6 +80,8 @@ so. See [Colour palettes and scales](/guide/kepler/colour-palettes-and-scales).
 | Resolution       | Low, Medium or High: how finely the surface is sampled                                         | Medium       |
 | Power            | 1 to 5. Higher lets each sensor dominate its surroundings; lower smooths the surface           | 2            |
 | Neighbours       | How many of the closest sensors each place weighs: Auto (12), 8, 16, 32 or All                 | Auto (12)    |
+| Smoothing        | 0 to 6: blurs the estimate, on the same scale as kepler's Contour layer; see [Smoothing](#smoothing) | 0            |
+| Colours over     | **Colour scale** (its breaks) or **Surface range** (its colours spread over the surface's lowest to highest value) | Colour scale |
 | Max distance (m) | Leaves out places further than this from every sensor; empty is no limit                       | No limit     |
 | Fade edge        | Shown with a max distance: the last third before it fades out instead of ending in a hard edge | on           |
 | Area             | Sensors hull (the shape the outer sensors enclose) or Rectangle (their bounding box)           | Sensors hull |
@@ -91,6 +93,31 @@ so. See [Colour palettes and scales](/guide/kepler/colour-palettes-and-scales).
 
 **Last** is the newest reading, because Grafana returns rows in time order. **Mean**, **Min** and
 **Max** summarise every reading of the sensor among the rows the filters keep.
+
+### Smoothing
+
+::: info Since Plus 1.7.0
+Smoothing and Colours over are new in Plus 1.7.0, not released yet.
+:::
+
+With hundreds of sensors that disagree from one street to the next, such as the traffic counters of a city, the
+estimate draws every sensor's neighbourhood as a patch of its own: an honest picture of the readings, but hard to
+read as a whole. **Smoothing** blurs the estimate over its neighbourhood (a Gaussian blur of the computed surface) so
+the broad pattern shows. It is on the same scale as kepler's own Contour layer: 3, the Contour's default, blurs about
+as much there as here, at any resolution. At 0 the surface is the estimate as it is, and a place on a sensor takes
+its value; above 0 it no longer does.
+
+A smoothed surface spans less than the readings, so a colour scale made from the readings (a quantile or quantize
+scale of the rows) leaves its outer colours unused. **Colours over** set to **Surface range** spreads the palette's
+colours evenly from the surface's lowest to its highest value, as the Contour layer spreads its levels, each break
+rounded. kepler's legend still shows the colour scale's breaks; the hover's **Band** gives the surface's.
+
+![Madrid's traffic counters, their load in the last five minutes: on the left the estimate as it is, a patchwork of red and blue patches street by street; on the right with Smoothing 3 and Colours over the surface range, broad bands from blue at the edges to red over the centre](/img/plus/surface-smoothing.jpg)
+
+How it differs from the Contour layer: the Contour takes the mean of the points in each cell of a grid and counts a
+cell without points as 0, so where points are dense it draws higher values, and its peaks follow the density of
+sensors as much as their readings. The Surface estimates every place between the sensors first, and the blur weighs
+only what lies inside the area drawn: a place far from any sensor is not pulled toward zero.
 
 ### Under the buildings
 
@@ -193,7 +220,8 @@ if the breaks stay put.
   if the first is above 1, a break at 1 is added below it. The palette's colours are spread evenly
   over the bands. For vehicles within 500 m, `2, 5, 10, 20, 40` reads well.
 - **Interpolate:** the breaks are the colour scale's. A **custom** scale gives exact breaks that never
-  move.
+  move. With **Colours over** set to **Surface range** they follow each frame's surface and move with it: keep
+  **Colour scale** to compare frames.
 
 ## When it does not draw
 
