@@ -65,8 +65,8 @@ buildings, and cast their shadows, themselves.
 
 At night the buildings keep their colour, the night's style's or the one picked for the night, under a faint light
 from high on the side opposite the sun, so their roofs and walls still read apart. They are drawn from zoom 12, out to
-about 3.5 km from the centre of the view, as the Buildings layer draws them. Leave it off with **Relief** on: the
-buildings it draws stand at sea level, under the terrain.
+about 3.5 km from the centre of the view, as the Buildings layer draws them. With **Relief** on the base map keeps its
+own 3D buildings, standing on the terrain, and they cast no shadow.
 
 ## Street lights
 
