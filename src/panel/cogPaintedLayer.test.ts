@@ -282,3 +282,24 @@ describe('cogPaintedDeckProps for a scene of several images', () => {
     expect(decodeURIComponent(single.data as string)).toContain('e.tif');
   });
 });
+
+describe('a painted COG painted as its catalog says', () => {
+  it('asks every tile, and every piece of a mosaic, with the paint parameters', () => {
+    const paint = 'bidx=1&colormap_name=viridis&rescale=0%2C420';
+    const props = cogPaintedDeckProps({
+      id: 'l',
+      metadata: {
+        serverUrl: 'https://tiler.example',
+        sourceUrl: 'https://data.example/a.tif',
+        paint,
+        parts: [
+          { url: 'https://data.example/a.tif', bbox: [0, 0, 1, 1] },
+          { url: 'https://data.example/b.tif', bbox: [1, 0, 2, 1] },
+        ],
+      } as CogPaintedMetadata,
+    })!;
+    expect(String(props.data)).toContain('&bidx=1&colormap_name=viridis&rescale=0%2C420');
+    const parts = props.partTiles as Array<{ template: string }>;
+    expect(parts.map((p) => p.template.includes('colormap_name=viridis'))).toEqual([true, true]);
+  });
+});

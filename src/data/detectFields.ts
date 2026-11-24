@@ -91,6 +91,11 @@ export interface FieldRoles {
    */
   rasterPaint?: string;
   /**
+   * When each scene of a raster series stops being the picture: a yearly map lasts its year. With it a scene is in
+   * the map's time window when its span touches the window, not only when its start falls inside.
+   */
+  rasterEnd?: string;
+  /**
    * The pieces of one moment of a raster series: rows that share a value are one scene (the tiles of one satellite
    * pass), which a server-painted raster draws together; and where each piece lies, `west,south,east,north`.
    */
@@ -328,6 +333,7 @@ export const NAME_CANDIDATES: Record<string, string[]> = {
   rasterBands: ['raster_bands', 'band_combination'],
   rasterPainted: ['raster_painted'],
   rasterPaint: ['raster_paint'],
+  rasterEnd: ['raster_end', 'end_datetime'],
   rasterGroup: ['raster_group'],
   rasterBbox: ['raster_bbox'],
   // WMS. `wms` alone is worth accepting because a query that fixes the service
@@ -423,13 +429,15 @@ export function detectFields(frame: DataFrame): FieldRoles {
   // `recorded_at` to `__timestamp`. A frame that names its clock is taken at
   // its word (`frameTimeField`): that column, or none at all — a layer's dates
   // that are not when anything happened (a record's last update) are no clock.
+  // A raster series' end is not its time.
   const named = frameTimeField(frame);
+  const timeFields = frame.fields.filter((f) => f.type === FieldType.time);
   const timeField =
     named === undefined
-      ? frame.fields.find((f) => f.type === FieldType.time)
+      ? (timeFields.find((f) => f.name !== roles.rasterEnd) ?? timeFields[0])
       : named === null
         ? undefined
-        : frame.fields.find((f) => f.name === named && f.type === FieldType.time);
+        : timeFields.find((f) => f.name === named);
   if (timeField) {
     roles.time = timeField.name;
   }

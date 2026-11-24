@@ -15,7 +15,7 @@ import type { WmsDataset } from '../data/wmsDataset';
 import type { EsriDataset } from '../data/esriDataset';
 import type { XyzDataset } from '../data/xyzDataset';
 import type { ZarrDataset } from '../data/zarrDataset';
-import { namesBasemap, type SavedMapConfig } from '../data/mapConfig';
+import { namesBasemap, type SavedCatalogLayer, type SavedMapConfig } from '../data/mapConfig';
 import type { KeplerThemeOverride } from '../data/keplerTheme';
 import { KEPLER_INSTANCE_ID, maxZoomOf } from './constants';
 import { registeredMapStyles, REPLACES_DEFAULT_MAP_STYLES, startingStyleType } from './basemaps';
@@ -43,7 +43,12 @@ import {
   setBasemap,
   setSidePanel,
   sizeMapForFit,
+  addCatalogDataset,
+  catalogRasterMetadata,
+  readViewportBounds,
 } from './keplerAdapter';
+import { CatalogContext, type CatalogApi } from '../catalog/CatalogPanel';
+import { catalogRefsOf, prefetchCatalogs } from '../catalog/catalogSource';
 import { decideLoadAction, shouldBuildMap } from './loadDecision';
 import { useTimeRangeSync } from './useTimeRangeSync';
 import { useTimeRangeNotices } from './useTimeRangeNotices';
@@ -71,12 +76,15 @@ import { useLayerFraming } from './useLayerFraming';
 import { useLayerTitles } from './useLayerTitles';
 import { centerOnLoad, withLoadCenter } from './centerSync';
 import { useRasterTimeline } from './useRasterTimeline';
+import { useCatalogSeries } from '../catalog/useCatalogSeries';
+import { useCatalogLayers } from '../catalog/useCatalogLayers';
 import { useWmsCalendar } from './useWmsCalendar';
 import { useWmsTimeline } from './useWmsTimeline';
 import { boxedEsri, boxedRaster, boxedWms, boxedXyz, useBoxFraming } from './useBoxFraming';
 import type { BoxFrame } from './wmsExtent';
 import { useEsriTimeline } from './useEsriTimeline';
 import { useZarrTimeline } from './useZarrTimeline';
+import { useCatalogZarr } from '../catalog/useCatalogZarr';
 import { useExplorerDatasets } from './useExplorerDatasets';
 import { useViewportGuard } from './useViewportGuard';
 import { useSplitMapsGuard } from './useSplitMapsGuard';
@@ -449,6 +457,51 @@ export function KeplerMap({
   // `splitMapsGuard.ts`. Armed on every load and refresh below.
   const guardSplitMaps = useSplitMapsGuard({ store, mapConfig });
 
+  // A map with tilesets added from a catalog waits for those catalogs, a few seconds at most, so that its first
+  // load takes their addresses from the catalog rather than from the saved config (catalog/catalogSource.ts).
+  const catalogKey = JSON.stringify(catalogRefsOf(mapConfig));
+  const [catalogsReadFor, setCatalogsReadFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (catalogKey === '[]') {
+      return;
+    }
+    let live = true;
+    prefetchCatalogs(JSON.parse(catalogKey)).then(() => live && setCatalogsReadFor(catalogKey));
+    return () => {
+      live = false;
+    };
+  }, [catalogKey]);
+  const catalogsReady = catalogKey === '[]' || catalogsReadFor === catalogKey;
+  // Add from catalog, in the map control: a picked tileset joins the map as a saved one would.
+  // Layers read from a catalog by query over the view (GeoParquet): the map's own list, saved with it.
+  const [catalogLayers, setCatalogLayers] = useState<SavedCatalogLayer[]>(savedMapConfig?.catalogLayers ?? []);
+  const catalogLayersRef = useRef(catalogLayers);
+  useEffect(() => {
+    catalogLayersRef.current = catalogLayers;
+  }, [catalogLayers]);
+  const [catalogLayersFor, setCatalogLayersFor] = useState(savedMapConfig);
+  if (catalogLayersFor !== savedMapConfig) {
+    setCatalogLayersFor(savedMapConfig);
+    setCatalogLayers(savedMapConfig?.catalogLayers ?? []);
+  }
+  const catalogApi = useMemo<CatalogApi>(
+    () => ({
+      add: (saved) => addCatalogDataset(store.dispatch, saved),
+      addLayer: (layer) => setCatalogLayers((was) => [...was.filter((l) => l.id !== layer.id), layer]),
+      context: {
+        viewBounds: () => {
+          const view = readViewportBounds(store);
+          return view ? [view.west, view.south, view.east, view.north] : null;
+        },
+        tileServerUrls: rasterServerUrls ?? [],
+        rasterMetadata: catalogRasterMetadata,
+        timeRange: grafanaRange,
+        followsDashboard: couplesDashboardRange(timeSync),
+      },
+    }),
+    [store, rasterServerUrls, grafanaRange, timeSync]
+  );
+
   // The panel's size, for the load below to hand kepler before it frames the
   // data. Read through a ref so that a resize does not re-run the load.
   const mapSize = useRef({ width, height });
@@ -478,6 +531,7 @@ export function KeplerMap({
     // nothing on a map with a view of its own: `shouldBuildMap`.
     if (
       !isReady ||
+      !catalogsReady ||
       !shouldBuildMap({
         hasContent:
           datasets.length > 0 ||
@@ -596,6 +650,7 @@ export function KeplerMap({
     }
   }, [
     isReady,
+    catalogsReady,
     datasets,
     rasters,
     wms,
@@ -629,7 +684,19 @@ export function KeplerMap({
   // the clock alone instead of widening it to the whole dataset on load.
   const clockVariables = timeSync === 'variables' ? (timeVariables ?? null) : null;
 
-  useRasterTimeline({ store, isReady, rasters, timeVariables: clockVariables });
+  // A series added from a catalog moves with the same clock as a query's.
+  const catalogSeries = useCatalogSeries(store, isReady, grafanaRange);
+  const timelineRasters = useMemo(
+    () => (catalogSeries.length > 0 ? [...rasters, ...catalogSeries] : rasters),
+    [rasters, catalogSeries]
+  );
+  useRasterTimeline({
+    store,
+    isReady,
+    rasters: timelineRasters,
+    timeVariables: clockVariables,
+    followsDashboard: couplesDashboardRange(timeSync),
+  });
 
   // A WMS query hands the same widget the service's own dates, and pins which
   // of the service's layers is drawn.
@@ -637,7 +704,10 @@ export function KeplerMap({
 
   // A Zarr query hands the widget the moments the store holds, and the label
   // each one answers to.
-  useZarrTimeline({ store, isReady, layers: zarrLayers, timeVariables: clockVariables });
+  // Data cube variables added from a catalog walk the same timeline, their moments asked in each time range.
+  const catalogZarr = useCatalogZarr(store, isReady, grafanaRange);
+  const timelineZarr = useMemo(() => [...zarrLayers, ...catalogZarr], [zarrLayers, catalogZarr]);
+  useZarrTimeline({ store, isReady, layers: timelineZarr, timeVariables: clockVariables });
   useEsriTimeline({ store, isReady, layers: esriLayers, timeVariables: clockVariables });
 
   useExplorerDatasets({ store, isReady, panelId });
@@ -672,11 +742,27 @@ export function KeplerMap({
   // The options editor's save and the map's own button: one capture for both.
   // Its effect keeps its place after the load effect, which therefore runs
   // first in a commit that brings a save request.
+  // A save keeps the catalog layers beside kepler's config: kepler keeps no dataset of rows.
+  const onCapturedWithCatalog = useCallback(
+    (config: SavedMapConfig) =>
+      onMapConfigCaptured(
+        catalogLayersRef.current.length > 0 ? { ...config, catalogLayers: catalogLayersRef.current } : config
+      ),
+    [onMapConfigCaptured]
+  );
   const saveMapConfig = useSaveMapConfig({
     store,
     saveRequest,
-    onMapConfigCaptured,
+    onMapConfigCaptured: onCapturedWithCatalog,
     appliedConfigRef: appliedConfig,
+  });
+  useCatalogLayers({
+    store,
+    isReady,
+    layers: catalogLayers,
+    generation: savedMapConfig,
+    onRemoved: (id) => setCatalogLayers((was) => was.filter((l) => l.id !== id)),
+    range: grafanaRange,
   });
   const sidePanelOpen = useSidePanelOpen(store);
 
@@ -882,35 +968,37 @@ export function KeplerMap({
                       <LinksContext.Provider value={links}>
                         <AdHocContext.Provider value={adHoc}>
                           <PanelMappingsContext.Provider value={panelMappings}>
-                            <KeplerGl
-                              id={KEPLER_INSTANCE_ID}
-                              width={width}
-                              height={height}
-                              /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
+                            <CatalogContext.Provider value={catalogApi}>
+                              <KeplerGl
+                                id={KEPLER_INSTANCE_ID}
+                                width={width}
+                                height={height}
+                                /* kepler 3.x defaults to MapLibre with Carto basemaps; the prop is
                      required by the type but unused unless a Mapbox style is picked. */
-                              mapboxApiAccessToken=""
-                              /* `appName` is deliberately left at kepler's own default: the
+                                mapboxApiAccessToken=""
+                                /* `appName` is deliberately left at kepler's own default: the
                      side panel names the library the map comes from, and calling
                      it "Grafana" claimed credit for someone else's work. */
-                              theme={theme}
-                              /* kepler ships translations for its own layer types only, so the
+                                theme={theme}
+                                /* kepler ships translations for its own layer types only, so the
                      four this plugin adds showed as `Layer.Type.Esriimage` and the
                      like wherever a layer is named. */
-                              localeMessages={localeMessages}
-                              mapStyles={mapStyles}
-                              /* Drops kepler's own list, which is half Mapbox styles that
+                                localeMessages={localeMessages}
+                                mapStyles={mapStyles}
+                                /* Drops kepler's own list, which is half Mapbox styles that
                      cannot load without an account — see REPLACES_DEFAULT_MAP_STYLES. */
-                              mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
-                              /* No right-to-left text plugin. On a Mapbox base map
+                                mapStylesReplaceDefault={REPLACES_DEFAULT_MAP_STYLES}
+                                /* No right-to-left text plugin. On a Mapbox base map
                      react-map-gl would load one from api.mapbox.com and run it in
                      the map's workers, which is code from a third-party host;
                      this plugin's MapLibre maps never ask for one. */
-                              RTLTextPlugin={false}
-                              /* kepler renders one commit late and silently discards actions
+                                RTLTextPlugin={false}
+                                /* kepler renders one commit late and silently discards actions
                      addressed to an instance that has not registered yet. */
-                              onKeplerGlInitialized={() => setIsReady(true)}
-                              deckGlProps={DECK_GL_PROPS}
-                            />
+                                onKeplerGlInitialized={() => setIsReady(true)}
+                                deckGlProps={DECK_GL_PROPS}
+                              />
+                            </CatalogContext.Provider>
                           </PanelMappingsContext.Provider>
                         </AdHocContext.Provider>
                       </LinksContext.Provider>

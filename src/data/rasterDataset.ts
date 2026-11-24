@@ -71,6 +71,8 @@ export interface RasterDataset {
    * nothing: the choice is made in the browser, against a list already here.
    */
   scenes: RasterScene[];
+  /** Metadata a rebuild of the dataset keeps: a catalog series' origin and scenes (catalogSource.ts). */
+  keepMetadata?: Record<string, unknown>;
   /** The pieces of the scene being drawn, when it has several (see `RasterScene.parts`). */
   parts?: ScenePart[];
   /**
@@ -125,6 +127,11 @@ export type RasterKind = 'cog' | 'pmtiles' | 'painted' | 'stac';
 export interface RasterScene {
   /** Capture time in epoch ms, or null when the query carries no time column. */
   time: number | null;
+  /**
+   * When the scene stops being the picture, for one that lasts (a yearly map): `raster_end`. Absent or null, the
+   * scene is the instant it was captured.
+   */
+  end?: number | null;
   sourceUrl: string;
   /** The STAC item this scene belongs to, when the query names one. */
   itemUrl: string | null;
@@ -161,7 +168,12 @@ export function pickScene(scenes: RasterScene[], window: SceneWindow | null): Ra
   if (!dated) {
     return scenes[0] ?? null;
   }
-  return pickLatestWithin(scenes, (scene) => scene.time, window);
+  return pickLatestWithin(
+    scenes,
+    (scene) => scene.time,
+    window,
+    (scene) => scene.end
+  );
 }
 
 /**
@@ -272,7 +284,7 @@ export function framesToRasters(
       return;
     }
 
-    const allScenes = readScenes(frame, roles.rasterUrl, roles.time, roles.rasterItemUrl, {
+    const allScenes = readScenes(frame, roles.rasterUrl, roles.time, roles.rasterItemUrl, roles.rasterEnd, {
       group: roles.rasterGroup,
       bbox: roles.rasterBbox,
     });
@@ -537,6 +549,7 @@ function readScenes(
   urlColumn: string,
   timeColumn?: string,
   itemColumn?: string,
+  endColumn?: string,
   pieces: { group?: string; bbox?: string } = {}
 ): RasterScene[] {
   const urls = frame.fields.find((f) => f.name === urlColumn);
@@ -545,6 +558,7 @@ function readScenes(
   }
   const times = timeColumn ? frame.fields.find((f) => f.name === timeColumn) : undefined;
   const items = itemColumn ? frame.fields.find((f) => f.name === itemColumn) : undefined;
+  const ends = endColumn && endColumn !== timeColumn ? frame.fields.find((f) => f.name === endColumn) : undefined;
   const groups = pieces.group ? frame.fields.find((f) => f.name === pieces.group) : undefined;
   const boxes = pieces.bbox ? frame.fields.find((f) => f.name === pieces.bbox) : undefined;
 
@@ -556,9 +570,11 @@ function readScenes(
     }
     const raw = times ? Number(times.values[i]) : NaN;
     const item = items ? items.values[i] : undefined;
+    const endRaw = ends && ends.values[i] !== null && ends.values[i] !== undefined ? Number(ends.values[i]) : NaN;
     const group = groups?.values[i];
     rows.push({
       time: Number.isFinite(raw) ? raw : null,
+      ...(Number.isFinite(endRaw) ? { end: endRaw } : {}),
       sourceUrl: url.trim(),
       itemUrl: typeof item === 'string' && item.trim() ? item.trim() : null,
       group: typeof group === 'string' && group ? group : null,
@@ -577,7 +593,7 @@ export function parseBox(value: unknown): ScenePart['bbox'] {
 }
 
 /**
- * Rows that share a group as one scene of several parts, at the earliest time of them;
+ * Rows that share a group as one scene of several parts, at the earliest time of them and until the latest end;
  * rows without a group stay as they are. The pieces are kept oldest first, so the newest lies on top.
  */
 export function groupScenes(
@@ -604,9 +620,13 @@ export function groupScenes(
     }
     const sorted = [...members].sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
     const times = sorted.map((m) => m.time).filter((t): t is number => t !== null);
+    const ends = sorted.map((m) => m.end ?? m.time).filter((t): t is number => t !== null && t !== undefined);
+    const end = ends.length ? Math.max(...ends) : null;
+    const start = times.length ? Math.min(...times) : null;
     return {
       ...plain,
-      time: times.length ? Math.min(...times) : null,
+      time: start,
+      ...(end !== null && start !== null && end > start ? { end } : {}),
       sourceUrl: sorted[0].sourceUrl,
       itemUrl: sorted[0].itemUrl,
       parts: sorted.map((m) => ({ url: m.sourceUrl, bbox: m.bbox ?? null })),

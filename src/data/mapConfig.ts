@@ -46,6 +46,15 @@ export const REMOTE_DATASET_TYPES = [
   'externally-hosted',
   // The panel's own `{z}/{x}/{y}` tiles (`xyzTiles.ts`): a template, no rows.
   'xyz-tiles',
+  // A COG the tile server paints (`cogPaintedLayer.ts`). A query's is never saved (its id is the panel's, see
+  // `isPanelRasterId`); one added from a catalog (Add from catalog) is, like a tileset.
+  'cogPainted',
+  // An ArcGIS ImageServer or MapServer (`esriImageLayer.ts`). A query's is never saved (`isPanelEsriId`); one added
+  // from a catalog is.
+  'esriImage',
+  // The panel's Zarr layer (`zarrTileLayer.ts`). A query's is never saved (`isPanelZarrId`); a data cube's variable
+  // added from a catalog is.
+  'zarrTiles',
 ];
 
 /** The map's name and description, as kepler's `info` carries them. */
@@ -55,9 +64,38 @@ export interface SavedMapInfo {
 }
 
 /** A kepler saved config: `{version, config}`, as produced by `getConfigToSave`. */
+/**
+ * A layer the map reads from a catalog by query, over its view (a GeoParquet read by area, the catalog data source's
+ * `parquet` query): kepler keeps no dataset of rows, so the map keeps what to ask, and asks it again on load.
+ */
+export interface SavedCatalogLayer {
+  /** The dataset's id in kepler, which its layers name. */
+  id: string;
+  label: string;
+  /** The catalog data source. */
+  uid: string;
+  /** What is read: a collection of GeoParquet files, or one file's entry. */
+  target: string;
+  /** Columns besides the geometry; empty, the file's simple ones. */
+  columns: string[];
+  /** The area added over, kept when the view is too wide to follow. */
+  bbox: [number, number, number, number];
+  followView: boolean;
+  /**
+   * What the data source is asked: a GeoParquet read by area (`parquet`, the default), a FlatGeobuf read by area
+   * through its spatial index (`flatgeobuf`), the last value of sensors over the area (`sensors`, SensorThings), or
+   * an EDR collection's values there (`edr`). The last two follow the dashboard's time range too.
+   */
+  queryType?: 'parquet' | 'flatgeobuf' | 'sensors' | 'edr';
+  /** EDR: the parameters asked. */
+  parameters?: string[];
+}
+
 export interface SavedMapConfig {
   version: string;
   config: Record<string, unknown>;
+  /** Layers read from a catalog by query, over the view (see {@link SavedCatalogLayer}). */
+  catalogLayers?: SavedCatalogLayer[];
   /**
    * The URL-backed datasets the config's layers are built on.
    *

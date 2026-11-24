@@ -9,6 +9,7 @@ import {
 } from '@kepler.gl/components';
 import { ChartManagerFactory } from '@kepler.gl/components/charts';
 import { getApplicationConfig } from '@kepler.gl/utils';
+import { CatalogControl, CatalogPanel, CatalogToggleContext } from '../catalog/CatalogPanel';
 
 /**
  * The map control, with the three features kepler ships complete but never
@@ -115,11 +116,15 @@ function CustomMapControlFactory(
     // config, and the tests flip it.
     const chartsEnabled = Boolean(getApplicationConfig().enableChartsPanel);
     const isExport = Boolean(props.isExport);
+    // Add from catalog (catalog/CatalogPanel.tsx): open or not is the toolbar's own state, shared with its panel.
+    const [catalogOpen, setCatalogOpen] = React.useState(false);
     const actionComponents = [
       ...(MapControl.defaultActionComponents ?? []),
       ...(chartsEnabled ? [ChartControl] : []),
       EffectControl,
+      ...(isExport ? [] : [CatalogControl]),
     ];
+    const showCatalog = !isExport && catalogOpen;
     const showEffects = Boolean(props.mapControls?.effect?.active);
     // "Aa" on: kepler's annotation mode, where notes can be picked and edited.
     const showAnnotations = !isExport && Boolean(props.mapControls?.annotation?.active);
@@ -132,17 +137,23 @@ function CustomMapControlFactory(
     const showCharts = chartPanelActive || hasPinnedCharts;
 
     return (
-      <StyledMapControlOverlay top={props.top} rightPanelVisible={showEffects || showAnnotations || showCharts}>
-        <StyledMapControlPanel>
-          {/* top is consumed by the overlay; the inner toolbar starts at 0. */}
-          <MapControl {...props} top={0} actionComponents={actionComponents} />
-        </StyledMapControlPanel>
-        <StyledMapControlContextPanel>
-          {showAnnotations ? <MountedAnnotationManager /> : null}
-          {showCharts ? <MountedChartManager panelActive={chartPanelActive} isExport={isExport} /> : null}
-          {showEffects ? <MountedEffectManager /> : null}
-        </StyledMapControlContextPanel>
-      </StyledMapControlOverlay>
+      <CatalogToggleContext.Provider value={{ open: showCatalog, setOpen: setCatalogOpen }}>
+        <StyledMapControlOverlay
+          top={props.top}
+          rightPanelVisible={showEffects || showAnnotations || showCharts || showCatalog}
+        >
+          <StyledMapControlPanel>
+            {/* top is consumed by the overlay; the inner toolbar starts at 0. */}
+            <MapControl {...props} top={0} actionComponents={actionComponents} />
+          </StyledMapControlPanel>
+          <StyledMapControlContextPanel>
+            {showCatalog ? <CatalogPanel /> : null}
+            {showAnnotations ? <MountedAnnotationManager /> : null}
+            {showCharts ? <MountedChartManager panelActive={chartPanelActive} isExport={isExport} /> : null}
+            {showEffects ? <MountedEffectManager /> : null}
+          </StyledMapControlContextPanel>
+        </StyledMapControlOverlay>
+      </CatalogToggleContext.Provider>
     );
   };
 

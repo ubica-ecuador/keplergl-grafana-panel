@@ -270,6 +270,27 @@ describe('framesToRasters — a series of scenes', () => {
     expect(framesToRasters([frame], {}, { tileServerUrls: [SERVER] })[0].sourceUrl).toBe('https://b/jul21.tif');
   });
 
+  it('reads when each scene stops holding from raster_end, whatever the column order', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'raster_end', type: FieldType.time, values: [Date.UTC(2010, 11, 31), Date.UTC(2020, 11, 31)] },
+        { name: 'time', type: FieldType.time, values: [Date.UTC(2010, 0, 1), Date.UTC(2020, 0, 1)] },
+        { name: 'raster_url', type: FieldType.string, values: ['https://b/2010.tif', 'https://b/2020.tif'] },
+      ],
+    });
+
+    const [raster] = framesToRasters([frame], {}, { tileServerUrls: [SERVER] });
+
+    expect(raster.scenes.map((scene) => [scene.time, scene.end])).toEqual([
+      [Date.UTC(2010, 0, 1), Date.UTC(2010, 11, 31)],
+      [Date.UTC(2020, 0, 1), Date.UTC(2020, 11, 31)],
+    ]);
+    // Mid-2010 is the 2010 map, though no scene starts in it.
+    const july = { from: Date.UTC(2010, 6, 1), to: Date.UTC(2010, 6, 31) };
+    expect(rasterForWindow(raster, july)?.sourceUrl).toBe('https://b/2010.tif');
+  });
+
   it('makes one scene of the rows that share a raster_group, a mosaic a painted raster draws', () => {
     const frame = toDataFrame({
       refId: 'A',
@@ -699,6 +720,22 @@ describe('a raster that draws itself its own way', () => {
     // A variable not yet resolved arrives as its own name, as on the panel option.
     expect(unknown.kind).toBe('cog');
     expect(unknown.preset).toBeUndefined();
+  });
+
+  it("keeps how the server paints a painted file (raster_paint, from a catalog's classes or renders)", () => {
+    const paint = 'bidx=1&colormap=%7B%221%22%3A%5B77%2C146%2C33%2C255%5D%7D';
+    const [painted, imagery] = framesToRasters(
+      [
+        withColumns('A', { raster_painted: true, raster_paint: paint }),
+        withColumns('B', { raster_painted: false, raster_paint: paint }),
+      ],
+      {},
+      { ...BAND_OPTS, painted: false }
+    );
+    expect(painted).toMatchObject({ kind: 'painted', paint });
+    // Told to be drawn by the browser: the server paints nothing, so the parameters have nothing to say.
+    expect(imagery.kind).toBe('cog');
+    expect(imagery.paint).toBeUndefined();
   });
 
   it('reads painted as a yes or a no, in the spellings a query returns', () => {

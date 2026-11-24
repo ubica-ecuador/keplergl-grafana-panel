@@ -23,11 +23,18 @@ export interface TimeWindow {
  * that means, because it means different things: for a raster query without a
  * time column it means "there is no timeline here, draw the one scene", and for
  * a service's date axis it means "there is nothing to walk".
+ *
+ * An item that lasts — a year's map, a month's mosaic — says so through
+ * `endOf`, and then it is in the window when its span touches it: a yearly
+ * biomass map is what was on the ground in July of that year too, not only on
+ * its first of January. Without an end (or with one before the start) an item
+ * is the instant it was captured, as before.
  */
 export function pickLatestWithin<T>(
   items: readonly T[],
   timeOf: (item: T) => number | null,
-  window: TimeWindow | null
+  window: TimeWindow | null,
+  endOf?: (item: T) => number | null | undefined
 ): T | null {
   let picked: T | null = null;
   let pickedAt = -Infinity;
@@ -37,7 +44,9 @@ export function pickLatestWithin<T>(
     if (time === null || !Number.isFinite(time)) {
       continue;
     }
-    if (window && (time < window.from || time > window.to)) {
+    const end = endOf?.(item);
+    const until = typeof end === 'number' && Number.isFinite(end) && end > time ? end : time;
+    if (window && (until < window.from || time > window.to)) {
       continue;
     }
     // `>=` rather than `>`: with equal timestamps the later row wins, which

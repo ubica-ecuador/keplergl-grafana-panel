@@ -76,3 +76,18 @@ describe('withPaint', () => {
     expect(withPaint(params(), undefined).toString()).toBe(params().toString());
   });
 });
+
+describe('cogTileTemplate with a painting', () => {
+  it("adds the catalog's parameters after the file, and never a second url", () => {
+    const template = cogTileTemplate({
+      serverUrl: 'https://tiler.example/',
+      sourceUrl: 'https://data.example/forest.tif',
+      paint: 'bidx=1&colormap=%7B%221%22%3A%5B77%2C146%2C33%2C255%5D%7D&url=https%3A%2F%2Fevil.example%2Fx.tif',
+    })!;
+    const query = new URLSearchParams(template.split('?')[1]);
+    expect(template.startsWith('https://tiler.example/cog/tiles/WebMercatorQuad/{z}/{x}/{y}.png?')).toBe(true);
+    expect(query.getAll('url')).toEqual(['https://data.example/forest.tif']);
+    expect(query.get('bidx')).toBe('1');
+    expect(JSON.parse(query.get('colormap')!)).toEqual({ '1': [77, 146, 33, 255] });
+  });
+});

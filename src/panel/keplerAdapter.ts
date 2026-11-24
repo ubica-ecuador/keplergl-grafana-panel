@@ -1,6 +1,7 @@
 import {
   addDataToMap,
   addLayer,
+  addNotification,
   createOrUpdateFilter,
   deleteFeature,
   fitBounds,
@@ -20,6 +21,7 @@ import {
   toggleLayerAnimation,
   toggleLayerForMap,
   replaceDataInMap,
+  refreshDataset,
   setLayerAnimationTime,
   toggleSidePanel,
   updateDatasetProps,
@@ -28,7 +30,7 @@ import {
   wrapTo,
 } from '@kepler.gl/actions';
 import { ALL_FIELD_TYPES, PMTilesType, REMOTE_TILE, RemoteTileFormat } from '@kepler.gl/constants';
-import { adjustValueToFilterDomain, getApplicationConfig } from '@kepler.gl/utils';
+import { adjustValueToFilterDomain, createNotification, getApplicationConfig } from '@kepler.gl/utils';
 import { processRowObject } from '@kepler.gl/processors';
 import KeplerGlSchema, { datasetSchema, VERSIONS, type SavedDatasetV1 } from '@kepler.gl/schemas';
 import type { ProtoDataset } from '@kepler.gl/types';
@@ -45,10 +47,10 @@ import type { LiveLayer, SavedSplitPane } from './splitMapsGuard';
 import type { ClickedPosition, Figure, PolygonGeometry } from './clickArea';
 import { isPanelRasterId, paintedIdentityOf, type RasterDataset } from '../data/rasterDataset';
 import { isPanelWmsId, wmsCalendarDatasetId, type WmsDataset } from '../data/wmsDataset';
-import { type EsriDataset } from '../data/esriDataset';
+import { type EsriDataset, isPanelEsriId } from '../data/esriDataset';
 import { isPanelXyzId, type XyzDataset } from '../data/xyzDataset';
 import { XYZ_TILE_TYPE, type XyzTileMetadata } from '../data/xyzTiles';
-import { zarrCalendarDatasetId, type ZarrDataset } from '../data/zarrDataset';
+import { isPanelZarrId, zarrCalendarDatasetId, type ZarrDataset } from '../data/zarrDataset';
 import { rowFieldValue, wmsFeatureValues } from './clickSync';
 import { withParkedParts, type ParkedState } from './parkedConfig';
 import type { FlowFieldLayerConfig } from '../data/buildFlowField';
@@ -70,6 +72,7 @@ import { type BoxFrame, raisedToMinZoom } from './wmsExtent';
 import { isFiniteBounds } from './finiteBounds';
 import type { FilteredTimes } from './mapNotices';
 import { documentBase, relativeRemoteSource, resolveRemoteSource } from '../data/remoteSource';
+import { type CatalogRaster, withCatalogHref } from '../catalog/catalogSource';
 import { viewportFromMapState, type MapStateLike } from './windViewport';
 import type { ViewportBounds } from './viewportSync';
 import { MULTI_SELECT_FILTER_TYPE, type LinkableFilter } from './mosaicLink';
@@ -280,7 +283,8 @@ function rasterProtoDataset(raster: RasterDataset) {
       format: 'rows',
     },
     data: { fields: [], rows: [] },
-    metadata: { ...rasterMetadata(raster), ...credited(raster) },
+    // A series added from a catalog keeps where it came from and its scenes through a rebuild.
+    metadata: { ...rasterMetadata(raster), ...credited(raster), ...(raster.keepMetadata ?? {}) },
     disableDataOperation: true,
   } as unknown as ProtoDataset;
 }
@@ -304,7 +308,8 @@ function rasterMetadata(raster: RasterDataset) {
       serverUrl: raster.tileServerUrls[0] ?? '',
       sourceUrl: raster.sourceUrl,
       ...(raster.assets?.length ? { assets: raster.assets, rescale: raster.rescale } : {}),
-      ...(raster.paint ? { paint: raster.paint } : {}),
+      // How the server paints the file, as the catalog says (its classes' colours, a render).
+      ...(raster.paint && !raster.assets?.length ? { paint: raster.paint } : {}),
       // A scene of several images (one pass's tiles): drawn together, a mosaic.
       ...(raster.parts && raster.parts.length > 1 ? { parts: raster.parts } : {}),
     };
@@ -1142,11 +1147,108 @@ export function applyWmsStyle(
 export function restoredDatasets(savedConfig?: SavedMapConfig | null): ProtoDataset[] {
   const base = documentBase();
   return (savedConfig?.datasets ?? []).map((saved) => {
-    const parsed = datasetSchema[VERSIONS.v1].load(withResolvedSource(saved, base).data as SavedDatasetV1['data']);
+    // A tileset added from a catalog takes its address from the catalog again (catalog/catalogSource.ts).
+    const parsed = datasetSchema[VERSIONS.v1].load(
+      withResolvedSource(withCatalogHref(saved), base).data as SavedDatasetV1['data']
+    );
     return saved.data.type === VECTOR_TILE_TYPE
       ? { ...parsed, supportedFilterTypes: VECTOR_TILE_FILTER_TYPES }
       : parsed;
   });
+}
+
+/**
+ * The metadata kepler needs for a raster added from a catalog: what a query's raster of the same kind carries, so
+ * the two draw alike.
+ */
+export function catalogRasterMetadata(raster: CatalogRaster): Record<string, unknown> {
+  return rasterMetadata({ id: '', label: '', scenes: [], ...raster }) as Record<string, unknown>;
+}
+
+/** The datasets kepler holds, by id, as `catalogSeriesRasters` reads them: the same object until one changes. */
+export function readDatasetsById(
+  store: Store
+): Record<string, { type?: string; label?: string; metadata?: Record<string, unknown> }> | null {
+  return (getVisState(store)?.datasets as Record<string, { metadata?: Record<string, unknown> }> | undefined) ?? null;
+}
+
+/**
+ * Points a dataset kepler loads by URL (`externally-hosted`) at another address and has kepler load it again, keeping
+ * its layers: what a catalog's features do when the view or the time range moves. Quiet when it is there already.
+ */
+export function reloadExternalSource(store: Store, dispatch: Dispatch, dataId: string, source: string): boolean {
+  const dataset = getVisState(store)?.datasets[dataId] as { type?: string; metadata?: { source?: string } } | undefined;
+  if (!dataset || dataset.metadata?.source === source) {
+    return false;
+  }
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, updateDatasetProps(dataId, { metadata: { source } })));
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, refreshDataset(dataId)));
+  return true;
+}
+
+/**
+ * Puts a ramp and its range on a Zarr dataset that has none (one added from a catalog, before its first answer); a
+ * range the user or the map already has stays.
+ */
+export function setZarrStyle(
+  store: Store,
+  dispatch: Dispatch,
+  dataId: string,
+  style: { rescale?: string; colormap?: string }
+): boolean {
+  const dataset = getVisState(store)?.datasets[dataId] as { metadata?: Record<string, unknown> } | undefined;
+  const metadata = dataset?.metadata;
+  if (!metadata || !style.rescale || metadata.rescale) {
+    return false;
+  }
+  // Only the keys that change: kepler deep-merges a dataset's metadata (`deepmerge`, which concatenates arrays), so
+  // the whole metadata again would double the selectors, and TiTiler answers a repeated `sel` with a 500.
+  dispatch(
+    wrapTo(
+      KEPLER_INSTANCE_ID,
+      updateDatasetProps(dataId, {
+        metadata: { rescale: style.rescale, ...(style.colormap ? { colormap: style.colormap } : {}) },
+      })
+    )
+  );
+  return true;
+}
+
+/** The id of the calendar a catalog series' time filter hangs from. */
+export function seriesCalendarId(seriesId: string): string {
+  return `${seriesId}-dates`;
+}
+
+/**
+ * A calendar per series added from a catalog (a raster has no rows for kepler's time filter to hang from, as a WMS
+ * has none), and none left for a series the user removed.
+ */
+export function syncSeriesCalendars(
+  store: Store,
+  dispatch: Dispatch,
+  series: Array<{ id: string; label: string; times: number[] }>
+): void {
+  for (const one of series) {
+    syncCalendarDataset(store, dispatch, { id: seriesCalendarId(one.id), label: one.label, times: one.times });
+  }
+  const wanted = new Set(series.map((one) => seriesCalendarId(one.id)));
+  for (const [id, dataset] of Object.entries(getVisState(store)?.datasets ?? {})) {
+    const calendar = Boolean((dataset.metadata as { calendarFingerprint?: string } | undefined)?.calendarFingerprint);
+    if (calendar && id.startsWith('catalog-') && id.endsWith('-dates') && !wanted.has(id)) {
+      dispatch(wrapTo(KEPLER_INSTANCE_ID, removeDataset(id)));
+    }
+  }
+}
+
+/**
+ * Adds a tileset or raster picked from a catalog (the map's Add from catalog), as the restore above would: kepler
+ * makes its layer, and the 3D Tiles framing flies to a tileset once it loads (tile3dFraming.ts).
+ */
+export function addCatalogDataset(dispatch: Dispatch, saved: SavedRemoteDataset): void {
+  const parsed = datasetSchema[VERSIONS.v1].load(
+    withResolvedSource(saved, documentBase()).data as SavedDatasetV1['data']
+  );
+  dispatch(wrapTo(KEPLER_INSTANCE_ID, addDataToMap({ datasets: [parsed], options: { centerMap: false } })));
 }
 
 /**
@@ -1250,7 +1352,10 @@ function captureRemoteDatasets(store: Store): SavedRemoteDataset[] {
     // writes a second dataset with the same id into the dashboard JSON — and
     // the stale copy would then race the fresh one on the next load. Same
     // reasoning the comment above gives for leaving the row datasets out.
-    .filter(([id]) => !isPanelRasterId(id) && !isPanelWmsId(id) && !isPanelXyzId(id))
+    .filter(
+      ([id]) =>
+        !isPanelRasterId(id) && !isPanelWmsId(id) && !isPanelXyzId(id) && !isPanelEsriId(id) && !isPanelZarrId(id)
+    )
     .map(([, dataset]) => ({
       version: VERSIONS.v1,
       // The state object is kepler's own `KeplerTable`; only this module's view
@@ -3396,4 +3501,14 @@ function readXyzDatasets(store: Store): Array<{ id: string; identity: string }> 
         }),
       };
     });
+}
+
+/**
+ * Tells the map's viewer why something it asked for did not come: kepler's own notification, on the map. For what
+ * fails off the page's request path (a layer read over the view as it moves), whose error would otherwise vanish.
+ */
+export function notifyMapError(dispatch: Dispatch, message: string): void {
+  dispatch(
+    wrapTo(KEPLER_INSTANCE_ID, addNotification(createNotification({ message, type: 'error', topic: 'global' })))
+  );
 }

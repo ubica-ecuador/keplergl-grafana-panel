@@ -47,6 +47,12 @@ export interface ZarrDataset {
   dimension?: string;
   colormap?: string;
   rescale?: string;
+  /**
+   * What the timeline draws when the map's window holds none of its moments: nothing (a query's, hidden), or its
+   * latest (a variable added from a catalog, whose moments are already the dashboard's range: a map whose own clock
+   * runs over other data still shows it).
+   */
+  outsideWindow?: 'hide' | 'latest';
 }
 
 /** What the panel knows that the query does not. */

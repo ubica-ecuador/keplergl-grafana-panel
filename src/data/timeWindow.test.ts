@@ -33,4 +33,18 @@ describe('pickLatestWithin', () => {
   it('does not need the list sorted', () => {
     expect(pickLatestWithin([at(300), at(100), at(200)], timeOf, { from: 0, to: 250 })).toEqual(at(200));
   });
+
+  it('takes an item that lasts when its span touches the window', () => {
+    const years = [
+      { time: 100, end: 199 },
+      { time: 200, end: 299 },
+      { time: 300, end: 399 },
+    ];
+    const endOf = (item: { end: number }) => item.end;
+    expect(pickLatestWithin(years, timeOf, { from: 230, to: 260 }, endOf)).toEqual(years[1]);
+    expect(pickLatestWithin(years, timeOf, { from: 150, to: 260 }, endOf)).toEqual(years[1]);
+    expect(pickLatestWithin(years, timeOf, { from: 400, to: 500 }, endOf)).toBeNull();
+    // Without the end the same window holds no start, and nothing is drawn.
+    expect(pickLatestWithin(years, timeOf, { from: 230, to: 260 })).toBeNull();
+  });
 });

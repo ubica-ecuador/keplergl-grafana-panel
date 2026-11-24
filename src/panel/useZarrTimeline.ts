@@ -94,7 +94,9 @@ export function useZarrTimeline({ store, isReady, layers, timeVariables }: Param
 
     const window = readTimeRange(store);
     for (const zarr of dated) {
-      const moment = pickLatestWithin(zarr.times, (time) => time, window);
+      const moment =
+        pickLatestWithin(zarr.times, (time) => time, window) ??
+        (zarr.outsideWindow === 'latest' ? zarr.times[zarr.times.length - 1] : null);
       // Nothing in the window: hide the layer rather than drop the dataset. A
       // window with no date is a passing state — playback crosses one on every
       // lap — and rebuilding afterwards would hand back a layer with default
@@ -150,7 +152,6 @@ export function useZarrTimeline({ store, isReady, layers, timeVariables }: Param
       schedule.current();
     }
   });
-
 
   // Cancelled on unmount and nowhere else. Hanging it off the subscription
   // effect looked tidier and starved the reconcile outright: that effect

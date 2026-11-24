@@ -35,6 +35,8 @@ export interface ZarrTileMetadata {
   dimension?: string;
   colormap?: string;
   rescale?: string;
+  /** A variable added from a catalog (`catalogSource.zarrDataset`): the entry whose moments the map asks for. */
+  catalogZarr?: string;
 }
 
 /** Builds the deck layer — see `zarrDeckLayer.ts`. */
@@ -79,6 +81,11 @@ export function zarrDeckProps(args: {
 }): Record<string, unknown> | null {
   const { id, metadata, label, opacity } = args;
   if (!metadata) {
+    return null;
+  }
+  // A variable added from a catalog waits for the clock to choose its moment: asked without one, a cube with a time
+  // axis answers every tile 500 (TiTiler draws two or three dimensions, not four).
+  if (metadata.catalogZarr && metadata.dimension && !label) {
     return null;
   }
 

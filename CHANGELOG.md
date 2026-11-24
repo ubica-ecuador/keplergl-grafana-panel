@@ -6,6 +6,17 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Add from catalog.** With a Spatial Catalog data source (`ubica-spatialcatalog-datasource`) in
+  the Grafana, the map's toolbar gains a button that lists the catalog's entries and adds one to
+  the map without writing a query: rasters (painted as the catalog says, a dated collection as one
+  series whose date picks its scene, a searched series asked again over the view), map services
+  (WMS, WMTS, XYZ, TileJSON, PMTiles, ArcGIS layers and images), OGC API Features, WFS, vector
+  files, GeoParquet and FlatGeobuf read by area over the view, sensors and EDR in the time range,
+  Socrata datasets, and data cube variables on the Zarr timeline. A layer added this way is saved
+  with the map and read again from its catalog. Without such a data source the button is not shown.
+- **A raster series' end** (`raster_end`, or `end_datetime`): a scene is in the map's time window
+  when its span touches it, so a yearly map holds for its year.
+
 - **A WMS moment the service refuses falls back on the dates before it.** A time dimension can
   promise more than the service holds: DWD's ICON says an hour apart up to its last day, but past
   its first days holds one hour in three and refuses the others, so most steps of the clock there
