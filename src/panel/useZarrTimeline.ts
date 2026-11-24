@@ -30,6 +30,11 @@ interface Params {
   timeVariables: TimeVariableMapping | null;
   /** The Zarr queries, each carrying the moments it offered. */
   layers: ZarrDataset[];
+  /**
+   * Whether the dashboard time range drives the map's filter (Time range sync: Dashboard drives map, or Both
+   * directions). Then the range sync owns the clock and this never widens the filter to the domain.
+   */
+  followsDashboard?: boolean;
 }
 
 /**
@@ -50,11 +55,16 @@ interface Params {
  * the stack. Same shape as `useRasterTimeline` and `useWmsTimeline`, and for
  * the same reason.
  */
-export function useZarrTimeline({ store, isReady, layers, timeVariables }: Params): void {
+export function useZarrTimeline({ store, isReady, layers, timeVariables, followsDashboard = false }: Params): void {
   const layersRef = useRef(layers);
   useEffect(() => {
     layersRef.current = layers;
   }, [layers]);
+
+  const followsDashboardRef = useRef(followsDashboard);
+  useEffect(() => {
+    followsDashboardRef.current = followsDashboard;
+  }, [followsDashboard]);
 
   const timeVariablesRef = useRef(timeVariables);
   useEffect(() => {
@@ -84,7 +94,12 @@ export function useZarrTimeline({ store, isReady, layers, timeVariables }: Param
       return;
     }
 
-    if (opensToDomain(opened.current, readVariableWindow(timeVariablesRef.current))) {
+    // Not when the dashboard range drives the filter, as in useRasterTimeline: the range sync has put (or is about
+    // to put) the window the dashboard asks for, and widening raced it: a map opened on a narrower dashboard range
+    // stayed on the newest moment.
+    if (followsDashboardRef.current && !opened.current) {
+      opened.current = true;
+    } else if (opensToDomain(opened.current, readVariableWindow(timeVariablesRef.current))) {
       const domain = readTimeDomain(store);
       if (domain) {
         pushTimeRange(store, store.dispatch, domain);

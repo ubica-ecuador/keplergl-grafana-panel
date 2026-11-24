@@ -707,7 +707,13 @@ export function KeplerMap({
   // Data cube variables added from a catalog walk the same timeline, their moments asked in each time range.
   const catalogZarr = useCatalogZarr(store, isReady, grafanaRange);
   const timelineZarr = useMemo(() => [...zarrLayers, ...catalogZarr], [zarrLayers, catalogZarr]);
-  useZarrTimeline({ store, isReady, layers: timelineZarr, timeVariables: clockVariables });
+  useZarrTimeline({
+    store,
+    isReady,
+    layers: timelineZarr,
+    timeVariables: clockVariables,
+    followsDashboard: couplesDashboardRange(timeSync),
+  });
   useEsriTimeline({ store, isReady, layers: esriLayers, timeVariables: clockVariables });
 
   useExplorerDatasets({ store, isReady, panelId });
