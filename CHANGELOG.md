@@ -239,6 +239,10 @@ release documents what changed since the one before it.
 - **A split map's loading bar goes.** A swipe or dual map with a 3D Tile layer on one side showed
   "Loading..." for ever: the other side hides the layer, and a hidden 3D Tile layer never
   traversed its tileset, so it never said it was loaded. A hidden one now does.
+- **kepler.gl 3.3.0-alpha.28.** The cluster layer takes its radius in metres; annotations can
+  caption the view and read out the timeline; the rest is kepler's own MCP bridge (layers,
+  datasets, effects, timelines and video export driven from an assistant), which the panel does
+  not use.
 - **kepler.gl 3.3.0-alpha.27.** Animation gets a property timeline with coordinated playback and
   editable camera hold and move times, and its playback controls hold still while it plays;
   effects no longer crash when post-processing is set twice, and a video of a swipe map with
