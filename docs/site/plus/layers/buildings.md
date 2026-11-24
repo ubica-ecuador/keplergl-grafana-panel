@@ -47,6 +47,11 @@ legend, and its cards show this layer's series.
 Under kepler's **Light & Shadow** effect the buildings cast real shadows at the effect's time: on each other, and on
 the ground, which the layer covers with a clear surface that shows only the shadows falling on it.
 
+::: tip With no data at all
+For the base map's buildings to cast their shadows with no layer to add, turn on **Building shadows** in the Base map
+tab: see [Night and day](/plus/maps/night-and-day#building-shadows).
+:::
+
 ![The centre of Cuenca with the Buildings layer in grey and kepler's Light & Shadow at 16:30: the buildings lit from the west, their shadows falling east across the streets, the lower roofs and Parque Calderón](/img/plus/buildings-shadows.jpg)
 
 1. Add a Buildings layer. With no value to colour them by, every building is drawn in the layer's colour, a grey

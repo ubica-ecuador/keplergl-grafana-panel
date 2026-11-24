@@ -77,7 +77,7 @@ depends on its provider:
 | ------------------------- | -------------------------------------------------------------- |
 | Azure Maps, all four      | Relief                                                         |
 | Google, all four          | none: the tiles are images, and Relief is left off (see below) |
-| OpenFreeMap's five        | Relief and 3D Building, besides the free panel's switches      |
+| OpenFreeMap's five        | Relief and 3D Building, besides the free panel's switches; and the [Night and day](./night-and-day) sections |
 | CARTO and the free panel's own relief styles | as in the free panel                        |
 
 ### Relief
@@ -116,6 +116,12 @@ put as the map pans:
 - Route, Viewshed and Shade laid on the relief.
 
 Traffic still draws from the sea level of the map.
+
+### Night and day
+
+On OpenFreeMap's styles, three sections under Map Layers make the base map follow the sun: one style by day and
+another at night, the 3D buildings casting Light & Shadow's shadows, and the streets lit at night. See
+[Night and day](./night-and-day).
 
 ## The sky
 
