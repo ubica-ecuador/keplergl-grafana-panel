@@ -4,7 +4,7 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
-## Unreleased
+## 1.11.0 (2026-11-24)
 
 - **Add from catalog.** With a Spatial Catalog data source (`ubica-spatialcatalog-datasource`) in
   the Grafana, the map's toolbar gains a button that lists the catalog's entries and adds one to
