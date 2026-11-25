@@ -3,7 +3,7 @@ import { DataFrame } from '@grafana/data';
 import { detectFields, FieldRoleOverrides, resolveRoles } from './detectFields';
 import { firstText } from './frameValues';
 import { frameTileServerUrls, queryName } from './rasterDataset';
-import { attributionsOf, frameLabelOf } from './frameLayer';
+import { attributionsOf, frameLabelOf, frameLayerOf, type LayerBox } from './frameLayer';
 
 /**
  * A Zarr variable a query points at, in the shape the panel's tile layer needs.
@@ -53,6 +53,10 @@ export interface ZarrDataset {
    * runs over other data still shows it).
    */
   outsideWindow?: 'hide' | 'latest';
+  /** The layer the frame names (`meta.custom.layer.key`): the same key is the same layer across refreshes. */
+  layerKey?: string;
+  /** Where the store lies (`meta.custom.layer.bbox`): what the map frames it on (`boxedZarr`). */
+  layerBbox?: LayerBox;
 }
 
 /** What the panel knows that the query does not. */
@@ -147,9 +151,12 @@ export function framesToZarr(
     const dimension = firstText(frame, roles.zarrTimeDim);
     const { times, labels } = readCalendar(frame, roles.time, roles.zarrTimeLabel, dimension);
 
+    const layer = frameLayerOf(frame);
     datasets.push({
       id: zarrDatasetId(refId),
       ...attributionsOf(frame),
+      ...(layer ? { layerKey: layer.key } : {}),
+      ...(layer?.bbox ? { layerBbox: layer.bbox } : {}),
       label: frameLabelOf(frame, refId),
       serverUrl: server,
       storeUrl: named.storeUrl,

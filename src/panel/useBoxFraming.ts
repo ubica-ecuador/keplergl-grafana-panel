@@ -6,6 +6,7 @@ import type { RasterDataset } from '../data/rasterDataset';
 import type { SavedMapConfig } from '../data/mapConfig';
 import type { WmsBox, WmsDataset } from '../data/wmsDataset';
 import type { XyzDataset } from '../data/xyzDataset';
+import type { ZarrDataset } from '../data/zarrDataset';
 import { fitMapToBox, hasLayerOnDataset, type MapBounds, readMapState } from './keplerAdapter';
 import { savedViewportOf } from './viewportGuard';
 import { type BoxFrame, decideWmsFraming, fitBoundsOfBox, judgedView, unionOfBounds } from './wmsExtent';
@@ -52,19 +53,29 @@ export function boxedXyz(xyz: XyzDataset): BoxedLayer {
 }
 
 /**
- * A query's raster of several pieces (a mosaic: `raster_group`, each piece
- * with its `raster_bbox`): framed on where its pieces lie, every scene's, as
- * tiles are on their box. A raster has no rows for kepler to frame on, and a
- * mosaic of tiles of a few kilometres opened on kepler's default view asks
- * the tile server for none of them. A raster of single images says nothing of
- * where it lies here: its box is null, and it is left as it was.
+ * A query's raster: framed on where it lies, as tiles are on their box. A
+ * raster has no rows for kepler to frame on, and one of a few kilometres
+ * opened on kepler's default view shows nothing, painted or not. A mosaic
+ * (`raster_group`, each piece with its `raster_bbox`) is framed on its
+ * pieces, every scene's; a raster of single images, one or a series, on the
+ * box its frame gives its layer (`meta.custom.layer.bbox`). One that says
+ * neither is left as it was.
  */
 export function boxedRaster(raster: RasterDataset): BoxedLayer {
   const boxes = raster.scenes.flatMap((scene) => scene.parts ?? []).flatMap((part) => (part.bbox ? [part.bbox] : []));
   return {
     id: raster.id,
     identity: raster.layerKey ? `layer:${raster.layerKey}` : raster.sourceUrl,
-    bbox: unionOfBounds(boxes),
+    bbox: unionOfBounds(boxes) ?? raster.layerBbox ?? null,
+  };
+}
+
+/** A query's data cube: framed on the box its frame gives its layer, the same store and variable being the same layer. */
+export function boxedZarr(zarr: ZarrDataset): BoxedLayer {
+  return {
+    id: zarr.id,
+    identity: zarr.layerKey ? `layer:${zarr.layerKey}` : `${zarr.storeUrl}|${zarr.variable}`,
+    bbox: zarr.layerBbox ?? null,
   };
 }
 
@@ -74,7 +85,8 @@ interface Params {
   isReady: boolean;
   /**
    * The layers a query gave a box to: its WMS layers, its ArcGIS services, its
-   * tiles and its mosaics (`boxedWms`, `boxedEsri`, `boxedXyz`, `boxedRaster`).
+   * tiles, its rasters and its data cubes (`boxedWms`, `boxedEsri`, `boxedXyz`,
+   * `boxedRaster`, `boxedZarr`).
    */
   layers: BoxedLayer[];
   /** The saved config the map was built from: whether it has a view of its own. */

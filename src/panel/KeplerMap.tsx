@@ -80,7 +80,7 @@ import { useCatalogSeries } from '../catalog/useCatalogSeries';
 import { useCatalogLayers } from '../catalog/useCatalogLayers';
 import { useWmsCalendar } from './useWmsCalendar';
 import { useWmsTimeline } from './useWmsTimeline';
-import { boxedEsri, boxedRaster, boxedWms, boxedXyz, useBoxFraming } from './useBoxFraming';
+import { boxedEsri, boxedRaster, boxedWms, boxedXyz, boxedZarr, useBoxFraming } from './useBoxFraming';
 import type { BoxFrame } from './wmsExtent';
 import { useEsriTimeline } from './useEsriTimeline';
 import { useZarrTimeline } from './useZarrTimeline';
@@ -439,7 +439,7 @@ export function KeplerMap({
   // service publishes its own. Everything below works with the filled-in list,
   // so neither the load path nor the timeline has to know which of the two the
   // dates came from.
-  const wms = useWmsCalendar(wmsLayers);
+  const wms = useWmsCalendar(wmsLayers, couplesDashboardRange(timeSync) ? grafanaRange : null);
 
   // A refresh that catches the time filter playing hands it back paused; the
   // resume puts it back into play — see `resumeTimeFilter`. Held so that a
@@ -510,8 +510,14 @@ export function KeplerMap({
 
   // The layers framed on a box of their own (`useBoxFraming`, below).
   const boxedLayers = useMemo(
-    () => [...wms.map(boxedWms), ...esriLayers.map(boxedEsri), ...xyzLayers.map(boxedXyz), ...rasters.map(boxedRaster)],
-    [wms, esriLayers, xyzLayers, rasters]
+    () => [
+      ...wms.map(boxedWms),
+      ...esriLayers.map(boxedEsri),
+      ...xyzLayers.map(boxedXyz),
+      ...rasters.map(boxedRaster),
+      ...zarrLayers.map(boxedZarr),
+    ],
+    [wms, esriLayers, xyzLayers, rasters, zarrLayers]
   );
 
   // A query pointed at another layer — its frames name another
@@ -699,7 +705,13 @@ export function KeplerMap({
 
   // A WMS query hands the same widget the service's own dates, and pins which
   // of the service's layers is drawn.
-  useWmsTimeline({ store, isReady, layers: wms, timeVariables: clockVariables });
+  useWmsTimeline({
+    store,
+    isReady,
+    layers: wms,
+    timeVariables: clockVariables,
+    followsDashboard: couplesDashboardRange(timeSync),
+  });
 
   // A Zarr query hands the widget the moments the store holds, and the label
   // each one answers to.

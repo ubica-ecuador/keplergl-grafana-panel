@@ -7,7 +7,7 @@ import { anotherServiceWins } from './serviceKind';
 import { cogTileTemplate } from './cogTileUrl';
 import { stacTileTemplate } from './stacTileUrl';
 import { pickLatestWithin, type TimeWindow } from './timeWindow';
-import { attributionsOf, frameLabelOf, frameLayerOf } from './frameLayer';
+import { attributionsOf, frameLabelOf, frameLayerOf, type LayerBox } from './frameLayer';
 
 /**
  * A raster scene a query points at, in the shape kepler's raster tileset needs.
@@ -80,6 +80,11 @@ export interface RasterDataset {
    * same layer across refreshes, which the map frames once (`boxedRaster`).
    */
   layerKey?: string;
+  /**
+   * Where the layer lies (`meta.custom.layer.bbox`): what a raster of single
+   * images is framed on, having no pieces with boxes of their own (`boxedRaster`).
+   */
+  layerBbox?: LayerBox;
 }
 
 /** One piece of a scene: an image, and where it lies (west,south,east,north) when known. */
@@ -364,13 +369,14 @@ export function framesToRasters(
       opening
     );
 
-    const layerKey = frameLayerOf(frame)?.key;
+    const layer = frameLayerOf(frame);
     rasters.push({
       id: rasterDatasetId(refId),
       label,
       kind,
       ...attributionsOf(frame),
-      ...(layerKey ? { layerKey } : {}),
+      ...(layer ? { layerKey: layer.key } : {}),
+      ...(layer?.bbox ? { layerBbox: layer.bbox } : {}),
       sourceUrl,
       metadataUrl,
       tileServerUrls: kind === 'pmtiles' ? [] : tileServerUrls,

@@ -6,8 +6,9 @@ import type { SavedMapConfig } from '../data/mapConfig';
 import type { RasterDataset } from '../data/rasterDataset';
 import type { WmsDataset } from '../data/wmsDataset';
 import type { XyzDataset } from '../data/xyzDataset';
+import type { ZarrDataset } from '../data/zarrDataset';
 import { KEPLER_INSTANCE_ID } from './constants';
-import { boxedEsri, boxedRaster, boxedWms, boxedXyz, useBoxFraming } from './useBoxFraming';
+import { boxedEsri, boxedRaster, boxedWms, boxedXyz, boxedZarr, useBoxFraming } from './useBoxFraming';
 
 const FRANCE: [number, number, number, number] = [-5.5, 41, 10, 51.5];
 
@@ -382,6 +383,28 @@ describe('a mosaic of pieces', () => {
     expect(fits(dispatched)).toEqual([]);
   });
 
+  it('frames a raster of single images, one or a series, on the box its frame gives its layer', async () => {
+    const QUITO: [number, number, number, number] = [-78.7, -0.4, -78.3, 0];
+    const series = mosaic({
+      layerKey: 'monthly',
+      layerBbox: QUITO,
+      scenes: [
+        { time: Date.UTC(2025, 0, 15), sourceUrl: 'https://data.test/jan.tif', itemUrl: null },
+        { time: Date.UTC(2025, 1, 15), sourceUrl: 'https://data.test/feb.tif', itemUrl: null },
+      ],
+    });
+    const { store, dispatched } = fakeStore({ latitude: 37.75, longitude: -122.45, zoom: 9 }, ['grafana-A-raster']);
+    renderHook(() =>
+      useBoxFraming({ store, isReady: true, layers: [boxedRaster(series)], mapConfig: null, onFramed: jest.fn() })
+    );
+    await settle();
+
+    expect(fits(dispatched)).toEqual([QUITO]);
+  });
+
+  it('frames a mosaic on its pieces rather than on its layer box', () => {
+    expect(boxedRaster(mosaic({ layerBbox: [-180, -90, 180, 90] })).bbox).toEqual([4.6, 52.4, 4.9, 52.5]);
+  });
   it('is the same layer when its frame names it, whichever piece comes first', () => {
     const other = mosaic({ sourceUrl: 'https://data.test/25an2.tif' });
 
@@ -389,6 +412,42 @@ describe('a mosaic of pieces', () => {
       boxedRaster({ ...other, layerKey: 'kb25' }).identity
     );
     expect(boxedRaster(mosaic()).identity).not.toBe(boxedRaster(other).identity);
+  });
+});
+
+describe('a data cube', () => {
+  const cube = (more: Partial<ZarrDataset> = {}): ZarrDataset => ({
+    id: 'grafana-A-zarr',
+    label: 'Temperature',
+    serverUrl: 'https://titiler.test',
+    storeUrl: 'https://data.test/t.zarr',
+    variable: 'temperature',
+    times: [],
+    labels: {},
+    ...more,
+  });
+
+  it('frames a map with no saved view on the box its frame gives its layer', async () => {
+    const QUITO: [number, number, number, number] = [-78.7, -0.4, -78.3, 0];
+    const { store, dispatched } = fakeStore({ latitude: 37.75, longitude: -122.45, zoom: 9 }, ['grafana-A-zarr']);
+    renderHook(() =>
+      useBoxFraming({
+        store,
+        isReady: true,
+        layers: [boxedZarr(cube({ layerBbox: QUITO }))],
+        mapConfig: null,
+        onFramed: jest.fn(),
+      })
+    );
+    await settle();
+
+    expect(fits(dispatched)).toEqual([QUITO]);
+  });
+
+  it('has no box when its frame gives none, and is the same layer for the same store and variable', () => {
+    expect(boxedZarr(cube()).bbox).toBeNull();
+    expect(boxedZarr(cube()).identity).toBe(boxedZarr(cube({ times: [1] })).identity);
+    expect(boxedZarr(cube({ layerKey: 'k' })).identity).toBe('layer:k');
   });
 });
 
