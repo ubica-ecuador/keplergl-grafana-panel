@@ -65,14 +65,13 @@ const getStyles = (theme: GrafanaTheme2) => ({
   }),
 });
 
-/** kepler's side panel colours for the name and the credit line. */
-const Colours = styled.div`
-  .logo__link {
-    color: ${(props) => props.theme.logoColor};
-  }
-  .logo__version {
-    color: ${(props) => props.theme.subtextColor};
-  }
+/** kepler's side panel colours for the name and the credit line, on the elements themselves. */
+const NameLink = styled.a`
+  color: ${(props) => props.theme.logoColor};
+`;
+
+const Credit = styled.div`
+  color: ${(props) => props.theme.subtextColor};
 `;
 
 /**
@@ -87,10 +86,10 @@ export function sidePanelLogo(brand: SidePanelBrand): React.FC {
   function SidePanelLogo() {
     const styles = useStyles2(getStyles);
     return (
-      <Colours className={`side-panel-logo ${styles.wrapper}`}>
+      <div className={`side-panel-logo ${styles.wrapper}`}>
         <img className={styles.mark} src={`${assetBaseUrl()}/${brand.logo}`} alt="" />
         <div className={`logo__title ${styles.title}`}>
-          <a
+          <NameLink
             className={`logo__link ${styles.name}`}
             href={brand.website}
             target="_blank"
@@ -98,15 +97,15 @@ export function sidePanelLogo(brand: SidePanelBrand): React.FC {
             title={brand.name}
           >
             {brand.name}
-          </a>
-          <div className={`logo__version ${styles.poweredBy}`}>
+          </NameLink>
+          <Credit className={`logo__version ${styles.poweredBy}`}>
             powered by{' '}
             <a href={KEPLER_GL_WEBSITE} target="_blank" rel="noopener noreferrer">
               kepler.gl
             </a>
-          </div>
+          </Credit>
         </div>
-      </Colours>
+      </div>
     );
   }
   return SidePanelLogo;
