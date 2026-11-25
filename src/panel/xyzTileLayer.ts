@@ -20,7 +20,7 @@ type Constructor<T> = new (...args: any[]) => T;
 interface XyzTileLayerLike {
   id: string;
   readonly layerIcon?: unknown;
-  config: { isVisible?: boolean; dataId?: string; visConfig?: { opacity?: number } };
+  config: { isVisible?: boolean; dataId?: string; visConfig?: { opacity?: number; xyzUrl?: unknown } };
 }
 
 interface XyzTileLayerData {
@@ -32,9 +32,11 @@ export function xyzDeckProps(args: {
   id: string;
   metadata?: XyzTileMetadata;
   opacity?: number;
+  /** The tiles of the date the map's clock chose (`useXyzTimeline`), over the dataset's own. */
+  url?: unknown;
 }): Record<string, unknown> | null {
   const { id, metadata, opacity } = args;
-  const template = metadata?.url?.trim();
+  const template = (typeof args.url === 'string' && args.url.trim()) || metadata?.url?.trim();
   if (!template) {
     return null;
   }
@@ -166,6 +168,7 @@ export function makeXyzTileLayer<C extends Constructor<object>>(
         id: this.id,
         metadata: opts?.data?.metadata,
         opacity: this.config.visConfig?.opacity,
+        url: this.config.visConfig?.xyzUrl,
       });
       return props ? [buildDeckLayer({ ...props, visible })] : [];
     }

@@ -62,6 +62,12 @@ export interface XyzDataset {
    * framed again (`boxedXyz`).
    */
   layerKey?: string;
+  /**
+   * The tiles at each of their dates, oldest first, when the query gives a row per date (a time column and a
+   * `tiles_url` each: a WMTS's time dimension walked by the Spatial Catalog). The map's clock chooses one
+   * (`useXyzTimeline`); `url` is the newest, what the map opens on. Pictures only.
+   */
+  scenes?: Array<{ time: number; url: string }>;
 }
 
 /** What a query's tiles are: pictures, vector tiles, or a PMTiles archive. */
@@ -202,10 +208,21 @@ export function framesToXyz(
     const legend = format === 'raster' ? at(roles.legendUrl) : undefined;
     const legendUrl = typeof legend === 'string' ? legend.trim() : '';
     const layerKey = frameLayerOf(frame)?.key;
+    // A row per date: the tiles of each, the newest drawn first (pictures; one template is not a series).
+    const times = column(roles.time);
+    const scenes =
+      format === 'raster' && times
+        ? urls.values
+            .map((value, i) => ({ time: times.values[i], url: typeof value === 'string' ? value.trim() : '' }))
+            .filter((s): s is { time: number; url: string } => typeof s.time === 'number' && isTileTemplate(s.url))
+            .sort((a, b) => a.time - b.time)
+        : [];
+    const series = scenes.length > 1 && new Set(scenes.map((s) => s.url)).size > 1 ? scenes : undefined;
     datasets.push({
       id: xyzDatasetId(refId),
       label: frameLabelOf(frame, refId),
-      url,
+      url: series ? series[series.length - 1].url : url,
+      ...(series ? { scenes: series } : {}),
       ...(minZoom !== undefined ? { minZoom } : {}),
       ...(maxZoom !== undefined ? { maxZoom } : {}),
       ...(zoomIds ? { zoomIds } : {}),

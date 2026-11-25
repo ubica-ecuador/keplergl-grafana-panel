@@ -6,6 +6,11 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Tiles over time.** A query that gives a tile template per date — a row each, a time column and its
+  `tiles_url`, as the Spatial Catalog answers a WMTS with a time dimension (NASA GIBS's daily layers) — is
+  walked by the map's clock as a raster series is: the date in the window, else the one before it, and
+  the layer re-pointed at that date's tiles. Before, only the first row's template was drawn.
+
 - **Rows with a life (valid from / to) are in the range while they live in it.** The notice that a query's
   rows all fall outside the dashboard's range read only when each row began: six zones redrawn on 1 April
   and valid until 1 July were said to fall outside a range in May, over the map that drew them.

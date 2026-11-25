@@ -111,6 +111,19 @@ Two limits of a service-published calendar:
   deployments, and inventing dates for it would put a timeline on the map that the service answers
   with empty pictures.
 
+When the map follows the dashboard's range, the calendar read from the service is the dates **in that
+range**: a range years back gets its own dates rather than the newest two thousand.
+
+## Tiles over time (a WMTS with a time dimension) {#tiles-over-time}
+
+A tile template with the date in it — NASA GIBS's
+`…/MODIS_Terra_CorrectedReflectance_TrueColor/default/{Time}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`
+— is walked the same way when the query gives **one row per date**: a time column and, on each row, the
+`tiles_url` of that date. The map's clock picks the row by the rule above, and the layer is re-pointed
+at that row's template; deck refetches the tiles on screen. The Spatial Catalog's **Services** query
+answers a WMTS with a time dimension that way, its dates read from the service's capabilities and kept
+to the dashboard's range.
+
 ## Do not couple it through dashboard variables
 
 The obvious design — publish the map's window to a variable, have the imagery query read it — does

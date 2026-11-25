@@ -80,6 +80,7 @@ import { useCatalogSeries } from '../catalog/useCatalogSeries';
 import { useCatalogLayers } from '../catalog/useCatalogLayers';
 import { useWmsCalendar } from './useWmsCalendar';
 import { useWmsTimeline } from './useWmsTimeline';
+import { useXyzTimeline } from './useXyzTimeline';
 import { boxedEsri, boxedRaster, boxedWms, boxedXyz, boxedZarr, useBoxFraming } from './useBoxFraming';
 import type { BoxFrame } from './wmsExtent';
 import { useEsriTimeline } from './useEsriTimeline';
@@ -709,6 +710,15 @@ export function KeplerMap({
     store,
     isReady,
     layers: wms,
+    timeVariables: clockVariables,
+    followsDashboard: couplesDashboardRange(timeSync),
+  });
+
+  // Tiles given a row per date (a WMTS's time dimension) are walked the same way: the date picks the template.
+  useXyzTimeline({
+    store,
+    isReady,
+    layers: xyzLayers,
     timeVariables: clockVariables,
     followsDashboard: couplesDashboardRange(timeSync),
   });

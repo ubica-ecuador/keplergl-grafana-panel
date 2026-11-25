@@ -294,3 +294,35 @@ describe('the pieces', () => {
     expect(isPanelXyzId('grafana-A-wms')).toBe(false);
   });
 });
+
+describe('tiles given a row per date', () => {
+  const day = (d: string) => Date.parse(`${d}T00:00:00Z`);
+  const gibs = (d: string) => `https://gibs.test/MODIS/default/${d}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
+  const dated = (dates: string[]) =>
+    toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'time', type: FieldType.time, values: dates.map(day) },
+        { name: 'tiles_url', type: FieldType.string, values: dates.map(gibs) },
+        { name: 'tiles_format', type: FieldType.string, values: dates.map(() => 'raster') },
+      ],
+    });
+
+  it('are a series of templates, oldest first, opened on the newest', () => {
+    const [xyz] = framesToXyz([dated(['2025-01-11', '2025-01-10', '2025-01-12'])]);
+    expect(xyz.scenes?.map((s) => s.url)).toEqual([gibs('2025-01-10'), gibs('2025-01-11'), gibs('2025-01-12')]);
+    expect(xyz.url).toBe(gibs('2025-01-12'));
+  });
+
+  it('are one template when the rows give one date, or the same tiles', () => {
+    expect(framesToXyz([dated(['2025-01-10'])])[0].scenes).toBeUndefined();
+    const same = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'time', type: FieldType.time, values: [day('2025-01-10'), day('2025-01-11')] },
+        { name: 'tiles_url', type: FieldType.string, values: [gibs('x'), gibs('x')] },
+      ],
+    });
+    expect(framesToXyz([same])[0].scenes).toBeUndefined();
+  });
+});
