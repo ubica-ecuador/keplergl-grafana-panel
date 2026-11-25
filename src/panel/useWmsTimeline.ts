@@ -30,6 +30,12 @@ interface Params {
   timeVariables: TimeVariableMapping | null;
   /** The WMS queries, each carrying the dates it offered. */
   layers: WmsDataset[];
+  /**
+   * Whether the dashboard's range drives the map's time filter. Then the filter
+   * is never opened to the layer's dates: the range sync puts the window the
+   * dashboard asks for, as for a raster series (`useRasterTimeline`).
+   */
+  followsDashboard?: boolean;
 }
 
 /**
@@ -62,11 +68,16 @@ interface Params {
  * dispatching while kepler is mid-dispatch re-enters its reducer and overflows
  * the stack. Same shape as `useRasterTimeline`, for the same reason.
  */
-export function useWmsTimeline({ store, isReady, layers, timeVariables }: Params): void {
+export function useWmsTimeline({ store, isReady, layers, timeVariables, followsDashboard = false }: Params): void {
   const layersRef = useRef(layers);
   useEffect(() => {
     layersRef.current = layers;
   }, [layers]);
+
+  const followsDashboardRef = useRef(followsDashboard);
+  useEffect(() => {
+    followsDashboardRef.current = followsDashboard;
+  }, [followsDashboard]);
 
   const timeVariablesRef = useRef(timeVariables);
   useEffect(() => {
@@ -123,7 +134,11 @@ export function useWmsTimeline({ store, isReady, layers, timeVariables }: Params
     }
 
     const calendars = dated.map(calendarKey).join(';');
-    if (opensToDomain(opened.current === calendars, readVariableWindow(timeVariablesRef.current))) {
+    // Not when the dashboard's range drives the filter: the window is the range, and opening it to the service's
+    // dates drew the newest picture whatever date the dashboard asked for.
+    if (followsDashboardRef.current) {
+      opened.current = calendars;
+    } else if (opensToDomain(opened.current === calendars, readVariableWindow(timeVariablesRef.current))) {
       const domain = readTimeDomain(store);
       // Once the filter holds the dates: kepler rebuilds a calendar's domain after the store change that replaced
       // it, and a window opened on the one before would stay on the dates of the layer before.

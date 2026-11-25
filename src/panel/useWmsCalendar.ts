@@ -20,13 +20,18 @@ import { serviceCapabilities } from './wmsDeckLayer';
  * is large — 906 KB on the GeoGLOWS service — and shared with the layer's own
  * metadata fetch, so a page pays for it once whoever asks first.
  *
+ * Given a window (`within`: the dashboard's range, when it drives the map's
+ * clock), the dates read are those in it, so a range years back is drawn on
+ * its own dates rather than none.
+ *
  * A service that answers nothing usable is recorded as having no dates, not
  * retried: the map then behaves as it does for any fixed layer, showing the
  * service's default slice. Retrying on every store change would hammer a
  * service that is simply not time-aware.
  */
-export function useWmsCalendar(layers: WmsDataset[]): WmsDataset[] {
-  const [calendars, setCalendars] = useState<Record<string, number[]>>({});
+export function useWmsCalendar(layers: WmsDataset[], within: { from: number; to: number } | null = null): WmsDataset[] {
+  // Each layer's extent as the service wrote it, expanded below for the window of the moment.
+  const [calendars, setCalendars] = useState<Record<string, string | null>>({});
   const asked = useRef(new Set<string>());
 
   useEffect(() => {
@@ -46,14 +51,13 @@ export function useWmsCalendar(layers: WmsDataset[]): WmsDataset[] {
       serviceCapabilities(wms.serviceUrl)
         .then((capabilities) => {
           const extent = findTimeExtent(capabilities, wms.layerName);
-          const times = extent ? parseTimeExtent(extent) : [];
           if (live) {
-            setCalendars((known) => ({ ...known, [key]: times }));
+            setCalendars((known) => ({ ...known, [key]: extent ?? null }));
           }
         })
         .catch(() => {
           if (live) {
-            setCalendars((known) => ({ ...known, [key]: [] }));
+            setCalendars((known) => ({ ...known, [key]: null }));
           }
         });
     }
@@ -69,10 +73,11 @@ export function useWmsCalendar(layers: WmsDataset[]): WmsDataset[] {
         if (wms.times.length > 0) {
           return wms;
         }
-        const times = calendars[calendarKey(wms)];
-        return times?.length ? { ...wms, times } : wms;
+        const extent = calendars[calendarKey(wms)];
+        const times = extent ? parseTimeExtent(extent, undefined, within) : [];
+        return times.length ? { ...wms, times } : wms;
       }),
-    [layers, calendars]
+    [layers, calendars, within]
   );
 }
 

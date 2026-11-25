@@ -4,6 +4,18 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## Unreleased
+
+- **A raster or a data cube is framed on where it lies.** A painted COG, a series of single rasters
+  (listed, or found by a STAC API search) or a Zarr query opened on kepler's default view, an ocean away
+  from them, since none has rows for kepler to frame on; only a mosaic of pieces with their boxes was
+  framed. Each is now framed once, as a WMS or tiles are, on the box its frame gives its layer
+  (`meta.custom.layer.bbox`), unless the map has a view of its own.
+- **A WMS with a time dimension follows the dashboard's range.** A map whose clock follows the dashboard
+  opened its window on the service's newest dates (NASA GIBS's IMERG drew November 2026 under a range in
+  January 2025), and the calendar read from the capabilities held only the newest 2,000 instants, none in
+  a range years back. Now the window is the range, and the dates read are those in it.
+
 ## 1.11.1 (2026-11-25)
 
 - **Other plugins reach the map through Grafana's plugin extensions, not its event bus.** The map took

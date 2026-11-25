@@ -29,10 +29,18 @@ const DEFAULT_LIMIT = 2000;
  * The `limit` is not a nicety. `2016-01-01/2026-01-01/PT1S` is a legal extent
  * and three hundred million instants; expanded whole it would be a redux store
  * full of numbers and a browser that never comes back. When it bites, the
- * *newest* end is kept, because that is the end a map opens on.
+ * *newest* end is kept, because that is the end a map opens on. Given a
+ * window (`within`, a dashboard range the map follows), only the instants in
+ * it are read: a range years back gets its own dates, not the newest
+ * `limit` of the service, which would all lie outside it.
  */
-export function parseTimeExtent(extent: string, limit: number = DEFAULT_LIMIT): number[] {
+export function parseTimeExtent(
+  extent: string,
+  limit: number = DEFAULT_LIMIT,
+  within: { from: number; to: number } | null = null
+): number[] {
   const instants = new Set<number>();
+  const inside = (time: number) => !within || (time >= within.from && time <= within.to);
 
   for (const part of extent.split(',')) {
     const piece = part.trim();
@@ -40,13 +48,15 @@ export function parseTimeExtent(extent: string, limit: number = DEFAULT_LIMIT): 
       continue;
     }
     if (piece.includes('/')) {
-      for (const time of expandInterval(piece, limit)) {
-        instants.add(time);
+      for (const time of expandInterval(piece, limit, within?.to)) {
+        if (inside(time)) {
+          instants.add(time);
+        }
       }
       continue;
     }
     const time = Date.parse(piece);
-    if (Number.isFinite(time)) {
+    if (Number.isFinite(time) && inside(time)) {
       instants.add(time);
     }
   }
@@ -69,10 +79,11 @@ export function parseTimeExtent(extent: string, limit: number = DEFAULT_LIMIT): 
  * then stops at `end` regardless, so an over-estimate costs a few instants of
  * the allowance and never a wrong date.
  */
-function expandInterval(interval: string, limit: number): number[] {
+function expandInterval(interval: string, limit: number, until?: number): number[] {
   const [startText, endText, periodText] = interval.split('/');
   const start = Date.parse(startText ?? '');
-  const end = Date.parse(endText ?? '');
+  // Cut at `until` (a dashboard range's end): the newest instants kept are then those up to it, not the service's.
+  const end = Math.min(Date.parse(endText ?? ''), until ?? Infinity);
   const period = parseDuration(periodText ?? '');
   if (!Number.isFinite(start) || !Number.isFinite(end) || !period || end < start) {
     return [];

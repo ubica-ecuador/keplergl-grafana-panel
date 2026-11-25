@@ -71,7 +71,13 @@ describe('findTimeExtent', () => {
         name: 'root',
         layers: [
           { name: 'plain' },
-          { name: 'rain', dimensions: [{ name: 'elevation', extent: '0' }, { name: 'time', extent: '2026-08-25T00:00:00Z' }] },
+          {
+            name: 'rain',
+            dimensions: [
+              { name: 'elevation', extent: '0' },
+              { name: 'time', extent: '2026-08-25T00:00:00Z' },
+            ],
+          },
         ],
       },
     ],
@@ -85,5 +91,32 @@ describe('findTimeExtent', () => {
     expect(findTimeExtent(caps, 'plain')).toBeNull();
     expect(findTimeExtent(caps, 'absent')).toBeNull();
     expect(findTimeExtent(null, 'rain')).toBeNull();
+  });
+});
+
+describe('parseTimeExtent within a window', () => {
+  const day = (d: string) => Date.parse(`${d}T00:00:00Z`);
+
+  it('reads the instants of a long interval in the window, not the newest of the service', () => {
+    // GIBS IMERG: half-hourly since 1998, far beyond the limit.
+    const times = parseTimeExtent('1998-01-01T00:00:00Z/2026-11-24T19:30:00Z/PT30M', 2000, {
+      from: Date.parse('2025-01-10T00:00:00Z'),
+      to: Date.parse('2025-01-10T06:00:00Z'),
+    });
+    expect(times).toHaveLength(13);
+    expect(times[0]).toBe(Date.parse('2025-01-10T00:00:00Z'));
+    expect(times[12]).toBe(Date.parse('2025-01-10T06:00:00Z'));
+  });
+
+  it('keeps the dates of a list in the window', () => {
+    expect(
+      parseTimeExtent('2025-01-01,2025-02-01,2025-03-01', 2000, { from: day('2025-01-15'), to: day('2025-03-01') })
+    ).toEqual([day('2025-02-01'), day('2025-03-01')]);
+  });
+
+  it('reads nothing of a window the extent does not reach', () => {
+    expect(
+      parseTimeExtent('2025-01-01/2025-01-31/P1D', 2000, { from: day('2024-01-01'), to: day('2024-02-01') })
+    ).toEqual([]);
   });
 });
