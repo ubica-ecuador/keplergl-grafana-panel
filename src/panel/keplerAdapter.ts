@@ -2646,12 +2646,22 @@ export function readTimeFilterTimes(store: Store): FilteredTimes[] {
   }
   const dataIds = Array.isArray(filter.dataId) ? filter.dataId : filter.dataId ? [filter.dataId] : [];
   const names = Array.isArray(filter.name) ? filter.name : filter.name ? [filter.name] : [];
+  // An interval filter's end field per dataset (kepler's `endName`): its rows are in the range while they live in it.
+  const endNames = (filter as { endName?: Array<string | null> | string | null }).endName;
+  const endsOf = Array.isArray(endNames) ? endNames : endNames ? [endNames] : [];
   const sets: FilteredTimes[] = [];
   type Dataset = {
     label?: string;
     metadata?: { calendarFingerprint?: string };
     fields: Array<{ name: string; filterProps?: { mappedValue?: unknown } }>;
+    dataContainer?: { numRows(): number; valueAt(row: number, column: number): unknown };
   };
+  const msOf = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isFinite(v)
+      ? v
+      : typeof v === 'string' && v.trim() !== '' && Number.isFinite(Date.parse(v))
+        ? Date.parse(v)
+        : null;
   dataIds.forEach((dataId, index) => {
     const dataset = visState.datasets[dataId] as Dataset | undefined;
     // A WMS's or a Zarr's calendar (`syncCalendarDataset`) is said for its layer while that layer is off: its
@@ -2665,7 +2675,19 @@ export function readTimeFilterTimes(store: Store): FilteredTimes[] {
     const times = dataset?.fields.find((field) => field.name === names[index])?.filterProps?.mappedValue;
     if (drawn && dataset && Array.isArray(times)) {
       const label = (visState.datasets[owner] as Dataset | undefined)?.label ?? dataset.label ?? owner;
-      sets.push({ dataId: owner, label, times, ...(calendar ? { noun: 'dates' as const } : {}) });
+      const endColumn = endsOf[index] ? dataset.fields.findIndex((field) => field.name === endsOf[index]) : -1;
+      const container = dataset.dataContainer;
+      const ends =
+        endColumn >= 0 && container
+          ? Array.from({ length: container.numRows() }, (_, row) => msOf(container.valueAt(row, endColumn)))
+          : undefined;
+      sets.push({
+        dataId: owner,
+        label,
+        times,
+        ...(ends ? { ends } : {}),
+        ...(calendar ? { noun: 'dates' as const } : {}),
+      });
     }
   });
   return sets;

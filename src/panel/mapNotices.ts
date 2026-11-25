@@ -161,6 +161,11 @@ export interface FilteredTimes {
   dataId: string;
   label: string;
   times: readonly unknown[];
+  /**
+   * Where each row's life ends, when the filter keeps rows by their life (an interval filter's end field: a Valid
+   * until, `valid_to`): epoch ms, null for a row still alive. A row is then in the range while it lives in it.
+   */
+  ends?: readonly unknown[];
   /** What the times are of: a query's rows (the default), or the dates a WMS or a Zarr layer offers. */
   noun?: 'rows' | 'dates';
 }
@@ -193,6 +198,20 @@ function anyWithin(sorted: Float64Array, from: number, to: number): boolean {
 }
 
 /**
+ * Whether any row lives in the range: it starts by its end and has not ended before its start, an empty end being a
+ * row still alive. A zone redrawn every quarter is in force all quarter, not only on the day it was drawn.
+ */
+function anyAlive(starts: readonly unknown[], ends: readonly unknown[], from: number, to: number): boolean {
+  return starts.some((start, i) => {
+    if (typeof start !== 'number' || !Number.isFinite(start) || start > to) {
+      return false;
+    }
+    const end = ends[i];
+    return typeof end !== 'number' || !Number.isFinite(end) || end >= from;
+  });
+}
+
+/**
  * Each query whose rows all fall outside the dashboard's time range, as a
  * warning: the time filter that follows the range (`useTimeRangeSync`) hides
  * every one of them, and the map is empty with no word why — Madrid's fountains,
@@ -210,9 +229,12 @@ export function outOfRangeNotices(
   formatTime: (ms: number, span: number) => string
 ): MapNotice[] {
   const notices: MapNotice[] = [];
-  for (const { dataId, label, times, noun = 'rows' } of sets) {
+  for (const { dataId, label, times, ends, noun = 'rows' } of sets) {
     const sorted = sortedOf(times);
-    if (sorted.length === 0 || anyWithin(sorted, range.from, range.to)) {
+    if (
+      sorted.length === 0 ||
+      (ends ? anyAlive(times, ends, range.from, range.to) : anyWithin(sorted, range.from, range.to))
+    ) {
       continue;
     }
     const first = sorted[0];

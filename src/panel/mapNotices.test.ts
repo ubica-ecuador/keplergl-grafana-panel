@@ -191,6 +191,23 @@ describe('outOfRangeNotices', () => {
   };
   const LAST_7_DAYS = { from: day('2026-11-14'), to: day('2026-11-21') };
 
+  it('takes a row as in the range while it lives in it, when the rows end (valid from / to)', () => {
+    // Six zones redrawn on 1 April, valid until 1 July; one current version with no end.
+    const zones = {
+      dataId: 'grafana-A',
+      label: 'zones',
+      times: [day('2025-04-01'), day('2025-04-01')],
+      ends: [day('2025-07-01'), null],
+    };
+    const may = { from: day('2025-05-01'), to: day('2025-05-02') };
+    expect(outOfRangeNotices([zones], may, iso)).toEqual([]);
+    expect(outOfRangeNotices([{ ...zones, ends: [day('2025-07-01'), day('2025-07-01')] }], may, iso)).toEqual([]);
+    // Both ended before the range, or drawn after it: said.
+    const ended = { ...zones, ends: [day('2025-04-15'), day('2025-04-20')] };
+    expect(outOfRangeNotices([ended], may, iso)).toHaveLength(1);
+    expect(outOfRangeNotices([zones], { from: day('2025-01-01'), to: day('2025-02-01') }, iso)).toHaveLength(1);
+  });
+
   it('says the dates of a WMS or a Zarr layer as dates', () => {
     const satellite = {
       dataId: 'grafana-B-wms',

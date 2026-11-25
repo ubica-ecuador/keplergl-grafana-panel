@@ -6,6 +6,10 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **Rows with a life (valid from / to) are in the range while they live in it.** The notice that a query's
+  rows all fall outside the dashboard's range read only when each row began: six zones redrawn on 1 April
+  and valid until 1 July were said to fall outside a range in May, over the map that drew them.
+
 - **A window between two scenes shows the one before it.** A raster series, a WMS's dates, a data cube's
   moments and an ArcGIS image service's years drew the most recent one inside the map's window and
   nothing when the window held none: a monthly product under a range from the 20th of June to the 10th of
