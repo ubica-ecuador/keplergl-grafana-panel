@@ -4,7 +4,7 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
-## Unreleased
+## 1.11.1 (2026-11-25)
 
 - **Other plugins reach the map through Grafana's plugin extensions, not its event bus.** The map took
   three things from other plugins by events on Grafana's app event bus and a module export: a Kepler
