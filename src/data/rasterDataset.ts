@@ -6,7 +6,7 @@ import { firstFlag, firstText } from './frameValues';
 import { anotherServiceWins } from './serviceKind';
 import { cogTileTemplate } from './cogTileUrl';
 import { stacTileTemplate } from './stacTileUrl';
-import { pickLatestWithin, type TimeWindow } from './timeWindow';
+import { pickAsOf, type TimeWindow } from './timeWindow';
 import { attributionsOf, frameLabelOf, frameLayerOf, type LayerBox } from './frameLayer';
 
 /**
@@ -157,11 +157,13 @@ export interface RasterScene {
 export type SceneWindow = TimeWindow;
 
 /**
- * The scene a time window selects: the most recent one it contains.
+ * The scene a time window selects: the most recent one it contains, else the
+ * most recent before it (`pickAsOf`).
  *
- * "Most recent inside the window" rather than "nearest" on purpose. Dragging
- * the end of the slider back through the calendar should show what was on the
- * ground at that moment, and a scene captured after it was not.
+ * "As of the window" rather than "nearest" on purpose. Dragging the end of the
+ * slider back through the calendar should show what was on the ground at that
+ * moment, and a scene captured after it was not; a window between two scenes
+ * shows the one before, which still stands, rather than an empty map.
  *
  * Undated scenes cannot be placed on the calendar, so a query without a time
  * column keeps its old meaning: the first row is the answer. That is the
@@ -173,7 +175,7 @@ export function pickScene(scenes: RasterScene[], window: SceneWindow | null): Ra
   if (!dated) {
     return scenes[0] ?? null;
   }
-  return pickLatestWithin(
+  return pickAsOf(
     scenes,
     (scene) => scene.time,
     window,
@@ -195,9 +197,8 @@ export function rasterStyleKey(raster: RasterDataset): string {
 /**
  * The same raster dataset, re-pointed at whichever scene a window selects.
  *
- * Returns null when the window contains no scene at all, which is a real state
- * and not an error: the satellite did not pass in those days, so there is
- * nothing to draw and the caller drops the layer.
+ * Returns null when the window lies before every scene, which is a real state
+ * and not an error: there is nothing yet to draw, and the caller hides the layer.
  *
  * The id is deliberately preserved, so what reaches kepler is a replacement of
  * the dataset already on the map — the layer, and whatever the user styled on

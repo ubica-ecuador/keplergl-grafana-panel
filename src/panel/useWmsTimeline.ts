@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { Store } from 'redux';
 
-import { pickLatestWithin } from '../data/timeWindow';
+import { pickAsOf } from '../data/timeWindow';
 import type { WmsDataset } from '../data/wmsDataset';
 import {
   applyWmsLayerChoice,
@@ -150,10 +150,10 @@ export function useWmsTimeline({ store, isReady, layers, timeVariables, followsD
 
     const window = readTimeRange(store);
     for (const wms of dated) {
-      const moment = pickLatestWithin(wms.times, (time) => time, window);
-      // Nothing in the window: hide the layer rather than drop the dataset. A
-      // window with no date is a passing state — playback crosses one on every
-      // lap — and rebuilding afterwards would cost a fresh capabilities
+      const moment = pickAsOf(wms.times, (time) => time, window);
+      // Nothing as of the window (it lies before every date): hide the layer
+      // rather than drop the dataset. It is a passing state — playback starts there
+      // on every lap — and rebuilding afterwards would cost a fresh capabilities
       // document and hand back a layer with default styling.
       if (moment === null) {
         setRasterLayerVisible(store, store.dispatch, wms.id, false);

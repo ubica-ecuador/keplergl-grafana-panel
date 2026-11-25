@@ -90,9 +90,9 @@ The map opens on the newest moment in range and follows the window from there. I
 no rebuild: everything is already in the browser, the chosen rule lands in the layer's `visConfig`,
 and only the tiles on screen are refetched. A drag that stays between two moments produces nothing.
 
-This is cheaper than the same thing over files. A COG timeline swaps one image for another, and a
-window with no scene has to hide the layer; a service holds every year behind one endpoint, so
-moving through time is a change of parameter.
+This is cheaper than the same thing over files. A COG timeline swaps one image for another; a
+service holds every year behind one endpoint, so moving through time is a change of parameter.
+Either way a window that holds no year shows the year before it.
 
 ### Drawing only part of it
 

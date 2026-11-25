@@ -59,3 +59,30 @@ export function pickLatestWithin<T>(
 
   return picked;
 }
+
+/**
+ * The item on show at a time window: the most recent one inside it, else the
+ * most recent before it — what was last captured as of the window's end.
+ *
+ * A monthly product, a daily composite, a radar sweep every ten minutes: each
+ * stands until the next one comes. A window that falls between two of them
+ * (a range from the 20th of June to the 10th of July over rasters of every
+ * 15th) shows June's, not an empty map; playback across a gap keeps the last
+ * picture rather than blinking off. Null only when the window lies before
+ * every item, which the map then shows as nothing.
+ *
+ * Inside the window first (`pickLatestWithin`), so that an item that lasts and
+ * still touches the window — a year's map — wins over a later one already over.
+ */
+export function pickAsOf<T>(
+  items: readonly T[],
+  timeOf: (item: T) => number | null,
+  window: TimeWindow | null,
+  endOf?: (item: T) => number | null | undefined
+): T | null {
+  const inside = pickLatestWithin(items, timeOf, window, endOf);
+  if (inside !== null || window === null) {
+    return inside;
+  }
+  return pickLatestWithin(items, timeOf, { from: -Infinity, to: window.from });
+}

@@ -253,8 +253,8 @@ scene is drawn from it. The other footprints are drawn as geometry; their imager
 A table of ten scenes is a choice still to be made, never ten layers to stack.
 
 Which one gets drawn depends on whether the frame is **dated**. With a time field, the
-map's clock picks the most recent scene inside its window — that is what makes a daily
-series walkable. Without one, the first row wins, so the query's `ORDER BY` is the choice.
+map's clock picks the most recent scene inside its window, else the most recent before it —
+that is what makes a daily series walkable. Without one, the first row wins, so the query's `ORDER BY` is the choice.
 
 So an area whose footprints form a grid shows imagery in **one** cell of that grid. That
 is the design, not a bug — but it surprises everyone once.

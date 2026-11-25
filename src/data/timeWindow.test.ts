@@ -1,4 +1,4 @@
-import { pickLatestWithin } from './timeWindow';
+import { pickAsOf, pickLatestWithin } from './timeWindow';
 
 const at = (time: number | null) => ({ time });
 const timeOf = (item: { time: number | null }) => item.time;
@@ -46,5 +46,39 @@ describe('pickLatestWithin', () => {
     expect(pickLatestWithin(years, timeOf, { from: 400, to: 500 }, endOf)).toBeNull();
     // Without the end the same window holds no start, and nothing is drawn.
     expect(pickLatestWithin(years, timeOf, { from: 230, to: 260 })).toBeNull();
+  });
+});
+
+describe('pickAsOf', () => {
+  const day = (d: string) => Date.parse(`${d}T00:00:00Z`);
+  const monthly = ['2025-05-15', '2025-06-15', '2025-07-15'].map((d) => ({ at: day(d) }));
+  const at = (item: { at: number } | null) => (item ? new Date(item.at).toISOString().slice(0, 10) : null);
+
+  it('takes the most recent inside the window', () => {
+    expect(at(pickAsOf(monthly, (m) => m.at, { from: day('2025-05-01'), to: day('2025-07-01') }))).toBe('2025-06-15');
+  });
+
+  it('takes the most recent before a window that holds none', () => {
+    expect(at(pickAsOf(monthly, (m) => m.at, { from: day('2025-06-20'), to: day('2025-07-10') }))).toBe('2025-06-15');
+    expect(at(pickAsOf(monthly, (m) => m.at, { from: day('2026-01-01'), to: day('2026-02-01') }))).toBe('2025-07-15');
+  });
+
+  it('takes nothing for a window before every item, and the newest with no window', () => {
+    expect(pickAsOf(monthly, (m) => m.at, { from: day('2024-01-01'), to: day('2024-02-01') })).toBeNull();
+    expect(at(pickAsOf(monthly, (m) => m.at, null))).toBe('2025-07-15');
+  });
+
+  it('keeps an item that lasts into the window over a later one already over', () => {
+    const items = [
+      { at: day('2025-01-01'), end: day('2025-12-31') },
+      { at: day('2025-03-01'), end: day('2025-03-02') },
+    ];
+    const picked = pickAsOf(
+      items,
+      (m) => m.at,
+      { from: day('2025-06-01'), to: day('2025-06-10') },
+      (m) => m.end
+    );
+    expect(picked).toBe(items[0]);
   });
 });

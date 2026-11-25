@@ -33,23 +33,24 @@ better. See [Where a WMS gets its calendar](#wms-calendar) below.
 
 ## Which scene a window selects
 
-**The most recent one inside it.** Not the nearest one.
+**The most recent one inside it, else the most recent before it.** Not the nearest one.
 
 That is a real decision, and it is the one that makes dragging the end of the slider back through
 the calendar mean what you expect: it shows what was on the ground at that moment. An image captured
-_after_ the moment was not, however close it falls.
+_after_ the moment was not, however close it falls; the one captured before still stands until the
+next comes, so a monthly product under a window from the 20th of June to the 10th of July shows June's.
 
-Two edges follow from it:
+The same rule picks a WMS's date, a data cube's moment and an ArcGIS image service's year. Its edges:
 
 - **No window at all** — the newest scene there is, which is what a map should open on.
-- **A window containing nothing** — no scene, which is a real state and not an error. The satellite
-  did not pass in those days; the service has no picture of that hour.
+- **A window that holds none** — the scene before it; playback across a gap keeps the last picture.
+- **A window before every scene** — nothing yet. The data source says so when the dashboard's range
+  misses a whole series, with the dates it covers.
 
-::: tip An empty window hides the layer, it does not remove it
-Playback crosses gaps — a sixty-day rainfall series has days without a file, and every loop of the
-animation runs through them. Dropping the layer and rebuilding it on the far side would hand back a
-new layer with default styling every time, which reads as "my styling resets itself while it plays".
-So the layer is hidden and comes back as you left it.
+::: tip A window before every scene hides the layer, it does not remove it
+Playback starts there on every loop of the animation. Dropping the layer and rebuilding it would hand
+back a new layer with default styling every time, which reads as "my styling resets itself while it
+plays". So the layer is hidden and comes back as you left it.
 :::
 
 ## The picture changes; the layer does not

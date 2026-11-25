@@ -164,9 +164,9 @@ export function useRasterTimeline({ store, isReady, rasters, timeVariables, foll
       .map((raster) => rasterForWindow(raster, window))
       .filter((raster): raster is RasterDataset => raster !== null);
 
-    // Nothing in the window: hide the layer rather than drop the dataset. A
-    // window with no scene is a passing state — playback crosses one on every
-    // lap — and rebuilding the layer afterwards would hand the user a fresh one
+    // Nothing as of the window (it lies before every scene): hide the layer
+    // rather than drop the dataset. It is a passing state — playback starts there
+    // on every lap — and rebuilding the layer afterwards would hand the user a fresh one
     // with default styling each time round.
     if (selected.length === 0) {
       for (const raster of series) {

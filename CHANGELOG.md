@@ -6,6 +6,12 @@ release documents what changed since the one before it.
 
 ## Unreleased
 
+- **A window between two scenes shows the one before it.** A raster series, a WMS's dates, a data cube's
+  moments and an ArcGIS image service's years drew the most recent one inside the map's window and
+  nothing when the window held none: a monthly product under a range from the 20th of June to the 10th of
+  July was an empty map, and playback across a gap blinked off. The scene before the window still stands
+  until the next comes, and is now drawn (`pickAsOf`); a window before every scene still draws nothing.
+
 - **A raster or a data cube is framed on where it lies.** A painted COG, a series of single rasters
   (listed, or found by a STAC API search) or a Zarr query opened on kepler's default view, an ocean away
   from them, since none has rows for kepler to frame on; only a mosaic of pieces with their boxes was

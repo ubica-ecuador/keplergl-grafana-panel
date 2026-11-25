@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { Store } from 'redux';
 
-import { pickLatestWithin } from '../data/timeWindow';
+import { pickAsOf } from '../data/timeWindow';
 import { labelForTime, type ZarrDataset } from '../data/zarrDataset';
 import {
   applyZarrLabel,
@@ -110,11 +110,11 @@ export function useZarrTimeline({ store, isReady, layers, timeVariables, follows
     const window = readTimeRange(store);
     for (const zarr of dated) {
       const moment =
-        pickLatestWithin(zarr.times, (time) => time, window) ??
+        pickAsOf(zarr.times, (time) => time, window) ??
         (zarr.outsideWindow === 'latest' ? zarr.times[zarr.times.length - 1] : null);
-      // Nothing in the window: hide the layer rather than drop the dataset. A
-      // window with no date is a passing state — playback crosses one on every
-      // lap — and rebuilding afterwards would hand back a layer with default
+      // Nothing as of the window (it lies before every date): hide the layer
+      // rather than drop the dataset. It is a passing state — playback starts there
+      // on every lap — and rebuilding afterwards would hand back a layer with default
       // styling, which the user reads as the map resetting itself.
       if (moment === null) {
         setRasterLayerVisible(store, store.dispatch, zarr.id, false);

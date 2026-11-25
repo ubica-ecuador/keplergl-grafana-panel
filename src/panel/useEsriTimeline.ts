@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { Store } from 'redux';
 
 import { mosaicRuleForTime, type EsriDataset } from '../data/esriDataset';
-import { pickLatestWithin } from '../data/timeWindow';
+import { pickAsOf } from '../data/timeWindow';
 import {
   applyEsriMosaicRule,
   ensureTimeFilter,
@@ -88,10 +88,10 @@ export function useEsriTimeline({ store, isReady, layers, timeVariables }: Param
 
     const window = readTimeRange(store);
     for (const service of dated) {
-      const moment = pickLatestWithin(service.moments ?? [], (one) => one.time, window);
-      // Nothing in the window: hide the layer rather than drop the dataset. A
-      // window with no moment is a passing state — playback crosses one on
-      // every lap — and rebuilding afterwards would hand back a layer with
+      const moment = pickAsOf(service.moments ?? [], (one) => one.time, window);
+      // Nothing as of the window (it lies before every moment): hide the layer
+      // rather than drop the dataset. It is a passing state — playback starts there
+      // on every lap — and rebuilding afterwards would hand back a layer with
       // default styling, which reads as the map resetting itself.
       if (moment === null) {
         setRasterLayerVisible(store, store.dispatch, service.id, false);
@@ -143,7 +143,6 @@ export function useEsriTimeline({ store, isReady, layers, timeVariables }: Param
       schedule.current();
     }
   });
-
 
   // Cancelled on unmount and nowhere else. Hanging it off the subscription
   // effect looked tidier and starved the reconcile outright: that effect

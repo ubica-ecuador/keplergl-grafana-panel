@@ -252,10 +252,14 @@ describe('a collection of dated rasters in a catalog', () => {
     const [raster] = catalogSeriesRasters({ [saved.data.id]: saved.data });
     expect(raster).toMatchObject({ id: 'catalog-cci-biomass', kind: 'painted', tileServerUrls: ['/titiler'] });
     expect(raster.keepMetadata).toMatchObject({ catalogSeries: 'cci-biomass', catalogUid: 'cat' });
-    // July 2010 is the 2010 map; a window over no year draws nothing.
+    // July 2010 is the 2010 map; a window over no year draws the year before it, which still stands; one before
+    // every year draws nothing.
     const july = { from: Date.UTC(2010, 6, 1), to: Date.UTC(2010, 6, 31) };
     expect(pickScene(raster.scenes, july)?.sourceUrl).toBe('http://feeds/cci-biomass/data/agb-2010.vrt');
-    expect(pickScene(raster.scenes, { from: Date.UTC(2014, 0, 1), to: Date.UTC(2015, 0, 1) })).toBeNull();
+    expect(pickScene(raster.scenes, { from: Date.UTC(2014, 0, 1), to: Date.UTC(2015, 0, 1) })?.sourceUrl).toBe(
+      'http://feeds/cci-biomass/data/agb-2010.vrt'
+    );
+    expect(pickScene(raster.scenes, { from: Date.UTC(2000, 0, 1), to: Date.UTC(2001, 0, 1) })).toBeNull();
     expect(seriesCalendar(raster)).toEqual([
       Date.UTC(2005, 0, 1),
       Date.UTC(2010, 0, 1),

@@ -218,10 +218,14 @@ describe('pickScene', () => {
     expect(pickScene(scenes, window)?.sourceUrl).toBe('https://b/jul01.tif');
   });
 
-  it('finds nothing when the window falls between passes', () => {
+  it('takes the pass before a window that falls between passes, which still stands', () => {
     const window = { from: Date.UTC(2026, 6, 2), to: Date.UTC(2026, 6, 9) };
 
-    expect(pickScene(scenes, window)).toBeNull();
+    expect(pickScene(scenes, window)?.sourceUrl).toBe('https://b/jul01.tif');
+  });
+
+  it('finds nothing when the window lies before every pass', () => {
+    expect(pickScene(scenes, { from: Date.UTC(2026, 5, 1), to: Date.UTC(2026, 5, 20) })).toBeNull();
   });
 
   it('takes the most recent scene when there is no window', () => {
@@ -373,8 +377,11 @@ describe('rasterForWindow', () => {
     expect(moved?.id).toBe('grafana-A-raster');
   });
 
-  it('returns nothing when the window holds no scene', () => {
-    expect(rasterForWindow(framed(), { from: Date.UTC(2026, 6, 3), to: Date.UTC(2026, 6, 9) })).toBeNull();
+  it('stays on the scene before a window that holds none, and returns nothing before every scene', () => {
+    expect(rasterForWindow(framed(), { from: Date.UTC(2026, 6, 3), to: Date.UTC(2026, 6, 9) })?.sourceUrl).toBe(
+      'https://b/jul01.tif'
+    );
+    expect(rasterForWindow(framed(), { from: Date.UTC(2026, 5, 3), to: Date.UTC(2026, 5, 9) })).toBeNull();
   });
 });
 
