@@ -103,6 +103,49 @@ describe('framesToDatasets', () => {
     expect(dataset.tripLayer?.config.dataId).toBe('grafana-A');
   });
 
+  it('draws as trips the pings a query gives as point geometries (a GeoParquet of tracks)', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        {
+          name: 'geometry',
+          type: FieldType.string,
+          values: [
+            '{"type":"Point","coordinates":[10,1]}',
+            'POINT (20 2)',
+            '{"type":"Point","coordinates":[30,3]}',
+            null,
+          ],
+        },
+        { name: 'track_id', type: FieldType.string, values: ['a', 'a', 'b', 'b'] },
+        { name: 'observed', type: FieldType.time, values: [1000, 2000, 1000, 2000] },
+      ],
+    });
+
+    const [dataset] = framesToDatasets([frame]);
+
+    // Coordinates in place of the geometry, so kepler draws trips and no point under them.
+    expect(dataset.rows[1]).toMatchObject({ trip_id: 'a', latitude: 2, longitude: 20, time: 2000 });
+    expect(dataset.rows.some((r) => '_geojson' in r)).toBe(false);
+    expect(dataset.tripLayer?.config.columns).toMatchObject({ id: 'trip_id', lat: 'latitude', lng: 'longitude' });
+  });
+
+  it('leaves a track query of lines as it is', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'geometry', type: FieldType.string, values: ['{"type":"LineString","coordinates":[[10,1],[20,2]]}'] },
+        { name: 'track_id', type: FieldType.string, values: ['a'] },
+        { name: 'observed', type: FieldType.time, values: [1000] },
+      ],
+    });
+
+    const [dataset] = framesToDatasets([frame]);
+
+    expect(dataset.rows[0]._geojson).toBeDefined();
+    expect(dataset.tripLayer).toBeUndefined();
+  });
+
   it('collapses a trip query into one row per trip in geojson mode', () => {
     // The compact shape: 10 rows instead of 100,000 when all that is wanted is
     // the animated path, and the shape every map configuration saved before the

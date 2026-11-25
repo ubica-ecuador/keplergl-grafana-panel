@@ -4,6 +4,7 @@ import { buildFlowField, FlowFieldLayerConfig } from './buildFlowField';
 import { buildFlows, FlowLayerConfig } from './buildFlows';
 import { isEdgeFrame, nodePositions, placeEdges } from './buildNetwork';
 import { buildGeohashLayer, type Gazetteer, type GeohashLayerConfig, placeFrame } from './placeLookup';
+import { trackPoints } from './trackPoints';
 import { buildLineLayer, buildRouteSegments, routeColumns, routeDatasetId, LineLayerConfig } from './buildRoute';
 import { buildSymbolLayer, SymbolLayerConfig } from './buildSymbolLayer';
 import { buildTripLayer, TripLayerConfig, TripLayerMode } from './buildTripLayer';
@@ -158,7 +159,9 @@ export function framesToDatasets(
     const frame = pieces.length ? { ...given, fields: given.fields.filter((f) => !pieces.includes(f.name)) } : given;
     const legacy = !roles.count && opts.savedCount?.has(datasetId(refId)) ? legacyCountColumn(frame) : undefined;
     // A row placed by geohash or by name gains coordinates before anything reads them.
-    return { refId, ...placeFrame(frame, legacy ? { ...roles, count: legacy } : roles, opts.gazetteers?.[refId]) };
+    const placed = placeFrame(frame, legacy ? { ...roles, count: legacy } : roles, opts.gazetteers?.[refId]);
+    // Pings given as point geometries with a trip id and a time: a trajectory, its points made coordinates.
+    return { refId, ...trackPoints(placed.frame, placed.roles) };
   });
 
   const folded = (refId: string, roles: FieldRoles) => opts.tripLayerModes?.[refId] === 'geojson' && isTripFrame(roles);
