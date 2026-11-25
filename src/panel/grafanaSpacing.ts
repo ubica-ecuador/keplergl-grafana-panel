@@ -10,7 +10,12 @@ import { config } from '@grafana/runtime';
 let fallback: GrafanaTheme2 | undefined;
 
 export function grafanaTheme(): GrafanaTheme2 {
-  return config?.theme2 ?? (fallback ??= createTheme());
+  const running = config?.theme2;
+  // A theme without its helpers (a partial one, in tests) is no theme to measure with.
+  if (typeof running?.spacing === 'function' && typeof running.typography?.pxToRem === 'function') {
+    return running;
+  }
+  return (fallback ??= createTheme());
 }
 
 /** `theme.spacing(...)` as a styled-components interpolation: one to four multiples of Grafana's grid unit. */
