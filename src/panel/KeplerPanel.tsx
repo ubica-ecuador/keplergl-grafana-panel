@@ -34,6 +34,7 @@ import { GeomapImportNotice } from '../geomap/GeomapImportNotice';
 import type { AdHocFilterItem } from './adHocFilters';
 import { labelledToLong } from '../data/labelledToLong';
 import { DEFAULT_LIVE_INTERVAL_MS, MIN_LIVE_INTERVAL_MS, useLiveSeries } from './useLiveSeries';
+import { PluginLinks } from './pluginLinks';
 
 interface Props extends PanelProps<KeplerPanelOptions> {}
 
@@ -357,75 +358,77 @@ export function KeplerPanel(props: Props) {
   );
 
   return (
-    <div style={{ width, height, position: 'relative' }}>
-      <AssistantContext {...props} resolvedBasemapId={basemapId ?? undefined} />
-      <LazyKeplerMap
-        width={width}
-        height={height}
-        datasets={datasets}
-        frames={series}
-        replaceVariables={replaceVariables}
-        timeZone={timeZone}
-        canExecuteActions={canExecuteActions}
-        adHocFilterFields={adHocFilterFields}
-        requestFilters={data.request?.filters}
-        onAddAdHocFilter={onAddAdHocFilter}
-        rasters={rasters}
-        wmsLayers={wmsLayers}
-        zarrLayers={zarrLayers}
-        esriLayers={esriLayers}
-        xyzLayers={xyzLayers}
-        mapConfig={geomapConversion?.mapConfig ?? options.mapConfig}
-        theme={followTheme ? keplerTheme : undefined}
-        basemapId={basemapId}
-        maxZoom={options.maxZoom}
-        customBasemapUrl={customBasemapUrl}
-        rasterServerUrls={rasterServerUrls}
-        showSidePanel={options.showSidePanel ?? true}
-        saveRequest={options.saveRequest ?? 0}
-        onMapConfigCaptured={handleMapConfigCaptured}
-        timeSync={options.timeSync ?? 'toMap'}
-        grafanaRange={grafanaRange}
-        onChangeGrafanaRange={onChangeTimeRange}
-        variableMappings={keplerMappings}
-        areaVariable={options.areaVariable ?? ''}
-        lineVariable={options.lineVariable ?? ''}
-        clickArea={Boolean(options.clickArea)}
-        clickAreaSizeMetres={options.clickAreaSizeMetres ?? DEFAULT_CLICK_AREA_METRES}
-        clickConfirm={Boolean(options.clickConfirm)}
-        viewportVariables={viewportVariables}
-        mosaicSelection={options.mosaicSelection ?? ''}
-        mosaicColumns={mosaicColumns}
-        mosaicViewport={Boolean(options.mosaicViewport)}
-        mosaicArea={options.mosaicArea ?? true}
-        fitOnVariables={fitOnVariables}
-        selectionField={options.selectionField ?? ''}
-        dimUnselected={Boolean(options.dimUnselected)}
-        haloStyle={options.haloStyle ?? 'auto'}
-        timeVariables={options.timeVariables}
-        publishWhilePlaying={options.publishWhilePlaying ?? false}
-        publishIntervalMs={publishIntervalOf(options.publishIntervalMs)}
-        peerTimeSync={options.peerTimeSync ?? false}
-        liveFollow={streaming && (options.liveFollow ?? true)}
-        playheadVariable={options.playheadVariable ?? ''}
-        eventBus={eventBus}
-        hoverSync={options.hoverSync}
-        hoverPublishSpike={options.hoverPublishSpike}
-        hoverLayerId={options.hoverLayerId}
-        hoverMaxAgeSeconds={options.hoverMaxAgeSeconds}
-        panelId={id}
-        annotations={data.annotations}
-        grafanaAnnotations={options.grafanaAnnotations ?? 'show'}
-        dashboardUid={dashboardUidOf(replaceVariables)}
-        queriesAnswered={data.state === LoadingState.Done || data.state === LoadingState.Error}
-        notices={
-          <>
-            <MapNotices notices={notices} />
-            <RasterServerNotice queries={serverMissing} />
-            <GeomapImportNotice dropped={geomapDropped} />
-          </>
-        }
-      />
-    </div>
+    <PluginLinks>
+      <div style={{ width, height, position: 'relative' }}>
+        <AssistantContext {...props} resolvedBasemapId={basemapId ?? undefined} />
+        <LazyKeplerMap
+          width={width}
+          height={height}
+          datasets={datasets}
+          frames={series}
+          replaceVariables={replaceVariables}
+          timeZone={timeZone}
+          canExecuteActions={canExecuteActions}
+          adHocFilterFields={adHocFilterFields}
+          requestFilters={data.request?.filters}
+          onAddAdHocFilter={onAddAdHocFilter}
+          rasters={rasters}
+          wmsLayers={wmsLayers}
+          zarrLayers={zarrLayers}
+          esriLayers={esriLayers}
+          xyzLayers={xyzLayers}
+          mapConfig={geomapConversion?.mapConfig ?? options.mapConfig}
+          theme={followTheme ? keplerTheme : undefined}
+          basemapId={basemapId}
+          maxZoom={options.maxZoom}
+          customBasemapUrl={customBasemapUrl}
+          rasterServerUrls={rasterServerUrls}
+          showSidePanel={options.showSidePanel ?? true}
+          saveRequest={options.saveRequest ?? 0}
+          onMapConfigCaptured={handleMapConfigCaptured}
+          timeSync={options.timeSync ?? 'toMap'}
+          grafanaRange={grafanaRange}
+          onChangeGrafanaRange={onChangeTimeRange}
+          variableMappings={keplerMappings}
+          areaVariable={options.areaVariable ?? ''}
+          lineVariable={options.lineVariable ?? ''}
+          clickArea={Boolean(options.clickArea)}
+          clickAreaSizeMetres={options.clickAreaSizeMetres ?? DEFAULT_CLICK_AREA_METRES}
+          clickConfirm={Boolean(options.clickConfirm)}
+          viewportVariables={viewportVariables}
+          mosaicSelection={options.mosaicSelection ?? ''}
+          mosaicColumns={mosaicColumns}
+          mosaicViewport={Boolean(options.mosaicViewport)}
+          mosaicArea={options.mosaicArea ?? true}
+          fitOnVariables={fitOnVariables}
+          selectionField={options.selectionField ?? ''}
+          dimUnselected={Boolean(options.dimUnselected)}
+          haloStyle={options.haloStyle ?? 'auto'}
+          timeVariables={options.timeVariables}
+          publishWhilePlaying={options.publishWhilePlaying ?? false}
+          publishIntervalMs={publishIntervalOf(options.publishIntervalMs)}
+          peerTimeSync={options.peerTimeSync ?? false}
+          liveFollow={streaming && (options.liveFollow ?? true)}
+          playheadVariable={options.playheadVariable ?? ''}
+          eventBus={eventBus}
+          hoverSync={options.hoverSync}
+          hoverPublishSpike={options.hoverPublishSpike}
+          hoverLayerId={options.hoverLayerId}
+          hoverMaxAgeSeconds={options.hoverMaxAgeSeconds}
+          panelId={id}
+          annotations={data.annotations}
+          grafanaAnnotations={options.grafanaAnnotations ?? 'show'}
+          dashboardUid={dashboardUidOf(replaceVariables)}
+          queriesAnswered={data.state === LoadingState.Done || data.state === LoadingState.Error}
+          notices={
+            <>
+              <MapNotices notices={notices} />
+              <RasterServerNotice queries={serverMissing} />
+              <GeomapImportNotice dropped={geomapDropped} />
+            </>
+          }
+        />
+      </div>
+    </PluginLinks>
   );
 }
