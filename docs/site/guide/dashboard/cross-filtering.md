@@ -276,8 +276,8 @@ The area needs DuckDB's spatial extension, which Chaski loads.
 
 The column names are the link: a clause on `fare` lands on the map's `fare`, so name the map's
 columns as the Chaski dataset names them. The map's data can come from any datasource; the clauses
-filter the Mosaic panels, which read Chaski. It needs the Chaski app (2.2 or later) on the Grafana
-and a Chaski dataset on the dashboard, and works alongside the variable mappings above, which still
+filter the Mosaic panels, which read Chaski. It needs the Chaski app (2.4 or later), which lends the
+map its Mosaic through a plugin extension, and a Chaski dataset on the dashboard, and works alongside the variable mappings above, which still
 carry the state in the URL. A time filter that follows the dashboard time range (**Time sync** set
 to _To map_ or _Two-way_) stays out of the Selection: a brush elsewhere would move the time range of
 the whole dashboard.

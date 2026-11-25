@@ -20,6 +20,30 @@ const mockWrites: Array<{ at: number; keys: string[]; value: string }> = [];
 /** Runs inside each write, as the panels a write sets off would. */
 const mockOnWrite: Array<() => void> = [];
 
+// The Chaski and Kepler Plus links, carried here on a bus the test publishes to.
+const mockChaskiLink = {
+  subscribeActivity: (listener: (payload: unknown) => void) => {
+    const subscription = mockBus.subscribe({ type: 'ubica-duckdbwasm-activity' } as never, (event) =>
+      listener((event as { payload?: unknown }).payload)
+    );
+    return () => subscription.unsubscribe();
+  },
+  mosaicRuntime: () => Promise.reject(new Error('not in this test')),
+};
+const mockTimeWindowLink = {
+  say: (said: unknown) => mockBus.publish({ type: 'ubica-time-window', payload: said }),
+  subscribe: (listener: (said: unknown) => void) => {
+    const subscription = mockBus.subscribe({ type: 'ubica-time-window' } as never, (event) =>
+      listener((event as { payload?: unknown }).payload)
+    );
+    return () => subscription.unsubscribe();
+  },
+};
+jest.mock('./pluginLinks', () => ({
+  useChaskiLink: () => mockChaskiLink,
+  useTimeWindowLink: () => mockTimeWindowLink,
+}));
+
 jest.mock('@grafana/runtime', () => ({
   getAppEvents: () => mockBus,
   locationService: {

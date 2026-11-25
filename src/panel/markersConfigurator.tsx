@@ -3,6 +3,7 @@ import { Button, Input, LayerConfigGroup, PanelLabel, VisConfigSlider } from '@k
 
 import { MarkerSpec, newMarker, readMarkers } from './markers';
 import { SymbolPicker } from './symbolPicker';
+import { grafanaTheme } from './grafanaSpacing';
 
 /**
  * The layer panel for the markers layer: one row per marker — label, colour
@@ -33,7 +34,12 @@ function fromHex(hex: string): [number, number, number] | null {
   return match ? [parseInt(match[1], 16), parseInt(match[2], 16), parseInt(match[3], 16)] : null;
 }
 
-const rowStyle: React.CSSProperties = { display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 };
+const rowStyle = (): React.CSSProperties => ({
+  display: 'flex',
+  gap: grafanaTheme().spacing(0.75),
+  alignItems: 'center',
+  marginBottom: grafanaTheme().spacing(0.75),
+});
 
 export function MarkersLayerConfig({ layer, visConfiguratorProps }: MarkersLayerConfigProps) {
   const markers = readMarkers(layer.config.visConfig);
@@ -46,8 +52,12 @@ export function MarkersLayerConfig({ layer, visConfiguratorProps }: MarkersLayer
     <div>
       <LayerConfigGroup label={'markers.group.markers'}>
         {markers.map((marker) => (
-          <div key={marker.id} data-testid={`marker-row-${marker.id}`} style={{ marginBottom: 10 }}>
-            <div style={rowStyle}>
+          <div
+            key={marker.id}
+            data-testid={`marker-row-${marker.id}`}
+            style={{ marginBottom: grafanaTheme().spacing(1.25) }}
+          >
+            <div style={rowStyle()}>
               <input
                 type="color"
                 aria-label="Marker colour"
@@ -58,7 +68,13 @@ export function MarkersLayerConfig({ layer, visConfiguratorProps }: MarkersLayer
                     edit(marker.id, { color });
                   }
                 }}
-                style={{ width: 28, height: 28, padding: 0, border: 'none', background: 'none' }}
+                style={{
+                  width: grafanaTheme().spacing(3.5),
+                  height: grafanaTheme().spacing(3.5),
+                  padding: 0,
+                  border: 'none',
+                  background: 'none',
+                }}
               />
               <Input
                 aria-label="Marker label"
@@ -75,8 +91,8 @@ export function MarkersLayerConfig({ layer, visConfiguratorProps }: MarkersLayer
                 ✕
               </Button>
             </div>
-            <div style={rowStyle}>
-              <PanelLabel style={{ margin: 0, minWidth: 24 }}>Lat</PanelLabel>
+            <div style={rowStyle()}>
+              <PanelLabel style={{ margin: 0, minWidth: grafanaTheme().spacing(3) }}>Lat</PanelLabel>
               <Input
                 aria-label="Latitude variable"
                 placeholder="variable"
@@ -85,7 +101,7 @@ export function MarkersLayerConfig({ layer, visConfiguratorProps }: MarkersLayer
                   edit(marker.id, { latVariable: event.target.value.trim() })
                 }
               />
-              <PanelLabel style={{ margin: 0, minWidth: 24 }}>Lng</PanelLabel>
+              <PanelLabel style={{ margin: 0, minWidth: grafanaTheme().spacing(3) }}>Lng</PanelLabel>
               <Input
                 aria-label="Longitude variable"
                 placeholder="variable"

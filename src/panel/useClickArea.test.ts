@@ -94,11 +94,10 @@ function mount(store: FakeStore, enabled = true, confirm = false) {
   );
 }
 
-let warn: jest.SpyInstance;
-beforeEach(() => {
-  warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-});
-afterEach(() => warn.mockRestore());
+const mockWarn = jest.fn();
+jest.mock('./notifyUser', () => ({ notifyWarning: (title: string, detail?: string) => mockWarn(title, detail) }));
+const warn = mockWarn;
+beforeEach(() => mockWarn.mockClear());
 
 it('places a 6 km square around a clicked fire, through the editor', async () => {
   const store = makeStore({ clicked: undefined });
@@ -167,7 +166,7 @@ it('changes nothing for a click on empty map', async () => {
   expect(warn).not.toHaveBeenCalled();
 });
 
-it('logs, and places nothing, when the clicked fire has no position', async () => {
+it('tells the viewer, and places nothing, when the clicked fire has no position', async () => {
   const store = makeStore({ clicked: undefined });
   mount(store);
 
@@ -175,8 +174,8 @@ it('logs, and places nothing, when the clicked fire has no position', async () =
   await flush();
   expect(store.dispatch).not.toHaveBeenCalled();
   expect(warn).toHaveBeenCalledTimes(1);
-  expect(warn.mock.calls[0][0]).toContain('puntos (point)');
-  expect(warn.mock.calls[0][0]).toContain('no numeric latitude/longitude');
+  expect(warn.mock.calls[0][1]).toContain('puntos (point)');
+  expect(warn.mock.calls[0][1]).toContain('no numeric latitude/longitude');
 });
 
 it('leaves a click alone while the draw toolbar is engaged', async () => {

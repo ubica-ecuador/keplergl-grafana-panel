@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { AppEvents } from '@grafana/data';
-import { getAppEvents, getBackendSrv } from '@grafana/runtime';
+import { getBackendSrv } from '@grafana/runtime';
 import { Button, ConfirmModal, Field, Input, Modal } from '@grafana/ui';
 
 import type { ActionRequest, MapAction } from './mapActions';
 import { describeError } from './redactUrl';
+import { notifyError, notifySuccess } from './notifyUser';
 
 /**
  * Sends an action's request the way Grafana's own panels do: through the
@@ -12,20 +12,15 @@ import { describeError } from './redactUrl';
  * same two notices.
  */
 export function sendActionRequest(request: ActionRequest): void {
-  const notify = (type: string, message: string) => getAppEvents().publish({ type, payload: [message] });
   try {
     getBackendSrv()
       .fetch(request)
       .subscribe({
-        error: (error: unknown) => {
-          notify(AppEvents.alertError.name, 'An error has occurred. Check console output for more details.');
-          console.error(`[kepler] the action's request failed: ${describeError(error)}`);
-        },
-        complete: () => notify(AppEvents.alertSuccess.name, 'API call was successful'),
+        error: (error: unknown) => notifyError("The action's request failed", describeError(error)),
+        complete: () => notifySuccess('API call was successful'),
       });
   } catch (error) {
-    notify(AppEvents.alertError.name, 'An error has occurred. Check console output for more details.');
-    console.error(`[kepler] the action's request failed: ${describeError(error)}`);
+    notifyError("The action's request failed", describeError(error));
   }
 }
 

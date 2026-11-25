@@ -25,6 +25,30 @@ const mockOnWrite: Array<() => void> = [];
 /** Every write of the variables: when, and the window's start it carried. */
 const mockWrites: Array<{ at: number; from: number }> = [];
 
+// The Chaski and Kepler Plus links, carried here on a bus the test publishes to.
+const mockChaskiLink = {
+  subscribeActivity: (listener: (payload: unknown) => void) => {
+    const subscription = mockBus.subscribe({ type: 'ubica-duckdbwasm-activity' } as never, (event) =>
+      listener((event as { payload?: unknown }).payload)
+    );
+    return () => subscription.unsubscribe();
+  },
+  mosaicRuntime: () => Promise.reject(new Error('not in this test')),
+};
+const mockTimeWindowLink = {
+  say: (said: unknown) => mockBus.publish({ type: 'ubica-time-window', payload: said }),
+  subscribe: (listener: (said: unknown) => void) => {
+    const subscription = mockBus.subscribe({ type: 'ubica-time-window' } as never, (event) =>
+      listener((event as { payload?: unknown }).payload)
+    );
+    return () => subscription.unsubscribe();
+  },
+};
+jest.mock('./pluginLinks', () => ({
+  useChaskiLink: () => mockChaskiLink,
+  useTimeWindowLink: () => mockTimeWindowLink,
+}));
+
 jest.mock('@grafana/runtime', () => ({
   getAppEvents: () => mockBus,
   locationService: {
@@ -386,7 +410,7 @@ describe('useTimeVariableSync, with publishing while playing on', () => {
     });
   });
 
-  describe('a clock writing the same variables, saying its window on the bus', () => {
+  describe('a clock writing the same variables, saying its window through the Kepler Plus link', () => {
     const say = (from: number, playing = true, variables = MAPPING) =>
       mockBus.publish(new BrushWindowEvent({ variables, window: { from, to: from + 60_000 }, playing }));
     /** The clock's own trailing write of the variables, as the Time Brush makes it. */

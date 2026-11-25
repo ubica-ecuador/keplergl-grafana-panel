@@ -72,5 +72,19 @@
   "dependencies": {
     "grafanaDependency": ">=12.0.10 <12.1 || >=12.1.7 <12.2 || >=12.2.5",
     "plugins": []
+  },
+  "extensions": {
+    "extensionPoints": [
+      {
+        "id": "ubica-keplergl-panel/chaski/v1",
+        "title": "Chaski engine and Mosaic",
+        "description": "The Chaski app's DuckDB-WASM activity, so a map writing variables while it plays waits for the panels that answer them, and its Mosaic runtime, for a map in a Mosaic Selection."
+      },
+      {
+        "id": "ubica-keplergl-panel/time-window/v1",
+        "title": "Time window",
+        "description": "Where a Kepler Plus Time Brush's window is, every frame, so a map bound to the same variables follows it ahead of their writes."
+      }
+    ]
   }
 }

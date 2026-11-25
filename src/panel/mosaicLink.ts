@@ -14,9 +14,6 @@
  * tested with literal values; `useMosaicSelection` does the wiring.
  */
 
-/** The Chaski app's Mosaic panel, whose module carries the copy of Mosaic the panels share. */
-export const MOSAIC_PANEL = 'ubica-chaski-mosaic-panel';
-
 /** kepler's filter types the link carries; every other type stays on the map. */
 export const RANGE_FILTER_TYPE = 'range';
 export const MULTI_SELECT_FILTER_TYPE = 'multiSelect';

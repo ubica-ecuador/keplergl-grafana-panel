@@ -4,6 +4,7 @@ import { LayerLegendContentFactory } from '@kepler.gl/components';
 
 import { fetchArcgisLegend, type LegendGroup, parseArcgisLegend } from '../data/serviceLegend';
 import { esriLegendOf, type EsriLegendSpec } from './esriImageLayer';
+import { space, typeSize } from './grafanaSpacing';
 
 type Factory = typeof LayerLegendContentFactory;
 
@@ -16,16 +17,16 @@ type Factory = typeof LayerLegendContentFactory;
  */
 const StyledServiceLegend = styled.div`
   ${(props) => props.theme.sidePanelScrollBar};
-  margin-top: 6px;
+  margin-top: ${space(0.75)};
   max-height: 240px;
   overflow-y: auto;
   overflow-x: hidden;
 `;
 
 const StyledGroupTitle = styled.div`
-  font-size: 10px;
+  font-size: ${typeSize(10)};
   color: ${(props) => props.theme.labelColor};
-  margin: 4px 0 2px;
+  margin: ${space(0.5, 0, 0.25)};
 `;
 
 const StyledRow = styled.div`
@@ -43,9 +44,9 @@ const StyledRow = styled.div`
 `;
 
 const StyledLabel = styled.div`
-  font-size: 10px;
+  font-size: ${typeSize(10)};
   color: ${(props) => props.theme.textColor};
-  padding-left: 4px;
+  padding-left: ${space(0.5)};
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -70,10 +71,10 @@ const StyledRamp = styled.div`
 const StyledRampLabels = styled.div`
   display: flex;
   justify-content: space-between;
-  gap: 4px;
-  margin-top: 2px;
-  font-size: 9.5px;
-  line-height: 12px;
+  gap: ${space(0.5)};
+  margin-top: ${space(0.25)};
+  font-size: ${typeSize(9.5)};
+  line-height: ${typeSize(12)};
   color: ${(props) => props.theme.textColor};
 `;
 

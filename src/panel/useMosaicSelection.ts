@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { getPluginImportUtils } from '@grafana/runtime';
 import type { Store } from 'redux';
 
 import {
@@ -16,10 +15,9 @@ import {
   readViewportBounds,
   removeFieldFilter,
 } from './keplerAdapter';
-import { MOSAIC_PANEL } from './mosaicLink';
 import { MosaicSelectionLink, type MapLike, type MosaicRuntimeLike } from './mosaicSelectionLink';
 import { SliceWatcher } from './sliceWatcher';
-import { describeError } from './redactUrl';
+import { type ChaskiLink, useChaskiLink } from './pluginLinks';
 
 interface Params {
   store: Store;
@@ -36,27 +34,16 @@ interface Params {
   linkTime: boolean;
 }
 
-let loading: Promise<MosaicRuntimeLike> | undefined;
-
 /**
- * Mosaic, from the Chaski app's Mosaic panel, which hands out the one copy the
- * panels share. Loaded once; again after a failure.
+ * Mosaic as the Chaski app lends it: the copy its Mosaic panels share, so the
+ * map's clauses land on the same Selections as theirs.
  */
-function loadMosaic(): Promise<MosaicRuntimeLike> {
-  loading ??= getPluginImportUtils()
-    .importPanelPlugin(MOSAIC_PANEL)
-    .then((plugin) => {
-      const runtime = (plugin as unknown as { mosaicRuntime?: Partial<MosaicRuntimeLike> }).mosaicRuntime;
-      if (typeof runtime?.sharedSelection !== 'function') {
-        throw new Error(`the ${MOSAIC_PANEL} plugin of this Grafana shares no Selections with other panels`);
-      }
-      return runtime as MosaicRuntimeLike;
-    })
-    .catch((error: unknown) => {
-      loading = undefined;
-      throw error;
-    });
-  return loading;
+async function mosaicOf(link: ChaskiLink): Promise<MosaicRuntimeLike> {
+  const runtime = (await link.mosaicRuntime()) as Partial<MosaicRuntimeLike> | null | undefined;
+  if (typeof runtime?.sharedSelection !== 'function') {
+    throw new Error('the Chaski app of this Grafana shares no Selections with other panels');
+  }
+  return runtime as MosaicRuntimeLike;
 }
 
 /**
@@ -70,10 +57,11 @@ function loadMosaic(): Promise<MosaicRuntimeLike> {
  */
 export function useMosaicSelection({ store, isReady, selection, columns, viewport, area, linkTime }: Params): void {
   const [lng, lat] = columns ?? ['', ''];
+  const chaskiLink = useChaskiLink();
 
   useEffect(() => {
     const name = selection.trim();
-    if (!isReady || !name) {
+    if (!isReady || !name || !chaskiLink) {
       return;
     }
     const abort = new AbortController();
@@ -93,7 +81,7 @@ export function useMosaicSelection({ store, isReady, selection, columns, viewpor
     };
 
     const start = async () => {
-      const runtime = await loadMosaic();
+      const runtime = await mosaicOf(chaskiLink);
       const shared = await runtime.sharedSelection(name, abort.signal);
       if (abort.signal.aborted) {
         return;
@@ -146,15 +134,13 @@ export function useMosaicSelection({ store, isReady, selection, columns, viewpor
       };
     };
 
-    start().catch((error: unknown) => {
-      if (!abort.signal.aborted) {
-        console.warn(`Kepler: not linked to the Mosaic selection ${name}: ${describeError(error)}`);
-      }
-    });
+    // A Chaski app that lends no Mosaic, or a Selection it cannot share,
+    // leaves the map out of it: the map still draws and filters on its own.
+    start().catch(() => undefined);
 
     return () => {
       abort.abort();
       teardown();
     };
-  }, [isReady, selection, lng, lat, viewport, area, linkTime, store]);
+  }, [isReady, selection, lng, lat, viewport, area, linkTime, store, chaskiLink]);
 }

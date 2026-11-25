@@ -11,6 +11,7 @@ import {
 } from './keplerAdapter';
 import { decideClickArea, isSquareSuperseded } from './clickArea';
 import { SliceWatcher } from './sliceWatcher';
+import { notifyWarning } from './notifyUser';
 
 interface Params {
   store: Store;
@@ -83,7 +84,7 @@ export function useClickArea({ store, isReady, enabled, sideMetres, confirm = fa
       figures: readFigures(store),
     });
     if (decision.action === 'warn') {
-      console.warn(`[kepler panel] ${decision.message}`);
+      notifyWarning('No area around the click', decision.message);
     } else if (decision.action === 'place') {
       squareId.current = replaceFiguresWithSquare(store.dispatch, decision.square, decision.replace);
       return true;

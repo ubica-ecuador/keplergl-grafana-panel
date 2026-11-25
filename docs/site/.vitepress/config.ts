@@ -176,7 +176,6 @@ export default defineConfig({
             { text: 'Data links and actions', link: '/guide/dashboard/data-links-and-actions' },
             { text: 'Annotations', link: '/guide/dashboard/annotations' },
             { text: 'Publishing viewport and areas', link: '/guide/dashboard/publishing' },
-            { text: 'Explorer results on the map', link: '/guide/dashboard/explorer-results' },
             { text: 'Grafana Assistant', link: '/guide/dashboard/grafana-assistant' },
           ],
         },

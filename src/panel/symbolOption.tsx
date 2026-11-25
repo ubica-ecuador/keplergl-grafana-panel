@@ -3,6 +3,7 @@ import { dropdownListClassList } from '@kepler.gl/components';
 
 import { CELL } from './vectorFieldGlyphs';
 import { glyphsFor, paintGlyphs, SymbolPainter } from './symbolGlyphs';
+import { grafanaTheme } from './grafanaSpacing';
 
 /** The side of a shape's drawing in the list, in CSS pixels. */
 const PREVIEW_PX = 16;
@@ -32,7 +33,7 @@ export function SymbolOption({
     <span
       title={name}
       className={`${dropdownListClassList.listItemAnchor}${disabled ? ' disabled' : ''}`}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: grafanaTheme().spacing(1) }}
     >
       <GlyphPreview name={value} />
       {name}

@@ -51,6 +51,7 @@ export function NoticeStack({
   panelId?: number;
   children?: React.ReactNode;
 }) {
+  const theme = useTheme2();
   const editing = usePanelEditing(panelId);
   const { left, right } = noticePlacement({ width, sidePanelOpen });
   return (
@@ -64,7 +65,7 @@ export function NoticeStack({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 4,
+        gap: theme.spacing(0.5),
         pointerEvents: 'none',
         zIndex: 100,
       }}
@@ -113,9 +114,13 @@ export function MapNotices({ notices }: { notices: MapNotice[] }) {
   }
   return (
     <Alert title={`${shown.length} notes on this map`} severity={severity} bottomSpacing={0} onRemove={dismiss}>
-      <ul style={{ margin: 0, padding: 0, listStyle: 'none', maxHeight: 132, overflowY: 'auto' }}>
+      <ul style={{ margin: 0, padding: 0, listStyle: 'none', maxHeight: theme.spacing(16.5), overflowY: 'auto' }}>
         {shown.map((notice) => (
-          <li key={notice.text} title={notice.text} style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
+          <li
+            key={notice.text}
+            title={notice.text}
+            style={{ display: 'flex', gap: theme.spacing(0.75), alignItems: 'baseline' }}
+          >
             <Icon
               name={notice.severity === 'error' ? 'exclamation-circle' : 'exclamation-triangle'}
               size="sm"

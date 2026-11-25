@@ -18,6 +18,7 @@ import { SliceWatcher } from './sliceWatcher';
 import { timeChannel } from './timeChannel';
 import type { TimeRangeMs } from './timeSync';
 import { subscribeTimeWindow, type TimeWindowSaid } from './timeWindowEvent';
+import { useChaskiLink, useTimeWindowLink } from './pluginLinks';
 import {
   DEFAULT_PUBLISH_INTERVAL_MS,
   decideTimeSync,
@@ -110,6 +111,8 @@ export function useTimeVariableSync({
   publishIntervalMs,
   peerSync,
 }: Params): void {
+  const chaskiLink = useChaskiLink();
+  const timeWindowLink = useTimeWindowLink();
   /** The window both sides last agreed on — the echo cutter. */
   const lastKey = useRef<string | undefined>(undefined);
   /** The time filter that agreement was made with. */
@@ -396,12 +399,30 @@ export function useTimeVariableSync({
     const unsubscribeStore = store.subscribe(onStoreChange.current);
     // Dashboard → map: react to variable changes, which land in the URL.
     const unlisten = locationService.getHistory().listen(schedule.current);
-    // A clock writing the same variables says its window every frame, ahead of them.
-    const unsubscribeWindow = subscribeTimeWindow((said) => steer.current(said));
-    // The DuckDB-WASM datasource, if it is on the page, says when the panels
-    // it answers are done. A step held for them goes as soon as they are, and
-    // the interval since the last write is up.
-    const unsubscribeActivity = subscribeActivity((signal) => {
+    return () => {
+      unsubscribeStore();
+      unlisten();
+      cancel();
+    };
+  }, [isReady, enabled, mapping.from, mapping.to, store]);
+
+  // A clock writing the same variables says its window every frame, ahead of
+  // them, through the Kepler Plus app's link.
+  useEffect(() => {
+    if (!isReady || !enabled || !mapping.from || !mapping.to) {
+      return;
+    }
+    return subscribeTimeWindow(timeWindowLink, (said) => steer.current(said));
+  }, [isReady, enabled, mapping.from, mapping.to, timeWindowLink]);
+
+  // Chaski's DuckDB-WASM engine, through the Chaski app's link, says when the
+  // panels it answers are done. A step held for them goes as soon as they are,
+  // and the interval since the last write is up.
+  useEffect(() => {
+    if (!isReady || !enabled || !mapping.from || !mapping.to) {
+      return;
+    }
+    return subscribeActivity(chaskiLink, (signal) => {
       gate.current.signal(signal);
       if (held.current && playbackWait.current() === 0) {
         if (publishTimer.current !== null) {
@@ -410,14 +431,7 @@ export function useTimeVariableSync({
         publishTimer.current = setTimeout(() => publish.current(), 0);
       }
     });
-    return () => {
-      unsubscribeStore();
-      unlisten();
-      unsubscribeWindow();
-      unsubscribeActivity();
-      cancel();
-    };
-  }, [isReady, enabled, mapping.from, mapping.to, store]);
+  }, [isReady, enabled, mapping.from, mapping.to, chaskiLink]);
 }
 
 /** Both bound variables' current values, read from the URL. */

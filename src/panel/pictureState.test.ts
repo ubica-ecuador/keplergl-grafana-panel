@@ -58,7 +58,7 @@ describe('pictureState', () => {
     });
   });
 
-  it('counts the failures an assignment does not name, and warns only for the named ones', () => {
+  it('counts the failures an assignment does not name', () => {
     const layer = {};
     recordPictureAssignment(
       layer,
@@ -69,7 +69,6 @@ describe('pictureState', () => {
     expect(summary.failed).toHaveLength(1);
     expect(summary.moreFailed).toBe(7);
     expect(summary.total).toBe(9);
-    expect(console.warn).toHaveBeenCalledTimes(1);
   });
 
   it('keeps apart two layer objects that share a kepler id', () => {
@@ -157,23 +156,6 @@ describe('pictureState', () => {
     await flush();
 
     expect(listener).not.toHaveBeenCalled();
-  });
-
-  it('warns once per failing picture', () => {
-    const layer = {};
-    recordPictureAssignment(
-      layer,
-      assignment(['https://a/1.png'], { failures: [{ url: 'ftp://x', problem: 'scheme' }] })
-    );
-    recordPictureOutcome(key('https://a/1.png'), 'https://a/1.png', 'load');
-    recordPictureAssignment(
-      layer,
-      assignment(['https://a/1.png'], { failures: [{ url: 'ftp://x', problem: 'scheme' }] })
-    );
-    recordPictureOutcome(key('https://a/1.png'), 'https://a/1.png', 'loading');
-    recordPictureOutcome(key('https://a/1.png'), 'https://a/1.png', 'load');
-
-    expect(console.warn).toHaveBeenCalledTimes(2);
   });
 
   it('keeps at most MAX_PICTURE_OUTCOMES outcomes, dropping the least recently written', () => {

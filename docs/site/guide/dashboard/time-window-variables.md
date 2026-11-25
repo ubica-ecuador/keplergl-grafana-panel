@@ -111,18 +111,18 @@ at the least. Lower means the numbers follow the map more closely, and more quer
 what the panels reading the window take to answer, or each write cancels the answers to the one
 before.
 
-With a datasource that announces its activity on Grafana's event bus (the
-`ubica-duckdbwasm-activity` event), each write also waits for the panels answering the previous one,
-for up to five seconds, so the pace becomes whichever is slower, the interval or the panels. The
-DuckDB-WASM datasource from the Grafana Geospatial Stack does this. With any other datasource the
-interval is the whole story.
+With the Chaski app (2.4 or later) on the Grafana, which lends the map its DuckDB-WASM engine's
+activity through a plugin extension, each write also waits for the panels answering the previous one,
+for up to five seconds, so the pace becomes whichever is slower, the interval or the panels. Without
+it the interval is the whole story.
 
 ## Following a Time Brush
 
 A map whose window comes from the same two variables a Kepler Plus Time Brush writes follows that brush
-frame by frame as it plays, not one write at a time. The brush says where its window is on Grafana's
-event bus every frame (the `ubica-time-window` event, with the two variable names, the window in
-epoch milliseconds and whether it is still playing), and the map moves its time filter there at once.
+frame by frame as it plays, not one write at a time. The brush says where its window is every frame
+(the two variable names, the window in epoch milliseconds and whether it is still playing) through the
+Kepler Plus app, which lends both panels a time window link as a plugin extension, and the map moves
+its time filter there at once.
 The variables still change at the brush's own pace, and while it plays the map neither goes back to
 them nor writes over them; its last word, as the play stops, is written to the variables too. Nothing
 to set up: the variable names are what pairs the two.

@@ -1,17 +1,15 @@
-import { BusEventWithPayload } from '@grafana/data';
-import { getAppEvents } from '@grafana/runtime';
-
 import type { TimeRangeMs } from './timeSync';
+import type { TimeWindowLink } from './pluginLinks';
 
 /**
- * A time window on its way to a pair of dashboard variables, said on Grafana's event bus as it moves.
+ * A time window on its way to a pair of dashboard variables, said as it moves.
  *
  * A clock that writes the variables while it plays (the Kepler Plus Time Brush) writes them at most once per
  * interval, because each write runs every query that reads them; a map whose time filter follows those variables
- * would move in steps, a write at a time. So the clock also says here where its window is, every frame, and a
- * map bound to the same two variables moves its filter there at once, the variables catching up on their own
- * pace. Grafana's bus matches events by their `type` string, so the two plugins hear each other without
- * importing each other, as with the DuckDB-WASM activity event; the string and the payload are the contract.
+ * would move in steps, a write at a time. So the clock also says where its window is, every frame, and a map
+ * bound to the same two variables moves its filter there at once, the variables catching up on their own pace.
+ * The two hear each other through the Kepler Plus app's time window link (`pluginLinks.ts`), never by importing
+ * each other; the payload is the contract, checked on arrival.
  */
 export interface TimeWindowSaid {
   /** The variables the window is written to: its start and its end. */
@@ -21,29 +19,37 @@ export interface TimeWindowSaid {
   playing: boolean;
 }
 
-export class TimeWindowEvent extends BusEventWithPayload<TimeWindowSaid> {
-  static type = 'ubica-time-window';
-}
-
-/** Says where the window is. Never throws. */
-export function sayTimeWindow(said: TimeWindowSaid): void {
+/** Says where the window is, through `link` when there is one. Never throws. */
+export function sayTimeWindow(link: TimeWindowLink | undefined, said: TimeWindowSaid): void {
   try {
-    getAppEvents().publish(new TimeWindowEvent(said));
+    link?.say(said);
   } catch {
-    // No bus, no listeners.
+    // A link that fails says nothing.
   }
 }
 
 /** Calls `onSaid` for each window said that keeps the contract; the returned function unsubscribes. Never throws. */
-export function subscribeTimeWindow(onSaid: (said: TimeWindowSaid) => void): () => void {
+export function subscribeTimeWindow(
+  link: TimeWindowLink | undefined,
+  onSaid: (said: TimeWindowSaid) => void
+): () => void {
+  if (!link) {
+    return () => undefined;
+  }
   try {
-    const subscription = getAppEvents().subscribe(TimeWindowEvent, (event) => {
-      const said = saidOf(event.payload);
+    const unsubscribe = link.subscribe((payload) => {
+      const said = saidOf(payload as Partial<TimeWindowSaid> | null | undefined);
       if (said) {
         onSaid(said);
       }
     });
-    return () => subscription.unsubscribe();
+    return () => {
+      try {
+        unsubscribe();
+      } catch {
+        // Gone already.
+      }
+    };
   } catch {
     return () => undefined;
   }
@@ -51,7 +57,7 @@ export function subscribeTimeWindow(onSaid: (said: TimeWindowSaid) => void): () 
 
 const isTime = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 
-/** The payload, checked: the type string is public, on a bus every plugin on the page shares. */
+/** The payload, checked: it comes from another plugin. */
 function saidOf(payload: Partial<TimeWindowSaid> | null | undefined): TimeWindowSaid | null {
   const { variables, window, playing } = payload ?? {};
   if (

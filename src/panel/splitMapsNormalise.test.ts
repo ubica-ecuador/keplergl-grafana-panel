@@ -55,14 +55,12 @@ describe('foldSavedSplitMaps', () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
-  it('warns once when a dropped pane held an assignment no kept pane has, naming the count', () => {
+  it('folds a config whose dropped pane held an assignment no kept pane has to two panes', () => {
     const next = foldSavedSplitMaps(
       config([{ layers: { a: true, b: false } }, { layers: { a: false, b: true } }, { layers: { a: true, b: true } }])
     );
     expect(next.visState.splitMaps).toHaveLength(2);
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn.mock.calls[0][0]).toContain('has 3 panes');
-    expect(warn.mock.calls[0][0]).toContain('1 were dropped, 1 of them');
+    expect(warn).not.toHaveBeenCalled();
   });
 
   it('is a no-op for a config without a vis state, and for no config at all', () => {
@@ -80,7 +78,7 @@ describe('foldSavedSplitMaps', () => {
     expect(next.mapState).toBe(saved.mapState);
   });
 
-  it('is idempotent: folding what it just folded changes nothing, and warns no more', () => {
+  it('is idempotent: folding what it just folded changes nothing', () => {
     const once = foldSavedSplitMaps(config([pane('a'), pane('b'), pane('c'), pane('d')]));
     warn.mockClear();
     expect(foldSavedSplitMaps(once)).toBe(once);

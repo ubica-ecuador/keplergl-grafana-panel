@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl';
 import { Button, Input, PanelLabel, SidePanelSection } from '@kepler.gl/components';
 
 import { noticeStyle, PictureNotices } from './pictureNotices';
+import { grafanaTheme } from './grafanaSpacing';
 
 /**
  * Where a symbol layer's picture comes from, and what became of its pictures.
@@ -90,7 +91,7 @@ export function PictureSourceInput({
     <SidePanelSection>
       <PanelLabel>{intl.formatMessage({ id: 'symbol.pictureUrl' })}</PanelLabel>
       {uploaded ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: grafanaTheme().spacing(1) }}>
           <span>{intl.formatMessage({ id: 'symbol.picture.uploaded' }, { kb: uploadedKb(value) })}</span>
           <Button secondary small onClick={() => onChange('')}>
             {intl.formatMessage({ id: 'symbol.picture.useUrl' })}
@@ -111,7 +112,14 @@ export function PictureSourceInput({
         />
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: grafanaTheme().spacing(1),
+          marginTop: grafanaTheme().spacing(0.75),
+        }}
+      >
         <Button secondary small onClick={() => picker.current?.click()}>
           {intl.formatMessage({ id: 'symbol.picture.upload' })}
         </Button>
@@ -134,7 +142,7 @@ export function PictureSourceInput({
       </div>
 
       {uploadProblem ? (
-        <div role="alert" style={noticeStyle}>
+        <div role="alert" style={noticeStyle()}>
           {intl.formatMessage({ id: uploadProblem })}
         </div>
       ) : null}

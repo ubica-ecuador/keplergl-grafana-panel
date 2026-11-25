@@ -9,6 +9,7 @@ import {
   subscribePictures,
   summarisePictures,
 } from './pictureState';
+import { grafanaTheme } from './grafanaSpacing';
 
 /**
  * What became of a layer's pictures, under its picture settings: how many
@@ -19,7 +20,11 @@ import {
 /** Failures named one by one; the count says how many more there are. */
 const SHOWN_FAILURES = 3;
 
-export const noticeStyle: React.CSSProperties = { fontSize: 11, marginTop: 6, lineHeight: 1.4 };
+export const noticeStyle = (): React.CSSProperties => ({
+  fontSize: grafanaTheme().typography.pxToRem(11),
+  marginTop: grafanaTheme().spacing(0.75),
+  lineHeight: 1.4,
+});
 
 function shorten(url: string): string {
   return url.length > 60 ? `${url.slice(0, 57)}…` : url;
@@ -44,7 +49,7 @@ export function PictureNotices({
   return (
     <>
       {failedCount > 0 ? (
-        <div role="status" style={noticeStyle}>
+        <div role="status" style={noticeStyle()}>
           <div>
             {intl.formatMessage({ id: 'symbol.picture.failed' }, { failed: failedCount, total: summary.total })}
           </div>
@@ -57,7 +62,7 @@ export function PictureNotices({
       ) : null}
 
       {summary.overflow > 0 ? (
-        <div role="status" style={noticeStyle}>
+        <div role="status" style={noticeStyle()}>
           {intl.formatMessage(
             { id: hasFallback ? 'symbol.picture.overflow' : 'symbol.picture.overflowNotDrawn' },
             { overflow: summary.overflow, max: MAX_PICTURES }

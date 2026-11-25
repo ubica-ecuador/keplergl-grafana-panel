@@ -40,6 +40,7 @@ import {
   whyNotAddable,
   withSeries,
 } from './catalogSource';
+import { space, typeSize } from '../panel/grafanaSpacing';
 
 /** What the map offers the catalog panel: adding a dataset to it, and what it draws rasters with. Provided by KeplerMap. */
 export interface CatalogApi {
@@ -153,29 +154,29 @@ const Panel = styled.div`
   max-height: 100%;
   overflow-y: auto;
   box-sizing: border-box;
-  margin: 0 8px 8px 0;
-  padding: 12px;
+  margin: ${space(0, 1, 1, 0)};
+  padding: ${space(1.5)};
   background: ${(props) => props.theme.panelBackground};
   color: ${(props) => props.theme.textColor};
   box-shadow: ${(props) => props.theme.panelBoxShadow};
   border-radius: 4px;
-  font-size: 12px;
+  font-size: ${typeSize(12)};
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: ${space(1)};
 `;
 const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-weight: 600;
-  font-size: 13px;
+  font-size: ${typeSize(13)};
   color: ${(props) => props.theme.textColorHl};
 `;
 const Field = styled.input`
   width: 100%;
   box-sizing: border-box;
-  padding: 6px 8px;
+  padding: ${space(0.75, 1)};
   background: ${(props) => props.theme.inputBgd};
   color: ${(props) => props.theme.inputColor};
   border: 1px solid ${(props) => props.theme.inputBorderColor};
@@ -184,22 +185,22 @@ const Field = styled.input`
 const Kinds = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: ${space(0.5)};
 `;
 const Chip = styled.button<{ $on: boolean }>`
-  padding: 3px 8px;
+  padding: ${space(0.375, 1)};
   border-radius: 12px;
   border: 1px solid ${(props) => (props.$on ? props.theme.activeColor : props.theme.panelBorderColor)};
   background: ${(props) => (props.$on ? props.theme.activeColor : 'transparent')};
   color: ${(props) => (props.$on ? '#fff' : props.theme.textColor)};
   cursor: pointer;
-  font-size: 11px;
+  font-size: ${typeSize(11)};
 `;
 const Row = styled.div`
   display: flex;
-  gap: 8px;
+  gap: ${space(1)};
   align-items: center;
-  padding: 6px;
+  padding: ${space(0.75)};
   border-radius: 4px;
   border: 1px solid ${(props) => props.theme.panelBorderColor};
 `;
@@ -215,7 +216,7 @@ const Text = styled.div`
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: ${space(0.25)};
   & > b {
     color: ${(props) => props.theme.textColorHl};
     overflow: hidden;
@@ -231,7 +232,7 @@ const Text = styled.div`
 `;
 const Add = styled.button`
   flex: none;
-  padding: 4px 10px;
+  padding: ${space(0.5, 1.25)};
   border-radius: 3px;
   border: none;
   cursor: pointer;
@@ -244,7 +245,7 @@ const Add = styled.button`
 `;
 const Picker = styled.select`
   width: 100%;
-  padding: 5px 6px;
+  padding: ${space(0.625, 0.75)};
   background: ${(props) => props.theme.inputBgd};
   color: ${(props) => props.theme.inputColor};
   border: 1px solid ${(props) => props.theme.inputBorderColor};
@@ -252,43 +253,43 @@ const Picker = styled.select`
 `;
 const Elsewhere = styled.span`
   flex: none;
-  padding: 3px 8px;
+  padding: ${space(0.375, 1)};
   border-radius: 10px;
   border: 1px solid ${(props) => props.theme.panelBorderColor};
   color: ${(props) => props.theme.subtextColor};
-  font-size: 11px;
+  font-size: ${typeSize(11)};
 `;
 const Actions = styled.div`
   flex: none;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 4px;
+  gap: ${space(0.5)};
 `;
 const Toggle = styled.button`
-  padding: 3px 8px;
+  padding: ${space(0.375, 1)};
   border-radius: 3px;
   border: 1px solid ${(props) => props.theme.panelBorderColor};
   background: transparent;
   color: ${(props) => props.theme.textColor};
   cursor: pointer;
-  font-size: 11px;
+  font-size: ${typeSize(11)};
 `;
 const Members = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin: -4px 0 0 16px;
+  gap: ${space(0.5)};
+  margin: ${space(-0.5, 0, 0, 2)};
 `;
 const MemberRow = styled(Row)`
-  padding: 4px 6px;
+  padding: ${space(0.5, 0.75)};
 `;
 const Close = styled.button`
   border: none;
   background: transparent;
   color: ${(props) => props.theme.textColor};
   cursor: pointer;
-  font-size: 16px;
+  font-size: ${typeSize(16)};
   line-height: 1;
 `;
 

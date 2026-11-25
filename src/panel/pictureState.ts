@@ -1,6 +1,5 @@
 import { PictureProblem } from './pictureKeys';
 import { PictureFailure } from './pictureRows';
-import { redactUrl } from './redactUrl';
 
 /**
  * What became of the symbol pictures, for the layer panel to show.
@@ -35,7 +34,6 @@ export const MAX_PICTURE_OUTCOMES = 1024;
 const outcomes = new Map<string, PictureLoad>();
 let assignments = new WeakMap<object, PictureAssignmentStatus>();
 const listeners = new Set<() => void>();
-const warned = new Set<string>();
 let version = 0;
 let scheduled = false;
 
@@ -64,20 +62,6 @@ function isProblem(load: PictureLoad | undefined): load is PictureProblem {
   return load !== undefined && load !== 'loading' && load !== 'loaded';
 }
 
-function warnOnce(url: string, load: PictureLoad): void {
-  const note = `${load} ${url}`;
-  if (!isProblem(load) || warned.has(note)) {
-    return;
-  }
-  if (warned.size > 512) {
-    warned.clear();
-  }
-  warned.add(note);
-  const redacted = redactUrl(url);
-  const shown = redacted.length > 80 ? `${redacted.slice(0, 77)}…` : redacted;
-  console.warn(`[kepler panel] picture not drawn (${load}): ${shown}`);
-}
-
 export function subscribePictures(listener: () => void): () => void {
   listeners.add(listener);
   return () => {
@@ -100,10 +84,6 @@ export function recordPictureAssignment(layer: object, assignment: PictureAssign
     return;
   }
   assignments.set(layer, assignment);
-  // Only the failures the assignment names: the rest are a count.
-  for (const { url, problem } of assignment.failures) {
-    warnOnce(url, problem);
-  }
   changed();
 }
 
@@ -112,7 +92,7 @@ export function readPictureAssignment(layer: object): PictureAssignmentStatus | 
 }
 
 /** How loading the picture behind a key went, whichever panel asked for it. */
-export function recordPictureOutcome(key: string, url: string, load: PictureLoad): void {
+export function recordPictureOutcome(key: string, _url: string, load: PictureLoad): void {
   const previous = outcomes.get(key);
   // Re-inserted even when unchanged, so a picture still being asked for is
   // not the first one evicted.
@@ -124,7 +104,6 @@ export function recordPictureOutcome(key: string, url: string, load: PictureLoad
   if (previous === load) {
     return;
   }
-  warnOnce(url, load);
   changed();
 }
 
@@ -176,7 +155,6 @@ export function resetPictureStateForTests(): void {
   outcomes.clear();
   assignments = new WeakMap();
   listeners.clear();
-  warned.clear();
   version = 0;
   scheduled = false;
 }

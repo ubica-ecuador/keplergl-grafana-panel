@@ -85,7 +85,6 @@ import type { BoxFrame } from './wmsExtent';
 import { useEsriTimeline } from './useEsriTimeline';
 import { useZarrTimeline } from './useZarrTimeline';
 import { useCatalogZarr } from '../catalog/useCatalogZarr';
-import { useExplorerDatasets } from './useExplorerDatasets';
 import { useViewportGuard } from './useViewportGuard';
 import { useSplitMapsGuard } from './useSplitMapsGuard';
 import { savedViewportOf } from './viewportGuard';
@@ -268,8 +267,8 @@ export interface KeplerMapProps {
   /** Variable the trip playhead is written to; empty for none. */
   playheadVariable: string;
   /**
-   * Grafana's id for this panel: explorer results addressed to another panel
-   * are ignored, and the save button shows only while this panel is edited.
+   * Grafana's id for this panel: the save button shows only while this panel
+   * is edited.
    */
   panelId?: number;
   /** `PanelData.annotations`, drawn on the map when they have a place. */
@@ -715,8 +714,6 @@ export function KeplerMap({
     followsDashboard: couplesDashboardRange(timeSync),
   });
   useEsriTimeline({ store, isReady, layers: esriLayers, timeVariables: clockVariables });
-
-  useExplorerDatasets({ store, isReady, panelId });
 
   // A saved config that names a base map wins over the panel option — but only
   // if it names one. Anything this panel captures does, so those go on winning;

@@ -4,6 +4,29 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## Unreleased
+
+- **Other plugins reach the map through Grafana's plugin extensions, not its event bus.** The map took
+  three things from other plugins by events on Grafana's app event bus and a module export: a Kepler
+  Plus Time Brush's window every frame (`ubica-time-window`), the Chaski engine's activity
+  (`ubica-duckdbwasm-activity`) and Chaski's Mosaic, read off the Mosaic panel's module. The plugin
+  catalog asks plugins to talk to each other through plugin extensions, so the panel now names two
+  extension points, `ubica-keplergl-panel/chaski/v1` and `ubica-keplergl-panel/time-window/v1`, and
+  takes the functions the Chaski app (2.4 or later) and the Kepler Plus app add to them. Without those
+  versions the map draws as before; it does not follow a Time Brush frame by frame, wait for Chaski's
+  panels while it plays, or join a Mosaic Selection.
+- **Explorer results on the map are gone.** A map listened for SQL sent by Chaski's explorer
+  (`ubica-explorer-to-map`) and ran it through `window.__chaski`; no plugin sends it any more.
+- **Nothing written to the console.** What a viewer did that did not work (an action's request, saving,
+  updating or deleting a map note as an annotation, a click with no place to put an area around) shows as
+  Grafana's own notice; what the panel already shows elsewhere (pictures that could not load, under the
+  layer's **Picture column**) or leaves out quietly (a data link or action that cannot be filled for a
+  row, a gazetteer that cannot be read, a split map saved with more panes than kepler draws) is no
+  longer logged.
+- **Grafana's spacing and type** in the side panel's header, the popup's buttons and filters, the
+  service legends, the notices over the map, *Add from catalog* and the marker and picture editors,
+  where fixed pixel sizes were.
+
 ## 1.11.0 (2026-11-24)
 
 - **Add from catalog.** With a Spatial Catalog data source (`ubica-spatialcatalog-datasource`) in

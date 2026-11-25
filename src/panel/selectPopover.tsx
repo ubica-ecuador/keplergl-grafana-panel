@@ -9,6 +9,7 @@ import type { ClickSelectActions } from './useClickSync';
 import type { ClickAreaActions } from './useClickArea';
 import type { LinksApi } from './useDataLinks';
 import type { AdHocApi } from './useAdHocFilters';
+import { space, typeSize } from './grafanaSpacing';
 
 type Factory = typeof MapPopoverContentFactory;
 
@@ -127,14 +128,14 @@ export function selectApi({
 
 const StyledSelect = styled.button`
   align-self: flex-start;
-  margin-top: 4px;
-  padding: 4px 10px;
+  margin-top: ${space(0.5)};
+  padding: ${space(0.5, 1.25)};
   border: 1px solid ${(props) => props.theme?.textColor ?? 'currentColor'};
   border-radius: 2px;
   background: transparent;
   color: ${(props) => props.theme?.textColorHl ?? 'inherit'};
   font-family: inherit;
-  font-size: 11px;
+  font-size: ${typeSize(11)};
   font-weight: 500;
   cursor: pointer;
 
@@ -147,9 +148,9 @@ const StyledSelect = styled.button`
 const StyledLinks = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin-top: 6px;
-  padding-top: 6px;
+  gap: ${space(0.25)};
+  margin-top: ${space(0.75)};
+  padding-top: ${space(0.75)};
   border-top: 1px solid ${(props) => props.theme?.panelBorderColor ?? 'rgba(127, 127, 127, 0.3)'};
 `;
 
@@ -161,7 +162,7 @@ const StyledLink = styled.a`
     align-self: flex-start;
     color: ${(props) => props.theme?.activeColor ?? props.theme?.linkBtnColor ?? 'inherit'};
     font-family: inherit;
-    font-size: 11px;
+    font-size: ${typeSize(11)};
     font-weight: 500;
     text-decoration: none;
     cursor: pointer;
@@ -175,24 +176,24 @@ const StyledLink = styled.a`
 const StyledActions = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
+  gap: ${space(0.5)};
+  margin-top: ${space(0.5)};
 `;
 
 const StyledFilters = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin-top: 6px;
-  padding-top: 6px;
+  gap: ${space(0.25)};
+  margin-top: ${space(0.75)};
+  padding-top: ${space(0.75)};
   border-top: 1px solid ${(props) => props.theme?.panelBorderColor ?? 'rgba(127, 127, 127, 0.3)'};
-  font-size: 11px;
+  font-size: ${typeSize(11)};
 `;
 
 const StyledFilterRow = styled.div`
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: ${space(0.5)};
   max-width: 100%;
 `;
 
@@ -221,7 +222,7 @@ const StyledFilterButton = styled.button`
   background: transparent;
   color: ${(props) => props.theme?.textColorHl ?? 'inherit'};
   font-family: inherit;
-  font-size: 12px;
+  font-size: ${typeSize(12)};
   line-height: 1;
   cursor: pointer;
 

@@ -3,6 +3,7 @@ import { locationService } from '@grafana/runtime';
 import type { Store } from 'redux';
 
 import { subscribeActivity } from './duckdbWasmActivity';
+import { useChaskiLink } from './pluginLinks';
 import { readAnimationTime, readIsAnimating, readSyncSlices } from './keplerAdapter';
 import { playheadPhase, playheadWrite } from './playheadVariableSync';
 import { PublishGate } from './publishGate';
@@ -44,6 +45,7 @@ const REST_MS = 300;
  * microtask, never inside the store subscription.
  */
 export function usePlayheadVariableSync({ store, isReady, variable, publishIntervalMs }: Params): void {
+  const chaskiLink = useChaskiLink();
   const variableRef = useRef(variable);
   const intervalRef = useRef(publishIntervalMs);
   useEffect(() => {
@@ -193,7 +195,21 @@ export function usePlayheadVariableSync({ store, isReady, variable, publishInter
     const stop = cancel.current;
     queue.current();
     const unsubscribeStore = store.subscribe(onStoreChange.current);
-    const unsubscribeActivity = subscribeActivity((signal) => {
+    return () => {
+      unsubscribeStore();
+      stop();
+      // A new variable starts from nothing: its first write must not be skipped as a repeat.
+      lastWritten.current = null;
+    };
+  }, [isReady, variable, store]);
+
+  // Chaski's engine, through the Chaski app's link, says when the panels it
+  // answers are done: a write held for them goes then.
+  useEffect(() => {
+    if (!isReady || !variable) {
+      return;
+    }
+    return subscribeActivity(chaskiLink, (signal) => {
       gate.current.signal(signal);
       if (held.current && playbackWait.current() === 0) {
         if (timer.current !== null) {
@@ -202,12 +218,5 @@ export function usePlayheadVariableSync({ store, isReady, variable, publishInter
         timer.current = setTimeout(() => flush.current(), 0);
       }
     });
-    return () => {
-      unsubscribeStore();
-      unsubscribeActivity();
-      stop();
-      // A new variable starts from nothing: its first write must not be skipped as a repeat.
-      lastWritten.current = null;
-    };
-  }, [isReady, variable, store]);
+  }, [isReady, variable, chaskiLink]);
 }

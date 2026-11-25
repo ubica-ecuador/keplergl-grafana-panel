@@ -1,5 +1,8 @@
 import React from 'react';
 import styled from 'styled-components';
+import { css } from '@emotion/css';
+import type { GrafanaTheme2 } from '@grafana/data';
+import { useStyles2 } from '@grafana/ui';
 import { PanelHeaderFactory } from '@kepler.gl/components';
 
 import { assetBaseUrl } from './keplerConfig';
@@ -22,44 +25,53 @@ export const FREE_BRAND: SidePanelBrand = {
 
 const KEPLER_GL_WEBSITE = 'https://kepler.gl';
 
-const Wrapper = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-`;
+/**
+ * Spacing and type from Grafana's theme, so the header sits with the rest of Grafana's UI; the colours are
+ * kepler's side panel's own (its theme, mapped from Grafana's), set by the styled wrapper below.
+ */
+const getStyles = (theme: GrafanaTheme2) => ({
+  wrapper: css({
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1),
+    minWidth: 0,
+  }),
+  mark: css({
+    width: theme.spacing(3),
+    height: theme.spacing(3),
+    flex: 'none',
+  }),
+  title: css({
+    minWidth: 0,
+  }),
+  name: css({
+    display: 'block',
+    fontSize: theme.typography.bodySmall.fontSize,
+    fontWeight: theme.typography.fontWeightMedium,
+    lineHeight: theme.typography.bodySmall.lineHeight,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  }),
+  poweredBy: css({
+    fontSize: theme.typography.pxToRem(10),
+    fontWeight: theme.typography.fontWeightRegular,
+    lineHeight: theme.typography.bodySmall.lineHeight,
+    whiteSpace: 'nowrap',
+    a: {
+      color: 'inherit',
+      textDecoration: 'underline',
+    },
+  }),
+});
 
-const Mark = styled.img`
-  width: 26px;
-  height: 26px;
-  flex: none;
-`;
-
-const Title = styled.div`
-  min-width: 0;
-`;
-
-const Name = styled.a`
-  display: block;
-  color: ${(props) => props.theme.logoColor};
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 16px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
-
-const PoweredBy = styled.div`
-  color: ${(props) => props.theme.subtextColor};
-  font-size: 10px;
-  font-weight: normal;
-  line-height: 14px;
-  white-space: nowrap;
-
-  a {
-    color: inherit;
-    text-decoration: underline;
+/** kepler's side panel colours for the name and the credit line. */
+const Colours = styled.div`
+  .logo__link {
+    color: ${(props) => props.theme.logoColor};
+  }
+  .logo__version {
+    color: ${(props) => props.theme.subtextColor};
   }
 `;
 
@@ -73,27 +85,28 @@ const PoweredBy = styled.div`
  */
 export function sidePanelLogo(brand: SidePanelBrand): React.FC {
   function SidePanelLogo() {
+    const styles = useStyles2(getStyles);
     return (
-      <Wrapper className="side-panel-logo">
-        <Mark src={`${assetBaseUrl()}/${brand.logo}`} alt="" />
-        <Title className="logo__title">
-          <Name
-            className="logo__link"
+      <Colours className={`side-panel-logo ${styles.wrapper}`}>
+        <img className={styles.mark} src={`${assetBaseUrl()}/${brand.logo}`} alt="" />
+        <div className={`logo__title ${styles.title}`}>
+          <a
+            className={`logo__link ${styles.name}`}
             href={brand.website}
             target="_blank"
             rel="noopener noreferrer"
             title={brand.name}
           >
             {brand.name}
-          </Name>
-          <PoweredBy className="logo__version">
+          </a>
+          <div className={`logo__version ${styles.poweredBy}`}>
             powered by{' '}
             <a href={KEPLER_GL_WEBSITE} target="_blank" rel="noopener noreferrer">
               kepler.gl
             </a>
-          </PoweredBy>
-        </Title>
-      </Wrapper>
+          </div>
+        </div>
+      </Colours>
     );
   }
   return SidePanelLogo;
