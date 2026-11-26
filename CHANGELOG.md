@@ -300,6 +300,12 @@ release documents what changed since the one before it.
 - **A split map's loading bar goes.** A swipe or dual map with a 3D Tile layer on one side showed
   "Loading..." for ever: the other side hides the layer, and a hidden 3D Tile layer never
   traversed its tileset, so it never said it was loaded. A hidden one now does.
+- **kepler.gl 3.3.0-alpha.29.** The globe holds its horizon (the occluder no longer culled, drag
+  no longer rotates it as a flat map) and a camera or a contour crosses the antimeridian; point
+  labels can turn by a numeric field; a dataset can be renamed from the Layers panel; the
+  timeline's 12-hour ticks read right and sliders take fractional steps; Surface Fog's Pattern
+  switch is now called Water (the saved key is the same). The rest is kepler's own MCP bridge
+  and cloud storage, which the panel does not use.
 - **kepler.gl 3.3.0-alpha.28.** The cluster layer takes its radius in metres; annotations can
   caption the view and read out the timeline; the rest is kepler's own MCP bridge (layers,
   datasets, effects, timelines and video export driven from an assistant), which the panel does
