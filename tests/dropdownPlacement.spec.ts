@@ -61,7 +61,11 @@ async function openLayerTypeDropdown(page: Page, panel: Locator): Promise<Locato
   await page.waitForTimeout(3000);
 
   // The layer type selector only exists once the layer's config is expanded.
-  const typeTrigger = panel.locator('.layer-panel__config .item-selector__dropdown').first();
+  // Since kepler.gl 3.3.0-alpha.29 the dataset selector stands above it, so
+  // the first dropdown of the config is no longer the type's.
+  const typeTrigger = panel
+    .locator('.layer-panel__config .layer-config__type .item-selector__dropdown')
+    .first();
   if (!(await typeTrigger.isVisible())) {
     await clickCenter(page, panel.locator('.layer__enable-config').first());
   }
