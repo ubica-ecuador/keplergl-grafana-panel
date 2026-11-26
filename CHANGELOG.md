@@ -4,7 +4,7 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
-## Unreleased
+## 1.12.0 (2026-11-26)
 
 - **Tiles over time.** A query that gives a tile template per date — a row each, a time column and its
   `tiles_url`, as the Spatial Catalog answers a WMTS with a time dimension (NASA GIBS's daily layers) — is
@@ -30,6 +30,19 @@ release documents what changed since the one before it.
   opened its window on the service's newest dates (NASA GIBS's IMERG drew November 2026 under a range in
   January 2025), and the calendar read from the capabilities held only the newest 2,000 instants, none in
   a range years back. Now the window is the range, and the dates read are those in it.
+- **Pings given as point geometries are drawn as trips.** A GeoParquet, a FlatGeobuf or a feature
+  service gives a ping per row as a point geometry, not a latitude and a longitude, and the Trip layer
+  was built only from coordinates: five vehicles with a trip id and a time came out as 1,800 points. A
+  frame whose geometries are all points (GeoJSON, WKT or WKB) and that has a trip id and a time now
+  gives a Trip layer, as a table of pings does; lines, and frames with coordinates of their own, are
+  left as they were.
+
+- **kepler.gl 3.3.0-alpha.29.** The globe holds its horizon (the occluder no longer culled, drag
+  no longer rotates it as a flat map) and a camera or a contour crosses the antimeridian; point
+  labels can turn by a numeric field; a dataset can be renamed from the Layers panel; the
+  timeline's 12-hour ticks read right and sliders take fractional steps; Surface Fog's Pattern
+  switch is now called Water (the saved key is the same). The rest is kepler's own MCP bridge
+  and cloud storage, which the panel does not use.
 
 ## 1.11.1 (2026-11-25)
 
@@ -300,12 +313,6 @@ release documents what changed since the one before it.
 - **A split map's loading bar goes.** A swipe or dual map with a 3D Tile layer on one side showed
   "Loading..." for ever: the other side hides the layer, and a hidden 3D Tile layer never
   traversed its tileset, so it never said it was loaded. A hidden one now does.
-- **kepler.gl 3.3.0-alpha.29.** The globe holds its horizon (the occluder no longer culled, drag
-  no longer rotates it as a flat map) and a camera or a contour crosses the antimeridian; point
-  labels can turn by a numeric field; a dataset can be renamed from the Layers panel; the
-  timeline's 12-hour ticks read right and sliders take fractional steps; Surface Fog's Pattern
-  switch is now called Water (the saved key is the same). The rest is kepler's own MCP bridge
-  and cloud storage, which the panel does not use.
 - **kepler.gl 3.3.0-alpha.28.** The cluster layer takes its radius in metres; annotations can
   caption the view and read out the timeline; the rest is kepler's own MCP bridge (layers,
   datasets, effects, timelines and video export driven from an assistant), which the panel does

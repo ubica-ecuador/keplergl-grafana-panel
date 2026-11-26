@@ -13,7 +13,7 @@ hosted service rendering your map.
 **📖 [Full documentation](https://docs.ubica.dev/)** — guides,
 tutorials, a layer gallery and a complete option reference.
 
-> **Status: 1.11.1 is the latest release**, on kepler.gl 3.3.0-alpha.28.
+> **Status: 1.12.0 is the latest release**, on kepler.gl 3.3.0-alpha.29.
 > The plugin is submitted to the Grafana plugin catalog and awaiting review; until it is
 > listed, install it from a GitHub release (see [Install](https://docs.ubica.dev/guide/install.html)).
 > Pinned to a kepler.gl pre-release because the Flow layer exists nowhere else — see
