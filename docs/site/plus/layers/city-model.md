@@ -132,12 +132,26 @@ they are painted, carded and seen by a Viewshed as the model's buildings are.
 | --------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | **Surface class**                 | the default: roofs, walls, the ground and other surfaces each in their own colour                      |
 | **Fill colour**                   | rows only: kepler's colour by any column                                                               |
+| **The model's materials**         | files: each surface the colour its file gives it, CityJSON's appearance materials                      |
 | **A building attribute**          | files: one of the buildings' own attributes, numbers in steps of the colour range, words in turn       |
 | **Data joined by building**       | files: the panel's rows joined to each building, on kepler's colour scale and legend                    |
 | **A Buildings layer's sensors**   | the estimate a [Buildings](./buildings) layer works out from its sensors, polygons or cells             |
 | **Roof slope**                    | each roof face by its slope, 0 to 60°                                                                  |
 | **Way a roof faces**              | each roof face by the eight directions; a flat roof keeps its class colour                             |
 | **Sun on roofs**                  | each roof face's yearly sun in kWh/m²                                                                  |
+
+**The model's materials** reads each surface's material under the geometry's first theme: its `diffuseColor`, with
+`transparency` as opacity; a CityJSONFeature of a CityJSONSeq can carry its own. A surface without a material keeps
+its class colour. A city cut into tiles keeps its roofs and walls in their own colours from tile to tile, as the rows
+mode does with kepler's fill colour. A tile writes them as materials, for example:
+
+```json
+"appearance": { "materials": [ { "name": "Clay tile", "diffuseColor": [0.761, 0.376, 0.247] },
+                               { "name": "Wall, lime-washed", "diffuseColor": [0.945, 0.91, 0.847] } ] },
+"geometry": [ { "type": "MultiSurface", "lod": "2.2", "boundaries": [ ... ],
+  "semantics": { "surfaces": [ { "type": "RoofSurface" }, { "type": "WallSurface" } ], "values": [0, 1, 1] },
+  "material": { "colour": { "values": [0, 1, 1] } } } ]
+```
 
 **Paint** keeps a value's colour to **Every surface**, the **Roofs** or the **Walls**; the others keep their class
 colour, as does a building with no value. The layer's own scales show in kepler's legend.
@@ -215,7 +229,8 @@ queries decide what else the area filters, as Edogawa's count of buildings under
 Under kepler's **Light & Shadow** effect the model's buildings cast and take real shadows, as the
 [Buildings layer's](./buildings#light-and-shadow) do: coloured by class they take all of the effect; coloured by a
 value they take a share of it on their own faces, so a shadow or the night does not hide their colours, and cast the
-full shadow.
+full shadow. Their shadows fall on the ground too, on a clear surface the layer lays over the view; on a base map with
+relief that surface follows the ground the buildings stand on.
 
 ## With a Viewshed
 

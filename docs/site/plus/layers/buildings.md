@@ -79,8 +79,8 @@ Buildings in one colour take all of it.
 
 Other 3D layers drawn by deck.gl (a City Model, 3D shapes, extruded polygons, models) cast and take shadows as well:
 3D Shape cylinders standing as a square's trees cast theirs on the clear ground. The clear ground comes with the
-Buildings layer. On a base map with relief the ground takes no shadow (the clear surface is flat), the buildings
-still do. For each spot's hours of shade over a day, add a [Shade](/plus/layers/shade) layer.
+Buildings layer. On a base map with relief the clear surface follows the ground the buildings stand on, so their
+shadows fall on the hills. For each spot's hours of shade over a day, add a [Shade](/plus/layers/shade) layer.
 
 ## Where the value comes from
 
