@@ -1,3 +1,4 @@
+import { cx } from '@emotion/css';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Provider } from 'react-redux';
 import { StyleSheetManager } from 'styled-components';
@@ -8,6 +9,7 @@ import { messages as keplerMessages } from '@kepler.gl/localization';
 import { keplerRecipes } from './keplerRecipes';
 import { withOwnLayerLabels } from './localeMessages';
 import { maplibreStyles } from './maplibreStyles';
+import { swipeControlsStyles } from './swipeControls';
 
 import type { PanelDataset } from '../data/framesToDatasets';
 import type { RasterDataset } from '../data/rasterDataset';
@@ -977,7 +979,7 @@ export function KeplerMap({
   return (
     <div
       ref={setStyleTarget}
-      className={maplibreStyles}
+      className={cx(maplibreStyles, swipeControlsStyles)}
       style={{ width, height, position: 'relative', overflow: 'hidden' }}
     >
       {styleTarget && (

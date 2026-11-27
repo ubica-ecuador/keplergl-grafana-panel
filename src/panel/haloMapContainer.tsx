@@ -5,6 +5,7 @@ import { withTemporalCursor } from './temporalCursorMapContainer';
 import { withMarkersOnTop } from './markersOnTop';
 import { withTerrainAnchor } from './terrainMapContainer';
 import { withEveryBasemapAttribution } from './basemapAttributions';
+import { withSplitMapEffects } from './splitMapEffects';
 import { selectionHalo, unselectedTargets, type HaloRing, type Selection } from './selectionHalo';
 import {
   haloDeckLayers,
@@ -156,12 +157,16 @@ export function withSelectionHalo<P extends MapContainerProps>(MapContainer: Rea
  * lifts the main deck's layers last, after the copy of the markers drawn above
  * the top map has been taken from them. Innermost of all, kepler's own container is
  * given a collector that credits every source of the base map
- * (`basemapAttributions.tsx`). kepler itself draws the layers on every
+ * (`basemapAttributions.tsx`), and the right-hand side of a split map its own
+ * copy of the map's effects, which kepler gives the left side only
+ * (`splitMapEffects.tsx`). kepler itself draws the layers on every
  * world copy the base map repeats (`enableMapRepeat`, `keplerConfig.ts`).
  */
 export function withPanelLayers(MapContainer: React.ComponentType<MapContainerProps>): React.FC<MapContainerProps> {
   return withSelectionHalo(
-    withTemporalCursor(withMarkersOnTop(withTerrainAnchor(withEveryBasemapAttribution(MapContainer))))
+    withTemporalCursor(
+      withMarkersOnTop(withTerrainAnchor(withEveryBasemapAttribution(withSplitMapEffects(MapContainer))))
+    )
   );
 }
 
