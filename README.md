@@ -13,10 +13,7 @@ hosted service rendering your map.
 **📖 [Full documentation](https://docs.ubica.dev/)** — guides,
 tutorials, a layer gallery and a complete option reference.
 
-> **Status: 1.12.0 is the latest release**, on kepler.gl 3.3.0-alpha.29.
-> The plugin is submitted to the Grafana plugin catalog and awaiting review; until it is
-> listed, install it from a GitHub release (see [Install](https://docs.ubica.dev/guide/install.html)).
-> Pinned to a kepler.gl pre-release because the Flow layer exists nowhere else — see
+> Built on a kepler.gl pre-release (3.3.0-alpha), because the Flow layer exists nowhere else — see
 > [Compatibility](https://docs.ubica.dev/reference/compatibility.html).
 
 ## Already on Geomap? Switch in one click
@@ -155,21 +152,13 @@ below can be checked against the running thing.
 Zarr, COG, STAC and PMTiles imagery to wind fields and transit isochrones. How each one was built is in the
 [documentation](https://docs.ubica.dev/).
 
-## Installing
+## Requirements
 
 Requires **Grafana `>=12.0.10 <12.1 || >=12.1.7 <12.2 || >=12.2.5`**. Those floors are not arbitrary:
 Grafana only added `react/jsx-runtime` to its module import map in those patches, and the plugin
 fails to load below them.
 
-Install it from the Grafana plugin catalog, from the command line:
-
-```bash
-grafana cli plugins install ubica-keplergl-panel
-```
-
-or from **Administration → Plugins** inside Grafana. Then restart Grafana.
-
-Full instructions, including Docker and a hardened Grafana, are in the
+Setting it up with Docker, provisioning or a hardened Grafana is covered in the
 [install guide](https://docs.ubica.dev/guide/install.html).
 
 ### Hardened Grafana
@@ -264,45 +253,6 @@ Two pages are worth singling out.
 lists everything this panel changes about kepler, and
 [Under the hood](https://docs.ubica.dev/reference/under-the-hood.html)
 maps each kepler layer to the deck.gl layer that actually draws it.
-
-## Development
-
-```bash
-npm install
-npm run dev             # watch build
-npm run server          # Grafana 12.0.10 on :3000, plus a strict-CSP one on :3001
-npm run server:sources  # a bench on :3002 with DuckDB and Infinity installed
-npm run test:ci         # unit tests
-npm run e2e             # end-to-end against the running Grafana
-```
-
-Requires Node 22+. `dist/` is bind-mounted into the containers, so do **not** `rm -rf dist` while
-they are running — that leaves them serving a stale inode. `npm run build` cleans it correctly.
-
-Three of those benches sit at **12.0.10**, the floor of the supported range, which is what catches
-accidental use of a newer API. A fourth covers the other end — `docker compose up --build grafana-13`
-runs **Grafana 13** on `:3003`, where React 18 becomes React 19, and the suite is expected to pass
-there too:
-
-```bash
-GRAFANA_URL=http://localhost:3003 npx playwright test --workers=1
-```
-
-To publish a bench rather than run one locally, copy `docker-compose.override.example.yml` to
-`docker-compose.override.yml` and edit it. Compose picks that name up automatically; it is
-gitignored because it names an external network and a public hostname, so it must not reach anyone
-else's checkout.
-
-The documentation site lives in `docs/site` as its own npm package:
-
-```bash
-npm --prefix docs/site install
-npm run docs:dev
-```
-
-The [contributing guide](https://docs.ubica.dev/contributing.html)
-covers the three benches, the provisioned dashboards, the browser verification scripts and how the
-documentation screenshots are regenerated.
 
 ## Kepler Geospatial Maps Plus
 

@@ -4,6 +4,16 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
+## Unreleased
+
+- **A split map is lit on both sides.** kepler hands its effects (Light & Shadow, fog) to the map of index 0
+  only, so in a swipe the right half was flat and in a dual map the right map drew no shadow; the right-hand
+  map now gets copies of the map's effects, kept in step with them. A swipe's left map no longer covers the
+  toolbar or a panel it opens (Light & Shadow's) where the handle crosses it.
+- **The README is the catalog page.** It describes the plugin for its users; how to build, test and run
+  it from a clone moved to [CONTRIBUTING.md](CONTRIBUTING.md), and the install commands and the
+  "awaiting review" notice are gone.
+
 ## 1.12.0 (2026-11-26)
 
 - **Tiles over time.** A query that gives a tile template per date — a row each, a time column and its
