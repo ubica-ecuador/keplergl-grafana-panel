@@ -12,11 +12,18 @@ the viewer's browser straight to each provider, with no key. Like any web reques
 address and the part of the world the map is showing. No request from the browser carries one of the
 organisation's keys.
 
-Two layers read tiles of their own from the browser, on any base map. A [Route](/plus/layers/route) that reads its
-heights off the ground asks Mapterhorn for the terrain under its routes. A [Viewshed](/plus/layers/viewshed) asks
-Mapterhorn for the terrain round its observers and, when buildings hide its view and no dataset of them is picked,
-OpenFreeMap for the building tiles round them. These requests say where the routes and the observers are, as base map
-tiles say where the map is looking.
+Some layers read tiles of their own from the browser, on any base map.
+
+- **Mapterhorn, for the terrain:** under a [Route](/plus/layers/route)'s routes, when its rows carry no heights or it
+  reads them off the ground; round a [Viewshed](/plus/layers/viewshed)'s observers; along a Line of Sight's links;
+  over a Shade layer's area; and under a line or an area measured on the map.
+- **OpenFreeMap, for its building and street tiles:** round a Viewshed's observers when buildings hide its view and
+  no dataset of them is picked; along a Line of Sight's links; over a Shade layer's area; for the Buildings layer's
+  buildings and the Streets layer's streets; for a City Model's blocks seen from afar when no other source of them is
+  set; and for the streets the street lights stand along.
+
+These requests say where the routes, observers, links, buildings, streets or measures are, as base map tiles say where
+the map is looking.
 
 Base map and 3D tile requests to Google and Azure Maps go from the viewer's browser to your Grafana, at
 `/api/plugin-proxy/ubica-keplerplus-app/…`, and Grafana forwards them to the provider with the key, which never

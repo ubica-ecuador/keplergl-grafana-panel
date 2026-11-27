@@ -6,7 +6,7 @@ shipped with each version of the plugin describes that version. [Privacy](/plus/
 has the technical detail, host by host, and [End-User Licence Agreement](/plus/legal) the terms of use.
 :::
 
-**Kepler Geospatial Maps Plus** · Version 1.2 · 20 October 2026
+**Kepler Geospatial Maps Plus** · Version 1.6 · 26 November 2026
 
 This policy explains what Javier Andrés García Galarza, trading as UBICA ("UBICA", "we"), of Cuenca,
 Ecuador, does with personal data in connection with Kepler Geospatial Maps Plus (the "Software"), its
@@ -21,6 +21,9 @@ controller of the personal data described in section 3. Contact: <jgarcia@ubicac
 - Map tiles are fetched by the browser from the map provider whose key you set, straight or, for
   Google and Microsoft Azure Maps, through your own Grafana, which adds the key. That provider sees the
   request, as it would from any website that uses its maps.
+- Whoever builds a dashboard can point a map at other hosts (tiles, GeoJSON files, 3D models), and a query's
+  rows can carry addresses the browser then fetches (photos, WMS services). Those hosts are chosen by you, not
+  by the Software.
 - The Time Brush panel remembers each reader's own choices, such as where they left its floating bar,
   in their browser's local storage. They never leave the browser.
 - UBICA processes personal data only when you contact us, for support, a security report or a direct
@@ -35,7 +38,7 @@ The technical detail, host by host, is at <https://docs.ubica.dev/plus/admin/pri
 never sent to UBICA, nor to any map provider, with one exception that comes from the free panel: when a
 row carries the URL of a raster to draw (a cloud-optimised GeoTIFF), the browser sends that URL, with any
 signature it carries, to the raster tile server set in the panel's options, which reads the raster on the
-map's behalf. No server is set until someone chooses one, and until then no raster is drawn; the panel
+map's behalf; the same goes for a STAC item or a Zarr store. No server is set until someone chooses one, and until then no raster is drawn; the panel
 says so.
 
 2.2 **Keys** of map services are stored in your Grafana, in the Software's settings. The Google and
@@ -45,15 +48,25 @@ Earlier versions also kept CARTO, MapTiler and Esri keys, where every signed-in 
 could read them; this version no longer reads them, and saving its configuration page removes them.
 
 2.3 **Map, imagery, terrain and 3D tile requests** go from the browser straight to the provider for
-OpenFreeMap, CARTO, Mapterhorn and Esri World Imagery, the free panel's defaults, which need no key.
-Each request carries the IP address of the browser, its user agent, and the coordinates of the tile, which say what area and zoom level the viewer
-is looking at. Requests to Microsoft Azure Maps and Google (Map Tiles API and Photorealistic 3D Tiles)
+the base maps that need no key: OpenFreeMap, the default base map, and, once a map is set to one of
+them, CARTO, Mapterhorn (relief) and Esri's ArcGIS Online services (World Imagery and Esri's reference,
+street and topographic maps, two of whose tiles also illustrate the base map picker), and Open Waters and VersaTiles
+for Seamap, the nautical chart (Open Waters its style, seamarks and depths; VersaTiles its land). Some layers also ask
+these providers for tiles whatever base map is shown. Mapterhorn, for the terrain: under a Route layer's routes
+(when its rows carry no heights, or it is set to read them off the ground), round a Viewshed layer's observers, along
+a Line of Sight layer's links, over a Shade layer's area, and under a line or an area measured on the map.
+OpenFreeMap, for its building and street tiles: round a Viewshed layer's observers when buildings hide its view and
+no dataset of them is named, along a Line of Sight layer's links, over a Shade layer's area, for the Buildings
+layer's buildings and the Streets layer's streets, for a City Model's blocks seen from afar when no other source of
+them is set, and for the streets the street lights stand along. Each request carries the IP address of the browser, its user agent, and the coordinates of the tile, which say what area and zoom level the viewer
+is looking at (for those layers' tiles, where their routes, observers, links, buildings, streets or measures are). Requests to Microsoft Azure Maps and Google (Map Tiles API and Photorealistic 3D Tiles)
 go from the browser to your Grafana, which forwards them to the provider with the key. Grafana passes
 on the browser's IP address and user agent, the address of the dashboard and the coordinates of the
 tile, and the Software has it leave out the headers that would describe the signed-in user. Requests to Google also carry a session token the browser obtains with the key, and the request
 that opens that session carries the language and region of the Grafana user, so that Google labels the
 map in them. Raster tile requests go to the raster tile server of section 2.1. Each provider processes
-these requests under its own privacy policy (section 11). UBICA receives none of them.
+these requests under its own privacy policy (section 11). UBICA receives none of them. Hosts that a
+dashboard editor or the data names are in section 2.11.
 
 2.4 **Cesium ion.** A map can draw a 3D tileset hosted on Cesium ion, run by Cesium GS, Inc., when the
 layer carries the access token of a Cesium ion account. The browser then asks Cesium ion's API
@@ -70,14 +83,23 @@ The browser downloads those files from your Grafana and does the lookup itself. 
 data is never sent anywhere by the Software.
 
 2.6 **Active alerts** are read through Grafana's own alerting API, as the signed-in user and with that
-user's permissions. They do not leave Grafana and the browser.
+user's permissions, and only while a panel's *Show active alerts* is on: the rules Grafana manages, and
+the rules of the Prometheus, Loki and Mimir data sources that manage alerts, which Grafana asks those
+data sources for. The Software asks Grafana only, never a data source or an Alertmanager directly. The
+alerts, their labels and a rule's `geofence` annotation are drawn in the browser; they do not leave
+Grafana and the browser. A geofence alert is placed on the entity it names by the panel's own query
+results (section 2.1), in the browser.
 
 2.7 **Grafana Assistant.** The Software registers skills, which are instructions, with Grafana
 Assistant. What a user says to the Assistant, and what the Assistant reads from the dashboard, is
 processed by Grafana Labs under Grafana's terms and privacy policy. Nothing of it reaches UBICA.
 
-2.8 **Your own 3D models.** If you give the Fleet layer the URL of a model, which must be an `https://`
-address or a path to the plugin's own files in your Grafana, the browser fetches the model from that URL.
+2.8 **Your own 3D models.** If you give the Fleet layer the URL of a model, or the 4D Model layer the URL
+of the model it builds, the browser fetches the model from that URL. Both are checked the same way: the
+URL must be an `https://` address or a path to the plugin's own files in your Grafana; anything else, such
+as another of your Grafana's addresses, is refused and never fetched. The files a 4D model names (the
+buffers of a `.gltf`) are checked the same way before they are fetched. A model at an `https://` address is
+fetched without the browser's cookies.
 
 2.9 **Browser storage.** The map panel's own code stores nothing in the browser beyond the memory of
 the open page. kepler.gl, which it embeds, keeps one preference in the browser's local storage: the unit
@@ -96,6 +118,34 @@ the browser's site data. A place or choices kept by an earlier version under key
 2.10 **Delivery of the plugin.** On Grafana Cloud, Grafana Labs serves the plugin's files from its
 plugin CDN; on Grafana Enterprise, your Grafana serves them. Those requests are made to Grafana Labs or
 to your Grafana, not to UBICA.
+
+2.11 **Hosts set by dashboard editors or carried by the data.** Besides the providers of section 2.3,
+the browser fetches from any host a dashboard names: the URL template of an XYZ tile layer, a custom base
+map style, a GeoJSON file or a tileset added by URL (vector tiles, PMTiles, WMS, 3D tiles, Zarr), the ArcGIS
+(Esri) or XYZ tiles and the base map of a Geomap panel converted to Kepler Plus, a gazetteer URL, a symbol
+picture, and kepler.gl's own gallery of 3D models (`studio-public-data.foursquare.com`) when a layer is
+set to one of them. It also fetches what a query's rows name: the pictures of a photos layer, a WMS
+service (whose GetFeatureInfo request carries the clicked point), an ArcGIS Image Service. Each such
+request carries the browser's IP address and user agent, and, for tiles and map services, the area being
+looked at. These hosts are chosen by whoever builds the dashboard or writes the query, and process the
+requests under their own terms; the Software sends them nothing else, and UBICA receives none of them.
+A Grafana action set on the panel (*Data links and actions*) sends the request it describes, from the
+browser, only after the user who clicks it confirms. A data link only opens its address.
+
+2.12 **Grafana annotations.** The map draws the dashboard's annotations that Grafana has already loaded
+for it, those that carry a place (a `geo:<lng>,<lat>` tag, or longitude and latitude fields). Only when the
+panel's *Grafana annotations* option is *Show and save* does the map also write annotations, through
+Grafana's `/api/annotations`, as the signed-in user and only as far as that user's permissions allow: it
+creates one for a note added to the map, edits it when the note changes, and deletes it when the note is
+deleted, including when a note is removed from kepler.gl's list of annotations. Such an annotation holds
+the note's text, its time span (the map's time window or the dashboard's range), the dashboard's
+identifier, the tags `map` and `geo:<lng>,<lat>`, and how the note is drawn. It is stored in your Grafana's
+database like any other annotation, and anyone who can read the dashboard's annotations can see it. It
+never leaves your Grafana.
+
+2.13 **Live data.** A query that streams, through Grafana Live (for example from an MQTT data source),
+reaches the map through Grafana like any other query. The Software opens no connection of its own and
+involves no third party.
 
 ## 3. What UBICA collects, why, and for how long
 
@@ -182,6 +232,8 @@ Javier Andrés García Galarza, trading as UBICA · Cuenca, Ecuador · <jgarcia@
 - Cesium GS, Inc. (Cesium ion): <https://cesium.com/legal/privacy-policy/>
 - OpenFreeMap: <https://openfreemap.org/>
 - Mapterhorn: <https://mapterhorn.com/>
+- Open Waters: <https://openwaters.io/privacy>
+- VersaTiles: <https://versatiles.org/>
 - Grafana Labs: <https://grafana.com/legal/privacy-policy/>
 - GitHub (the documentation site's host):
   <https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement>

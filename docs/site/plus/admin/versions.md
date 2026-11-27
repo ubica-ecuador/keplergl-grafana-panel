@@ -18,6 +18,7 @@ built on a release of the free panel, and its changelog names which one.
 
 | Plus version             | Free panel version | Grafana versions                                                |
 | ------------------------ | ------------------ | --------------------------------------------------------------- |
+| 1.7.0                    | 1.12.0             | 12.0.10 and later 12.0, 12.1.7 and later 12.1, 12.2.5 and later |
 | 1.6.0                    | 1.7.0              | 12.0.10 and later 12.0, 12.1.7 and later 12.1, 12.2.5 and later |
 | 1.5.0                    | 1.6.2              | 12.0.10 and later 12.0, 12.1.7 and later 12.1, 12.2.5 and later |
 | 1.4.1                    | 1.4.0              | 12.0.10 and later 12.0, 12.1.7 and later 12.1, 12.2.5 and later |
