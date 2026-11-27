@@ -4,7 +4,7 @@
 entry lists what the plugin **does**, not what changed to get it there. From 1.0.0 onwards, each
 release documents what changed since the one before it.
 
-## Unreleased
+## 1.12.1 (2026-11-27)
 
 - **A split map is lit on both sides.** kepler hands its effects (Light & Shadow, fog) to the map of index 0
   only, so in a swipe the right half was flat and in a dual map the right map drew no shadow; the right-hand
